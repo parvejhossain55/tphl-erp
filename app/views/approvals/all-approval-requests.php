@@ -262,12 +262,7 @@
                                 ?>
                                 <tr>
                                     <td class="ps-3">
-<<<<<<< HEAD
-                                        <input type="checkbox" class="approval-req-checkbox form-check-input"
-                                            value="<?= $req['id'] ?>" <?= ($req['status'] !== 'pending' || !$canUserApprove) ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
-=======
                                         <input type="checkbox" class="approval-req-checkbox form-check-input" value="<?= $req['id'] ?>" <?= (!in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) || !$canUserApprove) ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
->>>>>>> origin/develop
                                     </td>
                                     <!-- Req # & Date -->
                                     <td>
@@ -352,16 +347,9 @@
 
                                     <!-- Approved Amount -->
                                     <td>
-<<<<<<< HEAD
-                                        <?php if ($req['status'] === 'approved' && $req['approved_amount'] > 0): ?>
-                                            <span
-                                                class="fw-bold text-success">৳<?= number_format($req['approved_amount'], 2) ?></span>
-                                        <?php elseif ($req['status'] === 'approved'): ?>
-=======
                                         <?php if (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid']) && $req['approved_amount'] > 0): ?>
                                             <span class="fw-bold text-success">৳<?= number_format($req['approved_amount'], 2) ?></span>
                                         <?php elseif (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'])): ?>
->>>>>>> origin/develop
                                             <span class="fw-semibold text-success">Approved</span>
                                         <?php else: ?>
                                             <span class="text-muted extra-small">--</span>
@@ -374,16 +362,9 @@
                                             <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small">
                                                 <i class="fa-solid fa-clock me-1"></i>Pending Review
                                             </span>
-<<<<<<< HEAD
-                                        <?php elseif ($req['status'] === 'approved'): ?>
-                                            <span
-                                                class="badge bg-success text-white rounded-pill px-3 py-1 extra-small d-block mb-1">
-                                                <i class="fa-solid fa-user-shield me-1"></i>Approved from Management
-=======
                                         <?php elseif (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'])): ?>
                                             <span class="badge <?= $req['status'] === 'approved' ? 'bg-success' : 'bg-info' ?> text-white rounded-pill px-3 py-1 extra-small d-block mb-1">
                                                 <i class="fa-solid fa-user-shield me-1"></i><?= $req['status'] === 'approved' ? 'Approved from Management' : 'Partially Approved' ?>
->>>>>>> origin/develop
                                             </span>
                                             <div class="fw-bold text-dark extra-small">
                                                 <i
@@ -425,16 +406,6 @@
                                                     <?= date('d M, Y', strtotime($req['payout_date'])) ?>
                                                 </div>
                                             <?php endif; ?>
-<<<<<<< HEAD
-                                        <?php elseif ($req['payout_status'] === 'Pending Accounts Payout'): ?>
-                                            <span
-                                                class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 extra-small">
-                                                <i class="fa-solid fa-wallet me-1"></i>Pending Accounts Payout
-                                            </span>
-                                        <?php elseif ($req['status'] === 'approved'): ?>
-                                            <span
-                                                class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-3 py-1 extra-small">
-=======
                                         <?php elseif ($req['payout_status'] === 'Partially Paid'): ?>
                                             <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small d-block mb-1">
                                                 <i class="fa-solid fa-money-check-dollar me-1"></i>Partially Paid
@@ -449,7 +420,6 @@
                                             </span>
                                         <?php elseif (in_array($req['status'], ['approved', 'partially_approved'])): ?>
                                             <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-3 py-1 extra-small">
->>>>>>> origin/develop
                                                 <i class="fa-solid fa-check me-1"></i>Approved
                                             </span>
                                         <?php else: ?>
@@ -465,15 +435,10 @@
                                                     <i class="fa-solid fa-up-right-from-square me-1"></i>Review / Process
                                                 </a>
                                             <?php else: ?>
-<<<<<<< HEAD
                                                 <a href="javascript:void(0)"
                                                     class="btn btn-sm btn-light text-muted rounded-2 px-2 border"
                                                     title="Management Approval Required">
                                                     <i class="fa-solid fa-lock me-1 text-warning"></i>Management Only
-=======
-                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-muted rounded-2 px-2 border" title="Management Approval Required">
-                                                    <i class="fa-solid fa-eye me-1"></i>View Module Page
->>>>>>> origin/develop
                                                 </a>
                                             <?php endif; ?>
                                         <?php else: ?>

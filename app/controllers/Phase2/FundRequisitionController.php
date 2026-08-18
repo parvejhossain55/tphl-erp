@@ -389,7 +389,52 @@ class FundRequisitionController extends Controller {
         if ($stmt->execute()) {
             $newReqId = $stmt->insert_id;
             $this->syncApprovalRequest($newReqId);
-            setSuccess("Fund Requisition submitted successfully.");
+
+            // --- Email Notification Start ---
+            require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
+            $mailService = new \MailService();
+            $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $newReqId;
+
+            $reqUserRes = $this->db->query("SELECT full_name FROM users WHERE id = {$requested_by}");
+            $requesterName = ($reqUserRes && $reqUserRes->num_rows > 0) ? $reqUserRes->fetch_assoc()['full_name'] : 'Unknown';
+
+            $reqDetails = [
+                'title' => $purpose,
+                'requester_name' => $requesterName,
+                'amount' => $amount
+            ];
+
+            $emailSent = false;
+            if ($isDeptApprovalRequired == 1 && !empty($reportingUserId)) {
+                $bossRes = $this->db->query("SELECT full_name, email FROM users WHERE id = {$reportingUserId}");
+                if ($bossRes && $bossRes->num_rows > 0) {
+                    $bossInfo = $bossRes->fetch_assoc();
+                    if (!empty($bossInfo['email'])) {
+                        $emailSent = $mailService->sendRequisitionNotification($bossInfo['email'], $bossInfo['full_name'], 'Pending Department Head Approval', 'Fund Requisition', $reqDetails, $link);
+                    }
+                }
+            } else {
+                $mgmtRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id IN (1, 3)");
+                if ($mgmtRes) {
+                    while ($mgmt = $mgmtRes->fetch_assoc()) {
+                        if (!empty($mgmt['email'])) {
+                            $sent = $mailService->sendRequisitionNotification($mgmt['email'], $mgmt['full_name'], 'Pending Management Approval', 'Fund Requisition', $reqDetails, $link);
+                            if ($sent) $emailSent = true;
+                        }
+                    }
+                }
+            }
+            // --- Email Notification End ---
+
+            if (!$emailSent) {
+                // Rollback insertion
+                $this->db->query("DELETE FROM fund_requisitions WHERE id = {$newReqId}");
+                $this->db->query("DELETE FROM approval_requests WHERE source_table = 'fund_requisitions' AND source_id = {$newReqId}");
+                $exactError = isset($mailService->lastError) ? $mailService->lastError : 'Unknown error';
+                setError("Failed to create request: Email could not be sent. Error: " . $exactError);
+            } else {
+                setSuccess("Fund Requisition submitted successfully. Email sent.");
+            }
         } else {
             setError("Failed to submit request: " . $this->db->error);
         }
@@ -452,7 +497,48 @@ class FundRequisitionController extends Controller {
 
         if ($stmt->execute()) {
             $this->syncApprovalRequest($id);
-            setSuccess("Department Head status updated: " . $newDeptStatus);
+
+            // --- Email Notification Start ---
+            require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
+            $mailService = new \MailService();
+            $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id;
+
+            $reqUserRes = $this->db->query("SELECT full_name FROM users WHERE id = {$req['requested_by']}");
+            $requesterName = ($reqUserRes && $reqUserRes->num_rows > 0) ? $reqUserRes->fetch_assoc()['full_name'] : 'Unknown';
+
+            $reqDetails = [
+                'title' => $req['purpose'] ?? 'Fund Requisition',
+                'requester_name' => $requesterName,
+                'amount' => $req['amount'] ?? 0
+            ];
+
+            $emailSent = false;
+            if ($newDeptStatus === 'approved') {
+                $mgmtRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id IN (1, 3)");
+                if ($mgmtRes) {
+                    while ($mgmt = $mgmtRes->fetch_assoc()) {
+                        if (!empty($mgmt['email'])) {
+                            $sent = $mailService->sendRequisitionNotification($mgmt['email'], $mgmt['full_name'], 'Pending Management Approval', 'Fund Requisition', $reqDetails, $link);
+                            if ($sent) $emailSent = true;
+                        }
+                    }
+                }
+            } else if ($newDeptStatus === 'rejected') {
+                $reqEmailRes = $this->db->query("SELECT email FROM users WHERE id = {$req['requested_by']}");
+                if ($reqEmailRes && $reqEmailRes->num_rows > 0) {
+                    $reqEmail = $reqEmailRes->fetch_assoc()['email'];
+                    if (!empty($reqEmail)) {
+                        $emailSent = $mailService->sendRequisitionNotification($reqEmail, $requesterName, 'Rejected by Department Head', 'Fund Requisition', $reqDetails, $link);
+                    }
+                }
+            }
+            // --- Email Notification End ---
+
+            if ($emailSent) {
+                setSuccess("Department Head status updated: " . $newDeptStatus . ". Notification sent.");
+            } else {
+                setSuccess("Department Head status updated: " . $newDeptStatus . " (No email was sent).");
+            }
         } else {
             setError("Failed to update status: " . $this->db->error);
         }
@@ -545,7 +631,47 @@ class FundRequisitionController extends Controller {
             }
             // ====================================================
 
-            setSuccess("Requisition status updated to: " . $status);
+            // --- Email Notification Start ---
+            require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
+            $mailService = new \MailService();
+            $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id;
+
+            $reqUserRes = $this->db->query("SELECT full_name, email FROM users WHERE id = {$frData['requested_by']}");
+            $requesterInfo = ($reqUserRes && $reqUserRes->num_rows > 0) ? $reqUserRes->fetch_assoc() : null;
+
+            $reqDetails = [
+                'title' => $frData['purpose'] ?? 'Fund Requisition',
+                'requester_name' => $requesterInfo['full_name'] ?? 'Unknown',
+                'amount' => $frData['amount'] ?? 0
+            ];
+
+            $emailSent = false;
+            if ($status === 'approved' || $status === 'partially_approved') {
+                $accRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id IN (4, 10)");
+                if ($accRes) {
+                    while ($acc = $accRes->fetch_assoc()) {
+                        if (!empty($acc['email'])) {
+                            $sent = $mailService->sendRequisitionNotification($acc['email'], $acc['full_name'], 'Pending Accounts Payout', 'Fund Requisition', $reqDetails, $link);
+                            if ($sent) $emailSent = true;
+                        }
+                    }
+                }
+                if ($requesterInfo && !empty($requesterInfo['email'])) {
+                    $sent = $mailService->sendRequisitionNotification($requesterInfo['email'], $requesterInfo['full_name'], 'Approved by Management', 'Fund Requisition', $reqDetails, $link);
+                    if ($sent) $emailSent = true;
+                }
+            } else if ($status === 'rejected') {
+                if ($requesterInfo && !empty($requesterInfo['email'])) {
+                    $emailSent = $mailService->sendRequisitionNotification($requesterInfo['email'], $requesterInfo['full_name'], 'Rejected by Management', 'Fund Requisition', $reqDetails, $link);
+                }
+            }
+            // --- Email Notification End ---
+
+            if ($emailSent) {
+                setSuccess("Requisition status updated to: " . $status . ". Notification sent.");
+            } else {
+                setSuccess("Requisition status updated to: " . $status . " (No email was sent).");
+            }
         } else {
             setError("Failed to update requisition: " . $this->db->error);
         }
@@ -661,7 +787,32 @@ class FundRequisitionController extends Controller {
                     error_log("AutoPosting Exception (Fund Requisition Pay): " . $e->getMessage());
                 }
             }
-            // ==========================================================
+            // ====================================================
+
+            // --- Email Notification Start ---
+            require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
+            $mailService = new \MailService();
+            $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id;
+
+            $reqUserRes = $this->db->query("SELECT full_name, email FROM users WHERE id = {$frData['requested_by']}");
+            $requesterInfo = ($reqUserRes && $reqUserRes->num_rows > 0) ? $reqUserRes->fetch_assoc() : null;
+
+            $reqDetails = [
+                'title' => $frData['purpose'] ?? 'Fund Requisition',
+                'requester_name' => $requesterInfo['full_name'] ?? 'Unknown',
+                'amount' => $frData['amount'] ?? 0
+            ];
+
+            if ($status === 'paid' || $status === 'partially_paid') {
+                if ($requesterInfo && !empty($requesterInfo['email'])) {
+                    $mailService->sendRequisitionNotification($requesterInfo['email'], $requesterInfo['full_name'], 'Payment Disbursed by Accounts', 'Fund Requisition', $reqDetails, $link);
+                }
+            } else if ($status === 'rejected') {
+                if ($requesterInfo && !empty($requesterInfo['email'])) {
+                    $mailService->sendRequisitionNotification($requesterInfo['email'], $requesterInfo['full_name'], 'Payment Rejected by Accounts', 'Fund Requisition', $reqDetails, $link);
+                }
+            }
+            // --- Email Notification End ---
 
             setSuccess("Requisition payment status updated to: " . $status);
         } else {
@@ -1125,6 +1276,46 @@ class FundRequisitionController extends Controller {
             setError('Failed to create extra fund request: ' . $this->db->error);
         }
         header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+        exit;
+    }
+    public function confirmReceipt($id) {
+        $id = (int)$id;
+        $userId = (int)$_SESSION['user']['id'];
+        
+        $req = $this->db->query("SELECT requested_by, status, is_received FROM fund_requisitions WHERE id = $id")->fetch_assoc();
+        if (!$req) {
+            setError('Requisition not found.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        if ($req['requested_by'] != $userId && !in_array($_SESSION['user']['role_id'], [1, 3])) {
+            setError('Only the requester can confirm receipt of funds.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+            exit;
+        }
+
+        if (!in_array($req['status'], ['paid', 'partially_paid'])) {
+            setError('Funds must be disbursed by accounts before you can confirm receipt.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+            exit;
+        }
+        
+        if ($req['is_received']) {
+            setError('Receipt already confirmed.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+            exit;
+        }
+
+        $stmt = $this->db->prepare("UPDATE fund_requisitions SET is_received = 1, received_at = CURRENT_TIMESTAMP WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        if ($stmt->execute()) {
+            setSuccess('Receipt of funds has been confirmed successfully.');
+        } else {
+            setError('Failed to confirm receipt: ' . $this->db->error);
+        }
+        
+        header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
         exit;
     }
 

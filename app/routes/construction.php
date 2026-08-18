@@ -86,6 +86,7 @@ return [
     'fund-requisitions/balance-return/(\d+)' => ['controller' => 'Phase2\FundRequisitionController', 'method' => 'markBalanceReturned'],
     'fund-requisitions/verify-settle/(\d+)' => ['controller' => 'Phase2\FundRequisitionController', 'method' => 'verifySettlement'],
     'fund-requisitions/extra-fund/(\d+)' => ['controller' => 'Phase2\FundRequisitionController', 'method' => 'requestExtraFund'],
+    'fund-requisitions/confirm-receipt/(\d+)' => ['controller' => 'Phase2\FundRequisitionController', 'method' => 'confirmReceipt'],
 
     // =========================================================================
     // Controller: Phase2\ArchitectEngineeringController
