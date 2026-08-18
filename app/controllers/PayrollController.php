@@ -2046,4 +2046,194 @@ class PayrollController extends Controller
         $pdf->Output('Resign_List_Report_' . $fromDate . '_to_' . $toDate . '.pdf', 'D');
         exit;
     }
+
+    public function detailedSummary()
+    {
+        $currentYear = date('Y');
+        $currentMonth = date('m');
+        $defaultFrom = date('Y-m-d');
+        $defaultTo = date('Y-m-d');
+
+        $filterType = $_GET['filter_type'] ?? 'monthly';
+        $fromDate = $defaultFrom;
+        $toDate = $defaultTo;
+
+        if ($filterType === 'monthly') {
+            $m = $_GET['month'] ?? $currentMonth;
+            $y = $_GET['year'] ?? $currentYear;
+            $fromDate = date('Y-m-d', mktime(0, 0, 0, $m, 1, $y));
+            $toDate = date('Y-m-t', mktime(0, 0, 0, $m, 1, $y));
+        } elseif ($filterType === 'custom') {
+            $fromDate = $_GET['from_date'] ?? $defaultFrom;
+            $toDate = $_GET['to_date'] ?? $defaultTo;
+        }
+
+        $sql = "
+            SELECT p.id, p.net_salary,
+                   e.full_name, e.employee_id as emp_id,
+                   COALESCE(dept.name, 'Unassigned') as department_name, 
+                   desg.name as designation_name
+            FROM payslips p
+            LEFT JOIN employees e ON p.employee_id = e.id
+            LEFT JOIN departments dept ON e.department_id = dept.id
+            LEFT JOIN designations desg ON e.designation_id = desg.id
+            WHERE p.payslip_month >= ? AND p.payslip_month <= ?
+            ORDER BY dept.name ASC, e.employee_id ASC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("ss", $fromDate, $toDate);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        $departmentsData = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $dept = $row['department_name'];
+                if (!isset($departmentsData[$dept])) {
+                    $departmentsData[$dept] = [
+                        'employees' => [],
+                        'total_payable' => 0
+                    ];
+                }
+                $departmentsData[$dept]['employees'][] = $row;
+                $departmentsData[$dept]['total_payable'] += (float) $row['net_salary'];
+            }
+        }
+
+        $page_title = "Detailed Summary";
+        $current_route = "payroll-detailed-summary";
+
+        $this->view('payrolls/payslips/detailed-summary', [
+            'page_title' => $page_title,
+            'current_route' => $current_route,
+            'departmentsData' => $departmentsData,
+            'filter_type' => $filterType,
+            'from_date' => $fromDate,
+            'to_date' => $toDate,
+            'selected_month' => $_GET['month'] ?? $currentMonth,
+            'selected_year' => $_GET['year'] ?? $currentYear
+        ]);
+    }
+
+    public function exportDetailedSummaryPDF()
+    {
+        $currentYear = date('Y');
+        $currentMonth = date('m');
+        $defaultFrom = date('Y-m-d');
+        $defaultTo = date('Y-m-d');
+
+        $filterType = $_GET['filter_type'] ?? 'monthly';
+        $fromDate = $defaultFrom;
+        $toDate = $defaultTo;
+
+        if ($filterType === 'monthly') {
+            $m = $_GET['month'] ?? $currentMonth;
+            $y = $_GET['year'] ?? $currentYear;
+            $fromDate = date('Y-m-d', mktime(0, 0, 0, $m, 1, $y));
+            $toDate = date('Y-m-t', mktime(0, 0, 0, $m, 1, $y));
+        } elseif ($filterType === 'custom') {
+            $fromDate = $_GET['from_date'] ?? $defaultFrom;
+            $toDate = $_GET['to_date'] ?? $defaultTo;
+        }
+
+        $sql = "
+            SELECT p.id, p.net_salary,
+                   e.full_name, e.employee_id as emp_id,
+                   COALESCE(dept.name, 'Unassigned') as department_name, 
+                   desg.name as designation_name
+            FROM payslips p
+            LEFT JOIN employees e ON p.employee_id = e.id
+            LEFT JOIN departments dept ON e.department_id = dept.id
+            LEFT JOIN designations desg ON e.designation_id = desg.id
+            WHERE p.payslip_month >= ? AND p.payslip_month <= ?
+            ORDER BY dept.name ASC, e.employee_id ASC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("ss", $fromDate, $toDate);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        $departmentsData = [];
+        $totalEmp = 0;
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $dept = $row['department_name'];
+                if (!isset($departmentsData[$dept])) {
+                    $departmentsData[$dept] = [
+                        'employees' => [],
+                        'total_payable' => 0
+                    ];
+                }
+                $departmentsData[$dept]['employees'][] = $row;
+                $departmentsData[$dept]['total_payable'] += (float) $row['net_salary'];
+                $totalEmp++;
+            }
+        }
+
+        $pdf = new \TCPDF('P', 'mm', 'A4');
+        $pdf->SetCreator('TPHL ERP');
+        $pdf->SetAuthor('Admin');
+        $pdf->SetTitle('Detailed Summary Report');
+        $pdf->SetMargins(10, 15, 10);
+        $pdf->SetAutoPageBreak(TRUE, 15);
+        $pdf->AddPage();
+
+        $pdf->SetFont('helvetica', '', 9);
+
+        $html = '
+        <div style="text-align:center;">
+            <h1 style="color:#078134;">The Premium Homes Ltd</h1>
+            <h3 style="color:#28B463;">Detailed Summary Report </h3>
+            <p>Date Range: ' . date('F d, Y', strtotime($fromDate)) . ' to ' . date('F d, Y', strtotime($toDate)) . '</p>
+            <p><b>Total Employees: </b> ' . $totalEmp . '</p>
+        </div>
+        <br>
+        <table border="1" cellpadding="5" width="100%">
+            <thead>
+                <tr style="background-color:#078134; color:#ffffff; font-weight:bold;">
+                    <th width="15%" style="text-align:center;">Department</th>
+                    <th width="6%" style="text-align:center;">SL</th>
+                    <th width="24%" style="text-align:left;">Employee Name</th>
+                    <th width="10%" style="text-align:center;">ID</th>
+                    <th width="15%" style="text-align:left;">Designation</th>
+                    <th width="15%" style="text-align:right;">Net Payable</th>
+                    <th width="15%" style="text-align:right;">Total Payable</th>
+                </tr>
+            </thead>
+            <tbody>';
+
+        foreach ($departmentsData as $deptName => $deptInfo) {
+            $empCount = count($deptInfo['employees']);
+            $totalPay = number_format($deptInfo['total_payable'], 2);
+            $sl = 1;
+
+            foreach ($deptInfo['employees'] as $index => $emp) {
+                $html .= '<tr>';
+
+                if ($index === 0) {
+                    $html .= '<td width="15%" rowspan="' . $empCount . '" style="text-align:center; vertical-align:middle;">' . htmlspecialchars($deptName) . '</td>';
+                }
+
+                $html .= '<td width="6%" style="text-align:center;">' . $sl++ . '</td>';
+                $html .= '<td width="24%" style="text-align:left;">' . htmlspecialchars($emp['full_name'] ?? '') . '</td>';
+                $html .= '<td width="10%" style="text-align:center;">' . htmlspecialchars($emp['emp_id'] ?? '') . '</td>';
+                $html .= '<td width="15%" style="text-align:left;">' . htmlspecialchars($emp['designation_name'] ?? '-') . '</td>';
+                $html .= '<td width="15%" style="text-align:right;">' . number_format($emp['net_salary'] ?? 0, 2) . '</td>';
+
+                if ($index === 0) {
+                    $html .= '<td width="15%" rowspan="' . $empCount . '" style="text-align:right; vertical-align:middle; font-weight:bold;">' . $totalPay . '</td>';
+                }
+
+                $html .= '</tr>';
+            }
+        }
+
+        $html .= '</tbody></table>';
+
+        $pdf->writeHTML($html, true, false, true, false, '');
+        $pdf->Output('Detailed_Summary_Report_' . $fromDate . '_to_' . $toDate . '.pdf', 'D');
+        exit;
+    }
 }

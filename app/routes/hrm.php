@@ -280,4 +280,8 @@ return [
     // Resign List
     'payroll-resign-list' => ['controller' => 'PayrollController', 'method' => 'resignList'],
     'payroll-resign-list-pdf' => ['controller' => 'PayrollController', 'method' => 'exportResignListPDF'],
+
+    // Detailed Summary
+    'payroll-detailed-summary' => ['controller' => 'PayrollController', 'method' => 'detailedSummary'],
+    'payroll-detailed-summary-pdf' => ['controller' => 'PayrollController', 'method' => 'exportDetailedSummaryPDF'],
 ];

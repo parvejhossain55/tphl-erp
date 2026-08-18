@@ -1258,9 +1258,9 @@
 
                     <!-- Payroll & Report -->
                     <li
-                        class="slide has-sub <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list', 'payroll-detailed-summary'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list', 'payroll-detailed-summary'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-regular fa-file-excel"></i></div>
                             <span class="sidebar__menu-label">Payroll & Report</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -1290,6 +1290,11 @@
                                 <a href="<?= $base_url ?>/payroll-resign-list"
                                     class="sidebar__menu-item <?= isActive('payroll-resign-list', $current_route) ?>">Resign
                                     List</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/payroll-detailed-summary"
+                                    class="sidebar__menu-item <?= isActive('payroll-detailed-summary', $current_route) ?>">Detailed
+                                    Summary</a>
                             </li>
                         </ul>
                     </li>
