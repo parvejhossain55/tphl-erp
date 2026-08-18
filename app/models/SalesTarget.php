@@ -316,7 +316,7 @@ public function getExecutiveBookingStats($type = 'monthly')
                     COUNT(DISTINCT lb.id) AS completed,
                     SUM(f.price_value) AS total_flat_value,
                     SUM(IFNULL(pay_b.booking_amount, 0)) AS total_booking_money,
-                    SUM(IFNULL(pay_r.registration_money, 0)) AS total_registration_money
+                    SUM(IFNULL(pay_r.registration_amount, 0)) AS total_registration_money
                 FROM lead_bookings lb
                 LEFT JOIN flats f ON f.id = lb.flat_id
                 LEFT JOIN (
@@ -367,7 +367,7 @@ public function getExecutiveBookingStats($type = 'monthly')
                     COUNT(DISTINCT lb.id) AS completed,
                     SUM(f.price_value) AS total_flat_value,
                     SUM(IFNULL(pay_b.booking_amount, 0)) AS total_booking_money,
-                    SUM(IFNULL(pay_r.registration_money, 0)) AS total_registration_money
+                    SUM(IFNULL(pay_r.registration_amount, 0)) AS total_registration_money
                 FROM lead_bookings lb
                 LEFT JOIN flats f ON f.id = lb.flat_id
                 LEFT JOIN (

@@ -592,8 +592,41 @@ $show_breadcrumb = true;
                         </div>
                         
                         <div class="mb-3">
+                            <label class="form-label fs-13 font-semibold text-muted">Date of Activity <span class="text-danger">*</span></label>
+                            <input type="date" id="modalFollowupActivityDate" class="form-control form-control-sm" value="<?= date('Y-m-d') ?>">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fs-13 font-semibold text-muted">Mode of Activity <span class="text-danger">*</span></label>
+                            <select id="modalFollowupActivityMode" class="form-select form-select-sm">
+                                <option value="">Select Mode</option>
+                                <option value="Phone Call">Phone Call</option>
+                                <option value="WhatsApp">WhatsApp</option>
+                                <option value="SMS">SMS</option>
+                                <option value="Email">Email</option>
+                                <option value="Meeting">Meeting</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fs-13 font-semibold text-muted">Reason for Activity <span class="text-danger">*</span></label>
+                            <select id="modalFollowupActivityReason" class="form-select form-select-sm">
+                                <option value="">Select Reason</option>
+                                <option value="EMI Payment Follow-up">EMI Payment Follow-up</option>
+                                <option value="Payment Reminder (General)">Payment Reminder (General)</option>
+                                <option value="Development Charge Follow-up">Development Charge Follow-up</option>
+                                <option value="Overdue Payment Follow-up">Overdue Payment Follow-up</option>
+                                <option value="Handover / Registration Discussion">Handover / Registration Discussion</option>
+                                <option value="Document Collection">Document Collection</option>
+                                <option value="Client Query / Issue Resolution">Client Query / Issue Resolution</option>
+                                <option value="Commitment Date Extension">Commitment Date Extension</option>
+                                <option value="Others">Others</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
                             <label class="form-label fs-13 font-semibold text-muted">Discussion Note / Remarks <span class="text-danger">*</span></label>
-                            <textarea id="modalFollowupNoteInput" class="form-control form-control-sm" rows="4" placeholder="Enter follow up discussion details, commitment date, or notes..."></textarea>
+                            <textarea id="modalFollowupNoteInput" class="form-control form-control-sm" rows="3" placeholder="Enter follow up discussion details, commitment date, or notes..."></textarea>
                         </div>
                         <button type="button" class="btn btn-primary w-100 shadow-sm" onclick="saveClientEmiFollowup()">
                             <i class="fa-light fa-paper-plane me-1"></i>Save Follow Up Note
@@ -1017,6 +1050,11 @@ $show_breadcrumb = true;
                                         </span>
                                         <span class="text-muted fs-11"><i class="fa-light fa-clock me-1"></i>${note.created_at_formatted || note.created_at || ''}</span>
                                     </div>
+                                    <div class="mb-2" style="font-size:12px; color:#475569;">
+                                        ${note.activity_date ? `<span><i class="fa-light fa-calendar me-1"></i>${escapeHtml(note.activity_date)}</span>` : ''}
+                                        ${note.activity_mode ? `<span class="ms-3"><i class="fa-light fa-phone-volume me-1"></i>${escapeHtml(note.activity_mode)}</span>` : ''}
+                                        ${note.activity_reason ? `<span class="ms-3"><i class="fa-light fa-bullseye me-1"></i>${escapeHtml(note.activity_reason)}</span>` : ''}
+                                    </div>
                                     <p class="mb-2 text-dark fs-13 fw-medium">${escapeHtml(note.note || '')}</p>
                                     <div class="text-muted fs-11 text-end">
                                         <span><i class="fa-light fa-user me-1"></i>By ${escapeHtml(note.author_name || 'System')}</span>
@@ -1040,12 +1078,15 @@ $show_breadcrumb = true;
         const bookingId = $('#modalFollowupBookingId').val();
         const emiNo = $('#modalFollowupEmiSelect').val() ?? 0;
         const note = $('#modalFollowupNoteInput').val().trim();
+        const activityDate = $('#modalFollowupActivityDate').val();
+        const activityMode = $('#modalFollowupActivityMode').val();
+        const activityReason = $('#modalFollowupActivityReason').val();
         
-        if (!note) {
+        if (!note || !activityDate || !activityMode || !activityReason) {
             Swal.fire({
                 icon: 'warning',
-                title: 'Note Required',
-                text: 'Please enter a follow up note before saving.',
+                title: 'Fields Required',
+                text: 'Please fill in all the required fields (*).',
             });
             return;
         }
@@ -1053,7 +1094,14 @@ $show_breadcrumb = true;
         $.ajax({
             url: '<?= $GLOBALS['base_url'] ?>/account-client/saveEmiFollowup',
             type: 'POST',
-            data: { booking_id: bookingId, emi_no: emiNo, note: note },
+            data: { 
+                booking_id: bookingId, 
+                emi_no: emiNo, 
+                note: note,
+                activity_date: activityDate,
+                activity_mode: activityMode,
+                activity_reason: activityReason
+            },
             dataType: 'json',
             success: function(response) {
                 if (response.success) {
