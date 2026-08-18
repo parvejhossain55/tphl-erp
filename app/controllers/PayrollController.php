@@ -2455,16 +2455,14 @@ class PayrollController extends Controller
             $valThirdLast = $monthlyValues[$thirdLastM] ?? 0;
 
             $growthLast = 0;
-            if ($valSecondLast > 0)
-                $growthLast = (($valLast - $valSecondLast) / $valSecondLast) * 100;
-            elseif ($valLast > 0)
-                $growthLast = 100.0;
+            if ($valSecondLast != 0) {
+                $growthLast = ($valLast - $valSecondLast) / $valSecondLast;
+            }
 
             $growthSecondLast = 0;
-            if ($valThirdLast > 0)
-                $growthSecondLast = (($valSecondLast - $valThirdLast) / $valThirdLast) * 100;
-            elseif ($valSecondLast > 0)
-                $growthSecondLast = 100.0;
+            if ($valThirdLast != 0) {
+                $growthSecondLast = ($valSecondLast - $valThirdLast) / $valThirdLast;
+            }
 
             $formatG = function ($val) {
                 $str = number_format($val, 2) . '%';
@@ -2484,6 +2482,325 @@ class PayrollController extends Controller
 
         $pdf->writeHTML($html, true, false, true, false, '');
         $pdf->Output('Payroll_Summary_Report_' . $fromMonth . '_to_' . $toMonth . '.pdf', 'D');
+        exit;
+    }
+
+    public function salaryReport()
+    {
+        $reportType = $_GET['report_type'] ?? 'department';
+        $month = $_GET['month'] ?? date('m');
+        $year = $_GET['year'] ?? date('Y');
+
+        $monthsList = [
+            '01' => 'January',
+            '02' => 'February',
+            '03' => 'March',
+            '04' => 'April',
+            '05' => 'May',
+            '06' => 'June',
+            '07' => 'July',
+            '08' => 'August',
+            '09' => 'September',
+            '10' => 'October',
+            '11' => 'November',
+            '12' => 'December'
+        ];
+
+        $yearsList = range(2025, 2035);
+
+        $data = [];
+        if ($reportType === 'department') {
+            $sql = "SELECT 
+                        d.name AS dept_name, 
+                        COUNT(p.id) AS no_of_emp,
+                        SUM(p.net_salary) AS total_amount
+                    FROM payslips p
+                    JOIN employees e ON p.employee_id = e.id
+                    JOIN departments d ON e.department_id = d.id
+                    WHERE YEAR(p.payslip_month) = ? 
+                      AND MONTH(p.payslip_month) = ?
+                      AND p.status != 'cancelled'
+                    GROUP BY d.id
+                    ORDER BY d.name ASC";
+            $stmt = $this->db->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param("ss", $year, $month);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res) {
+                    while ($row = $res->fetch_assoc()) {
+                        $data[] = $row;
+                    }
+                }
+                $stmt->close();
+            }
+        } else {
+            $sql = "SELECT 
+                        IFNULL(ob.name, 'Unassigned') AS office_name, 
+                        COUNT(p.id) AS no_of_emp,
+                        SUM(p.net_salary) AS total_amount,
+                        SUM(CASE WHEN LOWER(p.payment_method) LIKE '%bank%' THEN p.net_salary ELSE 0 END) AS bank_amount,
+                        SUM(CASE WHEN LOWER(p.payment_method) LIKE '%cash%' THEN p.net_salary ELSE 0 END) AS cash_amount
+                    FROM payslips p
+                    JOIN employees e ON p.employee_id = e.id
+                    LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
+                    WHERE YEAR(p.payslip_month) = ? 
+                      AND MONTH(p.payslip_month) = ?
+                      AND p.status != 'cancelled'
+                    GROUP BY ob.id
+                    ORDER BY office_name ASC";
+            $stmt = $this->db->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param("ss", $year, $month);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res) {
+                    while ($row = $res->fetch_assoc()) {
+                        $data[] = $row;
+                    }
+                }
+                $stmt->close();
+            }
+        }
+
+        $this->view('payrolls/payslips/salary-report', [
+            'reportType' => $reportType,
+            'month' => $month,
+            'year' => $year,
+            'monthsList' => $monthsList,
+            'yearsList' => $yearsList,
+            'data' => $data
+        ]);
+    }
+
+    public function exportSalaryReportPDF()
+    {
+        $reportType = $_GET['report_type'] ?? 'department';
+        $month = $_GET['month'] ?? date('m');
+        $year = $_GET['year'] ?? date('Y');
+
+        $monthsList = [
+            '01' => 'January',
+            '02' => 'February',
+            '03' => 'March',
+            '04' => 'April',
+            '05' => 'May',
+            '06' => 'June',
+            '07' => 'July',
+            '08' => 'August',
+            '09' => 'September',
+            '10' => 'October',
+            '11' => 'November',
+            '12' => 'December'
+        ];
+
+        $data = [];
+        if ($reportType === 'department') {
+            $sql = "SELECT 
+                        d.name AS dept_name, 
+                        COUNT(p.id) AS no_of_emp,
+                        SUM(p.net_salary) AS total_amount
+                    FROM payslips p
+                    JOIN employees e ON p.employee_id = e.id
+                    JOIN departments d ON e.department_id = d.id
+                    WHERE YEAR(p.payslip_month) = ? 
+                      AND MONTH(p.payslip_month) = ?
+                      AND p.status != 'cancelled'
+                    GROUP BY d.id
+                    ORDER BY d.name ASC";
+            $stmt = $this->db->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param("ss", $year, $month);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res) {
+                    while ($row = $res->fetch_assoc()) {
+                        $data[] = $row;
+                    }
+                }
+                $stmt->close();
+            }
+        } else {
+            $sql = "SELECT 
+                        IFNULL(ob.name, 'Unassigned') AS office_name, 
+                        COUNT(p.id) AS no_of_emp,
+                        SUM(p.net_salary) AS total_amount,
+                        SUM(CASE WHEN LOWER(p.payment_method) LIKE '%bank%' THEN p.net_salary ELSE 0 END) AS bank_amount,
+                        SUM(CASE WHEN LOWER(p.payment_method) LIKE '%cash%' THEN p.net_salary ELSE 0 END) AS cash_amount
+                    FROM payslips p
+                    JOIN employees e ON p.employee_id = e.id
+                    LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
+                    WHERE YEAR(p.payslip_month) = ? 
+                      AND MONTH(p.payslip_month) = ?
+                      AND p.status != 'cancelled'
+                    GROUP BY ob.id
+                    ORDER BY office_name ASC";
+            $stmt = $this->db->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param("ss", $year, $month);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res) {
+                    while ($row = $res->fetch_assoc()) {
+                        $data[] = $row;
+                    }
+                }
+                $stmt->close();
+            }
+        }
+
+        $pdf = new \TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+
+        $pdf->SetCreator('TPHL-ERP');
+        $pdf->SetAuthor('TPHL-ERP');
+        $pdf->SetTitle('Salary Report - ' . ucfirst($reportType) . ' Wise');
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        $pdf->AddPage('L');
+        $pdf->SetFont('helvetica', '', 10);
+
+        $monthName = $monthsList[$month] ?? '';
+
+        $html = '<h2 style="text-align:center;">Salary Report (' . ucfirst($reportType) . ' Wise)</h2>';
+        $html .= '<h4 style="text-align:center;">Period: ' . $monthName . ' ' . $year . '</h4><br>';
+
+        $html .= '<table border="1" cellpadding="5" cellspacing="0">';
+        if ($reportType === 'department') {
+            $html .= '<thead>
+                        <tr style="background-color:#078134; color:#ffffff; font-weight:bold;">
+                            <th width="10%" style="text-align:center;">SL</th>
+                            <th width="40%" style="text-align:left;">Department Name</th>
+                            <th width="25%" style="text-align:center;">No of Employees</th>
+                            <th width="25%" style="text-align:right;">Amount</th>
+                        </tr>
+                      </thead><tbody>';
+            $sl = 1;
+            foreach ($data as $row) {
+                $html .= '<tr>
+                            <td width="10%" style="text-align:center;">' . $sl++ . '</td>
+                            <td width="40%" style="text-align:left;">' . htmlspecialchars($row['dept_name']) . '</td>
+                            <td width="25%" style="text-align:center;">' . $row['no_of_emp'] . '</td>
+                            <td width="25%" style="text-align:right;">' . number_format($row['total_amount'], 2) . '</td>
+                          </tr>';
+            }
+        } else {
+            $html .= '<thead>
+                        <tr style="background-color:#078134; color:#ffffff; font-weight:bold;">
+                            <th width="30%" style="text-align:left;">Office Name</th>
+                            <th width="15%" style="text-align:center;">No of Employees</th>
+                            <th width="20%" style="text-align:right;">Total</th>
+                            <th width="15%" style="text-align:right;">Bank</th>
+                            <th width="20%" style="text-align:right;">Cash</th>
+                        </tr>
+                      </thead><tbody>';
+            foreach ($data as $row) {
+                $html .= '<tr>
+                            <td width="30%" style="text-align:left;">' . htmlspecialchars($row['office_name']) . '</td>
+                            <td width="15%" style="text-align:center;">' . $row['no_of_emp'] . '</td>
+                            <td width="20%" style="text-align:right;">' . number_format($row['total_amount'], 2) . '</td>
+                            <td width="15%" style="text-align:right;">' . number_format($row['bank_amount'], 2) . '</td>
+                            <td width="20%" style="text-align:right;">' . number_format($row['cash_amount'], 2) . '</td>
+                          </tr>';
+            }
+        }
+
+        $html .= '</tbody></table>';
+
+        $pdf->writeHTML($html, true, false, true, false, '');
+        $pdf->Output('Salary_Report_' . ucfirst($reportType) . '_' . $month . '_' . $year . '.pdf', 'D');
+        exit;
+    }
+
+    public function exportSalaryReportCSV()
+    {
+        $reportType = $_GET['report_type'] ?? 'department';
+        $month = $_GET['month'] ?? date('m');
+        $year = $_GET['year'] ?? date('Y');
+
+        $data = [];
+        if ($reportType === 'department') {
+            $sql = "SELECT 
+                        d.name AS dept_name, 
+                        COUNT(p.id) AS no_of_emp,
+                        SUM(p.net_salary) AS total_amount
+                    FROM payslips p
+                    JOIN employees e ON p.employee_id = e.id
+                    JOIN departments d ON e.department_id = d.id
+                    WHERE YEAR(p.payslip_month) = ? 
+                      AND MONTH(p.payslip_month) = ?
+                      AND p.status != 'cancelled'
+                    GROUP BY d.id
+                    ORDER BY d.name ASC";
+            $stmt = $this->db->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param("ss", $year, $month);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res) {
+                    while ($row = $res->fetch_assoc()) {
+                        $data[] = $row;
+                    }
+                }
+                $stmt->close();
+            }
+        } else {
+            $sql = "SELECT 
+                        IFNULL(ob.name, 'Unassigned') AS office_name, 
+                        COUNT(p.id) AS no_of_emp,
+                        SUM(p.net_salary) AS total_amount,
+                        SUM(CASE WHEN LOWER(p.payment_method) LIKE '%bank%' THEN p.net_salary ELSE 0 END) AS bank_amount,
+                        SUM(CASE WHEN LOWER(p.payment_method) LIKE '%cash%' THEN p.net_salary ELSE 0 END) AS cash_amount
+                    FROM payslips p
+                    JOIN employees e ON p.employee_id = e.id
+                    LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
+                    WHERE YEAR(p.payslip_month) = ? 
+                      AND MONTH(p.payslip_month) = ?
+                      AND p.status != 'cancelled'
+                    GROUP BY ob.id
+                    ORDER BY office_name ASC";
+            $stmt = $this->db->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param("ss", $year, $month);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                if ($res) {
+                    while ($row = $res->fetch_assoc()) {
+                        $data[] = $row;
+                    }
+                }
+                $stmt->close();
+            }
+        }
+
+        $filename = "Salary_Report_" . ucfirst($reportType) . "_" . $month . "_" . $year . ".csv";
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=' . $filename);
+        $output = fopen('php://output', 'w');
+
+        if ($reportType === 'department') {
+            fputcsv($output, ['Serial', 'Department Name', 'No of Employees', 'Amount']);
+            $sl = 1;
+            foreach ($data as $row) {
+                fputcsv($output, [
+                    $sl++,
+                    $row['dept_name'],
+                    $row['no_of_emp'],
+                    number_format($row['total_amount'], 2, '.', '')
+                ]);
+            }
+        } else {
+            fputcsv($output, ['Office Name', 'No of Employees', 'Total', 'Bank', 'Cash']);
+            foreach ($data as $row) {
+                fputcsv($output, [
+                    $row['office_name'],
+                    $row['no_of_emp'],
+                    number_format($row['total_amount'], 2, '.', ''),
+                    number_format($row['bank_amount'], 2, '.', ''),
+                    number_format($row['cash_amount'], 2, '.', '')
+                ]);
+            }
+        }
+        fclose($output);
         exit;
     }
 }

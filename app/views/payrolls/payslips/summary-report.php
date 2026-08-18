@@ -84,16 +84,15 @@ if (!function_exists('formatGrowthNode')) {
                                 $valThirdLast = $monthlyValues[$thirdLastM] ?? 0;
 
                                 $growthLast = 0;
-                                if ($valSecondLast > 0)
-                                    $growthLast = (($valLast - $valSecondLast) / $valSecondLast) * 100;
-                                elseif ($valLast > 0)
-                                    $growthLast = 100.0;
+                                $growthLast = 0;
+                                if ($valSecondLast != 0) {
+                                    $growthLast = ($valLast - $valSecondLast) / $valSecondLast;
+                                }
 
                                 $growthSecondLast = 0;
-                                if ($valThirdLast > 0)
-                                    $growthSecondLast = (($valSecondLast - $valThirdLast) / $valThirdLast) * 100;
-                                elseif ($valSecondLast > 0)
-                                    $growthSecondLast = 100.0;
+                                if ($valThirdLast != 0) {
+                                    $growthSecondLast = ($valSecondLast - $valThirdLast) / $valThirdLast;
+                                }
                                 ?>
                                 <td class="text-end" style="background-color: #f8fcf8;">
                                     <?= formatGrowthNode($growthSecondLast) ?>

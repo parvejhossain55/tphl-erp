@@ -288,4 +288,9 @@ return [
     // Payroll Summary Report
     'payroll-summary-report' => ['controller' => 'PayrollController', 'method' => 'summaryReport'],
     'payroll-summary-report-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSummaryReportPDF'],
+
+    // Salary Report
+    'payroll-salary-report' => ['controller' => 'PayrollController', 'method' => 'salaryReport'],
+    'payroll-salary-report-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSalaryReportPDF'],
+    'payroll-salary-report-csv' => ['controller' => 'PayrollController', 'method' => 'exportSalaryReportCSV'],
 ];
