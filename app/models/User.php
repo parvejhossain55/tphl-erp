@@ -16,6 +16,7 @@ class User extends Model
         return "FROM users u
         LEFT JOIN employees e ON e.user_id = u.id
         LEFT JOIN designations d ON d.id = u.designation_id
+        LEFT JOIN departments dep ON d.department_id = dep.id
         LEFT JOIN teams t ON t.id = u.team_id
         LEFT JOIN roles r ON r.id = u.role_id";
     }
@@ -28,6 +29,7 @@ class User extends Model
                 e.photo AS employee_photo,
                 e.make_user,
                 d.name AS designation_name,
+                dep.name AS department_name,
                 r.name AS role_name,
                 t.name AS team_name
             " . $this->baseUserQuery() . "
@@ -114,6 +116,7 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
                 e.photo AS employee_photo,
                 e.make_user,
                 d.name AS designation_name,
+                dep.name AS department_name,
                 r.name AS role_name
             " . $this->baseUserQuery() . "
             WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))"; // important change
