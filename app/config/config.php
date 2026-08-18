@@ -33,6 +33,13 @@ if ($current_server == 1) {
         "automas_sms_api_key" => "aa4717fdd571e46b240ce35014a5d144",
         "automas_sms_sender_id" => "8809617635127",
         "sms_testing_mode" => false,
+
+        // SMTP Email Configuration for Local Testing (Gmail)
+        "smtp_host" => "smtp.gmail.com",
+        "smtp_user" => "farzana.tphl13@gmail.com",
+        "smtp_pass" => "hvptjfnsprecofmi",
+        "smtp_secure" => "ssl",
+        "smtp_port" => 465,
     ];
 }
 
@@ -68,6 +75,15 @@ if ($current_server == 2) {
         "automas_sms_api_key" => "aa4717fdd571e46b240ce35014a5d144",
         "automas_sms_sender_id" => "8809617635127",
         "sms_testing_mode" => false,
+
+        // SMTP Email Configuration (Dummy/Placeholder)
+        "smtp_host" => "smtp.gmail.com",
+        "smtp_user" => "your_email@gmail.com",
+        "smtp_pass" => "your_app_password",
+        "smtp_secure" => "tls", // tls or ssl
+        "smtp_port" => 587,
+        "smtp_from" => "no-reply@dpremiumhomes.com",
+        "smtp_from_name" => "TPHL ERP Notification",
     ];
 }
 

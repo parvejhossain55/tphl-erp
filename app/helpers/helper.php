@@ -1009,8 +1009,7 @@ function renderApprovalContext(array $req)
 if (!function_exists('sendMail')) {
     function sendMail($email, $title, $link, $assignedBy)
     {
-        // echo "Helper called"; die;
-        // require_once 'path/to/MailService.php'; 
+        require_once __DIR__ . '/../core/MailServiceForPHPMailer.php';
         $mail = new MailService();
         return $mail->sendMail($email, $title, $link, $assignedBy);
     }
@@ -1019,6 +1018,7 @@ if (!function_exists('sendMail')) {
 if (!function_exists('sendGenericMail')) {
     function sendGenericMail($email, $subject, $body)
     {
+        require_once __DIR__ . '/../core/MailServiceForPHPMailer.php';
         $mail = new MailService();
         return $mail->sendGenericMail($email, $subject, $body);
     }
