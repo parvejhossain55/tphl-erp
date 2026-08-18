@@ -110,6 +110,7 @@ class FundRequisitionController extends Controller {
                    des_paid.name as paid_by_designation_name,
                    u_dept_app.full_name as dept_head_approved_by_name,
                    des_dept_app.name as dept_head_approved_by_designation_name,
+                   dept_dept_app.name as dept_head_approved_by_department_name,
                    u_boss.full_name as reporting_boss_name,
                    des_boss.name as reporting_boss_designation_name,
                    e_req.reporting_user_id as requester_reporting_boss_id,
@@ -127,6 +128,7 @@ class FundRequisitionController extends Controller {
             LEFT JOIN designations des_paid ON u_paid.designation_id = des_paid.id
             LEFT JOIN users u_dept_app ON fr.dept_head_approved_by = u_dept_app.id
             LEFT JOIN designations des_dept_app ON u_dept_app.designation_id = des_dept_app.id
+            LEFT JOIN departments dept_dept_app ON des_dept_app.department_id = dept_dept_app.id
             LEFT JOIN users u_boss ON e_req.reporting_user_id = u_boss.id
             LEFT JOIN employees e_boss ON (e_boss.user_id = u_boss.id OR e_boss.id = u_boss.employee_id)
             LEFT JOIN designations des_boss ON des_boss.id = COALESCE(e_boss.designation_id, u_boss.designation_id)
@@ -235,6 +237,7 @@ class FundRequisitionController extends Controller {
                    des_paid.name AS paid_by_designation_name,
                    u_dept_app.full_name AS dept_head_approved_by_name,
                    des_dept_app.name AS dept_head_approved_by_designation_name,
+                   dept_dept_app.name AS dept_head_approved_by_department_name,
                    u_boss.full_name AS reporting_boss_name,
                    des_boss.name AS reporting_boss_designation_name,
                    e_req.reporting_user_id AS requester_reporting_boss_id,
@@ -254,6 +257,7 @@ class FundRequisitionController extends Controller {
             LEFT JOIN designations des_paid ON u_paid.designation_id = des_paid.id
             LEFT JOIN users u_dept_app ON fr.dept_head_approved_by = u_dept_app.id
             LEFT JOIN designations des_dept_app ON u_dept_app.designation_id = des_dept_app.id
+            LEFT JOIN departments dept_dept_app ON des_dept_app.department_id = dept_dept_app.id
             LEFT JOIN users u_boss ON e_req.reporting_user_id = u_boss.id
             LEFT JOIN employees e_boss ON (e_boss.user_id = u_boss.id OR e_boss.id = u_boss.employee_id)
             LEFT JOIN designations des_boss ON des_boss.id = COALESCE(e_boss.designation_id, u_boss.designation_id)

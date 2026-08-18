@@ -338,7 +338,8 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                                     <p class="fs-12 text-muted mb-0 mt-1">
                                         Approved by <strong><?php echo htmlspecialchars($req['dept_head_approved_by_name'] ?? $req['reporting_boss_name'] ?? 'Department Head'); ?></strong>
                                         <?php if (!empty($req['dept_head_approved_by_designation_name'])): ?>
-                                            <em>(<?php echo htmlspecialchars($req['dept_head_approved_by_designation_name']); ?>)</em>
+                                            <em>(<?php echo htmlspecialchars($req['dept_head_approved_by_designation_name']); ?>
+                                            <?php if (!empty($req['dept_head_approved_by_department_name'])) echo ' - ' . htmlspecialchars($req['dept_head_approved_by_department_name']); ?>)</em>
                                         <?php endif; ?>
                                         <?php echo !empty($req['dept_head_approved_at']) ? 'on ' . date('d M Y, h:i A', strtotime($req['dept_head_approved_at'])) : ''; ?>
                                     </p>
@@ -357,7 +358,8 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                                     <p class="fs-12 text-muted mb-0 mt-1">
                                         Rejected by <strong><?php echo htmlspecialchars($req['dept_head_approved_by_name'] ?? $req['reporting_boss_name'] ?? 'Department Head'); ?></strong>
                                         <?php if (!empty($req['dept_head_approved_by_designation_name'])): ?>
-                                            <em>(<?php echo htmlspecialchars($req['dept_head_approved_by_designation_name']); ?>)</em>
+                                            <em>(<?php echo htmlspecialchars($req['dept_head_approved_by_designation_name']); ?>
+                                            <?php if (!empty($req['dept_head_approved_by_department_name'])) echo ' - ' . htmlspecialchars($req['dept_head_approved_by_department_name']); ?>)</em>
                                         <?php endif; ?>
                                     </p>
                                     <?php if (!empty($req['dept_head_approval_note'])): ?>

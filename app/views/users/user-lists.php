@@ -64,7 +64,10 @@ $show_breadcrumb = false;
                         <div class="employee__content">
                             <div class="employee__meta ">
                                 <h4 class="mb-8"><?= htmlspecialchars($user['full_name'] ?: "No Name") ?></h4>
-                                <p class="mb-0"><?= htmlspecialchars($user['designation_name'] ?: "No Designation") ?></p>
+                                <p class="mb-0">
+                                    <?= htmlspecialchars($user['designation_name'] ?: "No Designation") ?>
+                                    <?php if (!empty($user['department_name'])) echo ' - ' . htmlspecialchars($user['department_name']); ?>
+                                </p>
                                 <p class="mb-0"><?= htmlspecialchars($user['email'] ?: "No email") ?></p>
                                 <p class="mb-2"> <span class="fw-semibold fs-6 pe-1">Role:</span><?= htmlspecialchars($user['role_name'] ?: "No role ") ?></p>
                             </div>
