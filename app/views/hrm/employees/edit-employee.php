@@ -174,6 +174,13 @@
                          value="<?= htmlspecialchars($joiningDateFormatted) ?>">
                  </div>
 
+                 <!-- Resign Date -->
+                 <div class="col-lg-6">
+                     <label>Resign Date</label>
+                     <input class="form-control" id="resignDate" type="text" readonly name="resign_date"
+                         value="<?= htmlspecialchars($employee['resign_date'] ?? '') ?>">
+                 </div>
+
                  <!-- Account Holder Name -->
                  <div class="col-lg-6">
                      <label for="account_holder_name">Account Holder Name <span>*</span></label>
@@ -531,5 +538,18 @@
       if (basicSalaryInput) {
           basicSalaryInput.addEventListener("input", calculateSalaryBreakdown);
           basicSalaryInput.addEventListener("change", calculateSalaryBreakdown);
+      }
+
+      // Fallback for flatpickr initialization in case main.js is cached by the browser
+      if (typeof $ !== 'undefined' && $.fn.flatpickr) {
+          setTimeout(function() {
+              if ($("#resignDate").length) {
+                  $("#resignDate").flatpickr({
+                      altInput: true,
+                      altFormat: "F j, Y",
+                      dateFormat: "Y-m-d",
+                  });
+              }
+          }, 500);
       }
   </script>

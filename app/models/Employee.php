@@ -202,17 +202,18 @@ class Employee extends Model
             employee_id, full_name, gross_salary, basic_salary, per_meal_amount, username, email,
             father_name, phone, emergency_contact, qualification,
             experience, address, pass_num, nid,
-            department_id, designation_id, dob, joining_date,
+            department_id, designation_id, dob, joining_date, resign_date,
             account_holder_name, account_number, bank_name, branch_name,
             social_media1, social_media2, social_media3,
             photo, make_user, password, created_by,
             employee_type, employee_status, workplace, office_branch_id, responsibilities, team_id, is_sales_co_leader,
             is_dept_head, reporting_user_id
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
         $dob = !empty($data['dob']) ? $data['dob'] : null;
         $joining_date = !empty($data['joining_date']) ? $data['joining_date'] : null;
+        $resign_date = !empty($data['resign_date']) ? $data['resign_date'] : null;
 
         $password = !empty($data['password'])
             ? password_hash($data['password'], PASSWORD_DEFAULT)
@@ -224,7 +225,7 @@ class Employee extends Model
         $office_branch_id = !empty($data['office_branch_id']) ? (int) $data['office_branch_id'] : 2;
 
         $stmt->bind_param(
-            "ssdddssssssssssiissssssssssssisssisiiii",
+            "ssdddssssssssssiisssssssssssssisssisiiii",
             $data['employee_id'],
             $data['full_name'],
             $data['gross_salary'],
@@ -244,6 +245,7 @@ class Employee extends Model
             $data['designation_id'],
             $dob,
             $joining_date,
+            $resign_date,
             $data['account_holder_name'],
             $data['account_number'],
             $data['bank_name'],
@@ -384,6 +386,7 @@ WHERE e.id = ?
         designation_id = ?, 
         dob = ?, 
         joining_date = ?,
+        resign_date = ?,
         account_holder_name = ?, 
         account_number = ?, 
         bank_name = ?, 
@@ -419,7 +422,7 @@ WHERE e.id = ?
         $office_branch_id = !empty($data['office_branch_id']) ? (int) $data['office_branch_id'] : 2;
 
         $stmt->bind_param(
-            "ssdddsssssssssiissssssssssssisssisiiiii",
+            "ssdddsssssssssiisssssssssssssisssisiiiii",
             $data['employee_id'],         // s  1
             $data['full_name'],           // s  2
             $data['gross_salary'],        // d  3
@@ -438,6 +441,7 @@ WHERE e.id = ?
             $data['designation_id'],      // i  15
             $data['dob'],                 // s  16
             $data['joining_date'],        // s  17
+            $data['resign_date'],         // s
             $data['account_holder_name'], // s  18
             $data['account_number'],      // s  19
             $data['bank_name'],           // s  20

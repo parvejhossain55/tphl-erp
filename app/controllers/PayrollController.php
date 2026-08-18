@@ -1889,4 +1889,161 @@ class PayrollController extends Controller
         $pdf->Output('Joining_List_Report_' . $fromDate . '_to_' . $toDate . '.pdf', 'D');
         exit;
     }
+
+    public function resignList()
+    {
+        $currentYear = date('Y');
+        $currentMonth = date('m');
+        $defaultFrom = date('Y-m-d');
+        $defaultTo = date('Y-m-d');
+
+        $filterType = $_GET['filter_type'] ?? 'monthly';
+        $fromDate = $defaultFrom;
+        $toDate = $defaultTo;
+
+        if ($filterType === 'monthly') {
+            $m = $_GET['month'] ?? $currentMonth;
+            $y = $_GET['year'] ?? $currentYear;
+            $fromDate = date('Y-m-d', mktime(0, 0, 0, $m, 1, $y));
+            $toDate = date('Y-m-t', mktime(0, 0, 0, $m, 1, $y));
+        } elseif ($filterType === 'custom') {
+            $fromDate = $_GET['from_date'] ?? $defaultFrom;
+            $toDate = $_GET['to_date'] ?? $defaultTo;
+        }
+
+        $sql = "SELECT e.employee_id, e.full_name, desg.name AS designation, dept.name AS department,
+                       e.workplace, e.resign_date, e.employee_status, e.gross_salary
+                FROM employees e 
+                LEFT JOIN designations desg ON e.designation_id = desg.id
+                LEFT JOIN departments dept ON e.department_id = dept.id
+                WHERE e.resign_date >= ? AND e.resign_date <= ?
+                ORDER BY e.resign_date ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("ss", $fromDate, $toDate);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        $employees = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $employees[] = $row;
+            }
+        }
+
+        $page_title = "Resign List";
+        $current_route = "payroll-resign-list";
+
+        $this->view('payrolls/payslips/resign-list', [
+            'page_title' => $page_title,
+            'current_route' => $current_route,
+            'employees' => $employees,
+            'filter_type' => $filterType,
+            'from_date' => $fromDate,
+            'to_date' => $toDate,
+            'selected_month' => $_GET['month'] ?? $currentMonth,
+            'selected_year' => $_GET['year'] ?? $currentYear
+        ]);
+    }
+
+    public function exportResignListPDF()
+    {
+        $currentYear = date('Y');
+        $currentMonth = date('m');
+        $defaultFrom = date('Y-m-d');
+        $defaultTo = date('Y-m-d');
+
+        $filterType = $_GET['filter_type'] ?? 'monthly';
+        $fromDate = $defaultFrom;
+        $toDate = $defaultTo;
+
+        if ($filterType === 'monthly') {
+            $m = $_GET['month'] ?? $currentMonth;
+            $y = $_GET['year'] ?? $currentYear;
+            $fromDate = date('Y-m-d', mktime(0, 0, 0, $m, 1, $y));
+            $toDate = date('Y-m-t', mktime(0, 0, 0, $m, 1, $y));
+        } elseif ($filterType === 'custom') {
+            $fromDate = $_GET['from_date'] ?? $defaultFrom;
+            $toDate = $_GET['to_date'] ?? $defaultTo;
+        }
+
+        $sql = "SELECT e.employee_id, e.full_name, desg.name AS designation, dept.name AS department,
+                       e.workplace, e.resign_date, e.employee_status, e.gross_salary
+                FROM employees e 
+                LEFT JOIN designations desg ON e.designation_id = desg.id
+                LEFT JOIN departments dept ON e.department_id = dept.id
+                WHERE e.resign_date >= ? AND e.resign_date <= ?
+                ORDER BY e.resign_date ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("ss", $fromDate, $toDate);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        $employees = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $employees[] = $row;
+            }
+        }
+
+        $pdf = new \TCPDF('L', 'mm', 'A4');
+        $pdf->SetCreator('TPHL ERP');
+        $pdf->SetAuthor('Admin');
+        $pdf->SetTitle('Resign List Report');
+        $pdf->SetMargins(15, 15, 15);
+        $pdf->SetAutoPageBreak(TRUE, 15);
+        $pdf->AddPage();
+
+        $pdf->SetFont('helvetica', '', 9);
+
+        // Alignment properly matched with standard column counts
+        $html = '
+        <div style="text-align:center;">
+            <h1 style="color:#078134;">The Premium Homes Ltd</h1>
+            <h3 style="color:#28B463;">Resign List Report </h3>
+            <p>Date Range: ' . date('F d, Y', strtotime($fromDate)) . ' to ' . date('F d, Y', strtotime($toDate)) . '</p>
+            <p><b>Total Records: </b> ' . count($employees) . '</p>
+        </div>
+        <br>
+        <table border="1" cellpadding="5" width="100%">
+            <thead>
+                <tr style="background-color:#078134; color:#ffffff; font-weight:bold;">
+                    <th width="5%" style="text-align:center;">SL</th>
+                    <th width="10%" style="text-align:center;">ID</th>
+                    <th width="18%" style="text-align:left;">Name</th>
+                    <th width="25%" style="text-align:left;">Department - Designation</th>
+                    <th width="12%" style="text-align:center;">Workplace</th>
+                    <th width="12%" style="text-align:center;">Last Working Day</th>
+                    <th width="8%" style="text-align:center;">Status</th>
+                    <th width="10%" style="text-align:center;">Salary</th>
+                </tr>
+            </thead>
+            <tbody>';
+
+        $sl = 1;
+        foreach ($employees as $row) {
+            $deptDesig = ($row['department'] ?? '-') . ' - ' . ($row['designation'] ?? '-');
+            $statusText = ucfirst($row['employee_status'] ?? '-');
+            if (strtolower($row['employee_status'] ?? '') === 'resigned') {
+                $statusText = 'Resigned';
+            }
+            $html .= '<tr>
+                        <td width="5%" style="text-align:center;">' . $sl++ . '</td>
+                        <td width="10%" style="text-align:center;">' . htmlspecialchars($row['employee_id']) . '</td>
+                        <td width="18%" style="text-align:left;">' . htmlspecialchars($row['full_name']) . '</td>
+                        <td width="25%" style="text-align:left;">' . htmlspecialchars($deptDesig) . '</td>
+                        <td width="12%" style="text-align:center;">' . htmlspecialchars($row['workplace'] ?? '-') . '</td>
+                        <td width="12%" style="text-align:center;">' . htmlspecialchars($row['resign_date'] ?? '-') . '</td>
+                        <td width="8%" style="text-align:center;">' . htmlspecialchars($statusText) . '</td>
+                        <td width="10%" style="text-align:center;">' . htmlspecialchars(number_format($row['gross_salary'] ?? 0, 2)) . '</td>
+                      </tr>';
+        }
+
+        $html .= '</tbody></table>';
+
+        $pdf->writeHTML($html, true, false, true, false, '');
+        $pdf->Output('Resign_List_Report_' . $fromDate . '_to_' . $toDate . '.pdf', 'D');
+        exit;
+    }
 }

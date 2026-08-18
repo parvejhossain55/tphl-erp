@@ -1258,9 +1258,9 @@
 
                     <!-- Payroll & Report -->
                     <li
-                        class="slide has-sub <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-regular fa-file-excel"></i></div>
                             <span class="sidebar__menu-label">Payroll & Report</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -1284,6 +1284,11 @@
                             <li class="slide">
                                 <a href="<?= $base_url ?>/payroll-joining-list"
                                     class="sidebar__menu-item <?= isActive('payroll-joining-list', $current_route) ?>">Joining
+                                    List</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/payroll-resign-list"
+                                    class="sidebar__menu-item <?= isActive('payroll-resign-list', $current_route) ?>">Resign
                                     List</a>
                             </li>
                         </ul>

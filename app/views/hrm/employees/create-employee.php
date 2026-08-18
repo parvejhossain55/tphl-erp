@@ -204,6 +204,18 @@ $show_breadcrumb = true;
                         <div class="col-lg-6">
                             <div class="from__input-box">
                                 <div class="form__input-title">
+                                    <label class="form-check-label">Resign Date</label>
+                                </div>
+                                <div class="form__input">
+                                    <input name="resign_date" class="form-control" id="resignDate" type="text"
+                                        readonly="readonly">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="from__input-box">
+                                <div class="form__input-title">
                                     <label class="form-check-label">Date Of Birth <span>Optional</span></label>
                                 </div>
                                 <div class="form__input">
@@ -660,5 +672,18 @@ $show_breadcrumb = true;
     if (basicSalaryInput) {
         basicSalaryInput.addEventListener("input", calculateSalaryBreakdown);
         basicSalaryInput.addEventListener("change", calculateSalaryBreakdown);
+    }
+
+    // Fallback for flatpickr initialization in case main.js is cached by the browser
+    if (typeof $ !== 'undefined' && $.fn.flatpickr) {
+        setTimeout(function() {
+            if ($("#resignDate").length) {
+                $("#resignDate").flatpickr({
+                    altInput: true,
+                    altFormat: "F j, Y",
+                    dateFormat: "Y-m-d",
+                });
+            }
+        }, 500);
     }
 </script>

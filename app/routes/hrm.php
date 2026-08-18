@@ -276,4 +276,8 @@ return [
     // Joining List
     'payroll-joining-list' => ['controller' => 'PayrollController', 'method' => 'joiningList'],
     'payroll-joining-list-pdf' => ['controller' => 'PayrollController', 'method' => 'exportJoiningListPDF'],
+
+    // Resign List
+    'payroll-resign-list' => ['controller' => 'PayrollController', 'method' => 'resignList'],
+    'payroll-resign-list-pdf' => ['controller' => 'PayrollController', 'method' => 'exportResignListPDF'],
 ];
