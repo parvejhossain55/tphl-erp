@@ -2236,4 +2236,254 @@ class PayrollController extends Controller
         $pdf->Output('Detailed_Summary_Report_' . $fromDate . '_to_' . $toDate . '.pdf', 'D');
         exit;
     }
+
+    public function summaryReport()
+    {
+        $defaultFrom = date('Y-m'); // Changed default to 1 month span optionally
+        $defaultTo = date('Y-m');
+
+        $fromMonth = $_GET['from_month'] ?? $defaultFrom; // YYYY-MM
+        $toMonth = $_GET['to_month'] ?? $defaultTo;
+
+        $fromDate = $fromMonth . '-01';
+        $toDate = date('Y-m-t', strtotime($toMonth . '-01'));
+
+        $timestampFrom = strtotime($fromDate);
+        $timestampExtended = strtotime(date('Y-m-01', strtotime($toMonth . '-01 -2 months')));
+        $actualFromDate = ($timestampFrom < $timestampExtended) ? $fromDate : date('Y-m-01', $timestampExtended);
+
+        $sql = "
+            SELECT p.id, DATE_FORMAT(p.payslip_month, '%Y-%m') as m_key, p.net_salary, p.payment_method, p.employee_id,
+                   (SELECT SUM(pd.amount) 
+                    FROM payslip_details pd 
+                    JOIN payslip_items pi ON pd.payslip_item_id = pi.id 
+                    WHERE pd.payslip_id = p.id AND pi.type = 'deduction' AND LOWER(pi.name) LIKE '%tax%') as tax_deducted
+            FROM payslips p
+            WHERE p.payslip_month >= ? AND p.payslip_month <= ?
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("ss", $actualFromDate, $toDate);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        $data = [
+            'No of employees' => [],
+            'Net Salary (BDT)' => [],
+            'Tax Deducted(BDT)' => [],
+            'Net Payable(BDT)' => [],
+            'Salary via Bank(BDT)' => [],
+            'Salary via Cash(BDT)' => []
+        ];
+
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $m = $row['m_key'];
+                if (!isset($data['No of employees'][$m])) {
+                    foreach (array_keys($data) as $key) {
+                        $data[$key][$m] = 0;
+                    }
+                }
+
+                $data['No of employees'][$m] += 1;
+                $data['Net Salary (BDT)'][$m] += (float) $row['net_salary'];
+                $data['Tax Deducted(BDT)'][$m] += (float) $row['tax_deducted'];
+                $data['Net Payable(BDT)'][$m] += (float) $row['net_salary'];
+
+                $method = strtolower($row['payment_method'] ?? '');
+                if ($method === 'bank' || $method === 'bank transfer') {
+                    $data['Salary via Bank(BDT)'][$m] += (float) $row['net_salary'];
+                } elseif ($method === 'cash') {
+                    $data['Salary via Cash(BDT)'][$m] += (float) $row['net_salary'];
+                }
+            }
+        }
+
+        $start = new DateTime($fromMonth . '-01');
+        $end = new DateTime($toMonth . '-01');
+        $end->modify('last day of this month');
+
+        $months = [];
+        $current = clone $start;
+        while ($current <= $end) {
+            $months[] = $current->format('Y-m');
+            $current->modify('+1 month');
+        }
+
+        $lastDate = strtotime($toMonth . '-01');
+        $lastM = date('Y-m', $lastDate);
+        $secondLastM = date('Y-m', strtotime('-1 month', $lastDate));
+        $thirdLastM = date('Y-m', strtotime('-2 months', $lastDate));
+
+        $page_title = "Payroll Summary Report";
+        $current_route = "payroll-summary-report";
+
+        $this->view('payrolls/payslips/summary-report', [
+            'page_title' => $page_title,
+            'current_route' => $current_route,
+            'data' => $data,
+            'months' => $months,
+            'lastM' => $lastM,
+            'secondLastM' => $secondLastM,
+            'thirdLastM' => $thirdLastM,
+            'from_month' => $fromMonth,
+            'to_month' => $toMonth
+        ]);
+    }
+
+    public function exportSummaryReportPDF()
+    {
+        $defaultFrom = date('Y-m');
+        $defaultTo = date('Y-m');
+
+        $fromMonth = $_GET['from_month'] ?? $defaultFrom; // YYYY-MM
+        $toMonth = $_GET['to_month'] ?? $defaultTo;
+
+        $fromDate = $fromMonth . '-01';
+        $toDate = date('Y-m-t', strtotime($toMonth . '-01'));
+
+        $timestampFrom = strtotime($fromDate);
+        $timestampExtended = strtotime(date('Y-m-01', strtotime($toMonth . '-01 -2 months')));
+        $actualFromDate = ($timestampFrom < $timestampExtended) ? $fromDate : date('Y-m-01', $timestampExtended);
+
+        $sql = "
+            SELECT p.id, DATE_FORMAT(p.payslip_month, '%Y-%m') as m_key, p.net_salary, p.payment_method, p.employee_id,
+                   (SELECT SUM(pd.amount) 
+                    FROM payslip_details pd 
+                    JOIN payslip_items pi ON pd.payslip_item_id = pi.id 
+                    WHERE pd.payslip_id = p.id AND pi.type = 'deduction' AND LOWER(pi.name) LIKE '%tax%') as tax_deducted
+            FROM payslips p
+            WHERE p.payslip_month >= ? AND p.payslip_month <= ?
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("ss", $actualFromDate, $toDate);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        $data = [
+            'No of employees' => [],
+            'Net Salary (BDT)' => [],
+            'Tax Deducted(BDT)' => [],
+            'Net Payable(BDT)' => [],
+            'Salary via Bank(BDT)' => [],
+            'Salary via Cash(BDT)' => []
+        ];
+
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $m = $row['m_key'];
+                if (!isset($data['No of employees'][$m])) {
+                    foreach (array_keys($data) as $key) {
+                        $data[$key][$m] = 0;
+                    }
+                }
+
+                $data['No of employees'][$m] += 1;
+                $data['Net Salary (BDT)'][$m] += (float) $row['net_salary'];
+                $data['Tax Deducted(BDT)'][$m] += (float) $row['tax_deducted'];
+                $data['Net Payable(BDT)'][$m] += (float) $row['net_salary'];
+
+                $method = strtolower($row['payment_method'] ?? '');
+                if ($method === 'bank' || $method === 'bank transfer') {
+                    $data['Salary via Bank(BDT)'][$m] += (float) $row['net_salary'];
+                } elseif ($method === 'cash') {
+                    $data['Salary via Cash(BDT)'][$m] += (float) $row['net_salary'];
+                }
+            }
+        }
+
+        $start = new DateTime($fromMonth . '-01');
+        $end = new DateTime($toMonth . '-01');
+        $end->modify('last day of this month');
+
+        $months = [];
+        $current = clone $start;
+        while ($current <= $end) {
+            $months[] = $current->format('Y-m');
+            $current->modify('+1 month');
+        }
+
+        $lastDate = strtotime($toMonth . '-01');
+        $lastM = date('Y-m', $lastDate);
+        $secondLastM = date('Y-m', strtotime('-1 month', $lastDate));
+        $thirdLastM = date('Y-m', strtotime('-2 months', $lastDate));
+
+        $pdf = new \TCPDF('L', 'mm', 'A4');
+        $pdf->SetCreator('TPHL ERP');
+        $pdf->SetAuthor('Admin');
+        $pdf->SetTitle('Payroll Summary Report');
+        $pdf->SetMargins(10, 15, 10);
+        $pdf->SetAutoPageBreak(TRUE, 15);
+        $pdf->AddPage();
+
+        $pdf->SetFont('helvetica', '', 9);
+
+        $html = '
+        <div style="text-align:center;">
+            <h1 style="color:#078134;">The Premium Homes Ltd</h1>
+            <h3 style="color:#28B463;">Payroll Summary Report </h3>
+            <p>Range: ' . date('F Y', strtotime($fromDate)) . ' to ' . date('F Y', strtotime($toDate)) . '</p>
+        </div>
+        <br>
+        <table border="1" cellpadding="5" width="100%">
+            <thead>
+                <tr style="background-color:#078134; color:#ffffff; font-weight:bold; text-align:center;">
+                    <th style="text-align:left;">Particulars</th>';
+
+        foreach ($months as $m) {
+            $html .= '<th style="text-align:right;">' . date('F y', strtotime($m . '-01')) . '</th>';
+        }
+
+        $html .= '<th style="text-align:right;">Growth in (%)<br>' . date('M y', strtotime($secondLastM . '-01')) . '</th>
+                  <th style="text-align:right;">Growth in (%)<br>' . date('M y', strtotime($lastM . '-01')) . '</th>
+                </tr>
+            </thead>
+            <tbody>';
+
+        foreach ($data as $key => $monthlyValues) {
+            $html .= '<tr>';
+            $html .= '<td style="font-weight:bold; text-align:left;">' . $key . '</td>';
+            foreach ($months as $m) {
+                $val = $monthlyValues[$m] ?? 0;
+                $formatted = ($key === 'No of employees') ? (int) $val : number_format($val, 2);
+                $html .= '<td style="text-align:right;">' . $formatted . '</td>';
+            }
+
+            $valLast = $monthlyValues[$lastM] ?? 0;
+            $valSecondLast = $monthlyValues[$secondLastM] ?? 0;
+            $valThirdLast = $monthlyValues[$thirdLastM] ?? 0;
+
+            $growthLast = 0;
+            if ($valSecondLast > 0)
+                $growthLast = (($valLast - $valSecondLast) / $valSecondLast) * 100;
+            elseif ($valLast > 0)
+                $growthLast = 100.0;
+
+            $growthSecondLast = 0;
+            if ($valThirdLast > 0)
+                $growthSecondLast = (($valSecondLast - $valThirdLast) / $valThirdLast) * 100;
+            elseif ($valSecondLast > 0)
+                $growthSecondLast = 100.0;
+
+            $formatG = function ($val) {
+                $str = number_format($val, 2) . '%';
+                if ($val > 0)
+                    return '<span style="color:green;">+' . $str . '</span>';
+                if ($val < 0)
+                    return '<span style="color:red;">' . $str . '</span>';
+                return '<span style="color:gray;">' . $str . '</span>';
+            };
+
+            $html .= '<td style="text-align:right;">' . $formatG($growthSecondLast) . '</td>';
+            $html .= '<td style="text-align:right;">' . $formatG($growthLast) . '</td>';
+            $html .= '</tr>';
+        }
+
+        $html .= '</tbody></table>';
+
+        $pdf->writeHTML($html, true, false, true, false, '');
+        $pdf->Output('Payroll_Summary_Report_' . $fromMonth . '_to_' . $toMonth . '.pdf', 'D');
+        exit;
+    }
 }

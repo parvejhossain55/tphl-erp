@@ -284,4 +284,8 @@ return [
     // Detailed Summary
     'payroll-detailed-summary' => ['controller' => 'PayrollController', 'method' => 'detailedSummary'],
     'payroll-detailed-summary-pdf' => ['controller' => 'PayrollController', 'method' => 'exportDetailedSummaryPDF'],
+
+    // Payroll Summary Report
+    'payroll-summary-report' => ['controller' => 'PayrollController', 'method' => 'summaryReport'],
+    'payroll-summary-report-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSummaryReportPDF'],
 ];
