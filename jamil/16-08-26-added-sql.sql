@@ -19,15 +19,7 @@ CREATE TABLE IF NOT EXISTS `advance_salaries` (
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- 2. Migrations applied for backward compatibility and feature upgrades
--- Add approved_date tracking for HR approvals
-ALTER TABLE advance_salaries ADD COLUMN approved_date DATETIME NULL AFTER status;
 
--- Modify ENUM to handle the new two-step multi-department approval workflow
-ALTER TABLE advance_salaries MODIFY COLUMN status ENUM('pending', 'pending_hr', 'pending_accounts', 'paid', 'deducted', 'rejected') DEFAULT 'pending_hr';
-
--- Graceful fallbacks for instances that were wiped due to strict ENUM narrowing
-UPDATE advance_salaries SET status = 'pending_hr' WHERE status = '' OR status = 'pending' OR status IS NULL;
 
 -- Add per_meal_amount to employees table
 ALTER TABLE employees ADD COLUMN per_meal_amount DECIMAL(10,2) DEFAULT 0.00 NULL;

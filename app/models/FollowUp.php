@@ -637,4 +637,108 @@ class FollowUp extends Model
         $result = $stmt->get_result()->fetch_assoc();
         return (int)($result['total'] ?? 0);
     }
+
+    public function getCedActivityReport($agentId, $startDate, $endDate)
+    {
+        $agentCond1 = ""; $agentCond2 = "";
+        $dateCond1 = ""; $dateCond2 = "";
+
+        if ($agentId) {
+            $agentId = (int)$agentId;
+            $agentCond1 = " AND fu.created_by = $agentId ";
+            $agentCond2 = " AND ef.added_by = $agentId ";
+        }
+
+        if ($startDate && $endDate) {
+            $sd = $this->db->real_escape_string($startDate);
+            $ed = $this->db->real_escape_string($endDate);
+            $dateCond1 = " AND DATE(fu.follow_up_date) BETWEEN '$sd' AND '$ed' ";
+            $dateCond2 = " AND DATE(ef.created_at) BETWEEN '$sd' AND '$ed' ";
+        }
+
+        $sql = "
+            SELECT 
+                fu.id,
+                fu.lead_id,
+                fu.follow_up_date,
+                fu.follow_up_time,
+                fu.follow_up_type,
+                fu.status,
+                fu.discussion_note,
+                fu.next_action,
+                fu.next_follow_up_date,
+                NULL AS activity_date,
+                NULL AS activity_mode,
+                NULL AS activity_reason,
+                l.full_name AS client_name, 
+                l.phone AS client_phone,
+                p.name AS project_name, 
+                f.flat_name AS flat_name, 
+                u1.full_name AS created_by_name
+            FROM lead_follow_ups fu
+            LEFT JOIN leads l ON fu.lead_id = l.id
+            LEFT JOIN flats f ON fu.flat_id = f.id
+            LEFT JOIN projects p ON fu.project_id = p.id
+            LEFT JOIN users u1 ON fu.created_by = u1.id
+            WHERE fu.deleted_at IS NULL
+            $agentCond1
+            $dateCond1
+
+            UNION ALL
+
+            SELECT 
+                ef.id,
+                lb.lead_id,
+                DATE(ef.created_at) AS follow_up_date,
+                TIME(ef.created_at) AS follow_up_time,
+                CASE 
+                    WHEN ef.emi_no = 0 THEN 'General EMI Follow Up'
+                    WHEN ef.emi_no = 999 THEN 'Development Charge Follow Up'
+                    ELSE CONCAT('EMI #', ef.emi_no, ' Follow Up')
+                END AS follow_up_type,
+                'completed' AS status,
+                ef.note AS discussion_note,
+                NULL AS next_action,
+                NULL AS next_follow_up_date,
+                ef.activity_date AS activity_date,
+                ef.activity_mode AS activity_mode,
+                ef.activity_reason AS activity_reason,
+                l2.full_name AS client_name, 
+                l2.phone AS client_phone,
+                p2.name AS project_name, 
+                f2.flat_name AS flat_name, 
+                u2.full_name AS created_by_name
+            FROM emi_followups ef
+            INNER JOIN lead_bookings lb ON ef.booking_id = lb.id
+            LEFT JOIN leads l2 ON lb.lead_id = l2.id
+            LEFT JOIN projects p2 ON lb.project_id = p2.id
+            LEFT JOIN flats f2 ON lb.flat_id = f2.id
+            LEFT JOIN users u2 ON ef.added_by = u2.id
+            WHERE 1=1
+            $agentCond2
+            $dateCond2
+
+            ORDER BY follow_up_date DESC, follow_up_time DESC
+        ";
+
+        $result = $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
+
+        // Summarize
+        $totalNotes = count($result);
+        $uniqueClients = [];
+        foreach ($result as $row) {
+            if (!empty($row['lead_id'])) {
+                $uniqueClients[$row['lead_id']] = true;
+            }
+        }
+        $totalClients = count($uniqueClients);
+
+        return [
+            'summary' => [
+                'total_notes' => $totalNotes,
+                'total_clients' => $totalClients
+            ],
+            'details' => $result
+        ];
+    }
 }

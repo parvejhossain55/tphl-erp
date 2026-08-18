@@ -65,7 +65,7 @@ class AdvanceSalary extends Model
 
     public function getUnadjustedPaidAdvance($employee_id)
     {
-        $sql = "SELECT SUM(paid_amount) as total_unadjusted FROM advance_salaries WHERE employee_id = ? AND status = 'paid'";
+        $sql = "SELECT SUM(amount) as total_unadjusted FROM advance_salaries WHERE employee_id = ? AND status = 'paid'";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param("i", $employee_id);
         $stmt->execute();
@@ -76,7 +76,7 @@ class AdvanceSalary extends Model
 
     public function getPaidAdvancesByEmployee($employee_id)
     {
-        $sql = "SELECT id, paid_amount as amount FROM advance_salaries WHERE employee_id = ? AND status = 'paid'";
+        $sql = "SELECT id, amount FROM advance_salaries WHERE employee_id = ? AND status = 'paid'";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param("i", $employee_id);
         $stmt->execute();
