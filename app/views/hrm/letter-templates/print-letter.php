@@ -27,15 +27,21 @@
             height: 297mm;
         }
 
-        /* Full-page letterhead background */
+        /* Full-page wrapper */
         .page-wrapper {
             width: 210mm;
             height: 297mm;
             position: relative;
-            background-image: url('<?= $GLOBALS['base_url'] ?>/assets/email-template/new-letter-template.jpeg');
-            background-size: 100% 100%;
-            background-repeat: no-repeat;
-            background-position: top left;
+        }
+
+        /* Letterhead image — always prints unlike CSS backgrounds */
+        .bg-letterhead {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 210mm;
+            height: 297mm;
+            z-index: 0;
         }
 
         /* Letter content sits in the white area of the template */
@@ -47,6 +53,14 @@
             right: 18mm;
             bottom: 44mm;
             overflow: hidden;
+            z-index: 1;
+        }
+
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
         }
 
         .letter-meta {
@@ -116,11 +130,15 @@
 
 <body onload="window.print()">
     <div class="page-wrapper">
+        <!-- Letterhead as img tag — prints in all browsers unlike CSS background-image -->
+        <img src="<?= $GLOBALS['base_url'] ?>/assets/email-template/new-letter-template.jpeg" class="bg-letterhead"
+            alt="">
         <div class="letter-content">
 
             <div class="letter-meta">
                 <div><strong>Ref:</strong>
-                    <?= htmlspecialchars($letter['ref_number'] ?? 'TPHL/HR/' . date('Y') . '/00' . $letter['id']) ?></div>
+                    <?= htmlspecialchars($letter['ref_number'] ?? 'TPHL/HR/' . date('Y') . '/00' . $letter['id']) ?>
+                </div>
                 <div><strong>Date:</strong> <?= date('d F, Y', strtotime($letter['letter_date'])) ?></div>
             </div>
 
@@ -145,12 +163,14 @@
 
             <?php if ($letter['letter_type'] === 'promotion'): ?>
                 <p style="margin-top:10pt;"><strong>Effective Date:</strong>
-                    <?= $letter['effective_date'] ? date('d F, Y', strtotime($letter['effective_date'])) : 'N/A' ?></p>
+                    <?= $letter['effective_date'] ? date('d F, Y', strtotime($letter['effective_date'])) : 'N/A' ?>
+                </p>
                 <p><strong>Current Salary:</strong> <?= number_format($letter['current_salary'], 2) ?></p>
                 <p><strong>Revised Salary:</strong> <?= number_format($letter['revised_salary'], 2) ?></p>
             <?php elseif (!empty($letter['new_designation'])): ?>
                 <p style="margin-top:10pt;"><strong>New Position / Designation:</strong>
-                    <?= htmlspecialchars($letter['new_designation']) ?></p>
+                    <?= htmlspecialchars($letter['new_designation']) ?>
+                </p>
             <?php endif; ?>
 
             <div class="signature-section">
