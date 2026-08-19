@@ -3012,6 +3012,13 @@
                         </li>
                     <?php endif; ?>
                     <!-- FOR Task Manage  -->
+                    <li class="slide <?= isActive('email-station', $current_route) ?>">
+                        <a href="<?= $base_url ?>/email-station"
+                            class="sidebar__menu-item <?= isActive('email-station', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-envelope"></i></div>
+                            <span class="sidebar__menu-label">Email Station</span>
+                        </a>
+                    </li>
                     <li class="slide <?= isActive('asset-extra-purchases', $current_route) ?>">
                         <a href="<?= $base_url ?>/asset-extra-purchases"
                             class="sidebar__menu-item <?= isActive('asset-extra-purchases', $current_route) ?>">

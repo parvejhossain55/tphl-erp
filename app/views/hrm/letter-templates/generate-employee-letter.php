@@ -93,6 +93,10 @@
                                     <option value="experience"  <?= (isset($_GET['type']) && $_GET['type'] == 'experience')  ? 'selected' : '' ?>>Experience</option>
                                     <option value="noc"         <?= (isset($_GET['type']) && $_GET['type'] == 'noc')         ? 'selected' : '' ?>>NOC</option>
                                     <option value="salary_certificate" <?= (isset($_GET['type']) && $_GET['type'] == 'salary_certificate') ? 'selected' : '' ?>>Salary Certificate</option>
+                                    <option value="show_cause"  <?= (isset($_GET['type']) && $_GET['type'] == 'show_cause')  ? 'selected' : '' ?>>Show Cause</option>
+                                    <option value="warning"     <?= (isset($_GET['type']) && $_GET['type'] == 'warning')     ? 'selected' : '' ?>>Warning</option>
+                                    <option value="caution"     <?= (isset($_GET['type']) && $_GET['type'] == 'caution')     ? 'selected' : '' ?>>Caution</option>
+                                    <option value="improvement" <?= (isset($_GET['type']) && $_GET['type'] == 'improvement') ? 'selected' : '' ?>>Improvement</option>
                                 </select>
                             </div>
                         </div>

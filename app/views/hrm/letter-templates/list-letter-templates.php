@@ -5,8 +5,9 @@
             <!-- Title + Add button -->
             <div class="card__title-wrap mb-20 d-flex align-items-center justify-content-between">
                 <h5 class="card__heading-title">Letter Templates</h5>
-                  <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTemplate">  + Add New Template</button>
-         
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTemplate"> +
+                    Add New Template</button>
+
             </div>
 
             <!-- Table -->
@@ -26,34 +27,32 @@
                         <tbody>
                             <?php if (!empty($templates)): ?>
                                 <?php foreach ($templates as $index => $template): ?>
-                                <tr>
-                                    <td><?= $index + 1 ?></td>
-                                    <td><?= $template['name'] ?></td>
-                                    <td>
-                                        <span class="badge bg-secondary">
-                                            <?= ucfirst($template['type']) ?>
-                                        </span>
-                                    </td>
-                                    <td><?= htmlspecialchars($template['subject']) ?></td>
-                                    <td><?= date('d M Y', strtotime($template['created_at'] ?? 'now')) ?></td>
-                                    <td class="text-center">
-                                        <div class="d-flex gap-1 justify-content-center">
-                                            <!-- Edit -->
-                                            <a href="<?= $GLOBALS['base_url'] ?>/edit-letter-template/<?= $template['id'] ?>"
-                                               class="btn btn-info btn-sm"
-                                               title="Edit">
-                                                <i class="fa fa-edit"></i>
-                                            </a>
-                                            <!-- Delete -->
-                                            <a href="<?= $GLOBALS['base_url'] ?>/delete-letter-template/<?= $template['id'] ?>"
-                                               class="btn btn-danger btn-sm"
-                                               title="Delete"
-                                               onclick="return confirm('Are you sure you want to delete this template?')">
-                                                <i class="fa fa-trash"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
+                                    <tr>
+                                        <td><?= $index + 1 ?></td>
+                                        <td><?= $template['name'] ?></td>
+                                        <td>
+                                            <span class="badge bg-secondary">
+                                                <?= ucfirst($template['type']) ?>
+                                            </span>
+                                        </td>
+                                        <td><?= htmlspecialchars($template['subject']) ?></td>
+                                        <td><?= date('d M Y', strtotime($template['created_at'] ?? 'now')) ?></td>
+                                        <td class="text-center">
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                <!-- Edit -->
+                                                <a href="<?= $GLOBALS['base_url'] ?>/edit-letter-template/<?= $template['id'] ?>"
+                                                    class="btn btn-info btn-sm" title="Edit">
+                                                    <i class="fa fa-edit"></i>
+                                                </a>
+                                                <!-- Delete -->
+                                                <a href="<?= $GLOBALS['base_url'] ?>/delete-letter-template/<?= $template['id'] ?>"
+                                                    class="btn btn-danger btn-sm" title="Delete"
+                                                    onclick="return confirm('Are you sure you want to delete this template?')">
+                                                    <i class="fa fa-trash"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 <?php endforeach ?>
                             <?php else: ?>
                                 <tr>
@@ -102,6 +101,10 @@
                                 <option value="increment">Increment</option>
                                 <option value="experience">Experience</option>
                                 <option value="noc">NOC</option>
+                                <option value="show_cause">Show Cause</option>
+                                <option value="warning">Warning</option>
+                                <option value="caution">Caution</option>
+                                <option value="improvement">Improvement</option>
                             </select>
                         </div>
 
