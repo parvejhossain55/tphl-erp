@@ -102,7 +102,21 @@ $default_to = date('Y-m-d');
 <!-- Report Table -->
 <div class="row">
     <div class="col-xxl-12">
-        <div class="card__wrapper">
+        
+        <div class="card__wrapper border-0">
+            <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+                <h4 class="fw-bold text-dark mb-0">
+                    <i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i>Attendance Report
+                </h4>
+                <div>
+                    <button type="button" class="btn btn-success fw-semibold shadow-sm me-2" onclick="$('#payrollAttendanceTable').DataTable().button('.buttons-csv').trigger();">
+                        <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+                    </button>
+                    <button type="button" class="btn btn-danger fw-semibold shadow-sm" onclick="$('#payrollAttendanceTable').DataTable().button('.buttons-pdf').trigger();">
+                        <i class="fa-solid fa-file-pdf me-1"></i> Export PDF
+                    </button>
+                </div>
+            </div>
             <div class="table__wrapper table-responsive">
                 <!-- Using a specific ID for DataTables to bind correctly -->
                 <table id="payrollAttendanceTable" class="table no-border-table mb-20">
@@ -239,19 +253,16 @@ return;
 }
 
 dataTableInstance = $('#payrollAttendanceTable').DataTable({
-dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"Bf>>' +
+dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"f><"d-none"B>>' +
         '<"row"<"col-sm-12"tr>>' +
             '<"row align-items-center mt-3"<"col-sm-6 text-start"i><"col-sm-6 text-end"p>>',
                     buttons: [
                     {
-                    extend: 'csvHtml5',
-                    text: '<i class="fa-solid fa-file-csv me-1"></i> Export CSV',
-                    className: 'btn btn-success btn-sm me-2',
+                    extend: 'csvHtml5', text: 'CSV', className: 'buttons-csv',
                     title: 'Payroll_Attendance_Report_' + activeFromDate + '_to_' + activeToDate
                     },
                     {
-                    text: '<i class="fa-solid fa-file-pdf me-1"></i> Export PDF',
-                    className: 'btn btn-danger btn-sm me-3',
+                    text: 'PDF', className: 'buttons-pdf',
                     action: function (e, dt, node, config) {
                     document.getElementById('pdfFromDate').value = activeFromDate;
                     document.getElementById('pdfToDate').value = activeToDate;

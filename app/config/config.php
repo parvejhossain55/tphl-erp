@@ -5,7 +5,7 @@
 // 3 = Production Server
 
 
-$current_server = 3; 
+$current_server = 3;
 // Local Development Server
 if ($current_server == 1) {
     return [
@@ -18,7 +18,7 @@ if ($current_server == 1) {
         "db_ai_pass" => "ReadOnlyPass123!",
         // Google Gemini API Key
         "gemini_api_key" => "AQ.Ab8RN6KH-h0rRtsg0SIvPvY8GuHa6V3gx5VY0c3SC52cLSqybQ",
-        
+
         // Premium Homes API Configuration
         "premium_homes_api_url" => "https://premium-api.dvalleybd.com/api/erp",
         "premium_homes_api_key" => "tphl_erp_key_9f8e7d6c5b4a392817065",
@@ -54,19 +54,19 @@ if ($current_server == 2) {
         "db_pass" => "erp_staging_db@#5672dhKL%sd10",
         "db_name" => "erp_staging_db",
 
-         // AI Assistant Read-Only database connection
+        // AI Assistant Read-Only database connection
         "db_ai_user" => "tphl_read_only",
         "db_ai_pass" => "ReadOnlyPass123!",
 
         // Google Gemini API Key
         "gemini_api_key" => "AQ.Ab8RN6KH-h0rRtsg0SIvPvY8GuHa6V3gx5VY0c3SC52cLSqybQ",
-        
+
         // Premium Homes API Configuration
         "premium_homes_api_url" => "http://127.0.0.1:8000/api/erp",
         "premium_homes_api_key" => "tphl_erp_key_9f8e7d6c5b4a392817065",
 
         // Tipsoi API Configuration
-         "tipsoi_base_url" => "https://app.tipsoi.ai/inovace-client/api/v1/",
+        "tipsoi_base_url" => "https://app.tipsoi.ai/inovace-client/api/v1/",
         "tipsoi_email" => "info@dpremiumhomes.com",
         "tipsoi_password" => "HRD@tphl@1274",
 
@@ -95,13 +95,13 @@ if ($current_server == 3) {
         "db_pass" => "finaltPhl@#5672dhKL%sd10",
         "db_name" => "final_erp_db",
 
-         // AI Assistant Read-Only database connection
+        // AI Assistant Read-Only database connection
         "db_ai_user" => "tphl_read_only",
         "db_ai_pass" => "ReadOnlyPass123!",
 
         // Google Gemini API Key
         "gemini_api_key" => "AQ.Ab8RN6KH-h0rRtsg0SIvPvY8GuHa6V3gx5VY0c3SC52cLSqybQ",
-        
+
         // Premium Homes API Configuration
         "premium_homes_api_url" => "http://127.0.0.1:8000/api/erp",
         "premium_homes_api_key" => "tphl_erp_key_9f8e7d6c5b4a392817065",

@@ -1,0 +1,164 @@
+<?php
+$page = "Salary Report";
+$show_breadcrumb = true;
+?>
+
+<!-- Filter Section -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="filters card__wrapper p-3 bg-white rounded shadow-sm">
+            <form method="GET" action="<?= $base_url ?>/payroll-salary-report" id="filterForm"
+                class="row gx-3 gy-2 align-items-end">
+
+                <!-- Report Type -->
+                <div class="col-lg-3 col-md-4 col-sm-6">
+                    <label class="form-label fw-semibold text-muted mb-2">Select Report Type</label>
+                    <select name="report_type" class="form-select" onchange="this.form.submit()">
+                        <option value="department" <?= $reportType === 'department' ? 'selected' : '' ?>>Department wise
+                        </option>
+                        <option value="office" <?= $reportType === 'office' ? 'selected' : '' ?>>Office wise</option>
+                    </select>
+                </div>
+
+                <!-- Month -->
+                <div class="col-lg-3 col-md-4 col-sm-6">
+                    <label class="form-label fw-semibold text-muted mb-2">Month</label>
+                    <select name="month" class="form-select">
+                        <?php foreach ($monthsList as $mVal => $mName): ?>
+                            <option value="<?= $mVal ?>" <?= $month === $mVal ? 'selected' : '' ?>><?= $mName ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Year -->
+                <div class="col-lg-3 col-md-4 col-sm-12">
+                    <label class="form-label fw-semibold text-muted mb-2">Year</label>
+                    <select name="year" class="form-select">
+                        <?php foreach ($yearsList as $yVal): ?>
+                            <option value="<?= $yVal ?>" <?= $year == $yVal ? 'selected' : '' ?>><?= $yVal ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Filter Button -->
+                <div class="col-lg-3 col-md-12 col-sm-12 text-md-end mt-3 mt-lg-0">
+                    <button type="submit" class="btn btn-primary px-4 fw-semibold w-100 w-md-auto shadow-sm">
+                        <i class="fa-solid fa-filter me-1"></i> Generate
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Main Table Card -->
+<div class="row">
+    <div class="col-12">
+        <div class="card__wrapper bg-white rounded shadow-sm p-4">
+
+            <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+                <h4 class="fw-bold text-dark mb-0">
+                    <i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i><?= ucfirst($reportType) ?> Wise
+                    Salary Report
+                </h4>
+                <div>
+                    <a href="<?= $base_url ?>/payroll-salary-report-csv?report_type=<?= $reportType ?>&month=<?= $month ?>&year=<?= $year ?>"
+                        class="btn btn-success fw-semibold shadow-sm me-2">
+                        <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+                    </a>
+                    <a href="<?= $base_url ?>/payroll-salary-report-pdf?report_type=<?= $reportType ?>&month=<?= $month ?>&year=<?= $year ?>"
+                        class="btn btn-danger fw-semibold shadow-sm">
+                        <i class="fa-solid fa-file-pdf me-1"></i> Export PDF
+                    </a>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered table-striped align-middle" id="salaryReportTable">
+                    <?php if ($reportType === 'department'): ?>
+                        <thead class="bg-light text-muted text-uppercase fs-12">
+                            <tr>
+                                <th class="text-center" style="width: 80px;">Serial</th>
+                                <th>Department Name</th>
+                                <th class="text-center">No of employees</th>
+                                <th class="text-end pe-4">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (!empty($data)): ?>
+                                <?php $sl = 1;
+                                foreach ($data as $row): ?>
+                                    <tr>
+                                        <td class="text-center fw-bold text-muted"><?= $sl++ ?></td>
+                                        <td class="fw-semibold text-dark"><?= htmlspecialchars($row['dept_name']) ?></td>
+                                        <td class="text-center">
+                                            <span
+                                                class="badge bg-primary-subtle text-primary rounded-pill px-3 fs-13"><?= $row['no_of_emp'] ?></span>
+                                        </td>
+                                        <td class="text-end fw-bold text-dark pe-4">
+                                            ৳ <?= number_format($row['total_amount'], 2) ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    <?php else: ?>
+                        <thead class="bg-light text-muted text-uppercase fs-12">
+                            <tr>
+                                <th>Office name</th>
+                                <th class="text-center">No of employees</th>
+                                <th class="text-end">Total</th>
+                                <th class="text-end">Bank</th>
+                                <th class="text-end pe-4">Cash</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (!empty($data)): ?>
+                                <?php foreach ($data as $row): ?>
+                                    <tr>
+                                        <td class="fw-semibold text-dark">
+                                            <i
+                                                class="fa-solid fa-building text-secondary me-2"></i><?= htmlspecialchars($row['office_name']) ?>
+                                        </td>
+                                        <td class="text-center">
+                                            <span
+                                                class="badge bg-primary-subtle text-primary rounded-pill px-3 fs-13"><?= $row['no_of_emp'] ?></span>
+                                        </td>
+                                        <td class="text-end fw-bold text-dark">
+                                            ৳ <?= number_format($row['total_amount'], 2) ?>
+                                        </td>
+                                        <td class="text-end text-success fw-semibold">
+                                            ৳ <?= number_format($row['bank_amount'], 2) ?>
+                                        </td>
+                                        <td class="text-end text-warning fw-semibold pe-4">
+                                            ৳ <?= number_format($row['cash_amount'], 2) ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    <?php endif; ?>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Initialize DataTable
+        if (typeof $.fn.DataTable !== 'undefined') {
+            $('#salaryReportTable').DataTable({
+                pageLength: 25,
+                lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "All"]],
+                ordering: false,
+                dom: '<"d-flex justify-content-between align-items-center mb-3"lf>rt<"d-flex justify-content-between align-items-center mt-3"ip>',
+                language: {
+                    search: "_INPUT_",
+                    searchPlaceholder: "Search report..."
+                }
+            });
+        }
+    });
+</script>
