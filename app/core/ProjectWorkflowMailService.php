@@ -435,44 +435,48 @@ class ProjectWorkflowMailService
 
     /**
      * PURCHASE ORDER GENERATION
-     * → Action required: SE (12) and Approvers (1, 3, 15, 20)
+     * → Notify the first approval stage only: Purchase Head (17) when required,
+     *   otherwise QC & Internal Audit (24).
      */
     public function notifyApproversForNewPO(int $projectId, string $projectName, int $poId): void
     {
-        $base = $this->getBaseUrl();
-        $project = $this->getProjectRow($projectId);
-        $pmId = (int)($project['pm_id'] ?? 0);
-        $seId = (int)($project['site_engineer_id'] ?? 0);
+        $creatorStmt = $this->db->prepare('SELECT creator_role_id FROM purchase_orders WHERE id = ? LIMIT 1');
+        $creatorStmt->bind_param('i', $poId);
+        $creatorStmt->execute();
+        $creator = $creatorStmt->get_result()->fetch_assoc();
+        $firstRole = in_array((int)($creator['creator_role_id'] ?? 0), [23, 31], true) ? 17 : 24;
+        $firstLabel = $firstRole === 17 ? 'Purchase Head' : 'QC & Internal Audit';
 
-        // Get approvers: Management (3), QC (24), PM Head (22), Procurement Head (20), assigned PM, assigned SE
-        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE (role_id IN (3, 24, 20, 22) OR id IN (?, ?)) AND email IS NOT NULL AND email != ''");
-        $stmt->bind_param('ii', $pmId, $seId);
+        $this->notifyPOApprovalStage($projectName, $poId, [$firstRole], $firstLabel);
+    }
+
+    /** Notify only the users responsible for the current PO approval stage. */
+    public function notifyPOApprovalStage(string $projectName, int $poId, array $roleIds, string $stageLabel): void
+    {
+        $base = $this->getBaseUrl();
+        $roleIds = array_values(array_filter(array_map('intval', $roleIds)));
+        if (empty($roleIds)) return;
+
+        $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
+        $stmt = $this->db->prepare("SELECT id, full_name, email FROM users WHERE role_id IN ({$placeholders}) AND email IS NOT NULL AND email != ''");
+        if (!$stmt) return;
+        $types = str_repeat('i', count($roleIds));
+        $stmt->bind_param($types, ...$roleIds);
         $stmt->execute();
         $approvers = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-        $subject = "⚡ Action Required: Approve Purchase Order #{$poId} — {$projectName}";
-
         foreach ($approvers as $user) {
-            $stepHtml = "<div style='margin:20px 0;'>
-                <div style='display:flex;align-items:center;gap:12px;margin-bottom:10px;'>
-                    <div style='width:28px;height:28px;border-radius:50%;background:#059669;color:#fff;
-                                text-align:center;line-height:28px;
-                                font-size:13px;font-weight:700;flex-shrink:0;'>&#9654;</div>
-                    <div style='font-size:13px;color:#059669;'><strong>PO Approval</strong> <em style='font-size:11px;color:#059669'>(Action Required)</em></div>
-                </div>
-            </div>";
-
+            $subject = "Action Required: PO #{$poId} {$stageLabel} Approval — {$projectName}";
             $body = $this->buildHtml(
-                title:       "Action Required: Purchase Order Approval",
+                title:       "Action Required: {$stageLabel} Approval",
                 greeting:    "Dear {$user['full_name']},",
-                message:     "A new <strong>Purchase Order (PO #{$poId})</strong> has been generated for project <strong>{$projectName}</strong> and is waiting for your approval.",
-                stepHtml:    $stepHtml,
+                message:     "Purchase Order <strong>#{$poId}</strong> for project <strong>{$projectName}</strong> is awaiting your <strong>{$stageLabel}</strong> approval.",
+                stepHtml:    '',
                 ctaLabel:    'Review & Approve PO',
                 ctaLink:     $base . "/con-purchase-order/{$poId}",
                 projectName: $projectName,
-                note:        'Please review the PO details before approving. The material receiving process cannot start until both QC & Internal Audit and Management have approved.'
+                note:        'Please review the Purchase Order and complete your approval step.'
             );
-
             $this->send($user['email'], $subject, $body);
         }
     }
@@ -510,17 +514,17 @@ class ProjectWorkflowMailService
     }
 
     /**
-     * PR SUBMITTED — Notify Management, PM, Purchase Head, Site Operator/Procurement, PM Head (role_id 3, 15, 17, 20, 22)
+     * PR SUBMITTED — Notify Project Manager Head (role_id 22) for Stage 1 approval.
      */
     public function notifyOnPRSubmission(int $projectId, string $projectName, string $engineerName, string $requisitionMonth, int $prId, string $prType = 'boq_linked'): void
     {
         $base = $this->getBaseUrl();
 
-        // Get recipients: Management (3), PM (15), Purchase Head (17), Site Operator/Procurement (20), PM Head (22)
+        // Stage 1 is handled only by Project Manager Head.
         $stmt = $this->db->prepare("
             SELECT id, full_name, email 
             FROM users 
-            WHERE role_id IN (3, 15, 17, 20, 22) 
+            WHERE role_id = 22
               AND email IS NOT NULL 
               AND email != ''
         ");
@@ -577,6 +581,46 @@ class ProjectWorkflowMailService
                 ctaLink:     $base . "/con-purchase-request/{$prId}",
                 projectName: $projectName,
                 note:        'Please review the request items and proceed with the necessary approval or quotation processing.'
+            );
+
+            $this->send($user['email'], $subject, $body);
+        }
+    }
+
+    /**
+     * PR STAGE 1 APPROVED — Notify Purchase Head and Senior Purchase Executive.
+     */
+    public function notifyPurchaseTeamForPRApproval(int $projectId, string $projectName, int $prId, string $approverName): void
+    {
+        $base = $this->getBaseUrl();
+
+        $stmt = $this->db->prepare(" 
+            SELECT id, full_name, email, role_id
+            FROM users
+            WHERE role_id IN (17, 31)
+              AND email IS NOT NULL
+              AND email != ''
+        ");
+        if (!$stmt) {
+            error_log('Failed to prepare Purchase Request approval recipients query: ' . $this->db->error);
+            return;
+        }
+
+        $stmt->execute();
+        $recipients = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        foreach ($recipients as $user) {
+            $roleLabel = ((int)$user['role_id'] === 17) ? 'Purchase Head' : 'Senior Purchase Executive';
+            $subject = "Action Required: Purchase Request Approval — {$projectName}";
+            $body = $this->buildHtml(
+                title:       'Purchase Request Awaiting Procurement Approval',
+                greeting:    "Dear {$user['full_name']},",
+                message:     "Purchase Request <strong>PR-{$prId}</strong> for project <strong>{$projectName}</strong> has been approved by Project Manager Head ({$approverName}) and is now awaiting your approval as <strong>{$roleLabel}</strong>.",
+                stepHtml:    '',
+                ctaLabel:    'Review Purchase Request',
+                ctaLink:     $base . "/con-purchase-request/{$prId}",
+                projectName: $projectName,
+                note:        'Please review and approve the Purchase Request to continue the procurement workflow.'
             );
 
             $this->send($user['email'], $subject, $body);
