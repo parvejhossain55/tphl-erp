@@ -116,14 +116,14 @@ class Con_PurchaseOrderController extends Controller
             // ── Send Email Notification to Approvers ─────────────────────────
             require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
             $mailService = new \ProjectWorkflowMailService($this->db);
-            // Fetch project name
-            $projectQuery = $this->db->prepare("SELECT p.name FROM purchase_requests pr JOIN projects p ON p.id = pr.project_id WHERE pr.id = ?");
+            // Fetch project ID and name. The mail service expects a project ID.
+            $projectQuery = $this->db->prepare("SELECT pr.project_id, p.name FROM purchase_requests pr JOIN projects p ON p.id = pr.project_id WHERE pr.id = ?");
             $projectQuery->bind_param('i', $requestId);
             $projectQuery->execute();
             $pNameRow = $projectQuery->get_result()->fetch_assoc();
             $projectName = $pNameRow['name'] ?? 'Unknown Project';
 
-            $mailService->notifyApproversForNewPO($requestId, $projectName, $result['id']);
+            $mailService->notifyApproversForNewPO((int)($pNameRow['project_id'] ?? 0), $projectName, $result['id']);
 
             setSuccess('Purchase Order #' . $result['id'] . ' generated. Awaiting QC & Internal Audit approval.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$result['id']}");
@@ -168,6 +168,9 @@ class Con_PurchaseOrderController extends Controller
             );
             $stmt->bind_param('isi', $userId, $note, $id);
             if ($stmt->execute()) {
+                require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+                $mailService = new \ProjectWorkflowMailService($this->db);
+                $mailService->notifyPOApprovalStage($po['project_name'], $id, [24], 'QC & Internal Audit');
                 setSuccess('Purchase Order approved by Purchase Head. Awaiting QC & Internal Audit approval.');
             } else {
                 setError('Failed to approve Purchase Order: ' . $stmt->error);
@@ -190,6 +193,9 @@ class Con_PurchaseOrderController extends Controller
             );
             $stmt->bind_param('isi', $userId, $note, $id);
             if ($stmt->execute()) {
+                require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+                $mailService = new \ProjectWorkflowMailService($this->db);
+                $mailService->notifyPOApprovalStage($po['project_name'], $id, [20], 'Operation Head');
                 setSuccess('Purchase Order approved by QC & Internal Audit. Awaiting Operation Head approval.');
             } else {
                 setError('Failed to approve Purchase Order: ' . $stmt->error);

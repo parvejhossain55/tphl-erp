@@ -4,16 +4,19 @@ namespace Phase2;
 use Controller;
 
 require_once __DIR__ . '/../../models/AssetManagement.php';
+require_once __DIR__ . '/../../views/accounts/AccountMailService.php';
 
 class AssetManagementController extends Controller
 {
     protected $db;
     protected $model;
+    protected $mailService;
 
     public function __construct($db)
     {
         $this->db = $db;
         $this->model = new \AssetManagement($db);
+        $this->mailService = new \AccountMailService($db);
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -509,7 +512,19 @@ class AssetManagementController extends Controller
                 }
             }
 
-            if ($this->model->createExtraPurchase($data)) {
+            if ($requestId = $this->model->createExtraPurchase($data)) {
+                try {
+                    $request = $this->model->findExtraPurchase($requestId);
+                    if ($request) {
+                        $this->mailService->sendOfficeProcurementToApprovalRoles(
+                            $request,
+                            [20, 32],
+                            'Operations'
+                        );
+                    }
+                } catch (\Throwable $e) {
+                    error_log('Office Procurement email (submission) failed: ' . $e->getMessage());
+                }
                 setSuccess("Extra purchase request submitted.");
             } else {
                 setError("Failed extra purchase submission.");
@@ -584,6 +599,27 @@ class AssetManagementController extends Controller
             }
 
             if ($this->model->approveStep($id, $step, $status, $userId, $note, $document)) {
+                if ($status === 'approved') {
+                    try {
+                        $updatedRequest = $this->model->findExtraPurchase($id);
+                        $nextStage = [
+                            'operations'    => [[17, 23, 31], 'Purchase Head / Senior Purchase Executive'],
+                            'purchase_head' => [[24, 25], 'QC & Internal Audit'],
+                            'qc_audit'      => [[1, 3, 33], 'Management'],
+                            'mgmt'          => [[6, 30], 'Accounts / Accounts Head'],
+                        ][$step] ?? null;
+
+                        if ($updatedRequest && $nextStage) {
+                            $this->mailService->sendOfficeProcurementToApprovalRoles(
+                                $updatedRequest,
+                                $nextStage[0],
+                                $nextStage[1]
+                            );
+                        }
+                    } catch (\Throwable $e) {
+                        error_log('Office Procurement email (approval stage) failed: ' . $e->getMessage());
+                    }
+                }
                 // ====== AUTO POSTING GENERAL JOURNAL (Batch 2/3) ======
                 if ($status === 'approved') {
                     try {

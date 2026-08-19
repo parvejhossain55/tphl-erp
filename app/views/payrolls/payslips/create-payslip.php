@@ -86,6 +86,7 @@
                                             data-empid="<?= $emp['employee_id'] ?>" data-email="<?= $emp['email'] ?>"
                                             data-basic-salary="<?= $emp['basic_salary'] ?>"
                                             data-gross-salary="<?= $emp['gross_salary'] ?>"
+                                            data-salary-items="<?= htmlspecialchars(json_encode($emp['salary_items'] ?? []), ENT_QUOTES, 'UTF-8') ?>"
                                             data-per-meal-amount="<?= $emp['per_meal_amount'] ?? 0 ?>"
                                             data-advance-salary="<?= $emp['advance_salary'] ?? 0 ?>"
                                             data-joining-date="<?= $emp['joining_date'] ?>">
@@ -145,6 +146,7 @@
                                                 <label class="form-label"><?= $item['name'] ?></label>
                                                 <input type="number" name="earning[<?= $item['id'] ?>]"
                                                     class="form-control earning"
+                                                    data-percentage="<?= htmlspecialchars((string) ($item['percentage'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                                                     data-item-name="<?= htmlspecialchars(strtolower(trim($item['name']))) ?>"
                                                     value="0">
                                             </div>
@@ -168,6 +170,7 @@
                                                 <label class="form-label"><?= $item['name'] ?></label>
                                                 <input type="number" name="deduction[<?= $item['id'] ?>]"
                                                     class="form-control deduction"
+                                                    data-percentage="<?= htmlspecialchars((string) ($item['percentage'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                                                     data-item-name="<?= htmlspecialchars(strtolower(trim($item['name']))) ?>"
                                                     value="0">
                                             </div>
@@ -254,6 +257,32 @@
 
         const STORAGE_KEY = 'payslip_data';
 
+        function applySalaryItems() {
+            const basicSalary = parseFloat(document.getElementById('basicSalary').value) || 0;
+            const employeeSelect = document.getElementById('employeeSelect');
+            const selected = employeeSelect.options[employeeSelect.selectedIndex];
+            let salaryItems = {};
+
+            try {
+                salaryItems = JSON.parse(selected.getAttribute('data-salary-items') || '{}');
+            } catch (error) {
+                salaryItems = {};
+            }
+
+            document.querySelectorAll('.earning[data-percentage], .deduction[data-percentage]').forEach(function (input) {
+                const itemId = input.name.match(/\d+/)?.[0];
+                if (itemId && Object.prototype.hasOwnProperty.call(salaryItems, itemId)) {
+                    input.value = Number(salaryItems[itemId] || 0).toFixed(2);
+                    return;
+                }
+
+                const percentage = parseFloat(input.getAttribute('data-percentage')) || 0;
+                if (percentage > 0) {
+                    input.value = ((basicSalary * percentage) / 100).toFixed(2);
+                }
+            });
+        }
+
         // ── Apply employee data from the selected <option> ──────────────────────
         function applyEmployeeData(selectEl) {
             const selected = selectEl.options[selectEl.selectedIndex];
@@ -293,6 +322,7 @@
                 }
             }
 
+            applySalaryItems();
             calculateNetSalary();
         }
 

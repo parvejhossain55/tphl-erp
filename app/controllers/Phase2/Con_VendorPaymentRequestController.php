@@ -658,7 +658,7 @@ class Con_VendorPaymentRequestController extends Controller
                     error_log("Failed to auto-generate vendor accrual journal: " . $e->getMessage());
                 }
 
-                // Send email notification on approval
+                // Notify the next pending approval stage. Submitted means QC just approved.
                 try {
                     $updatedRequest = $this->model->find($id);
                     if ($updatedRequest) {
@@ -668,11 +668,19 @@ class Con_VendorPaymentRequestController extends Controller
                         $updatedRequest['vendor_name']  = $vendor['name'] ?? '';
                         $updatedRequest['project_name'] = $project['name'] ?? '';
 
-                        $this->mailService->sendVendorPaymentOnApproval(
-                            $updatedRequest,
-                            'approved',
-                            $this->userId
-                        );
+                        if ($request['status'] === 'Submitted') {
+                            $this->mailService->sendVendorPaymentToApprovalRoles(
+                                $updatedRequest,
+                                [1, 3, 33],
+                                'Management'
+                            );
+                        } else {
+                            $this->mailService->sendVendorPaymentOnApproval(
+                                $updatedRequest,
+                                'approved',
+                                $this->userId
+                            );
+                        }
                     }
                 } catch (\Exception $e) {
                     error_log("Vendor Payment email (approval) failed: " . $e->getMessage());

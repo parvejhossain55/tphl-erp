@@ -588,6 +588,28 @@ class Con_PurchaseRequestController extends Controller
 
         if ($stmt && $stmt->execute()) {
             setSuccess($successMsg);
+
+            if ($status === 'Approved') {
+                try {
+                    require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';
+                    $mailService = new \ProjectWorkflowMailService($this->db);
+                    $projectStmt = $this->db->prepare('SELECT name FROM projects WHERE id = ? LIMIT 1');
+                    $projectStmt->bind_param('i', $pr['project_id']);
+                    $projectStmt->execute();
+                    $projectRow = $projectStmt->get_result()->fetch_assoc();
+
+                    if ($projectRow) {
+                        $mailService->notifyPurchaseTeamForPRApproval(
+                            (int)$pr['project_id'],
+                            $projectRow['name'],
+                            (int)$id,
+                            $_SESSION['user']['full_name'] ?? 'Project Manager Head'
+                        );
+                    }
+                } catch (\Throwable $e) {
+                    error_log('Failed to send PR procurement approval email: ' . $e->getMessage());
+                }
+            }
             
             // Trigger email if rejected
             if ($status === 'Rejected') {
