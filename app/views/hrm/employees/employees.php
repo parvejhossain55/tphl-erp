@@ -27,10 +27,13 @@ $show_breadcrumb = true;
 
             <!-- Search -->
             <div class="col-xxl-3 col-lg-3 col-md-6 col-12">
-                <div class="search-box">
+                <div class="search-box position-relative">
                     <input type="text" class="form-control" name="q" id="employeeName"
-                        placeholder="Employee Name / Username / ID"
+                        placeholder="Employee Name / Username / ID" autocomplete="off"
                         value="<?= htmlspecialchars($searchTerm ?? '') ?>">
+                        
+                    <div id="employeeSuggestions" class="dropdown-menu w-100 shadow-sm" style="display:none; position: absolute; max-height:250px; overflow-y:auto; top:100%; left:0; z-index:1050; padding:0; margin-top:2px;">
+                    </div>
                 </div>
             </div>
 
@@ -185,4 +188,55 @@ $show_breadcrumb = true;
 </div>
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>";
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const searchInput = document.getElementById('employeeName');
+        const suggestionsBox = document.getElementById('employeeSuggestions');
+        let timeout = null;
+
+        searchInput.addEventListener('input', function() {
+            clearTimeout(timeout);
+            const query = this.value.trim();
+
+            if (query.length < 2) {
+                suggestionsBox.style.display = 'none';
+                return;
+            }
+
+            timeout = setTimeout(() => {
+                fetch(`${base_url}/api/employee/search-suggestions?q=${encodeURIComponent(query)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        suggestionsBox.innerHTML = '';
+                        if (data.length > 0) {
+                            data.forEach(emp => {
+                                const item = document.createElement('a');
+                                item.className = 'dropdown-item px-3 py-2 border-bottom';
+                                item.style.cursor = 'pointer';
+                                item.innerHTML = `<strong>${emp.full_name}</strong> <small class="text-muted">(${emp.employee_id || 'N/A'})</small><br><small class="text-primary">@${emp.username || 'N/A'}</small>`;
+                                item.addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    searchInput.value = emp.full_name;
+                                    suggestionsBox.style.display = 'none';
+                                    searchInput.closest('form').submit(); // optional: auto-submit on click
+                                });
+                                suggestionsBox.appendChild(item);
+                            });
+                            suggestionsBox.style.display = 'block';
+                        } else {
+                            suggestionsBox.innerHTML = '<div class="px-3 py-2 text-muted">No suggestions found</div>';
+                            suggestionsBox.style.display = 'block';
+                        }
+                    })
+                    .catch(err => console.error("Error fetching suggestions", err));
+            }, 300);
+        });
+
+        // Hide when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
+                suggestionsBox.style.display = 'none';
+            }
+        });
+    });
 </script>
