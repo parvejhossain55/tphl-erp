@@ -106,8 +106,9 @@ class LetterTemplateController extends Controller
     {
         $designation_id = $_GET['designation_id'] ?? null;
         $letter_type = $_GET['type'] ?? null;
+        $employee_id = $_GET['employee_id'] ?? null;
 
-        $letters = $this->letterModel->getAllWithDetails($designation_id, $letter_type);
+        $letters = $this->letterModel->getAllWithDetails($designation_id, $letter_type, $employee_id);
 
         require_once __DIR__ . '/../models/Designation.php';
         $designationModel = new Designation($this->db);

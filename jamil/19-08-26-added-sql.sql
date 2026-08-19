@@ -1,0 +1,2 @@
+ALTER TABLE `letter_templates` MODIFY COLUMN `type` ENUM('appointment','joining','promotion','increment','experience','noc','show_cause','warning','caution','improvement') NOT NULL;
+ALTER TABLE `letters` MODIFY COLUMN `letter_type` ENUM('appointment','joining','promotion','increment','experience','noc','salary_certificate','show_cause','warning','caution','improvement') NOT NULL;

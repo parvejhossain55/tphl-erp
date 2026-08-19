@@ -80,6 +80,10 @@
                                         <option value="increment" <?= $letter['letter_type'] == 'increment' ? 'selected' : '' ?>>Salary Increment Letter</option>
                                         <option value="experience" <?= $letter['letter_type'] == 'experience' ? 'selected' : '' ?>>Experience Certificate</option>
                                         <option value="noc" <?= $letter['letter_type'] == 'noc' ? 'selected' : '' ?>>No Objection Certificate (NOC)</option>
+                                        <option value="show_cause" <?= $letter['letter_type'] == 'show_cause' ? 'selected' : '' ?>>Show Cause Letter</option>
+                                        <option value="warning" <?= $letter['letter_type'] == 'warning' ? 'selected' : '' ?>>Warning Letter</option>
+                                        <option value="caution" <?= $letter['letter_type'] == 'caution' ? 'selected' : '' ?>>Caution Letter</option>
+                                        <option value="improvement" <?= $letter['letter_type'] == 'improvement' ? 'selected' : '' ?>>Improvement Letter</option>
                                     </select>
                                 </div>
                             </div>

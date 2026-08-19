@@ -29,12 +29,12 @@ class Letter extends Model
             die("SQL Prepare Error (Create Letter): " . $this->db->error);
         }
 
-        $template_id       = !empty($data['template_id'])     ? (int)$data['template_id']   : null;
-        $send_to_email     = !empty($data['send_to_email'])   ? (int)$data['send_to_email'] : 0;
-        $purpose           = !empty($data['purpose'])         ? $data['purpose']            : null;
+        $template_id = !empty($data['template_id']) ? (int) $data['template_id'] : null;
+        $send_to_email = !empty($data['send_to_email']) ? (int) $data['send_to_email'] : 0;
+        $purpose = !empty($data['purpose']) ? $data['purpose'] : null;
         $certificate_month = !empty($data['certificate_month']) ? $data['certificate_month'] : null;
-        $gross_salary      = isset($data['gross_salary'])  && $data['gross_salary']  !== '' ? (float)$data['gross_salary']  : null;
-        $net_salary        = isset($data['net_salary'])    && $data['net_salary']    !== '' ? (float)$data['net_salary']    : null;
+        $gross_salary = isset($data['gross_salary']) && $data['gross_salary'] !== '' ? (float) $data['gross_salary'] : null;
+        $net_salary = isset($data['net_salary']) && $data['net_salary'] !== '' ? (float) $data['net_salary'] : null;
 
         $stmt->bind_param(
             "iiisissssssssssssisssdd",
@@ -70,7 +70,7 @@ class Letter extends Model
         return $this->db->insert_id;
     }
 
-    public function getAllWithDetails($designation_id = null, $letter_type = null)
+    public function getAllWithDetails($designation_id = null, $letter_type = null, $employee_id = null)
     {
         $sql = "SELECT l.id, l.employee_id, l.designation_id, l.department_id, l.letter_type, l.template_id,
                        l.subject, l.body, l.letter_date, l.ref_number, l.joining_date, l.effective_date,
@@ -86,10 +86,13 @@ class Letter extends Model
                 WHERE 1=1";
 
         if ($designation_id) {
-            $sql .= " AND l.designation_id = " . (int)$designation_id;
+            $sql .= " AND l.designation_id = " . (int) $designation_id;
         }
         if ($letter_type) {
             $sql .= " AND l.letter_type = '" . $this->db->real_escape_string($letter_type) . "'";
+        }
+        if ($employee_id) {
+            $sql .= " AND l.employee_id = " . (int) $employee_id;
         }
 
         $sql .= " ORDER BY l.id DESC";
@@ -153,13 +156,13 @@ class Letter extends Model
             die("SQL Prepare Error (Update Letter): " . $this->db->error);
         }
 
-        $template_id       = !empty($data['template_id'])       ? (int)$data['template_id']   : null;
-        $send_to_email     = !empty($data['send_to_email'])     ? (int)$data['send_to_email'] : 0;
-        $purpose           = !empty($data['purpose'])           ? $data['purpose']            : null;
-        $certificate_month = !empty($data['certificate_month']) ? $data['certificate_month']  : null;
-        $gross_salary      = isset($data['gross_salary'])  && $data['gross_salary']  !== '' ? (float)$data['gross_salary']  : null;
-        $net_salary        = isset($data['net_salary'])    && $data['net_salary']    !== '' ? (float)$data['net_salary']    : null;
-        $id = (int)$id;
+        $template_id = !empty($data['template_id']) ? (int) $data['template_id'] : null;
+        $send_to_email = !empty($data['send_to_email']) ? (int) $data['send_to_email'] : 0;
+        $purpose = !empty($data['purpose']) ? $data['purpose'] : null;
+        $certificate_month = !empty($data['certificate_month']) ? $data['certificate_month'] : null;
+        $gross_salary = isset($data['gross_salary']) && $data['gross_salary'] !== '' ? (float) $data['gross_salary'] : null;
+        $net_salary = isset($data['net_salary']) && $data['net_salary'] !== '' ? (float) $data['net_salary'] : null;
+        $id = (int) $id;
 
         $stmt->bind_param(
             "iiisissssssssssssisssddi",
@@ -210,7 +213,8 @@ class Letter extends Model
      */
     public function createSalaryItems(int $letterId, array $items): void
     {
-        if (empty($items)) return;
+        if (empty($items))
+            return;
 
         $stmt = $this->db->prepare("
             INSERT INTO letter_salary_items (letter_id, item_type, label, amount, sort_order)
@@ -218,10 +222,10 @@ class Letter extends Model
         ");
 
         foreach ($items as $i => $item) {
-            $type   = $item['item_type'];
-            $label  = $item['label'];
-            $amount = (float)($item['amount'] ?? 0);
-            $order  = (int)($item['sort_order'] ?? $i);
+            $type = $item['item_type'];
+            $label = $item['label'];
+            $amount = (float) ($item['amount'] ?? 0);
+            $order = (int) ($item['sort_order'] ?? $i);
             $stmt->bind_param("issdi", $letterId, $type, $label, $amount, $order);
             $stmt->execute();
         }
