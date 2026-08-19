@@ -618,4 +618,19 @@ WHERE e.id = ?
         $result = $this->db->query($sql);
         return $result->fetch_all(MYSQLI_ASSOC);
     }
+
+    public function getSearchSuggestions($q)
+    {
+        $sql = "SELECT id, full_name, username, employee_id 
+                FROM employees 
+                WHERE full_name LIKE ? OR username LIKE ? OR employee_id LIKE ? 
+                ORDER BY full_name ASC 
+                LIMIT 15";
+        $stmt = $this->db->prepare($sql);
+        $likeQ = "%$q%";
+        $stmt->bind_param("sss", $likeQ, $likeQ, $likeQ);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
 }
