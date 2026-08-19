@@ -1,1 +1,0 @@
-<?php \=require 'app/config/config.php'; \=new mysqli(\['db_host'],\['db_user'],\['db_pass'],\['db_name']); if(\->connect_error) die('Connect Error'); \=\->query('DESCRIBE employees'); if(!\) die(\->error); while(\=\->fetch_assoc()) echo \['Field'].' ';; ?>

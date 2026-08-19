@@ -33,6 +33,7 @@ return [
     'delete-employee' => ['controller' => 'EmployeeController', 'method' => 'delete'],
     'employees-excel-download' => ['controller' => 'EmployeeController', 'method' => 'exportExcel'],
     'employees-pdf-download' => ['controller' => 'EmployeeController', 'method' => 'exportPDF'],
+    'api/employee/search-suggestions' => ['controller' => 'EmployeeController', 'method' => 'searchSuggestions'],
 
     // =========================================================================
     // Controller: EmployeeDashboardController
@@ -288,4 +289,9 @@ return [
     // Payroll Summary Report
     'payroll-summary-report' => ['controller' => 'PayrollController', 'method' => 'summaryReport'],
     'payroll-summary-report-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSummaryReportPDF'],
+
+    // Salary Report
+    'payroll-salary-report' => ['controller' => 'PayrollController', 'method' => 'salaryReport'],
+    'payroll-salary-report-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSalaryReportPDF'],
+    'payroll-salary-report-csv' => ['controller' => 'PayrollController', 'method' => 'exportSalaryReportCSV'],
 ];

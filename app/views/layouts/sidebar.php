@@ -121,7 +121,7 @@
 
         try {
             // 1. Pending Purchase Requests awaiting role-specific action
-            if (in_array($sidebarRoleId, [1, 3])) { 
+            if (in_array($sidebarRoleId, [1, 3])) {
                 // Admin / Super Admin: Submitted PRs awaiting approval OR Approved PRs awaiting executive assignment
                 $prRes = $db->query("
                     SELECT COUNT(*) AS c 
@@ -263,7 +263,7 @@
                 $sidebar_user_id = $_SESSION['user']['id'] ?? 0;
                 $sidebar_role_id = $_SESSION['user']['role_id'] ?? 0;
                 $hasErpAccess = in_array($sidebar_role_id, [1, 3]);
-                
+
                 if (!$hasErpAccess) {
                     global $db;
                     $champ_check = $db->query("SELECT id FROM erp_tracker_champions WHERE user_id = $sidebar_user_id LIMIT 1");
@@ -272,15 +272,16 @@
                     }
                 }
                 ?>
-                
+
                 <?php if ($hasErpAccess): ?>
-                <!-- ERP Tracker -->
-                <li class="slide <?= isActive('erp-tracker', $current_route) ?>">
-                    <a href="<?= $base_url ?>/erp-tracker" class="sidebar__menu-item <?= isActive('erp-tracker', $current_route) ?>">
-                        <div class="side-menu__icon"><i class="fas fa-tasks"></i></div>
-                        <span class="sidebar__menu-label">ERP Tracker</span>
-                    </a>
-                </li>
+                    <!-- ERP Tracker -->
+                    <li class="slide <?= isActive('erp-tracker', $current_route) ?>">
+                        <a href="<?= $base_url ?>/erp-tracker"
+                            class="sidebar__menu-item <?= isActive('erp-tracker', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fas fa-tasks"></i></div>
+                            <span class="sidebar__menu-label">ERP Tracker</span>
+                        </a>
+                    </li>
                 <?php endif; ?>
 
                 <!-- Sales Manager CATEGORY -->
@@ -483,32 +484,41 @@
                     </li>
 
                     <?php if ((hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [5, 9, 15, 33]))): ?>
-                        
+
                         <!-- Incentives Module -->
-                        <li class="slide has-sub <?= isActive(['my-incentives', 'incentive-management', 'incentive-config'], $current_route) ? 'active' : '' ?>">
-                            <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['my-incentives', 'incentive-management', 'incentive-config'], $current_route) ? 'menu-open active' : '' ?>">
+                        <li
+                            class="slide has-sub <?= isActive(['my-incentives', 'incentive-management', 'incentive-config'], $current_route) ? 'active' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['my-incentives', 'incentive-management', 'incentive-config'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
                                 <span class="sidebar__menu-label">Incentives</span>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             </a>
                             <ul class="sidebar-menu child2" style="display:block;">
                                 <li class="slide child2">
-                                    <a href="<?= $base_url ?>/my-incentives" class="sidebar__menu-item <?= isActive('my-incentives', $current_route) ?>">My Incentives</a>
+                                    <a href="<?= $base_url ?>/my-incentives"
+                                        class="sidebar__menu-item <?= isActive('my-incentives', $current_route) ?>">My
+                                        Incentives</a>
                                 </li>
                                 <!-- Visible to Management (1,3,33), Chief Officer (2), Sales Head (6), Sales Manager (5), Sales Team Head (9, 15) -->
                                 <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 9, 15, 33])): ?>
                                     <li class="slide child2">
-                                        <a href="<?= $base_url ?>/incentive-management" class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">My Team Incentives</a>
+                                        <a href="<?= $base_url ?>/incentive-management"
+                                            class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">My
+                                            Team Incentives</a>
                                     </li>
                                     <li class="slide child2">
-                                        <a href="<?= $base_url ?>/team-targets" class="sidebar__menu-item <?= isActive('team-targets', $current_route) ?>">My Team Targets</a>
+                                        <a href="<?= $base_url ?>/team-targets"
+                                            class="sidebar__menu-item <?= isActive('team-targets', $current_route) ?>">My Team
+                                            Targets</a>
                                     </li>
                                 <?php endif; ?>
-                                
+
                                 <!-- Settings only for Top Management -->
                                 <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 6, 33])): ?>
                                     <li class="slide child2">
-                                        <a href="<?= $base_url ?>/incentive-config" class="sidebar__menu-item <?= isActive('incentive-config', $current_route) ?>">Settings</a>
+                                        <a href="<?= $base_url ?>/incentive-config"
+                                            class="sidebar__menu-item <?= isActive('incentive-config', $current_route) ?>">Settings</a>
                                     </li>
                                 <?php endif; ?>
                             </ul>
@@ -1285,9 +1295,9 @@
 
                     <!-- Payroll & Report -->
                     <li
-                        class="slide has-sub <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list', 'payroll-detailed-summary', 'payroll-summary-report'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list', 'payroll-detailed-summary', 'payroll-summary-report', 'payroll-salary-report'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list', 'payroll-detailed-summary', 'payroll-summary-report'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list', 'payroll-detailed-summary', 'payroll-summary-report', 'payroll-salary-report'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-regular fa-file-excel"></i></div>
                             <span class="sidebar__menu-label">Payroll & Report</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -1327,6 +1337,11 @@
                                 <a href="<?= $base_url ?>/payroll-summary-report"
                                     class="sidebar__menu-item <?= isActive('payroll-summary-report', $current_route) ?>">Payroll
                                     Summary Report</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/payroll-salary-report"
+                                    class="sidebar__menu-item <?= isActive('payroll-salary-report', $current_route) ?>">Salary
+                                    Report</a>
                             </li>
                         </ul>
                     </li>
@@ -1675,8 +1690,10 @@
                             </li>
                             <li class="slide <?= isActive('trash-client-payment-list', $current_route) ?>">
                                 <a href="<?= $base_url ?>/trash-client-payment-list"
-                                    class="sidebar__menu-item <?= isActive('trash-client-payment-list', $current_route) ?>" style="display:flex; justify-content:space-between; align-items:center; padding-right:12px;">
-                                    <span class="text-truncate" style="color: #ff9800;"><i class="fa-regular fa-trash-can-arrow-up me-2"></i> Trash List</span>
+                                    class="sidebar__menu-item <?= isActive('trash-client-payment-list', $current_route) ?>"
+                                    style="display:flex; justify-content:space-between; align-items:center; padding-right:12px;">
+                                    <span class="text-truncate" style="color: #ff9800;"><i
+                                            class="fa-regular fa-trash-can-arrow-up me-2"></i> Trash List</span>
                                 </a>
                             </li>
                             <li class="slide <?= isActive('management-cash-in', $current_route) ?>">
@@ -1968,23 +1985,23 @@
 
                 <!-- ==================== PHASE 2: CONSTRUCTION MANAGEMENT ==================== -->
                 <?php if (($_SESSION['user']['role_id'] ?? 0) != 9): ?>
-                <?php
-                $hasConPerms = hasPermission('Construction Management') || hasPermission('site engineer dashboard') || in_array($_SESSION['user']['role_id'] ?? 0, [20, 32]) || hasPermission('Purchase order') || ($_SESSION['user']['role_id'] ?? 0) == 23 || hasPermission('Project Draft Design') || hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Estimator dashboard') || hasPermission('Project structure design') || hasPermission('QC Dashboard') || hasPermission('Project Manage') || hasPermission('Estimate Budget') || hasPermission('Work Order') || hasPermission('Working Plan') || hasPermission('Project Target Set') || hasPermission('Budget Extend') || hasPermission('Material Manage') || hasPermission('Operators & Bills') || hasPermission('Project Report') || hasPermission('Bill & Payments') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3]);
-                if ($hasConPerms):
-                    ?>
-                    <li class="sidebar__menu-category">
-                        <span class="category-name">Construction </span>
-                    </li>
-                <?php endif; ?>
-                <?php if (hasPermission('Construction Management') || ($_SESSION['user']['role_id'] ?? 0) == 15): ?>
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/con-dashboard"
-                            class="sidebar__menu-item <?= isActive('con-dashboard', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
-                            <span class="sidebar__menu-label">Constrution Dashboard</span>
-                        </a>
-                    </li>
-                <?php endif; ?>
+                    <?php
+                    $hasConPerms = hasPermission('Construction Management') || hasPermission('site engineer dashboard') || in_array($_SESSION['user']['role_id'] ?? 0, [20, 32]) || hasPermission('Purchase order') || ($_SESSION['user']['role_id'] ?? 0) == 23 || hasPermission('Project Draft Design') || hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Estimator dashboard') || hasPermission('Project structure design') || hasPermission('QC Dashboard') || hasPermission('Project Manage') || hasPermission('Estimate Budget') || hasPermission('Work Order') || hasPermission('Working Plan') || hasPermission('Project Target Set') || hasPermission('Budget Extend') || hasPermission('Material Manage') || hasPermission('Operators & Bills') || hasPermission('Project Report') || hasPermission('Bill & Payments') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3]);
+                    if ($hasConPerms):
+                        ?>
+                        <li class="sidebar__menu-category">
+                            <span class="category-name">Construction </span>
+                        </li>
+                    <?php endif; ?>
+                    <?php if (hasPermission('Construction Management') || ($_SESSION['user']['role_id'] ?? 0) == 15): ?>
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/con-dashboard"
+                                class="sidebar__menu-item <?= isActive('con-dashboard', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                                <span class="sidebar__menu-label">Constrution Dashboard</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
 
                     <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [3, 15, 22, 12, 20, 32])): ?>
                         <li class="slide">
@@ -1996,97 +2013,97 @@
                         </li>
                     <?php endif; ?>
 
-                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 22])): ?>
-                    <li class="slide">
-                        <a href="<?= $base_url ?>/con-progress-report"
-                            class="sidebar__menu-item <?= isActive('con-progress-report', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-file-invoice"></i></div>
-                            <span class="sidebar__menu-label">Site Progress Report</span>
-                        </a>
-                    </li>
-                <?php endif; ?>
+                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 22])): ?>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/con-progress-report"
+                                class="sidebar__menu-item <?= isActive('con-progress-report', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-file-invoice"></i></div>
+                                <span class="sidebar__menu-label">Site Progress Report</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
 
-                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])): ?>
-                    <li class="slide">
-                        <a href="<?= $base_url ?>/con-projects"
-                            class="sidebar__menu-item <?= isActive('con-projects', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-building-circle-check"></i></div>
-                            <span class="sidebar__menu-label"> Projects & Phase Plan</span>
-                        </a>
-                    </li>
-                <?php endif; ?>
+                    <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])): ?>
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/con-projects"
+                                class="sidebar__menu-item <?= isActive('con-projects', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-building-circle-check"></i></div>
+                                <span class="sidebar__menu-label"> Projects & Phase Plan</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
 
-                <?php
-                $showAllPhases = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22]);
-                if (!empty($_SESSION['active_project_id']) && $showAllPhases):
-                    $projectSubRoutes = ['con-project', 'con-project-timeline', 'con-phase-plan', 'con-floor-setup', 'con-monthly-targets', 'con-monthly-target', 'con-monthly-review', 'con-risk-dashboard'];
-                    $isProjectActive = isActive($projectSubRoutes, $current_route);
-                    ?>
-                    <li class="slide has-sub <?= $isProjectActive ? 'active' : '' ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= $isProjectActive ? 'active' : '' ?>">
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                            <div class="side-menu__icon"><i class="fa-solid fa-folder-open"></i></div>
-                            <span class="sidebar__menu-label"
-                                style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 150px;"
-                                title="<?= htmlspecialchars($_SESSION['active_project_name'] ?? 'Active Project') ?>">
-                                <?= htmlspecialchars($_SESSION['active_project_name'] ?? 'Active Project') ?>
-                            </span>
-                        </a>
-                        <ul class="sidebar-menu child1" style="display:block;">
-                            <li class="slide <?= isActive('con-project', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('con-project', $current_route) ?>"
-                                    href="<?= $base_url ?>/con-project/<?= $_SESSION['active_project_id'] ?>">
-                                    Project Overview
-                                </a>
-                            </li>
-                            <li class="slide <?= isActive('con-project-timeline', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('con-project-timeline', $current_route) ?>"
-                                    href="<?= $base_url ?>/con-project-timeline/<?= $_SESSION['active_project_id'] ?>">
-                                    Timeline Setup
-                                </a>
-                            </li>
-                            <li class="slide <?= isActive('con-phase-plan', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('con-phase-plan', $current_route) ?>"
-                                    href="<?= $base_url ?>/con-phase-plan/<?= $_SESSION['active_project_id'] ?>">
-                                    Phase Plan
-                                </a>
-                            </li>
-                            <li class="slide <?= isActive('con-floor-setup', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('con-floor-setup', $current_route) ?>"
-                                    href="<?= $base_url ?>/con-floor-setup/<?= $_SESSION['active_project_id'] ?>">
-                                    Floor Setup
-                                </a>
-                            </li>
-                            <li
-                                class="slide <?= isActive(['con-monthly-targets', 'con-monthly-target'], $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive(['con-monthly-targets', 'con-monthly-target'], $current_route) ?>"
-                                    href="<?= $base_url ?>/con-monthly-targets/<?= $_SESSION['active_project_id'] ?? 0 ?>">
-                                    Monthly Targets
-                                </a>
-                            </li>
-                            <li class="slide <?= isActive('con-monthly-review', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('con-monthly-review', $current_route) ?>"
-                                    href="<?= $base_url ?>/con-monthly-review/<?= $_SESSION['active_project_id'] ?>">
-                                    Monthly Review
-                                </a>
-                            </li>
-                            <li class="slide <?= isActive('con-risk-dashboard', $current_route) ?>">
-                                <a class="sidebar__menu-item <?= isActive('con-risk-dashboard', $current_route) ?>"
-                                    href="<?= $base_url ?>/con-risk-dashboard/<?= $_SESSION['active_project_id'] ?>">
-                                    Risk Dashboard
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                <?php endif; ?>
-                <?php if (hasPermission('site engineer dashboard')): ?>
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/con-site-engineer-dashboard"
-                            class="sidebar__menu-item <?= isActive('con-site-engineer-dashboard', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
-                            <span class="sidebar__menu-label">site engineer Dashboard</span>
-                        </a>
-                    </li>
+                    <?php
+                    $showAllPhases = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22]);
+                    if (!empty($_SESSION['active_project_id']) && $showAllPhases):
+                        $projectSubRoutes = ['con-project', 'con-project-timeline', 'con-phase-plan', 'con-floor-setup', 'con-monthly-targets', 'con-monthly-target', 'con-monthly-review', 'con-risk-dashboard'];
+                        $isProjectActive = isActive($projectSubRoutes, $current_route);
+                        ?>
+                        <li class="slide has-sub <?= $isProjectActive ? 'active' : '' ?>">
+                            <a href="javascript:void(0);" class="sidebar__menu-item <?= $isProjectActive ? 'active' : '' ?>">
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                                <div class="side-menu__icon"><i class="fa-solid fa-folder-open"></i></div>
+                                <span class="sidebar__menu-label"
+                                    style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 150px;"
+                                    title="<?= htmlspecialchars($_SESSION['active_project_name'] ?? 'Active Project') ?>">
+                                    <?= htmlspecialchars($_SESSION['active_project_name'] ?? 'Active Project') ?>
+                                </span>
+                            </a>
+                            <ul class="sidebar-menu child1" style="display:block;">
+                                <li class="slide <?= isActive('con-project', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('con-project', $current_route) ?>"
+                                        href="<?= $base_url ?>/con-project/<?= $_SESSION['active_project_id'] ?>">
+                                        Project Overview
+                                    </a>
+                                </li>
+                                <li class="slide <?= isActive('con-project-timeline', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('con-project-timeline', $current_route) ?>"
+                                        href="<?= $base_url ?>/con-project-timeline/<?= $_SESSION['active_project_id'] ?>">
+                                        Timeline Setup
+                                    </a>
+                                </li>
+                                <li class="slide <?= isActive('con-phase-plan', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('con-phase-plan', $current_route) ?>"
+                                        href="<?= $base_url ?>/con-phase-plan/<?= $_SESSION['active_project_id'] ?>">
+                                        Phase Plan
+                                    </a>
+                                </li>
+                                <li class="slide <?= isActive('con-floor-setup', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('con-floor-setup', $current_route) ?>"
+                                        href="<?= $base_url ?>/con-floor-setup/<?= $_SESSION['active_project_id'] ?>">
+                                        Floor Setup
+                                    </a>
+                                </li>
+                                <li
+                                    class="slide <?= isActive(['con-monthly-targets', 'con-monthly-target'], $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive(['con-monthly-targets', 'con-monthly-target'], $current_route) ?>"
+                                        href="<?= $base_url ?>/con-monthly-targets/<?= $_SESSION['active_project_id'] ?? 0 ?>">
+                                        Monthly Targets
+                                    </a>
+                                </li>
+                                <li class="slide <?= isActive('con-monthly-review', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('con-monthly-review', $current_route) ?>"
+                                        href="<?= $base_url ?>/con-monthly-review/<?= $_SESSION['active_project_id'] ?>">
+                                        Monthly Review
+                                    </a>
+                                </li>
+                                <li class="slide <?= isActive('con-risk-dashboard', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('con-risk-dashboard', $current_route) ?>"
+                                        href="<?= $base_url ?>/con-risk-dashboard/<?= $_SESSION['active_project_id'] ?>">
+                                        Risk Dashboard
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
+                    <?php if (hasPermission('site engineer dashboard')): ?>
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/con-site-engineer-dashboard"
+                                class="sidebar__menu-item <?= isActive('con-site-engineer-dashboard', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                                <span class="sidebar__menu-label">site engineer Dashboard</span>
+                            </a>
+                        </li>
 
                     <?php endif; ?>
 
@@ -2267,77 +2284,77 @@
                     <?php endif; ?>
 
 
-                <!-- Pre-Construction — only show if user has at least one permission -->
-                <?php if (hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Project structure design') || hasPermission('Project Draft Design') || hasPermission('Project Drawing') || hasPermission('Soil tests') || hasPermission('Construction Management') || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 19, 22])): ?>
-                    <li
-                        class="slide has-sub <?= isActive(['con-land-visibility-studies', 'con-land-acquisitions', 'con-land-requisitions', 'con-land-ledger', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit', 'legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-land-visibility-studies', 'con-land-acquisitions', 'con-land-requisitions', 'con-land-ledger', 'con-land-monthly-reports', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit', 'legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                            <div class="side-menu__icon">
-                                <i class="bi bi-building"></i>
-                            </div>
-                            <span class="sidebar__menu-label">Engineering Department</span>
-                        </a>
+                    <!-- Pre-Construction — only show if user has at least one permission -->
+                    <?php if (hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Project structure design') || hasPermission('Project Draft Design') || hasPermission('Project Drawing') || hasPermission('Soil tests') || hasPermission('Construction Management') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 19, 22])): ?>
+                        <li
+                            class="slide has-sub <?= isActive(['con-land-visibility-studies', 'con-land-acquisitions', 'con-land-requisitions', 'con-land-ledger', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit', 'legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['con-land-visibility-studies', 'con-land-acquisitions', 'con-land-requisitions', 'con-land-ledger', 'con-land-monthly-reports', 'con-architect-engineering', 'con-design-types', 'con-project-drawings', 'con-soil-tests', 'con-work-types', 'con-work-type-create', 'con-work-type-edit', 'legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                                <div class="side-menu__icon">
+                                    <i class="bi bi-building"></i>
+                                </div>
+                                <span class="sidebar__menu-label">Engineering Department</span>
+                            </a>
 
-                        <ul class="sidebar-menu child1" style="display:block;">
-                            <?php if (hasPermission('Land Study') || hasPermission('Construction Management')): ?>
-                                <li class="slide <?= isActive('con-land-visibility-studies', $current_route) ?>">
-                                    <a class="sidebar__menu-item <?= isActive('con-land-visibility-studies', $current_route) ?>"
-                                        href="<?= $base_url ?>/con-land-visibility-studies">Land Visibility Study</a>
-                                </li>
-                            <?php endif; ?>
-                            <?php if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 6, 14])): ?>
-                                <li
-                                    class="slide <?= isActive(['con-land-acquisitions', 'con-land-acquisitions/create', 'con-land-acquisitions/edit'], $current_route) ? 'active' : '' ?>">
-                                    <a class="sidebar__menu-item <?= isActive(['con-land-acquisitions', 'con-land-acquisitions/create', 'con-land-acquisitions/edit'], $current_route) ? 'active' : '' ?>"
-                                        href="<?= $base_url ?>/con-land-acquisitions">Land Acquisitions</a>
-                                </li>
-                                <li
-                                    class="slide <?= isActive(['con-land-requisitions', 'con-land-requisitions/create'], $current_route) ? 'active' : '' ?>">
-                                    <a class="sidebar__menu-item <?= isActive(['con-land-requisitions', 'con-land-requisitions/create'], $current_route) ? 'active' : '' ?>"
-                                        href="<?= $base_url ?>/con-land-requisitions">Land Requisitions</a>
-                                </li>
-                                <li class="slide <?= isActive('con-land-ledger', $current_route) ?>">
-                                    <a class="sidebar__menu-item <?= isActive('con-land-ledger', $current_route) ?>"
-                                        href="<?= $base_url ?>/con-land-ledger">Land Ledger</a>
-                                </li>
-                                <li class="d-none slide <?= isActive('con-land-monthly-reports', $current_route) ?>">
-                                    <a class="sidebar__menu-item <?= isActive('con-land-monthly-reports', $current_route) ?>"
-                                        href="<?= $base_url ?>/con-land-monthly-reports">Land Monthly Report</a>
-                                </li>
-                            <?php endif; ?>
-                            <?php if (hasPermission('Architect Design') || hasPermission('Construction Management')): ?>
-                                <li class="slide <?= isActive('con-architect-engineering', $current_route) ?>">
-                                    <a class="sidebar__menu-item <?= isActive('con-architect-engineering', $current_route) ?>"
-                                        href="<?= $base_url ?>/con-architect-engineering">Architecture Design</a>
-                                </li>
-                            <?php endif; ?>
-                            <?php if (($_SESSION['user']['role_id'] ?? 0) == 16): ?>
-                                <li class="slide <?= isActive('con-design-types', $current_route) ?>">
-                                    <a class="sidebar__menu-item <?= isActive('con-design-types', $current_route) ?>"
-                                        href="<?= $base_url ?>/con-design-types">Drawing Types</a>
-                                </li>
-                            <?php endif; ?>
-                            <?php if ((hasPermission('Project Draft Design') || hasPermission('Project Drawing') || hasPermission('Construction Management') || ($_SESSION['user']['role_id'] ?? 0) == 19) && ($_SESSION['user']['role_id'] ?? 0) != 18): ?>
-                                <li class="slide <?= isActive('con-project-drawings', $current_route) ?>">
-                                    <a class="sidebar__menu-item <?= isActive('con-project-drawings', $current_route) ?>"
-                                        href="<?= $base_url ?>/con-project-drawings">Project Drawings</a>
-                                </li>
-                            <?php endif; ?>
-                            <?php if (hasPermission('Project Draft Design') || hasPermission('Project Drawing') || hasPermission('Construction Management')): ?>
-                                <li
-                                    class="slide <?= isActive(['legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
-                                    <a class="sidebar__menu-item <?= isActive(['legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>"
-                                        href="<?= $base_url ?>/legal-sheet-lists">Project Approval Sheets</a>
-                                </li>
-                            <?php endif; ?>
-                            <?php if (hasPermission('Project structure design') || ($_SESSION['user']['role_id'] ?? 0) == 12): ?>
-                                <li class="slide <?= isActive('structure-design', $current_route) ?>">
-                                    <a class="sidebar__menu-item <?= isActive('structure-design', $current_route) ?>"
-                                        href="<?= $base_url ?>/structure-design">Project Structure Design</a>
-                                </li>
-                            <?php endif; ?>
+                            <ul class="sidebar-menu child1" style="display:block;">
+                                <?php if (hasPermission('Land Study') || hasPermission('Construction Management')): ?>
+                                    <li class="slide <?= isActive('con-land-visibility-studies', $current_route) ?>">
+                                        <a class="sidebar__menu-item <?= isActive('con-land-visibility-studies', $current_route) ?>"
+                                            href="<?= $base_url ?>/con-land-visibility-studies">Land Visibility Study</a>
+                                    </li>
+                                <?php endif; ?>
+                                <?php if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 6, 14])): ?>
+                                    <li
+                                        class="slide <?= isActive(['con-land-acquisitions', 'con-land-acquisitions/create', 'con-land-acquisitions/edit'], $current_route) ? 'active' : '' ?>">
+                                        <a class="sidebar__menu-item <?= isActive(['con-land-acquisitions', 'con-land-acquisitions/create', 'con-land-acquisitions/edit'], $current_route) ? 'active' : '' ?>"
+                                            href="<?= $base_url ?>/con-land-acquisitions">Land Acquisitions</a>
+                                    </li>
+                                    <li
+                                        class="slide <?= isActive(['con-land-requisitions', 'con-land-requisitions/create'], $current_route) ? 'active' : '' ?>">
+                                        <a class="sidebar__menu-item <?= isActive(['con-land-requisitions', 'con-land-requisitions/create'], $current_route) ? 'active' : '' ?>"
+                                            href="<?= $base_url ?>/con-land-requisitions">Land Requisitions</a>
+                                    </li>
+                                    <li class="slide <?= isActive('con-land-ledger', $current_route) ?>">
+                                        <a class="sidebar__menu-item <?= isActive('con-land-ledger', $current_route) ?>"
+                                            href="<?= $base_url ?>/con-land-ledger">Land Ledger</a>
+                                    </li>
+                                    <li class="d-none slide <?= isActive('con-land-monthly-reports', $current_route) ?>">
+                                        <a class="sidebar__menu-item <?= isActive('con-land-monthly-reports', $current_route) ?>"
+                                            href="<?= $base_url ?>/con-land-monthly-reports">Land Monthly Report</a>
+                                    </li>
+                                <?php endif; ?>
+                                <?php if (hasPermission('Architect Design') || hasPermission('Construction Management')): ?>
+                                    <li class="slide <?= isActive('con-architect-engineering', $current_route) ?>">
+                                        <a class="sidebar__menu-item <?= isActive('con-architect-engineering', $current_route) ?>"
+                                            href="<?= $base_url ?>/con-architect-engineering">Architecture Design</a>
+                                    </li>
+                                <?php endif; ?>
+                                <?php if (($_SESSION['user']['role_id'] ?? 0) == 16): ?>
+                                    <li class="slide <?= isActive('con-design-types', $current_route) ?>">
+                                        <a class="sidebar__menu-item <?= isActive('con-design-types', $current_route) ?>"
+                                            href="<?= $base_url ?>/con-design-types">Drawing Types</a>
+                                    </li>
+                                <?php endif; ?>
+                                <?php if ((hasPermission('Project Draft Design') || hasPermission('Project Drawing') || hasPermission('Construction Management') || ($_SESSION['user']['role_id'] ?? 0) == 19) && ($_SESSION['user']['role_id'] ?? 0) != 18): ?>
+                                    <li class="slide <?= isActive('con-project-drawings', $current_route) ?>">
+                                        <a class="sidebar__menu-item <?= isActive('con-project-drawings', $current_route) ?>"
+                                            href="<?= $base_url ?>/con-project-drawings">Project Drawings</a>
+                                    </li>
+                                <?php endif; ?>
+                                <?php if (hasPermission('Project Draft Design') || hasPermission('Project Drawing') || hasPermission('Construction Management')): ?>
+                                    <li
+                                        class="slide <?= isActive(['legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>">
+                                        <a class="sidebar__menu-item <?= isActive(['legal-sheet-lists', 'create-legal-sheet'], $current_route) ? 'active' : '' ?>"
+                                            href="<?= $base_url ?>/legal-sheet-lists">Project Approval Sheets</a>
+                                    </li>
+                                <?php endif; ?>
+                                <?php if (hasPermission('Project structure design') || ($_SESSION['user']['role_id'] ?? 0) == 12): ?>
+                                    <li class="slide <?= isActive('structure-design', $current_route) ?>">
+                                        <a class="sidebar__menu-item <?= isActive('structure-design', $current_route) ?>"
+                                            href="<?= $base_url ?>/structure-design">Project Structure Design</a>
+                                    </li>
+                                <?php endif; ?>
 
                                 <?php if (hasPermission('Soil tests') || hasPermission('Construction Management')): ?>
                                     <li class="slide <?= isActive('con-soil-tests', $current_route) ?>">
@@ -2491,52 +2508,55 @@
                         </li>
                     <?php endif; ?>
 
-                <?php if (hasPermission('Purchase order') || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 17, 22, 23, 31])): ?>
-                    <!-- Module 5: Procurement -->
-                    <li
-                        class="slide has-sub <?= isActive(['con-purchase-requests', 'con-purchase-request-create', 'con-purchase-orders', 'con-wastage', 'con-wastage-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-purchase-requests', 'con-purchase-request-create', 'con-purchase-orders', 'con-wastage', 'con-wastage-create'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-cart-shopping"></i></div>
-                            <span class="sidebar__menu-label">Procurement</span>
-                            <?php if (($sidebarPendingPRCount + $sidebarPendingPOCount) > 0): ?>
-                                <span class="badge bg-danger rounded-pill ms-2 me-1" style="font-size:9.5px; padding: 2px 6px;"><?= ($sidebarPendingPRCount + $sidebarPendingPOCount) ?></span>
-                            <?php endif; ?>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-purchase-requests"
-                                    class="sidebar__menu-item <?= isActive('con-purchase-requests', $current_route) ?> d-flex align-items-center justify-content-between">
-                                    <span>Purchase Requests</span>
-                                    <?php if (!empty($sidebarPendingPRCount) && $sidebarPendingPRCount > 0): ?>
-                                        <span class="badge bg-danger rounded-pill me-1" style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPRCount ?></span>
-                                    <?php endif; ?>
-                                </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-purchase-request-create"
-                                    class="sidebar__menu-item <?= isActive('con-purchase-request-create', $current_route) ?>">New
-                                    PR</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-purchase-orders"
-                                    class="sidebar__menu-item <?= isActive('con-purchase-orders', $current_route) ?> d-flex align-items-center justify-content-between">
-                                    <span>Purchase Orders</span>
-                                    <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
-                                        <span class="badge bg-danger rounded-pill me-1" style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
-                                    <?php endif; ?>
-                                </a>
-                            </li>
-                            <li class="slide <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
-                                <a href="<?= $GLOBALS['base_url'] ?>/con-wastage"
-                                    class="sidebar__menu-item <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
-                                    <i class="fal fa-recycle me-1"></i> Wastage Management
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                <?php endif; ?>
+                    <?php if (hasPermission('Purchase order') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 17, 22, 23, 31])): ?>
+                        <!-- Module 5: Procurement -->
+                        <li
+                            class="slide has-sub <?= isActive(['con-purchase-requests', 'con-purchase-request-create', 'con-purchase-orders', 'con-wastage', 'con-wastage-create'], $current_route) ? 'active' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['con-purchase-requests', 'con-purchase-request-create', 'con-purchase-orders', 'con-wastage', 'con-wastage-create'], $current_route) ? 'menu-open active' : '' ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-cart-shopping"></i></div>
+                                <span class="sidebar__menu-label">Procurement</span>
+                                <?php if (($sidebarPendingPRCount + $sidebarPendingPOCount) > 0): ?>
+                                    <span class="badge bg-danger rounded-pill ms-2 me-1"
+                                        style="font-size:9.5px; padding: 2px 6px;"><?= ($sidebarPendingPRCount + $sidebarPendingPOCount) ?></span>
+                                <?php endif; ?>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/con-purchase-requests"
+                                        class="sidebar__menu-item <?= isActive('con-purchase-requests', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        <span>Purchase Requests</span>
+                                        <?php if (!empty($sidebarPendingPRCount) && $sidebarPendingPRCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill me-1"
+                                                style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPRCount ?></span>
+                                        <?php endif; ?>
+                                    </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/con-purchase-request-create"
+                                        class="sidebar__menu-item <?= isActive('con-purchase-request-create', $current_route) ?>">New
+                                        PR</a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/con-purchase-orders"
+                                        class="sidebar__menu-item <?= isActive('con-purchase-orders', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        <span>Purchase Orders</span>
+                                        <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill me-1"
+                                                style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
+                                        <?php endif; ?>
+                                    </a>
+                                </li>
+                                <li class="slide <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
+                                    <a href="<?= $GLOBALS['base_url'] ?>/con-wastage"
+                                        class="sidebar__menu-item <?= isActive(['con-wastage', 'con-wastage-create'], $current_route) ?>">
+                                        <i class="fal fa-recycle me-1"></i> Wastage Management
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
 
                     <?php if (hasPermission('Vendor Manage') || in_array($_SESSION['user']['role_id'] ?? 0, [22])): ?>
                         <!-- Module 6: Vendors -->
@@ -2695,39 +2715,39 @@
 
 
 
-                <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
-                <?php if (hasPermission('Contractor Bill') || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 22])): ?>
-                    <li
-                        class="slide has-sub <?= isActive(['con-contractor-bills', 'con-contractor-bill-create', 'con-fund-requests', 'con-fund-request-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-contractor-bills', 'con-contractor-bill-create', 'con-fund-requests', 'con-fund-request-create'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
-                            <span class="sidebar__menu-label">Bills & Funds</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-contractor-bills"
-                                    class="sidebar__menu-item <?= isActive('con-contractor-bills', $current_route) ?>">
-                                    <i class="bi bi-receipt me-1"></i> Contractor Bills
-                                </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-contractor-bill-create"
-                                    class="sidebar__menu-item <?= isActive('con-contractor-bill-create', $current_route) ?>">
-                                    + New Bill
-                                </a>
-                            </li>
-
-                            <!-- Labor Requisition shortcut inside Bills menu -->
-                            <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 22])): ?>
+                    <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
+                    <?php if (hasPermission('Contractor Bill') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 22])): ?>
+                        <li
+                            class="slide has-sub <?= isActive(['con-contractor-bills', 'con-contractor-bill-create', 'con-fund-requests', 'con-fund-request-create'], $current_route) ? 'active' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['con-contractor-bills', 'con-contractor-bill-create', 'con-fund-requests', 'con-fund-request-create'], $current_route) ? 'menu-open active' : '' ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                                <span class="sidebar__menu-label">Bills & Funds</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
                                 <li class="slide">
-                                    <a href="<?= $base_url ?>/con-labor-requisitions"
-                                        class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
-                                        <i class="fa-solid fa-hard-hat me-1"></i> Labor Requisitions
+                                    <a href="<?= $base_url ?>/con-contractor-bills"
+                                        class="sidebar__menu-item <?= isActive('con-contractor-bills', $current_route) ?>">
+                                        <i class="bi bi-receipt me-1"></i> Contractor Bills
                                     </a>
                                 </li>
-                            <?php endif; ?>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/con-contractor-bill-create"
+                                        class="sidebar__menu-item <?= isActive('con-contractor-bill-create', $current_route) ?>">
+                                        + New Bill
+                                    </a>
+                                </li>
+
+                                <!-- Labor Requisition shortcut inside Bills menu -->
+                                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 22])): ?>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/con-labor-requisitions"
+                                            class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
+                                            <i class="fa-solid fa-hard-hat me-1"></i> Labor Requisitions
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
 
                                 <!-- <li class="slide">
                             <a href="<= $base_url ?>/con-fund-requests" class="sidebar__menu-item <?= isActive('con-fund-requests', $current_route) ?>">
@@ -2743,46 +2763,46 @@
                         </li>
                     <?php endif; ?>
 
-                <!-- ====== Labor Requisitions ====== -->
-                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 22])): ?>
-                    <li
-                        class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
-                            <span class="sidebar__menu-label">Labor Requisition</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-labor-requisitions"
-                                    class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
-                                    <i class="bi bi-list-ul me-1"></i> All Requisitions
-                                </a>
-                            </li>
-                            <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 12, 22])): ?>
+                    <!-- ====== Labor Requisitions ====== -->
+                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 22])): ?>
+                        <li
+                            class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'active' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'menu-open active' : '' ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
+                                <span class="sidebar__menu-label">Labor Requisition</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
                                 <li class="slide">
-                                    <a href="<?= $base_url ?>/con-labor-requisition-create"
-                                        class="sidebar__menu-item <?= isActive('con-labor-requisition-create', $current_route) ?>">
-                                        <i class="bi bi-plus-circle me-1"></i> + New Requisition
+                                    <a href="<?= $base_url ?>/con-labor-requisitions"
+                                        class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
+                                        <i class="bi bi-list-ul me-1"></i> All Requisitions
                                     </a>
                                 </li>
-                            <?php endif; ?>
-                        </ul>
-                    </li>
-                <?php endif; ?>
+                                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 12, 22])): ?>
+                                    <li class="slide">
+                                        <a href="<?= $base_url ?>/con-labor-requisition-create"
+                                            class="sidebar__menu-item <?= isActive('con-labor-requisition-create', $current_route) ?>">
+                                            <i class="bi bi-plus-circle me-1"></i> + New Requisition
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
 
-                <!-- ══ Weekly Progress Reports (Phase-Based) ════════════════════ -->
-                <?php if (hasPermission('Construction Management') || hasPermission('site engineer dashboard') || hasPermission('QC Dashboard') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])): ?>
-                    <li class="d-none slide <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">
-                        <a href="<?= $base_url ?>/con-weekly-reports"
-                            class="sidebar__menu-item <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">
-                            <div class="side-menu__icon"><i class="bi bi-calendar-week"></i></div>
-                            <span class="sidebar__menu-label">Weekly Reports</span>
-                        </a>
-                    </li>
-                <?php endif; ?>
-                <!-- ====== END Operators & Bills ====== -->
+                    <!-- ══ Weekly Progress Reports (Phase-Based) ════════════════════ -->
+                    <?php if (hasPermission('Construction Management') || hasPermission('site engineer dashboard') || hasPermission('QC Dashboard') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22])): ?>
+                        <li class="d-none slide <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">
+                            <a href="<?= $base_url ?>/con-weekly-reports"
+                                class="sidebar__menu-item <?= isActive(['con-weekly-reports', 'con-weekly-report'], $current_route) ?>">
+                                <div class="side-menu__icon"><i class="bi bi-calendar-week"></i></div>
+                                <span class="sidebar__menu-label">Weekly Reports</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                    <!-- ====== END Operators & Bills ====== -->
 
                     <?php if (hasPermission('Bill & Payments')): ?>
                         <!-- ====== Finance & Accounts (Batch 3 NEW) ====== -->
@@ -2864,72 +2884,75 @@
                         </li>
                     <?php endif; ?>
 
-                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
-                    <li class="slide <?= isActive('approval-requests', $current_route) ?>">
-                        <a href="<?= $base_url ?>/approval-requests"
-                            class="sidebar__menu-item <?= isActive('approval-requests', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-check-double"></i></div>
-                            <span class="sidebar__menu-label">Approval Requests</span>
-                        </a>
-                    </li>
-                <?php endif; ?>
+                    <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
+                        <li class="slide <?= isActive('approval-requests', $current_route) ?>">
+                            <a href="<?= $base_url ?>/approval-requests"
+                                class="sidebar__menu-item <?= isActive('approval-requests', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-check-double"></i></div>
+                                <span class="sidebar__menu-label">Approval Requests</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
 
-                <?php if (hasPermission('QC & Internal Audit') || strtolower($_SESSION['user']['role_name'] ?? '') === 'qc & internal audit' || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 24, 25])): ?>
-                    <!-- ====== Internal Audit Section ====== -->
-                    <li class="sidebar__menu-category">
-                        <span class="category-name">Internal Audit</span>
-                    </li>
-                    <li
-                        class="slide has-sub <?= isActive(['qc-audit-dashboard', 'qc-requests', 'qc-advanced-audit'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['qc-audit-dashboard', 'qc-requests', 'qc-advanced-audit'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="bi bi-shield-check"></i></div>
-                            <span class="sidebar__menu-label">Internal Audit</span>
-                            <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
-                                <span class="badge bg-danger rounded-pill ms-2 me-1" style="font-size:9.5px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
-                            <?php endif; ?>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/qc-audit-dashboard"
-                                    class="sidebar__menu-item <?= isActive('qc-audit-dashboard', $current_route) ?> d-flex align-items-center justify-content-between">
-                                    <span><i class="bi bi-speedometer2 me-1"></i> Dashboard</span>
-                                    <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
-                                        <span class="badge bg-danger rounded-pill me-1" style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
-                                    <?php endif; ?>
-                                </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/qc-advanced-audit"
-                                    class="sidebar__menu-item <?= isActive('qc-advanced-audit', $current_route) ?>">
-                                    <i class="bi bi-filter-square me-1"></i> Advanced Audit
-                                </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/qc-requests"
-                                    class="sidebar__menu-item <?= isActive('qc-requests', $current_route) ?>">
-                                    <i class="bi bi-check2-square me-1"></i> QC Approvals
-                                </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-purchase-orders"
-                                    class="sidebar__menu-item <?= isActive('con-purchase-orders', $current_route) ?> d-flex align-items-center justify-content-between">
-                                    <span><i class="bi bi-cart me-1"></i> Purchase Orders</span>
-                                    <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
-                                        <span class="badge bg-danger rounded-pill me-1" style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
-                                    <?php endif; ?>
-                                </a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/con-vendor-payment-requests"
-                                    class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?>">
-                                    <i class="bi bi-cash-stack me-1"></i> Vendor Payments
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                <?php endif; ?>
+                    <?php if (hasPermission('QC & Internal Audit') || strtolower($_SESSION['user']['role_name'] ?? '') === 'qc & internal audit' || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 24, 25])): ?>
+                        <!-- ====== Internal Audit Section ====== -->
+                        <li class="sidebar__menu-category">
+                            <span class="category-name">Internal Audit</span>
+                        </li>
+                        <li
+                            class="slide has-sub <?= isActive(['qc-audit-dashboard', 'qc-requests', 'qc-advanced-audit'], $current_route) ? 'active' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['qc-audit-dashboard', 'qc-requests', 'qc-advanced-audit'], $current_route) ? 'menu-open active' : '' ?>">
+                                <div class="side-menu__icon"><i class="bi bi-shield-check"></i></div>
+                                <span class="sidebar__menu-label">Internal Audit</span>
+                                <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
+                                    <span class="badge bg-danger rounded-pill ms-2 me-1"
+                                        style="font-size:9.5px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
+                                <?php endif; ?>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/qc-audit-dashboard"
+                                        class="sidebar__menu-item <?= isActive('qc-audit-dashboard', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        <span><i class="bi bi-speedometer2 me-1"></i> Dashboard</span>
+                                        <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill me-1"
+                                                style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
+                                        <?php endif; ?>
+                                    </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/qc-advanced-audit"
+                                        class="sidebar__menu-item <?= isActive('qc-advanced-audit', $current_route) ?>">
+                                        <i class="bi bi-filter-square me-1"></i> Advanced Audit
+                                    </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/qc-requests"
+                                        class="sidebar__menu-item <?= isActive('qc-requests', $current_route) ?>">
+                                        <i class="bi bi-check2-square me-1"></i> QC Approvals
+                                    </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/con-purchase-orders"
+                                        class="sidebar__menu-item <?= isActive('con-purchase-orders', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        <span><i class="bi bi-cart me-1"></i> Purchase Orders</span>
+                                        <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill me-1"
+                                                style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
+                                        <?php endif; ?>
+                                    </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/con-vendor-payment-requests"
+                                        class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?>">
+                                        <i class="bi bi-cash-stack me-1"></i> Vendor Payments
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
 
                     <?php if (hasPermission("Security Operations")): ?>
                         <!-- ====== Site IT & Security (NEW) ====== -->
@@ -3039,38 +3062,38 @@
                             </ul>
                         </li>
 
-                <?php endif; ?>
-                <!-- FOR Task Manage  -->
-                <!-- ====== BATCH IMPORTS ====== -->
-                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): // Only Admins can import ?>
-                    <li class="slide d-none">
-                        <a href="<?= $GLOBALS['base_url'] ?>/con-batch2-import"
-                            class="sidebar__menu-item <?= isActive('con-batch2-import', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="bi bi-file-earmark-spreadsheet"></i></div>
-                            <span class="sidebar__menu-label">Batch CSV Import</span>
-                        </a>
-                    </li>
-                <?php endif; ?>
+                    <?php endif; ?>
+                    <!-- FOR Task Manage  -->
+                    <!-- ====== BATCH IMPORTS ====== -->
+                    <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): // Only Admins can import ?>
+                        <li class="slide d-none">
+                            <a href="<?= $GLOBALS['base_url'] ?>/con-batch2-import"
+                                class="sidebar__menu-item <?= isActive('con-batch2-import', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="bi bi-file-earmark-spreadsheet"></i></div>
+                                <span class="sidebar__menu-label">Batch CSV Import</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
 
-                <!-- ====== ASSET MANAGEMENT ====== -->
-                <?php if (hasPermission('Asset Management') || hasPermission('QC & Internal Audit') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 32])): ?>
-                    <li class="slide <?= isActive(['office-assets', 'asset-products'], $current_route) ?>">
-                        <a href="<?= $base_url ?>/office-assets"
-                            class="sidebar__menu-item <?= isActive(['office-assets', 'asset-products'], $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-boxes-stacked"></i></div>
-                            <span class="sidebar__menu-label">Asset Register</span>
-                        </a>
-                    </li>
-                <?php endif; ?>
-                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [18, 16, 21])): ?>
-                    <li class="slide <?= isActive('con-monthly-work-report', $current_route) ?>">
-                        <a href="<?= $base_url ?>/con-monthly-work-report"
-                            class="sidebar__menu-item <?= isActive('con-monthly-work-report', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-file-contract"></i></div>
-                            <span class="sidebar__menu-label">Monthly Report</span>
-                        </a>
-                    </li>
-                <?php endif; ?>
+                    <!-- ====== ASSET MANAGEMENT ====== -->
+                    <?php if (hasPermission('Asset Management') || hasPermission('QC & Internal Audit') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 32])): ?>
+                        <li class="slide <?= isActive(['office-assets', 'asset-products'], $current_route) ?>">
+                            <a href="<?= $base_url ?>/office-assets"
+                                class="sidebar__menu-item <?= isActive(['office-assets', 'asset-products'], $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+                                <span class="sidebar__menu-label">Asset Register</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                    <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [18, 16, 21])): ?>
+                        <li class="slide <?= isActive('con-monthly-work-report', $current_route) ?>">
+                            <a href="<?= $base_url ?>/con-monthly-work-report"
+                                class="sidebar__menu-item <?= isActive('con-monthly-work-report', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-file-contract"></i></div>
+                                <span class="sidebar__menu-label">Monthly Report</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
 
                 <?php endif; ?>
                 <!-- ==================== END PHASE 2 ==================== -->

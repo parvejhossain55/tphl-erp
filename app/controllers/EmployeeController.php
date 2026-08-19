@@ -609,6 +609,18 @@ class EmployeeController extends Controller
         exit;
     }
 
+    public function searchSuggestions()
+    {
+        $q = $_GET['q'] ?? '';
+        if (empty($q)) {
+            echo json_encode([]);
+            exit;
+        }
+        $suggestions = $this->employeeModel->getSearchSuggestions($q);
+        echo json_encode($suggestions);
+        exit;
+    }
+
     // Delete Employee
     public function delete()
     {
