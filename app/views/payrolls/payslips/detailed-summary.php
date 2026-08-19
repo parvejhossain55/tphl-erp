@@ -153,10 +153,7 @@ $defaultMonth = date('m');
                                     </tr>
                                 <?php endforeach; ?>
                             <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="7" class="text-center py-4">No records found.</td>
-                            </tr>
+                    
                         <?php endif; ?>
                     </tbody>
                 </table>

@@ -474,7 +474,7 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                         </div>
 
                         <!-- Step 4: Accounts Disbursement -->
-                        <div class="d-flex gap-3 position-relative align-items-start">
+                        <div class="d-flex gap-3 mb-4 position-relative align-items-start">
                             <?php if ($req['status'] === 'paid'): ?>
                                 <div class="avatar avatar-sm bg-success text-white rounded-circle flex-shrink-0 z-1 fs-12">
                                     <i class="fa-solid fa-building-columns"></i>
@@ -530,6 +530,51 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                                 <div>
                                     <h6 class="fw-bold fs-13 mb-0 text-muted">Awaiting Payment</h6>
                                     <p class="fs-12 text-muted mb-0 mt-1">Will be enabled after management approval</p>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Step 5: Money Received -->
+                        <div class="d-flex gap-3 position-relative align-items-start">
+                            <?php if (!empty($req['is_received'])): ?>
+                                <div class="avatar avatar-sm bg-success text-white rounded-circle flex-shrink-0 z-1 fs-12">
+                                    <i class="fa-solid fa-check-double"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <h6 class="fw-bold fs-13 mb-0 text-dark">Money Received</h6>
+                                        <span class="badge bg-success-transparent text-success fs-10">Confirmed</span>
+                                    </div>
+                                    <p class="fs-12 text-muted mb-0 mt-1">
+                                        Confirmed by <strong><?php echo htmlspecialchars($req['requester_name'] ?? 'Requester'); ?></strong>
+                                        <?php if (!empty($req['requester_designation_name'])): ?>
+                                            <em>(<?php echo htmlspecialchars($req['requester_designation_name']); ?>)</em>
+                                        <?php endif; ?>
+                                        on <strong><?php echo date('d M Y, h:i A', strtotime($req['received_at'])); ?></strong>
+                                    </p>
+                                </div>
+                            <?php elseif (in_array($req['status'], ['paid', 'partially_paid'])): ?>
+                                <div class="avatar avatar-sm bg-warning text-white rounded-circle flex-shrink-0 z-1 fs-12">
+                                    <i class="fa-solid fa-spinner fa-spin"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold fs-13 mb-0 text-dark">Pending Receipt Confirmation</h6>
+                                    <p class="fs-12 text-muted mb-0 mt-1">Requester has not confirmed receiving the funds yet.</p>
+                                    <?php if ($isOwner || $isAdmin): ?>
+                                        <form action="<?php echo $base; ?>/fund-requisitions/confirm-receipt/<?php echo $req['id']; ?>" method="POST" class="mt-2" onsubmit="return confirm('Confirm that you have received the funds?')">
+                                            <button type="submit" class="btn btn-success btn-sm shadow-sm">
+                                                <i class="fa-solid fa-handshake me-1"></i> Confirm Received
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
+                                </div>
+                            <?php else: ?>
+                                <div class="avatar avatar-sm bg-light text-muted rounded-circle flex-shrink-0 z-1 fs-12 border">
+                                    <i class="fa-solid fa-hourglass-start"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold fs-13 mb-0 text-muted">Money Received</h6>
+                                    <p class="fs-12 text-muted mb-0 mt-1">Awaiting disbursement first</p>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -809,44 +854,69 @@ if (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'
 }
 
 @media print {
-    body * { visibility: hidden; }
-    .print-area, .print-area * { visibility: visible; }
-    .print-only-header, .print-only-header * { visibility: visible; display: block !important; }
-    .print-only-header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        background: white;
-        padding: 10px 20px;
-        z-index: 9999;
-    }
-    .print-area {
-        position: absolute;
-        top: 220px;
-        left: 0;
-        width: 100%;
-        padding: 10px 20px;
-    }
-    .no-print, .modal, .btn-close,
-    .page-header-breadcrumb { display: none !important; visibility: hidden !important; }
-    .table { width: 100% !important; border-collapse: collapse !important; }
+    /* Reveal print-only header normally */
+    .print-only-header { display: block !important; margin-bottom: 20px; }
+    .print-only-header.d-none { display: block !important; }
+
+    /* Hide non-print elements */
+    .no-print, .modal, .btn-close, .page-header-breadcrumb { display: none !important; }
+
+    /* Fix text readability - force darker colors */
+    .print-area, .print-only-header { color: #000 !important; }
+    .text-muted { color: #444 !important; }
+    .text-secondary { color: #222 !important; }
+    .text-primary { color: #11502e !important; }
+    .text-success { color: #198754 !important; }
+    .text-danger { color: #dc3545 !important; }
+    .text-warning { color: #ffc107 !important; }
+    .text-info { color: #0dcaf0 !important; }
+    
+    .print-area * { color: inherit; }
+    .print-area h6, .print-area strong, .print-area span { color: #000 !important; }
+    .bg-light, .bg-light-subtle { background-color: #f8f9fa !important; border-color: #ddd !important; -webkit-print-color-adjust: exact; }
+
+    /* Table styling for print */
+    .table { width: 100% !important; border-collapse: collapse !important; margin-bottom: 15px !important; }
     .table th, .table td {
-        border: 1px solid #ccc !important;
-        padding: 6px 8px !important;
+        border: 1px solid #bbb !important;
+        padding: 8px 10px !important;
         font-size: 11px !important;
+        color: #000 !important;
     }
-    .table thead th { background: #f0f0f0 !important; }
-    .card, .custom-card { border: 1px solid #ccc !important; box-shadow: none !important; margin-bottom: 10px !important; }
-    .card-header { background: #f5f5f5 !important; }
+    .table thead th { background: #e9ecef !important; color: #000 !important; -webkit-print-color-adjust: exact; font-weight: bold !important; }
+
+    /* Card styling for print */
+    .card, .custom-card { 
+        border: 1px solid #bbb !important; 
+        box-shadow: none !important; 
+        margin-bottom: 15px !important; 
+        page-break-inside: avoid;
+    }
+    .card-header { 
+        background: #e9ecef !important; 
+        border-bottom: 1px solid #bbb !important; 
+        -webkit-print-color-adjust: exact; 
+        color: #000 !important; 
+    }
+    
+    /* Timeline stepper borders/colors for print */
+    .timeline-stepper .avatar {
+        border: 1px solid #999 !important;
+        background: #fff !important;
+        color: #000 !important;
+        -webkit-print-color-adjust: exact;
+    }
+    
+    /* Badge styling */
     .bg-success, .bg-info, .bg-warning, .bg-danger, .bg-primary, .bg-secondary,
     .bg-success-transparent, .bg-info-transparent, .bg-warning-transparent, .bg-danger-transparent {
         background: transparent !important;
-        border: 1px solid #999 !important;
+        border: 1px solid #666 !important;
         color: #000 !important;
+        font-weight: bold;
     }
-    .row { page-break-inside: avoid; }
-    @page { margin: 10mm; }
+    
+    .row { page-break-inside: auto; }
 }
 </style>
 
