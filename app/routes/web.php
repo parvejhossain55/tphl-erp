@@ -93,6 +93,13 @@ return [
     'update-hr-requisition-status/(\d+)' => ['controller' => 'ManpowerRequisitionController', 'method' => 'updateHrStatus'],
 
     // =========================================================================
+    // Controller: EmailStationController
+    // =========================================================================
+    'email-station' => ['controller' => 'EmailStationController', 'method' => 'index'],
+    'create-email-template' => ['controller' => 'EmailStationController', 'method' => 'createEmailTemplate'],
+    'store-email-template' => ['controller' => 'EmailStationController', 'method' => 'storeEmailTemplate'],
+
+    // =========================================================================
     // Controller: SiteManage\SiteSettingController
     // =========================================================================
     'site-settings' => ['controller' => 'SiteManage\SiteSettingController', 'method' => 'index'],
