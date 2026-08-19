@@ -3,8 +3,7 @@
 // 1 = Local Development Server
 // 2 = Project staging Server
 // 3 = Production Server
-
-
+///////////////
 $current_server = 3;
 // Local Development Server
 if ($current_server == 1) {
