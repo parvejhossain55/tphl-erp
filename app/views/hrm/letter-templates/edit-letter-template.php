@@ -20,11 +20,19 @@
                                 <div class="form__input">
                                     <select class="form-control" name="type" id="type" required>
                                         <option value="appointment" <?= $template['type'] == 'appointment' ? 'selected' : '' ?>>Appointment Letter</option>
-                                        <option value="joining" <?= $template['type'] == 'joining' ? 'selected' : '' ?>>Joining Letter</option>
+                                        <option value="joining" <?= $template['type'] == 'joining' ? 'selected' : '' ?>>
+                                            Joining Letter</option>
                                         <option value="promotion" <?= $template['type'] == 'promotion' ? 'selected' : '' ?>>Promotion Letter</option>
                                         <option value="increment" <?= $template['type'] == 'increment' ? 'selected' : '' ?>>Salary Increment Letter</option>
                                         <option value="experience" <?= $template['type'] == 'experience' ? 'selected' : '' ?>>Experience Certificate</option>
-                                        <option value="noc" <?= $template['type'] == 'noc' ? 'selected' : '' ?>>No Objection Certificate (NOC)</option>
+                                        <option value="noc" <?= $template['type'] == 'noc' ? 'selected' : '' ?>>No
+                                            Objection Certificate (NOC)</option>
+                                        <option value="show_cause" <?= $template['type'] == 'show_cause' ? 'selected' : '' ?>>Show Cause Letter</option>
+                                        <option value="warning" <?= $template['type'] == 'warning' ? 'selected' : '' ?>>
+                                            Warning Letter</option>
+                                        <option value="caution" <?= $template['type'] == 'caution' ? 'selected' : '' ?>>
+                                            Caution Letter</option>
+                                        <option value="improvement" <?= $template['type'] == 'improvement' ? 'selected' : '' ?>>Improvement Letter</option>
                                     </select>
                                 </div>
                             </div>
@@ -33,16 +41,20 @@
                         <div class="col-lg-6">
                             <div class="from__input-box">
                                 <div class="form__input-title">
-                                    <label for="designation_id">Designation (Specific to) <span class="text-muted">Optional</span></label>
+                                    <label for="designation_id">Designation (Specific to) <span
+                                            class="text-muted">Optional</span></label>
                                 </div>
-                                 <div class="form__input">
-                                     <select class="form-control select2" name="designation_id" id="designation_id">
-                                         <option value="">— APPLIES TO ALL DESIGNATIONS —</option>
-                                         <?php foreach ($designations as $designation): ?>
-                                             <option value="<?= $designation['id'] ?>" <?= $template['designation_id'] == $designation['id'] ? 'selected' : '' ?>><?= htmlspecialchars($designation['designation_name'] . ' (' . ($designation['department_name'] ?? 'N/A') . ')') ?></option>
-                                         <?php endforeach ?>
-                                     </select>
-                                 </div>
+                                <div class="form__input">
+                                    <select class="form-control select2" name="designation_id" id="designation_id">
+                                        <option value="">— APPLIES TO ALL DESIGNATIONS —</option>
+                                        <?php foreach ($designations as $designation): ?>
+                                            <option value="<?= $designation['id'] ?>"
+                                                <?= $template['designation_id'] == $designation['id'] ? 'selected' : '' ?>>
+                                                <?= htmlspecialchars($designation['designation_name'] . ' (' . ($designation['department_name'] ?? 'N/A') . ')') ?>
+                                            </option>
+                                        <?php endforeach ?>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -52,7 +64,8 @@
                                     <label for="subject">Letter Subject <span>*</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <input class="form-control" name="subject" id="subject" type="text" value="<?= htmlspecialchars($template['subject']) ?>" required>
+                                    <input class="form-control" name="subject" id="subject" type="text"
+                                        value="<?= htmlspecialchars($template['subject']) ?>" required>
                                 </div>
                             </div>
                         </div>
@@ -61,10 +74,12 @@
                             <div class="from__input-box">
                                 <div class="form__input-title">
                                     <label>Letter Body <span>*</span></label>
-                                    <small class="text-muted d-block mb-2">Available Variables: {{employee_name}}, {{designation}}, {{department}}, {{joining_date}}, {{responsibilities}}</small>
+                                    <small class="text-muted d-block mb-2">Available Variables: {{employee_name}},
+                                        {{designation}}, {{department}}, {{joining_date}}, {{responsibilities}}</small>
                                 </div>
                                 <div class="from__input-box">
-                                    <textarea id="tinymce_simple_textarea" name="body" required><?= htmlspecialchars($template['body']) ?></textarea>
+                                    <textarea id="tinymce_simple_textarea" name="body"
+                                        required><?= htmlspecialchars($template['body']) ?></textarea>
                                 </div>
                             </div>
                         </div>
