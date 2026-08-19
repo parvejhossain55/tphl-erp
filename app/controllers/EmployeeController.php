@@ -307,10 +307,26 @@ class EmployeeController extends Controller
     public function show($id)
     {
         $employee = $this->employeeModel->find($id);
+
+        // Fetch disciplinary letter counts
+        $countsQuery = $this->db->query("SELECT letter_type, COUNT(*) as count FROM letters WHERE employee_id = " . (int) $id . " AND letter_type IN ('show_cause', 'warning', 'caution', 'improvement') GROUP BY letter_type");
+        $disciplinary_counts = [
+            'show_cause' => 0,
+            'warning' => 0,
+            'caution' => 0,
+            'improvement' => 0
+        ];
+        if ($countsQuery) {
+            while ($row = $countsQuery->fetch_assoc()) {
+                $disciplinary_counts[$row['letter_type']] = (int) $row['count'];
+            }
+        }
+
         $this->view("hrm/employees/employee-profile", [
             "current-route" => "employee-profile",
             "active" => "employee-profile",
             "employee" => $employee,
+            "disciplinary_counts" => $disciplinary_counts,
         ]);
     }
 

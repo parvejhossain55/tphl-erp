@@ -11,7 +11,8 @@ $show_breadcrumb = true;
             <div class="employee__profile-single-box p-relative">
                 <div class="card__title-wrap d-flex align-items-center justify-content-between mb-15">
                     <h5 class="card__heading-title">Personal Information</h5>
-                    <a data-bs-target="#profile__info" class="edit-icon" href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>">
+                    <a data-bs-target="#profile__info" class="edit-icon"
+                        href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>">
                         <i class="fa-solid fa-pencil"></i>
                     </a>
                 </div>
@@ -19,18 +20,24 @@ $show_breadcrumb = true;
                     <div class="d-flex flex-wrap align-items-start gap-20">
                         <div class="profile-img-wrap">
                             <div class="profile-img">
-                                <a href="#"><img src="<?= getImage('employees', $employee['photo']) ?>" alt="User Image"></a>
+                                <a href="#"><img src="<?= getImage('employees', $employee['photo']) ?>"
+                                        alt="User Image"></a>
                             </div>
                         </div>
                         <div class="profile-info">
                             <h4 class="user-name mb-15"><?= $employee['full_name'] ?? '' ?></h4>
                             <h6 class="text-muted mb-5"><?= $employee['department_name'] ?? '' ?></h6>
                             <span class="d-block text-muted mb-5"><?= $employee['designation_name'] ?? '' ?></span>
-                            <h6 class="small employee-id text-black mb-5">Employee ID :<?= $employee['employee_id'] ?></h6>
-                            <span class="d-block text-muted ">Date of Join : <?= $employee['joining_date'] ?  date('d F, Y', strtotime($employee['joining_date'])) : '' ?></span>
-                            <span class="small employee-id text-black mb-5">Gross Salary :<?= $employee['gross_salary'] ?? 0 ?></span>
-                            <p><span class="small employee-id text-black mb-5">Employee Type :<?= ucwords($employee['employee_type'] ?? 'none') ?></span></p>
-                            <div class="employee-msg d-none my-3"><a class="btn btn-primary" href="chat.html">Send Message</a></div>
+                            <h6 class="small employee-id text-black mb-5">Employee ID :<?= $employee['employee_id'] ?>
+                            </h6>
+                            <span class="d-block text-muted ">Date of Join :
+                                <?= $employee['joining_date'] ? date('d F, Y', strtotime($employee['joining_date'])) : '' ?></span>
+                            <span class="small employee-id text-black mb-5">Gross Salary
+                                :<?= $employee['gross_salary'] ?? 0 ?></span>
+                            <p><span class="small employee-id text-black mb-5">Employee Type
+                                    :<?= ucwords($employee['employee_type'] ?? 'none') ?></span></p>
+                            <div class="employee-msg d-none my-3"><a class="btn btn-primary" href="chat.html">Send
+                                    Message</a></div>
                         </div>
                     </div>
                     <div class="personal-info-wrapper pr-20">
@@ -57,7 +64,8 @@ $show_breadcrumb = true;
                             </li>
                             <li class="d-flex mb-2">
                                 <div class="fw-bold me-2" style="min-width:130px;">Employee Status:</div>
-                                <div class="bd-badge bg-primary"><?= ucwords($employee['employee_status'] ?? 'none') ?></div>
+                                <div class="bd-badge bg-primary"><?= ucwords($employee['employee_status'] ?? 'none') ?>
+                                </div>
                             </li>
                             <li class="d-flex mb-2">
                                 <div class="fw-bold me-2" style="min-width:130px;">Workplace:</div>
@@ -65,7 +73,9 @@ $show_breadcrumb = true;
                             </li>
                             <li class="d-flex mb-2">
                                 <div class="fw-bold me-2" style="min-width:130px;">Office Branch:</div>
-                                <div class="text"><?= htmlspecialchars($employee['office_branch_name'] ?? $employee['office_branch'] ?? 'Ashulia Site Office') ?></div>
+                                <div class="text">
+                                    <?= htmlspecialchars($employee['office_branch_name'] ?? $employee['office_branch'] ?? 'Ashulia Site Office') ?>
+                                </div>
                             </li>
                             <li class="d-flex mb-2">
                                 <div class="fw-bold me-2" style="min-width:130px;">Report To / Boss:</div>
@@ -89,7 +99,8 @@ $show_breadcrumb = true;
             <div class="employee__profile-single-box p-relative">
                 <div class="card__title-wrap d-flex align-items-center justify-content-between mb-15">
                     <h5 class="card__heading-title">Emergency Contact</h5>
-                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon" data-bs-target="#emergency_contact_modal">
+                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon"
+                        data-bs-target="#emergency_contact_modal">
                         <i class="fa-solid fa-pencil"></i>
                     </a>
                 </div>
@@ -112,7 +123,8 @@ $show_breadcrumb = true;
                                     <div class="fw-bold me-2" style="min-width:130px;">Emergency number:</div>
                                     <span class="text-link-hover">
 
-                                        <a href="tel:<?= $employee['emergency_contact'] ?>"><?= $employee['emergency_contact'] ?? 'N/A' ?></a>
+                                        <a
+                                            href="tel:<?= $employee['emergency_contact'] ?>"><?= $employee['emergency_contact'] ?? 'N/A' ?></a>
                                     </span>
                                 </li>
 
@@ -133,7 +145,8 @@ $show_breadcrumb = true;
             <div class="employee__profile-single-box p-relative">
                 <div class="card__title-wrap d-flex align-items-center justify-content-between mb-15">
                     <h5 class="card__heading-title">Education Qualification</h5>
-                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon" data-bs-target="#education__info">
+                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon"
+                        data-bs-target="#education__info">
                         <i class="fa-solid fa-pencil"></i>
                     </a>
                 </div>
@@ -148,7 +161,8 @@ $show_breadcrumb = true;
             <div class="employee__profile-single-box p-relative">
                 <div class="card__title-wrap d-flex align-items-center justify-content-between mb-15">
                     <h5 class="card__heading-title">Experience Details</h5>
-                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon" data-bs-target="#experience__info">
+                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon"
+                        data-bs-target="#experience__info">
                         <i class="fa-solid fa-pencil"></i>
                     </a>
                 </div>
@@ -163,7 +177,8 @@ $show_breadcrumb = true;
             <div class="employee__profile-single-box p-relative">
                 <div class="card__title-wrap d-flex align-items-center justify-content-between mb-15">
                     <h5 class="card__heading-title">Bank Account</h5>
-                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon" data-bs-target="#bank__account__info">
+                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon"
+                        data-bs-target="#bank__account__info">
                         <i class="fa-solid fa-pencil"></i>
                     </a>
                 </div>
@@ -196,7 +211,8 @@ $show_breadcrumb = true;
             <div class="employee__profile-single-box p-relative">
                 <div class="card__title-wrap d-flex align-items-center justify-content-between mb-15">
                     <h5 class="card__heading-title">Passport Information</h5>
-                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon" data-bs-target="#passport__info">
+                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon"
+                        data-bs-target="#passport__info">
                         <i class="fa-solid fa-pencil"></i>
                     </a>
                 </div>
@@ -221,7 +237,8 @@ $show_breadcrumb = true;
             <div class="employee__profile-single-box p-relative">
                 <div class="card__title-wrap d-flex align-items-center justify-content-between mb-15">
                     <h5 class="card__heading-title">Social Profile</h5>
-                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon" data-bs-target="#social__info">
+                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon"
+                        data-bs-target="#social__info">
                         <i class="fa-solid fa-pencil"></i>
                     </a>
                 </div>
@@ -229,11 +246,55 @@ $show_breadcrumb = true;
                     <ul class="personal-info">
                         <li>
                             <div class="title">Facebook:</div>
-                            <div class="text text-link-hover"><a href="<a href=" <?= formatUrl($employee['social_media1']) ?>>Link</a></div>
+                            <div class="text text-link-hover"><a href="<a href="
+                                    <?= formatUrl($employee['social_media1']) ?>>Link</a></div>
                         </li>
                         <li>
                             <div class="title">LinkedIn:</div>
-                            <div class="text text-link-hover"><a href="<?= formatUrl($employee['social_media2']) ?>">Link</a></div>
+                            <div class="text text-link-hover"><a
+                                    href="<?= formatUrl($employee['social_media2']) ?>">Link</a></div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-4">
+        <div class="card__wrapper">
+            <div class="employee__profile-single-box p-relative">
+                <div class="card__title-wrap d-flex align-items-center justify-content-between mb-15">
+                    <h5 class="card__heading-title">Disciplinary Action</h5>
+                </div>
+                <div class="personal-info-wrapper">
+                    <ul class="personal-info-list list-unstyled mb-0">
+                        <li class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Number of Show Cause:</span>
+                            <a href="<?= $GLOBALS['base_url'] ?>/generate-letter?type=show_cause&employee_id=<?= $employee['id'] ?>"
+                                class="badge bg-danger text-white text-decoration-none" title="View Show Cause Letters">
+                                <?= $disciplinary_counts['show_cause'] ?? 0 ?>
+                            </a>
+                        </li>
+                        <li class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Number of Warning Letter:</span>
+                            <a href="<?= $GLOBALS['base_url'] ?>/generate-letter?type=warning&employee_id=<?= $employee['id'] ?>"
+                                class="badge bg-warning text-dark text-decoration-none" title="View Warning Letters">
+                                <?= $disciplinary_counts['warning'] ?? 0 ?>
+                            </a>
+                        </li>
+                        <li class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Number of Caution Letter:</span>
+                            <a href="<?= $GLOBALS['base_url'] ?>/generate-letter?type=caution&employee_id=<?= $employee['id'] ?>"
+                                class="badge bg-info text-white text-decoration-none" title="View Caution Letters">
+                                <?= $disciplinary_counts['caution'] ?? 0 ?>
+                            </a>
+                        </li>
+                        <li class="d-flex justify-content-between align-items-center">
+                            <span>Number of Improvement Letter:</span>
+                            <a href="<?= $GLOBALS['base_url'] ?>/generate-letter?type=improvement&employee_id=<?= $employee['id'] ?>"
+                                class="badge bg-secondary text-white text-decoration-none"
+                                title="View Improvement Letters">
+                                <?= $disciplinary_counts['improvement'] ?? 0 ?>
+                            </a>
                         </li>
                     </ul>
                 </div>
