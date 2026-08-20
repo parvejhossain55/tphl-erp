@@ -27,9 +27,9 @@ $filter_type = $_GET['filter_type'] ?? $filter_type ?? 'all_employees';
                 <select class="form-select" name="filter_type" id="filter_type">
                     <option value="all_employees" <?= $filter_type == 'all_employees' ? 'selected' : '' ?>>All Employees
                     </option>
-                    <option value="by_department" <?= $filter_type == 'by_department' ? 'selected' : '' ?>>By Department
+                    <option value="department" <?= $filter_type == 'department' ? 'selected' : '' ?>>By Department
                     </option>
-                    <option value="by_designation" <?= $filter_type == 'by_designation' ? 'selected' : '' ?>>By Designation
+                    <option value="designation" <?= $filter_type == 'designation' ? 'selected' : '' ?>>By Designation
                     </option>
                     <option value="specific_employees" <?= $filter_type == 'specific_employees' ? 'selected' : '' ?>>
                         Specific Employees</option>
@@ -38,24 +38,23 @@ $filter_type = $_GET['filter_type'] ?? $filter_type ?? 'all_employees';
 
             <!-- Department Filter Wrapper -->
             <div class="col-xxl-3 col-lg-3 col-md-6 col-12 filter-wrapper" id="department_wrapper"
-                style="<?= $filter_type == 'by_department' ? '' : 'display: none;' ?>">
+                style="<?= $filter_type == 'department' ? '' : 'display: none;' ?>">
                 <label>Select Department</label>
-                <select class="form-select" name="department_id">
-                    <option value="">Select Department</option>
+                <select multiple name="targetIds[]" class="select2 form-select" data-live-search="true">
                     <?php foreach ($departments as $department): ?>
                         <option value="<?= $department['id'] ?>">
                             <?= htmlspecialchars($department['name']) ?>
                         </option>
-                    <?php endforeach ?>
+                    <?php endforeach; ?>
                 </select>
             </div>
 
             <!-- Designation Filter Wrapper -->
             <div class="col-xxl-3 col-lg-3 col-md-6 col-12 filter-wrapper" id="designation_wrapper"
-                style="<?= $filter_type == 'by_designation' ? '' : 'display: none;' ?>">
+                style="<?= $filter_type == 'designation' ? '' : 'display: none;' ?>">
                 <label>Select Designation</label>
-                <select class="form-select" name="designation_id">
-                    <option value="">Select Designation</option>
+
+                <select multiple name="targetIds[]" class="select2 form-select" data-live-search="true">
                     <?php foreach ($designations as $designation): ?>
                         <option value="<?= $designation['id'] ?>" <?= ($selectedDesignation ?? '') == $designation['id'] ? 'selected' : '' ?>>
                             <?= htmlspecialchars($designation['designation_name']) ?>
@@ -68,8 +67,7 @@ $filter_type = $_GET['filter_type'] ?? $filter_type ?? 'all_employees';
             <div class="col-xxl-3 col-lg-3 col-md-6 col-12 filter-wrapper" id="employee_wrapper"
                 style="<?= $filter_type == 'specific_employees' ? '' : 'display: none;' ?>">
                 <label>Select Employee</label>
-                <select class="form-select" name="employee_id">
-                    <option value="">Select Employee</option>
+                <select multiple name="targetIds[]" class="select2 form-select" data-live-search="true">
                     <?php foreach ($employees ?? [] as $employee): ?>
                         <option value="<?= htmlspecialchars($employee['id']) ?>">
                             <?= htmlspecialchars($employee['full_name']) ?>
@@ -143,8 +141,8 @@ $filter_type = $_GET['filter_type'] ?? $filter_type ?? 'all_employees';
 
         function toggleFilters() {
             const val = filterSelect.value;
-            deptWrapper.style.display = (val === 'by_department') ? 'block' : 'none';
-            desigWrapper.style.display = (val === 'by_designation') ? 'block' : 'none';
+            deptWrapper.style.display = (val === 'department') ? 'block' : 'none';
+            desigWrapper.style.display = (val === 'designation') ? 'block' : 'none';
             empWrapper.style.display = (val === 'specific_employees') ? 'block' : 'none';
         }
 

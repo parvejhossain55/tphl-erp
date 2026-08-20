@@ -100,64 +100,9 @@ class EmailStationController extends Controller
         ]);
     }
 
-    public function saveAsDraft()
-    {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // 1. Sanitize and retrieve POST input matching form field names
-            $email_template_id = trim($_POST['email_template_id'] ?? '');
-            $subject = trim($_POST['subject'] ?? '');
-            $body = trim($_POST['body'] ?? ''); // Contains TinyMCE HTML content
-            $status = 'draft'; // Default status according to table schema
-
-            // 2. Validate required fields
-            if (empty($email_template_id) || empty($subject) || empty($body)) {
-                // Redirect back or display error
-                setError("Please fill all the required fields");
-                header("Location: " . $GLOBALS['base_url'] . "/create-email-alert");
-                exit();
-            }
-
-            try {
-                $emailAlertID = $this->emailAlertModel->create([
-                    'email_template_id' => $email_template_id,
-                    'subject' => $subject,
-                    'body' => $body,
-                    'status' => $status,
-                    'created_by' => $_SESSION['user']['id']
-                ]);
-
-                if ($emailAlertID) {
-                    // Success redirect
-                    setSuccess("Email Alert saved as draft successfully!");
-                    header("Location: {$GLOBALS['base_url']}/email-station");
-                    exit;
-                }
-
-            } catch (Exception $e) {
-                //  exact error show (DEV mode)
-                $_SESSION['error'] = "Error: " . $e->getMessage();
-
-                header("Location: {$GLOBALS['base_url']}/create-email-alert");
-                exit;
-            }
-        }
-    }
-
-    public function sendMail()
-    {
-        echo '<pre>';
-        print_r($_POST);
-        echo '</pre>';
-        exit;
-
-        if ($_POST['filter_type'] == 'all_employees') {
-
-        }
-    }
-
     public function storeEmailAlert()
     {
-        dd($_POST);
+        // dd($_POST);
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $submissionType = $_POST['submission_type'] ?? 'draft';
 
@@ -166,6 +111,8 @@ class EmailStationController extends Controller
             $subject = trim($_POST['subject'] ?? '');
             $body = trim($_POST['body'] ?? ''); // Contains TinyMCE HTML content
             $status = 'draft'; // Default status according to table schema
+            $filterType = trim($_POST['filter_type'] ?? '');
+            $targetType = trim($_POST['filter_type'] ?? '');
 
             // 2. Validate required fields
             if (empty($email_template_id) || empty($subject) || empty($body)) {
@@ -180,23 +127,19 @@ class EmailStationController extends Controller
                     'email_template_id' => $email_template_id,
                     'subject' => $subject,
                     'body' => $body,
+                    'target_type' => $filterType,
                     'status' => $status,
                     'created_by' => $_SESSION['user']['id']
                 ]);
-
-                // if ($emailAlertID) {
-                //     // Success redirect
-                //     setSuccess("Email Alert saved as draft successfully!");
-                //     header("Location: {$GLOBALS['base_url']}/email-station");
-                // }
 
                 if (!$emailAlertID) {
                     setError("Failed to create email alert");
                     header("Location: " . $GLOBALS['base_url'] . "/create-email-alert");
                     exit();
                 }
+
                 if ($_POST['filter_type'] != 'all_employees') {
-                    $targetIds = $_POST['target_ids'] ?? [];
+                    $targetIds = $_POST['targetIds'] ?? [];
                     $this->emailAlertTargetModel->createBatch(
                         $emailAlertID,
                         $_POST['filter_type'],
@@ -205,8 +148,18 @@ class EmailStationController extends Controller
                 }
 
                 if ($submissionType === 'send') {
+
+                    if ($targetType == 'department') {
+                        $emails = $this->getEmployeesEmailByDepartmentIds($targetIds);
+                    } elseif ($targetType == 'designation') {
+                        $emails = $this->getEmployeesEmailByDesignationIds($targetIds);
+                    } elseif ($targetType == 'specific_employees') {
+                        $emails = $this->getEmployeesEmailByEmployeeIds($targetIds);
+                    }
+
                     // Handle send logic
-                    $isMailSent = $this->sendMail();
+                    $isMailSent = $this->sendEmail($emails, $subject, $body);
+
                     if ($isMailSent) {
                         $this->emailAlertModel->updateStatus($emailAlertID, 'sent');
                     } else {
@@ -215,11 +168,16 @@ class EmailStationController extends Controller
                 } elseif ($submissionType === 'draft') {
                     // Handle draft logic
                     $this->emailAlertModel->updateStatus($emailAlertID, 'draft');
+                    // Success redirect
+                    setSuccess("Email Alert saved as draft successfully!");
+                    header("Location: {$GLOBALS['base_url']}/email-station");
                 }
+
 
             } catch (Exception $e) {
                 //  exact error show (DEV mode)
-                $_SESSION['error'] = "Error: " . $e->getMessage();
+                setError($e->getMessage());
+                // $_SESSION['error'] = "Error: " . $e->getMessage();
 
                 header("Location: {$GLOBALS['base_url']}/create-email-alert");
                 exit;
@@ -227,40 +185,252 @@ class EmailStationController extends Controller
         }
     }
 
-    public function sendEmail($toEmail, $recipientName, $subject, $body)
+    public function sendEmail(array $toEmails, $subject, $body)
     {
-        // 1. Create an instance of PHPMailer; passing `true` enables exceptions
+        if (empty($toEmails)) {
+            return false;
+        }
+
         $mail = new PHPMailer(true);
 
         try {
-            // 2. SMTP Server Configuration
-            $mail->isSMTP();                                            // Send using SMTP
-            $mail->Host = 'smtp.gmail.com';                       // Set SMTP server (e.g., Gmail, Mailtrap, SendGrid)
-            $mail->SMTPAuth = true;                                   // Enable SMTP authentication
-            $mail->Username = 'your_email@gmail.com';                 // SMTP username
-            $mail->Password = 'your_app_password';                    // SMTP password (use App Password for Gmail)
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;         // Enable implicit TLS encryption (or ENCRYPTION_SMTPS for SSL)
-            $mail->Port = 587;                                    // TCP port (587 for TLS, 465 for SSL)
+            // SMTP Configuration
+            $mail->isSMTP();
+            $mail->Host = 'smtp.gmail.com';
+            $mail->SMTPAuth = true;
+            $mail->Username = 'farzana.tphl13@gmail.com';
+            $mail->Password = 'hvptjfnsprecofmi';
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+            $mail->Port = 465;
 
-            // 3. Sender & Recipient Setup
-            $mail->setFrom('your_email@gmail.com', 'Company HR System');
-            $mail->addAddress($toEmail, $recipientName);                // Add recipient email and name
-            $mail->addReplyTo('no-reply@yourdomain.com', 'Information');
+            // Sender
+            $mail->setFrom(
+                'farzana.tphl13@gmail.com',
+                'Company HR System'
+            );
 
-            // 4. Content Configuration
-            $mail->isHTML(true);                                        // Set email format to HTML
+            $mail->addReplyTo(
+                'no-reply@yourdomain.com',
+                'Information'
+            );
+
+            // Content
+            $mail->isHTML(true);
             $mail->Subject = $subject;
-            $mail->Body = $body;                                     // TinyMCE HTML body content
-            $mail->AltBody = strip_tags($body);                         // Plain text version for non-HTML mail clients
+            $mail->Body = $body;
+            $mail->AltBody = strip_tags($body);
 
-            // 5. Send Email
-            $mail->send();
-            return true;
+            $failedEmails = [];
+
+            foreach ($toEmails as $toEmail) {
+
+                // Clear previous recipient
+                $mail->clearAddresses();
+
+                $toEmail = trim($toEmail);
+
+                if (!filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
+                    $failedEmails[] = $toEmail;
+                    continue;
+                }
+
+                $mail->addAddress($toEmail);
+
+                try {
+                    $mail->send();
+                } catch (Exception $e) {
+                    $failedEmails[] = $toEmail;
+
+                    error_log(
+                        "Email could not be sent to {$toEmail}. " .
+                        "Mailer Error: {$mail->ErrorInfo}"
+                    );
+                }
+            }
+
+            // Return true only if ALL emails were sent
+            return empty($failedEmails);
 
         } catch (Exception $e) {
-            // Log error message or handle exception
-            error_log("Email could not be sent. Mailer Error: {$mail->ErrorInfo}");
+
+            error_log(
+                "Email configuration error. " .
+                "Mailer Error: {$mail->ErrorInfo}"
+            );
+
             return false;
         }
+    }
+
+
+    public function getColumnById($id, $table, $column)
+    {
+        // Sanitize SQL identifiers
+        $table = preg_replace('/[^a-zA-Z0-9_]/', '', $table);
+        $column = preg_replace('/[^a-zA-Z0-9_]/', '', $column);
+
+        $id = (int) $id;
+
+        $sql = "SELECT {$column} 
+                FROM {$table} 
+                WHERE id = ?
+                LIMIT 1";
+
+        $stmt = $this->db->prepare($sql);
+
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        $stmt->bind_param("i", $id);
+
+        if (!$stmt->execute()) {
+            die("Query failed: " . $stmt->error);
+        }
+
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+
+        $stmt->close();
+
+        return $row ? $row[$column] : null;
+    }
+
+    public function getEmployeesEmailByDepartmentIds(array $departmentIds)
+    {
+        if (empty($departmentIds)) {
+            return [];
+        }
+
+        // Convert IDs to integers
+        $departmentIds = array_map('intval', $departmentIds);
+
+        // Create ?, ?, ? placeholders
+        $placeholders = implode(',', array_fill(0, count($departmentIds), '?'));
+
+        $sql = "SELECT DISTINCT email
+                FROM employees
+                WHERE department_id IN ($placeholders)
+                AND email IS NOT NULL
+                AND email != ''";
+
+        $stmt = $this->db->prepare($sql);
+
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        // Build bind_param types dynamically
+        $types = str_repeat('i', count($departmentIds));
+
+        $stmt->bind_param($types, ...$departmentIds);
+
+        if (!$stmt->execute()) {
+            die("Query failed: " . $stmt->error);
+        }
+
+        $result = $stmt->get_result();
+
+        $emails = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $emails[] = $row['email'];
+        }
+
+        $stmt->close();
+
+        return $emails;
+    }
+
+    public function getEmployeesEmailByDesignationIds(array $designationIds)
+    {
+        if (empty($designationIds)) {
+            return [];
+        }
+
+        // Convert IDs to integers
+        $designationIds = array_map('intval', $designationIds);
+
+        // Create ?, ?, ? placeholders
+        $placeholders = implode(',', array_fill(0, count($designationIds), '?'));
+
+        $sql = "SELECT DISTINCT email
+                FROM employees
+                WHERE designation_id IN ($placeholders)
+                AND email IS NOT NULL
+                AND email != ''";
+
+        $stmt = $this->db->prepare($sql);
+
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        // Build bind_param types dynamically
+        $types = str_repeat('i', count($designationIds));
+
+        $stmt->bind_param($types, ...$designationIds);
+
+        if (!$stmt->execute()) {
+            die("Query failed: " . $stmt->error);
+        }
+
+        $result = $stmt->get_result();
+
+        $emails = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $emails[] = $row['email'];
+        }
+
+        $stmt->close();
+
+        return $emails;
+    }
+
+    public function getEmployeesEmailByEmployeeIds(array $employeeIds)
+    {
+        if (empty($employeeIds)) {
+            return [];
+        }
+
+        // Convert IDs to integers
+        $employeeIds = array_map('intval', $employeeIds);
+
+        // Create ?, ?, ? placeholders
+        $placeholders = implode(',', array_fill(0, count($employeeIds), '?'));
+
+        $sql = "SELECT DISTINCT email
+                FROM employees
+                WHERE id IN ($placeholders)
+                AND email IS NOT NULL
+                AND email != ''";
+
+        $stmt = $this->db->prepare($sql);
+
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        // Build bind_param types dynamically
+        $types = str_repeat('i', count($employeeIds));
+
+        $stmt->bind_param($types, ...$employeeIds);
+
+        if (!$stmt->execute()) {
+            die("Query failed: " . $stmt->error);
+        }
+
+        $result = $stmt->get_result();
+
+        $emails = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $emails[] = $row['email'];
+        }
+
+        $stmt->close();
+
+        return $emails;
     }
 }
