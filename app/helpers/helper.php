@@ -1,5 +1,5 @@
 <?php
-function uploadImage($input, $module = 'general', $mode = 'original',  $width = 300,   $height = 300)
+function uploadImage($input, $module = 'general', $mode = 'original', $width = 300, $height = 300)
 {
     return ImageUploader::upload($input, $module, $mode, $width, $height);
 }
@@ -52,12 +52,13 @@ function getFileUrl($module, $filename)
 function paginateLinksSecondary($route, $currentPage, $totalPages)
 {
     $currentPage = intval($currentPage);
-    $totalPages  = intval($totalPages);
+    $totalPages = intval($totalPages);
 
-    if ($totalPages <= 1) return ""; // no need for pagination
+    if ($totalPages <= 1)
+        return ""; // no need for pagination
 
     $separator = strpos($route, '?') !== false ? '&' : '?';
-    $html  = '<nav class="my-4">';
+    $html = '<nav class="my-4">';
     $html .= '<ul class="pagination pagination-secondary">';
 
     // Previous Button
@@ -259,13 +260,13 @@ function redirectByRole()
         case 23: //  purchase executive
             $url = "{$GLOBALS['base_url']}/purchase-executive-dashboard";
             break;
-       case 24: //  qc and internal audit head
+        case 24: //  qc and internal audit head
             $url = "{$GLOBALS['base_url']}/qc-audit-dashboard";
             break;
- 
-    //    case 25: //  qc and internal audit head
-    //         $url = "{$GLOBALS['base_url']}/qc-audit-dashboard";
-    //         break;
+
+        //    case 25: //  qc and internal audit head
+        //         $url = "{$GLOBALS['base_url']}/qc-audit-dashboard";
+        //         break;
         case 30: // Head Accountant
             $url = "{$GLOBALS['base_url']}/accounts-dashboard";
             break;
@@ -365,7 +366,8 @@ function getFollowUpCount(int $userId, string $type = 'today'): int
               AND (f.status IS NULL OR f.status = 'pending')
         ";
         $stmt = $db->prepare($sql);
-        if (!$stmt) return 0;
+        if (!$stmt)
+            return 0;
         $stmt->bind_param("ii", $userId, $userId);
     } elseif ($type === 'upcoming') {
         // Next 3 days upcoming
@@ -379,7 +381,8 @@ function getFollowUpCount(int $userId, string $type = 'today'): int
               AND f.next_follow_up_date <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)
         ";
         $stmt = $db->prepare($sql);
-        if (!$stmt) return 0;
+        if (!$stmt)
+            return 0;
         $stmt->bind_param("ii", $userId, $userId);
     } else {
         return 0;
@@ -429,7 +432,7 @@ function isSalesCoLeader(): bool
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-    return (int)($_SESSION['user']['is_sales_co_leader'] ?? 0) === 1;
+    return (int) ($_SESSION['user']['is_sales_co_leader'] ?? 0) === 1;
 }
 
 
@@ -473,17 +476,17 @@ function ensureHashedPassword($password)
 function prepareUserData($postData, $isFromEmployee = false)
 {
     $data = [
-        'full_name'    => trim($postData['full_name'] ?? ''),
-        'user_name'    => trim($postData['user_name'] ?? ($postData['username'] ?? '')),
-        'phone'        => trim($postData['phone'] ?? ''),
-        'email'        => trim($postData['email'] ?? ''),
-        'designation'  => trim($postData['designation'] ?? ''),
-        'address'      => trim($postData['address'] ?? ''),
-        'nid'          => trim($postData['nid'] ?? ''),
-        'role_id'      => intval($postData['role_id'] ?? ($isFromEmployee ? 2 : 0)),
-        'password'     => trim($postData['password'] ?? ''),
-        'media_link1'  => trim($postData['media_link1'] ?? ($postData['social_media1'] ?? '')),
-        'media_link2'  => trim($postData['media_link2'] ?? ($postData['social_media2'] ?? '')),
+        'full_name' => trim($postData['full_name'] ?? ''),
+        'user_name' => trim($postData['user_name'] ?? ($postData['username'] ?? '')),
+        'phone' => trim($postData['phone'] ?? ''),
+        'email' => trim($postData['email'] ?? ''),
+        'designation' => trim($postData['designation'] ?? ''),
+        'address' => trim($postData['address'] ?? ''),
+        'nid' => trim($postData['nid'] ?? ''),
+        'role_id' => intval($postData['role_id'] ?? ($isFromEmployee ? 2 : 0)),
+        'password' => trim($postData['password'] ?? ''),
+        'media_link1' => trim($postData['media_link1'] ?? ($postData['social_media1'] ?? '')),
+        'media_link2' => trim($postData['media_link2'] ?? ($postData['social_media2'] ?? '')),
     ];
     return $data;
 }
@@ -506,7 +509,13 @@ function setSuccess($message)
 {
     $_SESSION['flash_success'] = $message;
 }
-
+function dd($data)
+{
+    echo "<pre>";
+    print_r($data);
+    echo "</pre>";
+    die;
+}
 function setError($message)
 {
     $_SESSION['flash_error'] = $message;
@@ -564,7 +573,7 @@ function addCameraWithHls($db, $project_id, $project_name, $camera_name, $rtsp_u
 {
     // 1 Generate slugs
     $project_slug = strtolower(trim(preg_replace('/[^\w]+/', '_', $project_name)));
-    $camera_slug  = strtolower(trim(preg_replace('/[^\w]+/', '_', $camera_name)));
+    $camera_slug = strtolower(trim(preg_replace('/[^\w]+/', '_', $camera_name)));
 
     // 2 Insert camera into DB WITHOUT hls_path
     $stmt = $db->prepare("INSERT INTO cameras (project_id, camera_name, camera_slug, rtsp_url, status) VALUES (?, ?, ?, ?, ?)");
@@ -576,7 +585,8 @@ function addCameraWithHls($db, $project_id, $project_name, $camera_name, $rtsp_u
 
     // 3 Prepare HLS folder
     $projectDir = rtrim($hlsBase, '/') . '/' . $project_slug;
-    if (!is_dir($projectDir)) mkdir($projectDir, 0777, true);
+    if (!is_dir($projectDir))
+        mkdir($projectDir, 0777, true);
 
     // 4 HLS file path
     $hlsPath = $projectDir . '/' . $camera_slug . '.m3u8';
@@ -636,7 +646,8 @@ function slugExists($db, $slug, $table = 'lead_sources', $column = 'slug', $excl
 
 function formatUrl($url)
 {
-    if (!$url) return '#';
+    if (!$url)
+        return '#';
     if (!preg_match('~^https?://~i', $url)) {
         return 'https://' . $url;
     }
@@ -694,9 +705,9 @@ function getFlatRulesArray()
 }
 if (!function_exists('amountInWords')) {
     function amountInWords($amount)
-{
-    return FormatHelper::amountInWords($amount);
-}
+    {
+        return FormatHelper::amountInWords($amount);
+    }
 }
 
 // truncate text to N characters
@@ -720,7 +731,7 @@ function normalizeDateYear($date)
     if ($timestamp === false) {
         return $date;
     }
-    $year = (int)date('Y', $timestamp);
+    $year = (int) date('Y', $timestamp);
     if ($year < 100) {
         $month = date('m', $timestamp);
         $day = date('d', $timestamp);
@@ -747,7 +758,8 @@ function format_bdt($number)
 // video url create 
 function renderReviewVideo($url, $width = '100%', $height = '315')
 {
-    if (!$url) return '';
+    if (!$url)
+        return '';
 
     // YouTube
     if (strpos($url, 'youtube.com') !== false || strpos($url, 'youtu.be') !== false) {
@@ -788,7 +800,7 @@ function renderReviewVideo($url, $width = '100%', $height = '315')
    ========================= */
 function esc($value, $default = '')
 {
-    return htmlspecialchars((string)($value ?? $default), ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars((string) ($value ?? $default), ENT_QUOTES, 'UTF-8');
 }
 
 /* =========================
@@ -801,7 +813,7 @@ function renderApprovalContext(array $req)
     }
 
     $ctx = $req['context'];
-?>
+    ?>
 
     <div class="card__wrapper shadow-sm border-0 mb-3">
         <div class="card-header_title">
@@ -1001,7 +1013,7 @@ function renderApprovalContext(array $req)
     </div>
 
 
-<?php
+    <?php
 }
 
 
@@ -1056,7 +1068,7 @@ function checkTipsoiEmployeeMatch($db)
         return false;
     }
 
-    $loggedUserId = (int)$_SESSION['user']['id'];
+    $loggedUserId = (int) $_SESSION['user']['id'];
     $stmt = $db->prepare("SELECT * FROM users WHERE id = ? LIMIT 1");
     $stmt->bind_param("i", $loggedUserId);
     $stmt->execute();
@@ -1066,7 +1078,7 @@ function checkTipsoiEmployeeMatch($db)
         return false;
     }
 
-    $empId = (int)$user['employee_id'];
+    $empId = (int) $user['employee_id'];
     $stmt = $db->prepare("SELECT * FROM employees WHERE id = ? LIMIT 1");
     $stmt->bind_param("i", $empId);
     $stmt->execute();
@@ -1077,11 +1089,11 @@ function checkTipsoiEmployeeMatch($db)
     }
 
     $localEmail = strtolower(trim($employee['email']));
-    $localOfficeId = trim((string)$employee['employee_id']);
-    
-    $normalizeIdPhp = function($id) {
-        $str = trim((string)$id);
-        return preg_match('/^\d+$/', $str) ? (string)intval($str) : $str;
+    $localOfficeId = trim((string) $employee['employee_id']);
+
+    $normalizeIdPhp = function ($id) {
+        $str = trim((string) $id);
+        return preg_match('/^\d+$/', $str) ? (string) intval($str) : $str;
     };
     $normOfficeId = $normalizeIdPhp($localOfficeId);
 
@@ -1128,7 +1140,7 @@ function checkTipsoiEmployeeMatch($db)
  */
 function isAccountsHead(): bool
 {
-    return isset($_SESSION['user']['role_id']) && (int)$_SESSION['user']['role_id'] === 30;
+    return isset($_SESSION['user']['role_id']) && (int) $_SESSION['user']['role_id'] === 30;
 }
 
 /**
@@ -1139,7 +1151,7 @@ function isAdminOperation(): bool
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-    return isset($_SESSION['user']['role_id']) && (int)$_SESSION['user']['role_id'] === 32;
+    return isset($_SESSION['user']['role_id']) && (int) $_SESSION['user']['role_id'] === 32;
 }
 
 /**
@@ -1150,7 +1162,7 @@ function isOperationRole(): bool
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-    $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+    $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
     return in_array($roleId, [20, 32], true);
 }
 
@@ -1163,7 +1175,7 @@ function canApproveProcess(): bool
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-    $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+    $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
     if ($roleId === 32) {
         return false;
     }

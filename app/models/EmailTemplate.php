@@ -9,6 +9,22 @@ class EmailTemplate extends Model
         return parent::__construct($db);
     }
 
+    public function getAll()
+    {
+        $stmt = $this->db->prepare("SELECT * FROM email_templates");
+
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return $data;
+    }
+
     // CHANGED: Implemented create method using PDO prepared statements
     public function create($data = [])
     {

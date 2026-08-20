@@ -6,11 +6,11 @@ $show_breadcrumb = true;
 
 ?>
 <div class="breadcrumb__btn my-4 text-align-end">
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addNewDepartment">Add Department</button>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addNewDepartment">Add
+        Department</button>
 </div>
 
 <div class="row">
-
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="table__wrapper table-responsive">
@@ -42,18 +42,15 @@ $show_breadcrumb = true;
                                 <!-- Action buttons -->
                                 <td>
                                     <div class="d-flex align-items-center justify-content-start gap-10">
-                                        <button type="button" class="table__icon edit"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#editDepartment"
-                                            data-id="<?= $dept['id'] ?>"
+                                        <button type="button" class="table__icon edit" data-bs-toggle="modal"
+                                            data-bs-target="#editDepartment" data-id="<?= $dept['id'] ?>"
                                             data-name="<?= htmlspecialchars($dept['name']) ?>"
                                             data-status="<?= $dept['status'] ?>">
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </button>
 
                                         <button type="button" class="removeBtnCust table__icon delete"
-                                            data-id="<?= $dept['id'] ?>"
-                                            data-name="<?= $dept['name'] ?>"
+                                            data-id="<?= $dept['id'] ?>" data-name="<?= $dept['name'] ?>"
                                             data-action="delete-department">
                                             <i class="fa-regular fa-trash"></i>
                                         </button>
@@ -105,12 +102,15 @@ $show_breadcrumb = true;
                                         </div>
                                         <div class="radio d-flex align-items-center gap-20">
                                             <div class="form-check">
-                                                <input name="status" class="form-check-input" type="radio" value="1" id="statusRadioActive" checked>
+                                                <input name="status" class="form-check-input" type="radio" value="1"
+                                                    id="statusRadioActive" checked>
                                                 <label class="form-check-label" for="statusRadioActive">Active</label>
                                             </div>
                                             <div class="form-check">
-                                                <input name="status" class="form-check-input" type="radio" value="0" id="statusRadioInactive">
-                                                <label class="form-check-label" for="statusRadioInactive">Inactive</label>
+                                                <input name="status" class="form-check-input" type="radio" value="0"
+                                                    id="statusRadioInactive">
+                                                <label class="form-check-label"
+                                                    for="statusRadioInactive">Inactive</label>
                                             </div>
 
                                         </div>
@@ -155,7 +155,8 @@ $show_breadcrumb = true;
                                                 <label for="edit_department">Department Name <span>*</span></label>
                                             </div>
                                             <div class="form__input">
-                                                <input class="form-control" name="name" id="edit_department" type="text" required>
+                                                <input class="form-control" name="name" id="edit_department" type="text"
+                                                    required>
                                             </div>
                                         </div>
                                     </div>
@@ -168,12 +169,15 @@ $show_breadcrumb = true;
 
                                         <div class="radio d-flex align-items-center gap-20">
                                             <div class="form-check">
-                                                <input name="status" class="form-check-input" type="radio" value="1" id="editStatusActive">
+                                                <input name="status" class="form-check-input" type="radio" value="1"
+                                                    id="editStatusActive">
                                                 <label class="form-check-label" for="editStatusActive">Active</label>
                                             </div>
                                             <div class="form-check">
-                                                <input name="status" class="form-check-input" type="radio" value="0" id="editStatusInactive">
-                                                <label class="form-check-label" for="editStatusInactive">Inactive</label>
+                                                <input name="status" class="form-check-input" type="radio" value="0"
+                                                    id="editStatusInactive">
+                                                <label class="form-check-label"
+                                                    for="editStatusInactive">Inactive</label>
                                             </div>
                                         </div>
                                     </div>
@@ -198,16 +202,16 @@ $show_breadcrumb = true;
     var base_url = "<?= $GLOBALS['base_url'] ?>";
 
     // Edit modal — vanilla JS, works before jQuery loads
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
         var modal = document.getElementById('editDepartment');
         if (modal) {
-            modal.addEventListener('show.bs.modal', function(event) {
+            modal.addEventListener('show.bs.modal', function (event) {
                 var button = event.relatedTarget;
-                var id     = button.getAttribute('data-id');
-                var name   = button.getAttribute('data-name');
+                var id = button.getAttribute('data-id');
+                var name = button.getAttribute('data-name');
                 var status = button.getAttribute('data-status');
                 document.getElementById('edit_department_id').value = id;
-                document.getElementById('edit_department').value    = name;
+                document.getElementById('edit_department').value = name;
                 if (status === "1") {
                     document.getElementById('editStatusActive').checked = true;
                 } else {
