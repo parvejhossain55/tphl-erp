@@ -304,6 +304,7 @@
             border: 0;
             background: transparent;
             cursor: pointer;
+            z-index: 10;
         }
 
         .login-options {
@@ -502,7 +503,7 @@
                         <div class="login-input-wrap has-icon">
                             <i class="login-input-icon fa-light fa-lock"></i>
                             <input type="password" name="password" id="passwordInput" placeholder="Enter your password" autocomplete="current-password" required>
-                            <button class="login-password-toggle" type="button" id="passwordToggle" aria-label="Show password"><i class="fa-light fa-eye"></i></button>
+                            <button class="login-password-toggle" type="button" id="loginPasswordToggle" aria-label="Show password"><i class="fa-light fa-eye"></i></button>
                         </div>
                     </div>
                     <div class="login-options">
@@ -582,22 +583,28 @@
     <script>
         (function () {
             var passwordInput = document.getElementById('passwordInput');
-            var passwordToggle = document.getElementById('passwordToggle');
+            var passwordToggle = document.getElementById('loginPasswordToggle');
             var themeToggle = document.getElementById('loginThemeToggle');
 
             if (passwordInput && passwordToggle) {
-                passwordToggle.addEventListener('click', function () {
-                    var isPassword = passwordInput.type === 'password';
-                    passwordInput.type = isPassword ? 'text' : 'password';
-                    passwordToggle.innerHTML = isPassword
-                        ? '<i class="fa-light fa-eye-slash"></i>'
-                        : '<i class="fa-light fa-eye"></i>';
-                    passwordToggle.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+                passwordToggle.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    var type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    
+                    if (type === 'text') {
+                        passwordToggle.innerHTML = '<i class="fa-light fa-eye-slash"></i>';
+                        passwordToggle.setAttribute('aria-label', 'Hide password');
+                    } else {
+                        passwordToggle.innerHTML = '<i class="fa-light fa-eye"></i>';
+                        passwordToggle.setAttribute('aria-label', 'Show password');
+                    }
                 });
             }
 
             if (themeToggle) {
-                themeToggle.addEventListener('click', function () {
+                themeToggle.addEventListener('click', function (e) {
+                    e.preventDefault();
                     document.body.classList.toggle('login-night');
                 });
             }
