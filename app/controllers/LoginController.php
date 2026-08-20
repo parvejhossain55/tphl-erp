@@ -151,7 +151,6 @@ class LoginController extends Controller
                 $stmt->execute();
                 $stmt->close();
             }
-            
             header('Content-Type: application/json');
             echo json_encode(['status' => 'success']);
             exit;

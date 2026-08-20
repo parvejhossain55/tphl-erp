@@ -78,6 +78,19 @@ class PayrollController extends Controller
         $employees = $this->employeeModel->getAllWithDesignation();
         $items = $this->payslipItemModel->getAll();
 
+        $salaryItemsByEmployee = [];
+        $salaryItemsQuery = $this->db->query("SELECT employee_id, payslip_item_id, amount FROM employee_salary_items");
+        if ($salaryItemsQuery) {
+            while ($salaryItem = $salaryItemsQuery->fetch_assoc()) {
+                $salaryItemsByEmployee[(int) $salaryItem['employee_id']][(int) $salaryItem['payslip_item_id']] = (float) $salaryItem['amount'];
+            }
+        }
+
+        foreach ($employees as &$employee) {
+            $employee['salary_items'] = $salaryItemsByEmployee[(int) $employee['id']] ?? [];
+        }
+        unset($employee);
+
         if (!class_exists('AdvanceSalary')) {
             require_once __DIR__ . '/../models/AdvanceSalary.php';
         }

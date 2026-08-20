@@ -3,9 +3,8 @@
 // 1 = Local Development Server
 // 2 = Project staging Server
 // 3 = Production Server
-
-
-$current_server = 1;
+///////////////
+$current_server = 3;
 // Local Development Server
 if ($current_server == 1) {
     return [
@@ -116,6 +115,13 @@ if ($current_server == 3) {
         "automas_sms_api_key" => "aa4717fdd571e46b240ce35014a5d144",
         "automas_sms_sender_id" => "8809617635127",
         "sms_testing_mode" => false,
+
+
+        "smtp_host" => "smtp.gmail.com",
+        "smtp_user" => "tech@dpremiumhomes.com",
+        "smtp_pass" => "NEW_GOOGLE_APP_PASSWORD",
+        "smtp_secure" => "ssl",
+        "smtp_port" => 465,
     ];
 
 }

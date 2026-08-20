@@ -334,7 +334,7 @@ HTML;
 
     /**
      * Notification: Vendor Payment Request Submitted
-     * Sent to Management (1, 3) and Accounts (6)
+    * Sent to QC & Internal Audit roles (24, 25), the first approval stage.
      */
     public function sendVendorPaymentOnSubmission($requestData)
     {
@@ -383,7 +383,7 @@ HTML;
             $mail->Body    = $this->getHtmlTemplate($headerTitle, $greeting, $message, $buttonText, $buttonUrl, $detailsHtml);
             $mail->AltBody = "New Vendor Payment Request by {$requesterName}. Vendor: {$vendorName}. Invoice: BDT {$invoiceAmount}. Net Payable: BDT {$netPayable}.";
 
-            $recipients = $this->getUsersByRoles([1, 3, 6]);
+            $recipients = $this->getUsersByRoles([24, 25]);
             if (empty($recipients)) return false;
 
             foreach ($recipients as $recipient) {
@@ -395,6 +395,106 @@ HTML;
             return $mail->send();
         } catch (Exception $e) {
             error_log("Mail Service Error (Vendor Payment Submission): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Notify the next pending approval stage for a Vendor Payment Request.
+     */
+    public function sendVendorPaymentToApprovalRoles($requestData, array $roleIds, string $stageLabel): bool
+    {
+        try {
+            $mail = $this->getMailer();
+            $requestId = (int)($requestData['id'] ?? 0);
+            $vendorName = htmlspecialchars($requestData['vendor_name'] ?? 'N/A');
+            $projectName = htmlspecialchars($requestData['project_name'] ?? 'N/A');
+            $amount = number_format((float)($requestData['net_payable'] ?? 0), 2);
+
+            $subject = "Action Required: Vendor Payment Request #{$requestId} — {$stageLabel}";
+            $detailsHtml = "
+                <h4 style='margin-top:0;color:#000;'>Approval Required</h4>
+                <div style='color:#333;font-size:15px;line-height:1.6;'>
+                    <strong>Vendor:</strong> {$vendorName}<br>
+                    <strong>Project:</strong> {$projectName}<br>
+                    <strong>Net Payable:</strong> BDT {$amount}<br>
+                    <strong>Stage:</strong> {$stageLabel}
+                </div>
+            ";
+
+            $mail->Subject = $subject;
+            $mail->Body = $this->getHtmlTemplate(
+                "Action Required: {$stageLabel}",
+                'Hello,',
+                "Vendor Payment Request <strong>#{$requestId}</strong> is awaiting your {$stageLabel} approval.",
+                'Review Vendor Payment Request',
+                'https://thepremiumhomesltd.com/TPHL-ERP/con-vendor-payment-requests',
+                $detailsHtml
+            );
+            $mail->AltBody = "Vendor Payment Request #{$requestId} is awaiting {$stageLabel} approval.";
+
+            $recipients = $this->getUsersByRoles($roleIds);
+            if (empty($recipients)) return false;
+            foreach ($recipients as $recipient) {
+                if (filter_var($recipient['email'], FILTER_VALIDATE_EMAIL)) {
+                    $mail->addAddress($recipient['email'], $recipient['full_name']);
+                }
+            }
+
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Mail Service Error (Vendor Payment Approval Stage): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Notify the current approval stage for an Office Procurement Request.
+     */
+    public function sendOfficeProcurementToApprovalRoles($requestData, array $roleIds, string $stageLabel): bool
+    {
+        try {
+            $mail = $this->getMailer();
+            $requestId = (int)($requestData['id'] ?? 0);
+            $itemName = htmlspecialchars($requestData['item_name'] ?? 'Office Procurement Item');
+            $office = htmlspecialchars($requestData['asset_location'] ?? 'Head Office');
+            $quantity = (int)($requestData['quantity'] ?? 0);
+            $totalPrice = number_format((float)($requestData['total_price'] ?? 0), 2);
+
+            $subject = "Action Required: Office Procurement #{$requestId} — {$stageLabel}";
+            $detailsHtml = "
+                <h4 style='margin-top:0;color:#000;'>Approval Required</h4>
+                <div style='color:#333;font-size:15px;line-height:1.6;'>
+                    <strong>Item:</strong> {$itemName}<br>
+                    <strong>Office:</strong> {$office}<br>
+                    <strong>Quantity:</strong> {$quantity}<br>
+                    <strong>Total Amount:</strong> BDT {$totalPrice}<br>
+                    <strong>Stage:</strong> {$stageLabel}
+                </div>
+            ";
+
+            $mail->Subject = $subject;
+            $mail->Body = $this->getHtmlTemplate(
+                "Action Required: {$stageLabel}",
+                'Hello,',
+                "Office Procurement Request <strong>#{$requestId}</strong> is awaiting your {$stageLabel} approval.",
+                'Review Procurement Request',
+                'https://thepremiumhomesltd.com/TPHL-ERP/asset-extra-purchases',
+                $detailsHtml
+            );
+            $mail->AltBody = "Office Procurement Request #{$requestId} is awaiting {$stageLabel} approval.";
+
+            $recipients = $this->getUsersByRoles($roleIds);
+            if (empty($recipients)) return false;
+            foreach ($recipients as $recipient) {
+                if (filter_var($recipient['email'], FILTER_VALIDATE_EMAIL)) {
+                    $mail->addAddress($recipient['email'], $recipient['full_name']);
+                }
+            }
+
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Mail Service Error (Office Procurement Approval): " . $e->getMessage());
             return false;
         }
     }
