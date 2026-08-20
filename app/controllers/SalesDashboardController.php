@@ -31,16 +31,16 @@ class SalesDashboardController extends Controller
 
     public function index()
     {
-        
+
         $roleId = $_SESSION['user']['role_id'] ?? null;
         $sessionTeamId = $_SESSION['user']['team_id'] ?? null;
-        
-        $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int)$_GET['team_id'] : null;
+
+        $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int) $_GET['team_id'] : null;
 
         if (in_array($roleId, [1, 3, 9])) {
             $teamId = $filterTeamId;
         } else {
-            $teamId = !empty($sessionTeamId) ? (int)$sessionTeamId : $filterTeamId;
+            $teamId = !empty($sessionTeamId) ? (int) $sessionTeamId : $filterTeamId;
         }
 
         $followUpTeamId = !empty($teamId) ? $teamId : null;
@@ -51,7 +51,7 @@ class SalesDashboardController extends Controller
         //  New Leads Today
         $todayLeadsQuery = "SELECT COUNT(l.id) AS today_count FROM leads l LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE DATE(l.created_at) = CURDATE() AND l.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
         if (!empty($teamId)) {
-            $todayLeadsQuery .= " AND l.team_id = " . (int)$teamId;
+            $todayLeadsQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $todayLeadsResult = $this->db->query($todayLeadsQuery);
         $todayLeads = $todayLeadsResult->fetch_assoc()['today_count'] ?? 0;
@@ -59,7 +59,7 @@ class SalesDashboardController extends Controller
         //  Follow-ups Due
         $followUpsQuery = "SELECT COUNT(*) AS due FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE fu.next_follow_up_date <= CURDATE() AND fu.status = 'pending' AND fu.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
         if (!empty($teamId)) {
-            $followUpsQuery .= " AND l.team_id = " . (int)$teamId;
+            $followUpsQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $followUpsResult = $this->db->query($followUpsQuery);
         $followUpsDue = $followUpsResult->fetch_assoc()['due'] ?? 0;
@@ -67,7 +67,7 @@ class SalesDashboardController extends Controller
         //  Onboarded Clients
         $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings lb JOIN leads l ON lb.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE lb.booking_status IN ('completed', 'booked') AND lb.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
         if (!empty($teamId)) {
-            $onboardedQuery .= " AND l.team_id = " . (int)$teamId;
+            $onboardedQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $onboardedResult = $this->db->query($onboardedQuery);
         $onboardedClients = $onboardedResult->fetch_assoc()['onboarded'] ?? 0;
@@ -75,7 +75,7 @@ class SalesDashboardController extends Controller
         //  Booking Money Collected
         $bookingCollectedQuery = "SELECT SUM(lp.amount) AS total_collected FROM lead_payments lp JOIN lead_bookings lb ON lp.booking_id = lb.id JOIN leads l ON lb.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE lp.payment_type='booking_money' AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
         if (!empty($teamId)) {
-            $bookingCollectedQuery .= " AND l.team_id = " . (int)$teamId;
+            $bookingCollectedQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $bookingCollectedResult = $this->db->query($bookingCollectedQuery);
         $bookingCollected = $bookingCollectedResult->fetch_assoc()['total_collected'] ?? 0;
@@ -86,7 +86,7 @@ class SalesDashboardController extends Controller
         //  New Follow-ups Today (optional)
         $newFollowUpsQuery = "SELECT COUNT(*) AS new_followups FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE DATE(fu.created_at) = CURDATE() AND fu.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
         if (!empty($teamId)) {
-            $newFollowUpsQuery .= " AND l.team_id = " . (int)$teamId;
+            $newFollowUpsQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $newFollowUpsResult = $this->db->query($newFollowUpsQuery);
         $newFollowUpsToday = $newFollowUpsResult->fetch_assoc()['new_followups'] ?? 0;
@@ -94,13 +94,69 @@ class SalesDashboardController extends Controller
         // Today's Follow-up Count (Filtered by team)
         $todayFollowUpSql = "SELECT COUNT(*) AS total FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE DATE(fu.next_follow_up_date) = CURDATE() AND fu.deleted_at IS NULL AND fu.status = 'pending' AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
         if (!empty($followUpTeamId)) {
-            $todayFollowUpSql .= " AND l.team_id = " . (int)$followUpTeamId;
+            $todayFollowUpSql .= " AND l.team_id = " . (int) $followUpTeamId;
         }
         $totalTodayFollowUps = $this->db->query($todayFollowUpSql)->fetch_assoc()['total'] ?? 0;
 
         // today's follow-ups table data
         // We'll update the model method or use custom logic if needed, but for now let's keep the existing call if it's acceptable, or add a team filter to it.
         $todayFollowUpData = $this->followUpModel->getTodaysFollowUps($followUpTeamId);
+
+        // WA Messaging','WA Conversion','Wa Call','Imo Massage','Imo Call','Phone Call','Phone Massage','Invalid Number','No Wa /No Imo','Number Off'
+
+        // 1. Contacted Count (leads.last_lead_action = 'contacted')
+        // Contacted Count (Advanced Condition)
+        // Contacted Count (Exact Conditions)
+        $contactedQuery = "
+    SELECT COUNT(DISTINCT l.id) AS count 
+    FROM leads l 
+    LEFT JOIN employees emp ON emp.user_id = l.assigned_id 
+    LEFT JOIN lead_follow_ups fu ON fu.lead_id = l.id AND fu.deleted_at IS NULL
+    WHERE l.deleted_at IS NULL 
+      AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+      AND (
+          l.call_status IN ('called', 'received')
+          OR fu.id IS NOT NULL
+          OR l.communication_type IN ('WA Messaging', 'WA Conversion', 'Wa Call', 'Imo Massage', 'Imo Call', 'Phone Call', 'Phone Massage')
+          OR l.last_lead_action IN ('booked', 'follow up', 'visited', 'contacted')
+          OR (l.lead_type IS NOT NULL AND l.lead_type != '')
+          OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
+      )
+";
+
+        if (!empty($teamId)) {
+            $contactedQuery .= " AND l.team_id = " . (int) $teamId;
+        }
+
+        $contactedCount = $this->db->query($contactedQuery)->fetch_assoc()['count'] ?? 0;
+
+        // 2. High Prospect Count (leads.lead_type = 'High Prospect')
+        $highProspectQuery = "SELECT COUNT(l.id) AS count FROM leads l LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE l.lead_type = 'High Prospect' AND l.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+        if (!empty($teamId)) {
+            $highProspectQuery .= " AND l.team_id = " . (int) $teamId;
+        }
+        $highProspectCount = $this->db->query($highProspectQuery)->fetch_assoc()['count'] ?? 0;
+
+        // 3. Will Visit Count (lead_follow_ups.next_action = 'site visit' AND fu.status = 'pending')
+        $willVisitQuery = "SELECT COUNT(DISTINCT fu.lead_id) AS count FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE fu.next_action = 'site visit' AND fu.status = 'pending' AND fu.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+        if (!empty($teamId)) {
+            $willVisitQuery .= " AND l.team_id = " . (int) $teamId;
+        }
+        $willVisitCount = $this->db->query($willVisitQuery)->fetch_assoc()['count'] ?? 0;
+
+        // 4. Visited Count (leads.last_lead_action = 'visited' OR leads.lead_type = 'Visited')
+        $visitedQuery = "SELECT COUNT(l.id) AS count FROM leads l LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE (l.last_lead_action = 'visited' OR l.lead_type = 'Visited') AND l.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+        if (!empty($teamId)) {
+            $visitedQuery .= " AND l.team_id = " . (int) $teamId;
+        }
+        $visitedCount = $this->db->query($visitedQuery)->fetch_assoc()['count'] ?? 0;
+
+        // 5. Booked Count (leads.last_lead_action = 'booked')
+        $bookedQuery = "SELECT COUNT(l.id) AS count FROM leads l LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE l.last_lead_action = 'booked' AND l.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+        if (!empty($teamId)) {
+            $bookedQuery .= " AND l.team_id = " . (int) $teamId;
+        }
+        $bookedCount = $this->db->query($bookedQuery)->fetch_assoc()['count'] ?? 0;
 
 
         $weeklySalesQuery = "
@@ -111,7 +167,7 @@ class SalesDashboardController extends Controller
             WHERE lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND lp.payment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
         ";
         if (!empty($teamId)) {
-            $weeklySalesQuery .= " AND l.team_id = " . (int)$teamId;
+            $weeklySalesQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $weeklySalesQuery .= " GROUP BY DATE(lp.payment_date) ORDER BY DATE(lp.payment_date)";
         $weeklySalesResult = $this->db->query($weeklySalesQuery);
@@ -119,7 +175,7 @@ class SalesDashboardController extends Controller
         while ($row = $weeklySalesResult->fetch_assoc()) {
             $weeklySales[] = [
                 'date' => $row['date'],
-                'total' => (float)$row['total']
+                'total' => (float) $row['total']
             ];
         }
 
@@ -132,7 +188,7 @@ class SalesDashboardController extends Controller
             WHERE lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND lp.payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
         ";
         if (!empty($teamId)) {
-            $monthlySalesQuery .= " AND l.team_id = " . (int)$teamId;
+            $monthlySalesQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $monthlySalesQuery .= " GROUP BY DATE(lp.payment_date) ORDER BY DATE(lp.payment_date)";
         $monthlySalesResult = $this->db->query($monthlySalesQuery);
@@ -140,7 +196,7 @@ class SalesDashboardController extends Controller
         while ($row = $monthlySalesResult->fetch_assoc()) {
             $monthlySales[] = [
                 'date' => $row['date'],
-                'total' => (float)$row['total']
+                'total' => (float) $row['total']
             ];
         }
 
@@ -153,7 +209,7 @@ class SalesDashboardController extends Controller
             WHERE lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND lp.payment_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
         ";
         if (!empty($teamId)) {
-            $yearlySalesQuery .= " AND l.team_id = " . (int)$teamId;
+            $yearlySalesQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $yearlySalesQuery .= " GROUP BY DATE_FORMAT(lp.payment_date, '%Y-%m') ORDER BY DATE_FORMAT(lp.payment_date, '%Y-%m')";
         $yearlySalesResult = $this->db->query($yearlySalesQuery);
@@ -161,7 +217,7 @@ class SalesDashboardController extends Controller
         while ($row = $yearlySalesResult->fetch_assoc()) {
             $yearlySales[] = [
                 'month' => $row['month'],
-                'total' => (float)$row['total']
+                'total' => (float) $row['total']
             ];
         }
 
@@ -179,7 +235,7 @@ class SalesDashboardController extends Controller
                             AND lb.deleted_at IS NULL
                         ";
         if (!empty($teamId)) {
-            $flatSalesQuery .= " AND l.team_id = " . (int)$teamId;
+            $flatSalesQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $flatSalesQuery .= " GROUP BY lb.project_id ORDER BY flat_sold DESC";
 
@@ -190,7 +246,7 @@ class SalesDashboardController extends Controller
 
         while ($row = $result->fetch_assoc()) {
             $flatSalesLabels[] = $row['project_name'];
-            $flatSalesSeries[] = (int)$row['flat_sold'];
+            $flatSalesSeries[] = (int) $row['flat_sold'];
         }
 
 
@@ -204,9 +260,9 @@ class SalesDashboardController extends Controller
 
         // Team Booking Performance Filter
         $teamFilterType = $_GET['team_filter_type'] ?? 'monthly';
-        $teamYear       = isset($_GET['team_year']) ? (int)$_GET['team_year'] : (int)date('Y');
-        $teamStartMonth = isset($_GET['team_start_month']) ? (int)$_GET['team_start_month'] : (int)date('n');
-        $teamEndMonth   = isset($_GET['team_end_month']) ? (int)$_GET['team_end_month'] : (int)date('n');
+        $teamYear = isset($_GET['team_year']) ? (int) $_GET['team_year'] : (int) date('Y');
+        $teamStartMonth = isset($_GET['team_start_month']) ? (int) $_GET['team_start_month'] : (int) date('n');
+        $teamEndMonth = isset($_GET['team_end_month']) ? (int) $_GET['team_end_month'] : (int) date('n');
         $defaultTeamTab = 'month1';
 
         if (isset($_GET['team_filter_type'])) {
@@ -221,18 +277,18 @@ class SalesDashboardController extends Controller
 
         $allSalesTeams = $this->userModel->getSalesTeams($roleId, $teamId);
         $executiveId = $_GET['executive'] ?? null;
-        $startMonth  = $_GET['start_month'] ?? null;
-        $endMonth    = $_GET['end_month'] ?? null;
-        $year        = $_GET['year'] ?? null;
+        $startMonth = $_GET['start_month'] ?? null;
+        $endMonth = $_GET['end_month'] ?? null;
+        $year = $_GET['year'] ?? null;
 
         $singleData = [
-            'site_visit_target'   => 0,
-            'booking_target'      => 0,
+            'site_visit_target' => 0,
+            'booking_target' => 0,
             'booking_value_target' => 0,
-            'visit_completed'     => 0,
-            'booking_completed'   => 0,
+            'visit_completed' => 0,
+            'booking_completed' => 0,
             'total_booking_money' => 0,
-            'total_flat_value'    => 0,
+            'total_flat_value' => 0,
         ];
 
         $showCards = false;
@@ -328,16 +384,23 @@ class SalesDashboardController extends Controller
             "allSalesTeams" => $allSalesTeams,
             "singleData" => $singleData,
             "showCards" => $showCards,
-            "errorMessage"  => $errorMessage,
-            "executiveId"  => $executiveId,
-            "year"  => $year,
-            "start_month"  => $startMonth,
-            "end_month"    => $endMonth,
+            "errorMessage" => $errorMessage,
+            "executiveId" => $executiveId,
+            "year" => $year,
+            "start_month" => $startMonth,
+            "end_month" => $endMonth,
             "teamFilterType" => $teamFilterType,
-            "teamYear"       => $teamYear,
+            "teamYear" => $teamYear,
             "teamStartMonth" => $teamStartMonth,
-            "teamEndMonth"   => $teamEndMonth,
+            "teamEndMonth" => $teamEndMonth,
             "defaultTeamTab" => $defaultTeamTab,
+
+
+            "contactedCount" => $contactedCount,
+            "highProspectCount" => $highProspectCount,
+            "willVisitCount" => $willVisitCount,
+            "visitedCount" => $visitedCount,
+            "bookedCount" => $bookedCount,
         ]);
     }
 
@@ -399,7 +462,7 @@ class SalesDashboardController extends Controller
         $monthInput = $_POST['month']; // e.g. 2026-02
         $month = date('Y-m-01', strtotime($monthInput));
 
-        $categoryId = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
+        $categoryId = !empty($_POST['category_id']) ? (int) $_POST['category_id'] : null;
         $projectIds = !empty($_POST['project_ids']) ? json_encode($_POST['project_ids']) : null;
         $siteVisit = $_POST['site_visit_target'] ?? 0;
         $bookingTarget = $_POST['booking_target'] ?? 0;
@@ -431,14 +494,14 @@ class SalesDashboardController extends Controller
         $monthInput = $_POST['month'];
 
         $month = date('Y-m-01', strtotime($monthInput));
-        
-        $categoryId = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : null;
+
+        $categoryId = !empty($_POST['category_id']) ? (int) $_POST['category_id'] : null;
         $projectIds = !empty($_POST['project_ids']) ? json_encode($_POST['project_ids']) : null;
 
         $siteVisit = $_POST['site_visit_target'] ?? 0;
         $booking = $_POST['booking_target'] ?? 0;
         $bookingValue = $_POST['booking_value_target'] ?? 0;
-        
+
         $userId = $_POST['user_id'];
 
         $sql = "

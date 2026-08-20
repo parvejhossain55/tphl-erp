@@ -1,4 +1,3 @@
-
 <div class="app__slide-wrapper">
 
     <!-- HEADER -->
@@ -54,7 +53,7 @@
                     <option value="">Select Month</option>
                     <?php foreach (range(1, 12) as $m):
                         $monthName = date('F', mktime(0, 0, 0, $m, 1));
-                    ?>
+                        ?>
                         <option value="<?= $m ?>" <?= ($start_month == $m) ? 'selected' : '' ?>>
                             <?= $monthName ?>
                         </option>
@@ -69,7 +68,7 @@
                     <option value="">Select Month</option>
                     <?php foreach (range(1, 12) as $m):
                         $monthName = date('F', mktime(0, 0, 0, $m, 1));
-                    ?>
+                        ?>
                         <option value="<?= $m ?>" <?= ($end_month == $m) ? 'selected' : '' ?>>
                             <?= $monthName ?>
                         </option>
@@ -96,7 +95,8 @@
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="fa-solid fa-magnifying-glass me-1"></i> Filter
                     </button>
-                    <a href="<?= $GLOBALS['base_url'] ?>/sales-dashboard" class="btn btn-secondary w-100 d-flex align-items-center justify-content-center">
+                    <a href="<?= $GLOBALS['base_url'] ?>/sales-dashboard"
+                        class="btn btn-secondary w-100 d-flex align-items-center justify-content-center">
                         <i class="fa-solid fa-rotate-left me-1"></i> Reset
                     </a>
                 </div>
@@ -113,7 +113,8 @@
 
             <!-- New Lead & Action tracking data -->
             <div class="col-12 col-sm-6 col-md-4 mb-3 card-item">
-                <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4" style="border-right-width: 4px !important;">
+                <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4"
+                    style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
                             <div class="d-flex justify-content-between mb-2">
@@ -130,7 +131,8 @@
             </div>
 
             <div class="col-12 col-sm-6 col-md-4 mb-3 card-item">
-                <div class="card__wrapper p-3 shadow-sm border-end border-success border-4" style="border-right-width: 4px !important;">
+                <div class="card__wrapper p-3 shadow-sm border-end border-success border-4"
+                    style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
                             <div class="d-flex justify-content-between mb-2">
@@ -147,7 +149,8 @@
             </div>
 
             <div class="col-12 col-sm-6 col-md-4 mb-3 card-item">
-                <div class="card__wrapper p-3 shadow-sm border-end border-warning border-4" style="border-right-width: 4px !important;">
+                <div class="card__wrapper p-3 shadow-sm border-end border-warning border-4"
+                    style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
                             <div class="d-flex justify-content-between mb-2">
@@ -164,7 +167,8 @@
             </div>
 
             <div class="col-12 col-sm-6 col-md-4 mb-3 card-item">
-                <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4" style="border-right-width: 4px !important;">
+                <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4"
+                    style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
                             <div class="d-flex justify-content-between mb-2">
@@ -181,7 +185,8 @@
             </div>
 
             <div class="col-12 col-sm-6 col-md-4 mb-3 card-item">
-                <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4" style="border-right-width: 4px !important;">
+                <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4"
+                    style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
                             <div class="d-flex justify-content-between mb-2">
@@ -198,7 +203,8 @@
             </div>
 
             <div class="col-12 col-sm-6 col-md-4 mb-3 card-item">
-                <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4" style="border-right-width: 4px !important;">
+                <div class="card__wrapper p-3 shadow-sm border-end border-primary border-4"
+                    style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
                             <div class="d-flex justify-content-between mb-2">
@@ -344,16 +350,101 @@
             </div>
         </div>
         <!-- CONVERSION RATE -->
-        <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
+        <div class="d-none col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-solid fa-chart-line"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-primary mb-10">Conversion Rate</h6>
+                        <h6 class="card__title text-break text-primary mb-10">Total Booked shares</h6>
                         <h4 class="card__title">
                             <?= format_bdt($conversionRate) ?>%
+                        </h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Booked / Onboarded Card -->
+        <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-10">
+                    <div class="card__icon">
+                        <span><i class="fa-solid fa-bookmark"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__title text-break text-primary mb-10">Total Booked</h6>
+                        <h4 class="card__title">
+                            <?= number_format($bookedCount) ?>
+                        </h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contacted Card -->
+        <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-10">
+                    <div class="card__icon">
+                        <span><i class="fa-solid fa-phone-volume"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__title text-break text-primary mb-10">Contacted</h6>
+                        <h4 class="card__title">
+                            <?= number_format($contactedCount) ?>
+                        </h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- High Prospect Card -->
+        <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-10">
+                    <div class="card__icon">
+                        <span><i class="fa-solid fa-fire"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__title text-break text-primary mb-10">High Prospect</h6>
+                        <h4 class="card__title">
+                            <?= number_format($highProspectCount) ?>
+                        </h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Will Visit Card -->
+        <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-10">
+                    <div class="card__icon">
+                        <span><i class="fa-solid fa-calendar-check"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__title text-break text-primary mb-10">Will Visit</h6>
+                        <h4 class="card__title">
+                            <?= number_format($willVisitCount) ?>
+                        </h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visited Card -->
+        <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-10">
+                    <div class="card__icon">
+                        <span><i class="fa-solid fa-location-dot"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__title text-break text-primary mb-10">Visited</h6>
+                        <h4 class="card__title">
+                            <?= number_format($visitedCount) ?>
                         </h4>
                     </div>
                 </div>
@@ -371,13 +462,16 @@
                     <div class="card__tab">
                         <ul class="nav nav-pills" id="pills-tab" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="pills-bar-year-tab" data-period="year" type="button">1Y</button>
+                                <button class="nav-link active" id="pills-bar-year-tab" data-period="year"
+                                    type="button">1Y</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="pills-bar-month-tab" data-period="month" type="button">1M</button>
+                                <button class="nav-link" id="pills-bar-month-tab" data-period="month"
+                                    type="button">1M</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link " id="pills-bar-week-tab" data-period="week" type="button">1W</button>
+                                <button class="nav-link " id="pills-bar-week-tab" data-period="week"
+                                    type="button">1W</button>
                             </li>
                         </ul>
                     </div>
@@ -459,9 +553,11 @@
                 <!-- Filter Type -->
                 <div class="col-12 col-md-2" id="teamFilterTypeCol">
                     <div class="from__input-box">
-                        <label class="form-label small fw-bold text-muted mb-2"><i class="fa-solid fa-filter me-1"></i> Filter Type</label>
+                        <label class="form-label small fw-bold text-muted mb-2"><i class="fa-solid fa-filter me-1"></i>
+                            Filter Type</label>
                         <select class="form-control form-select" name="team_filter_type" id="teamFilterTypeSelect">
-                            <option value="monthly" <?= ($teamFilterType === 'monthly') ? 'selected' : '' ?>>Monthly</option>
+                            <option value="monthly" <?= ($teamFilterType === 'monthly') ? 'selected' : '' ?>>Monthly
+                            </option>
                             <option value="yearly" <?= ($teamFilterType === 'yearly') ? 'selected' : '' ?>>Yearly</option>
                         </select>
                     </div>
@@ -470,7 +566,8 @@
                 <!-- Year Select -->
                 <div class="col-12 col-md-2" id="teamYearCol">
                     <div class="from__input-box">
-                        <label class="form-label small fw-bold text-muted mb-2"><i class="fa-solid fa-calendar me-1"></i> Year</label>
+                        <label class="form-label small fw-bold text-muted mb-2"><i
+                                class="fa-solid fa-calendar me-1"></i> Year</label>
                         <select class="form-control form-select" name="team_year">
                             <?php for ($y = $teamStartFilterYear; $y <= $teamEndFilterYear; $y++): ?>
                                 <option value="<?= $y ?>" <?= ($teamYear == $y) ? 'selected' : '' ?>><?= $y ?></option>
@@ -482,10 +579,12 @@
                 <!-- Start Month -->
                 <div class="col-12 col-md-2" id="teamStartMonthCol">
                     <div class="from__input-box">
-                        <label class="form-label small fw-bold text-muted mb-2"><i class="fa-solid fa-calendar-day me-1"></i> Start Month</label>
+                        <label class="form-label small fw-bold text-muted mb-2"><i
+                                class="fa-solid fa-calendar-day me-1"></i> Start Month</label>
                         <select class="form-control form-select" name="team_start_month">
                             <?php foreach ($teamMonthsList as $num => $name): ?>
-                                <option value="<?= $num ?>" <?= ($teamStartMonth == $num) ? 'selected' : '' ?>><?= $name ?></option>
+                                <option value="<?= $num ?>" <?= ($teamStartMonth == $num) ? 'selected' : '' ?>><?= $name ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -494,10 +593,12 @@
                 <!-- End Month -->
                 <div class="col-12 col-md-2" id="teamEndMonthCol">
                     <div class="from__input-box">
-                        <label class="form-label small fw-bold text-muted mb-2"><i class="fa-solid fa-calendar-day me-1"></i> End Month</label>
+                        <label class="form-label small fw-bold text-muted mb-2"><i
+                                class="fa-solid fa-calendar-day me-1"></i> End Month</label>
                         <select class="form-control form-select" name="team_end_month">
                             <?php foreach ($teamMonthsList as $num => $name): ?>
-                                <option value="<?= $num ?>" <?= ($teamEndMonth == $num) ? 'selected' : '' ?>><?= $name ?></option>
+                                <option value="<?= $num ?>" <?= ($teamEndMonth == $num) ? 'selected' : '' ?>><?= $name ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -506,12 +607,14 @@
                 <!-- Action Buttons -->
                 <div class="col-12 col-md-4" id="teamActionButtonsCol">
                     <div class="from__input-box">
-                        <label class="form-label small fw-bold text-muted mb-2 d-none d-md-block" style="visibility: hidden;">&nbsp;</label>
+                        <label class="form-label small fw-bold text-muted mb-2 d-none d-md-block"
+                            style="visibility: hidden;">&nbsp;</label>
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary w-100">
                                 <i class="fa-solid fa-magnifying-glass me-1"></i> Search
                             </button>
-                            <a href="<?= $GLOBALS['base_url'] ?>/sales-dashboard" class="btn btn-secondary w-100 d-flex align-items-center justify-content-center">
+                            <a href="<?= $GLOBALS['base_url'] ?>/sales-dashboard"
+                                class="btn btn-secondary w-100 d-flex align-items-center justify-content-center">
                                 <i class="fa-solid fa-rotate-left me-1"></i> Reset
                             </a>
                         </div>
@@ -523,16 +626,19 @@
         <!-- Tabs -->
         <ul class="nav nav-pills mb-3" id="bookingTabs">
             <li class="nav-item">
-                <button class="nav-link <?= ($defaultTeamTab === 'year1') ? 'active' : '' ?>" data-period="year1">Year</button>
+                <button class="nav-link <?= ($defaultTeamTab === 'year1') ? 'active' : '' ?>"
+                    data-period="year1">Year</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link <?= ($defaultTeamTab === 'month1') ? 'active' : '' ?>" data-period="month1">Month</button>
+                <button class="nav-link <?= ($defaultTeamTab === 'month1') ? 'active' : '' ?>"
+                    data-period="month1">Month</button>
             </li>
             <li class="nav-item d-none">
                 <button class="nav-link" data-period="week1">Week</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link <?= ($defaultTeamTab === 'fullData') ? 'active' : '' ?>" data-period="fullData">Full Data</button>
+                <button class="nav-link <?= ($defaultTeamTab === 'fullData') ? 'active' : '' ?>"
+                    data-period="fullData">Full Data</button>
             </li>
         </ul>
 
@@ -541,7 +647,8 @@
 
         <!-- Summary Table -->
         <div class="mt-4 border-top pt-4">
-            <h6 class="mb-3 fw-bold text-primary"><i class="fa-solid fa-list-check me-1"></i> Sales Teams Booking Summary List</h6>
+            <h6 class="mb-3 fw-bold text-primary"><i class="fa-solid fa-list-check me-1"></i> Sales Teams Booking
+                Summary List</h6>
             <div class="table-responsive">
                 <table class="table table-bordered table-striped align-middle mb-0">
                     <thead class="table-light">
@@ -598,7 +705,8 @@
                                     <td><?= htmlspecialchars($followUp['project_name'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($followUp['flat_name'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($followUp['assigned_with_name'] ?? 'N/A') ?></td>
-                                    <td><?= date('d M, Y H:i', strtotime($followUp['follow_up_date'] . ' ' . $followUp['follow_up_time'])) ?></td>
+                                    <td><?= date('d M, Y H:i', strtotime($followUp['follow_up_date'] . ' ' . $followUp['follow_up_time'])) ?>
+                                    </td>
                                     <td><?= date('d M, Y H:i', strtotime($followUp['next_follow_up_date'] ?? 'N/A')) ?></td>
                                     <td><?= htmlspecialchars($followUp['discussion_note'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($followUp['next_action'] ?? 'N/A') ?></td>
@@ -622,7 +730,7 @@
 
 
 <script>
-    document.getElementById('executiveSelect').addEventListener('change', function() {
+    document.getElementById('executiveSelect').addEventListener('change', function () {
         const selectedValue = this.value;
         const cards = document.querySelectorAll('.card-item');
 
@@ -640,7 +748,7 @@
 </script>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
 
         // Toggle Month dropdowns based on Filter Type for Team
         const teamFilterTypeSelect = document.getElementById('teamFilterTypeSelect');
@@ -693,14 +801,14 @@
             const data = dataMap[period] || [];
             const tbody = document.getElementById('teamPerformanceTableBody');
             if (!tbody) return;
-            
+
             tbody.innerHTML = '';
-            
+
             if (data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">No bookings found for the selected period.</td></tr>';
                 return;
             }
-            
+
             const formatBDT = (val) => {
                 return new Intl.NumberFormat('en-BD', { style: 'currency', currency: 'BDT', minimumFractionDigits: 0 }).format(val);
             };
@@ -731,13 +839,13 @@
                 }
             },
             series: [{
-                    name: 'Booking Target',
-                    data: chartData.targets
-                },
-                {
-                    name: 'Booking Completed',
-                    data: chartData.completed
-                }
+                name: 'Booking Target',
+                data: chartData.targets
+            },
+            {
+                name: 'Booking Completed',
+                data: chartData.completed
+            }
             ],
             plotOptions: {
                 bar: {
@@ -770,10 +878,10 @@
                 position: 'top'
             },
             tooltip: {
-                custom: function({series, seriesIndex, dataPointIndex, w}) {
+                custom: function ({ series, seriesIndex, dataPointIndex, w }) {
                     const data = dataMap[currentPeriod][dataPointIndex];
                     if (!data) return '';
-                    
+
                     const formatBDT = (val) => {
                         return new Intl.NumberFormat('en-BD', { style: 'currency', currency: 'BDT', minimumFractionDigits: 0 }).format(val);
                     };
@@ -796,7 +904,7 @@
 
         // Tab click
         document.querySelectorAll('#bookingTabs .nav-link').forEach(btn => {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function () {
                 document.querySelectorAll('#bookingTabs .nav-link').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
 
@@ -805,13 +913,13 @@
 
                 chart.updateOptions({
                     series: [{
-                            name: 'Booking Target',
-                            data: newData.targets
-                        },
-                        {
-                            name: 'Booking Completed',
-                            data: newData.completed
-                        }
+                        name: 'Booking Target',
+                        data: newData.targets
+                    },
+                    {
+                        name: 'Booking Completed',
+                        data: newData.completed
+                    }
                     ],
                     xaxis: {
                         categories: newData.names
