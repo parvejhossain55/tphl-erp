@@ -12,78 +12,68 @@ $show_breadcrumb = true;
             <a href="<?= $GLOBALS['base_url'] ?>/create-email-template" class="btn btn-sm btn-primary shadow-sm">
                 <i class="fa-solid fa-plus me-1"></i> Add Template
             </a>
-            <a href="<?= $GLOBALS['base_url'] ?>/create-employee" class="btn btn-sm btn-primary shadow-sm">
+            <a href="<?= $GLOBALS['base_url'] ?>/create-email-alert" class="btn btn-sm btn-primary shadow-sm">
                 <i class="fa-solid fa-plus me-1"></i> Create Email Alert
             </a>
         </div>
     </div>
 
-    <!-- Filter Bar Card -->
-    <div class="card__wrapper p-3 shadow-sm">
-        <div class="row g-2 align-items-center">
+    <div class="row">
+        <div class="col-xxl-12">
+            <div class="card__wrapper">
+                <div class="table__wrapper table-responsive">
+                    <table class="table mb-20 multiple_tables">
+                        <thead>
+                            <tr class="table__title table__sort">
+                                <th>S/L</th>
+                                <th>Template Name</th>
+                                <th>Target Audience</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="table__body">
+                            <?php foreach ($emailAlerts as $index => $et): ?>
+                                <tr>
+                                    <!-- Serial number -->
+                                    <td>#<?= $index + 1 ?></td>
+                                    <td>
+                                        <?= htmlspecialchars($et['template_name']) ?>
+                                    </td>
+                                    <td><?= htmlspecialchars($et['target_type']) ?></td>
+                                    <td>
+                                        <?php if ($et['status'] == 'sent'): ?>
+                                            <span class="bd-badge bg-success">Sent</span>
+                                        <?php elseif ($et['status'] == 'draft'): ?>
+                                            <span class="bd-badge bg-warning">Draft</span>
+                                        <?php else: ?>
+                                            <span class="bd-badge bg-danger"><?php $et['status'] ?></span>
+                                        <?php endif; ?>
+                                    </td>
 
-            <!-- Search -->
-            <div class="col-xxl-3 col-lg-3 col-md-6 col-12">
-                <div class="search-box position-relative">
-                    <input type="text" class="form-control" name="q" id="employeeName"
-                        placeholder="Employee Name / Username / ID" autocomplete="off"
-                        value="<?= htmlspecialchars($searchTerm ?? '') ?>">
+                                    <!-- Action buttons -->
+                                    <td>
+                                        <div class="d-flex align-items-center justify-content-start gap-10">
+                                            <button type="button" class="table__icon edit" data-bs-toggle="modal"
+                                                data-bs-target="#editDepartment" data-id="<?= $dept['id'] ?>"
+                                                data-name="<?= htmlspecialchars($dept['name']) ?>"
+                                                data-status="<?= $dept['status'] ?>">
+                                                <i class="fa-sharp fa-light fa-pen"></i>
+                                            </button>
 
-                    <div id="employeeSuggestions" class="dropdown-menu w-100 shadow-sm"
-                        style="display:none; position: absolute; max-height:250px; overflow-y:auto; top:100%; left:0; z-index:1050; padding:0; margin-top:2px;">
-                    </div>
+                                            <button type="button" class="removeBtnCust table__icon delete"
+                                                data-id="<?= $dept['id'] ?>" data-name="<?= $dept['name'] ?>"
+                                                data-action="delete-department">
+                                                <i class="fa-regular fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
-
-            <!-- Department Filter -->
-            <div class="col-xxl-3 col-lg-3 col-md-6 col-12">
-                <select class="form-select" name="department_id">
-                    <option value="">Employee Department</option>
-                    <?php foreach ($departments as $department): ?>
-                        <option value="<?= $department['id'] ?>" <?= $selectedDepartment == $department['id'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($department['name']) ?>
-                        </option>
-                    <?php endforeach ?>
-                </select>
-            </div>
-
-            <!-- Team Filter -->
-            <div class="col-xxl-2 col-lg-2 col-md-6 col-12">
-                <select class="form-select" name="team_id">
-                    <option value="">All Teams</option>
-                    <?php foreach ($teams as $team): ?>
-                        <option value="<?= $team['id'] ?>" <?= ($selectedTeam ?? '') == $team['id'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($team['name']) ?>
-                        </option>
-                    <?php endforeach ?>
-                </select>
-            </div>
-
-            <!-- Workplace Filter -->
-            <div class="col-xxl-2 col-lg-2 col-md-6 col-12">
-                <select class="form-select" name="workplace">
-                    <option value="">All Workplaces</option>
-                    <?php foreach ($workplaces ?? [] as $wp): ?>
-                        <option value="<?= htmlspecialchars($wp['workplace']) ?>" <?= ($selectedWorkplace ?? '') === $wp['workplace'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($wp['workplace']) ?>
-                        </option>
-                    <?php endforeach ?>
-                </select>
-            </div>
-
-            <!-- Submit / Reset Buttons -->
-            <div class="col-xxl-2 col-lg-2 col-md-12 col-12">
-                <div class="d-flex align-items-center gap-2">
-                    <button type="submit" class="btn btn-secondary flex-fill text-nowrap">
-                        <i class="fa-solid fa-filter me-1"></i> Filter
-                    </button>
-                    <a href="<?= $GLOBALS['base_url'] ?>/employee-lists"
-                        class="btn btn-outline-secondary flex-fill text-nowrap">
-                        <i class="fa-solid fa-rotate-left me-1"></i> Reset
-                    </a>
-                </div>
-            </div>
-
         </div>
     </div>
 </form>

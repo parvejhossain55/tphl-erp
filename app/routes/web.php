@@ -98,6 +98,8 @@ return [
     'email-station' => ['controller' => 'EmailStationController', 'method' => 'index'],
     'create-email-template' => ['controller' => 'EmailStationController', 'method' => 'createEmailTemplate'],
     'store-email-template' => ['controller' => 'EmailStationController', 'method' => 'storeEmailTemplate'],
+    'create-email-alert' => ['controller' => 'EmailStationController', 'method' => 'createEmailAlert'],
+    'store-email-alert' => ['controller' => 'EmailStationController', 'method' => 'storeEmailAlert'],
 
     // =========================================================================
     // Controller: SiteManage\SiteSettingController
