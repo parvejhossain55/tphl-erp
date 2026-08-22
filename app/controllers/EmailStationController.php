@@ -323,7 +323,12 @@ class EmailStationController extends Controller
         // Build bind_param types dynamically
         $types = str_repeat('i', count($departmentIds));
 
-        $stmt->bind_param($types, ...$departmentIds);
+        $bindParams = [$types];
+        foreach ($departmentIds as $key => $value) {
+            $bindParams[] = &$departmentIds[$key];
+        }
+
+        call_user_func_array([$stmt, 'bind_param'], $bindParams);
 
         if (!$stmt->execute()) {
             die("Query failed: " . $stmt->error);
@@ -369,7 +374,12 @@ class EmailStationController extends Controller
         // Build bind_param types dynamically
         $types = str_repeat('i', count($designationIds));
 
-        $stmt->bind_param($types, ...$designationIds);
+        $bindParams = [$types];
+        foreach ($designationIds as $key => $value) {
+            $bindParams[] = &$designationIds[$key];
+        }
+
+        call_user_func_array([$stmt, 'bind_param'], $bindParams);
 
         if (!$stmt->execute()) {
             die("Query failed: " . $stmt->error);
@@ -415,7 +425,12 @@ class EmailStationController extends Controller
         // Build bind_param types dynamically
         $types = str_repeat('i', count($employeeIds));
 
-        $stmt->bind_param($types, ...$employeeIds);
+        $bindParams = [$types];
+        foreach ($employeeIds as $key => $value) {
+            $bindParams[] = &$employeeIds[$key];
+        }
+
+        call_user_func_array([$stmt, 'bind_param'], $bindParams);
 
         if (!$stmt->execute()) {
             die("Query failed: " . $stmt->error);
