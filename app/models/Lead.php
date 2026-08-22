@@ -1006,11 +1006,17 @@ class Lead extends Model
                 $sql .= " AND NOT " . $contactedCond;
             } elseif ($filter_card === 'booked') {
                 $sql .= " AND LOWER(leads.last_lead_action) = 'booked'";
+            } elseif ($filter_card === 'upcoming_follow_ups') {
+                $sql .= " AND lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE()";
             }
         }
 
-        // Try sorting by created_at instead
-        $sql .= " ORDER BY leads.created_at DESC, leads.id DESC";
+        // Sort by next_follow_up_date ASC if viewing upcoming follow ups
+        if ($filter_card === 'upcoming_follow_ups') {
+            $sql .= " ORDER BY DATE(lf.next_follow_up_date) ASC, leads.id DESC";
+        } else {
+            $sql .= " ORDER BY leads.created_at DESC, leads.id DESC";
+        }
 
         if ($limit !== null && $offset !== null) {
             $sql .= " LIMIT ? OFFSET ?";
@@ -1187,6 +1193,8 @@ class Lead extends Model
                 $sql .= " AND NOT " . $contactedCond;
             } elseif ($filter_card === 'booked') {
                 $sql .= " AND LOWER(leads.last_lead_action) = 'booked'";
+            } elseif ($filter_card === 'upcoming_follow_ups') {
+                $sql .= " AND lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE()";
             }
         }
 
@@ -1211,7 +1219,8 @@ class Lead extends Model
             COUNT(DISTINCT leads.id) as total_leads,
             SUM(CASE WHEN {$contactedCond} THEN 1 ELSE 0 END) as contacted_leads,
             SUM(CASE WHEN NOT {$contactedCond} THEN 1 ELSE 0 END) as not_contacted_leads,
-            SUM(CASE WHEN LOWER(leads.last_lead_action) = 'booked' THEN 1 ELSE 0 END) as booked_leads
+            SUM(CASE WHEN LOWER(leads.last_lead_action) = 'booked' THEN 1 ELSE 0 END) as booked_leads,
+            SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE() THEN 1 ELSE 0 END) as upcoming_follow_ups
         FROM leads
         LEFT JOIN (
             SELECT t1.*

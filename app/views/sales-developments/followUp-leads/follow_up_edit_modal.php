@@ -26,7 +26,7 @@
                         <div class="col-lg-6">
                             <label class="form-label">Project</label>
                             <!-- Project -->
-                            <select name="project_id" id="editProjectSelect" class="form-select">
+                            <select name="project_id" id="editProjectSelect" class="form-select select2-no-scroll" data-placeholder="Select Project">
                                 <option value="">Select Project</option>
                                 <?php foreach ($projects as $project): ?>
                                     <?php 
@@ -44,7 +44,7 @@
                         <!-- Flat -->
                         <div class="col-lg-6">
                             <label class="form-label">Flat</label>
-                            <select name="flat_id" id="editFlatSelect" class="form-select">
+                            <select name="flat_id" id="editFlatSelect" class="form-select select2-no-scroll" data-placeholder="Select Flat">
                                 <option value="">Select Flat</option>
                             </select>
                         </div>
