@@ -955,12 +955,13 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                                        onchange="if(this.value){ const dt = new Date(this.value); const formatted = dt.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}); this.closest('.d-flex').querySelector('.next-date-display').textContent = formatted; }">
                                             </div>
                                         </div>
-                                    </td>
-
-
-
                                     <td>
                                         <div class="d-flex align-items-center gap-1">
+
+                                            <!-- View Notes -->
+                                            <button type="button" class="btn btn-info btn-sm view-notes-btn" data-id="<?= $lead['id'] ?>" onclick="fetchNotes(<?= $lead['id'] ?>)" data-bs-toggle="modal" data-bs-target="#followUpNotesModal" style="white-space:nowrap;" title="View all follow up notes">
+                                                <i class="bi bi-card-text"></i> Notes
+                                            </button>
 
                                             <!-- Follow Up -->
                                             <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>"
@@ -1429,16 +1430,18 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 
 
     const form = document.querySelector('form');
-    const resetBtn = form.querySelector('button[type="reset"]');
+    const resetBtn = form ? form.querySelector('button[type="reset"]') : null;
 
-    resetBtn.addEventListener('click', function(e) {
-        e.preventDefault(); // avoid default reset
-        // Clear all inputs
-        form.querySelectorAll('input, select').forEach(function(el) {
-            if (el.tagName === 'SELECT') el.selectedIndex = 0; // first option select
-            else el.value = ''; // input clear
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function(e) {
+            e.preventDefault(); // avoid default reset
+            // Clear all inputs
+            form.querySelectorAll('input, select').forEach(function(el) {
+                if (el.tagName === 'SELECT') el.selectedIndex = 0; // first option select
+                else el.value = ''; // input clear
+            });
         });
-    });
+    }
 
 
     // campaign full show
@@ -2018,6 +2021,43 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
 </div>
 
+<!-- Follow Up Notes Modal -->
+<div id="followUpNotesModal" class="modal custom-modal fade" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-info"><i class="fa-solid fa-list me-2"></i>Follow Up Notes</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped" id="followUpNotesModalTable">
+                        <thead>
+                            <tr class="bg-light">
+                                <th>#</th>
+                                <th>Lead</th>
+                                <th>Project</th>
+                                <th>Flat</th>
+                                <th>Follow Up Date</th>
+                                <th>Follow Up Time</th>
+                                <th>Type</th>
+                                <th>Discussion Note</th>
+                                <th>Next Follow Up</th>
+                                <th>Next Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="followUpNotesModalBody">
+                            <!-- Populated via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         $(document).on('click', '.duplicate-badge-click', function() {
@@ -2062,3 +2102,84 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 
+
+<script>
+    function escapeHtmlGlobal(text) {
+        if (typeof text !== 'string') return text;
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    window.fetchNotes = function(leadId) {
+        const tbody = $('#followUpNotesModalBody');
+        
+        tbody.html('<tr><td colspan="10" class="text-center">Loading...</td></tr>');
+        
+        try {
+            const modalEl = document.getElementById('followUpNotesModal');
+            if (typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            } else {
+                $('#followUpNotesModal').modal('show');
+            }
+        } catch (err) {
+            $('#followUpNotesModal').modal('show');
+        }
+        
+        $.ajax({
+            url: (typeof base_url !== 'undefined' ? base_url : window.base_url || "<?= $GLOBALS['base_url'] ?>") + '/get-follow-up-history/' + leadId,
+            type: 'GET',
+            success: function(rawResponse) {
+                console.log("Raw follow up history response:", rawResponse);
+                let response = [];
+                try {
+                    response = JSON.parse(rawResponse);
+                } catch (e) {
+                    console.error("Failed to parse follow up history:", e, rawResponse);
+                    tbody.html('<tr><td colspan="10" class="text-danger text-center">Failed to load data (JSON parse error). Response: ' + escapeHtmlGlobal(rawResponse.substring(0, 100)) + '...</td></tr>');
+                    return;
+                }
+                
+                let html = '';
+                if (Array.isArray(response) && response.length > 0) {
+                    try {
+                        response.forEach(function(item, index) {
+                            html += `
+                                <tr>
+                                    <td>${index + 1}</td>
+                                    <td>${escapeHtmlGlobal(item.lead_name)}</td>
+                                    <td>${escapeHtmlGlobal(item.project_name)}</td>
+                                    <td>${escapeHtmlGlobal(item.flat_name)}</td>
+                                    <td>${escapeHtmlGlobal(item.follow_up_date)}</td>
+                                    <td>${escapeHtmlGlobal(item.follow_up_time)}</td>
+                                    <td>${escapeHtmlGlobal(item.follow_up_type)}</td>
+                                    <td>${escapeHtmlGlobal(item.discussion_note)}</td>
+                                    <td>${escapeHtmlGlobal(item.next_follow_up_date)}</td>
+                                    <td>${escapeHtmlGlobal(item.next_action)}</td>
+                                </tr>
+                            `;
+                        });
+                        tbody.html(html);
+                    } catch (loopErr) {
+                        console.error("Error formatting notes:", loopErr);
+                        tbody.html('<tr><td colspan="10" class="text-danger text-center">Error displaying items.</td></tr>');
+                    }
+                } else {
+                    html = '<tr><td colspan="10" class="text-center">No follow up notes found.</td></tr>';
+                    tbody.html(html);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX Error:", status, error);
+                tbody.html('<tr><td colspan="10" class="text-danger text-center">Failed to fetch notes. Please try again.</td></tr>');
+            }
+        });
+    };
+</script>

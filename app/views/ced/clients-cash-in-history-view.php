@@ -56,6 +56,14 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                     <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#transferNoteModal">
                         <i class="fa-light fa-exchange-alt me-1"></i> Transfer Note
                     </button>
+                    
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEmiFollowupModal(<?= $clientDetails['booking_id'] ?? 0 ?>, 0, <?= (int)($clientDetails['total_emi_count'] ?? 36) ?>, 'add')">
+                        <i class="fa-light fa-comment-dots me-1"></i> Follow Up
+                    </button>
+                    
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openEmiFollowupModal(<?= $clientDetails['booking_id'] ?? 0 ?>, 0, <?= (int)($clientDetails['total_emi_count'] ?? 36) ?>, 'list')">
+                        <i class="fa-light fa-list me-1"></i> Follow Up List
+                    </button>
 
                     <?php if (isset($clientDetails['transfer_status']) && $clientDetails['transfer_status'] == 1): ?>
                         <span class="badge bg-warning text-dark">Transferred</span>
@@ -1106,9 +1114,31 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
         });
     });
     
-    function openEmiFollowupModal(bookingId, emiNo) {
+    function openEmiFollowupModal(bookingId, emiNo, totalEmi = 36, mode = 'both') {
         $('#followupBookingId').val(bookingId);
-        $('#followupEmiNo').val(emiNo);
+        
+        if (mode === 'add') {
+            $('#followupFormCol').show().removeClass('col-md-5 border-end').addClass('col-md-12');
+            $('#followupHistoryCol').hide();
+        } else if (mode === 'list') {
+            $('#followupHistoryCol').show().removeClass('col-md-7').addClass('col-md-12');
+            $('#followupFormCol').hide();
+        } else {
+            $('#followupFormCol').show().removeClass('col-md-12').addClass('col-md-5 border-end');
+            $('#followupHistoryCol').show().removeClass('col-md-12').addClass('col-md-7');
+        }
+        
+        // Populate EMI select
+        var emiSelect = $('#followupEmiNo');
+        var optionsHtml = '<option value="0">General / Overall Follow Up</option>';
+        optionsHtml += '<option value="999">Development Charge</option>';
+        var maxEmi = parseInt(totalEmi) || 36;
+        for (let i = 1; i <= maxEmi; i++) {
+            optionsHtml += '<option value="' + i + '">EMI #' + i + '</option>';
+        }
+        emiSelect.html(optionsHtml);
+        emiSelect.val(emiNo);
+
         $('#followupNoteInput').val('');
         $('#followupHistoryContainer').html('<div class="text-center text-muted py-4">Loading history...</div>');
         
@@ -1122,17 +1152,23 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
         $.ajax({
             url: '<?= $GLOBALS['base_url'] ?>/account-client/getEmiFollowups',
             type: 'GET',
-            data: { booking_id: bookingId, emi_no: emiNo },
+            data: { booking_id: bookingId },
             dataType: 'json',
             success: function(response) {
                 if (response.success) {
                     var html = '';
-                    if (response.data.length === 0) {
+                    if (!response.data || response.data.length === 0) {
                         html = '<div class="text-center text-muted py-4">No follow up notes yet.</div>';
                     } else {
                         response.data.forEach(function(note) {
+                            const label = note.purpose_label || (note.emi_no == 999 ? 'Development Charge' : (note.emi_no == 0 ? 'General Follow Up' : 'EMI #' + note.emi_no));
+                            const badgeClass = note.purpose_badge_class || (note.emi_no == 999 ? 'bg-warning text-dark' : (note.emi_no == 0 ? 'bg-secondary text-white' : 'bg-primary text-white'));
+                            
                             html += '<div class="card mb-2 shadow-sm border-0 bg-light">';
                             html += '<div class="card-body p-3">';
+                            html += '<div class="mb-2">';
+                            html += '<span class="badge ' + badgeClass + ' fs-11 px-2 py-1"><i class="fa-light fa-tag me-1"></i>' + label + '</span>';
+                            html += '</div>';
                             html += '<div class="mb-2" style="font-size:12px; color:#475569;">';
                             if (note.activity_date) html += '<span><i class="fa-light fa-calendar me-1"></i>' + note.activity_date + '</span>';
                             if (note.activity_mode) html += '<span class="ms-3"><i class="fa-light fa-phone-volume me-1"></i>' + note.activity_mode + '</span>';
@@ -1265,10 +1301,16 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
             </div>
             <div class="modal-body">
                 <div class="row">
-                    <div class="col-md-5 border-end">
+                    <div class="col-md-5 border-end" id="followupFormCol">
                         <h6 class="mb-3">Add New Note</h6>
                         <input type="hidden" id="followupBookingId">
-                        <input type="hidden" id="followupEmiNo">
+                        <div class="mb-3">
+                            <label class="form-label fs-13 font-semibold text-muted">Installment / EMI</label>
+                            <select id="followupEmiNo" class="form-select form-select-sm" onchange="loadEmiFollowups($('#followupBookingId').val(), this.value)">
+                                <option value="0">General / Overall Follow Up</option>
+                                <option value="999">Development Charge</option>
+                            </select>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label fs-13 font-semibold text-muted">Date of Activity <span class="text-danger">*</span></label>
                             <input type="date" id="followupActivityDate" class="form-control form-control-sm" value="<?= date('Y-m-d') ?>">
@@ -1305,7 +1347,7 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                         </div>
                         <button type="button" class="btn btn-primary w-100" onclick="saveEmiFollowup()">Save Note</button>
                     </div>
-                    <div class="col-md-7">
+                    <div class="col-md-7" id="followupHistoryCol">
                         <h6 class="mb-3">Follow Up History</h6>
                         <div id="followupHistoryContainer" style="max-height: 300px; overflow-y: auto;">
                             <div class="text-center text-muted py-4">Loading history...</div>

@@ -333,7 +333,7 @@ $show_breadcrumb = true;
                                             <?php if (!empty($client['booking_id'])): ?>
                                                 <?php $fCount = (int)($client['total_followup_count'] ?? 0); ?>
                                                 <button type="button"
-                                                        onclick="openClientEmiFollowupModal(<?= $client['booking_id'] ?>, '<?= htmlspecialchars($client['client_name'], ENT_QUOTES) ?>', <?= (int)($client['total_emi_count'] ?? 36) ?>)"
+                                                        onclick="openClientEmiFollowupModal(<?= $client['booking_id'] ?>, '<?= htmlspecialchars($client['client_name'], ENT_QUOTES) ?>', <?= (int)($client['total_emi_count'] ?? 36) ?>, <?= $client['lead_id'] ?? 'null' ?>)"
                                                         class="btn btn-sm btn-outline-primary py-1 px-2 text-nowrap"
                                                         style="font-size:11px;"
                                                         title="Add / View Follow Up Notes">
@@ -574,10 +574,17 @@ $show_breadcrumb = true;
                         <h6 class="text-primary mb-3"><i class="fa-light fa-plus-circle me-1"></i>Add New Follow Up Note</h6>
                         <input type="hidden" id="modalFollowupBookingId">
                         
+                        <div class="mb-3" id="modalFollowupProjectContainer">
+                            <label class="form-label fs-13 font-semibold text-muted">Project & Flat</label>
+                            <select id="modalFollowupBookingSelect" class="form-select form-select-sm" onchange="onFollowupBookingChange()">
+                                <!-- dynamically loaded -->
+                            </select>
+                        </div>
+                        
                         <div class="mb-3">
                             <label class="form-label fs-13 font-semibold text-muted">Installment / EMI</label>
                             <select id="modalFollowupEmiSelect" class="form-select form-select-sm" onchange="loadClientEmiFollowups($('#modalFollowupBookingId').val())">
-                                <option value="1">General / Overall Follow Up</option>
+                                <option value="0">General / Overall Follow Up</option>
                                 <option value="1">EMI #1</option>
                                 <option value="2">EMI #2</option>
                                 <option value="3">EMI #3</option>
@@ -722,7 +729,7 @@ $show_breadcrumb = true;
 
                     if (data.success) {
                         if (data.lands && data.lands.length > 0) {
-                            displayProjects(data.lands);
+                            displayProjects(data.lands, leadId);
                         } else {
                             showError('No land shares found for this client');
                         }
@@ -741,7 +748,7 @@ $show_breadcrumb = true;
             });
     }
 
-    function displayProjects(lands) {
+    function displayProjects(lands, leadId = null) {
         console.log('Displaying projects:', lands);
 
         const tbody = document.getElementById('projects_table_body');
@@ -802,7 +809,7 @@ $show_breadcrumb = true;
                     <button type="button"
                         class="btn btn-sm btn-outline-primary py-1 px-2 text-nowrap"
                         style="font-size:11px;"
-                        onclick="openClientEmiFollowupModal(${land.booking_id}, '${escapeHtml(land.client_name || '')}', ${land.total_emi_count || 36})"
+                        onclick="openClientEmiFollowupModal(${land.booking_id}, '${escapeHtml(land.client_name || '')}', ${land.total_emi_count || 36}, ${leadId})"
                         title="Add / View Follow Up Notes">
                         <i class="fa-light fa-comment-dots me-1"></i>Follow Up
                         <span class="badge ${(land.total_followup_count || 0) > 0 ? 'bg-primary' : 'bg-secondary'} rounded-pill ms-1 followup-count-badge" data-booking-id="${land.booking_id}" style="font-size:10px;">
@@ -996,12 +1003,78 @@ $show_breadcrumb = true;
     // ── EMI Follow Up Modal Logic ──────────────────────────────────────────
     let clientEmiFollowupModalInstance;
 
-    function openClientEmiFollowupModal(bookingId, clientName, totalEmi = 36) {
+    function openClientEmiFollowupModal(bookingId, clientName, totalEmi = 36, leadId = null) {
         document.getElementById('followup_modal_client_name').textContent = clientName || 'Client';
         document.getElementById('modalFollowupBookingId').value = bookingId;
         document.getElementById('modalFollowupNoteInput').value = '';
         
-        // Dynamically build options with General, Development Charge, and EMI #1..N
+        const bookingSelect = document.getElementById('modalFollowupBookingSelect');
+        if (bookingSelect) {
+            bookingSelect.innerHTML = '<option value="' + bookingId + '">Loading projects...</option>';
+            bookingSelect.disabled = true;
+        }
+
+        populateEmiSelect(totalEmi);
+
+        document.getElementById('modalFollowupHistoryContainer').innerHTML = '<div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading history...</div>';
+        
+        const modalEl = document.getElementById('clientEmiFollowupModal');
+        if (modalEl) {
+            clientEmiFollowupModalInstance = new bootstrap.Modal(modalEl);
+            clientEmiFollowupModalInstance.show();
+        }
+        
+        if (leadId) {
+            fetch('<?= $GLOBALS['base_url'] ?>/get-client-lands?lead_id=' + leadId)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.lands && data.lands.length > 0) {
+                        let opts = '';
+                        data.lands.forEach(land => {
+                            const selected = (land.booking_id == bookingId) ? 'selected' : '';
+                            opts += `<option value="${land.booking_id}" data-emi="${land.total_emi_count || 36}" ${selected}>${escapeHtml(land.project_name)} - ${escapeHtml(land.unit_name)} (Floor ${escapeHtml(land.flat_no)})</option>`;
+                        });
+                        if (bookingSelect) {
+                            bookingSelect.innerHTML = opts;
+                            bookingSelect.disabled = false;
+                        }
+                    } else {
+                        if (bookingSelect) {
+                            bookingSelect.innerHTML = '<option value="' + bookingId + '">Current Project</option>';
+                            bookingSelect.disabled = false;
+                        }
+                    }
+                })
+                .catch(err => {
+                    if (bookingSelect) {
+                        bookingSelect.innerHTML = '<option value="' + bookingId + '">Current Project</option>';
+                        bookingSelect.disabled = false;
+                    }
+                });
+        } else {
+            if (bookingSelect) {
+                bookingSelect.innerHTML = '<option value="' + bookingId + '">Current Project</option>';
+                bookingSelect.disabled = false;
+            }
+        }
+
+        loadClientEmiFollowups(bookingId);
+    }
+
+    function onFollowupBookingChange() {
+        const bookingSelect = document.getElementById('modalFollowupBookingSelect');
+        if (!bookingSelect) return;
+        
+        const selectedOption = bookingSelect.options[bookingSelect.selectedIndex];
+        const bookingId = selectedOption.value;
+        const totalEmi = selectedOption.getAttribute('data-emi') || 36;
+        
+        document.getElementById('modalFollowupBookingId').value = bookingId;
+        populateEmiSelect(totalEmi);
+        loadClientEmiFollowups(bookingId);
+    }
+
+    function populateEmiSelect(totalEmi) {
         const emiSelect = document.getElementById('modalFollowupEmiSelect');
         if (emiSelect) {
             let optionsHtml = '<option value="0">General / Overall Follow Up</option>';
@@ -1012,16 +1085,6 @@ $show_breadcrumb = true;
             }
             emiSelect.innerHTML = optionsHtml;
         }
-
-        document.getElementById('modalFollowupHistoryContainer').innerHTML = '<div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading history...</div>';
-        
-        const modalEl = document.getElementById('clientEmiFollowupModal');
-        if (modalEl) {
-            clientEmiFollowupModalInstance = new bootstrap.Modal(modalEl);
-            clientEmiFollowupModalInstance.show();
-        }
-        
-        loadClientEmiFollowups(bookingId);
     }
 
     function loadClientEmiFollowups(bookingId) {

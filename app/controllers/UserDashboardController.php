@@ -523,7 +523,7 @@ class UserDashboardController extends Controller
         $year                 = $_GET['year']          ?? null;
         $month                = $_GET['month']         ?? null;
         $lastAction           = $_GET['last_action']   ?? null;
-        $call_status          = $_GET['call_status']   ?? null;
+        $lead_status          = $_GET['lead_status']   ?? null;
         $search               = trim($_GET['search'] ?? '');
         $followup_date        = $_GET['followup_date'] ?? null;
         $filterCard           = $_GET['filter_card']   ?? null;
@@ -542,9 +542,21 @@ class UserDashboardController extends Controller
             $filterCountry = null;
         }
 
-        // Fetch assigned leads for the user
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 25;
+        if ($limit < 10 && $limit !== -1) $limit = 25;
+        
+        $sqlLimit = ($limit === -1) ? 999999999 : $limit;
+        
+        $currentPage = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        if ($currentPage < 1) $currentPage = 1;
+        $offset = ($currentPage - 1) * $sqlLimit;
+
+        $totalTableLeads = $this->leadModel->getAllMyLeadsCount($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours);
+        $totalPages = ceil($totalTableLeads / $sqlLimit);
+
+        // Fetch assigned leads for the user (PAGINATED)
         $myAssignedClients = $this->leadModel
-            ->getAllMyLeads($userId, $year, $month, $lastAction, $call_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours);
+            ->getAllMyLeads($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $sqlLimit, $offset);
 
         // Fetch specific booking & follow-up counts ONLY for the user's leads (FAST!)
         $leadIds = !empty($myAssignedClients) ? array_column($myAssignedClients, 'id') : [];
@@ -552,40 +564,12 @@ class UserDashboardController extends Controller
         $followUpModel  = new FollowUp($this->db);
         $followUpCounts = !empty($leadIds) ? $followUpModel->getFollowUpCountByLeadIds($leadIds) : [];
 
-        // Calculate card statistics (reuse $myAssignedClients if no filters set)
-        $hasActiveFilters = ($lastAction || $call_status || $onlyMissingFollowup || $search || $followup_date || $filterCard || $assignedHours);
-        $unfilteredAssignedLeads = $hasActiveFilters 
-            ? $this->leadModel->getAllMyLeads($userId, $year, $month, null, null, false, '', null, null, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours)
-            : $myAssignedClients;
-
-        $totalLeadsCount        = count($unfilteredAssignedLeads);
-        $contactedLeadsCount    = 0;
-        $notContactedLeadsCount = 0;
-        $bookedLeadsCount       = 0;
-
-        foreach ($unfilteredAssignedLeads as $l) {
-            $act      = strtolower(trim($l['last_lead_action'] ?? ''));
-            $cStat    = strtolower(trim($l['call_status'] ?? ''));
-            $commType = strtolower(trim($l['communication_type'] ?? ''));
-            $fStat    = $l['last_follow_up_status'] ?? null;
-
-            $hasComm  = (!empty($commType) && $commType !== 'not select');
-
-            $isContacted = in_array($act, ['contacted', 'follow up', 'visited', 'booked']) 
-                        || in_array($cStat, ['called', 'received']) 
-                        || !empty($fStat) 
-                        || $hasComm;
-
-            if ($isContacted) {
-                $contactedLeadsCount++;
-            } else {
-                $notContactedLeadsCount++;
-            }
-
-            if ($act === 'booked') {
-                $bookedLeadsCount++;
-            }
-        }
+        // Calculate card statistics efficiently
+        $summaryCards = $this->leadModel->getMyAssignedLeadsSummaryCards($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours);
+        $totalLeadsCount        = $summaryCards['total_leads'] ?? 0;
+        $contactedLeadsCount    = $summaryCards['contacted_leads'] ?? 0;
+        $notContactedLeadsCount = $summaryCards['not_contacted_leads'] ?? 0;
+        $bookedLeadsCount       = $summaryCards['booked_leads'] ?? 0;
 
         $missingFollowUpCount = $followUpModel->getMissingFollowUpCount($userId);
 
@@ -756,7 +740,7 @@ class UserDashboardController extends Controller
             'bookingCount'        => $bookingCount,
             'followUpCounts'      => $followUpCounts,
             'selectedAction'      => $lastAction,
-            'selectedCallStatus'  => $call_status,
+            'selectedLeadStatus'  => $lead_status,
             'duplicateGroups'     => $duplicateGroups,
             'duplicateCount'      => $duplicateCount,
             'missingFollowUpCount'=> $missingFollowUpCount,
@@ -775,19 +759,26 @@ class UserDashboardController extends Controller
             'search'              => $search,
             'followup_date'       => $followup_date,
             'filterCard'          => $filterCard,
+            'currentPage'         => $currentPage,
+            'totalPages'          => $totalPages,
+            'limit'               => $limit,
             'page_script'         => "
-                const urlParams = new URLSearchParams(window.location.search);
-                const pageFromUrl = parseInt(urlParams.get('page') || '1', 10);
-                const pageLength = 25;
-                const displayStart = (pageFromUrl > 1) ? (pageFromUrl - 1) * pageLength : 0;
-
                 $('#assignedLeadsTable').DataTable().destroy();
                 const table = $('#assignedLeadsTable').DataTable({
-                    pageLength : pageLength,
-                    lengthMenu : [[10, 25, 50, 100, 200, 10000], [10, 25, 50, 100, 200, 'All']],
-                    order      : [],
-                    displayStart : displayStart,
+                    paging: true,
+                    info: true,
+                    searching: true,
+                    lengthChange: true,
+                    lengthMenu: [[10, 25, 50, 100, 200, 500, -1], [10, 25, 50, 100, 200, 500, 'All']],
+                    pageLength: " . ($limit ?? 25) . ",
+                    order: [],
+                    search: {
+                        search: '" . addslashes($search ?? '') . "'
+                    },
                     drawCallback: function () {
+                        // Hide DataTables own pagination to avoid duplicating the custom PHP pagination
+                        $('.dataTables_paginate').hide();
+                        
                         if (!window.hasScrolledToTarget) {
                             const hash = window.location.hash;
                             if (hash && hash.startsWith('#lead-')) {
@@ -803,12 +794,40 @@ class UserDashboardController extends Controller
                     }
                 });
 
-                table.on('page.dt', function () {
-                    const info = table.page.info();
-                    const page = info.page + 1;
+                // Listen for 'Show X entries' change
+                $('#assignedLeadsTable').on('length.dt', function (e, settings, len) {
                     const url = new URL(window.location.href);
-                    url.searchParams.set('page', page);
-                    window.history.replaceState(null, '', url.toString());
+                    url.searchParams.set('limit', len);
+                    url.searchParams.set('page', 1);
+                    window.location.href = url.toString();
+                });
+
+                // Listen for Search input enter key or delay
+                let searchTimeout;
+                $('.dataTables_filter input').unbind().bind('keyup', function(e) {
+                    const val = this.value;
+                    clearTimeout(searchTimeout);
+                    if(e.keyCode == 13) {
+                        const url = new URL(window.location.href);
+                        if (val) {
+                            url.searchParams.set('search', val);
+                        } else {
+                            url.searchParams.delete('search');
+                        }
+                        url.searchParams.set('page', 1);
+                        window.location.href = url.toString();
+                    } else {
+                        searchTimeout = setTimeout(function() {
+                            const url = new URL(window.location.href);
+                            if (val) {
+                                url.searchParams.set('search', val);
+                            } else {
+                                url.searchParams.delete('search');
+                            }
+                            url.searchParams.set('page', 1);
+                            window.location.href = url.toString();
+                        }, 800);
+                    }
                 });
             ",
         ]);

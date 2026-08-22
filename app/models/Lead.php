@@ -853,7 +853,7 @@ class Lead extends Model
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
-    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $call_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null)
+    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $limit = null, $offset = null)
     {
         $sql = "SELECT leads.*, 
         u_by.full_name AS assigned_by_name,
@@ -922,14 +922,10 @@ class Lead extends Model
                 $types .= "s";
             }
         }
-        if (!empty($call_status)) {
-            if ($call_status === 'not_called' || $call_status === 'not_contacted') {
-                $sql .= " AND NOT " . $contactedCond;
-            } else {
-                $sql .= " AND leads.call_status = ?";
-                $params[] = $call_status;
-                $types .= "s";
-            }
+        if (!empty($lead_status)) {
+            $sql .= " AND lf.lead_status = ?";
+            $params[] = $lead_status;
+            $types .= "s";
         }
 
         if ($only_missing_followup) {
@@ -1016,6 +1012,13 @@ class Lead extends Model
         // Try sorting by created_at instead
         $sql .= " ORDER BY leads.created_at DESC, leads.id DESC";
 
+        if ($limit !== null && $offset !== null) {
+            $sql .= " LIMIT ? OFFSET ?";
+            $params[] = (int)$limit;
+            $params[] = (int)$offset;
+            $types .= "ii";
+        }
+
         // Log the final SQL for debugging
         error_log("Final SQL: " . $sql);
         error_log("Params: " . print_r($params, true));
@@ -1045,6 +1048,317 @@ class Lead extends Model
         $stmt->close();
 
         return $leads;
+    }
+
+    public function getAllMyLeadsCount(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null)
+    {
+        $sql = "SELECT COUNT(DISTINCT leads.id) as total_count
+    FROM leads
+    LEFT JOIN (
+        SELECT t1.*
+        FROM lead_follow_ups t1
+        INNER JOIN (
+            SELECT lead_id, MAX(id) AS max_id
+            FROM lead_follow_ups
+            GROUP BY lead_id
+        ) t2 
+        ON t1.id = t2.max_id AND t1.lead_id = t2.lead_id
+    ) lf ON lf.lead_id = leads.id
+    WHERE leads.assigned_id = ?";
+
+        $params = [$userId];
+        $types  = "i";
+
+        if (!empty($year)) {
+            $sql .= " AND YEAR(leads.created_at) = ?";
+            $params[] = (int)$year;
+            $types .= "i";
+        }
+
+        if (!empty($month)) {
+            $sql .= " AND MONTH(leads.created_at) = ?";
+            $params[] = (int)$month;
+            $types .= "i";
+        }
+
+        if (!empty($assignedHours)) {
+            $hrs = (int)$assignedHours;
+            $sql .= " AND (
+                (leads.assigned_at IS NOT NULL AND leads.assigned_at != '0000-00-00 00:00:00' AND leads.assigned_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+                OR
+                ((leads.assigned_at IS NULL OR leads.assigned_at = '0000-00-00 00:00:00') AND leads.updated_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+            )";
+            $params[] = $hrs;
+            $params[] = $hrs;
+            $types .= "ii";
+        }
+
+        $contactedCond = "(LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked') OR leads.call_status IN ('called', 'received') OR (leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select') OR lf.id IS NOT NULL)";
+
+        if (!empty($lastAction)) {
+            if (strtolower($lastAction) === 'contacted') {
+                $sql .= " AND " . $contactedCond;
+            } elseif (strtolower($lastAction) === 'not_contacted') {
+                $sql .= " AND NOT " . $contactedCond;
+            } else {
+                $sql .= " AND leads.last_lead_action = ?";
+                $params[] = $lastAction;
+                $types .= "s";
+            }
+        }
+        if (!empty($lead_status)) {
+            $sql .= " AND lf.lead_status = ?";
+            $params[] = $lead_status;
+            $types .= "s";
+        }
+
+        if ($only_missing_followup) {
+            $sql .= " AND lf.next_follow_up_date IS NOT NULL
+                      AND lf.next_follow_up_date > '1000-01-01'
+                      AND DATE(lf.next_follow_up_date) <= CURDATE()
+                      AND lf.deleted_at IS NULL";
+        }
+
+        if (!empty($projectId)) {
+            $sql .= " AND leads.project_id = ?";
+            $params[] = (int)$projectId;
+            $types .= "i";
+        }
+        if (!empty($projectCategoryId)) {
+            $sql .= " AND leads.project_category_id = ?";
+            $params[] = (int)$projectCategoryId;
+            $types .= "i";
+        }
+        if (!empty($country)) {
+            $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
+            if (!empty($countryList)) {
+                $allConds = [];
+                foreach ($countryList as $cItem) {
+                    $synonyms = [$cItem];
+                    if (strcasecmp($cItem, 'UAE') === 0 || strcasecmp($cItem, 'United Arab Emirates') === 0) {
+                        $synonyms = ['UAE', 'United Arab Emirates'];
+                    } elseif (strcasecmp($cItem, 'USA') === 0 || strcasecmp($cItem, 'United States') === 0) {
+                        $synonyms = ['USA', 'United States'];
+                    } elseif (strcasecmp($cItem, 'UK') === 0 || strcasecmp($cItem, 'United Kingdom') === 0) {
+                        $synonyms = ['UK', 'United Kingdom'];
+                    }
+
+                    $subConds = [];
+                    foreach ($synonyms as $syn) {
+                        $subConds[] = "leads.country = ?";
+                        $subConds[] = "leads.city = ?";
+                        $subConds[] = "leads.city LIKE ?";
+                        $subConds[] = "leads.address LIKE ?";
+                        $params[] = $syn;
+                        $params[] = $syn;
+                        $params[] = "%" . $syn . "%";
+                        $params[] = "%" . $syn . "%";
+                        $types .= "ssss";
+                    }
+                    $allConds[] = "(" . implode(" OR ", $subConds) . ")";
+                }
+                if (!empty($allConds)) {
+                    $sql .= " AND (" . implode(" OR ", $allConds) . ")";
+                }
+            }
+        }
+
+        if (!empty($search)) {
+            $sql .= " AND (leads.full_name LIKE ? OR leads.phone LIKE ? OR leads.phone_number LIKE ? OR leads.email LIKE ? OR leads.company_name LIKE ?)";
+            $sParam = "%" . trim($search) . "%";
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $types .= "sssss";
+        }
+
+        if (!empty($followup_date)) {
+            $sql .= " AND DATE(lf.next_follow_up_date) = ?";
+            $params[] = trim($followup_date);
+            $types .= "s";
+        }
+
+        if (!empty($filter_card)) {
+            if ($filter_card === 'contacted') {
+                $sql .= " AND " . $contactedCond;
+            } elseif ($filter_card === 'not_called' || $filter_card === 'not_contacted') {
+                $sql .= " AND NOT " . $contactedCond;
+            } elseif ($filter_card === 'booked') {
+                $sql .= " AND LOWER(leads.last_lead_action) = 'booked'";
+            }
+        }
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return 0;
+        
+        $stmt->bind_param($types, ...$params);
+        if (!$stmt->execute()) return 0;
+        
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stmt->close();
+        
+        return (int)($row['total_count'] ?? 0);
+    }
+
+    public function getMyAssignedLeadsSummaryCards(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null)
+    {
+        $contactedCond = "(LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked') OR leads.call_status IN ('called', 'received') OR (leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select') OR lf.id IS NOT NULL)";
+
+        $sql = "SELECT 
+            COUNT(DISTINCT leads.id) as total_leads,
+            SUM(CASE WHEN {$contactedCond} THEN 1 ELSE 0 END) as contacted_leads,
+            SUM(CASE WHEN NOT {$contactedCond} THEN 1 ELSE 0 END) as not_contacted_leads,
+            SUM(CASE WHEN LOWER(leads.last_lead_action) = 'booked' THEN 1 ELSE 0 END) as booked_leads
+        FROM leads
+        LEFT JOIN (
+            SELECT t1.*
+            FROM lead_follow_ups t1
+            INNER JOIN (
+                SELECT lead_id, MAX(id) AS max_id
+                FROM lead_follow_ups
+                GROUP BY lead_id
+            ) t2 
+            ON t1.id = t2.max_id AND t1.lead_id = t2.lead_id
+        ) lf ON lf.lead_id = leads.id
+        WHERE leads.assigned_id = ?";
+
+        $params = [$userId];
+        $types  = "i";
+
+        if (!empty($year)) {
+            $sql .= " AND YEAR(leads.created_at) = ?";
+            $params[] = (int)$year;
+            $types .= "i";
+        }
+
+        if (!empty($month)) {
+            $sql .= " AND MONTH(leads.created_at) = ?";
+            $params[] = (int)$month;
+            $types .= "i";
+        }
+
+        if (!empty($assignedHours)) {
+            $hrs = (int)$assignedHours;
+            $sql .= " AND (
+                (leads.assigned_at IS NOT NULL AND leads.assigned_at != '0000-00-00 00:00:00' AND leads.assigned_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+                OR
+                ((leads.assigned_at IS NULL OR leads.assigned_at = '0000-00-00 00:00:00') AND leads.updated_at >= DATE_SUB(NOW(), INTERVAL ? HOUR))
+            )";
+            $params[] = $hrs;
+            $params[] = $hrs;
+            $types .= "ii";
+        }
+
+        if (!empty($lastAction)) {
+            if (strtolower($lastAction) === 'contacted') {
+                $sql .= " AND " . $contactedCond;
+            } elseif (strtolower($lastAction) === 'not_contacted') {
+                $sql .= " AND NOT " . $contactedCond;
+            } else {
+                $sql .= " AND leads.last_lead_action = ?";
+                $params[] = $lastAction;
+                $types .= "s";
+            }
+        }
+        if (!empty($lead_status)) {
+            $sql .= " AND lf.lead_status = ?";
+            $params[] = $lead_status;
+            $types .= "s";
+        }
+
+        if ($only_missing_followup) {
+            $sql .= " AND lf.next_follow_up_date IS NOT NULL
+                      AND lf.next_follow_up_date > '1000-01-01'
+                      AND DATE(lf.next_follow_up_date) <= CURDATE()
+                      AND lf.deleted_at IS NULL";
+        }
+
+        if (!empty($projectId)) {
+            $sql .= " AND leads.project_id = ?";
+            $params[] = (int)$projectId;
+            $types .= "i";
+        }
+        if (!empty($projectCategoryId)) {
+            $sql .= " AND leads.project_category_id = ?";
+            $params[] = (int)$projectCategoryId;
+            $types .= "i";
+        }
+        if (!empty($country)) {
+            $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
+            if (!empty($countryList)) {
+                $allConds = [];
+                foreach ($countryList as $cItem) {
+                    $synonyms = [$cItem];
+                    if (strcasecmp($cItem, 'UAE') === 0 || strcasecmp($cItem, 'United Arab Emirates') === 0) {
+                        $synonyms = ['UAE', 'United Arab Emirates'];
+                    } elseif (strcasecmp($cItem, 'USA') === 0 || strcasecmp($cItem, 'United States') === 0) {
+                        $synonyms = ['USA', 'United States'];
+                    } elseif (strcasecmp($cItem, 'UK') === 0 || strcasecmp($cItem, 'United Kingdom') === 0) {
+                        $synonyms = ['UK', 'United Kingdom'];
+                    }
+
+                    $subConds = [];
+                    foreach ($synonyms as $syn) {
+                        $subConds[] = "leads.country = ?";
+                        $subConds[] = "leads.city = ?";
+                        $subConds[] = "leads.city LIKE ?";
+                        $subConds[] = "leads.address LIKE ?";
+                        $params[] = $syn;
+                        $params[] = $syn;
+                        $params[] = "%" . $syn . "%";
+                        $params[] = "%" . $syn . "%";
+                        $types .= "ssss";
+                    }
+                    $allConds[] = "(" . implode(" OR ", $subConds) . ")";
+                }
+                if (!empty($allConds)) {
+                    $sql .= " AND (" . implode(" OR ", $allConds) . ")";
+                }
+            }
+        }
+
+        if (!empty($search)) {
+            $sql .= " AND (leads.full_name LIKE ? OR leads.phone LIKE ? OR leads.phone_number LIKE ? OR leads.email LIKE ? OR leads.company_name LIKE ?)";
+            $sParam = "%" . trim($search) . "%";
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $types .= "sssss";
+        }
+
+        if (!empty($followup_date)) {
+            $sql .= " AND DATE(lf.next_follow_up_date) = ?";
+            $params[] = trim($followup_date);
+            $types .= "s";
+        }
+
+        if (!empty($filter_card)) {
+            if ($filter_card === 'contacted') {
+                $sql .= " AND " . $contactedCond;
+            } elseif ($filter_card === 'not_called' || $filter_card === 'not_contacted') {
+                $sql .= " AND NOT " . $contactedCond;
+            } elseif ($filter_card === 'booked') {
+                $sql .= " AND LOWER(leads.last_lead_action) = 'booked'";
+            }
+        }
+
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return ['total_leads' => 0, 'contacted_leads' => 0, 'not_contacted_leads' => 0, 'booked_leads' => 0];
+        
+        $stmt->bind_param($types, ...$params);
+        if (!$stmt->execute()) return ['total_leads' => 0, 'contacted_leads' => 0, 'not_contacted_leads' => 0, 'booked_leads' => 0];
+        
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stmt->close();
+        
+        return $row ?: ['total_leads' => 0, 'contacted_leads' => 0, 'not_contacted_leads' => 0, 'booked_leads' => 0];
     }
 
     public function getSalesTeamKpiData(array $options = [])
