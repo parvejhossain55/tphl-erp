@@ -1196,6 +1196,59 @@ class PayrollController extends Controller
         $selectedYear = (!empty($_GET['year'])) ? $_GET['year'] : $currentYear;
         $selectedMonth = (!empty($_GET['month'])) ? $_GET['month'] : $currentMonth;
 
+        $monthName = date('F', mktime(0, 0, 0, $selectedMonth, 1));
+
+        // Setup PDF Generator
+        $pdf = new \TCPDF('L', 'mm', 'A2');
+        $pdf->SetCreator('TPHL ERP');
+        $pdf->SetAuthor('Admin');
+        $pdf->SetTitle('Payroll Workplace Report');
+        $pdf->SetMargins(10, 10, 10);
+        $pdf->SetAutoPageBreak(TRUE, 10);
+        $pdf->AddPage();
+        $pdf->SetFont('helvetica', '', 7);
+
+        // Check if custom POST data is set from the client-side
+        if (!empty($_POST['table_data']) && !empty($_POST['table_headers'])) {
+            $tableData = json_decode($_POST['table_data'], true) ?: [];
+            $tableHeaders = json_decode($_POST['table_headers'], true) ?: [];
+
+            $html = '
+            <div style="text-align:center;">
+                <h1 style="color:#078134;">The Premium Homes Ltd</h1>
+                <h3 style="color:#28B463;">Payroll Workplace Report (' . $monthName . ' ' . $selectedYear . ')</h3>
+                <p style="font-size:14px;"><b>Total Employees: </b> ' . count($tableData) . '</p>
+            </div>
+            <br>
+            <table border="1" cellpadding="3" width="100%">
+                <thead>
+                    <tr style="background-color:#078134; color:#ffffff; text-align:center; font-weight:bold;">';
+
+            foreach ($tableHeaders as $th) {
+                $html .= '<th>' . htmlspecialchars($th) . '</th>';
+            }
+            $html .= '</tr></thead><tbody>';
+
+            if (empty($tableData)) {
+                $html .= '<tr><td colspan="' . count($tableHeaders) . '" style="text-align:center;"><b>No payslips found for this period.</b></td></tr>';
+            } else {
+                foreach ($tableData as $row) {
+                    $html .= '<tr style="text-align:center;">';
+                    foreach ($row as $cell) {
+                        $html .= '<td>' . htmlspecialchars($cell ?? '') . '</td>';
+                    }
+                    $html .= '</tr>';
+                }
+            }
+            $html .= '</tbody></table>';
+
+            $pdf->writeHTML($html, true, false, true, false, '');
+            ob_end_clean();
+            $pdf->Output('Payroll_Workspace_Report_' . $monthName . '_' . $selectedYear . '.pdf', 'D');
+            exit;
+        }
+
+        // ORIGINAL LOGIC FALLBACK
         $items = $this->payslipItemModel->getAll();
 
         $query = "
@@ -1231,19 +1284,6 @@ class PayrollController extends Controller
                 $payslips[] = $row;
             }
         }
-
-        // Use A2 size landscape to comfortably fit 30+ columns
-        $pdf = new \TCPDF('L', 'mm', 'A2');
-        $pdf->SetCreator('TPHL ERP');
-        $pdf->SetAuthor('Admin');
-        $pdf->SetTitle('Payroll Workplace Report');
-        $pdf->SetMargins(10, 10, 10);
-        $pdf->SetAutoPageBreak(TRUE, 10);
-        $pdf->AddPage();
-
-        $pdf->SetFont('helvetica', '', 7);
-
-        $monthName = date('F', mktime(0, 0, 0, $selectedMonth, 1));
 
         $html = '
         <div style="text-align:center;">

@@ -177,7 +177,7 @@ $show_breadcrumb = true;
                                     }
                                 }
                                 ?>
-                                <tr>
+                                <tr class="calc-row">
                                     <td><?= $sl++ ?></td>
                                     <td><?= htmlspecialchars($p['department_name'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($p['full_name']) ?></td>
@@ -185,49 +185,82 @@ $show_breadcrumb = true;
                                     <td><?= htmlspecialchars($p['emp_id']) ?></td>
                                     <td><?= htmlspecialchars($p['workplace'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($p['designation_name'] ?? 'N/A') ?></td>
-                                    <td><?= number_format($basic, 2) ?></td>
+                                    <td class="cell-basic" data-val="<?= $basic ?>"><?= number_format($basic, 2) ?></td>
 
                                     <?php foreach ($items as $item): ?>
                                         <?php if ($item['type'] === 'earning'): ?>
-                                            <td><?= number_format($p['dynamic_details'][$item['id']] ?? 0, 2) ?></td>
+                                            <td><input type="number" step="0.01"
+                                                    class="form-control form-control-sm text-end in-earning"
+                                                    value="<?= round($p['dynamic_details'][$item['id']] ?? 0, 2) ?>"
+                                                    style="min-width: 80px;"></td>
                                         <?php endif; ?>
                                     <?php endforeach; ?>
 
-                                    <td><?= number_format($gross, 2) ?></td>
-                                    <td><?= number_format($daily, 2) ?></td>
-                                    <td><?= number_format($advanceSalary, 2) ?></td>
-                                    <td><?= $mealCount ?></td>
-                                    <td><?= number_format($subsidizeLunch, 2) ?></td>
-                                    <td>0</td> <!-- Absent Days (Not natively stored) -->
-                                    <td><?= number_format($unpaidAbsents, 2) ?></td>
+                                    <td class="cell-gross fw-bold text-nowrap"><?= number_format($gross, 2) ?></td>
+                                    <td class="cell-daily text-nowrap" data-val="<?= $daily ?>"><?= number_format($daily, 2) ?>
+                                    </td>
+                                    <td><input type="number" step="0.01"
+                                            class="form-control form-control-sm text-end in-deduct in-advance"
+                                            value="<?= round($advanceSalary, 2) ?>" style="min-width: 80px;"></td>
+                                    <td><input type="number" step="0.01"
+                                            class="form-control form-control-sm text-end in-mealcount"
+                                            data-permeal="<?= $p['per_meal_amount'] ?? 0 ?>" value="<?= $mealCount ?>"
+                                            style="width: 60px;"></td>
+                                    <td><input type="number" step="0.01"
+                                            class="form-control form-control-sm text-end in-deduct in-sublunch"
+                                            value="<?= round($subsidizeLunch, 2) ?>" style="min-width: 80px;"></td>
+                                    <td><input type="number" step="0.01"
+                                            class="form-control form-control-sm text-end in-absent-days" value="0"
+                                            style="width: 60px;"></td>
+                                    <td><input type="number" step="0.01"
+                                            class="form-control form-control-sm text-end in-deduct in-unpaid"
+                                            value="<?= round($unpaidAbsents, 2) ?>" style="min-width: 80px;"></td>
 
                                     <?php foreach ($items as $item): ?>
                                         <?php if ($item['type'] === 'deduction'): ?>
                                             <?php if (strpos(strtolower($item['name']), 'advance') === false && strpos(strtolower($item['name']), 'lunch') === false && strpos(strtolower($item['name']), 'absent') === false): ?>
-                                                <td><?= number_format($p['dynamic_details'][$item['id']] ?? 0, 2) ?></td>
+                                                <td><input type="number" step="0.01"
+                                                        class="form-control form-control-sm text-end in-deduct in-other-deduct"
+                                                        value="<?= round($p['dynamic_details'][$item['id']] ?? 0, 2) ?>"
+                                                        style="min-width: 80px;"></td>
                                             <?php endif; ?>
                                         <?php endif; ?>
                                     <?php endforeach; ?>
 
-                                    <td><?= number_format($punctBonus, 2) ?></td>
-                                    <td><?= number_format($overtime, 2) ?></td>
-                                    <td><?= number_format($arrear, 2) ?></td>
-                                    <td><?= number_format($otherAllow ?? 0, 2) ?></td>
-                                    <td><?= !empty($p['joining_date']) ? date('d-M-Y', strtotime($p['joining_date'])) : 'N/A' ?>
+                                    <td><input type="number" step="0.01"
+                                            class="form-control form-control-sm text-end in-earning in-punctuality"
+                                            value="<?= round($punctBonus, 2) ?>" style="min-width: 80px;"></td>
+                                    <td><input type="number" step="0.01"
+                                            class="form-control form-control-sm text-end in-earning in-overtime"
+                                            value="<?= round($overtime, 2) ?>" style="min-width: 80px;"></td>
+                                    <td><input type="number" step="0.01"
+                                            class="form-control form-control-sm text-end in-earning in-arrear"
+                                            value="<?= round($arrear, 2) ?>" style="min-width: 80px;"></td>
+                                    <td><input type="number" step="0.01"
+                                            class="form-control form-control-sm text-end in-earning in-otherallow"
+                                            value="<?= round($otherAllow, 2) ?>" style="min-width: 80px;"></td>
+                                    <td><?= !empty($p['joining_date']) ? date('d-M-Y', strtotime($p['joining_date'])) : '&nbsp;' ?>
                                     </td>
-                                    <td><?= !empty($p['deleted_at']) ? date('d-M-Y', strtotime($p['deleted_at'])) : '' ?></td>
+                                    <td><?= !empty($p['deleted_at']) ? date('d-M-Y', strtotime($p['deleted_at'])) : '&nbsp;' ?>
+                                    </td>
                                     <td>30</td>
-                                    <td><?= number_format($netSalary, 2) ?></td>
-                                    <td><?= number_format($tax, 2) ?></td>
-                                    <td><?= number_format($netSalary, 2) ?></td> <!-- Net Payable = Net Salary -->
-                                    <td><?= number_format($bank, 2) ?></td>
-                                    <td><?= number_format($cash, 2) ?></td>
-                                    <td><?= htmlspecialchars($p['remarks'] ?? '') ?></td>
-                                    <td></td> <!-- Attendance Remarks -->
-                                    <td><?= htmlspecialchars($p['account_holder_name'] ?? 'N/A') ?></td>
-                                    <td><?= htmlspecialchars($p['account_number'] ?? 'N/A') ?></td>
-                                    <td><?= number_format($bank, 2) ?></td>
-                                    <td></td> <!-- ID Check -->
+                                    <td class="cell-net fw-bold text-primary text-nowrap"
+                                        data-payment-method="<?= htmlspecialchars($p['payment_method']) ?>">
+                                        <?= number_format($netSalary, 2) ?></td>
+                                    <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-tax"
+                                            value="<?= round($tax, 2) ?>" style="min-width: 80px;"></td>
+                                    <td class="cell-netpayable fw-bold text-success text-nowrap">
+                                        <?= number_format($netSalary, 2) ?></td>
+                                    <td class="cell-bank text-nowrap"><?= number_format($bank, 2) ?></td>
+                                    <td class="cell-cash text-nowrap"><?= number_format($cash, 2) ?></td>
+                                    <td><input type="text" class="form-control form-control-sm in-remarks"
+                                            value="<?= htmlspecialchars($p['remarks'] ?? '') ?>" style="min-width: 120px;"></td>
+                                    <td><input type="text" class="form-control form-control-sm in-att-remarks" value=""
+                                            style="min-width: 120px;"></td>
+                                    <td><?= htmlspecialchars($p['account_holder_name'] ?? '&nbsp;') ?></td>
+                                    <td><?= htmlspecialchars($p['account_number'] ?? '&nbsp;') ?></td>
+                                    <td class="cell-amount text-nowrap"><?= number_format($bank, 2) ?></td>
+                                    <td>&nbsp;</td>
                                 </tr>
                             <?php endforeach; endif; ?>
                     </tbody>
@@ -239,8 +272,78 @@ $show_breadcrumb = true;
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
+        // --- Live Calculations ---
+        function attachCalculations() {
+            document.querySelectorAll('.calc-row').forEach(row => {
+                const inputs = row.querySelectorAll('input');
+                
+                inputs.forEach(input => {
+                    input.addEventListener('input', function() {
+                        const basic = parseFloat(row.querySelector('.cell-basic').dataset.val) || 0;
+                        const daily = parseFloat(row.querySelector('.cell-daily').dataset.val) || 0;
+                        const perMeal = parseFloat(row.querySelector('.in-mealcount').dataset.permeal) || 0;
+                        
+                        // Handle meal recalculation if meal count changed
+                        if (this.classList.contains('in-mealcount')) {
+                            const count = parseFloat(this.value) || 0;
+                            row.querySelector('.in-sublunch').value = (count * perMeal).toFixed(2);
+                        }
+                        
+                        // Handle absent recalculation if absent days changed
+                        if (this.classList.contains('in-absent-days')) {
+                            const days = parseFloat(this.value) || 0;
+                            row.querySelector('.in-unpaid').value = (days * daily).toFixed(2);
+                        }
+
+                        // Re-sum gross salary
+                        let totalEarning = basic;
+                        row.querySelectorAll('.in-earning').forEach(inp => {
+                            totalEarning += (parseFloat(inp.value) || 0);
+                        });
+                        
+                        row.querySelector('.cell-gross').textContent = totalEarning.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+                        // Re-sum deductions
+                        let totalDeduction = 0;
+                        row.querySelectorAll('.in-deduct').forEach(inp => {
+                            totalDeduction += (parseFloat(inp.value) || 0);
+                        });
+
+                        // Net Salary
+                        let netSalary = totalEarning - totalDeduction;
+                        row.querySelector('.cell-net').textContent = netSalary.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                        
+                        // Tax (already an input, but subtracts from net payable?)
+                        // Wait, typically Net Payable is Net Salary - Tax in some systems, or Net Salary IS Net Payable. 
+                        // In original PHP: Net Payable = Net Salary. Tax was separated. We'll set Net Payable = Net Salary - Tax. IF it was identical before, we just use Net Salary.
+                        const tax = parseFloat(row.querySelector('.in-tax').value) || 0;
+                        let netPayable = netSalary - tax; // In PHP it was identical to Net Salary, but tax wasn't subtracted. Assuming netPayable = netSalary here based on old code!
+                        // Setting Net Payable = Net Salary 
+                        netPayable = netSalary; 
+                        
+                        row.querySelector('.cell-netpayable').textContent = netPayable.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                        
+                        const payMethod = row.querySelector('.cell-net').dataset.paymentMethod || '';
+                        let bank = 0, cash = 0;
+                        if (payMethod.toLowerCase().includes('bank')) {
+                            bank = netPayable;
+                        } else if (payMethod.toLowerCase().includes('cash')) {
+                            cash = netPayable;
+                        }
+                        
+                        row.querySelector('.cell-bank').textContent = bank.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                        row.querySelector('.cell-cash').textContent = cash.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                        row.querySelector('.cell-amount').textContent = bank.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    });
+                });
+            });
+        }
+        
+        attachCalculations();
+
+        // --- DataTables with CSV and PDF ---
         if (typeof $ !== 'undefined' && $.fn.DataTable) {
-            $('#workspaceTable').DataTable({
+            var table = $('#workspaceTable').DataTable({
                 lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
                 pageLength: 10,
                 autoWidth: false,
@@ -256,20 +359,83 @@ $show_breadcrumb = true;
                     '<"row align-items-center mt-3"<"col-sm-6 text-start"i><"col-sm-6 text-end"p>>',
                 buttons: [
                     {
-                        extend: 'csvHtml5', text: 'CSV', className: 'buttons-csv',
-                        title: 'Payroll_Workplace_Export'
+               extend: 'csvHtml5', 
+                        text: 'CSV', 
+                        className: 'buttons-csv',
+                        title: 'Payroll_Workplace_Export',
+                        exportOptions: {
+                            format: {
+                                body: function ( inner, rowidx, colidx, node ) {
+                                    if ($(node).find('input').length > 0) {
+                                        return $(node).find('input').val();
+                                    } else {
+                                        return inner.replace(/(<([^>]+)>)/ig, "").trim();
+                                    }
+                                }
+                            }
+                        }
                     },
                     {
                         text: '<i class="fa-solid fa-file-pdf me-1"></i> PDF',
                         className: 'btn btn-danger btn-sm',
                         action: function (e, dt, node, config) {
-                            var year = document.getElementById('year') ? document.getElementById('year').value : '';
-                            var month = document.getElementById('month') ? document.getElementById('month').value : '';
-                            window.location.href = '<?= $GLOBALS['base_url'] ?? '/' ?>/payroll-workspace-pdf?year=' + year + '&month=' + month;
+                            exportDynamicPDF(table);
                         }
                     }
                 ]
             });
+
+            // Extract all rows from DataTable and POST to PDF endpoint
+            function exportDynamicPDF(dt) {
+                var year = document.getElementById('year') ? document.getElementById('year').value : '';
+                var month = document.getElementById('month') ? document.getElementById('month').value : '';
+                
+                var rowData = [];
+                var headerData = [];
+                
+                // Get header data
+                $(dt.table().header()).find('th').each(function() {
+                    headerData.push($(this).text().trim());
+                });
+
+                // Get data from all pages (not just current page)
+                var dtNodes = dt.rows().nodes(); 
+                
+                $(dtNodes).each(function() {
+                    var tr = $(this);
+                    var rowArr = [];
+                    tr.find('td').each(function() {
+                        var cell = $(this);
+                        if (cell.find('input').length > 0) {
+                            rowArr.push(cell.find('input').val());
+                        } else {
+                            rowArr.push(cell.text().trim());
+                        }
+                    });
+                    rowData.push(rowArr);
+                });
+
+                var form = document.createElement("form");
+                form.method = "POST";
+                form.action = '<?= $GLOBALS['base_url'] ?? '/' ?>/payroll-workspace-pdf?year=' + year + '&month=' + month;
+                form.target = "_blank"; // Open PDF in new tab
+                
+                var input = document.createElement("input");
+                input.type = "hidden";
+                input.name = "table_data";
+                input.value = JSON.stringify(rowData);
+                form.appendChild(input);
+                
+                var inputHeaders = document.createElement("input");
+                inputHeaders.type = "hidden";
+                inputHeaders.name = "table_headers";
+                inputHeaders.value = JSON.stringify(headerData);
+                form.appendChild(inputHeaders);
+                
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
+            }
         }
     });
 </script>
