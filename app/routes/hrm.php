@@ -259,11 +259,13 @@ return [
     // Automated Payroll Routes
     'auto-generate-payslip' => ['controller' => 'PayrollController', 'method' => 'showAutoGenerateForm'],
     'api/payroll/department-attendance' => ['controller' => 'PayrollController', 'method' => 'getDepartmentAttendance'],
+    'api/payroll/attendance-overrides' => ['controller' => 'PayrollController', 'method' => 'getAttendanceOverrides'],
     'store-bulk-payslips' => ['controller' => 'PayrollController', 'method' => 'storeBulkPayslips'],
     'disburse-batch-payslips' => ['controller' => 'PayrollController', 'method' => 'disburseBatch'],
 
     // Payroll Workspace
     'payroll-workspace' => ['controller' => 'PayrollController', 'method' => 'workspace'],
+    'save-workspace-payslips' => ['controller' => 'PayrollController', 'method' => 'saveWorkspacePayslips'],
     'payroll-workspace-pdf' => ['controller' => 'PayrollController', 'method' => 'exportWorkspacePDF'],
 
     // Salary Hold
@@ -272,6 +274,7 @@ return [
 
     // Payroll Attendance Report
     'payroll-attendance-report' => ['controller' => 'PayrollController', 'method' => 'attendanceReport'],
+    'save-attendance-modifications' => ['controller' => 'PayrollController', 'method' => 'saveAttendanceModifications'],
     'payroll-attendance-pdf' => ['controller' => 'PayrollController', 'method' => 'exportAttendancePDF'],
 
     // Joining List

@@ -1017,6 +1017,7 @@ class PayrollController extends Controller
         // GET param use, fallback to current month/year
         $selectedYear = isset($_GET['year']) ? $_GET['year'] : $currentYear;
         $selectedMonth = isset($_GET['month']) ? $_GET['month'] : $currentMonth;
+        $selectedProject = isset($_GET['payroll_project_id']) ? $_GET['payroll_project_id'] : '';
 
         // Fetch dynamic payslip items
         $items = $this->payslipItemModel->getAll(); // returns id, name, type etc.
@@ -1030,13 +1031,28 @@ class PayrollController extends Controller
                    e.deleted_at,
                    e.per_meal_amount,
                    dept.name as department_name, desg.name as designation_name
-            FROM payslips p
-            LEFT JOIN employees e ON p.employee_id = e.id
+            FROM employees e
             LEFT JOIN departments dept ON e.department_id = dept.id
             LEFT JOIN designations desg ON e.designation_id = desg.id
-            WHERE YEAR(p.payslip_month) = '$selectedYear' AND MONTH(p.payslip_month) = '$selectedMonth'
-            ORDER BY e.employee_id ASC
+            LEFT JOIN payslips p ON e.id = p.employee_id
+            LEFT JOIN (
+                SELECT employee_id, tipsoi_present, tipsoi_absent, tipsoi_leave, tipsoi_late 
+                FROM attendance_monthly_update
+                WHERE target_month = '$selectedYear-$selectedMonth-01'
+                AND payroll_project_id = " . ((int) $selectedProject ?: '0') . "
+            ) override_att ON e.id = override_att.employee_id
+            WHERE 1=1
         ";
+
+        if ($selectedYear && $selectedMonth) {
+            $query .= " AND (YEAR(p.payslip_month) = '$selectedYear' AND MONTH(p.payslip_month) = '$selectedMonth' OR p.id IS NULL)";
+        }
+
+        if ($selectedProject) {
+            $query .= " AND p.payroll_project_id = " . (int) $selectedProject;
+        }
+
+        $query .= " ORDER BY e.employee_id ASC ";
 
         $res = $this->db->query($query);
         $payslips = [];
@@ -1475,6 +1491,114 @@ class PayrollController extends Controller
             "current_route" => "payroll-attendance-report",
             "page_title" => "Payroll Attendance Report"
         ]);
+    }
+
+    public function getAttendanceOverrides()
+    {
+        $project_id = isset($_GET['payroll_project_id']) ? (int) $_GET['payroll_project_id'] : 0;
+        $targetMonth = isset($_GET['target_month']) ? $_GET['target_month'] : date('Y-m-d');
+
+        $query = "SELECT * FROM attendance_monthly_update WHERE payroll_project_id = $project_id AND target_month = '$targetMonth'";
+        $res = $this->db->query($query);
+        $data = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $data[] = $row;
+            }
+        }
+
+        echo json_encode(['success' => true, 'data' => $data]);
+        exit;
+    }
+
+    public function saveAttendanceModifications()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!$input || empty($input['rows'])) {
+            echo json_encode(['success' => false, 'message' => 'No payload received.']);
+            exit;
+        }
+
+        $projectId = (int) ($input['project_id'] ?? 0);
+        if (!$projectId) {
+            echo json_encode(['success' => false, 'message' => 'Payroll Project ID is required.']);
+            exit;
+        }
+
+        $targetMonth = $input['target_month'] ?? date('Y-m-d');
+
+        $this->db->begin_transaction();
+        try {
+            $successCount = 0;
+
+            $stmt = $this->db->prepare("
+                INSERT INTO attendance_monthly_update 
+                (employee_id, payroll_project_id, target_month, tipsoi_present, tipsoi_absent, tipsoi_leave, tipsoi_late, tipsoi_early_leave, custom_leave_days, weekoff_days, payable_days, holiday_days, remarks) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                tipsoi_present = VALUES(tipsoi_present),
+                tipsoi_absent = VALUES(tipsoi_absent),
+                tipsoi_leave = VALUES(tipsoi_leave),
+                tipsoi_late = VALUES(tipsoi_late),
+                tipsoi_early_leave = VALUES(tipsoi_early_leave),
+                custom_leave_days = VALUES(custom_leave_days),
+                weekoff_days = VALUES(weekoff_days),
+                payable_days = VALUES(payable_days),
+                holiday_days = VALUES(holiday_days),
+                remarks = VALUES(remarks)
+            ");
+
+            foreach ($input['rows'] as $row) {
+                $empId = (int) $row['employee_id'];
+                $present = (float) ($row['tipsoi_present'] ?? 0);
+                $absent = (float) ($row['tipsoi_absent'] ?? 0);
+                $leave = (float) ($row['tipsoi_leave'] ?? 0);
+                $late = (float) ($row['tipsoi_late'] ?? 0);
+                $early = (float) ($row['tipsoi_early_leave'] ?? 0);
+                $custom_leave = (float) ($row['custom_leave_days'] ?? 0);
+                $weekoff = (float) ($row['weekoff_days'] ?? 0);
+                $payable = (float) ($row['payable_days'] ?? 0);
+                $holiday = (float) ($row['holiday_days'] ?? 0);
+                $remarks = $row['remarks'] ?? '';
+
+                $stmt->bind_param(
+                    "iisddddddddds",
+                    $empId,
+                    $projectId,
+                    $targetMonth,
+                    $present,
+                    $absent,
+                    $leave,
+                    $late,
+                    $early,
+                    $custom_leave,
+                    $weekoff,
+                    $payable,
+                    $holiday,
+                    $remarks
+                );
+
+                if ($stmt->execute()) {
+                    $successCount++;
+                }
+            }
+            $stmt->close();
+            $this->db->commit();
+
+            echo json_encode([
+                'success' => true,
+                'message' => "Successfully overlayed $successCount records."
+            ]);
+        } catch (Exception $e) {
+            $this->db->rollback();
+            echo json_encode(['success' => false, 'message' => 'Operation failed: ' . $e->getMessage()]);
+        }
+        exit;
     }
 
     public function exportAttendancePDF()
