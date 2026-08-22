@@ -4,7 +4,7 @@
 // 2 = Project staging Server
 // 3 = Production Server
 ///////////////
-$current_server = 3;
+$current_server = 1;
 // Local Development Server
 if ($current_server == 1) {
     return [
@@ -41,7 +41,7 @@ if ($current_server == 1) {
         "smtp_port" => 465,
     ];
 }
-
+////////////////////
 // CREATE USER 'tphl_read_only'@'localhost' IDENT IFIED BY 'ReadOnlyPass123!';
 // GRANT SELECT ON `tphl_db`.* TO 'tphl_read_only'@'localhost';
 // FLUSH PRIVILEGES;
