@@ -65,7 +65,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                             <label class="form-label">Project *</label>
                         </div>
-                        <select name="project_id" id="projectSelect" class="form-select select2-no-scroll" data-placeholder="Select Project" required>
+                        <select name="project_id" id="projectSelect" class="form-select select2" data-placeholder="Select Project" required>
                             <option value="">Select Project</option>
                             <?php foreach ($projects as $project): ?>
                                 <?php 
@@ -86,7 +86,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                             <label class="form-label">Flat / Unit *</label>
                         </div>
-                        <select id="flatSelect" name="flat_id" class="form-select select2-no-scroll" data-placeholder="Select Flat">
+                        <select id="flatSelect" name="flat_id" class="form-select select2" data-placeholder="Select Flat">
 
                             <option value="">Select Flat</option>
                         </select>
@@ -310,7 +310,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     <!-- Project -->
                     <div class="mb-3">
                         <label class="form-label">Project *</label>
-                        <select name="project_id" id="edit_project" class="form-select select2-no-scroll" data-placeholder="Select Project" required>
+                        <select name="project_id" id="edit_project" class="form-select select2" data-placeholder="Select Project" required>
                             <option value="">Select Project</option>
                             <?php foreach ($projects as $project): ?>
                                 <?php 
@@ -328,7 +328,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     <!-- Flat -->
                     <div class="mb-3">
                         <label class="form-label">Flat / Unit *</label>
-                        <select name="flat_id" id="edit_flat" class="form-select select2-no-scroll" data-placeholder="Select Flat" required>
+                        <select name="flat_id" id="edit_flat" class="form-select select2" data-placeholder="Select Flat" required>
                             <option value="">Select Flat</option>
                         </select>
                     </div>

@@ -564,12 +564,29 @@ class UserDashboardController extends Controller
         $followUpModel  = new FollowUp($this->db);
         $followUpCounts = !empty($leadIds) ? $followUpModel->getFollowUpCountByLeadIds($leadIds) : [];
 
+        $followUpHistories = [];
+        if (!empty($leadIds)) {
+            $idsStr = implode(',', array_map('intval', $leadIds));
+            $fuQuery = $this->db->query("SELECT fu.*, l.full_name, p.name AS project_name, f.flat_name 
+                                         FROM lead_follow_ups fu 
+                                         LEFT JOIN leads l ON fu.lead_id = l.id 
+                                         LEFT JOIN projects p ON fu.project_id = p.id 
+                                         LEFT JOIN flats f ON fu.flat_id = f.id 
+                                         WHERE fu.lead_id IN ($idsStr) ORDER BY fu.follow_up_date DESC, fu.id DESC");
+            if ($fuQuery) {
+                while($row = $fuQuery->fetch_assoc()) {
+                    $followUpHistories[$row['lead_id']][] = $row;
+                }
+            }
+        }
+
         // Calculate card statistics efficiently
         $summaryCards = $this->leadModel->getMyAssignedLeadsSummaryCards($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours);
         $totalLeadsCount        = $summaryCards['total_leads'] ?? 0;
         $contactedLeadsCount    = $summaryCards['contacted_leads'] ?? 0;
         $notContactedLeadsCount = $summaryCards['not_contacted_leads'] ?? 0;
         $bookedLeadsCount       = $summaryCards['booked_leads'] ?? 0;
+        $upcomingFollowUpsCount = $summaryCards['upcoming_follow_ups'] ?? 0;
 
         $missingFollowUpCount = $followUpModel->getMissingFollowUpCount($userId);
 
@@ -733,12 +750,25 @@ class UserDashboardController extends Controller
         $projectCategories = $projectCategoryModel->getAll();
         $countries = $this->leadModel->getDistinctCountries();
 
+        // Fetch teams for re-assignment
+        $teamModel = new Team($this->db);
+        $teams = $teamModel->getAll();
+
+        $teamId = $_SESSION['user']['team_id'] ?? null;
+        if (!empty($teamId)) {
+            $userModel = new User($this->db);
+            $teamMembers = $userModel->getUsersByTeamAndRole($teamId);
+        } else {
+            $teamMembers = [];
+        }
+
         $this->view('sales-executive/my-assigned-leads', [
             'page_title'          => 'My Assigned Leads',
             'myAllleads'          => $myAssignedClients,
             'current_page'        => 'my-all-assigned-leads',
             'bookingCount'        => $bookingCount,
             'followUpCounts'      => $followUpCounts,
+            'followUpHistories'   => $followUpHistories,
             'selectedAction'      => $lastAction,
             'selectedLeadStatus'  => $lead_status,
             'duplicateGroups'     => $duplicateGroups,
@@ -751,11 +781,14 @@ class UserDashboardController extends Controller
             'isFilterMissing'     => $onlyMissingFollowup,
             'phoneMap'            => $phoneMap,
             'emailMap'            => $emailMap,
+            'teams'               => $teams,
+            'teamMembers'         => $teamMembers,
             'totalLeadsCount'        => $totalLeadsCount,
             'contactedLeadsCount'    => $contactedLeadsCount,
             'notContactedLeadsCount' => $notContactedLeadsCount,
             'notCalledLeadsCount'    => $notContactedLeadsCount,
             'bookedLeadsCount'       => $bookedLeadsCount,
+            'upcomingFollowUpsCount' => $upcomingFollowUpsCount,
             'search'              => $search,
             'followup_date'       => $followup_date,
             'filterCard'          => $filterCard,

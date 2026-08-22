@@ -118,7 +118,7 @@ public function store()
         'flat_id' => $flat_id,
         'follow_up_date' => $_POST['follow_up_date'] ?? null,
         'follow_up_time' => $_POST['follow_up_time'] ?? null,
-        'follow_up_type' => $_POST['follow_up_type'] ?? 'call',
+        'follow_up_type' => !empty($_POST['follow_up_type']) ? $_POST['follow_up_type'] : null,
         'status' => $_POST['status'] ?? 'pending',
         'discussion_note' => $_POST['discussion_note'] ?? null,
         'next_follow_up_date' => $_POST['next_follow_up_date'] ?? null,
@@ -157,14 +157,24 @@ public function store()
     $created = $this->followUpModel->create($followUpData);
 
     $leadId = $_POST['lead_id'];
+    $isAjax = !empty($_POST['is_ajax']);
+
     if ($created) {
         setSuccess("Follow-up created successfully!");
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => 'Follow-up created successfully!']);
+            exit;
+        }
     } else {
         $dbError = $_SESSION['flash_error'] ?? '';
-        if (!empty($dbError)) {
-            setError("Failed to create follow-up! DB Error: " . $dbError);
-        } else {
-            setError("Failed to create follow-up!");
+        $errorMsg = !empty($dbError) ? "Failed to create follow-up! DB Error: " . $dbError : "Failed to create follow-up!";
+        setError($errorMsg);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $errorMsg]);
+            exit;
         }
     }
 
@@ -200,8 +210,8 @@ public function store()
             'lead_id' => (int)$_POST['lead_id'],
             'flat_id' => $flatId,   // ✅ NULL or flats.id only
             'follow_up_date' => $_POST['follow_up_date'],
-            'follow_up_time' => $_POST['follow_up_time'] ?: null,
-            'follow_up_type' => $_POST['follow_up_type'],
+            'follow_up_time' => !empty($_POST['follow_up_time']) ? $_POST['follow_up_time'] : null,
+            'follow_up_type' => !empty($_POST['follow_up_type']) ? $_POST['follow_up_type'] : null,
             'status' => $_POST['status'] ?? 'pending',
             'discussion_note' => $_POST['discussion_note'] ?? null,
             'next_follow_up_date' => $_POST['next_follow_up_date'] ?: null,
