@@ -3012,7 +3012,7 @@
                         </li>
                     <?php endif; ?>
                     <!-- FOR Task Manage  -->
-                    <li class="slide <?= isActive('email-station', $current_route) ?>">
+                    <li class="slide d-none <?= isActive('email-station', $current_route) ?>">
                         <a href="<?= $base_url ?>/email-station"
                             class="sidebar__menu-item <?= isActive('email-station', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-envelope"></i></div>

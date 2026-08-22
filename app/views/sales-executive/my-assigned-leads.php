@@ -434,7 +434,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                 <!-- Follow Up Date Filter -->
                 <div class="col-12 col-sm-6 col-md-auto">
                     <div class="input-group input-group-sm" title="Filter by Next Follow-Up Date">
-                        <span class="input-group-text bg-white" style="font-size: 11px;"><i class="bi bi-calendar-event me-1"></i> Next Follow-Up</span>
+                        <span class="input-group-text " style="font-size: 11px;"><i class="bi bi-calendar-event me-1"></i> Next Follow-Up</span>
                         <input type="date" name="followup_date" class="form-control form-control-sm" value="<?= htmlspecialchars($followup_date ?? '') ?>">
                     </div>
                 </div>
@@ -495,14 +495,22 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                     </select>
                 </div>
 
-                <!-- Call Status Select -->
+                <!-- Lead Status Select -->
                 <div class="col-auto col-sm-6 col-md-auto">
-                    <select class="form-select form-select-sm" name="call_status">
-                        <option value="">Call Status: All</option>
-                        <option value="not_called" <?= ($selectedCallStatus ?? '') == 'not_called' ? 'selected' : '' ?>>Not Called</option>
-                        <option value="called" <?= ($selectedCallStatus ?? '') == 'called' ? 'selected' : '' ?>>Called</option>
-                        <option value="received" <?= ($selectedCallStatus ?? '') == 'received' ? 'selected' : '' ?>>Received</option>
-                        <option value="not_received" <?= ($selectedCallStatus ?? '') == 'not_received' ? 'selected' : '' ?>>Not Received</option>
+                    <select class="form-select form-select-sm" name="lead_status">
+                        <option value="">Lead Status: All</option>
+                        <?php
+                        $statuses = [
+                            'No Response', 'Pending', 'Prospect', 'High Prospect', 
+                            'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 
+                            'Project Transferred', 'Not Interested', 'Don\'t Call Again', 
+                            'Refund', 'Future', 'Cold', 'Hot', 'Warm'
+                        ];
+                        foreach($statuses as $st) {
+                            $selected = ($selectedLeadStatus ?? '') == $st ? 'selected' : '';
+                            echo "<option value=\"$st\" $selected>$st</option>";
+                        }
+                        ?>
                     </select>
                 </div>
 
@@ -583,22 +591,15 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                     <input type="checkbox" id="selectAllLeads" title="Select All">
                                     S/L
                                 </th>
-                                <th style="min-width: 120px;">Assigned Date</th>
+                                <th style="min-width: 140px;">Assigned Date & By</th>
                                 <th style="min-width: 130px;">Duplicate</th>
                                 <th style="min-width: 160px;">Lead Name $ Job /Company name</th>
-                                <th style="min-width: 140px;">Assigned By</th>
-                                <th style="min-width: 150px;">Best Time to Contact</th>
-                                <th style="min-width: 140px;">Address & City</th>
+                                <th style="min-width: 160px;">Best Time & Address</th>
                                 <th style="min-width: 180px;">Project Campaign</th>
 
-                                <th style="min-width: 200px;">Last Follow Up Project</th>
-                                <th style="min-width: 160px;">Change Client Action</th>
-                                <th style="min-width: 160px;" class="text-center">Call Statas</th>
-                                <th style="min-width: 160px;" class="text-center">Communtication Type</th>
-                                <th style="min-width: 160px;" class="text-center">Lead Status</th>
-                                <th style="min-width: 130px;" class="text-center">Follow Up Status</th>
-                                <th style="min-width: 250px;" class="text-center">Instant Call Note</th>
-                                <th style="min-width: 250px;" class="text-center">Last Follow Up Note</th>
+                                <th style="min-width: 160px;" class="text-center">Last Lead Status</th>
+                                <th style="min-width: 250px;" class="text-center d-none">Instant Call Note</th>
+                                <th style="min-width: 250px;" class="text-center d-none">Last Follow Up Note</th>
                                 <th style="min-width: 140px;">Next Follow-Up</th>
                                 <th style="min-width: 180px;">Action</th>
                             </tr>
@@ -638,7 +639,14 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                         ? $lead['assigned_at']
                                         : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
                                     ?>
-                                    <td><?= $assignedRaw ? date('d F, Y, h:i A', strtotime($assignedRaw)) : '' ?></td>
+                                    <td>
+                                        <div class="fw-medium"><?= $assignedRaw ? date('d F, Y, h:i A', strtotime($assignedRaw)) : '' ?></div>
+                                        <div class="mt-1">
+                                            <span class="badge bg-secondary-subtle text-dark border px-2 py-1" style="font-size: 11px;">
+                                                <i class="bi bi-person-check me-1"></i><?= htmlspecialchars($lead['assigned_by_name'] ?? 'System') ?>
+                                            </span>
+                                        </div>
+                                    </td>
                                     
                                     <!-- Duplicate Status -->
                                     <td>
@@ -682,20 +690,11 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                          <?php endif; ?>
                                      </td>
 
-                                     <!-- Assigned By -->
+                                     <!-- Best Time & Address -->
                                      <td>
-                                         <span class="badge bg-secondary-subtle text-dark border px-2 py-1" style="font-size: 11px;">
-                                             <i class="bi bi-person-check me-1"></i><?= htmlspecialchars($lead['assigned_by_name'] ?? 'System') ?>
-                                         </span>
-                                     </td>
-
-                                     <!-- Best Time to Contact -->
-                                     <td>
-                                         <?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? '—') ?>
-                                     </td>
-
-                                     <!-- Address & City -->
-                                     <td>
+                                         <div class="mb-1 text-muted" style="font-size: 11px;">
+                                             <i class="bi bi-clock me-1"></i><?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? '—') ?>
+                                         </div>
                                          <?php 
                                          $addrParts = [];
                                          if (!empty($lead['country'])) $addrParts[] = trim($lead['country']);
@@ -703,7 +702,9 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                          if (!empty($lead['city'])) $addrParts[] = trim($lead['city']);
                                          $addr = implode(', ', $addrParts);
                                          ?>
-                                         <span class="fs-12"><?= htmlspecialchars($addr !== '' ? $addr : '—') ?></span>
+                                         <div class="fs-12">
+                                             <i class="bi bi-geo-alt me-1 text-muted"></i><?= htmlspecialchars($addr !== '' ? $addr : '—') ?>
+                                         </div>
                                      </td>
 
                                     <?php
@@ -737,106 +738,6 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                             <?php endif; ?>
                                         </div>
                                     </td>
-                                    <td>
-                                        <?php if (!empty($lead['project_name'])): ?>
-                                            <div class="bd-badge-custom">
-                                                <div class="fw-bold"><?= htmlspecialchars($lead['project_name']) ?></div>
-                                                <div class="mt-1 small" style="opacity: 0.9; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 2px;">
-                                                    <strong>Flat:</strong> <?= !empty($lead['flat_name']) ? htmlspecialchars($lead['flat_name']) : 'N/A' ?>
-                                                </div>
-                                            </div>
-                                        <?php else: ?>
-                                            <div class="bd-badge-custom bd-badge-secondary-custom">
-                                                No Follow Data
-                                            </div>
-                                        <?php endif; ?>
-                                    </td>
-                                    <!-- New Last Action Update Button -->
-                                    <td>
-                                        <form method="POST"
-                                            action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>"
-                                            class="m-0 p-0">
-
-                                            <select name="last_lead_action"
-                                                class="form-select form-select-sm last-action-select last-action-select-ajax <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
-                                                data-lead-id="<?= $lead['id'] ?>">
-
-                                                <option value=""> Update action </option>
-                                                <option value="contacted" <?= $lead['last_lead_action'] == 'contacted' ? 'selected' : '' ?>>
-                                                    Contacted
-                                                </option>
-                                                <option value="new" <?= $lead['last_lead_action'] == 'new' ? 'selected' : '' ?>>
-                                                    New
-                                                </option>
-                                                <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>
-                                                    Booked
-                                                </option>
-                                                <option value="follow up"
-                                                    <?= $lead['last_lead_action'] == 'follow up' ? 'selected' : '' ?>
-                                                    class="<?= $lead['last_lead_action'] == 'follow up' ? 'action-follow_up' : '' ?>">
-                                                    Follow Up
-                                                </option>
-                                                <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>
-                                                    Visited
-                                                </option>
-                                                <option value="cancel" <?= $lead['last_lead_action'] == 'cancel' ? 'selected' : '' ?>>
-                                                    Cancel
-                                                </option>
-                                            </select>
-
-                                        </form>
-                                    </td>
-                                    <!-- Communicate Type -->
-                                    <?php
-                                    $status = $lead['call_status'] ?? 'not_called';
-
-                                    $statusClass = '';
-                                    if ($status == 'received') {
-                                        $statusClass = 'bg-received';
-                                    } elseif ($status == 'not_received') {
-                                        $statusClass = 'bg-not-received';
-                                    }
-                                    ?>
-
-                                    <td class="call-status-cell">
-                                        <select
-                                            class="call-status <?= $statusClass ?> "
-                                            data-id="<?= $lead['id'] ?>">
-
-                                            <option value="not_called" <?= $status == 'not_called' ? 'selected' : '' ?>>Not Called</option>
-                                            <option value="called" <?= $status == 'called' ? 'selected' : '' ?>>Called</option>
-                                            <option value="received" <?= $status == 'received' ? 'selected' : '' ?>>Received</option>
-                                            <option value="not_received" <?= $status == 'not_received' ? 'selected' : '' ?>>Not Received</option>
-
-                                        </select>
-                                    </td>
-                                    <?php
-                                    $status = $lead['communication_type'] ?? 'Not Select';
-
-                                    $statusClass = '';
-                                    if (in_array($status, ['WA Messaging', 'WA Conversion', 'Wa Call', 'Imo Massage', 'Imo Call', 'Phone Call', 'Phone Massage'])) {
-                                        $statusClass = 'bg-received';
-                                    } elseif (in_array($status, ['Invalid Number', 'No Wa /No Imo', 'Number Off'])) {
-                                        $statusClass = 'bg-not-received';
-                                    }
-                                    ?>
-                                    <td class="call-status-cell">
-                                        <select
-                                            class="communication-status <?= $statusClass ?> form-select form-control"
-                                            data-id="<?= $lead['id'] ?>">
-                                            <option value="">Select type</option>
-                                            <option value="WA Messaging" <?= $status == 'WA Messaging' ? 'selected' : '' ?>>WA Messaging</option>
-                                            <option value="WA Conversion" <?= $status == 'WA Conversion' ? 'selected' : '' ?>>WA Conversion</option>
-                                            <option value="Wa Call" <?= $status == 'Wa Call' ? 'selected' : '' ?>>Wa Call</option>
-                                            <option value="Imo Massage" <?= $status == 'Imo Massage' ? 'selected' : '' ?>>Imo Massage</option>
-                                            <option value="Imo Call" <?= $status == 'Imo Call' ? 'selected' : '' ?>>Imo Call</option>
-                                            <option value="Phone Call" <?= $status == 'Phone Call' ? 'selected' : '' ?>>Phone Call</option>
-                                            <option value="Phone Massage" <?= $status == 'Phone Massage' ? 'selected' : '' ?>>Phone Massage</option>
-                                            <option value="Invalid Number" <?= $status == 'Invalid Number' ? 'selected' : '' ?>>Invalid Number</option>
-                                            <option value="No Wa /No Imo" <?= $status == 'No Wa /No Imo' ? 'selected' : '' ?>>No Wa /No Imo</option>
-                                            <option value="Number Off" <?= $status == 'Number Off' ? 'selected' : '' ?>>Number Off</option>
-                                        </select>
-                                    </td>
                                     <?php
                                     $statusVal = $lead['lead_type'] ?? 'Pending';
 
@@ -867,51 +768,9 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                         </select>
                                     </td>
 
-                                    <!-- Follow Up Status -->
-                                    <td class="text-center">
-                                        <?php
-                                        $fuStatus   = $lead['last_follow_up_status'] ?? null;
-                                        $nextDate   = $lead['next_follow_up_date'] ?? null;
-                                        $today      = date('Y-m-d');
-
-                                        if ($fuStatus === 'completed') {
-                                            $fuBadgeClass = 'bg-success';
-                                            $fuLabel      = '✔ Completed';
-                                        } elseif ($fuStatus === 'missed') {
-                                            $fuBadgeClass = 'bg-danger';
-                                            $fuLabel      = '✘ Missed';
-                                        } elseif ($fuStatus === 'canceled') {
-                                            $fuBadgeClass = 'bg-secondary';
-                                            $fuLabel      = 'Canceled';
-                                        } elseif ($fuStatus === 'pending' && !empty($nextDate)) {
-                                            if ($nextDate < $today) {
-                                                // Overdue
-                                                $fuBadgeClass = 'bg-danger';
-                                                $fuLabel      = '⚠ Overdue';
-                                            } elseif ($nextDate === $today) {
-                                                // Due Today
-                                                $fuBadgeClass = 'bg-warning text-dark';
-                                                $fuLabel      = '🔔 Due Today';
-                                            } else {
-                                                // Upcoming
-                                                $fuBadgeClass = 'bg-info text-dark';
-                                                $fuLabel      = '📅 Upcoming';
-                                            }
-                                        } elseif ($fuStatus === 'pending') {
-                                            $fuBadgeClass = 'bg-warning text-dark';
-                                            $fuLabel      = 'Pending';
-                                        } else {
-                                            $fuBadgeClass = 'bg-light text-muted border';
-                                            $fuLabel      = 'No Follow Up';
-                                        }
-                                        ?>
-                                        <span class="badge <?= $fuBadgeClass ?>" style="font-size:11px; padding:5px 8px; white-space:nowrap;">
-                                            <?= $fuLabel ?>
-                                        </span>
-                                    </td>
 
                                     <!-- First Call Note -->
-                                    <td class="note-cell">
+                                    <td class="note-cell d-none">
                                         <div class="note-wrapper" style="display: flex; gap: 5px; align-items: center;">
                                             <textarea
                                                 class="call-note"
@@ -923,7 +782,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                     </td>
 
                                     <!-- Interactive Note -->
-                                    <td class="note-cell">
+                                    <td class="note-cell d-none">
                                         <div class="note-wrapper">
                                             <textarea
                                                 class="last-followup-note"
@@ -973,6 +832,11 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                                     </span>
                                                 <?php endif; ?>
                                             </a>
+                                            <!-- View Notes -->
+                                            <button type="button" class="btn btn-info btn-sm view-notes-btn" data-id="<?= $lead['id'] ?>" data-bs-toggle="modal" data-bs-target="#followUpNotesModal" style="white-space:nowrap;" title="View all follow up notes">
+                                                <i class="bi bi-card-text"></i> Notes
+                                            </button>
+                                            
                                             <!-- Booking -->
                                             <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
                                                 class="btn btn-secondary btn-sm position-relative"
@@ -990,6 +854,12 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                         </tbody>
                     </table>
                 </div>
+                
+                <?php if (isset($totalPages) && $totalPages > 1): ?>
+                <div class="d-flex justify-content-end mt-3 mb-2">
+                    <?= paginateLinksSecondary($base_url . "/my-all-assigned-leads", $currentPage, $totalPages); ?>
+                </div>
+                <?php endif; ?>
             </div>
 
         </div>
@@ -1172,19 +1042,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                 <!-- Status & Action -->
                 <div class="mt-2">
                     <div class="info-label">Status & Action</div>
-                    <form method="POST" action="<?= $GLOBALS['base_url'] ?>/update-last_leadAction/<?= $lead['id'] ?>" class="m-0 p-0 mb-2">
-                        <select name="last_lead_action"
-                            class="form-select form-select-sm last-action-select last-action-select-ajax w-100 <?= 'action-' . ($lead['last_lead_action'] ?? 'not_called') ?>"
-                            data-lead-id="<?= $lead['id'] ?>">
-                            <option value="">Update action</option>
-                            <option value="contacted" <?= $lead['last_lead_action'] == 'contacted' ? 'selected' : '' ?>>Contacted</option>
-                            <option value="new" <?= $lead['last_lead_action'] == 'new' ? 'selected' : '' ?>>New</option>
-                            <option value="booked" <?= $lead['last_lead_action'] == 'booked' ? 'selected' : '' ?>>Booked</option>
-                            <option value="follow up" <?= $lead['last_lead_action'] == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
-                            <option value="visited" <?= $lead['last_lead_action'] == 'visited' ? 'selected' : '' ?>>Visited</option>
-                            <option value="cancel" <?= $lead['last_lead_action'] == 'cancel' ? 'selected' : '' ?>>Cancel</option>
-                        </select>
-                    </form>
+
 
                     <div class="d-flex flex-column gap-2">
                         <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $lead['id'] ?>" class="btn btn-primary btn-sm w-100 d-flex justify-content-between align-items-center px-2">
@@ -1222,16 +1080,6 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                         <?php endif; ?>
                     </div>
 
-                    <!-- Call Status (Communicate Type) -->
-                    <div class="mt-2">
-                        <label class="info-label d-block mb-1">Call Status (Communicate Type)</label>
-                        <select class="call-status w-100" data-id="<?= $lead['id'] ?>">
-                            <option value="not_called" <?= ($lead['call_status'] ?? 'not_called') == 'not_called' ? 'selected' : '' ?>>Not Called</option>
-                            <option value="called" <?= ($lead['call_status'] ?? '') == 'called' ? 'selected' : '' ?>>Called</option>
-                            <option value="received" <?= ($lead['call_status'] ?? '') == 'received' ? 'selected' : '' ?>>Received</option>
-                            <option value="not_received" <?= ($lead['call_status'] ?? '') == 'not_received' ? 'selected' : '' ?>>Not Received</option>
-                        </select>
-                    </div>
 
                     <div class="info-label mt-2">Last Follow-up Project</div>
                     <div class="small mt-1">
@@ -1247,7 +1095,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 
                 <!-- Lead Status (inline AJAX) -->
                 <div class="mt-2">
-                    <div class="info-label">Lead Status</div>
+                    <div class="info-label">Last Lead Status</div>
                     <?php
                     $statusVal = $lead['lead_type'] ?? 'Pending';
                     $statusClass = '';
@@ -1274,36 +1122,10 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                     </select>
                 </div>
 
-                <!-- Follow Up Status Badge -->
-                <div class="mt-2">
-                    <div class="info-label">Follow Up Status</div>
-                    <?php
-                    $fuStatus = $lead['last_follow_up_status'] ?? null;
-                    $nextDate = $lead['next_follow_up_date'] ?? null;
-                    $today    = date('Y-m-d');
-                    if ($fuStatus === 'completed') {
-                        $fuBadgeClass = 'bg-success'; $fuLabel = '✔ Completed';
-                    } elseif ($fuStatus === 'missed') {
-                        $fuBadgeClass = 'bg-danger'; $fuLabel = '✘ Missed';
-                    } elseif ($fuStatus === 'canceled') {
-                        $fuBadgeClass = 'bg-secondary'; $fuLabel = 'Canceled';
-                    } elseif ($fuStatus === 'pending' && !empty($nextDate)) {
-                        if ($nextDate < $today)      { $fuBadgeClass = 'bg-danger';           $fuLabel = '⚠ Overdue'; }
-                        elseif ($nextDate === $today) { $fuBadgeClass = 'bg-warning text-dark'; $fuLabel = '🔔 Due Today'; }
-                        else                          { $fuBadgeClass = 'bg-info text-dark';    $fuLabel = '📅 Upcoming'; }
-                    } elseif ($fuStatus === 'pending') {
-                        $fuBadgeClass = 'bg-warning text-dark'; $fuLabel = 'Pending';
-                    } else {
-                        $fuBadgeClass = 'bg-light text-muted border'; $fuLabel = 'No Follow Up';
-                    }
-                    ?>
-                    <span class="badge <?= $fuBadgeClass ?> mt-1" style="font-size:11px; padding:5px 8px; white-space:nowrap;">
-                        <?= $fuLabel ?>
-                    </span>
-                </div>
+
 
                 <!-- First Call Note (editable) -->
-                <div class="mt-2">
+                <div class="mt-2 d-none">
                     <label class="info-label d-block mb-1">First Call Note</label>
                     <textarea class="form-control call-note" data-id="<?= $lead['id'] ?>"
                         placeholder="Write call note..."
@@ -1312,7 +1134,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                 </div>
 
                 <!-- Last Follow-up Note (read-only) -->
-                <div class="mt-2">
+                <div class="mt-2 d-none">
                     <label class="info-label d-block mb-1">Last Follow Up Note</label>
                     <textarea class="form-control" rows="2"
                         placeholder="No follow-up note yet..."
@@ -1331,6 +1153,12 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 
             </div>
         <?php endforeach; ?>
+
+        <?php if (isset($totalPages) && $totalPages > 1): ?>
+        <div class="d-flex justify-content-center mt-3 mb-2">
+            <?= paginateLinksSecondary($base_url . "/my-all-assigned-leads", $currentPage, $totalPages); ?>
+        </div>
+        <?php endif; ?>
 
         <!-- FAB Button -->
         <button class="fab-button d-none">
@@ -1429,16 +1257,18 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 
 
     const form = document.querySelector('form');
-    const resetBtn = form.querySelector('button[type="reset"]');
+    const resetBtn = form ? form.querySelector('button[type="reset"]') : null;
 
-    resetBtn.addEventListener('click', function(e) {
-        e.preventDefault(); // avoid default reset
-        // Clear all inputs
-        form.querySelectorAll('input, select').forEach(function(el) {
-            if (el.tagName === 'SELECT') el.selectedIndex = 0; // first option select
-            else el.value = ''; // input clear
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function(e) {
+            e.preventDefault(); // avoid default reset
+            // Clear all inputs
+            form.querySelectorAll('input, select').forEach(function(el) {
+                if (el.tagName === 'SELECT') el.selectedIndex = 0; // first option select
+                else el.value = ''; // input clear
+            });
         });
-    });
+    }
 
 
     // campaign full show
@@ -2018,12 +1848,61 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
 </div>
 
+<!-- Follow Up Notes Modal -->
+<div id="followUpNotesModal" class="modal custom-modal fade" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-info"><i class="fa-solid fa-list me-2"></i>Follow Up Notes</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped" id="followUpNotesModalTable">
+                        <thead>
+                            <tr class="bg-light">
+                                <th>#</th>
+                                <th>Lead</th>
+                                <th>Project</th>
+                                <th>Flat</th>
+                                <th>Follow Up Date</th>
+                                <th>Follow Up Time</th>
+                                <th>Type</th>
+                                <th>Discussion Note</th>
+                                <th>Next Follow Up</th>
+                                <th>Next Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="followUpNotesModalBody">
+                            <!-- Populated via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Duplicate leads modal handler
         $(document).on('click', '.duplicate-badge-click', function() {
             const duplicates = $(this).data('duplicates');
             const currentLeadId = $(this).data('current-lead-id');
             let html = '';
+
+            function escapeHtml(text) {
+                if (!text) return '';
+                return text.toString()
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
             if (duplicates && duplicates.length > 0) {
                 duplicates.forEach(function(item) {
                     const isCurrent = (item.id == currentLeadId) ? 'table-warning fw-bold' : '';
@@ -2045,20 +1924,82 @@ document.addEventListener('DOMContentLoaded', function () {
             $('#duplicateLeadsModalBody').html(html);
             $('#duplicateLeadsModal').modal('show');
         });
+    });
+</script>
 
-        function escapeHtml(text) {
-            if (!text) return '';
-            return text
-                .toString()
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+<script>
+// ============================================================
+// Follow Up Notes Modal - AJAX Handler (standalone)
+// ============================================================
+$(document).ready(function() {
+
+    function escapeStr(str) {
+        if (str === null || str === undefined) return '';
+        return str.toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    $(document).on('click', '.view-notes-btn', function() {
+        const leadId = $(this).data('id');
+        const tbody  = $('#followUpNotesModalBody');
+
+        console.log('[Notes] clicked, leadId =', leadId);
+
+        if (!leadId) {
+            tbody.html('<tr><td colspan="10" class="text-danger text-center">Error: Lead ID not found.</td></tr>');
+            return;
         }
 
+        tbody.html('<tr><td colspan="10" class="text-center"><span class="spinner-border spinner-border-sm me-2"></span>Loading...</td></tr>');
 
+        const ajaxUrl = '<?= $GLOBALS['base_url'] ?>/get-follow-up-history/' + leadId;
+        console.log('[Notes] AJAX URL:', ajaxUrl);
+
+        $.ajax({
+            url: ajaxUrl,
+            type: 'GET',
+            success: function(response) {
+                console.log('[Notes] AJAX success, response type:', typeof response, ', value:', response);
+
+                let data = response;
+                if (typeof response === 'string') {
+                    try { data = JSON.parse(response); } catch(e) { data = []; }
+                }
+
+                if (Array.isArray(data) && data.length > 0) {
+                    let html = '';
+                    data.forEach(function(item, index) {
+                        html += '<tr>' +
+                            '<td>' + (index + 1) + '</td>' +
+                            '<td>' + escapeStr(item.lead_name) + '</td>' +
+                            '<td>' + escapeStr(item.project_name) + '</td>' +
+                            '<td>' + escapeStr(item.flat_name) + '</td>' +
+                            '<td>' + escapeStr(item.follow_up_date) + '</td>' +
+                            '<td>' + escapeStr(item.follow_up_time) + '</td>' +
+                            '<td>' + escapeStr(item.follow_up_type) + '</td>' +
+                            '<td>' + escapeStr(item.discussion_note) + '</td>' +
+                            '<td>' + escapeStr(item.next_follow_up_date) + '</td>' +
+                            '<td>' + escapeStr(item.next_action) + '</td>' +
+                        '</tr>';
+                    });
+                    tbody.html(html);
+                } else {
+                    console.warn('[Notes] No data:', data);
+                    tbody.html('<tr><td colspan="10" class="text-center text-muted py-3">No follow up notes found for this lead.</td></tr>');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('[Notes] AJAX error:', status, error, xhr.status, xhr.responseText);
+                const errMsg = xhr.responseText ? xhr.responseText.substring(0, 300) : error;
+                tbody.html('<tr><td colspan="10" class="text-danger text-center">Error ' + xhr.status + ': ' + error + '<br><small>' + errMsg + '</small></td></tr>');
+            }
+        });
     });
+});
 </script>
 
 

@@ -163,6 +163,7 @@ return [
     'update-follow-up' => ['controller' => 'FollowUpController', 'method' => 'update'],
     'delete-follow-up' => ['controller' => 'FollowUpController', 'method' => 'delete'],
     'get-flats/(\d+)' => ['controller' => 'FollowUpController', 'method' => 'getFlats'],
+    'get-follow-up-history/(\d+)' => ['controller' => 'FollowUpController', 'method' => 'getFollowUpHistoryAjax'],
 
     // =========================================================================
     // Controller: SalesDashboardController
