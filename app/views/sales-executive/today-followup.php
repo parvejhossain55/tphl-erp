@@ -87,10 +87,7 @@
                          <th>Flat</th>
                          <th>Last Decussion Note</th>
 
-                         <th>Today Follow Up Action</th>
-                         <th class="text-center">Note</th>
-                         <th class="text-center">Status</th>
-                         <th>Next Follow Up</th>
+                         <th class="text-center">Action</th>
                      </tr>
                  </thead>
                  <tbody id="">
@@ -122,42 +119,32 @@
                                  <td><?= htmlspecialchars($followUp['project_name'] ?? 'N/A') ?></td>
                                  <td><?= htmlspecialchars($followUp['flat_name'] ?? 'N/A') ?></td>
                                  <td><?= htmlspecialchars($followUp['discussion_note'] ?? 'N/A') ?></td>
-                                 <td class="call-status-cell">
-                                     <select class="next-action" data-id="<?= $followUp['id'] ?>">
-                                         <option value="">Select Client Action</option>
-                                         <option value="site visit" <?= $followUp['next_action'] == 'site visit' ? 'selected' : '' ?>>Site visit</option>
-                                         <option value="booking" <?= $followUp['next_action'] == 'booking' ? 'selected' : '' ?>>Booking</option>
-                                         <option value="call_back" <?= $followUp['next_action'] == 'call_back' ? 'selected' : '' ?>>Call back</option>
-                                         <option value="take_time" <?= $followUp['next_action'] == 'take_time' ? 'selected' : '' ?>>Take Time</option>
-                                     </select>
-                                 </td>
+                                 <td class="text-center">
+                            <!-- Follow Up Action -->
+                            <button type="button" class="btn btn-success btn-sm position-relative follow-up-btn create-followup-btn" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#createFollowUpModal"
+                                    data-lead-id="<?= $followUp['lead_id'] ?>"
+                                    style="white-space:nowrap; padding: 0.25rem 0.5rem;">
+                                <i class="bi bi-calendar-plus"></i>
+                                Follow Up
+                                <?php if (!empty($followUpCounts[$followUp['lead_id']])): ?>
+                                    <span class="action-badge" style="">
+                                        <?= $followUpCounts[$followUp['lead_id']] ?>
+                                    </span>
+                                <?php endif; ?>
+                            </button>
 
-
-
-                                 <td class="note-cell">
-                                     <div class="note-wrapper">
-                                         <textarea class="call-note" data-id="<?= $followUp['id'] ?>" placeholder="Click to add note..."><?= htmlspecialchars($followUp['discussion_note'] ?? '') ?></textarea>
-                                         <button type="button" class="btn btn-sm btn-success note-save-btn" data-id="<?= $followUp['id'] ?>">Save</button>
-
-                                     </div>
-                                 </td>
-                                 <td class="call-status-cell">
-                                     <select class="call-status" data-id="<?= $followUp['id'] ?>">
-                                         <option value="completed" <?= $followUp['status'] == 'completed' ? 'selected' : '' ?>>Completed</option>
-                                         <option value="pending" <?= $followUp['status'] == 'pending' ? 'selected' : '' ?>>Pending</option>
-                                         <option value="missed" <?= $followUp['status'] == 'missed' ? 'selected' : '' ?>>Missed</option>
-                                         <option value="canceld" <?= $followUp['status'] == 'canceld' ? 'selected' : '' ?>>Canceld</option>
-                                     </select>
-
-
-                                 </td>
-                                 <td>
-                                     <a href="<?= $GLOBALS['base_url'] ?>/follow-up-leads/<?= $followUp['lead_id'] ?>"
-                                         class="btn btn-primary d-flex align-items-center gap-2 justify-content-between">
-
-                                         <span>Follow Up Action</span>
-                                     </a>
-                                 </td>
+                            <!-- Follow Up History -->
+                            <button type="button" class="d-none btn btn-info btn-sm position-relative ms-1 view-history-btn" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#followupHistoryModal"
+                                    data-lead-id="<?= $followUp['lead_id'] ?>"
+                                    data-history="<?= htmlspecialchars(json_encode($followUpHistories[$followUp['lead_id']] ?? []), ENT_QUOTES, 'UTF-8') ?>"
+                                    style="white-space:nowrap; padding: 0.25rem 0.5rem; color: #fff;">
+                                <i class="bi bi-clock-history"></i> History
+                            </button>
+                        </td>
                              </tr>
                          <?php endforeach; ?>
                      <?php else: ?>
@@ -175,104 +162,427 @@
      </div>
  </div>
 
- <script>
-     // Status change event
-     document.querySelectorAll('.call-status').forEach(select => {
-         select.addEventListener('change', function() {
-             const followUpId = this.dataset.id;
-             const note = document.querySelector(`.call-note[data-id='${followUpId}']`).value;
+ 
 
-             fetch('<?= $GLOBALS['base_url'] ?>/follow-up/update-status-note', {
-                     method: 'POST',
-                     headers: {
-                         'Content-Type': 'application/x-www-form-urlencoded'
-                     },
-                     body: `id=${followUpId}&status=${this.value}&discussion_note=${encodeURIComponent(note)}`
-                 })
-                 .then(res => res.json())
-                 .then(data => {
-                     if (data.success) {
-                         showMessage(data.message, 'success');
-                     } else if (data.error) {
-                         showMessage(data.error, 'error');
-                     }
-                 });
-         });
-     });
-     // Status Next  event
-     document.querySelectorAll('.next-action').forEach(select => {
-         select.addEventListener('change', function() {
-             const followUpId = this.dataset.id;
-             const note = document.querySelector(`.call-note[data-id='${followUpId}']`).value;
-             const nextAction = this.value;
-             const status = document.querySelector(`.call-status[data-id='${followUpId}']`).value;
+<!-- Follow Up History Modal -->
+<div class="modal custom-modal fade" id="followupHistoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-list-task me-2"></i> Follow Up History</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped" style="white-space: nowrap;">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Lead</th>
+                                <th>Project</th>
+                                <th>Flat</th>
+                                <th>Follow Up Date</th>
+                                <th>Follow Up Time</th>
+                                <th>Type</th>
+                                <th>Discussion Note</th>
+                                <th>Next Follow Up</th>
+                                <th>Next Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="followUpHistoryBody">
+                            <tr>
+                                <td colspan="10" class="text-center text-muted">Loading history...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-             fetch('<?= $GLOBALS['base_url'] ?>/follow-up/update-status-note', {
-                     method: 'POST',
-                     headers: {
-                         'Content-Type': 'application/x-www-form-urlencoded'
-                     },
-                     body: `id=${followUpId}&status=${status}&next_action=${nextAction}&discussion_note=${encodeURIComponent(note)}`
-                 })
-                 .then(res => res.json())
-                 .then(data => {
-                     if (data.success) {
-                         showMessage(data.message, 'success');
-                     } else if (data.error) {
-                         showMessage(data.error, 'error');
-                     }
-                 });
-         });
-     });
+<!-- Create Follow Up Modal -->
+<div class="modal custom-modal fade" id="createFollowUpModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i> Create Follow Up</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="createFollowUpForm" action="<?= $GLOBALS['base_url'] ?>/store-follow-up" method="POST">
+                    <input type="hidden" name="lead_id" id="createFollowUpLeadId" value="">
+                    <input type="hidden" name="is_ajax" value="1">
+                    <input type="hidden" name="assigned_with" value="<?= $_SESSION['user']['id'] ?? 1 ?>">
+                    <input type="hidden" name="created_by" value="<?= $_SESSION['user_id'] ?? 1 ?>">
 
+                    <div class="row gy-3">
+                        <!-- Project -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Project</label>
+                            <select name="project_id" id="createFollowUpProjectSelect" class="form-select select2-no-scroll" data-placeholder="Select Project">
+                                <option value="">Select Project</option>
+                                <?php foreach ($projects as $project): ?>
+                                    <?php 
+                                        $isRestricted = in_array($project['project_sale_status'], ['Sold Out', 'Upcoming']);
+                                        $statusSuffix = !empty($project['project_sale_status']) ? " ({$project['project_sale_status']})" : '';
+                                    ?>
+                                    <option value="<?= $project['id'] ?>" <?= $isRestricted ? 'disabled style="color: red;"' : '' ?>>
+                                        <?= htmlspecialchars($project['name']) ?><?= $statusSuffix ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
 
-     // Note save button event
-     document.querySelectorAll('.note-save-btn').forEach(btn => {
-         btn.addEventListener('click', function() {
-             const followUpId = this.dataset.id;
-             const note = document.querySelector(`.call-note[data-id='${followUpId}']`).value;
-             const status = document.querySelector(`.call-status[data-id='${followUpId}']`).value;
+                        <!-- Flat / Unit -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Flat / Unit</label>
+                            <select id="createFollowUpFlatSelect" name="flat_id" class="form-select select2-no-scroll" data-placeholder="Select Flat">
+                                <option value="">Select Flat</option>
+                            </select>
+                        </div>
 
-             fetch('<?= $GLOBALS['base_url'] ?>/follow-up/update-status-note', {
-                     method: 'POST',
-                     headers: {
-                         'Content-Type': 'application/x-www-form-urlencoded'
-                     },
-                     body: `id=${followUpId}&status=${status}&discussion_note=${encodeURIComponent(note)}`
-                 })
-                 .then(res => res.json())
-                 .then(data => {
-                     if (data.success) {
-                         showMessage(data.message, 'success');
-                     } else if (data.error) {
-                         showMessage(data.error, 'error');
-                     }
-                 });
-         });
-     });
+                        <!-- Follow Up Date -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Follow Up Date*</label>
+                            <input type="date" name="follow_up_date" class="form-control" required>
+                        </div>
 
-     // Simple showMessage function
-     function showMessage(message, type = 'success') {
-         let msgBox = document.querySelector('#followUpMessage');
-         if (!msgBox) {
-             msgBox = document.createElement('div');
-             msgBox.id = 'followUpMessage';
-             msgBox.style.position = 'fixed';
-             msgBox.style.top = '20px';
-             msgBox.style.right = '20px';
-             msgBox.style.padding = '10px 20px';
-             msgBox.style.borderRadius = '5px';
-             msgBox.style.zIndex = 9999;
-             document.body.appendChild(msgBox);
-         }
+                        <!-- Follow Up Time -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Follow Up Time</label>
+                            <input type="time" name="follow_up_time" class="form-control">
+                        </div>
 
-         msgBox.innerText = message;
-         msgBox.style.backgroundColor = type === 'success' ? '#4CAF50' : '#F44336';
-         msgBox.style.color = '#fff';
-         msgBox.style.display = 'block';
+                        <!-- Follow Up Type -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Follow Up Type</label>
+                            <select name="follow_up_type" class="form-select">
+                                <option value="">Select Type</option>
+                                <option value="Inbound Call">Inbound Call</option>
+                                <option value="Phone Call">Phone Call</option>
+                                <option value="WA Call">WA Call</option>
+                                <option value="Imo Call">Imo Call</option>
+                                <option value="Messenger Call">Messenger Call</option>
+                                <option value="Messenger Conversesion">Messenger Conversesion</option>
+                                <option value="WA Conversesion">WA Conversesion</option>
+                                <option value="WhatsApp Message">WhatsApp Message</option>
+                                <option value="Imo Message">Imo Message</option>
+                                <option value="Phone Massaging">Phone Massaging</option>
+                                <option value="Email">Email</option>
+                                <option value="Number Off">Number Off</option>
+                                <option value="Wrong Number">Wrong Number</option>
+                                <option value="Invalid Number">Invalid Number</option>
+                                <option value="Face To Face">Face To Face</option>
+                                <option value="call">Call (Legacy)</option>
+                                <option value="visit">Visit (Legacy)</option>
+                                <option value="meeting">Meeting (Legacy)</option>
+                                <option value="whatsapp">WhatsApp (Legacy)</option>
+                                <option value="Email">Email (Legacy)</option>
+                            </select>
+                        </div>
 
-         setTimeout(() => {
-             msgBox.style.display = 'none';
-         }, 3000);
-     }
- </script>
+                        <!-- Lead Status -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Lead Status</label>
+                            <select name="lead_status" id="createModalLeadStatus" class="form-select">
+                                <option value="">Select Status</option>
+                                <?php
+                                $statuses = [
+                                    'No Response', 'Pending', 'Prospect', 'High Prospect', 
+                                    'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 
+                                    'Project Transferred', 'Not Interested', 'Don\'t Call Again', 
+                                    'Refund', 'Future', 'Cold', 'Hot', 'Warm'
+                                ];
+                                foreach($statuses as $st) {
+                                    echo "<option value=\"$st\">$st</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        
+                        <!-- Team Re-assign (Hidden by default) -->
+                        <div class="col-lg-6" id="createModalReassignTeamDiv" style="display: none;">
+                            <label class="form__input-title">Re-assigned to (Team)*</label>
+                            <select name="team_id" id="createModalReassignTeamId" class="form-select">
+                                <option value="">Select Team</option>
+                                <?php foreach (($teams ?? []) as $team): ?>
+                                    <option value="<?= $team['id'] ?>"><?= htmlspecialchars($team['name'] ?? '') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Follow Up Status -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Follow Up Status</label>
+                            <select name="status" class="form-select">
+                                <option value="">Select Status</option>
+                                <option value="pending" selected>Pending</option>
+                                <option value="completed">Completed</option>
+                                <option value="missed">Missed</option>
+                                <option value="canceled">Canceled</option>
+                            </select>
+                        </div>
+
+                        <!-- Follow Up Agent (Optional) -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Follow-up Agent (Optional)</label>
+                            <select name="follow_up_agent_id" class="form-select">
+                                <option value="">Myself (Default)</option>
+                                <?php foreach (($teamMembers ?? []) as $member): ?>
+                                    <option value="<?= $member['id'] ?>"><?= htmlspecialchars($member['full_name'] ?? '') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Discussion Note -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Discussion Note*</label>
+                            <textarea name="discussion_note" class="form-control" rows="3" required></textarea>
+                        </div>
+
+                        <!-- Next Follow Up Date -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Next Follow Up Date</label>
+                            <input type="date" name="next_follow_up_date" class="form-control">
+                        </div>
+
+                        <!-- Next Action -->
+                        <div class="col-lg-6">
+                            <label class="form__input-title">Next Action</label>
+                            <select name="next_action" class="form-select">
+                                <option value="">Select Action</option>
+                                <option value="site visit">Site Visit</option>
+                                <option value="booking">Booking</option>
+                                <option value="call_back">Call Back</option>
+                                <option value="take_time">Take Time</option>
+                            </select>
+                        </div>
+
+                        <!-- Next Follow Up Plan Notes -->
+                        <div class="col-lg-6 mt-2">
+                            <label class="form__input-title">Next Follow Up Plan Notes</label>
+                            <textarea name="next_follow_up_plan_notes" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 text-end">
+                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="saveFollowUpBtn">Save Follow Up</button>
+                    </div>
+                </form>
+
+                <hr class="my-4">
+                
+                <h6 class="mb-3"><i class="bi bi-clock-history me-2"></i>Recent Follow Ups</h6>
+                <div class="table-responsive border" style="max-height: 250px; overflow-y: auto;">
+                    <table class="table table-bordered table-striped table-sm mb-0" style="font-size: 0.85rem; white-space: nowrap;">
+                        <thead class="bg-light sticky-top" style="z-index: 1; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                            <tr>
+                                <th>#</th>
+                                <th>Lead</th>
+                                <th>Project</th>
+                                <th>Flat</th>
+                                <th>Follow Up Date</th>
+                                <th>Follow Up Time</th>
+                                <th>Type</th>
+                                <th>Discussion Note</th>
+                                <th>Next Follow Up</th>
+                                <th>Next Action</th>
+                                <th>Follow Up With</th>
+                            </tr>
+                        </thead>
+                        <tbody id="createModalHistoryBody">
+                            <tr>
+                                <td colspan="11" class="text-center text-muted">Loading history...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function loadModalHistory(leadId) {
+        let tbody = $('#createModalHistoryBody');
+        tbody.html('<tr><td colspan="11" class="text-center text-muted">Loading history...</td></tr>');
+        
+        fetch(`<?= $GLOBALS['base_url'] ?>/get-follow-up-history/${leadId}`)
+            .then(res => res.json())
+            .then(data => {
+                let html = '';
+                if (Array.isArray(data) && data.length > 0) {
+                    data.forEach(item => {
+                        html += `<tr>
+                            <td>${item.id || ''}</td>
+                            <td>${item.lead_name || ''}</td>
+                            <td>${item.project_name || ''}</td>
+                            <td>${item.flat_name || ''}</td>
+                            <td>${item.follow_up_date || ''}</td>
+                            <td>${item.follow_up_time || ''}</td>
+                            <td>${item.follow_up_type || ''}</td>
+                            <td>${item.discussion_note || ''}</td>
+                            <td>${item.next_follow_up_date || ''}</td>
+                            <td>${item.next_action || ''}</td>
+                            <td>${item.agent_name || ''}</td>
+                        </tr>`;
+                    });
+                    
+                    // Update the badge count on the main page silently
+                    let badge = $(`.create-followup-btn[data-lead-id="${leadId}"] .action-badge`);
+                    if(badge.length > 0) {
+                        badge.text(data.length);
+                    } else {
+                        $(`.create-followup-btn[data-lead-id="${leadId}"]`).append(`<span class="action-badge">${data.length}</span>`);
+                    }
+                } else {
+                    html = '<tr><td colspan="11" class="text-center text-muted">No history found.</td></tr>';
+                }
+                tbody.html(html);
+            })
+            .catch(err => {
+                console.error("Failed to load history", err);
+                tbody.html('<tr><td colspan="11" class="text-center text-danger">Failed to load history</td></tr>');
+            });
+    }
+
+    // Inject lead ID when opening the Create Follow Up Modal
+    $('#createFollowUpModal').on('show.bs.modal', function (event) {
+        let button = $(event.relatedTarget);
+        let leadId = button.attr('data-lead-id');
+        $('#createFollowUpLeadId').val(leadId);
+        
+        // reset form on open
+        $('#createFollowUpForm')[0].reset();
+        $('#createModalReassignTeamDiv').hide();
+        $('#createFollowUpFlatSelect').html('<option value="">Select Flat</option>');
+        
+        loadModalHistory(leadId);
+    });
+
+    
+    // Handle project change to load flats
+    $('#createFollowUpProjectSelect').on('change', function() {
+        let projectId = $(this).val();
+        let flatSel = $('#createFollowUpFlatSelect');
+        
+        if (projectId) {
+            flatSel.html('<option value="">Loading...</option>');
+            fetch(`<?= $GLOBALS['base_url'] ?>/get-flats/${projectId}`)
+                .then(res => res.json())
+                .then(data => {
+                    flatSel.html('<option value="">Select Flat</option>');
+                    data.forEach(flat => {
+                        const flatId = flat.flat_id ?? flat.id;
+                        if (!flatId) return;
+                        
+                        let option = document.createElement('option');
+                        option.value = flatId;
+                        if (flat.is_booked == 1) {
+                            option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
+                            option.classList.add('booked-option');
+                            option.disabled = true;
+                        } else {
+                            option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
+                        }
+                        flatSel.append(option);
+                    });
+                })
+                .catch(err => {
+                    console.error('Failed to load flats', err);
+                    flatSel.html('<option value="">Error loading flats</option>');
+                });
+        } else {
+            flatSel.html('<option value="">Select Flat</option>');
+        }
+    });
+
+    // Handle Lead Transferred toggle
+    $('#createModalLeadStatus').on('change', function() {
+        if (this.value === 'Lead Transferred') {
+            $('#createModalReassignTeamDiv').show();
+            $('#createModalReassignTeamId').prop('required', true);
+        } else {
+            $('#createModalReassignTeamDiv').hide();
+            $('#createModalReassignTeamId').prop('required', false);
+        }
+    });
+
+    // Handle AJAX form submission
+    $('#createFollowUpForm').on('submit', function(e) {
+        e.preventDefault();
+        let form = $(this);
+        let submitBtn = $('#saveFollowUpBtn');
+        let originalText = submitBtn.text();
+        let leadId = $('#createFollowUpLeadId').val();
+        
+        submitBtn.prop('disabled', true).text('Saving...');
+        
+        $.ajax({
+            url: form.attr('action'),
+            method: form.attr('method'),
+            data: form.serialize(),
+            dataType: 'json',
+            success: function(response) {
+                submitBtn.prop('disabled', false).text(originalText);
+                if (response.status === 'success') {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success',
+                            text: response.message,
+                            toast: true,
+                            position: 'top-end',
+                            timer: 3000,
+                            showConfirmButton: false
+                        });
+                    }
+                    
+                    // Reset the form so they can add another if they want
+                    form[0].reset();
+                    $('#createModalReassignTeamDiv').hide();
+                    $('#createFollowUpFlatSelect').html('<option value="">Select Flat</option>');
+                    
+                    // Reload the history list directly inside the modal
+                    loadModalHistory(leadId);
+                    
+                } else {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: response.message || 'Something went wrong.'
+                        });
+                    } else {
+                        alert(response.message || 'Error occurred.');
+                    }
+                }
+            },
+            error: function(xhr, status, error) {
+                submitBtn.prop('disabled', false).text(originalText);
+                console.error('AJAX Error:', error);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to submit follow up. Please check console.'
+                    });
+                } else {
+                    alert('Failed to submit follow up.');
+                }
+            }
+        });
+    });
+});
+</script>

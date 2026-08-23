@@ -350,6 +350,42 @@ function db()
     return $db->conn; // return mysqli connection
 }
 
+
+function getTodayAssignedCount(int $userId): int
+{
+    $db = $GLOBALS['db'];
+    
+    $sql = "
+        SELECT COUNT(DISTINCT l.id) AS total
+        FROM leads AS l
+        LEFT JOIN (
+            SELECT t1.*
+            FROM lead_follow_ups t1
+            INNER JOIN (
+                SELECT lead_id, MAX(id) AS max_id
+                FROM lead_follow_ups
+                GROUP BY lead_id
+            ) t2 ON t1.id = t2.max_id AND t1.lead_id = t2.lead_id
+        ) lf ON lf.lead_id = l.id
+        WHERE l.assigned_id = ?
+          AND l.deleted_at IS NULL
+          AND (
+                (l.created_at >= CURDATE() AND l.created_at < CURDATE() + INTERVAL 1 DAY)
+                OR
+                (l.assigned_at IS NOT NULL AND l.assigned_at >= CURDATE() AND l.assigned_at < CURDATE() + INTERVAL 1 DAY)
+              )
+          AND NOT (DATE(lf.next_follow_up_date) = CURDATE() AND lf.status = 'completed')
+    ";
+
+    $stmt = $db->prepare($sql);
+    if (!$stmt) return 0;
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+
+    return (int) ($row['total'] ?? 0);
+}
 function getFollowUpCount(int $userId, string $type = 'today'): int
 {
     $userId = (int) $userId;

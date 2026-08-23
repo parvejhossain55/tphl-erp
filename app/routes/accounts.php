@@ -24,6 +24,9 @@ return [
     'store-company-bank-accounts' => ['controller' => 'SiteManage\BankAccountController', 'method' => 'store'],
     'update-company-bank-accounts' => ['controller' => 'SiteManage\BankAccountController', 'method' => 'update'],
     'delete-company-bank-accounts' => ['controller' => 'SiteManage\BankAccountController', 'method' => 'delete'],
+    'get-company-banks' => ['controller' => 'SiteManage\BankAccountController', 'method' => 'getCompanyBanksAjax'],
+    'store-company-bank-ajax' => ['controller' => 'SiteManage\BankAccountController', 'method' => 'storeCompanyBankAjax'],
+    'update-company-bank-ajax' => ['controller' => 'SiteManage\BankAccountController', 'method' => 'updateCompanyBankAjax'],
 
     // =========================================================================
     // Controller: DashboardController

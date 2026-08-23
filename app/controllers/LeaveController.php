@@ -339,6 +339,15 @@ class LeaveController extends Controller
         ]);
     }
 
+    public function tipsoiEmailLogsView()
+    {
+        $this->view("hrm/leaves/tipsoi-email-logs", [
+            "current_route"   => "tipsoi-email-logs",
+            "page_title"      => "Email Log for Pending Req",
+            "show_breadcrumb" => true
+        ]);
+    }
+
     public function monthlyLwpDashboardView()
     {
         $this->view("hrm/leaves/monthly-lwp", [

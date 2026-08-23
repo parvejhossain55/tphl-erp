@@ -119,11 +119,29 @@ class UserDashboardController extends Controller
 
         $countries = $this->leadModel->getDistinctCountries();
 
+        $leadIds = !empty($todayLeads) ? array_column($todayLeads, 'id') : [];
+        $followUpHistories = [];
+        if (!empty($leadIds)) {
+            $idsStr = implode(',', array_map('intval', $leadIds));
+            $fuQuery = $this->db->query("SELECT fu.*, l.full_name, p.name AS project_name, f.flat_name 
+                                         FROM lead_follow_ups fu 
+                                         LEFT JOIN leads l ON fu.lead_id = l.id 
+                                         LEFT JOIN projects p ON fu.project_id = p.id 
+                                         LEFT JOIN flats f ON fu.flat_id = f.id 
+                                         WHERE fu.lead_id IN ($idsStr) ORDER BY fu.follow_up_date DESC, fu.id DESC");
+            if ($fuQuery) {
+                while($row = $fuQuery->fetch_assoc()) {
+                    $followUpHistories[$row['lead_id']][] = $row;
+                }
+            }
+        }
+
         $this->view("sales-executive/today-leads", [
             "current_route" => "today-leads",
             "page_title"    => "Leads Today Assign",
             "todayLeads"    => $todayLeads,
             "followUpCounts" => $followUpCounts,
+            "followUpHistories" => $followUpHistories,
             "bookingCount"    => $bookingCount,
             "todayFollowUp"    => $todayFollowUp,
             "phoneMap"        => $phoneMap,
@@ -480,6 +498,24 @@ class UserDashboardController extends Controller
                 ->getTodayFollowUpLoginUser((int)$userId, $filterProjectId, $filterCategoryId, $filterCountry);
         }
 
+        $leadIds = !empty($todayFollowUpLeads) ? array_column($todayFollowUpLeads, 'lead_id') : [];
+        $followUpCounts = !empty($leadIds) ? $this->followUpModel->getFollowUpCountByLeadIds($leadIds) : [];
+        $followUpHistories = [];
+        if (!empty($leadIds)) {
+            $idsStr = implode(',', array_map('intval', $leadIds));
+            $fuQuery = $this->db->query("SELECT fu.*, l.full_name, p.name AS project_name, f.flat_name 
+                                         FROM lead_follow_ups fu 
+                                         LEFT JOIN leads l ON fu.lead_id = l.id 
+                                         LEFT JOIN projects p ON fu.project_id = p.id 
+                                         LEFT JOIN flats f ON fu.flat_id = f.id 
+                                         WHERE fu.lead_id IN ($idsStr) ORDER BY fu.follow_up_date DESC, fu.id DESC");
+            if ($fuQuery) {
+                while($row = $fuQuery->fetch_assoc()) {
+                    $followUpHistories[$row['lead_id']][] = $row;
+                }
+            }
+        }
+
         $this->view("sales-executive/today-followup", [
             "current_route"       => "today-follow-up",
             "page_title"          => "Today Follow Up",
@@ -488,6 +524,8 @@ class UserDashboardController extends Controller
             "selectedCountry"     => $filterCountry,
             "projects"            => $projects,
             "projectCategories"   => $projectCategories,
+            "followUpCounts"      => $followUpCounts,
+            "followUpHistories"   => $followUpHistories,
         ]);
     }
 

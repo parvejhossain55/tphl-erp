@@ -18,7 +18,9 @@ class Con_PurchaseOrder extends Model
                        u.full_name AS created_by_name,
                        u.role_id AS creator_role_id,
                        v.name AS vendor_name,
-                       (SELECT SUM(total_price) FROM {$this->itemTable} WHERE purchase_order_id = po.id) AS total_amount
+                       (SELECT SUM(total_price) FROM {$this->itemTable} WHERE purchase_order_id = po.id) AS total_amount,
+                       (SELECT u2.full_name FROM po_negotiation_notes n JOIN users u2 ON u2.id = n.user_id WHERE n.purchase_order_id = po.id ORDER BY n.created_at DESC LIMIT 1) AS latest_note_author,
+                       (SELECT n2.note_text FROM po_negotiation_notes n2 WHERE n2.purchase_order_id = po.id ORDER BY n2.created_at DESC LIMIT 1) AS latest_note_text
                 FROM {$this->table} po
                 JOIN purchase_requests pr ON pr.id = po.request_id
                 LEFT JOIN projects p ON p.id = pr.project_id

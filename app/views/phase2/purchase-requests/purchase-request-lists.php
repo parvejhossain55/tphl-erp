@@ -38,7 +38,14 @@
                             <?php foreach ($requests as $i => $r): ?>
                                 <tr>
                                     <td><span class="fw-bold text-muted">PR-<?= $r['id'] ?></span></td>
-                                    <td class="fw-bold"><?= htmlspecialchars($r['project_name']) ?></td>
+                                    <td class="fw-bold">
+                                        <?= htmlspecialchars($r['project_name']) ?>
+                                        <?php if (!empty($r['latest_note_author'])): ?>
+                                            <div class="small fw-normal mt-1 p-1 rounded" style="font-size:10px; background:rgba(139,92,246,.08); color:#6d28d9; border: 1px solid rgba(139,92,246,.2);" title="<?= htmlspecialchars($r['latest_note_text']) ?>">
+                                                <i class="fal fa-comment-dots me-1"></i><strong><?= htmlspecialchars($r['latest_note_author']) ?>:</strong> <?= htmlspecialchars(mb_strimwidth($r['latest_note_text'], 0, 30, '...')) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <?php $prType = $r['pr_type'] ?? 'boq_linked'; ?>
                                         <?php if ($prType === 'independent'): ?>
