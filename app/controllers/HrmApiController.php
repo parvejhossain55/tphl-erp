@@ -1025,4 +1025,22 @@ class HrmApiController extends Controller
         }
         exit;
     }
+
+    public function getTipsoiEmailLogs()
+    {
+        header('Content-Type: application/json');
+        
+        $query = "SELECT * FROM tipsoi_email_logs ORDER BY sent_at DESC LIMIT 500";
+        $result = $this->db->query($query);
+        $logs = [];
+        
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $logs[] = $row;
+            }
+        }
+        
+        echo json_encode(['success' => true, 'logs' => $logs]);
+    }
 }
+

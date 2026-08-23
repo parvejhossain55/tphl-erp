@@ -293,7 +293,8 @@
                 $userId = $_SESSION['user']['id'] ?? 0;
 
                 // call the global helper function
-                $todayCount = getFollowUpCount($userId, 'today');
+                 $todayCount = getFollowUpCount($userId, 'today');
+                $todayAssignedCount = getTodayAssignedCount($userId);
 
                 $upcomingCount = getFollowUpCount($userId, 'upcoming');
                 ?>
@@ -386,8 +387,7 @@
                                     <li class="slide">
                                         <a href="<?= $base_url ?>/today-leads"
                                             class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">
-                                            Today Leads Assigned
-                                        </a>
+                                            Today Leads Assigned <?php if ($todayAssignedCount > 0): ?><span class="badge bg-primary ms-2"><?= $todayAssignedCount ?></span><?php endif; ?></a>
                                     </li>
                                 <?php endif; ?>
                                 <?php if (!$isManagement): ?>
@@ -700,7 +700,8 @@
                 $userId = $_SESSION['user']['id'] ?? 0;
 
                 // call the global helper function
-                $todayCount = getFollowUpCount($userId, 'today');
+                 $todayCount = getFollowUpCount($userId, 'today');
+                $todayAssignedCount = getTodayAssignedCount($userId);
 
                 $upcomingCount = getFollowUpCount($userId, 'upcoming');
                 ?>
@@ -728,8 +729,7 @@
                         <li class="slide">
                             <a href="<?= $base_url ?>/today-leads"
                                 class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">
-                                Today Leads Assigned
-                            </a>
+                                Today Leads Assigned <?php if ($todayAssignedCount > 0): ?><span class="badge bg-primary ms-2"><?= $todayAssignedCount ?></span><?php endif; ?></a>
                         </li>
 
                         <li class="slide d-none">
@@ -1025,6 +1025,12 @@
                                 <a href="<?= $base_url ?>/hrm-tipsoi-requests"
                                     class="sidebar__menu-item <?= isActive('hrm-tipsoi-requests', $current_route) ?>">
                                     All Pending Requests
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/tipsoi-email-logs"
+                                    class="sidebar__menu-item <?= isActive('tipsoi-email-logs', $current_route) ?>">
+                                    Email Log for Pending Req
                                 </a>
                             </li>
                             <li class="slide">
@@ -1477,6 +1483,13 @@
                             <span class="sidebar__menu-label">CED Report</span>
                         </a>
                     </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/company-bank-accounts"
+                            class="sidebar__menu-item <?= isActive('company-bank-accounts', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-landmark"></i></div>
+                            <span class="sidebar__menu-label">Company Bank Manage</span>
+                        </a>
+                    </li>
 
 
                     <!-- Cash In Manage -->
@@ -1543,6 +1556,13 @@
                                 <span class="badge bg-danger ms-2"
                                     style="border-radius: 50%; padding: 0.35em 0.5em; font-size: 0.75em;"><?= $accountsNotifCount ?></span>
                             <?php endif; ?>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/company-bank-accounts"
+                            class="sidebar__menu-item <?= isActive('company-bank-accounts', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-landmark"></i></div>
+                            <span class="sidebar__menu-label">Company Bank Manage</span>
                         </a>
                     </li>
                     <?php

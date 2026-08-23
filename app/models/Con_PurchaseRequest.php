@@ -22,7 +22,9 @@ class Con_PurchaseRequest extends Model
                         FROM {$this->itemTable} pri
                         LEFT JOIN boq_items bi ON bi.material_id = pri.material_id
                             AND bi.boq_id = (SELECT MIN(bm.id) FROM boq_master bm WHERE bm.project_id = pr.project_id AND bm.status IN ('Approved','Submitted'))
-                        WHERE pri.request_id = pr.id) AS estimated_total
+                        WHERE pri.request_id = pr.id) AS estimated_total,
+                       (SELECT u2.full_name FROM po_negotiation_notes n JOIN users u2 ON u2.id = n.user_id WHERE n.request_id = pr.id ORDER BY n.created_at DESC LIMIT 1) AS latest_note_author,
+                       (SELECT n2.note_text FROM po_negotiation_notes n2 WHERE n2.request_id = pr.id ORDER BY n2.created_at DESC LIMIT 1) AS latest_note_text
                 FROM {$this->table} pr
                 LEFT JOIN projects p ON p.id = pr.project_id
                 LEFT JOIN users u ON u.id = pr.created_by

@@ -406,6 +406,7 @@ return [
     'con-purchase-order-generate/(\d+)' => ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'generate'],
     'con-purchase-order-approve/(\d+)' => ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'approvePO'],
     'con-purchase-order-reject/(\d+)' => ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'rejectPO'],
+    'con-purchase-order-note/(\d+)' => ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'addNote'],
 
     // =========================================================================
     // Controller: Phase2\Con_MaterialReceivingController

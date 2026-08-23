@@ -46,6 +46,11 @@
                                             <i class="bi bi-chat-left-text me-1 text-primary"></i><?= htmlspecialchars($po['remarks']) ?>
                                         </div>
                                     <?php endif; ?>
+                                    <?php if (!empty($po['latest_note_author'])): ?>
+                                        <div class="small fw-normal mt-1 p-1 rounded" style="font-size:10px; background:rgba(139,92,246,.08); color:#6d28d9; border: 1px solid rgba(139,92,246,.2);" title="<?= htmlspecialchars($po['latest_note_text']) ?>">
+                                            <i class="fal fa-comment-dots me-1"></i><strong><?= htmlspecialchars($po['latest_note_author']) ?>:</strong> <?= htmlspecialchars(mb_strimwidth($po['latest_note_text'], 0, 30, '...')) ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="text-end">৳ <?= number_format($po['total_amount'] ?? 0, 2) ?></td>
                                 <td>

@@ -647,7 +647,12 @@ $show_breadcrumb = true;
                                     </td>
                                     <!-- VERIFIED BY -->
                                     <td id="verified-by-<?= $transaction['id'] ?>">
-                                        <?= htmlspecialchars($transaction['verified_by_name'] ?? '—') ?>
+                                        <div><?= htmlspecialchars($transaction['verified_by_name'] ?? '-') ?></div>
+                                        <?php if (!empty($transaction['verified_at'])): ?>
+                                            <div class="text-muted mt-1" style="font-size: 0.85em;">
+                                                <i class="fa-light fa-clock me-1"></i><?= date('d M, y h:i A', strtotime($transaction['verified_at'])) ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
 
                                     <!-- NOTE COLUMN -->
@@ -706,7 +711,15 @@ $show_breadcrumb = true;
                                         <?php endif; ?>
                                     </td>
                                      <td>
-                                         <?php echo !empty($transaction['created_by_name']) ? htmlspecialchars($transaction['created_by_name']) : '<span class="text-muted">System</span>'; ?>
+                                         <div><?php echo !empty($transaction['created_by_name']) ? htmlspecialchars($transaction['created_by_name']) : '<span class="text-muted">System</span>'; ?></div>
+                                         <?php if (!empty($transaction['updated_by_name'])): ?>
+                                             <div class="text-muted mt-1 border-top pt-1" style="font-size: 0.85em;" title="Last Updated By">
+                                                 <i class="fa-light fa-pen-to-square me-1"></i><?= htmlspecialchars($transaction['updated_by_name']) ?>
+                                                 <?php if (!empty($transaction['updated_at'])): ?>
+                                                     <br><small>(<?= date('d M, y h:i A', strtotime($transaction['updated_at'])) ?>)</small>
+                                                 <?php endif; ?>
+                                             </div>
+                                         <?php endif; ?>
                                          <?php 
                                              $isCsv = !empty($transaction['csv_import_log_id']) || in_array($transaction['payment_type'] ?? '', ['emi', 'emi_due_settlement', 'development_charge']);
                                          ?>
@@ -1140,7 +1153,8 @@ $show_breadcrumb = true;
                             <div><strong>Amount:</strong> TK.${parseFloat(data.amount||0).toLocaleString('en-BD',{minimumFractionDigits:2})}</div>
                             <div><strong>Date:</strong> ${data.payment_date||'-'}</div>
                             <div><strong>Status:</strong> ${vsBadge}</div>
-                            ${data.verified_by_name ? '<div><strong>Verified By:</strong> '+data.verified_by_name+'</div>' : ''}
+                            ${data.verified_by_name ? '<div><strong>Verified By:</strong> '+data.verified_by_name+' <span class="text-muted ms-1" style="font-size:0.9em;">(' + (data.verified_at ? new Date(data.verified_at).toLocaleString('en-GB', {day:'2-digit', month:'short', year:'2-digit', hour:'2-digit', minute:'2-digit', hour12:true}) : '') + ')</span></div>' : ''}
+                            ${data.updated_by_name ? '<div><strong>Last Updated By:</strong> '+data.updated_by_name+' <span class="text-muted ms-1" style="font-size:0.9em;">(' + (data.updated_at ? new Date(data.updated_at).toLocaleString('en-GB', {day:'2-digit', month:'short', year:'2-digit', hour:'2-digit', minute:'2-digit', hour12:true}) : '') + ')</span></div>' : ''}
                             ${data.rejection_reason ? '<div class="w-100"><div class="alert alert-danger py-2 mb-0"><strong>Rejection Reason:</strong> '+data.rejection_reason+'</div></div>' : ''}
                         </div><hr>`;
 
@@ -1376,7 +1390,8 @@ $show_breadcrumb = true;
                         // Update "Verified By" cell
                         const vbCell = document.getElementById('verified-by-' + paymentId);
                         if (vbCell && res.verified_by_name) {
-                            vbCell.textContent = res.verified_by_name;
+                            let timeHtml = res.verified_at ? `<div class="text-muted mt-1" style="font-size: 0.85em;"><i class="fa-light fa-clock me-1"></i>${new Date(res.verified_at).toLocaleString('en-GB', {day:'2-digit', month:'short', year:'2-digit', hour:'2-digit', minute:'2-digit', hour12:true})}</div>` : '';
+                            vbCell.innerHTML = `<div>${res.verified_by_name}</div>${timeHtml}`;
                         }
                         // Update status badge to Paid when verified
                         if (res.status === 'verified') {

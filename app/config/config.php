@@ -29,8 +29,8 @@ if ($current_server == 1) {
 
         // Automas Bulk SMS API Configuration
         "automas_sms_api_url" => "https://api.automas.com.bd/smsapiv4",
-        "automas_sms_api_key" => "aa4717fdd571e46b240ce35014a5d144",
-        "automas_sms_sender_id" => "8809617635127",
+        "automas_sms_api_key" => "734f99f126704a937debae6c0ce52516",
+        "automas_sms_sender_id" => "TPHL",
         "sms_testing_mode" => false,
 
         // SMTP Email Configuration for Local Testing (Gmail)
@@ -41,8 +41,8 @@ if ($current_server == 1) {
         "smtp_port" => 465,
     ];
 }
-////////////////////
 // CREATE USER 'tphl_read_only'@'localhost' IDENT IFIED BY 'ReadOnlyPass123!';
+
 // GRANT SELECT ON `tphl_db`.* TO 'tphl_read_only'@'localhost';
 // FLUSH PRIVILEGES;
 if ($current_server == 2) {
@@ -71,8 +71,8 @@ if ($current_server == 2) {
 
         // Automas Bulk SMS API Configuration
         "automas_sms_api_url" => "https://api.automas.com.bd/smsapiv4",
-        "automas_sms_api_key" => "aa4717fdd571e46b240ce35014a5d144",
-        "automas_sms_sender_id" => "8809617635127",
+        "automas_sms_api_key" => "734f99f126704a937debae6c0ce52516",
+        "automas_sms_sender_id" => "TPHL",
         "sms_testing_mode" => false,
 
         // SMTP Email Configuration (Dummy/Placeholder)
@@ -112,14 +112,14 @@ if ($current_server == 3) {
 
         // Automas Bulk SMS API Configuration
         "automas_sms_api_url" => "https://api.automas.com.bd/smsapiv4",
-        "automas_sms_api_key" => "aa4717fdd571e46b240ce35014a5d144",
-        "automas_sms_sender_id" => "8809617635127",
+        "automas_sms_api_key" => "734f99f126704a937debae6c0ce52516",
+        "automas_sms_sender_id" => "TPHL",
         "sms_testing_mode" => false,
 
 
         "smtp_host" => "smtp.gmail.com",
         "smtp_user" => "tech@dpremiumhomes.com",
-        "smtp_pass" => "NEW_GOOGLE_APP_PASSWORD",
+        "smtp_pass" => "mmericivwzybdogl",
         "smtp_secure" => "ssl",
         "smtp_port" => 465,
     ];
@@ -127,8 +127,6 @@ if ($current_server == 3) {
 }
 
 /// if emi data uploaded wrong then deleted with
-
-
 // -- ধাপ ১: EMI শিডিউল ডিলিট করা
 // DELETE FROM emi_schedules  
 // WHERE lead_payment_id IN (
@@ -138,6 +136,7 @@ if ($current_server == 3) {
 
 //     WHERE lb.project_id = 45 AND lp.payment_type IN ('emi', 'emi_due_settlement', 'development_charge')
 // );
+
 
 // -- ধাপ ২: মূল পেমেন্ট হিস্ট্রি ডিলিট করা
 // DELETE lp FROM lead_payments lp

@@ -630,6 +630,23 @@ public function addCedTransaction()
         }
     }
 
+    $isTestingMode = !empty($_POST['is_testing_mode']);
+
+    require_once dirname(__DIR__) . '/services/SmsService.php';
+    $smsService = new SmsService($this->db);
+
+    if (!$isTestingMode) {
+        $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+        $clientPhone   = !empty($clientDetails['phone']) ? trim($clientDetails['phone']) : (!empty($clientDetails['phone_number']) ? trim($clientDetails['phone_number']) : '');
+        $phoneCheck    = $smsService->validatePhoneNumber($clientPhone);
+
+        if (!$phoneCheck['valid']) {
+            setError("Cannot process payment: " . $phoneCheck['message'] . ". Please update the client's phone number first or enable Testing Mode.");
+            header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+            exit;
+        }
+    }
+
     // Route to correct model method
     if ($transactionData['payment_type'] === 'emi_due_settlement' || $transactionData['payment_type'] === 'development_charge' || $transactionData['payment_type'] === 'shop_service_charge') {
         // Use addTransaction (not WithEMI) so settlement_type & parent_payment_id are handled
@@ -640,7 +657,20 @@ public function addCedTransaction()
     }
 
     if ($result['success']) {
-        setSuccess($result['message'] . " — Pending verification by Accounts.");
+        $smsMsg = "";
+        if (!empty($result['payment_id'])) {
+            $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode);
+            if ($isTestingMode) {
+                $smsMsg = " (Testing Mode: SMS Skipped)";
+            } elseif (!empty($smsResult['success'])) {
+                $smsMsg = " & SMS dispatched to client!";
+            } else {
+                $errMsg = !empty($smsResult['response']) ? $smsResult['response'] : ($smsResult['message'] ?? 'Gateway Error');
+                $smsMsg = " (Warning: SMS dispatch failed: " . htmlspecialchars($errMsg) . ")";
+            }
+        }
+        
+        setSuccess($result['message'] . " — Pending verification by Accounts." . $smsMsg);
         header("Location: {$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}");
         exit;
     } else {
@@ -1984,7 +2014,8 @@ public function discountStatement($bookingId = null)
             'success'          => true,
             'message'          => "Payment {$label} successfully",
             'status'           => $newStatus,
-            'verified_by_name' => $verifierName
+            'verified_by_name' => $verifierName,
+            'verified_at'      => date('Y-m-d H:i:s')
         ]);
         exit;
     }
@@ -1996,7 +2027,7 @@ public function discountStatement($bookingId = null)
     {
         header('Content-Type: application/json');
         $stmt = $this->db->prepare("
-            SELECT id, bank_name, branch_name, routing_number
+            SELECT id, bank_name, branch_name, account_number, routing_number
             FROM   banks
             WHERE  status = 'active'
             ORDER BY bank_name, branch_name
