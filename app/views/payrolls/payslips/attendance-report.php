@@ -62,8 +62,7 @@ $default_to = date('Y-m-d');
                     <div class="row gx-2">
                         <div class="col-6">
                             <label for="filterMonth" class="form-label fw-semibold text-muted mb-2">Month</label>
-                            <select class="form-select custom-select2" name="month" id="filterMonth"
-                                style="pointer-events: none; background-color: #e9ecef;">
+                            <select class="form-select custom-select2" name="month" id="filterMonth">
                                 <?php for ($m = 1; $m <= 12; $m++):
                                     $monthNum = str_pad($m, 2, "0", STR_PAD_LEFT);
                                     $monthName = date('F', mktime(0, 0, 0, $m, 1));
@@ -76,8 +75,7 @@ $default_to = date('Y-m-d');
                         </div>
                         <div class="col-6">
                             <label for="filterYear" class="form-label fw-semibold text-muted mb-2">Year</label>
-                            <select class="form-select custom-select2" name="year" id="filterYear"
-                                style="pointer-events: none; background-color: #e9ecef;">
+                            <select class="form-select custom-select2" name="year" id="filterYear">
                                 <?php
                                 $startYear = 2025;
                                 $endYear = 2035;
@@ -107,7 +105,7 @@ $default_to = date('Y-m-d');
                     </div>
                 </div>
 
-                <div class="col-auto">
+                <div class="col-auto d-none">
                     <button type="button" id="btnFilterSearch"
                         class="btn btn-primary d-flex align-items-center justify-content-center">
                         <i class="bi bi-search me-1"></i> Retrieve Data
@@ -326,8 +324,7 @@ dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"
                             });
 
                             // Trigger API fetch and compilation
-                            btnFilterSearch.addEventListener("click", function (e) {
-                            e.preventDefault();
+                            function fetchAttendanceData() {
 
                             // Determine boundaries
                             if (filterType.value === 'monthly') {
@@ -526,11 +523,27 @@ dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"
                             }
                             })
                             .catch(err => {
-                            console.error(err);
-                            showErrorRow(err.message || "An unexpected network error occurred.");
+                            console.error("API Fetch Error:", err);
+                            tableBody.innerHTML = `<tr>
+                                <td colspan="23" class="text-center text-danger py-4">Failed to fetch data</td>
+                            </tr>`;
+                            });
+                            }
+
+                            // Bind auto-fetch triggers for custom dates
+                            fromDateInput.addEventListener('change', fetchAttendanceData);
+                            toDateInput.addEventListener('change', fetchAttendanceData);
+
+                            // Bind auto-fetch for manual month/year selection
+                            $('#filterYear, #filterMonth').on('change', function(e) {
+                            // Allow project selection auto-trigger to happen cleanly without duplicate fires
+                            if (e.originalEvent) {
+                            fetchAttendanceData();
+                            }
                             });
 
-                            });
+                            // Trigger initial load so current month shows immediately
+                            fetchAttendanceData();
 
                             // Save data logic
                             document.getElementById('btnSaveAttendance').addEventListener('click', function() {
@@ -588,6 +601,10 @@ dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"
                             this.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"
                                 aria-hidden="true"></span> Saving...`;
 
+                            const tmDate = new Date(activeFromDate);
+                            const targetMonthStr = tmDate.getFullYear() + "-" + String(tmDate.getMonth() +
+                            1).padStart(2, '0') + "-01";
+
                             fetch(`${baseUrl}/save-attendance-modifications`, {
                             method: "POST",
                             headers: {
@@ -595,6 +612,7 @@ dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"
                             },
                             body: JSON.stringify({
                             project_id: projectId,
+                            target_month: targetMonthStr,
                             rows: rows
                             })
                             })
@@ -647,21 +665,26 @@ dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"
 
                             const projectSelect = document.getElementById('payrollProject');
                             if (projectSelect) {
-                                $(projectSelect).on('change', function() {
-                                    const selectedOpt = this.options[this.selectedIndex];
-                                    if (selectedOpt && selectedOpt.value) {
-                                        const dateVal = selectedOpt.getAttribute('data-date');
-                                        if (dateVal) {
-                                            const parts = dateVal.split('-');
-                                            if (parts.length >= 2) {
-                                                const yearSelect = document.getElementById('filterYear');
-                                                const monthSelect = document.getElementById('filterMonth');
-                                                if (yearSelect) $(yearSelect).val(parts[0]).trigger('change');
-                                                if (monthSelect) $(monthSelect).val(parts[1]).trigger('change');
-                                            }
-                                        }
-                                    }
-                                });
+                            $(projectSelect).on('change', function() {
+                            const selectedOpt = this.options[this.selectedIndex];
+                            if (selectedOpt && selectedOpt.value) {
+                            const dateVal = selectedOpt.getAttribute('data-date');
+                            if (dateVal) {
+                            const parts = dateVal.split('-');
+                            if (parts.length >= 2) {
+                            const yearSelect = document.getElementById('filterYear');
+                            const monthSelect = document.getElementById('filterMonth');
+                            if (yearSelect && monthSelect) {
+                            yearSelect.value = parts[0];
+                            monthSelect.value = parts[1];
+                            $(yearSelect).trigger('change');
+                            $(monthSelect).trigger('change');
+                            }
+                            }
+                            }
+                            fetchAttendanceData();
+                            }
+                            });
                             }
 
                             // Trigger search automatically on load

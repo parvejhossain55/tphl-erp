@@ -7,7 +7,7 @@ $show_breadcrumb = true;
 <div class="row mb-3">
     <div class="col-12">
         <div class="filters card__wrapper p-3 bg-white rounded shadow-sm">
-            <form method="GET" action="<?= $base_url ?>/payroll-workspace" class="row gx-3 gy-2 align-items-center">
+            <form method="GET" action="<?= $GLOBALS['base_url'] ?>/payroll-workspace" class="row gx-3 gy-2 align-items-center">
                 <div class="col-sm-3">
                     <label for="year">Year</label>
                     <select class="form-select" name="year" id="year" style="pointer-events: none; background-color: #e9ecef;">
@@ -122,7 +122,7 @@ $show_breadcrumb = true;
                     <button type="button" class="btn btn-danger fw-semibold shadow-sm" onclick="
                         var year = document.getElementById('year') ? document.getElementById('year').value : '';
                         var month = document.getElementById('month') ? document.getElementById('month').value : '';
-                        window.location.href = '<?= $base_url ?>/payroll-workspace-pdf?year=' + year + '&month=' + month;
+                        window.location.href = '<?= $GLOBALS['base_url'] ?>/payroll-workspace-pdf?year=' + year + '&month=' + month;
                     ">
                         <i class="fa-solid fa-file-pdf me-1"></i> Export PDF
                     </button>
@@ -224,7 +224,8 @@ $show_breadcrumb = true;
                                 $advanceSalary = 0;
                                 $mealCount = isset($p['tipsoi_present']) ? (float) $p['tipsoi_present'] : 0;
                                 $subsidizeLunch = 0;
-                                $unpaidAbsentsDays = isset($p['tipsoi_absent']) ? (float) $p['tipsoi_absent'] : 0;
+                                // Prioritize late_unpaid_absent_days for correct deduction logic
+                                $unpaidAbsentsDays = isset($p['late_unpaid_absent_days']) ? (float)$p['late_unpaid_absent_days'] : (isset($p['tipsoi_absent']) ? (float) $p['tipsoi_absent'] : 0);
                                 $unpaidAbsents = 0; // The amount
                                 $punctBonus = 0;
                                 $overtime = 0;
@@ -333,7 +334,7 @@ $show_breadcrumb = true;
                                                                     $isLwp = false;
                                                                     if (strpos(strtolower($item['name']), 'lwp') !== false) {
                                                                         if (empty($p['dynamic_details'][$item['id']])) {
-                                                                            $lwpDays = isset($p['tipsoi_absent']) ? (float) $p['tipsoi_absent'] : 0;
+                                                                            $lwpDays = isset($p['late_unpaid_absent_days']) ? (float)$p['late_unpaid_absent_days'] : (isset($p['tipsoi_absent']) ? (float) $p['tipsoi_absent'] : 0);
                                                                             $existingAmt = round($lwpDays * $daily, 2);
                                                                         }
                                                                         $isLwp = true;
@@ -488,7 +489,7 @@ $show_breadcrumb = true;
                     to_date: toDateStr
                 });
 
-                fetch(`<?= $base_url ?>/api/hrm/attendance?` + params.toString())
+                fetch(`<?= $GLOBALS['base_url'] ?>/api/hrm/attendance?` + params.toString())
                 .then(r => r.json())
                 .then(res => {
                     if (res.success && res.data) {
@@ -705,7 +706,7 @@ $show_breadcrumb = true;
                 }
 
                 $.ajax({
-                    url: '<?= $base_url ?>/save-workspace-payslips',
+                    url: '<?= $GLOBALS['base_url'] ?>/save-workspace-payslips',
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify({

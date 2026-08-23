@@ -265,6 +265,7 @@ return [
 
     // Payroll Workspace
     'payroll-workspace' => ['controller' => 'PayrollController', 'method' => 'workspace'],
+    'payroll-project-store' => ['controller' => 'PayrollController', 'method' => 'storePayrollProject'],
     'save-workspace-payslips' => ['controller' => 'PayrollController', 'method' => 'saveWorkspacePayslips'],
     'payroll-workspace-pdf' => ['controller' => 'PayrollController', 'method' => 'exportWorkspacePDF'],
 
