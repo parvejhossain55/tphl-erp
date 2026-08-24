@@ -3,7 +3,7 @@
 // 1 = Local Development Server
 // 2 = Project staging Server
 // 3 = Production Server
-///////////////
+
 $current_server = 3;
 // Local Development Server
 if ($current_server == 1) {
@@ -137,12 +137,14 @@ if ($current_server == 3) {
 //     WHERE lb.project_id = 45 AND lp.payment_type IN ('emi', 'emi_due_settlement', 'development_charge')
 // );
 
-
 // -- ধাপ ২: মূল পেমেন্ট হিস্ট্রি ডিলিট করা
 // DELETE lp FROM lead_payments lp
+
 
 // INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
 // WHERE lb.project_id = 45 AND lp.payment_type IN ('emi', 'emi_due_settlement', 'development_charge');
 
 // accha shono ekhane je ami api endopoint e client er payment info te mismatch hocche keno 
 // user-payment-info?user_id=166
+
+

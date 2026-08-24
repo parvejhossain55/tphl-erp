@@ -1817,7 +1817,9 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'shop_service_charge' THEN 'Shop Service Charge'
                     ELSE 'Other Payment'
                 END as payment_details,
-                b.bank_name as bank_display_name
+                cb.bank_name as company_bank_name,
+                cb.account_name as company_account_name,
+                cb.account_number as company_account_number
             FROM lead_payments lp
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
@@ -1826,7 +1828,7 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN users u ON u.id = lp.created_by
             LEFT JOIN users uv ON uv.id = lp.verified_by
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
-            LEFT JOIN banks b ON b.id = lp.bank_id
+            LEFT JOIN company_bank_accounts cb ON cb.id = lp.bank_id
             LEFT JOIN users uh ON uh.id = lp.handover_to
             LEFT JOIN users uu ON uu.id = lp.updated_by
             WHERE lp.is_trashed = 0 AND lp.booking_id = ?

@@ -20,11 +20,11 @@ class HrmApiController extends Controller
     public function getErpEmployees()
     {
         header('Content-Type: application/json');
-        
-        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-        $limit = isset($_GET['limit']) ? max(1, (int)$_GET['limit']) : 15;
+
+        $page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+        $limit = isset($_GET['limit']) ? max(1, (int) $_GET['limit']) : 15;
         $offset = ($page - 1) * $limit;
-        
+
         $search = isset($_GET['search']) ? trim($_GET['search']) : '';
         $department_id = isset($_GET['department_id']) ? trim($_GET['department_id']) : '';
         $team_id = isset($_GET['team_id']) ? trim($_GET['team_id']) : '';
@@ -36,7 +36,7 @@ class HrmApiController extends Controller
             echo json_encode([
                 'success' => true,
                 'data' => $employees,
-                'total' => (int)$total,
+                'total' => (int) $total,
                 'page' => $page,
                 'limit' => $limit
             ]);
@@ -61,7 +61,7 @@ class HrmApiController extends Controller
         try {
             // Fetch all external employees (up to 2000) to allow client-side filtering/stats
             $result = $this->externalApiService->getExternalEmployees(1, 2000);
-            
+
             if ($result['success']) {
                 // Fetch local employee IDs and emails
                 $localQuery = $this->db->query("SELECT employee_id, email FROM employees");
@@ -174,21 +174,25 @@ class HrmApiController extends Controller
                 exit;
             }
 
-            // Fetch local employees details for name/email/ID mapping
-            $localQuery = $this->db->query("SELECT employee_id, email, full_name FROM employees");
+            // Fetch local employees details for name/email/ID mapping and joining_date fallback
+            $localQuery = $this->db->query("SELECT id, employee_id, email, full_name, joining_date FROM employees");
             $localEmployees = [];
             $localIds = [];
             $localEmails = [];
             if ($localQuery) {
                 while ($row = $localQuery->fetch_assoc()) {
+                    $pid = $row['id'];
                     $empId = trim($row['employee_id'] ?? '');
                     $empEmail = trim($row['email'] ?? '');
                     $empName = trim($row['full_name'] ?? '');
-                    
+                    $empJoin = trim($row['joining_date'] ?? '');
+
                     $localEmployees[] = [
+                        'id' => $pid,
                         'employee_id' => $empId,
                         'email' => strtolower($empEmail),
-                        'full_name' => $empName
+                        'full_name' => $empName,
+                        'joining_date' => $empJoin
                     ];
 
                     if ($empId !== '') {
@@ -332,7 +336,7 @@ class HrmApiController extends Controller
                 foreach ($balanceData['responseForAllEmployees'] as $empBal) {
                     $officeId = trim($empBal['employeeOfficeId'] ?? $empBal['employeeId'] ?? '');
                     if ($officeId !== '') {
-                        $normOfficeId = preg_match('/^\d+$/', $officeId) ? (string)intval($officeId) : $officeId;
+                        $normOfficeId = preg_match('/^\d+$/', $officeId) ? (string) intval($officeId) : $officeId;
                         $list = $empBal['leaveLeaveInfo']['leaveDataList'] ?? [];
                         foreach ($list as $item) {
                             if (isset($item['leaveCategoryName'])) {
@@ -345,9 +349,9 @@ class HrmApiController extends Controller
             }
 
             // Helper to normalize ID in PHP
-            $normalizeIdPhp = function($id) {
-                $str = trim((string)$id);
-                return preg_match('/^\d+$/', $str) ? (string)intval($str) : $str;
+            $normalizeIdPhp = function ($id) {
+                $str = trim((string) $id);
+                return preg_match('/^\d+$/', $str) ? (string) intval($str) : $str;
             };
 
             // Merge balances into history data
@@ -375,7 +379,7 @@ class HrmApiController extends Controller
                     $empId = trim($row['employee_id'] ?? '');
                     $empEmail = trim($row['email'] ?? '');
                     $empName = trim($row['full_name'] ?? '');
-                    
+
                     $localEmployees[] = [
                         'employee_id' => $empId,
                         'email' => strtolower($empEmail),
@@ -489,7 +493,7 @@ class HrmApiController extends Controller
                     $empId = trim($row['employee_id'] ?? '');
                     $empEmail = trim($row['email'] ?? '');
                     $empName = trim($row['full_name'] ?? '');
-                    
+
                     $localEmployees[] = [
                         'employee_id' => $empId,
                         'email' => strtolower($empEmail),
@@ -552,7 +556,7 @@ class HrmApiController extends Controller
                     $empIdVal = trim($row['employee_id'] ?? '');
                     $empEmail = trim($row['email'] ?? '');
                     $empName = trim($row['full_name'] ?? '');
-                    
+
                     $localEmployees[] = [
                         'employee_id' => $empIdVal,
                         'email' => strtolower($empEmail),
@@ -565,7 +569,7 @@ class HrmApiController extends Controller
                     if ($empEmail !== '') {
                         $localEmails[] = strtolower($empEmail);
                     }
-                    
+
                     $nameKey = strtolower(trim($empName));
                     if ($nameKey !== '') {
                         $officeIdMap[$nameKey] = $empIdVal;
@@ -624,8 +628,9 @@ class HrmApiController extends Controller
             $allLeaves = array_merge($globalLeaves, $approverLeaves);
             foreach ($allLeaves as $log) {
                 $id = $log['id'] ?? $log['leaveLogId'] ?? null;
-                if (!$id) continue;
-                
+                if (!$id)
+                    continue;
+
                 $empNameVal = $log['employeeName'] ?? '—';
                 $officeIdVal = $log['employeeOfficeId'] ?? '';
                 $tipsoiEmpId = $log['employeeId'] ?? null;
@@ -645,8 +650,8 @@ class HrmApiController extends Controller
                     'employeeName' => $empNameVal,
                     'departmentName' => $log['employeeDepartmentName'] ?? $log['departmentName'] ?? 'No Department',
                     'designationName' => $log['employeeDesignationName'] ?? $log['designationName'] ?? 'N/A',
-                    'startDate' => isset($log['startDate']) ? date('Y-m-d', (int)($log['startDate'] / 1000)) : '—',
-                    'endDate' => isset($log['endDate']) ? date('Y-m-d', (int)($log['endDate'] / 1000)) : '—',
+                    'startDate' => isset($log['startDate']) ? date('Y-m-d', (int) ($log['startDate'] / 1000)) : '—',
+                    'endDate' => isset($log['endDate']) ? date('Y-m-d', (int) ($log['endDate'] / 1000)) : '—',
                     'entryTime' => '—',
                     'exitTime' => '—',
                     'reason' => $log['reason'] ?? '—',
@@ -675,8 +680,9 @@ class HrmApiController extends Controller
             $lateApprovals = $d['lateLogList'] ?? [];
             foreach ($lateApprovals as $log) {
                 $id = $log['lateApprovalLogId'] ?? $log['id'] ?? null;
-                if (!$id) continue;
-                
+                if (!$id)
+                    continue;
+
                 $empNameVal = $log['employeeName'] ?? '—';
                 $officeIdVal = $log['employeeOfficeId'] ?? '';
                 $tipsoiEmpId = $log['employeeId'] ?? null;
@@ -692,9 +698,9 @@ class HrmApiController extends Controller
 
                 $logDateVal = '—';
                 if (isset($log['date'])) {
-                    $logDateVal = date('Y-m-d', (int)($log['date'] / 1000));
+                    $logDateVal = date('Y-m-d', (int) ($log['date'] / 1000));
                 } elseif (isset($log['entryTime']) && is_numeric($log['entryTime'])) {
-                    $logDateVal = date('Y-m-d', (int)($log['entryTime'] / 1000));
+                    $logDateVal = date('Y-m-d', (int) ($log['entryTime'] / 1000));
                 }
 
                 $pendingRequests["late_$id"] = [
@@ -768,16 +774,17 @@ class HrmApiController extends Controller
             $allManual = array_merge($manualApprover, $globalCorrection, $globalLate, $globalField);
             foreach ($allManual as $entry) {
                 $id = $entry['manualEntryId'] ?? $entry['id'] ?? null;
-                if (!$id) continue;
-                
+                if (!$id)
+                    continue;
+
                 $typeVal = $entry['manualEntryType'] ?? 1;
                 $reqType = ($typeVal == 1) ? 'Manual Entry' : (($typeVal == 2) ? 'Late Excuse' : 'Field Visit');
-                
+
                 $entryTimeVal = $entry['entryTime'] ?? null;
                 $exitTimeVal = $entry['exitTime'] ?? null;
 
-                $entryTimeStr = ($entryTimeVal && is_numeric($entryTimeVal)) ? date('H:i:s', (int)($entryTimeVal / 1000)) : '—';
-                $exitTimeStr = ($exitTimeVal && is_numeric($exitTimeVal)) ? date('H:i:s', (int)($exitTimeVal / 1000)) : '—';
+                $entryTimeStr = ($entryTimeVal && is_numeric($entryTimeVal)) ? date('H:i:s', (int) ($entryTimeVal / 1000)) : '—';
+                $exitTimeStr = ($exitTimeVal && is_numeric($exitTimeVal)) ? date('H:i:s', (int) ($exitTimeVal / 1000)) : '—';
 
                 $subType = $reqType;
                 if ($typeVal == 1) {
@@ -807,16 +814,16 @@ class HrmApiController extends Controller
 
                 $startDateVal = '—';
                 if (!empty($entry['startDate'])) {
-                    $startDateVal = date('Y-m-d', (int)($entry['startDate'] / 1000));
+                    $startDateVal = date('Y-m-d', (int) ($entry['startDate'] / 1000));
                 } elseif ($entryTimeVal) {
-                    $startDateVal = date('Y-m-d', (int)($entryTimeVal / 1000));
+                    $startDateVal = date('Y-m-d', (int) ($entryTimeVal / 1000));
                 } elseif ($exitTimeVal) {
-                    $startDateVal = date('Y-m-d', (int)($exitTimeVal / 1000));
+                    $startDateVal = date('Y-m-d', (int) ($exitTimeVal / 1000));
                 }
 
                 $endDateVal = '—';
                 if (!empty($entry['endDate'])) {
-                    $endDateVal = date('Y-m-d', (int)($entry['endDate'] / 1000));
+                    $endDateVal = date('Y-m-d', (int) ($entry['endDate'] / 1000));
                 } else {
                     $endDateVal = $startDateVal;
                 }
@@ -848,7 +855,7 @@ class HrmApiController extends Controller
             // Fetch Logged-in user information for approver matching
             $loggedUser = null;
             if (!empty($_SESSION['user']['id'])) {
-                $loggedUserId = (int)$_SESSION['user']['id'];
+                $loggedUserId = (int) $_SESSION['user']['id'];
                 $stmt = $this->db->prepare("SELECT u.id, u.role_id, e.employee_id, e.email, e.full_name FROM users u LEFT JOIN employees e ON u.employee_id = e.id WHERE u.id = ? LIMIT 1");
                 if ($stmt) {
                     $stmt->bind_param("i", $loggedUserId);
@@ -862,8 +869,8 @@ class HrmApiController extends Controller
                             'full_name' => trim($uRes['full_name'] ?? ''),
                             'tipsoi_id' => $_SESSION['user']['tipsoi_id'] ?? null,
                             'tipsoi_office_id' => $_SESSION['user']['tipsoi_office_id'] ?? null,
-                            'role_id' => (int)($uRes['role_id'] ?? 0),
-                            'is_hr' => hasPermission("HRM Management") || in_array((int)($uRes['role_id'] ?? 0), [1, 3, 4])
+                            'role_id' => (int) ($uRes['role_id'] ?? 0),
+                            'is_hr' => hasPermission("HRM Management") || in_array((int) ($uRes['role_id'] ?? 0), [1, 3, 4])
                         ];
                     }
                 }
@@ -1155,8 +1162,9 @@ class HrmApiController extends Controller
             $formatted = [];
             foreach ($list as $h) {
                 $hDateVal = $h['holidayDate'] ?? null;
-                $dateStr = $hDateVal ? date('Y-m-d', (int)($hDateVal / 1000)) : null;
-                if (!$dateStr) continue;
+                $dateStr = $hDateVal ? date('Y-m-d', (int) ($hDateVal / 1000)) : null;
+                if (!$dateStr)
+                    continue;
 
                 $title = $h['description'] ?? 'Holiday';
                 $localKey = strtolower(trim($title)) . '_' . $dateStr;
@@ -1263,8 +1271,130 @@ class HrmApiController extends Controller
                 $logs[] = $row;
             }
         }
-        
+    
         echo json_encode(['success' => true, 'logs' => $logs]);
+    }
+
+    /**
+     * GET /api/hrm/joining-list-data
+     */
+    public function getJoiningListData()
+    {
+        ob_start();
+        try {
+            if (!class_exists('ExternalApiService')) {
+                require_once __DIR__ . '/../services/ExternalApiService.php';
+            }
+            $apiService = new ExternalApiService($this->db);
+            $token = $apiService->getBearerToken();
+
+            if (!$token) {
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                exit;
+            }
+
+            $fromDateStr = $_GET['from_date'] ?? date('Y-m-01');
+            $toDateStr = $_GET['to_date'] ?? date('Y-m-t');
+            $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : null;
+
+            // Fetch Tipsoi Employee List dynamically from central Service to avoid raw timeouts
+            $tipsoiResponse = $apiService->getExternalEmployees(1, 400); // 400 per page to avoid timeout
+            $externalEmployees = $tipsoiResponse['data'] ?? [];
+
+            // Fetch Local Employees matching the date range
+            $localSql = "SELECT e.id as real_emp_id_fk, e.employee_id, e.full_name, desg.name AS designation, dept.name AS department,
+                                e.workplace, e.joining_date, e.gross_salary, e.basic_salary
+                         FROM employees e
+                         LEFT JOIN designations desg ON e.designation_id = desg.id
+                         LEFT JOIN departments dept ON e.department_id = dept.id
+                         WHERE e.joining_date >= ? AND e.joining_date <= ?
+                         ORDER BY e.joining_date ASC";
+
+            $stmt = $this->db->prepare($localSql);
+            $stmt->bind_param("ss", $fromDateStr, $toDateStr);
+            $stmt->execute();
+            $res = $stmt->get_result();
+
+            $localEmployees = [];
+            if ($res) {
+                while ($row = $res->fetch_assoc()) {
+                    $localEmployees[] = $row;
+                }
+            }
+
+            // Map Tipsoi API data by Employee ID (Office ID)
+            $tipsoiMap = [];
+            foreach ($externalEmployees as $emp) {
+                $eid = strtolower(trim($emp['employeeOfficeId'] ?? $emp['employeeId'] ?? ''));
+                if ($eid) {
+                    $tipsoiMap[$eid] = $emp;
+                }
+            }
+
+            // Filter by Payroll Project if selected
+            $projectEmployeeIds = [];
+            if ($payrollProjectId) {
+                $projQ = $this->db->query("SELECT employee_id FROM payslips WHERE payroll_project_id = $payrollProjectId 
+                                           UNION 
+                                           SELECT employee_id FROM attendance_monthly_update WHERE payroll_project_id = $payrollProjectId");
+                if ($projQ) {
+                    while ($pr = $projQ->fetch_assoc()) {
+                        $projectEmployeeIds[$pr['employee_id']] = true;
+                    }
+                }
+            }
+
+            $matchedData = [];
+            $sl = 1;
+
+            foreach ($localEmployees as $localMatch) {
+                // Apply Project Filter
+                if ($payrollProjectId && !isset($projectEmployeeIds[$localMatch['real_emp_id_fk']])) {
+                    continue;
+                }
+
+                $tid = strtolower(trim($localMatch['employee_id']));
+                $tipsoiMatch = $tipsoiMap[$tid] ?? null;
+
+                $matchedData[] = [
+                    'sl' => $sl++,
+                    'employee_id' => $localMatch['employee_id'],
+                    'name' => $tipsoiMatch['employeeName'] ?? $localMatch['full_name'] ?? '-',
+                    'designation' => $localMatch['designation'] ?? '-',
+                    'department' => $localMatch['department'] ?? '-',
+                    'workplace' => $localMatch['workplace'] ?? '-',
+                    'joining_date' => $localMatch['joining_date'],
+                    'gross_salary' => $localMatch['gross_salary'] ?? 0,
+                    'basic_salary' => $localMatch['basic_salary'] ?? 0,
+                    'id_check' => $tipsoiMatch ? 'OK' : 'Mismatch',
+                ];
+            }
+
+            $responseData = [
+                'success' => true,
+                'data' => $matchedData,
+                'debug_sql' => $localSql,
+                'debug_from' => $fromDateStr,
+                'debug_to' => $toDateStr,
+                'debug_local_count' => count($localEmployees)
+            ];
+            file_put_contents('test_joining_response.json', json_encode($responseData));
+
+            echo json_encode([
+                'success' => true,
+                'data' => $matchedData
+            ]);
+
+        } catch (Exception $e) {
+            ob_end_clean();
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+        exit;
     }
 }
 

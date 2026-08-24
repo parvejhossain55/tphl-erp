@@ -551,10 +551,23 @@ $show_breadcrumb = true;
                                         <?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $transaction['payment_method'] ?? 'N/A'))); ?>
                                     </td>
                                     <td>
-                                        <?php if (!empty($transaction['bank_display_name'])): ?>
-                                            <span class="text-primary" style="font-size:12px;">
-                                                <i class="fa-light fa-building-columns me-1"></i><?= htmlspecialchars($transaction['bank_display_name']) ?>
-                                            </span>
+                                        <?php if ($transaction['payment_method'] === 'bank' || $transaction['payment_method'] === 'cheque'): ?>
+                                            <?php if (!empty($transaction['bank_name'])): ?>
+                                                <div style="font-size:11px;">
+                                                    <strong>From:</strong> <?= htmlspecialchars($transaction['bank_name']) ?>
+                                                    <?= !empty($transaction['bank_account_no']) ? '<br>A/C: ' . htmlspecialchars($transaction['bank_account_no']) : '' ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($transaction['company_bank_name'])): ?>
+                                                <div style="font-size:11px; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #ddd;">
+                                                    <strong class="text-primary"><i class="fa-light fa-building-columns me-1"></i>To:</strong> <?= htmlspecialchars($transaction['company_bank_name']) ?>
+                                                    <?= !empty($transaction['company_account_name']) ? '<br>' . htmlspecialchars($transaction['company_account_name']) : '' ?>
+                                                    <?= !empty($transaction['company_account_number']) ? '<br>A/C: ' . htmlspecialchars($transaction['company_account_number']) : '' ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if (empty($transaction['bank_name']) && empty($transaction['company_bank_name'])): ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <span class="text-muted">-</span>
                                         <?php endif; ?>

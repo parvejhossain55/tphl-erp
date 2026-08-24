@@ -247,6 +247,22 @@
                         <input type="date" name="request_date" class="form-control" value="<?= date('Y-m-d') ?>"
                             required>
                     </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6 form__group">
+                            <label class="form-label" style="font-weight: 600;">Deduction From Month <span class="text-danger">*</span></label>
+                            <input type="month" name="deduction_start_month" id="deduction_start_month" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 form__group">
+                            <label class="form-label" style="font-weight: 600;">Deduction To Month <span class="text-danger">*</span></label>
+                            <input type="month" name="deduction_end_month" id="deduction_end_month" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="deduction_months_info" style="display: none;">
+                        <div class="alert alert-info py-2 mb-0" style="font-size: 0.9rem;">
+                            <i class="fa-solid fa-circle-info me-2"></i><strong><span id="months_count_display">0</span></strong> months selected for salary deduction.
+                            <input type="hidden" name="deduction_months" id="deduction_months_input" value="0">
+                        </div>
+                    </div>
                     <div class="form__group mb-3">
                         <label class="form-label" style="font-weight: 600;">Reason for Advance <span
                                 class="text-danger">*</span></label>
@@ -266,6 +282,53 @@
 </div>
 
     <script>
+        (function() {
+            function calculateMonths() {
+                const startMonth = document.getElementById('deduction_start_month');
+                const endMonth = document.getElementById('deduction_end_month');
+                const infoDiv = document.getElementById('deduction_months_info');
+                const countDisplay = document.getElementById('months_count_display');
+                const monthsInput = document.getElementById('deduction_months_input');
+
+                if(!startMonth || !endMonth) return;
+                
+                if(startMonth.value && endMonth.value) {
+                    const start = new Date(startMonth.value + '-01');
+                    const end = new Date(endMonth.value + '-01');
+                    
+                    let diff = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+                    
+                    let months = 0;
+                    if(diff >= 0) {
+                        months = diff + 1;
+                    }
+
+                    if(months > 0) {
+                        countDisplay.textContent = months;
+                        monthsInput.value = months;
+                        infoDiv.style.display = 'block';
+                    } else {
+                        infoDiv.style.display = 'none';
+                        monthsInput.value = 0;
+                    }
+                } else if(infoDiv) {
+                    infoDiv.style.display = 'none';
+                    if (monthsInput) monthsInput.value = 0;
+                }
+            }
+
+            document.addEventListener('change', function(e) {
+                if(e.target && (e.target.id === 'deduction_start_month' || e.target.id === 'deduction_end_month')) {
+                    calculateMonths();
+                }
+            });
+        })();
+
+        const payModalElement = document.getElementById('payModal');
+        if (payModalElement) {
+            payModalElement.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const id = button.getAttribute('data-id');
                 const employee = button.getAttribute('data-employee');
                 const amount = button.getAttribute('data-amount');
 

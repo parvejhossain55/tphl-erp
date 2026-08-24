@@ -1007,8 +1007,8 @@ if (!empty($virtualEmiSchedule)) {
                             <input type="text" name="bank_name" id="cb_bank_name" class="form-control" required placeholder="e.g. Dutch Bangla Bank">
                         </div>
                         <div class="col-12">
-                            <label class="form-label fs-14 fw-semibold text-dark">Account Name <span class="text-danger">*</span></label>
-                            <input type="text" name="account_name" id="cb_account_name" class="form-control" required placeholder="e.g. TPHL">
+                            <label class="form-label fs-14 fw-semibold text-dark">Account Name</label>
+                            <input type="text" name="account_name" id="cb_account_name" class="form-control" placeholder="e.g. TPHL">
                         </div>
                         <div class="col-12">
                             <label class="form-label fs-14 fw-semibold text-dark">Account Number</label>

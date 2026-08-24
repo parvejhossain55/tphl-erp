@@ -40,8 +40,12 @@ class AdvanceSalaryController extends Controller
         $request_date = $_POST['request_date'] ?? date('Y-m-d');
         $created_by = $_SESSION['user']['id'] ?? 1;
 
-        if (!$employee_id || $amount <= 0) {
-            $_SESSION['error'] = "Employee and valid amount are required.";
+        $deduction_start_month = $_POST['deduction_start_month'] ?? null;
+        $deduction_end_month = $_POST['deduction_end_month'] ?? null;
+        $deduction_months = $_POST['deduction_months'] ?? null;
+
+        if (!$employee_id || $amount <= 0 || !$deduction_start_month || !$deduction_end_month || !$deduction_months) {
+            $_SESSION['flash_error'] = "Employee, valid amount, and deduction months are required.";
             header("Location: " . $GLOBALS['base_url'] . "/advance-salary");
             exit;
         }
@@ -51,6 +55,9 @@ class AdvanceSalaryController extends Controller
             'request_date' => $request_date,
             'amount' => $amount,
             'reason' => $reason,
+            'deduction_start_month' => $deduction_start_month,
+            'deduction_end_month' => $deduction_end_month,
+            'deduction_months' => $deduction_months,
             'status' => 'pending_hr',
             'created_by' => $created_by
         ];
@@ -71,12 +78,15 @@ class AdvanceSalaryController extends Controller
                 'meta_data' => json_encode([
                     'employee_id' => $employee_id,
                     'reason' => $reason,
+                    'deduction_start_month' => $deduction_start_month,
+                    'deduction_end_month' => $deduction_end_month,
+                    'deduction_months' => $deduction_months,
                     'redirect_url' => '/advance-salary'
                 ])
             ]);
-            $_SESSION['success'] = "Advance Salary requested successfully.";
+            $_SESSION['flash_success'] = "Advance Salary requested successfully.";
         } else {
-            $_SESSION['error'] = "Failed to request Advance Salary.";
+            $_SESSION['flash_error'] = "Failed to request Advance Salary.";
         }
 
         header("Location: " . $GLOBALS['base_url'] . "/advance-salary");
