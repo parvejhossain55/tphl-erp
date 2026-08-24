@@ -1833,6 +1833,10 @@ ORDER BY lb.booking_date DESC
             ORDER BY lp.created_at DESC, lp.id DESC
         ");
 
+        if (!$stmt) {
+            die("Database query prepare failed: (" . $this->db->errno . ") " . $this->db->error);
+        }
+
         $stmt->bind_param("i", $bookingId);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -1889,7 +1893,6 @@ ORDER BY lb.booking_date DESC
 
         return $transactions;
     }
-
 
     /**
      * Get filtered transactions by booking ID with date filter

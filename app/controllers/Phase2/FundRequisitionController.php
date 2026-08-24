@@ -514,7 +514,9 @@ class FundRequisitionController extends Controller {
 
             $emailSent = false;
             if ($newDeptStatus === 'approved') {
-                $mgmtRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id IN (1, 3)");
+                $reqAmt = (float)($req['amount'] ?? 0);
+                $allowedRoles = $reqAmt <= 100000 ? "1, 3, 33, 20, 32" : "1, 3, 33";
+                $mgmtRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id IN ($allowedRoles)");
                 if ($mgmtRes) {
                     while ($mgmt = $mgmtRes->fetch_assoc()) {
                         if (!empty($mgmt['email'])) {
@@ -550,7 +552,7 @@ class FundRequisitionController extends Controller {
 
     public function approve() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 3, 33, 20])) {
+        if (!in_array($roleId, [1, 3, 33, 20, 32])) {
             setError('Only Management, Admins, or Operation can approve requisitions.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
@@ -571,6 +573,12 @@ class FundRequisitionController extends Controller {
         $frData = $this->db->query("SELECT * FROM fund_requisitions WHERE id = {$id}")->fetch_assoc();
         if (!$frData) {
             setError('Requisition not found.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        if (in_array($roleId, [20, 32]) && (float)$frData['amount'] > 100000) {
+            setError('Operation Head can only approve requisitions up to 1,00,000 BDT.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
         }
