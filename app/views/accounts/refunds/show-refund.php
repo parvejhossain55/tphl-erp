@@ -471,11 +471,13 @@ $isApproved = in_array($status, ['approved', 'refunded']);
 
                             <!-- Bank Transfer Fields -->
                             <div class="col-md-12 mb-3 vr-bank-fields" style="display:none;">
-                                <label class="form-label">Bank / Branch: <span class="text-danger">*</span></label>
-                                <select name="bank_id" id="vrBankSelect" class="form-control">
-                                    <option value="">-- Loading banks... --</option>
-                                </select>
-                                <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/bank-registry" target="_blank">Bank Registry</a></small>
+                                <label class="form-label">Transfer To / Company Bank <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <select name="bank_id" id="vrBankSelect" class="form-control">
+                                        <option value="">-- Loading banks... --</option>
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary" id="addCompanyBankBtn" title="Add Company Bank" style="border: 1px solid #ced4da;"><i class="fa-light fa-plus"></i></button>
+                                </div>
                             </div>
 
                             <div class="col-md-6 mb-3 vr-bank-fields" style="display:none;">
@@ -549,21 +551,67 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (method) { method.addEventListener('change', toggleFields); toggleFields(); }
 
-    // Load Bank Registry options via AJAX
-    fetch('<?= $GLOBALS['base_url'] ?>/get-banks')
-        .then(r => r.json())
-        .then(data => {
-            const sel = document.getElementById('vrBankSelect');
-            if (!sel) return;
-            sel.innerHTML = '<option value="">-- Select Bank / Branch --</option>';
-            (data.banks || []).forEach(b => {
-                const opt = document.createElement('option');
-                opt.value = b.id;
-                opt.textContent = b.bank_name + ' — ' + b.branch_name;
-                sel.appendChild(opt);
-            });
-        });
+    // Load Company Banks options via AJAX
+    window.companyBanksList = [];
+    function loadCompanyBanks() {
+        fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
+            .then(r => r.json())
+            .then(data => {
+                window.companyBanksList = data.banks || [];
+                const sel = document.getElementById('vrBankSelect');
+                if (!sel) return;
+                const oldVal = sel.value;
+                sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
+                window.companyBanksList.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.id;
+                    opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
+                    sel.appendChild(opt);
+                });
+                if(oldVal) sel.value = oldVal;
+            })
+            .catch(e => console.error('Error loading company banks:', e));
+    }
+    loadCompanyBanks();
 
+    document.getElementById('addCompanyBankBtn')?.addEventListener('click', function() {
+        document.getElementById('companyBankModalTitle').textContent = 'Add Company Bank';
+        document.getElementById('companyBankForm').reset();
+        document.getElementById('cb_id').value = '';
+        new bootstrap.Modal(document.getElementById('companyBankModal')).show();
+    });
+
+    document.getElementById('saveCompanyBankBtn')?.addEventListener('click', function() {
+        const form = document.getElementById('companyBankForm');
+        if(!form.checkValidity()) { form.reportValidity(); return; }
+        
+        const fd = new FormData(form);
+        const isEdit = fd.get('id') !== '';
+        const endpoint = isEdit ? '/update-company-bank-ajax' : '/store-company-bank-ajax';
+        
+        fetch('<?= $GLOBALS['base_url'] ?>' + endpoint, {
+            method: 'POST',
+            body: fd
+        })
+        .then(r => r.json())
+        .then(res => {
+            if(res.success) {
+                loadCompanyBanks();
+                bootstrap.Modal.getInstance(document.getElementById('companyBankModal')).hide();
+                if(typeof toastr !== 'undefined') {
+                    toastr.success(res.message || 'Bank saved successfully');
+                } else {
+                    alert('Bank saved successfully');
+                }
+            } else {
+                alert(res.message || 'Failed to save bank');
+            }
+        })
+        .catch(e => {
+            console.error(e);
+            alert('Error saving bank');
+        });
+    });
     // File thumbnail preview
     const proofInput = document.getElementById('vrProofFiles');
     const preview    = document.getElementById('vrFilePreview');
@@ -592,3 +640,40 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <?php endif; ?>
+
+<!-- Company Bank Add/Edit Modal -->
+<div class="modal fade" id="companyBankModal" tabindex="-1" aria-labelledby="companyBankModalLabel" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-primary text-white border-0 py-3">
+                <h5 class="modal-title fw-bold text-white" id="companyBankModalLabel">
+                    <i class="fa-light fa-building-columns me-2"></i><span id="companyBankModalTitle">Add Company Bank</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <form id="companyBankForm">
+                    <input type="hidden" name="id" id="cb_id" value="">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fs-14 fw-semibold text-dark">Bank Name <span class="text-danger">*</span></label>
+                            <input type="text" name="bank_name" id="cb_bank_name" class="form-control" required placeholder="e.g. Dutch Bangla Bank">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fs-14 fw-semibold text-dark">Account Name <span class="text-danger">*</span></label>
+                            <input type="text" name="account_name" id="cb_account_name" class="form-control" required placeholder="e.g. TPHL">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fs-14 fw-semibold text-dark">Account Number</label>
+                            <input type="text" name="account_number" id="cb_account_number" class="form-control" placeholder="e.g. 101.XXX.XXXXX">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 pb-4 px-4 bg-light">
+                <button type="button" class="btn btn-light border shadow-sm px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="saveCompanyBankBtn" class="btn btn-primary px-4 rounded-pill shadow-sm"><i class="fa-light fa-save me-1"></i>Save Bank</button>
+            </div>
+        </div>
+    </div>
+</div>

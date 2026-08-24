@@ -108,6 +108,12 @@ class Con_PurchaseOrderController extends Controller
             WHERE n.purchase_order_id = ?
             ORDER BY n.created_at DESC
         ");
+
+        if (!$notesQuery) {
+            // This will print out exactly which column or table is missing
+            die("Database Error in fetching negotiation notes: " . $this->db->error);
+        }
+
         $notesQuery->bind_param('i', $id);
         $notesQuery->execute();
         $negotiationNotes = $notesQuery->get_result()->fetch_all(MYSQLI_ASSOC);

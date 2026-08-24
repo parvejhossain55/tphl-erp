@@ -169,6 +169,10 @@ class ClientRefund extends Model
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
 
+        if (!$stmt) {
+            die("Database Error in creating refund: " . $this->db->error);
+        }
+
         $stmt->bind_param(
             'iiiidddssi',
             $data['booking_id'],
@@ -239,6 +243,15 @@ class ClientRefund extends Model
             );
             $stmt3->bind_param('i', $refund['flat_id']);
             $stmt3->execute();
+
+            // 3.5 Update lead status
+            $stmtLead = $this->db->prepare(
+                "UPDATE leads
+                 SET last_lead_action = 'cancel'
+                 WHERE id = ?"
+            );
+            $stmtLead->bind_param('i', $refund['lead_id']);
+            $stmtLead->execute();
 
             // 4. Cancel all pending EMIs for this booking
             $stmt4 = $this->db->prepare(
