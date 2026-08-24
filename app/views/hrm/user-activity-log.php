@@ -71,11 +71,11 @@ $filterDateTo = $filterDateTo ?? date('Y-m-d');
         
         <form method="GET" action="<?= $base_url ?>/user-activity-log" id="filterForm" class="d-flex align-items-center gap-2">
             <!-- Date Range -->
-            <div class="input-group input-group-sm" style="width: 260px;">
-                <span class="input-group-text bg-white"><i class="fa-regular fa-calendar"></i></span>
-                <input type="date" name="date_from" class="form-control form-control-sm border-start-0" value="<?= $filterDateFrom ?>" onchange="this.form.submit()">
-                <span class="input-group-text bg-white border-start-0 border-end-0">-</span>
-                <input type="date" name="date_to" class="form-control form-control-sm border-start-0" value="<?= $filterDateTo ?>" onchange="this.form.submit()">
+            <div class="input-group input-group-sm" style="min-width: 320px;">
+                <span class="input-group-text "><i class="fa-regular fa-calendar"></i></span>
+                <input type="date" name="date_from" class="form-control form-control-sm border-start-0 px-1" value="<?= $filterDateFrom ?>" onchange="this.form.submit()">
+                <span class="input-group-text border-start-0 border-end-0 px-1">-</span>
+                <input type="date" name="date_to" class="form-control form-control-sm border-start-0 px-1" value="<?= $filterDateTo ?>" onchange="this.form.submit()">
             </div>
             
             <!-- Department -->
@@ -95,7 +95,7 @@ $filterDateTo = $filterDateTo ?? date('Y-m-d');
             </select>
 
             <!-- Export -->
-            <button type="button" class="btn btn-sm btn-outline-success bg-white d-flex align-items-center gap-1" data-bs-toggle="dropdown">
+            <button type="button" class="btn btn-sm btn-outline-success  d-flex align-items-center gap-1" data-bs-toggle="dropdown">
                 <i class="fa-solid fa-download"></i> Export Report
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
@@ -170,7 +170,7 @@ $filterDateTo = $filterDateTo ?? date('Y-m-d');
         <div class="col-lg-2 col-md-4 col-sm-6">
             <div class="dash-card p-3 position-relative border border-warning" style="background-color: #fffbeb;">
                 <div class="stat-label">
-                    <div class="icon-circle yellow bg-white"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="icon-circle yellow "><i class="fa-solid fa-triangle-exclamation"></i></div>
                     Below Standard
                 </div>
                 <div class="stat-value"><?= $belowStandard ?></div>
@@ -182,7 +182,7 @@ $filterDateTo = $filterDateTo ?? date('Y-m-d');
         <div class="col-lg-2 col-md-4 col-sm-6">
             <div class="dash-card p-3 position-relative border border-danger" style="background-color: #fef2f2;">
                 <div class="stat-label">
-                    <div class="icon-circle red bg-white"><i class="fa-regular fa-circle-xmark"></i></div>
+                    <div class="icon-circle red "><i class="fa-regular fa-circle-xmark"></i></div>
                     No Usage Today
                 </div>
                 <div class="stat-value text-danger"><?= $noUsageToday ?></div>
@@ -385,7 +385,14 @@ $filterDateTo = $filterDateTo ?? date('Y-m-d');
                         <td class="<?= $p['idle_percentage'] > 50 ? 'text-danger fw-bold' : 'text-success fw-bold' ?>"><?= $p['idle_percentage'] ?>%</td>
                         <td class="fw-bold <?= $p['standard_met_days'] > 0 ? 'text-success' : 'text-danger' ?>"><?= $p['standard_met_days'] ?> days</td>
                         <td><span class="status-badge <?= $statusClass ?>"><?= $p['usage_status'] ?></span></td>
-                        <td><span class="text-muted fs-12"><?= $p['last_active'] ?></span></td>
+                        <td>
+                            <?php if ($p['last_login_ever']): ?>
+                                <span class="d-block text-dark fs-12"><?= date('d M Y', strtotime($p['last_login_ever'])) ?></span>
+                                <span class="text-muted fs-11"><?= $p['last_active'] ?></span>
+                            <?php else: ?>
+                                <span class="text-muted fs-12">-</span>
+                            <?php endif; ?>
+                        </td>
                         <td class="text-end text-nowrap">
                             <a href="javascript:void(0)" class="text-success fw-semibold text-decoration-none me-3 fs-12">View details</a>
                             <i class="fa-solid fa-ellipsis-vertical text-muted cursor-pointer px-2"></i>

@@ -47,14 +47,28 @@ class UserActivityLogController extends Controller
         $userQuery = "
             SELECT u.id, u.full_name, u.email, dept.name as department_name
             FROM users u
-            LEFT JOIN designations des ON des.id = u.designation_id
-            LEFT JOIN departments dept ON dept.id = des.department_id
             LEFT JOIN employees e ON e.user_id = u.id
-            WHERE e.employee_status IS NULL OR e.employee_status NOT IN ('Inactive', 'Resigned', 'Terminated')
-            ORDER BY u.full_name ASC
+            LEFT JOIN designations des ON des.id = COALESCE(e.designation_id, u.designation_id)
+            LEFT JOIN departments dept ON dept.id = COALESCE(e.department_id, des.department_id)
+            WHERE (e.employee_status IS NULL OR e.employee_status NOT IN ('Inactive', 'Resigned', 'Terminated'))
         ";
-        $userResult = $this->db->query($userQuery);
+        $uParams = [];
+        $uTypes = '';
+        if ($filterDeptId !== null) {
+            $userQuery .= " AND dept.id = ?";
+            $uParams[] = $filterDeptId;
+            $uTypes .= 'i';
+        }
+        $userQuery .= " ORDER BY u.full_name ASC";
+        
+        $stmtU = $this->db->prepare($userQuery);
+        if (!empty($uParams)) {
+            $stmtU->bind_param($uTypes, ...$uParams);
+        }
+        $stmtU->execute();
+        $userResult = $stmtU->get_result();
         $allUsers = $userResult ? $userResult->fetch_all(MYSQLI_ASSOC) : [];
+        $stmtU->close();
 
         // ── 1. Total ERP Users Base Query (Active Employees) ───────────────────
         $baseUsersSql = "
@@ -64,10 +78,10 @@ class UserActivityLogController extends Controller
                 des.name AS designation_name,
                 MAX(ual.login_time) as last_login_ever
             FROM users u
-            LEFT JOIN designations des ON des.id = u.designation_id
-            LEFT JOIN departments dept ON dept.id = des.department_id
-            LEFT JOIN user_activity_logs ual ON ual.user_id = u.id
             LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN designations des ON des.id = COALESCE(e.designation_id, u.designation_id)
+            LEFT JOIN departments dept ON dept.id = COALESCE(e.department_id, des.department_id)
+            LEFT JOIN user_activity_logs ual ON ual.user_id = u.id
             WHERE (e.employee_status IS NULL OR e.employee_status NOT IN ('Inactive', 'Resigned', 'Terminated'))
         ";
         $usersParams = [];
@@ -569,14 +583,14 @@ class UserActivityLogController extends Controller
             'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
         ];
 
-        $headers = ['SL', 'Employee Name', 'Department', 'Days Used', 'Avg Login', 'Avg Logout', 'Avg Active Time/Day', 'Standard Met', 'Status'];
+        $headers = ['SL', 'Employee Name', 'Department', 'Days Used', 'Avg Login', 'Avg Logout', 'Avg Active Time/Day', 'Standard Met', 'Status', 'Last Active'];
         $col = 'A';
         foreach ($headers as $header) {
             $sheet->setCellValue($col . '1', $header);
             $sheet->getColumnDimension($col)->setAutoSize(true);
             $col++;
         }
-        $sheet->getStyle('A1:I1')->applyFromArray($headerStyle);
+        $sheet->getStyle('A1:J1')->applyFromArray($headerStyle);
 
         $rowNum = 2;
         $serial = 1;
@@ -584,6 +598,7 @@ class UserActivityLogController extends Controller
             $activeH = intdiv($p['active_time_day'], 60);
             $activeM = $p['active_time_day'] % 60;
             $durationStr = $activeH > 0 ? "{$activeH}h {$activeM}m" : "{$activeM}m";
+            $lastActiveDate = $p['last_login_ever'] ? date('d M Y, h:i A', strtotime($p['last_login_ever'])) : '-';
 
             $sheet->setCellValue('A' . $rowNum, $serial++);
             $sheet->setCellValue('B' . $rowNum, $p['full_name']);
@@ -594,6 +609,7 @@ class UserActivityLogController extends Controller
             $sheet->setCellValue('G' . $rowNum, $durationStr);
             $sheet->setCellValue('H' . $rowNum, $p['standard_met_days'] . ' days');
             $sheet->setCellValue('I' . $rowNum, $p['usage_status']);
+            $sheet->setCellValue('J' . $rowNum, $lastActiveDate);
             $rowNum++;
         }
 
@@ -623,7 +639,7 @@ class UserActivityLogController extends Controller
             <table>
                 <thead><tr>
                     <th>SL</th><th>Employee</th><th>Department</th><th>Days Used</th>
-                    <th>Avg Login</th><th>Avg Logout</th><th>Active Time/Day</th><th>Status</th>
+                    <th>Avg Login</th><th>Avg Logout</th><th>Active Time/Day</th><th>Status</th><th>Last Active</th>
                 </tr></thead><tbody>';
 
         $serial = 1;
@@ -631,6 +647,7 @@ class UserActivityLogController extends Controller
             $activeH = intdiv($p['active_time_day'], 60);
             $activeM = $p['active_time_day'] % 60;
             $durationStr = $activeH > 0 ? "{$activeH}h {$activeM}m" : "{$activeM}m";
+            $lastActiveDate = $p['last_login_ever'] ? date('d M Y, h:i A', strtotime($p['last_login_ever'])) : '-';
             
             $html .= '<tr>
                 <td>' . $serial++ . '</td>
@@ -641,6 +658,7 @@ class UserActivityLogController extends Controller
                 <td>' . $p['avg_logout'] . '</td>
                 <td>' . $durationStr . '</td>
                 <td>' . $p['usage_status'] . '</td>
+                <td>' . $lastActiveDate . '</td>
             </tr>';
         }
         $html .= '</tbody></table></body></html>';
