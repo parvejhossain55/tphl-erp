@@ -90,7 +90,7 @@ $filterDateTo = $filterDateTo ?? date('Y-m-d');
             <select name="user_id" class="form-select form-select-sm select2" style="width: 200px;" onchange="this.form.submit()" data-placeholder="Search employee...">
                 <option value="">Search employee...</option>
                 <?php foreach ($allUsers as $u): ?>
-                    <option value="<?= $u['id'] ?>" <?= ($filterUserId == $u['id']) ? 'selected' : '' ?>><?= htmlspecialchars($u['full_name']) ?></option>
+                    <option value="<?= $u['id'] ?>" <?= ($filterUserId == $u['id']) ? 'selected' : '' ?>><?= htmlspecialchars($u['full_name'] . (!empty($u['employee_id']) ? ' (' . $u['employee_id'] . ')' : '')) ?></option>
                 <?php endforeach; ?>
             </select>
 

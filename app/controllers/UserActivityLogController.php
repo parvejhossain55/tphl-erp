@@ -45,7 +45,7 @@ class UserActivityLogController extends Controller
 
         // ── Fetch all users for Employee search dropdown ───────────────────────
         $userQuery = "
-            SELECT u.id, u.full_name, u.email, dept.name as department_name
+            SELECT u.id, u.full_name, u.email, dept.name as department_name, e.employee_id
             FROM users u
             LEFT JOIN employees e ON e.user_id = u.id
             LEFT JOIN designations des ON des.id = COALESCE(e.designation_id, u.designation_id)
@@ -73,7 +73,7 @@ class UserActivityLogController extends Controller
         // ── 1. Total ERP Users Base Query (Active Employees) ───────────────────
         $baseUsersSql = "
             SELECT 
-                u.id, u.full_name, u.email, 
+                u.id, u.full_name, u.email, e.employee_id,
                 dept.id AS department_id, dept.name AS department_name, 
                 des.name AS designation_name,
                 MAX(ual.login_time) as last_login_ever
@@ -97,7 +97,7 @@ class UserActivityLogController extends Controller
             $usersParams[] = $filterUserId;
             $usersParamTypes .= 'i';
         }
-        $baseUsersSql .= " GROUP BY u.id, u.full_name, u.email, dept.id, dept.name, des.name";
+        $baseUsersSql .= " GROUP BY u.id, u.full_name, u.email, e.employee_id, dept.id, dept.name, des.name";
 
         $stmtUsers = $this->db->prepare($baseUsersSql);
         if (!empty($usersParams)) {
@@ -311,9 +311,11 @@ class UserActivityLogController extends Controller
             }
             $initials = strtoupper($initials);
 
+            $displayName = $u['full_name'] . (!empty($u['employee_id']) ? ' (' . $u['employee_id'] . ')' : '');
+            
             $personWiseData[] = [
                 'user_id' => $uid,
-                'full_name' => $u['full_name'],
+                'full_name' => $displayName,
                 'initials' => $initials,
                 'department' => $u['department_name'] ?: '—',
                 'days_used' => $daysUsed,
