@@ -174,8 +174,8 @@ class HrmApiController extends Controller
                 exit;
             }
 
-            // Fetch local employees details for name/email/ID mapping
-            $localQuery = $this->db->query("SELECT id, employee_id, email, full_name FROM employees");
+            // Fetch local employees details for name/email/ID mapping and joining_date fallback
+            $localQuery = $this->db->query("SELECT id, employee_id, email, full_name, joining_date FROM employees");
             $localEmployees = [];
             $localIds = [];
             $localEmails = [];
@@ -185,12 +185,14 @@ class HrmApiController extends Controller
                     $empId = trim($row['employee_id'] ?? '');
                     $empEmail = trim($row['email'] ?? '');
                     $empName = trim($row['full_name'] ?? '');
+                    $empJoin = trim($row['joining_date'] ?? '');
 
                     $localEmployees[] = [
                         'id' => $pid,
                         'employee_id' => $empId,
                         'email' => strtolower($empEmail),
-                        'full_name' => $empName
+                        'full_name' => $empName,
+                        'joining_date' => $empJoin
                     ];
 
                     if ($empId !== '') {
@@ -1023,6 +1025,127 @@ class HrmApiController extends Controller
             exit;
 
         } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+    /**
+     * GET /api/hrm/joining-list-data
+     */
+    public function getJoiningListData()
+    {
+        ob_start();
+        try {
+            if (!class_exists('ExternalApiService')) {
+                require_once __DIR__ . '/../services/ExternalApiService.php';
+            }
+            $apiService = new ExternalApiService($this->db);
+            $token = $apiService->getBearerToken();
+
+            if (!$token) {
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                exit;
+            }
+
+            $fromDateStr = $_GET['from_date'] ?? date('Y-m-01');
+            $toDateStr = $_GET['to_date'] ?? date('Y-m-t');
+            $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : null;
+
+            // Fetch Tipsoi Employee List dynamically from central Service to avoid raw timeouts
+            $tipsoiResponse = $apiService->getExternalEmployees(1, 400); // 400 per page to avoid timeout
+            $externalEmployees = $tipsoiResponse['data'] ?? [];
+
+            // Fetch Local Employees matching the date range
+            $localSql = "SELECT e.id as real_emp_id_fk, e.employee_id, e.full_name, desg.name AS designation, dept.name AS department,
+                                e.workplace, e.joining_date, e.gross_salary, e.basic_salary
+                         FROM employees e
+                         LEFT JOIN designations desg ON e.designation_id = desg.id
+                         LEFT JOIN departments dept ON e.department_id = dept.id
+                         WHERE e.joining_date >= ? AND e.joining_date <= ?
+                         ORDER BY e.joining_date ASC";
+
+            $stmt = $this->db->prepare($localSql);
+            $stmt->bind_param("ss", $fromDateStr, $toDateStr);
+            $stmt->execute();
+            $res = $stmt->get_result();
+
+            $localEmployees = [];
+            if ($res) {
+                while ($row = $res->fetch_assoc()) {
+                    $localEmployees[] = $row;
+                }
+            }
+
+            // Map Tipsoi API data by Employee ID (Office ID)
+            $tipsoiMap = [];
+            foreach ($externalEmployees as $emp) {
+                $eid = strtolower(trim($emp['employeeOfficeId'] ?? $emp['employeeId'] ?? ''));
+                if ($eid) {
+                    $tipsoiMap[$eid] = $emp;
+                }
+            }
+
+            // Filter by Payroll Project if selected
+            $projectEmployeeIds = [];
+            if ($payrollProjectId) {
+                $projQ = $this->db->query("SELECT employee_id FROM payslips WHERE payroll_project_id = $payrollProjectId 
+                                           UNION 
+                                           SELECT employee_id FROM attendance_monthly_update WHERE payroll_project_id = $payrollProjectId");
+                if ($projQ) {
+                    while ($pr = $projQ->fetch_assoc()) {
+                        $projectEmployeeIds[$pr['employee_id']] = true;
+                    }
+                }
+            }
+
+            $matchedData = [];
+            $sl = 1;
+
+            foreach ($localEmployees as $localMatch) {
+                // Apply Project Filter
+                if ($payrollProjectId && !isset($projectEmployeeIds[$localMatch['real_emp_id_fk']])) {
+                    continue;
+                }
+
+                $tid = strtolower(trim($localMatch['employee_id']));
+                $tipsoiMatch = $tipsoiMap[$tid] ?? null;
+
+                $matchedData[] = [
+                    'sl' => $sl++,
+                    'employee_id' => $localMatch['employee_id'],
+                    'name' => $tipsoiMatch['employeeName'] ?? $localMatch['full_name'] ?? '-',
+                    'designation' => $localMatch['designation'] ?? '-',
+                    'department' => $localMatch['department'] ?? '-',
+                    'workplace' => $localMatch['workplace'] ?? '-',
+                    'joining_date' => $localMatch['joining_date'],
+                    'gross_salary' => $localMatch['gross_salary'] ?? 0,
+                    'basic_salary' => $localMatch['basic_salary'] ?? 0,
+                    'id_check' => $tipsoiMatch ? 'OK' : 'Mismatch',
+                ];
+            }
+
+            $responseData = [
+                'success' => true,
+                'data' => $matchedData,
+                'debug_sql' => $localSql,
+                'debug_from' => $fromDateStr,
+                'debug_to' => $toDateStr,
+                'debug_local_count' => count($localEmployees)
+            ];
+            file_put_contents('test_joining_response.json', json_encode($responseData));
+
+            echo json_encode([
+                'success' => true,
+                'data' => $matchedData
+            ]);
+
+        } catch (Exception $e) {
+            ob_end_clean();
             http_response_code(500);
             echo json_encode([
                 'success' => false,

@@ -441,6 +441,9 @@ dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"
                             let empType = "Regular";
                             let rowEmpId = localMatch ? localMatch.id : "";
 
+                            let displayJoinDate = emp.dateOfJoin || (localMatch ? (localMatch.joining_date || '-') :
+                            '-');
+
                             // Apply DB Overrides if they exist
                             if (rowEmpId && dbOverrides[rowEmpId]) {
                             const override = dbOverrides[rowEmpId];
@@ -495,7 +498,7 @@ dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"
                                 <td><input type="number" step="0.01"
                                         class="form-control form-control-sm text-end in-lateunpaidabsent"
                                         value="${lateUnpaidAbsentDays}" style="min-width:70px;"></td>
-                                <td>-</td>
+                                <td>${displayJoinDate}</td>
                                 <td>-</td>
                                 <td>-</td>
                                 <td>-</td>

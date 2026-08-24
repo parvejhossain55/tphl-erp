@@ -32,3 +32,4 @@ CREATE TABLE IF NOT EXISTS `attendance_monthly_update` (
 
 -- Alter Payslips Table
 ALTER TABLE `payslips` ADD COLUMN `payroll_project_id` INT(11) DEFAULT NULL AFTER `employee_id`;
+ALTER TABLE `payslips` ADD COLUMN `salary_hold` VARCHAR(50) DEFAULT NULL AFTER `payment_method`;

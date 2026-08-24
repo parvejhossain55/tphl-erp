@@ -10,7 +10,7 @@ $show_breadcrumb = true;
             <form method="GET" action="<?= $GLOBALS['base_url'] ?>/payroll-workspace" class="row gx-3 gy-2 align-items-center">
                 <div class="col-sm-3">
                     <label for="year">Year</label>
-                    <select class="form-select" name="year" id="year" style="pointer-events: none; background-color: #e9ecef;">
+                    <select class="form-select" name="year" id="year" onchange="this.form.submit()">
                         <?php
                         $startYear = 2025;
                         $endYear = 2035;
@@ -24,7 +24,7 @@ $show_breadcrumb = true;
                 </div>
                 <div class="col-sm-3">
                     <label for="month">Month</label>
-                    <select class="form-select" name="month" id="month" style="pointer-events: none; background-color: #e9ecef;">
+                    <select class="form-select" name="month" id="month" onchange="this.form.submit()">
                         <?php
                         $sysMonth = $selectedMonth ?: date('m');
                         for ($m = 1; $m <= 12; $m++):
@@ -56,8 +56,8 @@ $show_breadcrumb = true;
                         </button>
                     </div>
                 </div>
-                <div class="col-auto align-self-end mt-4">
-                    <button type="submit" class="btn btn-primary">Filter</button>
+                <div class="col-auto align-self-end mt-4 d-none">
+                    <button type="submit" class="btn btn-primary d-none">Filter</button>
                 </div>
             </form>
         </div>
@@ -155,11 +155,12 @@ $show_breadcrumb = true;
                             <th>Subsidized Lunch</th>
                             <th>Late/Unpaid/Absent (Days)</th>
                             <th>Late/Unpaid/Absent (Amount)</th>
+                            <th>Salary Hold</th>
 
                             <!-- Other Dynamic Deductions -->
                             <?php foreach ($items as $item): ?>
                                     <?php if ($item['type'] === 'deduction'): ?>
-                                            <?php if (strpos(strtolower($item['name']), 'advance') === false && strpos(strtolower($item['name']), 'lunch') === false && strpos(strtolower($item['name']), 'absent') === false): ?>
+                                            <?php if (strpos(strtolower($item['name']), 'advance') === false && strpos(strtolower($item['name']), 'lunch') === false && strpos(strtolower($item['name']), 'absent') === false && strpos(strtolower($item['name']), 'lwp') === false && strpos(strtolower($item['name']), 'salary hold') === false): ?>
                                                     <th><?= htmlspecialchars($item['name']) ?></th>
                                             <?php endif; ?>
                                     <?php endif; ?>
@@ -194,9 +195,7 @@ $show_breadcrumb = true;
                                 $itemMap['advance'] = $x['id'];
                             elseif (strpos($name, 'lunch') !== false || strpos($name, 'meal') !== false)
                                 $itemMap['lunch'] = $x['id'];
-                            elseif (strpos($name, 'lwp') !== false)
-                                $itemMap['lwp'] = $x['id'];
-                            elseif (strpos($name, 'absent') !== false)
+                            elseif (strpos($name, 'absent') !== false || strpos($name, 'lwp') !== false)
                                 $itemMap['absent'] = $x['id'];
                             elseif (strpos($name, 'punctuality') !== false)
                                 $itemMap['punctuality'] = $x['id'];
@@ -218,8 +217,9 @@ $show_breadcrumb = true;
                                 $daily = $gross / 30;
                                 $netSalary = (float) $p['net_salary'];
                                 $paymentMethod = strtolower($p['payment_method'] ?? 'bank');
-                                $bank = ($paymentMethod == 'bank' || $paymentMethod == 'bank transfer') ? $netSalary : 0;
-                                $cash = ($paymentMethod == 'cash') ? $netSalary : 0;
+                                // Values from DB if exist, otherwise derived
+                                $bank = isset($p['bank_amount']) ? (float)$p['bank_amount'] : (($paymentMethod == 'bank' || $paymentMethod == 'bank transfer') ? $netSalary : 0);
+                                $cash = isset($p['cash_amount']) ? (float)$p['cash_amount'] : (($paymentMethod == 'cash') ? $netSalary : 0);
 
                                 $advanceSalary = 0;
                                 $mealCount = isset($p['tipsoi_present']) ? (float) $p['tipsoi_present'] : 0;
@@ -247,7 +247,7 @@ $show_breadcrumb = true;
                                             $mealCount = $amt / $perMeal;
                                         }
                                     }
-                                    if (strpos($lname, 'absent') !== false) {
+                                    if (strpos($lname, 'absent') !== false || strpos($lname, 'lwp') !== false) {
                                         $unpaidAbsents += $amt;
                                     }
                                     if (strpos($lname, 'punctuality') !== false) {
@@ -325,23 +325,18 @@ $show_breadcrumb = true;
                                                     class="form-control form-control-sm text-end in-deduct in-unpaid"
                                                     <?= isset($itemMap['absent']) ? 'data-item-id="' . $itemMap['absent'] . '"' : '' ?>
                                                     value="<?= round($unpaidAbsents, 2) ?>" style="min-width: 80px;"></td>
+                                            <td><input type="text"
+                                                    class="form-control form-control-sm text-center in-salary-hold-string"
+                                                    value="<?= htmlspecialchars($p['salary_hold'] ?? '') ?>" style="min-width: 80px;"></td>
 
                                             <?php foreach ($items as $item): ?>
                                                     <?php if ($item['type'] === 'deduction'): ?>
-                                                            <?php if (strpos(strtolower($item['name']), 'advance') === false && strpos(strtolower($item['name']), 'lunch') === false && strpos(strtolower($item['name']), 'absent') === false): ?>
+                                                            <?php if (strpos(strtolower($item['name']), 'advance') === false && strpos(strtolower($item['name']), 'lunch') === false && strpos(strtolower($item['name']), 'absent') === false && strpos(strtolower($item['name']), 'lwp') === false && strpos(strtolower($item['name']), 'salary hold') === false): ?>
                                                                     <?php
                                                                     $existingAmt = round($p['dynamic_details'][$item['id']] ?? 0, 2);
-                                                                    $isLwp = false;
-                                                                    if (strpos(strtolower($item['name']), 'lwp') !== false) {
-                                                                        if (empty($p['dynamic_details'][$item['id']])) {
-                                                                            $lwpDays = isset($p['late_unpaid_absent_days']) ? (float)$p['late_unpaid_absent_days'] : (isset($p['tipsoi_absent']) ? (float) $p['tipsoi_absent'] : 0);
-                                                                            $existingAmt = round($lwpDays * $daily, 2);
-                                                                        }
-                                                                        $isLwp = true;
-                                                                    }
                                                                     ?>
                                                                     <td><input type="number" step="0.01"
-                                                                            class="form-control form-control-sm text-end in-deduct in-other-deduct <?= $isLwp ? 'in-lwp' : '' ?>"
+                                                                            class="form-control form-control-sm text-end in-deduct in-other-deduct"
                                                                             data-item-id="<?= $item['id'] ?>"
                                                                             value="<?= $existingAmt ?>"
                                                                             style="min-width: 80px;"></td>
@@ -380,12 +375,12 @@ $show_breadcrumb = true;
                                             <td class="cell-netpayable fw-bold text-success text-nowrap">
                                                 <?= number_format($netSalary, 2) ?>
                                             </td>
-                                            <td class="cell-bank text-nowrap"><?= number_format($bank, 2) ?></td>
-                                            <td class="cell-cash text-nowrap"><?= number_format($cash, 2) ?></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-bank" value="<?= round($bank, 2) ?>" style="min-width: 80px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-cash" value="<?= round($cash, 2) ?>" style="min-width: 80px;"></td>
                                             <td><input type="text" class="form-control form-control-sm in-remarks"
                                                     value="<?= htmlspecialchars($p['remarks'] ?? '') ?>" style="min-width: 120px;"></td>
-                                            <td><input type="text" class="form-control form-control-sm in-att-remarks" value=""
-                                                    style="min-width: 120px;"></td>
+                                            <td><input type="text" class="form-control form-control-sm in-att-remarks"
+                                                    value="<?= htmlspecialchars($p['attendance_remarks'] ?? '') ?>" style="min-width: 120px;"></td>
                                             <td><?= htmlspecialchars($p['account_holder_name'] ?? '&nbsp;') ?></td>
                                             <td><?= htmlspecialchars($p['account_number'] ?? '&nbsp;') ?></td>
                                             <td class="cell-amount text-nowrap"><?= number_format($bank, 2) ?></td>
@@ -407,14 +402,20 @@ $show_breadcrumb = true;
                 const inputs = row.querySelectorAll('input');
 
                 inputs.forEach(input => {
-                    input.addEventListener('input', function () {
+                    input.addEventListener('input', function (e) {
                         const basic = parseFloat(row.querySelector('.cell-basic').dataset.val) || 0;
                         const daily = parseFloat(row.querySelector('.cell-daily').dataset.val) || 0;
                         const perMeal = parseFloat(row.querySelector('.in-mealcount').dataset.permeal) || 0;
 
-                        // Always recalculate meal and absent values
-                        const mealCount = parseFloat(row.querySelector('.in-mealcount').value) || 0;
-                        row.querySelector('.in-sublunch').value = (mealCount * perMeal).toFixed(2);
+                        if (!e.target.classList.contains('in-sublunch')) {
+                            const mealCount = parseFloat(row.querySelector('.in-mealcount').value) || 0;
+                            row.querySelector('.in-sublunch').value = (mealCount * perMeal).toFixed(2);
+                        } else {
+                            if (perMeal > 0) {
+                                const subLunch = parseFloat(row.querySelector('.in-sublunch').value) || 0;
+                                row.querySelector('.in-mealcount').value = (subLunch / perMeal).toFixed(2);
+                            }
+                        }
 
                         const absentDays = parseFloat(row.querySelector('.in-absent-days').value) || 0;
                         row.querySelector('.in-unpaid').value = (absentDays * daily).toFixed(2);
@@ -448,16 +449,25 @@ $show_breadcrumb = true;
                         row.querySelector('.cell-netpayable').textContent = netPayable.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
                         const payMethod = row.querySelector('.cell-net').dataset.paymentMethod || '';
-                        let bank = 0, cash = 0;
-                        if (payMethod.toLowerCase().includes('bank')) {
-                            bank = netPayable;
-                        } else if (payMethod.toLowerCase().includes('cash')) {
-                            cash = netPayable;
+                        let bankInput = row.querySelector('.in-bank');
+                        let cashInput = row.querySelector('.in-cash');
+
+                        if (e.target.classList.contains('in-bank')) {
+                            cashInput.value = (netPayable - (parseFloat(bankInput.value) || 0)).toFixed(2);
+                        } else if (e.target.classList.contains('in-cash')) {
+                            bankInput.value = (netPayable - (parseFloat(cashInput.value) || 0)).toFixed(2);
+                        } else {
+                            if (payMethod.toLowerCase().includes('bank')) {
+                                let cashVal = parseFloat(cashInput.value) || 0;
+                                bankInput.value = (netPayable - cashVal).toFixed(2);
+                            } else {
+                                let bankVal = parseFloat(bankInput.value) || 0;
+                                cashInput.value = (netPayable - bankVal).toFixed(2);
+                            }
                         }
 
-                        row.querySelector('.cell-bank').textContent = bank.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                        row.querySelector('.cell-cash').textContent = cash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                        row.querySelector('.cell-amount').textContent = bank.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        let dispBank = parseFloat(bankInput.value) || 0;
+                        row.querySelector('.cell-amount').textContent = dispBank.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                     });
                 });
             });
@@ -522,12 +532,6 @@ $show_breadcrumb = true;
                                      matchedRow.querySelector('.in-mealcount').value = present;
                                      matchedRow.querySelector('.in-absent-days').value = absent;
                                      
-                                     const lwpInput = matchedRow.querySelector('.in-lwp');
-                                     if (lwpInput) {
-                                          const daily = parseFloat(matchedRow.querySelector('.cell-daily').dataset.val) || 0;
-                                          lwpInput.value = (absent * daily).toFixed(2);
-                                     }
-
                                      matchedRow.querySelector('input').dispatchEvent(new Event('input'));
                                  }
                              }
@@ -555,6 +559,7 @@ $show_breadcrumb = true;
                         }
                     }
                 }
+                setTimeout(() => this.form.submit(), 50);
             });
         }
 
@@ -675,6 +680,12 @@ $show_breadcrumb = true;
                     var netSalary = parseFloat(tr.find('.cell-net').text().trim().replace(/,/g, '')) || 0;
                     var totalEarning = parseFloat(tr.find('.cell-gross').text().trim().replace(/,/g, '')) || 0;
                     var totalDeduction = 0;
+                    var salaryHoldString = tr.find('.in-salary-hold-string').val() || '';
+                    var bankAmount = parseFloat(tr.find('.in-bank').val()) || 0;
+                    var cashAmount = parseFloat(tr.find('.in-cash').val()) || 0;
+                    var lateUnpaidAbsentDays = parseFloat(tr.find('.in-absent-days').val()) || 0;
+                    var remarks = tr.find('.in-remarks').val() || '';
+                    var attRemarks = tr.find('.in-att-remarks').val() || '';
                     
                     var dynamicDetails = {};
                     
@@ -695,6 +706,12 @@ $show_breadcrumb = true;
                         net_salary: netSalary,
                         total_earning: totalEarning,
                         total_deduction: totalDeduction,
+                        salary_hold: salaryHoldString,
+                        bank_amount: bankAmount,
+                        cash_amount: cashAmount,
+                        late_unpaid_absent_days: lateUnpaidAbsentDays,
+                        remarks: remarks,
+                        attendance_remarks: attRemarks,
                         details: dynamicDetails
                     });
                 });
