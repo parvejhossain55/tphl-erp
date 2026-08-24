@@ -12,7 +12,7 @@ $show_breadcrumb = true;
                     <label for="year">Year</label>
                     <select class="form-select" name="year" id="year" onchange="this.form.submit()">
                         <?php
-                        $startYear = 2025;
+                        $startYear = 2020;
                         $endYear = 2035;
                         $sysYear = $selectedYear ?: date('Y');
                         for ($y = $startYear; $y <= $endYear; $y++): ?>
@@ -264,7 +264,7 @@ $show_breadcrumb = true;
                                     }
                                 }
                                 ?>
-                                        <tr class="calc-row" data-payslip-id="<?= $p['id'] ?? 0 ?>" data-employee-id="<?= $p['employee_id'] ?? 0 ?>" data-employee-office-id="<?= htmlspecialchars($p['emp_id']) ?>" data-has-db="<?= isset($p['tipsoi_present']) ? 'true' : 'false' ?>">
+                                        <tr class="calc-row" data-payslip-id="<?= $p['id'] ?? 0 ?>" data-employee-id="<?= $p['real_emp_id_fk'] ?? $p['id'] ?? 0 ?>" data-employee-office-id="<?= htmlspecialchars($p['emp_id']) ?>" data-has-db="<?= isset($p['tipsoi_present']) ? 'true' : 'false' ?>">
                                             <td><?= $sl++ ?></td>
                                             <td><?= htmlspecialchars($p['department_name'] ?? 'N/A') ?></td>
                                             <td><?= htmlspecialchars($p['full_name']) ?></td>
@@ -325,9 +325,15 @@ $show_breadcrumb = true;
                                                     class="form-control form-control-sm text-end in-deduct in-unpaid"
                                                     <?= isset($itemMap['absent']) ? 'data-item-id="' . $itemMap['absent'] . '"' : '' ?>
                                                     value="<?= round($unpaidAbsents, 2) ?>" style="min-width: 80px;"></td>
-                                            <td><input type="text"
-                                                    class="form-control form-control-sm text-center in-salary-hold-string"
-                                                    value="<?= htmlspecialchars($p['salary_hold'] ?? '') ?>" style="min-width: 80px;"></td>
+                                            <?php
+                                            $isHold = strtolower(trim($p['salary_hold'] ?? '')) === 'hold';
+                                            ?>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-sm shadow-sm btn-salary-hold <?= $isHold ? 'btn-danger' : 'btn-success' ?>" style="min-width: 80px;">
+                                                    <?= $isHold ? 'Hold' : 'Unhold' ?>
+                                                </button>
+                                                <input type="hidden" class="in-salary-hold-string" value="<?= $isHold ? 'Hold' : '' ?>">
+                                            </td>
 
                                             <?php foreach ($items as $item): ?>
                                                     <?php if ($item['type'] === 'deduction'): ?>
@@ -563,6 +569,21 @@ $show_breadcrumb = true;
             });
         }
 
+        // Dynamically rename 'Save Data' button if data is already saved
+        const hasSavedData = Array.from(document.querySelectorAll('.calc-row')).some(row => {
+            const pid = parseInt(row.getAttribute('data-payslip-id') || '0', 10);
+            return pid > 0;
+        });
+
+        const saveBtn = document.querySelector('button[onclick="saveWorkspaceData(this)"]');
+        if (saveBtn) {
+            if (hasSavedData) {
+                saveBtn.innerHTML = '<i class="fa-solid fa-edit me-1"></i> Update Data';
+            } else {
+                saveBtn.innerHTML = '<i class="fa-solid fa-save me-1"></i> Save Data';
+            }
+        }
+
         // --- DataTables with CSV and PDF ---
         if (typeof $ !== 'undefined' && $.fn.DataTable) {
             var table = $('#workspaceTable').DataTable({
@@ -675,8 +696,11 @@ $show_breadcrumb = true;
                 $(dtNodes).each(function () {
                     var tr = $(this);
                     
-                    var payslipId = tr.data('payslip-id');
-                    var employeeId = tr.data('employee-id');
+                    var payslipIdStr = tr.attr('data-payslip-id');
+                    var payslipId = parseInt(payslipIdStr || '0', 10);
+                    var employeeId = parseInt(tr.attr('data-employee-id') || '0', 10);
+                    console.log('Sending row:', { payslipIdStr: payslipIdStr, parsedPayslipId: payslipId, employeeId: employeeId });
+                    
                     var netSalary = parseFloat(tr.find('.cell-net').text().trim().replace(/,/g, '')) || 0;
                     var totalEarning = parseFloat(tr.find('.cell-gross').text().trim().replace(/,/g, '')) || 0;
                     var totalDeduction = 0;
@@ -718,7 +742,7 @@ $show_breadcrumb = true;
 
                 if (rowData.length === 0) {
                     Swal.fire('Warning', 'No payslips data to save.', 'warning');
-                    $(btn).prop('disabled', false).html('<i class="fa-solid fa-save me-1"></i> Save Data');
+                    $(btn).prop('disabled', false).html(hasSavedData ? '<i class="fa-solid fa-edit me-1"></i> Update Data' : '<i class="fa-solid fa-save me-1"></i> Save Data');
                     return;
                 }
 
@@ -726,6 +750,7 @@ $show_breadcrumb = true;
                     url: '<?= $GLOBALS['base_url'] ?>/save-workspace-payslips',
                     type: 'POST',
                     contentType: 'application/json',
+                    dataType: 'json',
                     data: JSON.stringify({
                         project_id: projectId,
                         year: $('select[name="year"]').val(),
@@ -733,21 +758,39 @@ $show_breadcrumb = true;
                         rows: rowData
                     }),
                     success: function (res) {
+                        try {
+                            if (typeof res === 'string') {
+                                res = JSON.parse(res);
+                            }
+                        } catch(e) {}
+                        
                         if (res.success) {
                             Swal.fire('Success', res.message, 'success').then(() => {
                                 window.location.reload();
                             });
                         } else {
                             Swal.fire('Error', res.message || 'Operation failed', 'error');
-                            $(btn).prop('disabled', false).html('<i class="fa-solid fa-save me-1"></i> Save Data');
+                            $(btn).prop('disabled', false).html(hasSavedData ? '<i class="fa-solid fa-edit me-1"></i> Update Data' : '<i class="fa-solid fa-save me-1"></i> Save Data');
                         }
                     },
                     error: function () {
                         Swal.fire('Error', 'Server connection failed', 'error');
-                        $(btn).prop('disabled', false).html('<i class="fa-solid fa-save me-1"></i> Save Data');
+                        $(btn).prop('disabled', false).html(hasSavedData ? '<i class="fa-solid fa-edit me-1"></i> Update Data' : '<i class="fa-solid fa-save me-1"></i> Save Data');
                     }
                 });
             };
+        }
+    });
+
+    $(document).on('click', '.btn-salary-hold', function() {
+        var btn = $(this);
+        var hiddenInput = btn.siblings('.in-salary-hold-string');
+        if (hiddenInput.val() === 'Hold') {
+            hiddenInput.val('');
+            btn.text('Unhold').removeClass('btn-danger').addClass('btn-success');
+        } else {
+            hiddenInput.val('Hold');
+            btn.text('Hold').removeClass('btn-success').addClass('btn-danger');
         }
     });
 </script>

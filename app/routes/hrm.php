@@ -298,4 +298,9 @@ return [
     'payroll-salary-report' => ['controller' => 'PayrollController', 'method' => 'salaryReport'],
     'payroll-salary-report-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSalaryReportPDF'],
     'payroll-salary-report-csv' => ['controller' => 'PayrollController', 'method' => 'exportSalaryReportCSV'],
+
+    // Salary Hold
+    'payroll-salary-hold' => ['controller' => 'PayrollController', 'method' => 'salaryHoldPage'],
+    'payroll-salary-hold-save' => ['controller' => 'PayrollController', 'method' => 'salaryHoldSave'],
+    'payroll-salary-hold-remove' => ['controller' => 'PayrollController', 'method' => 'salaryHoldRemove']
 ];

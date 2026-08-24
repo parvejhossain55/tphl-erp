@@ -1040,25 +1040,9 @@ class HrmApiController extends Controller
     {
         ob_start();
         try {
-            if (!class_exists('ExternalApiService')) {
-                require_once __DIR__ . '/../services/ExternalApiService.php';
-            }
-            $apiService = new ExternalApiService($this->db);
-            $token = $apiService->getBearerToken();
-
-            if (!$token) {
-                http_response_code(401);
-                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
-                exit;
-            }
-
             $fromDateStr = $_GET['from_date'] ?? date('Y-m-01');
             $toDateStr = $_GET['to_date'] ?? date('Y-m-t');
             $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : null;
-
-            // Fetch Tipsoi Employee List dynamically from central Service to avoid raw timeouts
-            $tipsoiResponse = $apiService->getExternalEmployees(1, 400); // 400 per page to avoid timeout
-            $externalEmployees = $tipsoiResponse['data'] ?? [];
 
             // Fetch Local Employees matching the date range
             $localSql = "SELECT e.id as real_emp_id_fk, e.employee_id, e.full_name, desg.name AS designation, dept.name AS department,
@@ -1078,15 +1062,6 @@ class HrmApiController extends Controller
             if ($res) {
                 while ($row = $res->fetch_assoc()) {
                     $localEmployees[] = $row;
-                }
-            }
-
-            // Map Tipsoi API data by Employee ID (Office ID)
-            $tipsoiMap = [];
-            foreach ($externalEmployees as $emp) {
-                $eid = strtolower(trim($emp['employeeOfficeId'] ?? $emp['employeeId'] ?? ''));
-                if ($eid) {
-                    $tipsoiMap[$eid] = $emp;
                 }
             }
 
@@ -1112,32 +1087,19 @@ class HrmApiController extends Controller
                     continue;
                 }
 
-                $tid = strtolower(trim($localMatch['employee_id']));
-                $tipsoiMatch = $tipsoiMap[$tid] ?? null;
-
                 $matchedData[] = [
                     'sl' => $sl++,
                     'employee_id' => $localMatch['employee_id'],
-                    'name' => $tipsoiMatch['employeeName'] ?? $localMatch['full_name'] ?? '-',
+                    'name' => $localMatch['full_name'] ?? '-',
                     'designation' => $localMatch['designation'] ?? '-',
                     'department' => $localMatch['department'] ?? '-',
                     'workplace' => $localMatch['workplace'] ?? '-',
                     'joining_date' => $localMatch['joining_date'],
                     'gross_salary' => $localMatch['gross_salary'] ?? 0,
                     'basic_salary' => $localMatch['basic_salary'] ?? 0,
-                    'id_check' => $tipsoiMatch ? 'OK' : 'Mismatch',
+                    'id_check' => 'OK',
                 ];
             }
-
-            $responseData = [
-                'success' => true,
-                'data' => $matchedData,
-                'debug_sql' => $localSql,
-                'debug_from' => $fromDateStr,
-                'debug_to' => $toDateStr,
-                'debug_local_count' => count($localEmployees)
-            ];
-            file_put_contents('test_joining_response.json', json_encode($responseData));
 
             echo json_encode([
                 'success' => true,
