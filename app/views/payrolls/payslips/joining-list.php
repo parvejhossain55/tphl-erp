@@ -11,7 +11,8 @@ $defaultMonth = date('m');
 <div class="row mb-3">
     <div class="col-12">
         <div class="filters card__wrapper p-3 bg-white rounded shadow-sm">
-            <form id="filterForm" class="row gx-3 gy-2 align-items-end">
+            <form id="filterForm" class="row gx-3 gy-2 align-items-end" action="<?= $base_url ?>/payroll-joining-list"
+                method="GET">
                 <!-- Filter Type -->
                 <div class="col-lg-2 col-md-4 col-sm-6">
                     <label for="filterType" class="form-label fw-semibold text-muted mb-2">Select Filter Type</label>
@@ -80,7 +81,7 @@ $defaultMonth = date('m');
                         <?php if (!empty($payroll_projects)): ?>
                             <?php foreach ($payroll_projects as $proj): ?>
                                 <option value="<?= htmlspecialchars($proj['id']) ?>"
-                                    data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>">
+                                    data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>" <?= (isset($payroll_project_id) && $payroll_project_id == $proj['id']) ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($proj['name']) ?>
                                 </option>
                             <?php endforeach; ?>
@@ -88,12 +89,6 @@ $defaultMonth = date('m');
                     </select>
                 </div>
 
-                <div class="col-auto">
-                    <button type="button" id="retrieveBtn"
-                        class="btn btn-primary d-flex align-items-center justify-content-center">
-                        <i class="fa-solid fa-cloud-arrow-down me-1"></i> <span>Retrieve Data</span>
-                    </button>
-                </div>
             </form>
         </div>
     </div>
@@ -122,7 +117,7 @@ $defaultMonth = date('m');
                 <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
                     <span class="visually-hidden">Loading...</span>
                 </div>
-                <p class="mt-3 text-muted fw-semibold">Syncing with Tipsoi API, please wait...</p>
+                <p class="mt-3 text-muted fw-semibold">Fetching Data, please wait...</p>
             </div>
 
             <div class="table__wrapper table-responsive" id="tableWrapper">
@@ -141,7 +136,28 @@ $defaultMonth = date('m');
                         </tr>
                     </thead>
                     <tbody id="tableBody">
-                        <!-- Data will be loaded here via AJAX -->
+                        <?php if (!empty($employees)): ?>
+                            <?php $sl = 1;
+                            foreach ($employees as $row):
+                                $deptDesig = ($row['department'] ?? '-') . ' - ' . ($row['designation'] ?? '-');
+                                $gross = number_format((float) ($row['gross_salary'] ?? 0), 2);
+                                $basic = number_format((float) ($row['basic_salary'] ?? 0), 2);
+                                ?>
+                                <tr>
+                                    <td class="text-center"><?= $sl++ ?></td>
+                                    <td class="text-center"><?= htmlspecialchars($row['employee_id']) ?></td>
+                                    <td><?= htmlspecialchars($row['full_name']) ?></td>
+                                    <td><?= htmlspecialchars($deptDesig) ?></td>
+                                    <td class="text-center"><?= htmlspecialchars($row['workplace'] ?? '-') ?></td>
+                                    <td class="text-center"><?= htmlspecialchars($row['joining_date']) ?></td>
+                                    <td class="text-end"><?= $gross ?></td>
+                                    <td class="text-end"><?= $basic ?></td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success p-1"><i class="fa-solid fa-check"></i></span>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -189,7 +205,7 @@ $('#filterType').val('monthly').trigger('change'); // Auto-switch to monthly
 }
 });
 
-// Initialize Empty DataTable
+// Initialize DataTable
 var dataTable = $('#joiningListTable').DataTable({
 dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"f><"d-none"B>>' +
             '<"row"<"col-sm-12"tr>>' +
@@ -203,121 +219,18 @@ dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"
                         language: {
                         search: "_INPUT_",
                         searchPlaceholder: "Search list...",
-                        emptyTable: "Submit the form to fetch data from Tipsoi"
+                        emptyTable: "No data available in table"
                         },
                         pagingType: "simple_numbers",
                         pageLength: 50,
                         ordering: true
                         });
 
-                        // Handle Form Submit (Fetch Data)
-                        $('#retrieveBtn').on('click', function(e) {
-                        e.preventDefault();
-                        fetchData();
+                        // Handle Filter Change (Submit Form automatically)
+                        $('#filterType, #filterMonth, #filterYear, #fromDate, #toDate, #payrollProject').on('change',
+                        function(e) {
+                        $('#filterForm').submit();
                         });
-
-                        function fetchData() {
-                        var filterType = $('#filterType').val();
-                        var fromDate = '';
-                        var toDate = '';
-
-                        if (filterType === 'monthly') {
-                        var m = $('#filterMonth').val();
-                        var y = $('#filterYear').val();
-                        var lastDay = new Date(y, m, 0).getDate();
-                        fromDate = y + '-' + String(m).padStart(2, '0') + '-01';
-                        toDate = y + '-' + String(m).padStart(2, '0') + '-' + String(lastDay).padStart(2, '0');
-                        } else {
-                        fromDate = $('#fromDate').val();
-                        toDate = $('#toDate').val();
-                        }
-
-                        var projectId = $('#payrollProject').val();
-
-                        var params = new URLSearchParams({
-                        from_date: fromDate,
-                        to_date: toDate,
-                        payroll_project_id: projectId
-                        });
-
-                        // Show Loader
-                        $('#tableWrapper').hide();
-                        $('#loader').show();
-                        var btn = $('#retrieveBtn');
-                        btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-1"></i>
-                        <span>Syncing...</span>');
-
-                        fetch(`<?= $base_url ?>/api/hrm/joining-list-data?` + params.toString())
-                        .then(r => r.json())
-                        .then(res => {
-                        $('#loader').hide();
-                        $('#tableWrapper').show();
-                        btn.prop('disabled', false).html('<i class="fa-solid fa-cloud-arrow-down me-1"></i>
-                        <span>Retrieve Data</span>');
-
-                        if (res.success) {
-                        dataTable.clear();
-
-                        if (res.data && res.data.length > 0) {
-                        res.data.forEach(function(row) {
-                        var deptDesig = (row.department || '-') + ' - ' + (row.designation || '-');
-
-                        var statusBadge = row.id_check === 'OK'
-                        ? '<span class="badge bg-success p-1"><i class="fa-solid fa-check"></i></span>'
-                        : '<span class="badge bg-warning p-1" title="Missing in local Employee Database"><i
-                                class="fa-solid fa-exclamation"></i></span>';
-
-                        var gross = parseFloat(row.gross_salary || 0).toLocaleString('en-US',
-                        {minimumFractionDigits:2});
-                        var basic = parseFloat(row.basic_salary || 0).toLocaleString('en-US',
-                        {minimumFractionDigits:2});
-
-                        dataTable.row.add([
-                        '<div class="text-center">' + row.sl + '</div>',
-                        '<div class="text-center">' + row.employee_id + '</div>',
-                        row.name,
-                        deptDesig,
-                        '<div class="text-center">' + row.workplace + '</div>',
-                        '<div class="text-center">' + row.joining_date + '</div>',
-                        '<div class="text-end">' + gross + '</div>',
-                        '<div class="text-end">' + basic + '</div>',
-                        '<div class="text-center">' + statusBadge + '</div>'
-                        ]);
-                        });
-                        dataTable.draw();
-                        Swal.fire({
-                        icon: 'success',
-                        title: 'Sync Complete',
-                        text: 'Found ' + res.data.length + ' active employee records.',
-                        toast: true,
-                        position: 'bottom-end',
-                        showConfirmButton: false,
-                        timer: 3000
-                        });
-                        } else {
-                        dataTable.draw(); // Draws empty
-                        Swal.fire({
-                        icon: 'info',
-                        title: 'No Data',
-                        text: 'No active employees found matching the filters.',
-                        toast: true,
-                        position: 'bottom-end',
-                        showConfirmButton: false,
-                        timer: 3000
-                        });
-                        }
-                        } else {
-                        Swal.fire('Error', res.message || 'Failed to sync with Tipsoi', 'error');
-                        }
-                        })
-                        .catch(err => {
-                        $('#loader').hide();
-                        $('#tableWrapper').show();
-                        btn.prop('disabled', false).html('<i class="fa-solid fa-cloud-arrow-down me-1"></i>
-                        <span>Retrieve Data</span>');
-                        Swal.fire('Error', 'Server connection failed', 'error');
-                        });
-                        }
 
                         // Bind PDF export to use the correct data
                         window.exportPdf = function() {
@@ -330,8 +243,6 @@ dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"
                         document.getElementById('exportPdfForm').submit();
                         };
 
-                        // Auto-fetch data on load
-                        fetchData();
                         });
                         <?php
                         $page_script = ob_get_clean();
