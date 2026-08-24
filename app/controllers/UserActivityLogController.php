@@ -22,134 +22,410 @@ class UserActivityLogController extends Controller
             exit;
         }
 
+        // ── Default Date Range (Current Month) ──────────────────────────────
+        $defaultFrom = date('Y-m-01');
+        $defaultTo = date('Y-m-d');
+
         // ── Filters from GET ──────────────────────────────────────────────────
         $filterDeptId = isset($_GET['department_id']) && $_GET['department_id'] !== ''
             ? (int)$_GET['department_id'] : null;
 
+        $filterUserId = isset($_GET['user_id']) && $_GET['user_id'] !== ''
+            ? (int)$_GET['user_id'] : null;
+
         $filterDateFrom = isset($_GET['date_from']) && $_GET['date_from'] !== ''
-            ? $_GET['date_from'] : null;
+            ? $_GET['date_from'] : $defaultFrom;
 
         $filterDateTo = isset($_GET['date_to']) && $_GET['date_to'] !== ''
-            ? $_GET['date_to'] : null;
+            ? $_GET['date_to'] : $defaultTo;
 
         // ── Fetch all departments for filter dropdown ──────────────────────────
         $deptResult = $this->db->query("SELECT id, name FROM departments ORDER BY name ASC");
         $departments = $deptResult ? $deptResult->fetch_all(MYSQLI_ASSOC) : [];
 
-        // ── Build main activity query ─────────────────────────────────────────
-        $sql = "
-            SELECT
-                MIN(ual.id) AS id,
-                MIN(ual.login_time) AS login_time,
-                MAX(ual.last_active_time) AS last_active_time,
-                SUM(TIMESTAMPDIFF(MINUTE, ual.login_time, ual.last_active_time)) AS active_minutes,
-                COUNT(ual.id) AS session_count,
-                u.full_name,
-                u.email,
-                r.name  AS role_name,
-                dept.id   AS department_id,
-                dept.name AS department_name,
-                des.name  AS designation_name
-            FROM user_activity_logs ual
-            JOIN users u ON u.id = ual.user_id
-            LEFT JOIN roles r   ON r.id  = u.role_id
-            LEFT JOIN designations des ON des.id = u.designation_id
-            LEFT JOIN departments dept ON dept.id = des.department_id
-            WHERE 1 = 1
+        // ── Fetch all users for Employee search dropdown ───────────────────────
+        $userQuery = "
+            SELECT u.id, u.full_name, u.email, dept.name as department_name, e.employee_id
+            FROM users u
+            LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN designations des ON des.id = COALESCE(e.designation_id, u.designation_id)
+            LEFT JOIN departments dept ON dept.id = COALESCE(e.department_id, des.department_id)
+            WHERE (e.employee_status IS NULL OR e.employee_status NOT IN ('Inactive', 'Resigned', 'Terminated'))
         ";
+        $uParams = [];
+        $uTypes = '';
+        if ($filterDeptId !== null) {
+            $userQuery .= " AND dept.id = ?";
+            $uParams[] = $filterDeptId;
+            $uTypes .= 'i';
+        }
+        $userQuery .= " ORDER BY u.full_name ASC";
+        
+        $stmtU = $this->db->prepare($userQuery);
+        if (!empty($uParams)) {
+            $stmtU->bind_param($uTypes, ...$uParams);
+        }
+        $stmtU->execute();
+        $userResult = $stmtU->get_result();
+        $allUsers = $userResult ? $userResult->fetch_all(MYSQLI_ASSOC) : [];
+        $stmtU->close();
 
-        $params      = [];
-        $paramTypes  = '';
+        // ── 1. Total ERP Users Base Query (Active Employees) ───────────────────
+        $baseUsersSql = "
+            SELECT 
+                u.id, u.full_name, u.email, e.employee_id,
+                dept.id AS department_id, dept.name AS department_name, 
+                des.name AS designation_name,
+                MAX(ual.login_time) as last_login_ever
+            FROM users u
+            LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN designations des ON des.id = COALESCE(e.designation_id, u.designation_id)
+            LEFT JOIN departments dept ON dept.id = COALESCE(e.department_id, des.department_id)
+            LEFT JOIN user_activity_logs ual ON ual.user_id = u.id
+            WHERE (e.employee_status IS NULL OR e.employee_status NOT IN ('Inactive', 'Resigned', 'Terminated'))
+        ";
+        $usersParams = [];
+        $usersParamTypes = '';
 
         if ($filterDeptId !== null) {
-            $sql        .= " AND dept.id = ?";
-            $params[]    = $filterDeptId;
-            $paramTypes .= 'i';
+            $baseUsersSql .= " AND dept.id = ?";
+            $usersParams[] = $filterDeptId;
+            $usersParamTypes .= 'i';
+        }
+        if ($filterUserId !== null) {
+            $baseUsersSql .= " AND u.id = ?";
+            $usersParams[] = $filterUserId;
+            $usersParamTypes .= 'i';
+        }
+        $baseUsersSql .= " GROUP BY u.id, u.full_name, u.email, e.employee_id, dept.id, dept.name, des.name";
+
+        $stmtUsers = $this->db->prepare($baseUsersSql);
+        if (!empty($usersParams)) {
+            $stmtUsers->bind_param($usersParamTypes, ...$usersParams);
+        }
+        $stmtUsers->execute();
+        $targetUsers = $stmtUsers->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmtUsers->close();
+        
+        $totalUsersCount = count($targetUsers);
+        $targetUserIds = array_column($targetUsers, 'id');
+
+        // ── 2. Fetch Activity Logs for Target Users within Date Range ──────────
+        $logs = [];
+        if (!empty($targetUserIds)) {
+            $placeholders = implode(',', array_fill(0, count($targetUserIds), '?'));
+            $logsSql = "
+                SELECT 
+                    ual.user_id,
+                    DATE(ual.login_time) as log_date,
+                    ual.login_time,
+                    ual.last_active_time,
+                    TIMESTAMPDIFF(MINUTE, ual.login_time, ual.last_active_time) as active_minutes
+                FROM user_activity_logs ual
+                WHERE DATE(ual.login_time) >= ? AND DATE(ual.login_time) <= ?
+                AND ual.user_id IN ($placeholders)
+            ";
+            
+            $logsParams = array_merge([$filterDateFrom, $filterDateTo . ' 23:59:59'], $targetUserIds);
+            $logsParamTypes = 'ss' . str_repeat('i', count($targetUserIds));
+            
+            $stmtLogs = $this->db->prepare($logsSql);
+            $stmtLogs->bind_param($logsParamTypes, ...$logsParams);
+            $stmtLogs->execute();
+            $logs = $stmtLogs->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmtLogs->close();
         }
 
-        if ($filterDateFrom !== null) {
-            $sql        .= " AND DATE(ual.login_time) >= ?";
-            $params[]    = $filterDateFrom;
-            $paramTypes .= 's';
+        // ── 3. Process Data for Dashboard Metrics ─────────────────────────────
+        
+        $workingDaysCount = 1;
+        $start = new DateTime($filterDateFrom);
+        $end = new DateTime($filterDateTo);
+        $interval = $start->diff($end);
+        $workingDaysCount = max(1, $interval->days + 1);
+
+        $userDailyStats = []; // user_id => [date => [total_mins, first_login, last_logout, sessions]]
+        $hourlyActiveRaw = array_fill(8, 13, 0); // 8 AM to 8 PM (20)
+        
+        foreach ($logs as $log) {
+            $uid = $log['user_id'];
+            $date = $log['log_date'];
+            $mins = max(0, (int)$log['active_minutes']);
+            
+            if (!isset($userDailyStats[$uid])) {
+                $userDailyStats[$uid] = [];
+            }
+            if (!isset($userDailyStats[$uid][$date])) {
+                $userDailyStats[$uid][$date] = [
+                    'total_mins' => 0,
+                    'first_login' => $log['login_time'],
+                    'last_logout' => $log['last_active_time'] ?: $log['login_time'],
+                    'sessions' => 0
+                ];
+            }
+            
+            $userDailyStats[$uid][$date]['total_mins'] += $mins;
+            $userDailyStats[$uid][$date]['sessions'] += 1;
+            
+            if ($log['login_time'] < $userDailyStats[$uid][$date]['first_login']) {
+                $userDailyStats[$uid][$date]['first_login'] = $log['login_time'];
+            }
+            if ($log['last_active_time'] > $userDailyStats[$uid][$date]['last_logout']) {
+                $userDailyStats[$uid][$date]['last_logout'] = $log['last_active_time'];
+            }
+
+            // Hourly Active Calculation (simplified overlap check)
+            $logStartTS = strtotime($log['login_time']);
+            $logEndTS = strtotime($log['last_active_time'] ?: $log['login_time']);
+            
+            for ($h = 8; $h <= 20; $h++) {
+                $hourStartTS = strtotime(date("Y-m-d $h:00:00", $logStartTS));
+                $hourEndTS = strtotime(date("Y-m-d $h:59:59", $logStartTS));
+                
+                if ($logStartTS <= $hourEndTS && $logEndTS >= $hourStartTS) {
+                    if (!is_array($hourlyActiveRaw[$h])) {
+                        $hourlyActiveRaw[$h] = [];
+                    }
+                    $hourlyActiveRaw[$h][$uid] = true;
+                }
+            }
         }
 
-        if ($filterDateTo !== null) {
-            $sql        .= " AND DATE(ual.login_time) <= ?";
-            $params[]    = $filterDateTo;
-            $paramTypes .= 's';
+        // Finalize hourly active users count
+        $hourlyChartLabels = [];
+        $hourlyChartData = [];
+        for ($h = 8; $h <= 20; $h++) {
+            $amPm = $h >= 12 ? ($h == 12 ? 12 : $h - 12) . ' PM' : $h . ' AM';
+            $hourlyChartLabels[] = $amPm;
+            $hourlyChartData[] = is_array($hourlyActiveRaw[$h]) ? count($hourlyActiveRaw[$h]) : 0;
         }
 
-        $sql .= " GROUP BY DATE(ual.login_time), ual.user_id, u.full_name, u.email, r.name, dept.id, dept.name, des.name";
-        $sql .= " ORDER BY dept.name ASC, DATE(ual.login_time) DESC, MIN(ual.login_time) DESC";
+        // Calculate Aggregate Metrics
+        $totalActiveUsersInPeriod = count($userDailyStats);
+        $totalMinsAll = 0;
+        $meetingStandardCount = 0;
+        $belowStandardCount = 0;
+        
+        $usageHealth = [
+            'Healthy' => 0,
+            'Moderate' => 0,
+            'Low Usage' => 0,
+            'No Usage' => $totalUsersCount - $totalActiveUsersInPeriod
+        ];
 
-        $stmt = $this->db->prepare($sql);
+        $personWiseData = [];
+        $departmentStats = []; // dept_id => [total_users, active_users]
 
-        if (!empty($params)) {
-            $stmt->bind_param($paramTypes, ...$params);
+        foreach ($targetUsers as $u) {
+            $uid = $u['id'];
+            $deptId = $u['department_id'] ?: 0;
+            
+            if (!isset($departmentStats[$deptId])) {
+                $departmentStats[$deptId] = [
+                    'name' => $u['department_name'] ?: 'Unknown',
+                    'total_users' => 0,
+                    'active_users' => 0
+                ];
+            }
+            $departmentStats[$deptId]['total_users']++;
+
+            $daysUsed = 0;
+            $totalMins = 0;
+            $standardMetDays = 0;
+            $avgLoginSum = 0; 
+            $avgLogoutSum = 0;
+            
+            if (isset($userDailyStats[$uid])) {
+                $departmentStats[$deptId]['active_users']++;
+                $daysUsed = count($userDailyStats[$uid]);
+                
+                foreach ($userDailyStats[$uid] as $date => $stats) {
+                    $totalMins += $stats['total_mins'];
+                    if ($stats['total_mins'] >= 240) { // 4 hours standard
+                        $standardMetDays++;
+                    }
+                    
+                    $loginTimeSec = strtotime(date('H:i:s', strtotime($stats['first_login']))) - strtotime('TODAY');
+                    $logoutTimeSec = strtotime(date('H:i:s', strtotime($stats['last_logout']))) - strtotime('TODAY');
+                    
+                    $avgLoginSum += $loginTimeSec;
+                    $avgLogoutSum += $logoutTimeSec;
+                }
+                
+                $totalMinsAll += $totalMins;
+            }
+
+            $avgMinsPerDay = $daysUsed > 0 ? intdiv($totalMins, $daysUsed) : 0;
+            $avgMinsPerPeriodDay = intdiv($totalMins, $workingDaysCount);
+
+            if ($avgMinsPerPeriodDay >= 240) {
+                $usageHealth['Healthy']++;
+                $healthStatus = 'Healthy';
+            } elseif ($avgMinsPerPeriodDay >= 120) {
+                $usageHealth['Moderate']++;
+                $healthStatus = 'Moderate';
+            } elseif ($avgMinsPerPeriodDay > 0) {
+                $usageHealth['Low Usage']++;
+                $healthStatus = 'Low Usage';
+            } else {
+                $healthStatus = 'No Usage';
+            }
+
+            if ($avgMinsPerPeriodDay >= 240) {
+                $meetingStandardCount++;
+            } elseif ($avgMinsPerPeriodDay > 0) {
+                $belowStandardCount++;
+            }
+
+            $avgLoginFormatted = '—';
+            $avgLogoutFormatted = '—';
+            if ($daysUsed > 0) {
+                $avgLoginTime = (int)($avgLoginSum / $daysUsed);
+                $avgLogoutTime = (int)($avgLogoutSum / $daysUsed);
+                $avgLoginFormatted = date('h:i A', strtotime('TODAY') + $avgLoginTime);
+                $avgLogoutFormatted = date('h:i A', strtotime('TODAY') + $avgLogoutTime);
+            }
+
+            $expectedDailyMins = 540; // 9 hours
+            $idleTimePerDay = $avgMinsPerDay > 0 ? max(0, $expectedDailyMins - $avgMinsPerDay) : 0;
+            $idlePercentage = $expectedDailyMins > 0 ? round(($idleTimePerDay / $expectedDailyMins) * 100) : 0;
+
+            $lastActiveStr = '—';
+            if ($u['last_login_ever']) {
+                $diff = time() - strtotime($u['last_login_ever']);
+                if ($diff < 3600) {
+                    $lastActiveStr = max(1, floor($diff / 60)) . ' min ago';
+                } elseif ($diff < 86400) {
+                    $lastActiveStr = floor($diff / 3600) . ' hours ago';
+                } else {
+                    $lastActiveStr = floor($diff / 86400) . ' days ago';
+                }
+            }
+
+            // Get initials for avatar
+            $words = explode(" ", $u['full_name']);
+            $initials = "";
+            foreach ($words as $w) {
+                if (mb_strlen($initials) >= 2) break;
+                $initials .= mb_substr($w, 0, 1);
+            }
+            $initials = strtoupper($initials);
+
+            $displayName = $u['full_name'] . (!empty($u['employee_id']) ? ' (' . $u['employee_id'] . ')' : '');
+            
+            $personWiseData[] = [
+                'user_id' => $uid,
+                'full_name' => $displayName,
+                'initials' => $initials,
+                'department' => $u['department_name'] ?: '—',
+                'days_used' => $daysUsed,
+                'working_days' => $workingDaysCount,
+                'avg_login' => $avgLoginFormatted,
+                'avg_logout' => $avgLogoutFormatted,
+                'active_time_day' => $avgMinsPerDay,
+                'idle_percentage' => $idlePercentage,
+                'standard_met_days' => $standardMetDays,
+                'usage_status' => $healthStatus,
+                'last_active' => $lastActiveStr,
+                'last_login_ever' => $u['last_login_ever']
+            ];
         }
 
-        $stmt->execute();
-        $logs = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
+        usort($personWiseData, function($a, $b) {
+            if ($a['days_used'] == $b['days_used']) {
+                return strcmp($a['full_name'], $b['full_name']);
+            }
+            return $b['days_used'] - $a['days_used'];
+        });
+
+        $attentionRequired = [];
+        foreach ($personWiseData as $p) {
+            $issue = '';
+            $status = '';
+            if (!$p['last_login_ever']) {
+                $issue = "Never logged in";
+                $status = "Critical";
+            } else {
+                $diffDays = floor((time() - strtotime($p['last_login_ever'])) / 86400);
+                if ($diffDays >= 3) {
+                    $issue = "No login for $diffDays days";
+                    $status = "Critical";
+                } elseif ($p['usage_status'] === 'Low Usage') {
+                    $activeH = intdiv($p['active_time_day'], 60);
+                    $activeM = $p['active_time_day'] % 60;
+                    $issue = "Avg. {$activeH}h {$activeM}m/day";
+                    $status = "Low Usage";
+                } elseif ($p['idle_percentage'] > 60) {
+                    $issue = "Idle sessions {$p['idle_percentage']}%";
+                    $status = "Review";
+                }
+            }
+            if ($issue) {
+                $attentionRequired[] = array_merge($p, ['issue' => $issue, 'attn_status' => $status]);
+                if (count($attentionRequired) >= 5) break; 
+            }
+        }
+
+        $avgProductiveMins = $totalActiveUsersInPeriod > 0 ? (int)($totalMinsAll / $totalActiveUsersInPeriod / $workingDaysCount) : 0;
+        $adoptionScore = $totalUsersCount > 0 ? round(($totalActiveUsersInPeriod / $totalUsersCount) * 100) : 0;
+
+        $deptAdoptionRates = [];
+        foreach ($departmentStats as $stat) {
+            if ($stat['name'] == 'Unknown') continue;
+            $rate = $stat['total_users'] > 0 ? round(($stat['active_users'] / $stat['total_users']) * 100) : 0;
+            $deptAdoptionRates[] = [
+                'name' => $stat['name'],
+                'rate' => $rate
+            ];
+        }
+        usort($deptAdoptionRates, function($a, $b) { return $b['rate'] <=> $a['rate']; });
 
         // ── Export Trigger ────────────────────────────────────────────────────
         if (isset($_GET['export'])) {
             $exportType = $_GET['export'];
             if ($exportType === 'excel') {
-                $this->exportExcel($logs);
+                $this->exportExcel($personWiseData, $filterDateFrom, $filterDateTo);
             } elseif ($exportType === 'pdf') {
-                $this->exportPdf($logs);
+                $this->exportPdf($personWiseData, $filterDateFrom, $filterDateTo);
             }
         }
 
-        // ── Build department-wise summary ─────────────────────────────────────
-        $deptSummary = [];
-        foreach ($logs as $log) {
-            $dName = $log['department_name'] ?: 'Unknown';
-            if (!isset($deptSummary[$dName])) {
-                $deptSummary[$dName] = [
-                    'dept_name'         => $dName,
-                    'total_sessions'    => 0,
-                    'total_minutes'     => 0,
-                ];
-            }
-            $deptSummary[$dName]['total_sessions'] += (int)($log['session_count'] ?? 1);
-            $deptSummary[$dName]['total_minutes'] += max(0, (int)$log['active_minutes']);
-        }
-        // Sort by dept name
-        ksort($deptSummary);
-
-        // ── Pagination Logic ──────────────────────────────────────────────────
-        $showAll = isset($_GET['show_all']) && $_GET['show_all'] == '1';
-        $totalRecords = count($logs);
-        $perPage = 15;
-        $totalPages = $totalRecords > 0 ? (int)ceil($totalRecords / $perPage) : 1;
-        $currentPage = isset($_GET['page']) ? max(1, min($totalPages, (int)$_GET['page'])) : 1;
-
-        $displayLogs = $logs;
-        if (!$showAll) {
-            $offset = ($currentPage - 1) * $perPage;
-            $displayLogs = array_slice($logs, $offset, $perPage);
-        }
-
-        $this->view("hrm/user-activity-log", [
+        $data = [
             "current_route"    => "user-activity-log",
-            "page_title"       => "User Activity Log",
+            "page_title"       => "ERP Usage & Adoption",
             "departments"      => $departments,
-            "logs"             => $displayLogs,
-            "rawLogsCount"     => $totalRecords,
-            "deptSummary"      => array_values($deptSummary),
+            "allUsers"         => $allUsers,
+            
             "filterDeptId"     => $filterDeptId,
+            "filterUserId"     => $filterUserId,
             "filterDateFrom"   => $filterDateFrom,
             "filterDateTo"     => $filterDateTo,
-            "currentPage"      => $currentPage,
-            "totalPages"       => $totalPages,
-            "showAll"          => $showAll,
-            "perPage"          => $perPage
-        ]);
+            
+            "totalUsers"       => $totalUsersCount,
+            "activeToday"      => $totalActiveUsersInPeriod,
+            "adoptionScore"    => $adoptionScore,
+            "meetingStandard"  => $meetingStandardCount,
+            "belowStandard"    => $belowStandardCount,
+            "noUsageToday"     => $usageHealth['No Usage'],
+            "avgProductiveMins"=> $avgProductiveMins,
+            
+            "hourlyLabels"     => json_encode($hourlyChartLabels),
+            "hourlyData"       => json_encode($hourlyChartData),
+            "usageHealthData"  => json_encode([
+                $usageHealth['Healthy'],
+                $usageHealth['Moderate'],
+                $usageHealth['Low Usage'],
+                $usageHealth['No Usage']
+            ]),
+            
+            "deptAdoptionRates"=> $deptAdoptionRates,
+            "attentionRequired"=> $attentionRequired,
+            "personWiseData"   => $personWiseData
+        ];
+
+        $this->view("hrm/user-activity-log", $data);
     }
 
-    // ── AJAX: Get employees by department ────────────────────────────────────
     public function employeesByDept()
     {
         header('Content-Type: application/json');
@@ -182,7 +458,6 @@ class UserActivityLogController extends Controller
         exit;
     }
 
-    // ── AJAX: Employee time summary ───────────────────────────────────────────
     public function employeeSummary()
     {
         header('Content-Type: application/json');
@@ -200,7 +475,6 @@ class UserActivityLogController extends Controller
         $dateTo = isset($_GET['date_to']) && $_GET['date_to'] !== ''
             ? $_GET['date_to'] : null;
 
-        // ── Overall summary ──────────────────────────────────────────────────
         $sqlSummary = "
             SELECT
                 u.full_name,
@@ -245,7 +519,6 @@ class UserActivityLogController extends Controller
             exit;
         }
 
-        // ── Date-wise breakdown ──────────────────────────────────────────────
         $sqlDaily = "
             SELECT
                 DATE(ual.login_time)             AS log_date,
@@ -301,145 +574,101 @@ class UserActivityLogController extends Controller
         exit;
     }
 
-    private function exportExcel($logs)
+    private function exportExcel($personWiseData, $dateFrom, $dateTo)
     {
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         
         $headerStyle = [
-            'font' => [
-                'bold' => true,
-                'color' => ['rgb' => 'FFFFFF'],
-            ],
-            'fill' => [
-                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                'startColor' => ['rgb' => '1F4E79'],
-            ],
-            'alignment' => [
-                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-            ],
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '1F4E79']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
         ];
 
-        $headers = ['SL', 'User Name', 'Email', 'Department', 'Designation', 'Role', 'First Login', 'Last Active', 'Active Duration'];
+        $headers = ['SL', 'Employee Name', 'Department', 'Days Used', 'Avg Login', 'Avg Logout', 'Avg Active Time/Day', 'Standard Met', 'Status', 'Last Active'];
         $col = 'A';
         foreach ($headers as $header) {
             $sheet->setCellValue($col . '1', $header);
             $sheet->getColumnDimension($col)->setAutoSize(true);
             $col++;
         }
-        $sheet->getStyle('A1:I1')->applyFromArray($headerStyle);
+        $sheet->getStyle('A1:J1')->applyFromArray($headerStyle);
 
         $rowNum = 2;
         $serial = 1;
-        foreach ($logs as $log) {
-            $activeMin = max(0, (int)$log['active_minutes']);
-            $durationStr = $activeMin > 0 ? intdiv($activeMin, 60) . 'h ' . ($activeMin % 60) . 'm' : '0m';
-            
-            $loginTime  = date('d M Y, h:i A', strtotime($log['login_time']));
-            $lastActive = $log['last_active_time'] ? date('d M Y, h:i A', strtotime($log['last_active_time'])) : '—';
+        foreach ($personWiseData as $p) {
+            $activeH = intdiv($p['active_time_day'], 60);
+            $activeM = $p['active_time_day'] % 60;
+            $durationStr = $activeH > 0 ? "{$activeH}h {$activeM}m" : "{$activeM}m";
+            $lastActiveDate = $p['last_login_ever'] ? date('d M Y, h:i A', strtotime($p['last_login_ever'])) : '-';
 
             $sheet->setCellValue('A' . $rowNum, $serial++);
-            $sheet->setCellValue('B' . $rowNum, $log['full_name'] ?? '—');
-            $sheet->setCellValue('C' . $rowNum, $log['email'] ?? '—');
-            $sheet->setCellValue('D' . $rowNum, $log['department_name'] ?? '—');
-            $sheet->setCellValue('E' . $rowNum, $log['designation_name'] ?? '—');
-            $sheet->setCellValue('F' . $rowNum, $log['role_name'] ?? '—');
-            $sheet->setCellValue('G' . $rowNum, $loginTime);
-            $sheet->setCellValue('H' . $rowNum, $lastActive);
-            $sheet->setCellValue('I' . $rowNum, $durationStr);
-            
+            $sheet->setCellValue('B' . $rowNum, $p['full_name']);
+            $sheet->setCellValue('C' . $rowNum, $p['department']);
+            $sheet->setCellValue('D' . $rowNum, $p['days_used'] . '/' . $p['working_days']);
+            $sheet->setCellValue('E' . $rowNum, $p['avg_login']);
+            $sheet->setCellValue('F' . $rowNum, $p['avg_logout']);
+            $sheet->setCellValue('G' . $rowNum, $durationStr);
+            $sheet->setCellValue('H' . $rowNum, $p['standard_met_days'] . ' days');
+            $sheet->setCellValue('I' . $rowNum, $p['usage_status']);
+            $sheet->setCellValue('J' . $rowNum, $lastActiveDate);
             $rowNum++;
         }
 
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="User_Activity_Log_' . date('Y-m-d_His') . '.xlsx"');
+        header('Content-Disposition: attachment;filename="ERP_Adoption_Report_' . date('Ymd_His') . '.xlsx"');
         header('Cache-Control: max-age=0');
-
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $writer->save('php://output');
         exit;
     }
 
-    private function exportPdf($logs)
+    private function exportPdf($personWiseData, $dateFrom, $dateTo)
     {
-        $dompdf = new \Dompdf\Dompdf([
-            'isHtml5ParserEnabled' => true,
-            'isRemoteEnabled' => true
-        ]);
-
-        $html = '
-        <html>
-        <head>
-            <style>
-                body { font-family: sans-serif; font-size: 11px; color: #333; }
-                .header { text-align: center; margin-bottom: 20px; }
-                .header h2 { margin: 0; color: #1F4E79; }
-                .header p { margin: 5px 0 0 0; font-size: 12px; color: #666; }
-                table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-                th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
-                th { background-color: #1F4E79; color: white; font-weight: bold; }
-                tr:nth-child(even) { background-color: #f9f9f9; }
-                .duration { font-weight: bold; color: #2e7d32; }
-                .footer { position: fixed; bottom: 0; width: 100%; text-align: right; font-size: 9px; color: #999; }
-            </style>
-        </head>
-        <body>
+        $dompdf = new \Dompdf\Dompdf(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
+        
+        $html = '<html><head><style>
+            body { font-family: sans-serif; font-size: 11px; color: #333; }
+            .header { text-align: center; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+            th { background-color: #1F4E79; color: white; }
+        </style></head><body>
             <div class="header">
-                <h2>User Activity Log</h2>
-                <p>Generated on ' . date('d M Y, h:i A') . '</p>
+                <h2>ERP Usage & Adoption Report</h2>
+                <p>Period: ' . $dateFrom . ' to ' . $dateTo . '</p>
             </div>
             <table>
-                <thead>
-                    <tr>
-                        <th style="width: 5%;">SL</th>
-                        <th style="width: 18%;">User Name</th>
-                        <th style="width: 15%;">Email</th>
-                        <th style="width: 12%;">Department</th>
-                        <th style="width: 12%;">Designation</th>
-                        <th style="width: 10%;">Role</th>
-                        <th style="width: 13%;">First Login</th>
-                        <th style="width: 13%;">Last Active</th>
-                        <th style="width: 10%;">Duration</th>
-                    </tr>
-                </thead>
-                <tbody>';
+                <thead><tr>
+                    <th>SL</th><th>Employee</th><th>Department</th><th>Days Used</th>
+                    <th>Avg Login</th><th>Avg Logout</th><th>Active Time/Day</th><th>Status</th><th>Last Active</th>
+                </tr></thead><tbody>';
 
         $serial = 1;
-        if (empty($logs)) {
-            $html .= '<tr><td colspan="9" style="text-align: center;">No activity records found.</td></tr>';
-        } else {
-            foreach ($logs as $log) {
-                $activeMin = max(0, (int)$log['active_minutes']);
-                $durationStr = $activeMin > 0 ? intdiv($activeMin, 60) . 'h ' . ($activeMin % 60) . 'm' : '0m';
-                
-                $loginTime  = date('d M Y, h:i A', strtotime($log['login_time']));
-                $lastActive = $log['last_active_time'] ? date('d M Y, h:i A', strtotime($log['last_active_time'])) : '—';
-                
-                $html .= '
-                <tr>
-                    <td>' . $serial++ . '</td>
-                    <td><b>' . htmlspecialchars($log['full_name'] ?? '—') . '</b></td>
-                    <td>' . htmlspecialchars($log['email'] ?? '—') . '</td>
-                    <td>' . htmlspecialchars($log['department_name'] ?? '—') . '</td>
-                    <td>' . htmlspecialchars($log['designation_name'] ?? '—') . '</td>
-                    <td>' . htmlspecialchars($log['role_name'] ?? '—') . '</td>
-                    <td>' . $loginTime . '</td>
-                    <td>' . $lastActive . '</td>
-                    <td class="duration">' . $durationStr . '</td>
-                </tr>';
-            }
+        foreach ($personWiseData as $p) {
+            $activeH = intdiv($p['active_time_day'], 60);
+            $activeM = $p['active_time_day'] % 60;
+            $durationStr = $activeH > 0 ? "{$activeH}h {$activeM}m" : "{$activeM}m";
+            $lastActiveDate = $p['last_login_ever'] ? date('d M Y, h:i A', strtotime($p['last_login_ever'])) : '-';
+            
+            $html .= '<tr>
+                <td>' . $serial++ . '</td>
+                <td>' . htmlspecialchars($p['full_name']) . '</td>
+                <td>' . htmlspecialchars($p['department']) . '</td>
+                <td>' . $p['days_used'] . '/' . $p['working_days'] . '</td>
+                <td>' . $p['avg_login'] . '</td>
+                <td>' . $p['avg_logout'] . '</td>
+                <td>' . $durationStr . '</td>
+                <td>' . $p['usage_status'] . '</td>
+                <td>' . $lastActiveDate . '</td>
+            </tr>';
         }
-
-        $html .= '
-                </tbody>
-            </table>
-        </body>
-        </html>';
+        $html .= '</tbody></table></body></html>';
 
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', 'landscape');
         $dompdf->render();
-        $dompdf->stream("User_Activity_Log_" . date('Ymd_His') . ".pdf", ["Attachment" => true]);
+        $dompdf->stream("ERP_Adoption_Report_" . date('Ymd_His') . ".pdf", ["Attachment" => true]);
         exit;
     }
 }

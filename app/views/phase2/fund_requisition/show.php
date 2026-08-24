@@ -6,7 +6,7 @@ $base          = $GLOBALS['base_url'];
 $isOwner    = ($req['requested_by'] == $sessionUserId);
 $isAccounts = in_array($sessionRoleId, [1, 6, 30]);
 $isAdmin    = in_array($sessionRoleId, [1, 3]);
-$canApprove = in_array($sessionRoleId, [1, 3, 20]);
+$canApprove = in_array($sessionRoleId, [1, 3, 33]) || (in_array($sessionRoleId, [20, 32]) && $req['amount'] <= 100000);
 $isVerified = !empty($req['accounts_settlement_verified']);
 
 $statusColors = [
@@ -444,10 +444,10 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                                 </div>
                                 <div>
                                     <h6 class="fw-bold fs-13 mb-0 text-dark">
-                                        <?php echo $req['status'] === 'pending' ? 'Pending Management Approval' : 'Partially Approved'; ?>
+                                        <?php echo $req['status'] === 'pending' ? 'Pending Management / Operation Head Approval' : 'Partially Approved'; ?>
                                     </h6>
                                     <p class="fs-12 text-muted mb-0 mt-1">
-                                        <?php echo $req['status'] === 'pending' ? 'Awaiting approval from Management / Operations' : 'Awaiting approval for the remaining balance'; ?>
+                                        <?php echo $req['status'] === 'pending' ? 'Awaiting approval from Management (Any Amount) or Operation Head (Up to 1 Lakh BDT)' : 'Awaiting approval for the remaining balance'; ?>
                                     </p>
                                     
                                     <?php if ($req['status'] !== 'pending'): ?>
@@ -458,7 +458,7 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
 
                                     <?php if ($canApprove && ($req['amount'] - ($req['approved_amount'] ?? 0)) > 0): ?>
                                         <button class="btn btn-sm btn-primary mt-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#approveModal">
-                                            <i class="fa-solid fa-stamp me-1"></i> Management Approve / Reject
+                                            <i class="fa-solid fa-stamp me-1"></i> Management / Operation Head Approve
                                         </button>
                                     <?php endif; ?>
                                 </div>
@@ -467,8 +467,8 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                                     <i class="fa-solid fa-hourglass-start"></i>
                                 </div>
                                 <div>
-                                    <h6 class="fw-bold fs-13 mb-0 text-muted">Pending Management Approval</h6>
-                                    <p class="fs-12 text-muted mb-0 mt-1">Will be enabled after Department Head approval</p>
+                                    <h6 class="fw-bold fs-13 mb-0 text-muted">Pending Management / Operation Head Approval</h6>
+                                    <p class="fs-12 text-muted mb-0 mt-1">Will be enabled after Department Head approval. (Operation Head: Up to 1 Lakh BDT)</p>
                                 </div>
                             <?php endif; ?>
                         </div>

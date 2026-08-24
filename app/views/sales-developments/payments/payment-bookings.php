@@ -164,21 +164,35 @@ if (!$is_booking_fully_paid) {
                             </select>
                         </div>
 
+                        <!-- Company Bank Details -->
+                        <div class="col-lg-6 extra-input" id="companyBankFields" style="display:none;">
+                            <div class="form-group mb-3">
+                                <label class="form__input-title">Transfer To / Company Bank *</label>
+                                <div class="input-group">
+                                    <select name="bank_id" id="bankSelect" class="form-select">
+                                        <option value="">-- Loading banks... --</option>
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary" id="addCompanyBankBtn" title="Add Company Bank"><i class="fa-light fa-plus"></i></button>
+                                    <button type="button" class="btn btn-outline-secondary" id="editCompanyBankBtn" title="Edit Selected Bank" style="display:none;"><i class="fa-light fa-pen-to-square"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Bank Details -->
                         <div class="col-lg-6 extra-input" id="bankFields" style="display:none;">
                             <div class="form__input-title">
 
-                                <label class="form__input-title">Bank Name - Branch*</label>
+                                <label class="form__input-title">Transfer From / Client Bank *</label>
                             </div>
-                            <input type="text" name="bank_name" class="form-control" placeholder="Enter Bank Name">
+                            <input type="text" name="bank_name" class="form-control" placeholder="Client's Bank Name">
                         </div>
 
                         <div class="col-lg-6 extra-input" id="bankAccountFields" style="display:none;">
                             <div class="form__input-title">
 
-                                <label class="form__input-title">Bank Account No *</label>
+                                <label class="form__input-title">Client Bank A/C No. (Optional)</label>
                             </div>
-                            <input type="text" name="bank_account_no" class="form-control" placeholder="Enter Account Number">
+                            <input type="text" name="bank_account_no" class="form-control" placeholder="Account Number">
                         </div>
 
                         <!-- Cheque Details -->
@@ -435,12 +449,14 @@ if (!$is_booking_fully_paid) {
 
             // Show relevant fields
             if (method === 'bank') {
+                document.querySelector('#companyBankFields').style.display = 'block';
                 document.querySelector('#bankFields').style.display = 'block';
                 document.querySelector('#bankFields input').setAttribute('required', 'required');
 
                 document.querySelector('#bankAccountFields').style.display = 'block';
                 document.querySelector('#bankAccountFields input').setAttribute('required', 'required');
             } else if (method === 'cheque') {
+                document.querySelector('#companyBankFields').style.display = 'block';
                 document.querySelector('#bankFields').style.display = 'block';
                 document.querySelector('#bankFields input').setAttribute('required', 'required');
                 document.querySelector('#chequeFields').style.display = 'block';
@@ -451,4 +467,164 @@ if (!$is_booking_fully_paid) {
             }
         });
     });
+</script>
+
+<!-- Company Bank Add/Edit Modal -->
+<div class="modal fade" id="companyBankModal" tabindex="-1" aria-labelledby="companyBankModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-primary text-white border-0 py-3">
+                <h5 class="modal-title fw-bold text-white" id="companyBankModalLabel">
+                    <i class="fa-light fa-building-columns me-2"></i><span id="companyBankModalTitle">Add Company Bank</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <form id="companyBankForm">
+                    <input type="hidden" name="id" id="cb_id" value="">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fs-14 fw-semibold text-dark">Bank Name <span class="text-danger">*</span></label>
+                            <input type="text" name="bank_name" id="cb_bank_name" class="form-control" required placeholder="e.g. Dutch Bangla Bank">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fs-14 fw-semibold text-dark">Account Name</label>
+                            <input type="text" name="account_name" id="cb_account_name" class="form-control" placeholder="e.g. TPHL">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fs-14 fw-semibold text-dark">Account Number</label>
+                            <input type="text" name="account_number" id="cb_account_number" class="form-control" placeholder="e.g. 101.XXX.XXXXX">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 pb-4 px-4 bg-light">
+                <button type="button" class="btn btn-light border shadow-sm px-4 rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="saveCompanyBankBtn" class="btn btn-primary px-4 rounded-pill shadow-sm"><i class="fa-light fa-save me-1"></i>Save Bank</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Load banks on page load
+    fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
+        .then(r => r.json())
+        .then(data => {
+            window.companyBanksList = data.banks || [];
+            const sel = document.getElementById('bankSelect');
+            if (!sel) return;
+            sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
+            window.companyBanksList.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
+                sel.appendChild(opt);
+            });
+        })
+        .catch(() => {
+            const sel = document.getElementById('bankSelect');
+            if (sel) sel.innerHTML = '<option value="">Bank Registry unavailable</option>';
+        });
+
+    // Company Bank Add/Edit Logic
+    const bankSelect = document.getElementById('bankSelect');
+    const editCompanyBankBtn = document.getElementById('editCompanyBankBtn');
+    if (bankSelect && editCompanyBankBtn) {
+        bankSelect.addEventListener('change', function() {
+            editCompanyBankBtn.style.display = this.value ? 'inline-block' : 'none';
+        });
+    }
+
+    document.getElementById('addCompanyBankBtn')?.addEventListener('click', function() {
+        document.getElementById('companyBankModalTitle').textContent = 'Add Company Bank';
+        document.getElementById('companyBankForm').reset();
+        document.getElementById('cb_id').value = '';
+        new bootstrap.Modal(document.getElementById('companyBankModal')).show();
+    });
+
+    document.getElementById('editCompanyBankBtn')?.addEventListener('click', function() {
+        const bankId = document.getElementById('bankSelect').value;
+        if (!bankId) return;
+        const bank = (window.companyBanksList || []).find(b => b.id == bankId);
+        if (bank) {
+            document.getElementById('companyBankModalTitle').textContent = 'Edit Company Bank';
+            document.getElementById('cb_id').value = bank.id;
+            document.getElementById('cb_bank_name').value = bank.bank_name || '';
+            document.getElementById('cb_account_name').value = bank.account_name || '';
+            document.getElementById('cb_account_number').value = bank.account_number || '';
+            new bootstrap.Modal(document.getElementById('companyBankModal')).show();
+        }
+    });
+
+    document.getElementById('saveCompanyBankBtn')?.addEventListener('click', function() {
+        const form = document.getElementById('companyBankForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+        
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-light fa-spinner fa-spin me-1"></i>Saving...';
+        btn.disabled = true;
+
+        const formData = new FormData(form);
+        const isEdit = formData.get('id') !== '';
+        const endpoint = isEdit ? '/update-company-bank-ajax' : '/store-company-bank-ajax';
+
+        fetch('<?= $GLOBALS['base_url'] ?>' + endpoint, {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.success) {
+                fetch('<?= $GLOBALS['base_url'] ?>' + '/get-company-banks')
+                    .then(r => r.json())
+                    .then(data => {
+                        window.companyBanksList = data.banks || [];
+                        const sel = document.getElementById('bankSelect');
+                        if (sel) {
+                            sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
+                            window.companyBanksList.forEach(b => {
+                                const opt = document.createElement('option');
+                                opt.value = b.id;
+                                opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
+                                sel.appendChild(opt);
+                            });
+                            const savedId = isEdit ? formData.get('id') : (res.id || '');
+                            if (savedId) {
+                                sel.value = savedId;
+                                sel.dispatchEvent(new Event('change'));
+                            }
+                        }
+                    });
+                bootstrap.Modal.getInstance(document.getElementById('companyBankModal')).hide();
+                if (typeof toastr !== 'undefined') {
+                    toastr.success(res.message || 'Bank saved successfully');
+                } else {
+                    alert(res.message || 'Bank saved successfully');
+                }
+            } else {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error(res.message || 'Error saving bank');
+                } else {
+                    alert(res.message || 'Error saving bank');
+                }
+            }
+        })
+        .catch(err => {
+            if (typeof toastr !== 'undefined') {
+                toastr.error('Network error. Please try again.');
+            } else {
+                alert('Network error. Please try again.');
+            }
+        })
+        .finally(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    });
+
 </script>

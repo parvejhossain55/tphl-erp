@@ -49,7 +49,7 @@ $stmt->bind_param(
     $data['created_by']
 );
     if ($stmt->execute()) {
-        return true;
+        return $this->db->insert_id;
     } else {
         echo "ERROR: " . $this->db->error;
         return false;

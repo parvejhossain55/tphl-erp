@@ -79,6 +79,45 @@ class Con_PurchaseOrderController extends Controller
         $existingReceivingQuery->execute();
         $hasReceiving = $existingReceivingQuery->get_result()->fetch_assoc()['count'] > 0;
 
+        // Fetch vendor selection data (attachment & prepared by)
+        $vendorSelectionData = null;
+        if (!empty($po['request_id']) && !empty($po['vendor_id'])) {
+            $cstQuery = $this->db->prepare("
+                SELECT q.attachment, qc.prepared_by, u.full_name AS selector_name
+                FROM quotations q
+                LEFT JOIN quotation_comparisons qc ON qc.request_id = q.request_id
+                LEFT JOIN users u ON u.id = qc.prepared_by
+                WHERE q.request_id = ? AND q.vendor_id = ?
+                LIMIT 1
+            ");
+            $cstQuery->bind_param('ii', $po['request_id'], $po['vendor_id']);
+            $cstQuery->execute();
+            $vendorSelectionData = $cstQuery->get_result()->fetch_assoc();
+        }
+
+        // Fetch the Comparative Statement (CST) matrix for this PR
+        require_once __DIR__ . '/../../models/Con_Quotation.php';
+        $quotModel = new \Con_Quotation($this->db);
+        $cstMatrix = $quotModel->buildComparison($po['request_id']);
+
+        // Fetch Negotiation Notes
+        $notesQuery = $this->db->prepare("
+            SELECT n.*, u.full_name AS author_name, u.role_id AS author_role
+            FROM po_negotiation_notes n
+            JOIN users u ON u.id = n.user_id
+            WHERE n.purchase_order_id = ?
+            ORDER BY n.created_at DESC
+        ");
+
+        if (!$notesQuery) {
+            // This will print out exactly which column or table is missing
+            die("Database Error in fetching negotiation notes: " . $this->db->error);
+        }
+
+        $notesQuery->bind_param('i', $id);
+        $notesQuery->execute();
+        $negotiationNotes = $notesQuery->get_result()->fetch_all(MYSQLI_ASSOC);
+
         $this->view('phase2/purchase-orders/show-purchase-order', [
             'current_route'  => 'con-purchase-orders',
             'page_title'     => 'Purchase Order #' . $id,
@@ -98,6 +137,9 @@ class Con_PurchaseOrderController extends Controller
             'currentRoleId'  => $currentRoleId,
             'linkedBoq'      => $linkedBoq,
             'hasReceiving'   => $hasReceiving,
+            'vendorSelectionData' => $vendorSelectionData,
+            'cstMatrix'      => $cstMatrix,
+            'negotiationNotes' => $negotiationNotes,
         ]);
     }
 
@@ -291,6 +333,50 @@ class Con_PurchaseOrderController extends Controller
         }
 
         header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
+        exit;
+    }
+
+    // =========================================================================
+    // ADD NEGOTIATION NOTE
+    // =========================================================================
+
+    public function addNote($poId)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $userId = (int)($_SESSION['user']['id']   ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        // Allow Purchase Head (17, 23, 31) and QC (24)
+        if (!in_array($roleId, [17, 23, 31, 24])) {
+            setError('You are not authorized to add negotiation notes.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");
+            exit;
+        }
+
+        $po = $this->poModel->find($poId);
+        if (!$po) {
+            setError('Purchase Order not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-orders");
+            exit;
+        }
+
+        $noteText = trim($_POST['note_text'] ?? '');
+        if (empty($noteText)) {
+            setError('Note cannot be empty.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");
+            exit;
+        }
+
+        $stmt = $this->db->prepare("INSERT INTO po_negotiation_notes (purchase_order_id, request_id, user_id, note_text) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param('iiis', $poId, $po['request_id'], $userId, $noteText);
+        if ($stmt->execute()) {
+            setSuccess('Observation note added successfully.');
+        } else {
+            setError('Failed to add note: ' . $stmt->error);
+        }
+
+        header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");
         exit;
     }
 }

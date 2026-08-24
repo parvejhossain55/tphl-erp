@@ -144,6 +144,31 @@ $vendorIds = array_keys($vendors);
                     </form>
 
                     <?php endif; ?>
+
+                    <!-- Observation Notes Panel -->
+                    <?php if (!empty($negotiationNotes)): ?>
+                    <div class="mt-4 pt-3 border-top">
+                        <h6 class="fw-bold mb-3" style="color:#6d28d9"><i class="fal fa-comments me-2"></i>Rate Observation Notes (From PO Review)</h6>
+                        <div class="row">
+                            <?php foreach ($negotiationNotes as $note): ?>
+                                <div class="col-md-6 mb-3">
+                                    <div class="p-3" style="background:rgba(139,92,246,.04); border:1px solid rgba(139,92,246,.2); border-radius:10px;">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div class="fw-bold" style="font-size:12px; color:#5b21b6">
+                                                <i class="fal fa-user-circle me-1"></i><?= htmlspecialchars($note['author_name']) ?>
+                                            </div>
+                                            <div class="text-muted" style="font-size:10px;">
+                                                <i class="fal fa-clock me-1"></i><?= date('d M Y, h:i A', strtotime($note['created_at'])) ?>
+                                            </div>
+                                        </div>
+                                        <div style="font-size:13px; color:#4b5563; line-height:1.5; white-space:pre-wrap;"><?= htmlspecialchars($note['note_text']) ?></div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
                 </div>
             </div>
         </div>

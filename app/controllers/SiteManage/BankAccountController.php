@@ -92,5 +92,53 @@ public function delete(){
         }
 }
 
+    public function getCompanyBanksAjax()
+    {
+        header('Content-Type: application/json');
+        $accounts = $this->bankModel->getAll();
+        echo json_encode(['success' => true, 'banks' => $accounts]);
+        exit;
+    }
+
+    public function storeCompanyBankAjax()
+    {
+        header('Content-Type: application/json');
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $data = [
+            'bank_name' => $_POST['bank_name'] ?? '',
+            'account_name' => $_POST['account_name'] ?? '',
+            'account_number' => $_POST['account_number'] ?? '',
+            'status'  => $_POST['status'] ?? 'active',
+            'created_by'  => $_SESSION['user']['id'],
+        ];
+        $insertId = $this->bankModel->create($data);
+        if ($insertId) {
+            echo json_encode(['success' => true, 'message' => 'Created successfully', 'id' => $insertId]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to create']);
+        }
+        exit;
+    }
+
+    public function updateCompanyBankAjax()
+    {
+        header('Content-Type: application/json');
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $data = [
+            'id' => $_POST['id'] ?? 0,
+            'bank_name' => $_POST['bank_name'] ?? '',
+            'account_name' => $_POST['account_name'] ?? '',
+            'account_number' => $_POST['account_number'] ?? '',
+            'status' => $_POST['status'] ?? 'active',
+            'created_by' => $_SESSION['user']['id'],
+        ];
+        if ($this->bankModel->update($data)) {
+            echo json_encode(['success' => true, 'message' => 'Updated successfully']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Update failed']);
+        }
+        exit;
+    }
 
 }
+

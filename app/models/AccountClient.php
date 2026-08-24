@@ -1778,6 +1778,7 @@ ORDER BY lb.booking_date DESC
                 u.full_name as created_by_name,
                 uv.full_name as verified_by_name,
                 uh.full_name as handover_to_name,
+                uu.full_name as updated_by_name,
                 es.emi_no,
                 es.emi_amount,
                 es.due_emi_amount,
@@ -1816,7 +1817,9 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'shop_service_charge' THEN 'Shop Service Charge'
                     ELSE 'Other Payment'
                 END as payment_details,
-                b.bank_name as bank_display_name
+                cb.bank_name as company_bank_name,
+                cb.account_name as company_account_name,
+                cb.account_number as company_account_number
             FROM lead_payments lp
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
@@ -1825,11 +1828,16 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN users u ON u.id = lp.created_by
             LEFT JOIN users uv ON uv.id = lp.verified_by
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
-            LEFT JOIN banks b ON b.id = lp.bank_id
+            LEFT JOIN company_bank_accounts cb ON cb.id = lp.bank_id
             LEFT JOIN users uh ON uh.id = lp.handover_to
+            LEFT JOIN users uu ON uu.id = lp.updated_by
             WHERE lp.is_trashed = 0 AND lp.booking_id = ?
             ORDER BY lp.created_at DESC, lp.id DESC
         ");
+
+        if (!$stmt) {
+            die("Database query prepare failed: (" . $this->db->errno . ") " . $this->db->error);
+        }
 
         $stmt->bind_param("i", $bookingId);
         $stmt->execute();
@@ -1887,7 +1895,6 @@ ORDER BY lb.booking_date DESC
 
         return $transactions;
     }
-
 
     /**
      * Get filtered transactions by booking ID with date filter
@@ -2095,15 +2102,20 @@ ORDER BY lb.booking_date DESC
                     payment_date = ?,
                     transaction_ref = ?,
                     bank_name = ?,
+                    bank_id = ?,
                     bank_account_no = ?,
                     cheque_no = ?,
                     online_type = ?,
-                    attachment_paths = ?
+                    attachment_paths = ?,
+                    updated_by = ?
                 WHERE id = ?
             ");
 
+            $updatedBy = $_SESSION['user']['id'] ?? null;
+            $bankId = !empty($transactionData['bank_id']) ? (int)$transactionData['bank_id'] : null;
+
             $stmt->bind_param(
-                "sdddsssssssssi",  // 14: s d d d s s s s s s s s s i
+                "sdddsssssisssiii",  // 16
                 $newPaymentType,
                 $newAmount,
                 $landShareAmount,
@@ -2113,10 +2125,12 @@ ORDER BY lb.booking_date DESC
                 $transactionData['payment_date'],
                 $transactionData['transaction_ref'],
                 $transactionData['bank_name'],
+                $bankId,
                 $transactionData['bank_account_no'],
                 $transactionData['cheque_no'],
                 $transactionData['online_type'],
                 $attachmentPathsJson,
+                $updatedBy,
                 $paymentId
             );
 
@@ -2231,13 +2245,17 @@ ORDER BY lb.booking_date DESC
                    es.emi_no,
                    es.due_emi_amount,
                    es.service_fee as emi_service_fee,
-                   es.emi_amount as emi_schedule_amount
+                   es.emi_amount as emi_schedule_amount,
+                   uv.full_name as verified_by_name,
+                   uu.full_name as updated_by_name
             FROM lead_payments lp
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
             LEFT JOIN projects p ON p.id = lb.project_id
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
+            LEFT JOIN users uv ON uv.id = lp.verified_by
+            LEFT JOIN users uu ON uu.id = lp.updated_by
             WHERE lp.id = ?
         ");
 
@@ -2874,12 +2892,14 @@ ORDER BY lb.booking_date DESC
                     payment_date = ?,
                     transaction_ref = ?,
                     bank_name = ?,
+                    bank_id = ?,
                     bank_account_no = ?,
                     cheque_no = ?,
                     online_type = ?,
                     attachment_paths = ?,
                     handover_to = COALESCE(?, handover_to),
-                    handover_status = COALESCE(?, handover_status)
+                    handover_status = COALESCE(?, handover_status),
+                    updated_by = ?
                 WHERE id = ?
             ");
 
@@ -2887,7 +2907,7 @@ ORDER BY lb.booking_date DESC
                 throw new Exception("Prepare failed: " . $this->db->error);
             }
 
-            // Extract to plain variables — bind_param needs pass-by-reference
+            // Extract to plain variables
             $u_paymentType  =         $transactionData['payment_type'];
             $u_amount       = (float) $finalAmount;
             $u_landShare    = (float) $landShareAmount;
@@ -2896,10 +2916,12 @@ ORDER BY lb.booking_date DESC
             $u_date         =         $transactionData['payment_date']     ?? date('Y-m-d');
             $u_txRef        =         $transactionData['transaction_ref']  ?? '';
             $u_bankName     =         $transactionData['bank_name']        ?? '';
+            $u_bankId       = !empty($transactionData['bank_id']) ? (int)$transactionData['bank_id'] : null;
             $u_bankAccNo    =         $transactionData['bank_account_no']  ?? '';
             $u_chequeNo     =         $transactionData['cheque_no']        ?? '';
             $u_onlineType   =         $transactionData['online_type']      ?? '';
             $u_paymentId    = (int)   $transactionData['payment_id'];
+            $u_updatedBy    =         $_SESSION['user']['id'] ?? null;
             
             // Only update handover if it actually changed
             $u_handoverTo = null;
@@ -2915,7 +2937,7 @@ ORDER BY lb.booking_date DESC
             }
 
             $stmt->bind_param(
-                "sddsssssssssisi",
+                "sddsssssisisssisii",
                 $u_paymentType,
                 $u_amount,
                 $u_landShare,
@@ -2924,12 +2946,14 @@ ORDER BY lb.booking_date DESC
                 $u_date,
                 $u_txRef,
                 $u_bankName,
+                $u_bankId,
                 $u_bankAccNo,
                 $u_chequeNo,
                 $u_onlineType,
                 $attachmentPathsJson,
                 $u_handoverTo,
                 $u_handoverStat,
+                $u_updatedBy,
                 $u_paymentId
             );
 

@@ -35,7 +35,7 @@ $show_breadcrumb = true;
                     <!-- Project -->
                     <div class="col-lg-6">
                         <label class="form__input-title">Project</label>
-                        <select name="project_id" id="projectSelect" class="form-select">
+                        <select name="project_id" id="projectSelect" class="form-select select2-no-scroll" data-placeholder="Select Project">
                             <option value="">Select Project</option>
                             <?php foreach ($projects as $project): ?>
                                 <?php 
@@ -60,7 +60,7 @@ $show_breadcrumb = true;
                     <!-- Flat -->
                     <div class="col-lg-6">
                         <label class="form__input-title">Flat / Unit</label>
-                        <select id="flatSelect" name="flat_id" class="form-select" data-live-search="true">
+                        <select id="flatSelect" name="flat_id" class="form-select select2-no-scroll" data-placeholder="Select Flat">
 
                             <option value="">Select Flat</option>
                         </select>
@@ -80,8 +80,8 @@ $show_breadcrumb = true;
 
                     <!-- Follow Up Type -->
                     <div class="col-lg-6">
-                        <label class="form__input-title">Follow Up Type*</label>
-                        <select name="follow_up_type" class="form-select" required>
+                        <label class="form__input-title">Follow Up Type</label>
+                        <select name="follow_up_type" class="form-select">
                             <option value="">Select Type</option>
                             <option value="Inbound Call">Inbound Call</option>
                             <option value="Phone Call">Phone Call</option>

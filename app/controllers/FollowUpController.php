@@ -118,7 +118,7 @@ public function store()
         'flat_id' => $flat_id,
         'follow_up_date' => $_POST['follow_up_date'] ?? null,
         'follow_up_time' => $_POST['follow_up_time'] ?? null,
-        'follow_up_type' => $_POST['follow_up_type'] ?? 'call',
+        'follow_up_type' => !empty($_POST['follow_up_type']) ? $_POST['follow_up_type'] : null,
         'status' => $_POST['status'] ?? 'pending',
         'discussion_note' => $_POST['discussion_note'] ?? null,
         'next_follow_up_date' => $_POST['next_follow_up_date'] ?? null,
@@ -157,14 +157,24 @@ public function store()
     $created = $this->followUpModel->create($followUpData);
 
     $leadId = $_POST['lead_id'];
+    $isAjax = !empty($_POST['is_ajax']);
+
     if ($created) {
         setSuccess("Follow-up created successfully!");
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'success', 'message' => 'Follow-up created successfully!']);
+            exit;
+        }
     } else {
         $dbError = $_SESSION['flash_error'] ?? '';
-        if (!empty($dbError)) {
-            setError("Failed to create follow-up! DB Error: " . $dbError);
-        } else {
-            setError("Failed to create follow-up!");
+        $errorMsg = !empty($dbError) ? "Failed to create follow-up! DB Error: " . $dbError : "Failed to create follow-up!";
+        setError($errorMsg);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => $errorMsg]);
+            exit;
         }
     }
 
@@ -200,8 +210,8 @@ public function store()
             'lead_id' => (int)$_POST['lead_id'],
             'flat_id' => $flatId,   // ✅ NULL or flats.id only
             'follow_up_date' => $_POST['follow_up_date'],
-            'follow_up_time' => $_POST['follow_up_time'] ?: null,
-            'follow_up_type' => $_POST['follow_up_type'],
+            'follow_up_time' => !empty($_POST['follow_up_time']) ? $_POST['follow_up_time'] : null,
+            'follow_up_type' => !empty($_POST['follow_up_type']) ? $_POST['follow_up_type'] : null,
             'status' => $_POST['status'] ?? 'pending',
             'discussion_note' => $_POST['discussion_note'] ?? null,
             'next_follow_up_date' => $_POST['next_follow_up_date'] ?: null,
@@ -239,6 +249,34 @@ public function store()
     }
 
 
+    public function getFollowUpHistoryAjax($leadId)
+    {
+        if (ob_get_length()) ob_clean();
+        
+        $sql = "SELECT f.*, p.name as project_name, fl.flat_name, u.full_name as agent_name, l.full_name as lead_name
+                FROM lead_follow_ups f
+                LEFT JOIN projects p ON f.project_id = p.id
+                LEFT JOIN flats fl ON f.flat_id = fl.id
+                LEFT JOIN users u ON f.created_by = u.id
+                LEFT JOIN leads l ON f.lead_id = l.id
+                WHERE f.lead_id = ? AND f.deleted_at IS NULL
+                ORDER BY f.id DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("i", $leadId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $followUps = $result->fetch_all(MYSQLI_ASSOC);
+        
+        header('Content-Type: application/json');
+        
+        $json = json_encode($followUps, JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($json === false) {
+            echo json_encode(['error' => 'JSON encoding failed: ' . json_last_error_msg()]);
+        } else {
+            echo $json;
+        }
+        exit;
+    }
 
     // Delete Employee
     public function delete($id) {}

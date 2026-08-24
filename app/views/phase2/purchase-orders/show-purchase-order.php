@@ -345,6 +345,83 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
 
   <!-- Right: Approval Panel -->
   <div class="col-xl-4">
+
+    <!-- Vendor Selection Info -->
+    <?php $vendorSelectionData = $vendorSelectionData ?? null; ?>
+    <?php if ($vendorSelectionData): ?>
+    <div class="po-panel" style="border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.03)">
+      <div class="po-panel-title">
+        <div class="po-dot" style="background:#3b82f6"></div>
+        Vendor Selection Details
+      </div>
+      <div style="font-size:12px;margin-bottom:8px">
+        <span style="color:var(--text-muted)">Selected By:</span>
+        <span style="font-weight:700;color:var(--text-color)"><?= htmlspecialchars($vendorSelectionData['selector_name'] ?? 'Unknown') ?></span>
+      </div>
+      <?php if (!empty($vendorSelectionData['attachment'])): ?>
+      <div>
+        <a href="<?= $base_url ?>/public/uploads/vendor_quotation/<?= htmlspecialchars($vendorSelectionData['attachment']) ?>" target="_blank"
+          style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;background:rgba(59,130,246,.1);color:#2563eb;font-size:11px;font-weight:700;text-decoration:none;margin-bottom:8px">
+          <i class="fal fa-paperclip"></i> View Quotation Attachment
+        </a>
+      </div>
+      <?php else: ?>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px"><i class="fal fa-info-circle me-1"></i> No attachment provided.</div>
+      <?php endif; ?>
+
+      <?php if (isset($cstMatrix) && !empty($cstMatrix['vendors'])): ?>
+      <div>
+        <button type="button" class="btn btn-sm w-100" style="background:rgba(59,130,246,.15);color:#1d4ed8;border:1px solid rgba(59,130,246,.3);border-radius:8px;font-size:11px;font-weight:700;padding:6px" data-bs-toggle="modal" data-bs-target="#cstMatrixModal">
+          <i class="fal fa-table"></i> View CST Matrix
+        </button>
+      </div>
+      <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
+    <!-- Negotiation / Observation Notes Panel -->
+    <?php if (in_array((int)$currentRoleId, [17, 23, 24, 31]) || !empty($negotiationNotes)): ?>
+    <div class="po-panel" style="border-color:rgba(139,92,246,.3);background:rgba(139,92,246,.03)">
+      <div class="po-panel-title">
+        <div class="po-dot" style="background:#8b5cf6"></div>
+        Rate Observation Notes
+      </div>
+
+      <!-- Notes List -->
+      <?php if (!empty($negotiationNotes)): ?>
+        <div style="max-height: 250px; overflow-y: auto; margin-bottom: 15px; padding-right: 5px;">
+          <?php foreach ($negotiationNotes as $note): ?>
+            <div style="background:#fff;border:1px solid rgba(139,92,246,.2);border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 2px 4px rgba(0,0,0,.02)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+                <div style="font-size:11px;font-weight:700;color:#6d28d9">
+                  <i class="fal fa-user-circle me-1"></i><?= htmlspecialchars($note['author_name']) ?>
+                </div>
+                <div style="font-size:9px;color:var(--text-muted)">
+                  <?= date('d M, h:i A', strtotime($note['created_at'])) ?>
+                </div>
+              </div>
+              <div style="font-size:12px;color:#4b5563;white-space:pre-wrap;line-height:1.4"><?= htmlspecialchars($note['note_text']) ?></div>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      <?php else: ?>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:15px;text-align:center"><i class="fal fa-comment-alt-slash me-1"></i> No observation notes yet.</div>
+      <?php endif; ?>
+
+      <!-- Add Note Form (Visible to PH and QC) -->
+      <?php if (in_array((int)$currentRoleId, [17, 23, 24, 31])): ?>
+        <form action="<?= $base_url ?>/con-purchase-order-note/<?= $po['id'] ?>" method="POST">
+          <div class="mb-2">
+            <textarea name="note_text" class="form-control" rows="2" placeholder="Write observation / rate negotiation note..." required style="font-size:12px;border-radius:10px;border-color:rgba(139,92,246,.3)"></textarea>
+          </div>
+          <button type="submit" class="btn btn-sm w-100" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);color:#fff;border-radius:8px;font-size:11px;font-weight:700;padding:6px">
+            <i class="fal fa-paper-plane me-1"></i> Submit Note
+          </button>
+        </form>
+      <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
     <div class="po-panel" style="<?= !$fullyApproved ? 'border-color:rgba(245,158,11,.3)' : 'border-color:rgba(16,185,129,.3)' ?>">
       <div class="po-panel-title">
         <div class="po-dot" style="background:var(--clr-theme-secondary)"></div>
@@ -783,3 +860,101 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 </style>
+
+<!-- CST Matrix Modal -->
+<?php if (isset($cstMatrix) && !empty($cstMatrix['vendors'])): ?>
+<div class="modal fade" id="cstMatrixModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold" style="color:var(--clr-theme-primary)">
+          <i class="fal fa-columns me-2"></i>Comparative Statement (CST) Matrix
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <?php
+        $materials = $cstMatrix['materials'] ?? [];
+        $vendors   = $cstMatrix['vendors']   ?? [];
+        $matrix    = $cstMatrix['matrix']    ?? [];
+        $totals    = $cstMatrix['totals']    ?? [];
+        $vendorIds = array_keys($vendors);
+        $selectedVendorId = $po['vendor_id'];
+        ?>
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle text-center" style="font-size:12px">
+            <thead class="table-dark">
+              <tr>
+                <th class="text-start" style="width:5%;">#</th>
+                <th class="text-start" style="width:25%;">Material</th>
+                <th style="width:10%;">PR Qty</th>
+                <?php foreach ($vendors as $vid => $vname): ?>
+                  <th style="min-width:130px;" class="<?= ($vid == $selectedVendorId) ? 'bg-success text-white border-success' : '' ?>">
+                    <?= htmlspecialchars($vname) ?>
+                    <?php if ($vid == $selectedVendorId): ?>
+                      <br><span class="badge bg-white text-success mt-1 px-2" style="font-size:9px">Selected Vendor</span>
+                    <?php endif; ?>
+                  </th>
+                <?php endforeach; ?>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($materials as $idx => $mat): ?>
+              <?php
+              $mid = $mat['material_id'];
+              $lowestPrice  = PHP_FLOAT_MAX;
+              $lowestVendor = 0;
+              foreach ($vendorIds as $vid) {
+                  if (isset($matrix[$mid][$vid])) {
+                      if ($matrix[$mid][$vid]['unit_price'] < $lowestPrice) {
+                          $lowestPrice  = $matrix[$mid][$vid]['unit_price'];
+                          $lowestVendor = $vid;
+                      }
+                  }
+              }
+              ?>
+              <tr>
+                  <td class="text-start"><?= $idx + 1 ?></td>
+                  <td class="text-start fw-bold">
+                      <?= htmlspecialchars($mat['material_name']) ?>
+                      <span class="text-muted small">(<?= $mat['unit'] ?>)</span>
+                  </td>
+                  <td><?= number_format($mat['quantity'], 3) ?></td>
+                  <?php foreach ($vendorIds as $vid): ?>
+                      <?php
+                      $cell = $matrix[$mid][$vid] ?? null;
+                      $isLowest = ($vid === $lowestVendor && $cell);
+                      $isSelectedVendor = ($vid == $selectedVendorId);
+                      ?>
+                      <td class="<?= $isLowest ? 'table-success fw-bold' : '' ?> <?= $isSelectedVendor ? 'border-success' : '' ?>" style="<?= $isSelectedVendor ? 'border-left-width:2px;border-right-width:2px;' : '' ?>">
+                          <?php if ($cell): ?>
+                              ৳ <?= number_format($cell['unit_price'], 2) ?>
+                              <div class="small text-muted" style="margin-top:2px">
+                                  Total: ৳ <?= number_format($cell['total_price'], 2) ?>
+                              </div>
+                          <?php else: ?>
+                              <span class="text-muted">—</span>
+                          <?php endif; ?>
+                      </td>
+                  <?php endforeach; ?>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+            <tfoot class="table-light">
+                <tr class="fw-bold">
+                    <td colspan="3" class="text-end">Vendor Totals:</td>
+                    <?php foreach ($vendorIds as $vid): ?>
+                        <td class="<?= ($vid == $selectedVendorId) ? 'text-success' : '' ?>">৳ <?= number_format($totals[$vid] ?? 0, 2) ?></td>
+                    <?php endforeach; ?>
+                </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600">Close Window</button>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>

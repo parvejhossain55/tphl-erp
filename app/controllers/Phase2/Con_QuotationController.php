@@ -139,11 +139,24 @@ class Con_QuotationController extends Controller
 
         $comparison = $this->quotModel->buildComparison($requestId);
 
+        // Fetch Negotiation Notes for this PR
+        $notesQuery = $this->db->prepare("
+            SELECT n.*, u.full_name AS author_name, u.role_id AS author_role
+            FROM po_negotiation_notes n
+            JOIN users u ON u.id = n.user_id
+            WHERE n.request_id = ?
+            ORDER BY n.created_at DESC
+        ");
+        $notesQuery->bind_param('i', $requestId);
+        $notesQuery->execute();
+        $negotiationNotes = $notesQuery->get_result()->fetch_all(MYSQLI_ASSOC);
+
         $this->view('phase2/quotations/compare-quotations', [
             'current_route' => 'con-purchase-requests',
             'page_title'    => 'Comparative Statement — PR #' . $requestId,
             'pr'            => $pr,
             'comparison'    => $comparison,
+            'negotiationNotes' => $negotiationNotes,
         ]);
     }
 

@@ -62,6 +62,7 @@ class PaymentBookingController extends Controller
             'payment_status'      => 'pending', // always pending — verified by accounts before becoming paid
             'payment_date'        => $_POST['payment_date'] ?? date('Y-m-d'),
             'transaction_ref'     => $_POST['transaction_ref'] ?? null,
+            'bank_id'             => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
             'bank_name'           => $_POST['bank_name'] ?? null,
             'bank_account_no'     => $_POST['bank_account_no'] ?? null,
             'total_emi_no'        => $_POST['total_emi_no'] ?? null,

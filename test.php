@@ -1,0 +1,13 @@
+<?php 
+require 'app/config/config.php'; 
+require 'app/database/connection.php'; 
+global $db; 
+$q = $db->query("SELECT fu.*, l.full_name, p.name AS project_name, f.flat_name 
+                 FROM lead_follow_ups fu 
+                 LEFT JOIN leads l ON fu.lead_id = l.id 
+                 LEFT JOIN projects p ON fu.project_id = p.id 
+                 LEFT JOIN flats f ON fu.flat_id = f.id 
+                 WHERE fu.lead_id = 28939 LIMIT 1"); 
+var_dump($db->error); 
+var_dump($q ? $q->fetch_assoc() : null); 
+?>

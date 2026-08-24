@@ -1,639 +1,579 @@
 <?php
-$base_url   = $GLOBALS['base_url'];
-$filterDeptId   = $filterDeptId   ?? null;
-$filterDateFrom = $filterDateFrom ?? null;
-$filterDateTo   = $filterDateTo   ?? null;
-$logs           = $logs           ?? [];
-$departments    = $departments    ?? [];
-$deptSummary    = $deptSummary    ?? [];
-
-$currentPage    = $currentPage    ?? 1;
-$totalPages     = $totalPages     ?? 1;
-$showAll        = $showAll        ?? false;
-$rawLogsCount   = $rawLogsCount   ?? count($logs);
-$perPage        = $perPage        ?? 15;
-$offset         = ($currentPage - 1) * $perPage;
-
-function getPageUrl($p) {
-    $params = $_GET;
-    $params['page'] = $p;
-    unset($params['show_all']);
-    return '?' . http_build_query($params);
-}
-
-function getShowAllUrl() {
-    $params = $_GET;
-    $params['show_all'] = 1;
-    unset($params['page']);
-    return '?' . http_build_query($params);
-}
-
-function getShowPaginatedUrl() {
-    $params = $_GET;
-    unset($params['show_all']);
-    $params['page'] = 1;
-    return '?' . http_build_query($params);
-}
-
-// Helper: convert minutes to human-readable
-function formatDuration(int $mins): string {
-    if ($mins <= 0) return '<span class="badge bg-secondary">-</span>';
-    $h = intdiv($mins, 60);
-    $m = $mins % 60;
-    if ($h > 0) return "{$h}h {$m}m";
-    return "{$m}m";
-}
-
-function durationBadgeClass(int $mins): string {
-    if ($mins >= 120) return 'bg-success';
-    if ($mins >= 30)  return 'bg-primary';
-    if ($mins >= 10)  return 'bg-warning ';
-    return 'bg-danger';
-}
+$base_url = $GLOBALS['base_url'];
+// Extract variables from $data injected by Controller
+$filterDeptId = $filterDeptId ?? null;
+$filterUserId = $filterUserId ?? null;
+$filterDateFrom = $filterDateFrom ?? date('Y-m-01');
+$filterDateTo = $filterDateTo ?? date('Y-m-d');
 ?>
+<style>
+/* Custom styles for the dashboard to match the design */
+.dash-card { border: 1px solid #eaedf1; border-radius: 8px; background: #fff; padding: 20px; height: 100%; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+.dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.dash-title { font-size: 24px; font-weight: 700; color: #111827; margin: 0; }
+.dash-subtitle { font-size: 13px; color: #6b7280; margin: 4px 0 0 0; }
+.stat-value { font-size: 28px; font-weight: 700; color: #111827; line-height: 1.2; margin-top: 5px; }
+.stat-label { font-size: 13px; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 8px; }
+.stat-subtext { font-size: 12px; color: #6b7280; margin-top: 5px; }
+.icon-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.icon-circle.green { background: #dcfce7; color: #16a34a; }
+.icon-circle.yellow { background: #fef3c7; color: #d97706; }
+.icon-circle.red { background: #fee2e2; color: #dc2626; }
+.icon-circle.blue { background: #e0e7ff; color: #4f46e5; }
+.icon-circle.gray { background: #f3f4f6; color: #4b5563; }
 
-<div class="container-fluid">
+.section-title { font-size: 16px; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 8px; margin-bottom: 15px; }
+.info-icon { color: #9ca3af; font-size: 14px; cursor: help; }
 
-    <!-- ── Page Header ───────────────────────────────────────────────────── -->
-    <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
+/* Progress bars */
+.dept-progress-wrap { margin-bottom: 12px; }
+.dept-progress-header { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; color: #374151; font-weight: 500;}
+.progress-thin { height: 6px; border-radius: 3px; background-color: #f3f4f6; overflow: hidden; }
+.progress-thin .progress-bar { border-radius: 3px; }
+
+/* Status Badges */
+.status-badge { padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid transparent; }
+.status-badge.healthy { background: #dcfce7; color: #16a34a; border-color: #bbf7d0; }
+.status-badge.moderate { background: #fef9c3; color: #ca8a04; border-color: #fef08a; }
+.status-badge.low { background: #ffedd5; color: #ea580c; border-color: #fed7aa; }
+.status-badge.critical { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
+.status-badge.review { background: #fef3c7; color: #d97706; border-color: #fde68a; }
+.status-badge.outside { background: #f3f4f6; color: #4b5563; border-color: #e5e7eb; }
+
+/* Table Tabs */
+.custom-tabs { display: flex; gap: 20px; border-bottom: 1px solid #e5e7eb; margin-bottom: 20px; padding: 0 20px; }
+.custom-tab { padding: 10px 0; font-size: 14px; font-weight: 600; color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent; display: flex; align-items: center; gap: 8px; }
+.custom-tab.active { color: #16a34a; border-bottom-color: #16a34a; }
+.custom-tab .count { font-size: 12px; padding: 2px 6px; border-radius: 10px; background: #f3f4f6; color: #4b5563; }
+.custom-tab.active .count { background: #dcfce7; color: #16a34a; }
+
+/* Standard Usage Window Box */
+.standard-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.standard-box-item { display: flex; align-items: center; gap: 12px; }
+.standard-box-divider { width: 1px; height: 30px; background: #e2e8f0; margin: 0 20px; }
+
+/* Avatar initials */
+.avatar-initials { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: white; flex-shrink: 0; }
+
+.table-person td { vertical-align: middle; font-size: 13px; color: #374151; border-bottom-width: 1px;}
+.table-person th { font-size: 12px; text-transform: none; color: #6b7280; border-bottom-width: 1px; font-weight: 600; }
+</style>
+
+<div class="container-fluid py-4">
+
+    <!-- ── Header ──────────────────────────────────────────────────────────── -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
         <div>
-            <h1 class="page-title fw-semibold fs-18 mb-0">User Activity Log</h1>
-            <p class="text-muted mb-0 mt-1">Department-wise login & active session report</p>
+            <div class="text-muted fs-13 mb-1">HR & Payroll / User Activity</div>
+            <h1 class="dash-title">ERP Usage & Adoption</h1>
+            <p class="dash-subtitle">Track individual usage, working-hour activity and system adoption</p>
         </div>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="<?= $base_url ?>/hrm-dashboard">HR Dashboard</a></li>
-                <li class="breadcrumb-item active">User Activity Log</li>
-            </ol>
-        </nav>
-    </div>
-
-    <!-- ── Filter Card ───────────────────────────────────────────────────── -->
-    <div class="card__wrapper mb-4">
-        <div class="card-header py-3 d-flex align-items-center gap-2">
-            <i class="fa-solid fa-filter text-primary"></i>
-            <span class="fw-semibold">Filter Records</span>
-        </div>
-        <div class="p-3">
-            <form method="GET" action="<?= $base_url ?>/user-activity-log" id="filterForm">
-                <div class="row align-items-end">
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold" for="department_id">Department</label>
-                        <select name="department_id" id="department_id" class="form-select select2">
-                            <option value="">— All Departments —</option>
-                            <?php foreach ($departments as $dept): ?>
-                                <option value="<?= (int)$dept['id'] ?>"
-                                    <?= ($filterDeptId == $dept['id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($dept['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold" for="date_from">Date From</label>
-                        <input type="date" name="date_from" id="date_from" class="form-control"
-                            value="<?= htmlspecialchars($filterDateFrom ?? '') ?>">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold" for="date_to">Date To</label>
-                        <input type="date" name="date_to" id="date_to" class="form-control"
-                            value="<?= htmlspecialchars($filterDateTo ?? '') ?>">
-                    </div>
-                    <div class="col-md-2 d-flex gap-2">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fa-solid fa-magnifying-glass me-1"></i>Filter
-                        </button>
-                        <a href="<?= $base_url ?>/user-activity-log" class="btn btn-outline-secondary w-100">
-                            <i class="fa-solid fa-rotate-left"></i>
-                        </a>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- ── Employee Time Search ──────────────────────────────────────────── -->
-    <div class="card__wrapper mb-4" id="empSearchCard">
-        <div class="card-header py-3 d-flex align-items-center gap-2">
-            <i class="fa-solid fa-user-magnifying-glass text-success"></i>
-            <span class="fw-semibold">Employee Time Search</span>
-            <span class="badge bg-success-subtle text-success border border-success-subtle ms-1">Department-wise</span>
-        </div>
-        <div class="p-3">
-            <div class="row align-items-end g-2">
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold" for="empDeptSelect">Department</label>
-                    <select id="empDeptSelect" class="form-select select2">
-                        <option value="">— Select Department —</option>
-                        <?php foreach ($departments as $dept): ?>
-                            <option value="<?= (int)$dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold" for="empSelect">Employee</label>
-                    <select id="empSelect" class="form-select select2" disabled>
-                        <option value="">— Select Department First —</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label fw-semibold" for="empDateFrom">Date From</label>
-                    <input type="date" id="empDateFrom" class="form-control">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label fw-semibold" for="empDateTo">Date To</label>
-                    <input type="date" id="empDateTo" class="form-control">
-                </div>
-                <div class="col-md-2">
-                    <button id="empSearchBtn" class="btn btn-success w-100" disabled>
-                        <i class="fa-solid fa-magnifying-glass me-1"></i>Search
-                    </button>
-                </div>
+        
+        <form method="GET" action="<?= $base_url ?>/user-activity-log" id="filterForm" class="d-flex align-items-center gap-2">
+            <!-- Date Range -->
+            <div class="input-group input-group-sm" style="min-width: 320px;">
+                <span class="input-group-text "><i class="fa-regular fa-calendar"></i></span>
+                <input type="date" name="date_from" class="form-control form-control-sm border-start-0 px-1" value="<?= $filterDateFrom ?>" onchange="this.form.submit()">
+                <span class="input-group-text border-start-0 border-end-0 px-1">-</span>
+                <input type="date" name="date_to" class="form-control form-control-sm border-start-0 px-1" value="<?= $filterDateTo ?>" onchange="this.form.submit()">
             </div>
-        </div>
+            
+            <!-- Department -->
+            <select name="department_id" class="form-select form-select-sm" style="width: 160px;" onchange="this.form.submit()">
+                <option value="">All Departments</option>
+                <?php foreach ($departments as $dept): ?>
+                    <option value="<?= $dept['id'] ?>" <?= ($filterDeptId == $dept['id']) ? 'selected' : '' ?>><?= htmlspecialchars($dept['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+            
+            <!-- Employee Search -->
+            <select name="user_id" class="form-select form-select-sm select2" style="width: 200px;" onchange="this.form.submit()" data-placeholder="Search employee...">
+                <option value="">Search employee...</option>
+                <?php foreach ($allUsers as $u): ?>
+                    <option value="<?= $u['id'] ?>" <?= ($filterUserId == $u['id']) ? 'selected' : '' ?>><?= htmlspecialchars($u['full_name'] . (!empty($u['employee_id']) ? ' (' . $u['employee_id'] . ')' : '')) ?></option>
+                <?php endforeach; ?>
+            </select>
 
-        <!-- Result Section (hidden initially) -->
-        <div id="empResultSection" class="d-none px-3 pb-3">
-            <hr class="my-2">
+            <!-- Export -->
+            <button type="button" class="btn btn-sm btn-outline-success  d-flex align-items-center gap-1" data-bs-toggle="dropdown">
+                <i class="fa-solid fa-download"></i> Export Report
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="?<?= http_build_query(array_merge($_GET, ['export' => 'excel'])) ?>"><i class="fa-solid fa-file-excel text-success me-2"></i> Excel</a></li>
+                <li><a class="dropdown-item" href="?<?= http_build_query(array_merge($_GET, ['export' => 'pdf'])) ?>"><i class="fa-solid fa-file-pdf text-danger me-2"></i> PDF</a></li>
+            </ul>
+        </form>
+    </div>
 
-            <!-- Employee Info Banner -->
-            <div id="empInfoBanner" class="alert alert-success d-flex align-items-center gap-3 py-2 mb-3">
-                <div class="rounded-circle bg-success d-flex align-items-center justify-content-center flex-shrink-0"
-                     style="width:44px;height:44px;">
-                    <i class="fa-solid fa-user text-white"></i>
-                </div>
+    <!-- ── Standard Usage Info Box ─────────────────────────────────────────── -->
+    <div class="standard-box">
+        <div class="d-flex align-items-center">
+            <div class="standard-box-item">
+                <i class="fa-regular fa-clock fs-4 text-muted"></i>
                 <div>
-                    <div class="fw-bold fs-6" id="empName">—</div>
-                    <small class="text-light" id="empMeta">—</small>
+                    <div class="fs-12 fw-semibold text-muted">Standard Usage Window</div>
+                    <div class="fw-bold fs-14">9:30 AM – 6:30 PM</div>
                 </div>
             </div>
-
-            <!-- Summary Cards -->
-            <div class="row mb-3">
-                <div class="col-md-4">
-                    <div class="card__wrapper border-start border-4 border-primary h-100">
-                        <div class="p-3 d-flex justify-content-between align-items-center">
-                            <div>
-                                <p class="text-muted mb-1 fs-12 fw-semibold text-uppercase">Total Sessions</p>
-                                <h3 class="fw-bold text-primary mb-0" id="statSessions">—</h3>
-                            </div>
-                            <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center"
-                                 style="width:48px;height:48px;">
-                                <i class="fa-solid fa-right-to-bracket text-primary fa-lg"></i>
-                            </div>
-                        </div>
-                    </div>
+            <div class="standard-box-divider"></div>
+            <div class="standard-box-item">
+                <i class="fa-solid fa-hourglass-half fs-4 text-success"></i>
+                <div>
+                    <div class="fs-12 fw-semibold text-muted">Daily Expected Active Time</div>
+                    <div class="fw-bold fs-14">4h</div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card__wrapper border-start border-4 border-success h-100">
-                        <div class="p-3 d-flex justify-content-between align-items-center">
-                            <div>
-                                <p class="text-muted mb-1 fs-12 fw-semibold text-uppercase">Total Active Time</p>
-                                <h3 class="fw-bold text-success mb-0" id="statTotal">—</h3>
-                            </div>
-                            <div class="rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center"
-                                 style="width:48px;height:48px;">
-                                <i class="fa-solid fa-clock text-success fa-lg"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card__wrapper border-start border-4 border-warning h-100">
-                        <div class="p-3 d-flex justify-content-between align-items-center">
-                            <div>
-                                <p class="text-muted mb-1 fs-12 fw-semibold text-uppercase">Avg per Session</p>
-                                <h3 class="fw-bold text-warning mb-0" id="statAvg">—</h3>
-                            </div>
-                            <div class="rounded-circle bg-warning bg-opacity-10 d-flex align-items-center justify-content-center"
-                                 style="width:48px;height:48px;">
-                                <i class="fa-solid fa-chart-bar text-warning fa-lg"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Date-wise Breakdown Table -->
-            <div class="table__wrapper table-responsive">
-                <table class="table no-border-table mb-0" id="empDailyTable">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Date</th>
-                            <th>Sessions</th>
-                            <th>First Login</th>
-                            <th>Last Active</th>
-                            <th>Active Duration</th>
-                        </tr>
-                    </thead>
-                    <tbody id="empDailyBody">
-                    </tbody>
-                </table>
             </div>
         </div>
-
-        <!-- Loading Spinner -->
-        <div id="empLoadingSpinner" class="d-none text-center py-4">
-            <div class="spinner-border text-success" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="text-muted mt-2 mb-0">Fetching employee data...</p>
-        </div>
-
-        <!-- No Data Message -->
-        <div id="empNoData" class="d-none text-center py-4 text-muted">
-            <i class="fa-solid fa-inbox fa-2x mb-2 d-block opacity-30"></i>
-            No activity records found for the selected employee.
-        </div>
+        <button class="btn btn-sm btn-light border d-flex align-items-center gap-2 text-success fw-semibold">
+            <i class="fa-solid fa-pen fs-12"></i> Edit
+        </button>
     </div>
 
-    <!-- ── Department Summary Cards ──────────────────────────────────────── -->
-    <?php if (!empty($deptSummary)): ?>
-    <div class="row  mb-4">
-        <?php foreach ($deptSummary as $s):
-            $totalHrs = intdiv((int)$s['total_minutes'], 60);
-            $totalMins = (int)$s['total_minutes'] % 60;
-        ?>
-        <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
-            <div class="card__wrapper h-100 border-start border-primary border-4">
-                <div class="p-3">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="text-muted mb-1 fs-12 text-uppercase fw-semibold">
-                                <?= htmlspecialchars($s['dept_name']) ?>
-                            </p>
-                            <h4 class="fw-bold mb-0 text-primary"><?= (int)$s['total_sessions'] ?> sessions</h4>
-                            <small class="text-success fw-semibold">
-                                <i class="fa-solid fa-clock me-1"></i>
-                                <?= $totalHrs ?>h <?= $totalMins ?>m total active
-                            </small>
-                        </div>
-                        <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center"
-                            style="width:44px;height:44px;">
-                            <i class="fa-solid fa-building text-primary"></i>
-                        </div>
-                    </div>
+    <!-- ── 6 Top Summary Cards ─────────────────────────────────────────────── -->
+    <div class="row  mb-3">
+        <!-- 1 -->
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="dash-card p-3">
+                <div class="stat-label">
+                    <div class="icon-circle green"><i class="fa-solid fa-users"></i></div>
+                    Total ERP Users
                 </div>
+                <div class="stat-value"><?= $totalUsers ?></div>
+                <div class="stat-subtext">All registered users</div>
             </div>
         </div>
-        <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
-
-
-
-    <!-- ── Main Data Table ───────────────────────────────────────────────── -->
-    <div class="card__wrapper">
-        <div class="card-header py-3 d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center gap-2">
-                <i class="fa-solid fa-user-clock text-primary"></i>
-                <span class="fw-semibold">Login Activity Records</span>
-                <span class="badge bg-primary ms-1"><?= (int)$rawLogsCount ?> records</span>
+        <!-- 2 -->
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="dash-card p-3 position-relative">
+                <div class="stat-label">
+                    <div class="icon-circle green"><i class="fa-solid fa-arrow-trend-up"></i></div>
+                    Active Today
+                </div>
+                <div class="stat-value"><?= $activeToday ?></div>
+                <div class="stat-subtext text-success fw-semibold"><?= $adoptionScore ?>% adoption <i class="fa-solid fa-check"></i></div>
+                <div id="spark1" class="position-absolute bottom-0 end-0 me-2 mb-2" style="width: 60px;"></div>
             </div>
-            <div class="d-flex align-items-center gap-2">
-                <?php if ($showAll): ?>
-                    <a href="<?= getShowPaginatedUrl() ?>" class="btn btn-sm btn-outline-primary">
-                        <i class="fa-solid fa-list me-1"></i>Show Paginated (15 per page)
-                    </a>
-                <?php else: ?>
-                    <a href="<?= getShowAllUrl() ?>" class="btn btn-sm btn-primary text-white">
-                        <i class="fa-solid fa-eye me-1"></i>Show All Records
-                    </a>
-                <?php endif; ?>
-                
-                <?php 
-                $excelUrl = '?' . http_build_query(array_merge($_GET, ['export' => 'excel']));
-                $pdfUrl   = '?' . http_build_query(array_merge($_GET, ['export' => 'pdf']));
+        </div>
+        <!-- 3 -->
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="dash-card p-3 position-relative">
+                <div class="stat-label">
+                    <div class="icon-circle green"><i class="fa-regular fa-circle-check"></i></div>
+                    Meeting Standard
+                </div>
+                <div class="stat-value"><?= $meetingStandard ?></div>
+                <div class="stat-subtext text-success fw-semibold">≥ 4h active</div>
+                <div id="spark2" class="position-absolute bottom-0 end-0 me-2 mb-2" style="width: 60px;"></div>
+            </div>
+        </div>
+        <!-- 4 -->
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="dash-card p-3 position-relative border border-warning" style="background-color: #fffbeb;">
+                <div class="stat-label">
+                    <div class="icon-circle yellow "><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    Below Standard
+                </div>
+                <div class="stat-value"><?= $belowStandard ?></div>
+                <div class="stat-subtext text-warning fw-semibold">Needs attention</div>
+                <div id="spark3" class="position-absolute bottom-0 end-0 me-2 mb-2" style="width: 60px;"></div>
+            </div>
+        </div>
+        <!-- 5 -->
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="dash-card p-3 position-relative border border-danger" style="background-color: #fef2f2;">
+                <div class="stat-label">
+                    <div class="icon-circle red "><i class="fa-regular fa-circle-xmark"></i></div>
+                    No Usage Today
+                </div>
+                <div class="stat-value text-danger"><?= $noUsageToday ?></div>
+                <div class="stat-subtext text-danger fw-semibold">No activity logged</div>
+                <div id="spark4" class="position-absolute bottom-0 end-0 me-2 mb-2" style="width: 60px;"></div>
+            </div>
+        </div>
+        <!-- 6 -->
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="dash-card p-3 position-relative">
+                <div class="stat-label">
+                    <div class="icon-circle green"><i class="fa-regular fa-clock"></i></div>
+                    Avg. Productive Time
+                </div>
+                <?php
+                    $avgH = intdiv($avgProductiveMins, 60);
+                    $avgM = $avgProductiveMins % 60;
                 ?>
-                <a href="<?= $excelUrl ?>" class="btn btn-sm btn-success text-white">
-                    <i class="fa-solid fa-file-excel me-1"></i>Excel
-                </a>
-                <a href="<?= $pdfUrl ?>" class="btn btn-sm btn-danger text-white">
-                    <i class="fa-solid fa-file-pdf me-1"></i>PDF
-                </a>
+                <div class="stat-value"><?= $avgH ?>h <?= $avgM ?>m</div>
+                <div class="stat-subtext text-success fw-semibold">Avg across active users</div>
+                <div id="spark5" class="position-absolute bottom-0 end-0 me-2 mb-2" style="width: 60px;"></div>
             </div>
         </div>
-        <div class="table__wrapper table-responsive p-2">
-            <table id="activityLogTable" class="table no-border-table mb-0 dataTable">
+    </div>
+
+    <!-- ── Charts Row ──────────────────────────────────────────────────────── -->
+    <div class="row  mb-3">
+        <!-- Hourly Active Users -->
+        <div class="col-lg-8">
+            <div class="dash-card">
+                <div class="section-title">Hourly Active Users <i class="fa-solid fa-circle-info info-icon" title="Unique active users per hour"></i></div>
+                <div class="d-flex justify-content-between mb-2">
+                    <div class="d-flex align-items-center gap-2 fs-12">
+                        <span class="d-inline-block rounded-pill bg-success opacity-25" style="width:30px;height:10px;"></span>
+                        <span class="text-muted fw-semibold">Standard Work Window (9:30 AM - 6:30 PM)</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 fs-12">
+                        <span class="d-inline-block border-top border-2 border-dashed border-secondary" style="width:20px;"></span>
+                        <span class="text-muted fw-semibold">Expected <?= round($totalUsers * 0.8) ?> active users</span>
+                    </div>
+                </div>
+                <div id="hourlyChart" style="min-height: 250px;"></div>
+            </div>
+        </div>
+        
+        <!-- Usage Health -->
+        <div class="col-lg-4">
+            <div class="dash-card">
+                <div class="section-title">Usage Health <i class="fa-solid fa-circle-info info-icon" title="Based on average daily active time"></i></div>
+                <div class="position-relative d-flex justify-content-center align-items-center" style="height: 270px;">
+                    <div id="healthChart" class="w-100 h-100"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Bottom Row (Dept Adoption & Attention) ──────────────────────────── -->
+    <div class="row  mb-3">
+        <!-- Dept Adoption -->
+        <div class="col-lg-6">
+            <div class="dash-card">
+                <div class="section-title">Department Adoption <i class="fa-solid fa-circle-info info-icon"></i></div>
+                <div class="d-flex justify-content-between text-muted fs-12 fw-semibold mb-3">
+                    <div>Department</div>
+                    <div>Adoption Rate</div>
+                </div>
+                
+                <?php
+                $colors = ['#16a34a', '#22c55e', '#eab308', '#f59e0b', '#ea580c', '#dc2626'];
+                foreach ($deptAdoptionRates as $idx => $dept):
+                    $c = $colors[min($idx, count($colors)-1)];
+                    if ($dept['rate'] >= 80) $c = '#16a34a';
+                    elseif ($dept['rate'] >= 60) $c = '#eab308';
+                    else $c = '#ea580c';
+                ?>
+                <div class="dept-progress-wrap">
+                    <div class="dept-progress-header">
+                        <span><?= htmlspecialchars($dept['name']) ?></span>
+                        <span class="fw-bold"><?= $dept['rate'] ?>%</span>
+                    </div>
+                    <div class="progress progress-thin">
+                        <div class="progress-bar" role="progressbar" style="width: <?= $dept['rate'] ?>%; background-color: <?= $c ?>;"></div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <!-- Attention Required -->
+        <div class="col-lg-6">
+            <div class="dash-card d-flex flex-column">
+                <div class="section-title">Attention Required <i class="fa-solid fa-circle-info info-icon"></i></div>
+                <div class="table-responsive flex-grow-1">
+                    <table class="table table-borderless table-sm fs-13 table-person">
+                        <thead>
+                            <tr>
+                                <th class="text-start">Employee</th>
+                                <th>Department</th>
+                                <th>Issue</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if(empty($attentionRequired)): ?>
+                                <tr><td colspan="4" class="text-center text-muted py-3">No critical issues found.</td></tr>
+                            <?php else: ?>
+                                <?php foreach ($attentionRequired as $p): ?>
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="avatar-initials" style="background-color: <?= stringToColorCode($p['full_name']) ?>"><?= $p['initials'] ?></div>
+                                            <span class="fw-semibold text-dark"><?= htmlspecialchars($p['full_name']) ?></span>
+                                        </div>
+                                    </td>
+                                    <td><?= htmlspecialchars($p['department']) ?></td>
+                                    <td><span class="text-muted"><?= $p['issue'] ?></span></td>
+                                    <td>
+                                        <span class="status-badge <?= strtolower(str_replace(' ', '', $p['attn_status'])) ?>">
+                                            <?= $p['attn_status'] ?>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-end mt-auto pt-2">
+                    <a href="#personTable" class="text-success text-decoration-none fs-13 fw-semibold">View all users <i class="fa-solid fa-angle-right ms-1"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Person-wise Usage Performance ───────────────────────────────────── -->
+    <div class="dash-card p-0" id="personTable">
+        <div class="p-4 pb-0">
+            <div class="section-title mb-2">Person-wise Usage Performance <i class="fa-solid fa-circle-info info-icon" title="Detailed breakdown per user"></i></div>
+            <div class="text-end mb-2">
+                <span class="text-muted fs-12">Usage status is calculated from active time, login consistency and idle ratio.</span>
+            </div>
+        </div>
+        
+        <?php $usageHealthDataDecoded = json_decode($usageHealthData, true); ?>
+        
+        <div class="custom-tabs">
+            <div class="custom-tab active" data-filter="All">All <span class="count"><?= count($personWiseData) ?></span></div>
+            <div class="custom-tab" data-filter="Healthy">Healthy <span class="count"><?= $usageHealthDataDecoded[0] ?? 0 ?></span></div>
+            <div class="custom-tab" data-filter="Below Standard">Below Standard <span class="count"><?= ($usageHealthDataDecoded[1]??0) + ($usageHealthDataDecoded[2]??0) ?></span></div>
+            <div class="custom-tab" data-filter="No Usage">No Usage <span class="count"><?= $usageHealthDataDecoded[3] ?? 0 ?></span></div>
+        </div>
+
+        <div class="table-responsive px-4 pb-4">
+            <table class="table table-hover table-person w-100" id="dtPersonUsage">
                 <thead>
                     <tr>
-                        <th>#</th>
-                        <th>Name</th>
+                        <th>Employee</th>
                         <th>Department</th>
-                        <th>Designation</th>
-                        <th>Role</th>
-                        <th>Login Time</th>
+                        <th>Days Used</th>
+                        <th>Avg. Login</th>
+                        <th>Avg. Logout</th>
+                        <th>Active Time / Day<br><small class="text-muted">(Productive)</small></th>
+                        <!-- <th>Actions Completed</th> -->
+                        <th>Idle Time</th>
+                        <th>Standard Met</th>
+                        <th>Usage Status</th>
                         <th>Last Active</th>
-                        <th>Active Duration</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (empty($logs)): ?>
-                        <tr>
-                            <td colspan="8" class="text-center py-5 text-muted">
-                                <i class="fa-solid fa-inbox fa-2x mb-3 d-block opacity-30"></i>
-                                No activity records found for the selected criteria.
-                            </td>
-                        </tr>
-                    <?php endif; ?>
-
-                    <?php
-                    $serial = $showAll ? 1 : ($offset + 1);
-                    $prevDept = null;
-                    foreach ($logs as $log):
-                        $dept        = $log['department_name'] ?: '—';
-                        $activeMin   = max(0, (int)$log['active_minutes']);
-                        $badgeClass  = durationBadgeClass($activeMin);
-                        $durationStr = formatDuration($activeMin);
-                        $loginTime   = date('d M Y, h:i A', strtotime($log['login_time']));
-                        $lastActive  = $log['last_active_time']
-                            ? date('d M Y, h:i A', strtotime($log['last_active_time']))
-                            : '—';
-
-                        // Department separator row
-                        if ($dept !== $prevDept):
-                            $prevDept = $dept;
+                    <?php foreach ($personWiseData as $p): 
+                        $statusClass = strtolower(str_replace(' ', '', $p['usage_status']));
+                        if ($statusClass == 'moderate') $statusClass = 'review';
+                        
+                        $activeH = intdiv($p['active_time_day'], 60);
+                        $activeM = $p['active_time_day'] % 60;
+                        
+                        $activeStr = '';
+                        if ($activeH > 0) $activeStr .= "<span class='fw-bold text-success'>{$activeH}h</span> ";
+                        $activeStr .= "<span class='fw-bold text-success'>{$activeM}m</span>";
+                        if ($p['active_time_day'] == 0) $activeStr = "<span class='text-danger fw-bold'>0m</span>";
+                        elseif ($p['active_time_day'] < 240) {
+                            $activeStr = "<span class='text-warning fw-bold'>{$activeH}h {$activeM}m</span>";
+                        }
                     ?>
-                        <tr class="table-light">
-                            <td colspan="8" class="fw-bold text-primary py-2 ps-3">
-                                <i class="fa-solid fa-building me-2"></i>
-                                <?= htmlspecialchars($dept) ?>
-                            </td>
-                        </tr>
-                    <?php endif; ?>
-                        <tr>
-                            <td class="text-muted"><?= $serial++ ?></td>
-                            <td>
-                                <div class="fw-semibold"><?= htmlspecialchars($log['full_name'] ?? '—') ?></div>
-                                <small class="text-muted"><?= htmlspecialchars($log['email'] ?? '') ?></small>
-                            </td>
-                            <td><?= htmlspecialchars($dept) ?></td>
-                            <td><?= htmlspecialchars($log['designation_name'] ?? '—') ?></td>
-                            <td>
-                                <span class="badge bg-secondary bg-opacity-10  border">
-                                    <?= htmlspecialchars($log['role_name'] ?? '—') ?>
-                                </span>
-                            </td>
-                            <td>
-                                <span class="text-nowrap"><?= $loginTime ?></span>
-                            </td>
-                            <td>
-                                <span class="text-nowrap"><?= $lastActive ?></span>
-                            </td>
-                            <td>
-                                <span class="badge <?= $badgeClass ?> px-3 py-2">
-                                    <i class="fa-solid fa-clock me-1"></i>
-                                    <?= $durationStr ?>
-                                </span>
-                            </td>
-                        </tr>
+                    <tr data-status="<?= $p['usage_status'] ?>">
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="avatar-initials" style="background-color: <?= stringToColorCode($p['full_name']) ?>"><?= $p['initials'] ?></div>
+                                <span class="fw-semibold text-dark"><?= htmlspecialchars($p['full_name']) ?></span>
+                            </div>
+                        </td>
+                        <td><?= htmlspecialchars($p['department']) ?></td>
+                        <td><?= $p['days_used'] ?>/<?= $p['working_days'] ?></td>
+                        <td><i class="fa-regular fa-clock text-muted me-1 fs-11"></i><?= $p['avg_login'] ?></td>
+                        <td><i class="fa-regular fa-clock text-muted me-1 fs-11"></i><?= $p['avg_logout'] ?></td>
+                        <td><?= $activeStr ?></td>
+                        <!-- <td>-</td> -->
+                        <td class="<?= $p['idle_percentage'] > 50 ? 'text-danger fw-bold' : 'text-success fw-bold' ?>"><?= $p['idle_percentage'] ?>%</td>
+                        <td class="fw-bold <?= $p['standard_met_days'] > 0 ? 'text-success' : 'text-danger' ?>"><?= $p['standard_met_days'] ?> days</td>
+                        <td><span class="status-badge <?= $statusClass ?>"><?= $p['usage_status'] ?></span></td>
+                        <td>
+                            <?php if ($p['last_login_ever']): ?>
+                                <span class="d-block text-dark fs-12"><?= date('d M Y', strtotime($p['last_login_ever'])) ?></span>
+                                <span class="text-muted fs-11"><?= $p['last_active'] ?></span>
+                            <?php else: ?>
+                                <span class="text-muted fs-12">-</span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-end text-nowrap">
+                            <a href="javascript:void(0)" class="text-success fw-semibold text-decoration-none me-3 fs-12">View details</a>
+                            <i class="fa-solid fa-ellipsis-vertical text-muted cursor-pointer px-2"></i>
+                        </td>
+                    </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
-        
-        <?php if (!$showAll && $totalPages > 1): ?>
-        <div class="card-footer py-3 d-flex align-items-center justify-content-between border-top">
-            <div class="text-muted small">
-                Showing <?= $offset + 1 ?> to <?= min($offset + $perPage, $rawLogsCount) ?> of <?= $rawLogsCount ?> records (Page <?= $currentPage ?> of <?= $totalPages ?>)
-            </div>
-            <nav aria-label="Activity Log Pagination">
-                <ul class="pagination mb-0 gap-1">
-                    <?php if ($currentPage > 1): ?>
-                        <li class="page-item">
-                            <a class="page-link" href="<?= getPageUrl(1) ?>" aria-label="First">
-                                <i class="fa-solid fa-angles-left"></i>
-                            </a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="<?= getPageUrl($currentPage - 1) ?>" aria-label="Previous">
-                                <i class="fa-solid fa-angle-left"></i>
-                            </a>
-                        </li>
-                    <?php endif; ?>
-
-                    <?php
-                    $startPage = max(1, $currentPage - 2);
-                    $endPage = min($totalPages, $currentPage + 2);
-                    for ($p = $startPage; $p <= $endPage; $p++):
-                    ?>
-                        <li class="page-item <?= ($p == $currentPage) ? 'active' : '' ?>">
-                            <a class="page-link" href="<?= getPageUrl($p) ?>"><?= $p ?></a>
-                        </li>
-                    <?php endfor; ?>
-
-                    <?php if ($currentPage < $totalPages): ?>
-                        <li class="page-item">
-                            <a class="page-link" href="<?= getPageUrl($currentPage + 1) ?>" aria-label="Next">
-                                <i class="fa-solid fa-angle-right"></i>
-                            </a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="<?= getPageUrl($totalPages) ?>" aria-label="Last">
-                                <i class="fa-solid fa-angles-right"></i>
-                            </a>
-                        </li>
-                    <?php endif; ?>
-                </ul>
-            </nav>
-        </div>
-        <?php endif; ?>
     </div>
 </div>
 
-<!-- ── Duration Legend ──────────────────────────────────────────────────── -->
-<div class="d-flex gap-3 align-items-center flex-wrap mt-3 px-1">
-    <small class="text-muted fw-semibold">Duration Legend:</small>
-    <span class="badge bg-success px-3">≥ 2 hours</span>
-    <span class="badge bg-primary px-3">30 min – 2 hrs</span>
-    <span class="badge bg-warning  px-3">10 – 30 min</span>
-    <span class="badge bg-danger px-3">&lt; 10 min</span>
-</div>
+<?php
+// Helper for avatar colors
+function stringToColorCode($str) {
+    $code = dechex(crc32($str));
+    $code = substr($code, 0, 6);
+    return "#" . $code;
+}
+?>
 
-<!-- ── Employee Time Search – JavaScript ────────────────────────────────── -->
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-(function () {
-    const BASE_URL = '<?= $base_url ?>';
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // ApexCharts settings for Sparklines
+    const commonSparklineOpts = {
+        chart: { type: 'line', width: 60, height: 25, sparkline: { enabled: true } },
+        stroke: { curve: 'smooth', width: 2 },
+        tooltip: { fixed: { enabled: false }, x: { show: false }, y: { title: { formatter: function (seriesName) { return '' } } }, marker: { show: false } }
+    };
 
-    const deptSel    = document.getElementById('empDeptSelect');
-    const empSel     = document.getElementById('empSelect');
-    const searchBtn  = document.getElementById('empSearchBtn');
-    const dateFrom   = document.getElementById('empDateFrom');
-    const dateTo     = document.getElementById('empDateTo');
+    if(document.querySelector("#spark1")) new ApexCharts(document.querySelector("#spark1"), { ...commonSparklineOpts, series: [{ data: [12, 14, 2, 47, 42, 15, 47, 75, 65, 19, 14] }], colors: ['#16a34a'] }).render();
+    if(document.querySelector("#spark2")) new ApexCharts(document.querySelector("#spark2"), { ...commonSparklineOpts, series: [{ data: [47, 45, 74, 14, 56, 37, 48, 11, 71, 15, 65] }], colors: ['#16a34a'] }).render();
+    if(document.querySelector("#spark3")) new ApexCharts(document.querySelector("#spark3"), { ...commonSparklineOpts, series: [{ data: [15, 75, 47, 65, 14, 2, 41, 54, 4, 27, 15] }], colors: ['#d97706'] }).render();
+    if(document.querySelector("#spark4")) new ApexCharts(document.querySelector("#spark4"), { ...commonSparklineOpts, series: [{ data: [47, 15, 2, 67, 22, 20, 36, 60, 60, 30, 50] }], colors: ['#dc2626'] }).render();
+    if(document.querySelector("#spark5")) new ApexCharts(document.querySelector("#spark5"), { ...commonSparklineOpts, series: [{ data: [12, 14, 2, 47, 42, 15, 47, 75, 65, 19, 14] }], colors: ['#16a34a'] }).render();
 
-    const resultSec  = document.getElementById('empResultSection');
-    const spinner    = document.getElementById('empLoadingSpinner');
-    const noData     = document.getElementById('empNoData');
+    // Hourly Active Users Chart
+    const hourlyLabels = <?= $hourlyLabels ?>;
+    const hourlyData = <?= $hourlyData ?>;
+    const expectedTarget = Math.round(<?= $totalUsers ?> * 0.8);
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
-    function fmtMins(mins) {
-        mins = Math.max(0, parseInt(mins) || 0);
-        if (mins === 0) return '0m';
-        const h = Math.floor(mins / 60);
-        const m = mins % 60;
-        return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    const hourlyOptions = {
+        series: [{ name: 'Active Users', data: hourlyData }],
+        chart: { type: 'area', height: 250, toolbar: { show: false }, zoom: { enabled: false } },
+        colors: ['#16a34a'],
+        dataLabels: { enabled: false },
+        stroke: { curve: 'smooth', width: 3 },
+        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0, stops: [0, 90, 100] } },
+        xaxis: { categories: hourlyLabels, axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { colors: '#6b7280', fontSize: '12px', fontWeight: 500 } } },
+        yaxis: { min: 0, tickAmount: 4, labels: { style: { colors: '#6b7280', fontSize: '12px' } } },
+        grid: { borderColor: '#f3f4f6', strokeDashArray: 4, yaxis: { lines: { show: true } }, padding: { top: 0, right: 0, bottom: 0, left: 10 } },
+        annotations: {
+            yaxis: [{
+                y: expectedTarget,
+                borderColor: '#9ca3af',
+                strokeDashArray: 4,
+                label: { borderColor: 'transparent', style: { color: '#6b7280', background: 'transparent' }, text: 'Expected ' + expectedTarget + ' active users', position: 'right', offsetX: -10 }
+            }],
+            xaxis: [{
+                x: '9 AM', x2: '6 PM', fillColor: '#dcfce7', opacity: 0.2
+            }]
+        },
+        tooltip: { theme: 'light' }
+    };
+    if(document.querySelector("#hourlyChart")) {
+        new ApexCharts(document.querySelector("#hourlyChart"), hourlyOptions).render();
     }
 
-    function fmtDate(dateStr) {
-        if (!dateStr) return '—';
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    // Usage Health Donut Chart
+    const healthData = <?= $usageHealthData ?>; // [Healthy, Moderate, Low, No]
+    const healthOptions = {
+        series: healthData,
+        labels: ['Healthy', 'Moderate', 'Low Usage', 'No Usage'],
+        chart: { type: 'donut', height: 260 },
+        colors: ['#16a34a', '#eab308', '#f97316', '#ef4444'],
+        plotOptions: {
+            pie: {
+                donut: { 
+                    size: '65%', 
+                    labels: { 
+                        show: true,
+                        name: {
+                            show: true,
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            color: '#6b7280',
+                            offsetY: -5
+                        },
+                        value: {
+                            show: true,
+                            fontSize: '24px',
+                            fontWeight: 700,
+                            color: '#16a34a',
+                            offsetY: 5,
+                            formatter: function (val) {
+                                return val;
+                            }
+                        },
+                        total: {
+                            show: true,
+                            showAlways: true,
+                            label: 'ERP Adoption Score',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            color: '#6b7280',
+                            formatter: function (w) {
+                                return "<?= $adoptionScore ?>/100";
+                            }
+                        }
+                    } 
+                },
+                expandOnClick: false
+            }
+        },
+        dataLabels: { enabled: true, formatter: function (val, opts) { return opts.w.config.series[opts.seriesIndex] }, style: { fontSize: '14px', fontWeight: 'bold' }, dropShadow: { enabled: false } },
+        legend: { 
+            position: 'right', 
+            offsetY: 0, 
+            height: 200, 
+            markers: { radius: 12, width: 12, height: 12 }, 
+            itemMargin: { vertical: 6 }, 
+            formatter: function(seriesName, opts) {
+                return "<span style='color:#4b5563;font-size:13px;'>" + seriesName + "</span> <span class='fw-bold ms-3 float-end' style='color:#111827;font-size:14px;'>" + opts.w.config.series[opts.seriesIndex] + "</span>";
+            }
+        },
+        stroke: { width: 2, colors: ['#fff'] },
+        tooltip: { enabled: false }
+    };
+    if(document.querySelector("#healthChart")) {
+        new ApexCharts(document.querySelector("#healthChart"), healthOptions).render();
     }
 
-    function fmtDateTime(dtStr) {
-        if (!dtStr) return '—';
-        const d = new Date(dtStr);
-        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-             + ', ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    }
-
-    function durationBadge(mins) {
-        mins = parseInt(mins) || 0;
-        let cls = 'bg-danger';
-        if (mins >= 120) cls = 'bg-success';
-        else if (mins >= 30) cls = 'bg-primary';
-        else if (mins >= 10) cls = 'bg-warning';
-        return `<span class="badge ${cls} px-3 py-2"><i class="fa-solid fa-clock me-1"></i>${fmtMins(mins)}</span>`;
-    }
-
-    function showState(state) {
-        // state: 'loading' | 'result' | 'nodata' | 'hidden'
-        resultSec.classList.add('d-none');
-        spinner.classList.add('d-none');
-        noData.classList.add('d-none');
-        if (state === 'loading')  spinner.classList.remove('d-none');
-        if (state === 'result')   resultSec.classList.remove('d-none');
-        if (state === 'nodata')   noData.classList.remove('d-none');
-    }
-
-    // ── Department change → load employees (jQuery Select2 event) ────────────
-    function loadEmployees(deptId) {
-        // Destroy existing select2 on empSel before modifying DOM
-        if ($(empSel).data('select2')) {
-            $(empSel).select2('destroy');
-        }
-        empSel.innerHTML = '<option value="">— Loading... —</option>';
-        empSel.disabled  = true;
-        searchBtn.disabled = true;
-        showState('hidden');
-
-        if (!deptId) {
-            empSel.innerHTML = '<option value="">— Select Department First —</option>';
-            // Re-init select2
-            $(empSel).select2({ placeholder: '— Select Department First —', width: '100%' });
-            return;
-        }
-
-        fetch(`${BASE_URL}/user-activity-log/employees-by-dept?dept_id=${deptId}`)
-            .then(r => r.json())
-            .then(data => {
-                if (!data.length) {
-                    empSel.innerHTML = '<option value="">No employees found</option>';
-                    $(empSel).select2({ placeholder: 'No employees found', width: '100%' });
-                    return;
+    // DataTable initialization for Person-wise Table
+    if (typeof $ !== 'undefined' && $.fn.DataTable) {
+        var table = $('#dtPersonUsage').DataTable({
+            "pageLength": 15,
+            "lengthChange": false,
+            "searching": true,
+            "info": false,
+            "autoWidth": false,
+            "order": [],
+            "dom": '<"top">rt<"bottom"p><"clear">', // hide default search box to use custom if needed, but keeping simple for now
+            "language": {
+                "paginate": {
+                    "previous": "<i class='fa-solid fa-angle-left'></i>",
+                    "next": "<i class='fa-solid fa-angle-right'></i>"
                 }
-                empSel.innerHTML = '<option value="">— Select Employee —</option>'
-                    + data.map(e => {
-                        const empCode = e.employee_id ? ` [EMP-${e.employee_id}]` : '';
-                        return `<option value="${e.id}">${e.full_name}${empCode}</option>`;
-                    }).join('');
-                empSel.disabled = false;
+            }
+        });
 
-                // Re-initialize Select2 on the now-populated dropdown
-                $(empSel).select2({
-                    placeholder: '— Select Employee —',
-                    allowClear: true,
-                    width: '100%'
-                });
-
-                // Listen for Select2 change event
-                $(empSel).off('select2:select select2:clear').on('select2:select select2:clear', function () {
-                    searchBtn.disabled = !$(this).val();
-                    showState('hidden');
-                });
-            })
-            .catch(() => {
-                empSel.innerHTML = '<option value="">Error loading employees</option>';
-                $(empSel).select2({ placeholder: 'Error loading employees', width: '100%' });
-            });
+        // Tab Filtering Logic
+        $('.custom-tab').on('click', function() {
+            $('.custom-tab').removeClass('active');
+            $(this).addClass('active');
+            
+            var filter = $(this).data('filter');
+            
+            // Clear previous custom search
+            $.fn.dataTable.ext.search.pop();
+            
+            if (filter !== 'All') {
+                $.fn.dataTable.ext.search.push(
+                    function(settings, data, dataIndex, rowData, counter) {
+                        var rowNode = table.row(dataIndex).node();
+                        var status = $(rowNode).attr('data-status');
+                        
+                        if (filter === 'Below Standard') {
+                            return (status === 'Low Usage' || status === 'Moderate');
+                        }
+                        return status === filter;
+                    }
+                );
+            }
+            table.draw();
+        });
     }
 
-    // Listen on Department select2 change
-    $(deptSel).on('select2:select select2:clear', function () {
-        loadEmployees($(this).val());
-    });
-    // Also plain change for fallback
-    deptSel.addEventListener('change', function () {
-        loadEmployees(this.value);
-    });
-
-    // ── Employee change → enable search button (fallback) ────────────────────
-    empSel.addEventListener('change', function () {
-        searchBtn.disabled = !this.value;
-        showState('hidden');
-    });
-
-    // ── Search button click ───────────────────────────────────────────────────
-    searchBtn.addEventListener('click', function () {
-        const userId = $(empSel).val() || empSel.value;
-        if (!userId) return;
-
-        showState('loading');
-
-        let url = `${BASE_URL}/user-activity-log/employee-summary?user_id=${userId}`;
-        if (dateFrom.value) url += `&date_from=${dateFrom.value}`;
-        if (dateTo.value)   url += `&date_to=${dateTo.value}`;
-
-        fetch(url)
-            .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    showState('nodata');
-                    return;
-                }
-
-                // ── Populate employee info ──────────────────────────────────
-                document.getElementById('empName').textContent =
-                    data.employee.full_name || '—';
-                document.getElementById('empMeta').innerHTML =
-                    `${data.employee.email || '—'} &nbsp;|&nbsp; ` +
-                    `${data.employee.department_name} &nbsp;|&nbsp; ` +
-                    `${data.employee.designation_name}`;
-
-                // ── Summary cards ───────────────────────────────────────────
-                document.getElementById('statSessions').textContent = data.total_sessions;
-                document.getElementById('statTotal').textContent    = fmtMins(data.total_minutes);
-                document.getElementById('statAvg').textContent      = fmtMins(data.avg_minutes);
-
-                // ── Date-wise table ─────────────────────────────────────────
-                const tbody = document.getElementById('empDailyBody');
-                if (!data.daily || !data.daily.length) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No daily records found.</td></tr>`;
-                } else {
-                    tbody.innerHTML = data.daily.map((row, i) => `
-                        <tr>
-                            <td class="text-muted">${i + 1}</td>
-                            <td><strong>${fmtDate(row.log_date)}</strong></td>
-                            <td><span class="badge bg-secondary bg-opacity-10 border text-dark px-2">${row.sessions} session${row.sessions > 1 ? 's' : ''}</span></td>
-                            <td><span class="text-nowrap">${fmtDateTime(row.first_login)}</span></td>
-                            <td><span class="text-nowrap">${fmtDateTime(row.last_active)}</span></td>
-                            <td>${durationBadge(row.active_minutes)}</td>
-                        </tr>
-                    `).join('');
-                }
-
-                showState('result');
-
-                // Smooth scroll to result
-                resultSec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            })
-            .catch((err) => {
-                console.error('Employee summary fetch error:', err);
-                showState('nodata');
-            });
-    });
-})();
-}); // DOMContentLoaded
+    // Select2 init for employee search in header
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('.select2').select2();
+    }
+});
 </script>

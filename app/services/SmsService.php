@@ -20,8 +20,8 @@ class SmsService
 
         $config = require dirname(__DIR__) . '/config/config.php';
         $this->apiUrl   = $config['automas_sms_api_url']   ?? 'https://api.automas.com.bd/smsapiv4';
-        $this->apiKey   = $config['automas_sms_api_key']   ?? 'aa4717fdd571e46b240ce35014a5d144';
-        $this->senderId = $config['automas_sms_sender_id'] ?? '8809617635127';
+        $this->apiKey   = $config['automas_sms_api_key']   ?? '734f99f126704a937debae6c0ce52516';
+        $this->senderId = $config['automas_sms_sender_id'] ?? 'TPHL';
         $this->globalTestingMode = !empty($config['sms_testing_mode']);
     }
 
@@ -104,8 +104,8 @@ class SmsService
             ];
         }
 
-        // Format number to include 88 prefix if required by Automas (e.g., 88017XXXXXXXX)
-        $destination = '88' . $normalizedPhone;
+        // Number is already validated and formatted by validatePhoneNumber (e.g., 01XXXXXXXXX)
+        $destination = $normalizedPhone;
 
         // Check if message has non-ASCII (Bangla) characters
         $isUnicode = preg_match('/[^\x00-\x7F]/', $message);

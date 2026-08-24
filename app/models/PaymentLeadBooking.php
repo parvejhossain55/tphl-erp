@@ -34,17 +34,17 @@ class PaymentLeadBooking extends Model
     {
         $stmt = $this->db->prepare("
             INSERT INTO lead_payments
-            (booking_id, bank_name, bank_account_no, cheque_no, online_type, 
+            (booking_id, bank_id, bank_name, bank_account_no, cheque_no, online_type, 
              payment_type, amount, payment_method, payment_status, verification_status, verified_by,
              payment_date, transaction_ref, total_emi_no, created_by, attachment_image)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $v = function($key) use ($data) {
             return (isset($data[$key]) && trim($data[$key]) !== '') ? trim($data[$key]) : null;
         };
 
-        $v_booking_id = $v('booking_id'); $v_bank_name = $v('bank_name'); $v_bank_account_no = $v('bank_account_no');
+        $v_booking_id = $v('booking_id'); $v_bank_id = $v('bank_id'); $v_bank_name = $v('bank_name'); $v_bank_account_no = $v('bank_account_no');
         $v_cheque_no = $v('cheque_no'); $v_online_type = $v('online_type'); $v_payment_type = $v('payment_type');
         $v_amount = $v('amount'); $v_payment_method = $v('payment_method'); $v_payment_status = $v('payment_status');
         $v_verification_status = $v('verification_status') ?? 'pending'; $v_verified_by = $v('verified_by');
@@ -52,8 +52,9 @@ class PaymentLeadBooking extends Model
         $v_created_by = $v('created_by'); $v_attachment_image = $v('attachment_image');
 
         $stmt->bind_param(
-            "isssssdsssisssss",
+            "iisssssdsssisssss",
             $v_booking_id,
+            $v_bank_id,
             $v_bank_name,
             $v_bank_account_no,
             $v_cheque_no,
@@ -85,18 +86,19 @@ class PaymentLeadBooking extends Model
         try {
             $stmt = $this->db->prepare("
             INSERT INTO lead_payments
-            (booking_id, bank_name, bank_account_no, cheque_no, online_type, 
-             payment_type, amount, payment_method, payment_status, verification_status, 
+            (booking_id, bank_id, bank_name, bank_account_no, cheque_no, online_type, 
+             payment_type, amount, payment_method, payment_status, verification_status,
              payment_date, transaction_ref, total_emi_no, created_by, attachment_image)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
             $verificationStatus = $data['verification_status'] ?? 'pending';
             $attachment_image = $data['attachment_image'] ?? '';
 
             $stmt->bind_param(
-                "isssssdsssssiss",
+                "iisssssdsssssiss",
                 $data['booking_id'],
+                $data['bank_id'],
                 $data['bank_name'],
                 $data['bank_account_no'],
                 $data['cheque_no'],
