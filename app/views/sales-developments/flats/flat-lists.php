@@ -49,7 +49,7 @@ unset($_SESSION['csv_import_skipped']); // clear after reading
 
             <!-- Project Filter -->
             <div class="col-xl-3 col-md-4 col-sm-6">
-                <select class="form-control form-control-sm" name="project_id">
+                <select class="form-control form-control-sm select2" name="project_id">
                     <option value="">All Projects</option>
                     <?php foreach ($projects as $project): ?>
                         <option value="<?= $project['id'] ?>"

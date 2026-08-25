@@ -101,6 +101,7 @@ class Con_MaterialReceivingImportController extends Controller
         $userMap    = $this->buildMap("SELECT id, email FROM users", 'email', 'id');
         
         $results = [];
+        $uniqueProjectIds = [];
         $rowNum = 1;
 
         while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
@@ -126,6 +127,8 @@ class Con_MaterialReceivingImportController extends Controller
                 $rowIssues[] = "project_name is empty";
             } elseif (!$projectId) {
                 $rowIssues[] = "Project not found '$projectName'";
+            } else {
+                $uniqueProjectIds[] = $projectId;
             }
 
             // 2. Resolve users (Optional)
@@ -164,11 +167,13 @@ class Con_MaterialReceivingImportController extends Controller
             $vendorPhone = $data['vendor_phone'] ?? '';
             $vendorId = null;
             if (empty($vendorName)) {
-                $rowIssues[] = "vendor_name is empty";
-            } else {
+                $vendorName = 'Retail Vendor';
+            }
+            
+            if (true) {
                 if (!empty($vendorPhone)) {
                     $cleanPhone = preg_replace('/[^0-9]/', '', $vendorPhone);
-                    $stmt = $this->db->prepare("SELECT id FROM vendors WHERE LOWER(name) = LOWER(?) AND (phone = ? OR phone LIKE ? OR REPLACE(phone, '-', '') LIKE ?) LIMIT 1");
+                    $stmt = $this->db->prepare("SELECT id FROM vendors WHERE REPLACE(LOWER(name), ' ', '') = REPLACE(LOWER(?), ' ', '') AND (phone = ? OR phone LIKE ? OR REPLACE(phone, '-', '') LIKE ?) LIMIT 1");
                     $likePhone1 = "%" . $vendorPhone . "%";
                     $likePhone2 = "%" . $cleanPhone . "%";
                     $stmt->bind_param("ssss", $vendorName, $vendorPhone, $likePhone1, $likePhone2);
@@ -177,17 +182,17 @@ class Con_MaterialReceivingImportController extends Controller
                     if ($res) {
                         $vendorId = $res['id'];
                     } else {
-                        $rowIssues[] = "Vendor not found with name '$vendorName' and phone '$vendorPhone'";
+                        $vendorId = -1; // Auto create in import
                     }
                 } else {
-                    $stmt = $this->db->prepare("SELECT id FROM vendors WHERE LOWER(name) = LOWER(?) LIMIT 1");
+                    $stmt = $this->db->prepare("SELECT id FROM vendors WHERE REPLACE(LOWER(name), ' ', '') = REPLACE(LOWER(?), ' ', '') LIMIT 1");
                     $stmt->bind_param("s", $vendorName);
                     $stmt->execute();
                     $res = $stmt->get_result()->fetch_assoc();
                     if ($res) {
                         $vendorId = $res['id'];
                     } else {
-                        $rowIssues[] = "Vendor not found with name '$vendorName'";
+                        $vendorId = -1; // Auto create in import
                     }
                 }
             }
@@ -215,8 +220,10 @@ class Con_MaterialReceivingImportController extends Controller
 
                 $payMethod = trim($data['payment_method'] ?? '');
                 if (empty($payMethod)) {
-                    $rowIssues[] = "payment_method is required since payment_amount is greater than 0";
-                } else {
+                    $payMethod = 'Cash';
+                    $data['payment_method'] = 'Cash';
+                }
+                if (true) {
                     $normMethod = '';
                     $m = strtolower($payMethod);
                     if ($m === 'cash') $normMethod = 'Cash';
@@ -263,9 +270,25 @@ class Con_MaterialReceivingImportController extends Controller
 
         fclose($handle);
 
+        $hasTodayUpload = false;
+        $uniqueProjectIds = array_filter(array_unique($uniqueProjectIds));
+        if (!empty($uniqueProjectIds)) {
+            $projIdsStr = implode(',', $uniqueProjectIds);
+            $today = date('Y-m-d');
+            $stmtCheck = $this->db->prepare("SELECT id FROM purchase_requests WHERE DATE(approved_at) = ? AND upload_from = 'from CSV' AND project_id IN ($projIdsStr) LIMIT 1");
+            if ($stmtCheck) {
+                $stmtCheck->bind_param("s", $today);
+                $stmtCheck->execute();
+                if ($stmtCheck->get_result()->fetch_assoc()) {
+                    $hasTodayUpload = true;
+                }
+            }
+        }
+
         echo json_encode([
             'success' => true,
-            'rows' => $results
+            'rows' => $results,
+            'has_today_upload' => $hasTodayUpload
         ]);
         exit;
     }
@@ -276,6 +299,8 @@ class Con_MaterialReceivingImportController extends Controller
 
     public function import()
     {
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+        
         if (empty($_FILES['csv_file']['tmp_name'])) {
             setError('Please upload a CSV file.');
             header('Location: ' . $GLOBALS['base_url'] . '/con-material-receiving-import');
@@ -387,12 +412,15 @@ class Con_MaterialReceivingImportController extends Controller
                 $warehouseId = $this->findOrCreateWarehouse($firstRow['warehouse_name'], $projectId, $createdById);
 
                 // Resolve vendor
-                $vName = trim($firstRow['vendor_name']);
+                $vName = trim($firstRow['vendor_name'] ?? '');
+                if (empty($vName)) {
+                    $vName = 'Retail Vendor';
+                }
                 $vPhone = trim($firstRow['vendor_phone'] ?? '');
                 $vendorId = null;
                 if (!empty($vPhone)) {
                     $cleanPhone = preg_replace('/[^0-9]/', '', $vPhone);
-                    $stmt = $this->db->prepare("SELECT id FROM vendors WHERE LOWER(name) = LOWER(?) AND (phone = ? OR phone LIKE ? OR REPLACE(phone, '-', '') LIKE ?) LIMIT 1");
+                    $stmt = $this->db->prepare("SELECT id FROM vendors WHERE REPLACE(LOWER(name), ' ', '') = REPLACE(LOWER(?), ' ', '') AND (phone = ? OR phone LIKE ? OR REPLACE(phone, '-', '') LIKE ?) LIMIT 1");
                     $likePhone1 = "%" . $vPhone . "%";
                     $likePhone2 = "%" . $cleanPhone . "%";
                     $stmt->bind_param("ssss", $vName, $vPhone, $likePhone1, $likePhone2);
@@ -400,10 +428,22 @@ class Con_MaterialReceivingImportController extends Controller
                     $res = $stmt->get_result()->fetch_assoc();
                     $vendorId = $res ? (int)$res['id'] : null;
                 } else {
-                    $vendorId = $vendorMap[strtolower($vName)] ?? null;
+                    $stmt = $this->db->prepare("SELECT id FROM vendors WHERE REPLACE(LOWER(name), ' ', '') = REPLACE(LOWER(?), ' ', '') LIMIT 1");
+                    $stmt->bind_param("s", $vName);
+                    $stmt->execute();
+                    $res = $stmt->get_result()->fetch_assoc();
+                    $vendorId = $res ? (int)$res['id'] : null;
                 }
 
-                if (!$vendorId) { $errors[] = "Vendor not found: $vName (phone: $vPhone)"; continue; }
+                if (!$vendorId) {
+                    $insStmt = $this->db->prepare("INSERT INTO vendors (name, phone, status, rating, created_by, created_at) VALUES (?, ?, 'active', 5.00, ?, NOW())");
+                    $insStmt->bind_param("ssi", $vName, $vPhone, $createdById);
+                    if ($insStmt->execute()) {
+                        $vendorId = $this->db->insert_id;
+                    }
+                }
+
+                if (!$vendorId) { $errors[] = "Vendor not found and could not be created: $vName (phone: $vPhone)"; continue; }
 
                 $resolvedItems = [];
                 $totalPoAmount = 0.0;
@@ -579,10 +619,51 @@ class Con_MaterialReceivingImportController extends Controller
                     );
                     $movStmt->execute();
                     $summary['stock_lines']++;
+
+                    // --- Auto Issue (Stock Out) ---
+                    $iStmt = $this->db->prepare(
+                        "INSERT INTO con_material_issues
+                            (project_id, warehouse_id, material_id, quantity, issued_to,
+                             purpose, issued_by, issue_date)
+                         VALUES (?, ?, ?, ?, 0, 'Bulk Upload Auto Issue', ?, ?)"
+                    );
+                    $issueDate = date('Y-m-d H:i:s');
+                    $iStmt->bind_param('iiidis',
+                        $projectId, $warehouseId, $item['material_id'],
+                        $item['qty'], $createdById, $issueDate
+                    );
+                    $iStmt->execute();
+                    $issueId = $this->db->insert_id;
+
+                    $stockOutStmt = $this->db->prepare(
+                        "UPDATE con_stocks 
+                         SET current_quantity = current_quantity - ?, 
+                             total_value = (current_quantity - ?) * unit_price 
+                         WHERE material_id = ? AND warehouse_id = ?"
+                    );
+                    $stockOutStmt->bind_param('ddii',
+                        $item['qty'], $item['qty'], $item['material_id'], $warehouseId
+                    );
+                    $stockOutStmt->execute();
+
+                    $movOutStmt = $this->db->prepare(
+                        "INSERT INTO con_stock_movements
+                            (material_id, warehouse_id, type, quantity, ref_type, ref_id, moved_by)
+                         VALUES (?, ?, 'OUT', ?, 'material_issue', ?, ?)"
+                    );
+                    $movOutStmt->bind_param('iidii',
+                        $item['material_id'], $warehouseId, $item['qty'], $issueId, $createdById
+                    );
+                    $movOutStmt->execute();
+                    // -----------------------------
                 }
 
                 // ── 9. vendor_payment_requests ────────────────────────────
-                $paymentAmount = floatval(str_replace(',', '', $firstRow['payment_amount'] ?? '0'));
+                $paymentAmountStr = trim($firstRow['payment_amount'] ?? '');
+                $paymentAmount = floatval(str_replace(',', '', $paymentAmountStr));
+                if ($paymentAmount <= 0) {
+                    $paymentAmount = $totalPoAmount;
+                }
                 $dueAmount = $totalPoAmount - $paymentAmount;
                 $vprStatus = 'Approved';
                 if ($paymentAmount >= $totalPoAmount) {
@@ -760,7 +841,7 @@ class Con_MaterialReceivingImportController extends Controller
         }
 
         $stmt2 = $this->db->prepare("INSERT INTO con_warehouses (name, project_id, location, created_by, created_at) VALUES (?, ?, 'CSV Import', ?, NOW())");
-        $stmt2->bind_param("sisi", $name, $projectId, $createdById);
+        $stmt2->bind_param("sii", $name, $projectId, $createdById);
         $stmt2->execute();
         return (int)$this->db->insert_id;
     }

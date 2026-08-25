@@ -17,7 +17,7 @@ $isShop            = (int)($flat['is_shop'] ?? 0);
                 <!-- Project -->
                 <div class="col-xl-6">
                     <label>Project *</label>
-                    <select name="project_id" class="form-control" required>
+                    <select name="project_id" class="form-control select2" required>
                         <option value="">Select Project</option>
                         <?php foreach ($projects as $project): ?>
                             <option value="<?= $project['id'] ?>"

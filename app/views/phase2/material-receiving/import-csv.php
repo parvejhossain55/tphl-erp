@@ -441,8 +441,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     submitBtn.disabled = true;
                 } else {
                     alertEl.className = 'alert alert-success d-block';
-                    alertEl.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i><strong>Ready to Import:</strong> All ${rowCount} rows are valid and database relations matched. Click Confirm to run the import.`;
+                    let alertMsg = `<i class="bi bi-check-circle-fill me-2"></i><strong>Ready to Import:</strong> All ${rowCount} rows are valid and database relations matched. Click Confirm to run the import.`;
+                    if (res.has_today_upload) {
+                        alertMsg += `<br><br><span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i> Warning: Material receiving was already uploaded today for one or more projects in this file!</span>`;
+                    }
+                    alertEl.innerHTML = alertMsg;
                     submitBtn.disabled = false;
+                    window.hasTodayUpload = res.has_today_upload;
                 }
             })
             .catch(err => {
@@ -455,6 +460,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         document.getElementById('submitPoImportConfirmed').addEventListener('click', function () {
+            if (window.hasTodayUpload) {
+                if (!confirm("You have already uploaded a CSV for this project today.\n\nAre you sure you want to upload again?")) {
+                    return;
+                }
+            }
             isConfirmed = true;
             importForm.submit();
         });
