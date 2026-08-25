@@ -22,7 +22,7 @@ class AiDataService
             JOIN purchase_requests pr ON po.request_id = pr.id
             JOIN con_materials m ON poi.material_id = m.id
             LEFT JOIN con_categories c ON m.category_id = c.id
-            LEFT JOIN vendors v ON poi.selected_vendor_id = v.id
+        LEFT JOIN con_material_categories c ON m.category_id = c.id
             LEFT JOIN vendor_payment_requests vpr ON vpr.purchase_order_id = po.id
             LEFT JOIN con_financial_transactions ft ON ft.ref_type = 'vendor_payment' AND ft.ref_id = vpr.id
             WHERE pr.project_id = ?
