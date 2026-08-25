@@ -199,6 +199,7 @@ return [
     // Controller: IncentiveController
     // =========================================================================
     'my-incentives' => ['controller' => 'IncentiveController', 'method' => 'myIncentives'],
+    'my-team-incentives' => ['controller' => 'IncentiveController', 'method' => 'teamIncentives'],
     'incentive-management' => ['controller' => 'IncentiveController', 'method' => 'manageIncentives'],
     'incentives/claim' => ['controller' => 'IncentiveController', 'method' => 'claimIncentive'],
     'incentives/assign-external' => ['controller' => 'IncentiveController', 'method' => 'assignExternalIncentive'],

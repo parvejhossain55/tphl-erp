@@ -432,7 +432,7 @@ class SalesDashboardController extends Controller
 
         $this->view('sales-developments/sales-executive-teams', [
             "current_route" => "sales-executive-teams",
-            "page_title" => "Sales Executive Team",
+            "page_title" => "Sales Incentive Target",
             'salesUsers' => $salesUsers,
             'roles' => $roles,
             'currentPage' => $currentPage,
@@ -445,14 +445,18 @@ class SalesDashboardController extends Controller
         $user = $this->userModel->find($id);
         $targets = $this->salesTargetModel->getAllTargets($id);
         $projects = $this->db->query("SELECT id, name, category_id FROM projects WHERE deleted_at IS NULL")->fetch_all(MYSQLI_ASSOC);
-        $categories = $this->db->query("SELECT id, name AS category_name FROM project_categories")->fetch_all(MYSQLI_ASSOC);
+        $team = $this->db->query("SELECT t.name FROM users u JOIN teams t ON u.team_id = t.id WHERE u.id = $id LIMIT 1")->fetch_assoc();
+        $teamName = $team['name'] ?? 'No Team';
+        
+        $categories = $this->db->query("SELECT id, name AS category_name, main_category FROM project_categories")->fetch_all(MYSQLI_ASSOC);
 
         $this->view("sales-developments/set-sales-target", [
             "current_route" => "sales-executive-teams",
             'user' => $user,
             'targets' => $targets,
             'projects' => $projects,
-            'categories' => $categories
+            'categories' => $categories,
+            'teamName' => $teamName
         ]);
     }
 
@@ -467,6 +471,13 @@ class SalesDashboardController extends Controller
         $siteVisit = $_POST['site_visit_target'] ?? 0;
         $bookingTarget = $_POST['booking_target'] ?? 0;
         $bookingValue = $_POST['booking_value_target'] ?? 0;
+        $salesRole = $_POST['sales_role'] ?? null;
+        
+        if (empty($salesRole)) {
+            $_SESSION['error'] = "Sales Role is required!";
+            header("Location: " . $GLOBALS['base_url'] . "/set-sales-target/" . $id);
+            exit;
+        }
 
         $saved = $this->salesTargetModel->saveTarget(
             $id,
@@ -475,7 +486,8 @@ class SalesDashboardController extends Controller
             $bookingTarget,
             $bookingValue,
             $categoryId,
-            $projectIds
+            $projectIds,
+            $salesRole
         );
 
         if ($saved) {
@@ -502,7 +514,14 @@ class SalesDashboardController extends Controller
         $booking = $_POST['booking_target'] ?? 0;
         $bookingValue = $_POST['booking_value_target'] ?? 0;
 
+        $salesRole = $_POST['sales_role'] ?? null;
         $userId = $_POST['user_id'];
+        
+        if (empty($salesRole)) {
+            $_SESSION['error'] = "Sales Role is required!";
+            header("Location: " . $GLOBALS['base_url'] . "/set-sales-target/" . $userId);
+            exit;
+        }
 
         $sql = "
         UPDATE sales_targets 
@@ -511,11 +530,12 @@ class SalesDashboardController extends Controller
             booking_target = ?, 
             booking_value_target = ?,
             category_id = ?,
-            project_ids = ?
+            project_ids = ?,
+            sales_role = ?
         WHERE id = ?
     ";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("siidisi", $month, $siteVisit, $booking, $bookingValue, $categoryId, $projectIds, $id);
+        $stmt->bind_param("siidissi", $month, $siteVisit, $booking, $bookingValue, $categoryId, $projectIds, $salesRole, $id);
         $stmt->execute();
 
         $_SESSION['success'] = "Target updated successfully!";

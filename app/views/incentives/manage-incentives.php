@@ -3,14 +3,18 @@
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
             <h3 class="fw-bold mb-1 text-dark">
-                <i class="fa-solid fa-coins text-warning me-2"></i>Sales Incentive Accounts & Management
+                <i class="fa-solid fa-hand-holding-dollar text-primary me-2"></i>Sales Incentive Accounts
             </h3>
-            <p class="text-muted small mb-0">Company-wide incentive pool management, sales claim approvals, non-sales employee manual assignments, and wallet disbursements.</p>
+            <p class="text-muted small mb-0">Manage claims, monitor dynamic targets, review external incentive allocations, and manage employee payouts.</p>
         </div>
-        <div class="d-flex gap-2">
-            <button class="btn btn-primary rounded-2 shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#assignExternalIncentiveModal">
-                <i class="fa-solid fa-user-plus me-1"></i> Assign External Incentive
-            </button>
+        <div class="d-flex align-items-center gap-3">
+            <form action="" method="GET" class="d-flex align-items-center gap-2">
+                <label for="monthFilter" class="fw-bold text-muted small mb-0 text-nowrap">Filter Month:</label>
+                <input type="month" id="monthFilter" name="month" class="form-control form-control-sm" value="<?= $selected_month ?>" onchange="this.form.submit()">
+            </form>
+            <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fs-7 fw-semibold">
+                <i class="fa-solid fa-building-columns me-1"></i> Management View
+            </span>
         </div>
     </div>
 
@@ -106,8 +110,13 @@
         <div class="card-header bg-white py-2 border-bottom">
             <ul class="nav nav-tabs card-header-tabs border-0" id="incentiveTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active fw-bold py-2 px-3 border-0 rounded-top-2" id="sales-claims-tab" data-bs-toggle="tab" data-bs-target="#sales-claims" type="button" role="tab">
-                        <i class="fa-solid fa-user-check me-2"></i>Sales Person Claims Queue
+                    <button class="nav-link active fw-bold py-2 px-3 border-0 rounded-top-2" id="realtime-stats-tab" data-bs-toggle="tab" data-bs-target="#realtime-stats" type="button" role="tab">
+                        <i class="fa-solid fa-chart-pie me-2"></i>Real-Time Month Targets
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-bold py-2 px-3 border-0 rounded-top-2" id="sales-claims-tab" data-bs-toggle="tab" data-bs-target="#sales-claims" type="button" role="tab">
+                        <i class="fa-solid fa-user-check me-2"></i>Sales Claims Queue
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -126,8 +135,104 @@
         <div class="card-body p-0">
             <div class="tab-content" id="incentiveTabsContent">
                 
+                <!-- TAB 0: Real-Time Month Targets -->
+                <div class="tab-pane fade show active" id="realtime-stats" role="tabpanel">
+                    <div class="p-3 border-bottom d-flex align-items-center justify-content-between">
+                        <span class="text-muted extra-small fw-semibold">
+                            <i class="fa-solid fa-info-circle me-1"></i>Real-time calculated incentives based on current month's target vs achievement.
+                        </span>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light text-muted extra-small text-uppercase">
+                                <tr>
+                                    <th class="ps-4">Employee</th>
+                                    <th>Individual Target & Achieve</th>
+                                    <th>Indiv. Incentive %</th>
+                                    <th>Team Target & Achieve</th>
+                                    <th>Team Incentive Earned</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if(empty($realTimeStats)): ?>
+                                <tr><td colspan="5" class="text-center py-4 text-muted">No target data found for this month.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach($realTimeStats as $stat): 
+                                        $u = $stat['user'];
+                                        $ind = $stat['individual'];
+                                        $team = $stat['team'];
+                                    ?>
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="avatar avatar-sm bg-primary-subtle text-primary rounded-circle fw-bold">
+                                                    <?= strtoupper(substr($u['full_name'], 0, 1)) ?>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-0 fw-bold text-dark"><?= htmlspecialchars($u['full_name']) ?></h6>
+                                                    <span class="text-muted extra-small d-block"><?= htmlspecialchars($u['designation'] ?? 'N/A') ?> | <?= htmlspecialchars($u['department'] ?? 'N/A') ?></span>
+                                                    <span class="badge bg-light text-dark border extra-small mt-1"><?= $u['employee_id'] ?></span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <?php if($ind['target_amount'] > 0): ?>
+                                                <div class="small">Target: <strong class="text-dark">৳<?= number_format($ind['target_amount'], 2) ?></strong></div>
+                                                <div class="small">Achieved: <strong class="text-success">৳<?= number_format($ind['assigned_achieved'] + $ind['unassigned_achieved'], 2) ?></strong></div>
+                                                <div class="progress mt-1" style="height: 5px;">
+                                                    <div class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $ind['achievement_pct']) ?>%;" aria-valuenow="<?= $ind['achievement_pct'] ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                                                </div>
+                                                <div class="extra-small text-muted mt-1"><?= number_format($ind['achievement_pct'], 2) ?>% Achieved</div>
+                                            <?php else: ?>
+                                                <span class="text-muted small">No Indv. Target</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if($ind['target_amount'] > 0): ?>
+                                                <div class="small">Eligible Payout: <strong><?= $ind['eligible_payout_pct'] ?>%</strong></div>
+                                                <div class="small">Slab: <strong><?= $ind['base_slab_pct'] ?>%</strong></div>
+                                                <?php if($ind['final_assigned_pct'] > 0): ?>
+                                                    <span class="badge bg-primary mt-1">Final: <?= $ind['final_assigned_pct'] ?>%</span>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                -
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if($team['eligible'] && $team['team_target'] > 0): ?>
+                                                <div class="small">Target: <strong class="text-dark">৳<?= number_format($team['team_target'], 2) ?></strong></div>
+                                                <div class="small">Achieved: <strong class="text-success">৳<?= number_format($team['team_achieved'], 2) ?></strong></div>
+                                                <div class="progress mt-1" style="height: 5px;">
+                                                    <div class="progress-bar bg-success" role="progressbar" style="width: <?= min(100, $team['team_achievement_pct']) ?>%;" aria-valuenow="<?= $team['team_achievement_pct'] ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                                                </div>
+                                                <div class="extra-small text-muted mt-1"><?= number_format($team['team_achievement_pct'], 2) ?>% Achieved</div>
+                                            <?php else: ?>
+                                                <span class="text-muted small">Not Eligible</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if($team['eligible'] && $team['team_target'] > 0): ?>
+                                                <?php if($team['incentive_earned'] > 0): ?>
+                                                    <h6 class="text-success fw-bold mb-0">৳<?= number_format($team['incentive_earned'], 2) ?></h6>
+                                                    <span class="extra-small text-muted"><?= $team['slabs_hit'] ?> slabs hit (<?= $team['eligible_payout_pct'] ?>% payout)</span>
+                                                <?php else: ?>
+                                                    <span class="text-muted small">৳0.00</span>
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                -
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- TAB 1: Sales Person Claims Queue -->
-                <div class="tab-pane fade show active" id="sales-claims" role="tabpanel">
+                <div class="tab-pane fade" id="sales-claims" role="tabpanel">
                     <div class="p-3 border-bottom d-flex align-items-center justify-content-between">
                         <span class="text-muted extra-small fw-semibold">
                             <i class="fa-solid fa-info-circle me-1"></i>Review all company sales bookings and submitted claims. Claims approved here clear the management queue and move to Accounts disbursement.

@@ -1,11 +1,11 @@
 <?php
 $page_title = "User List";
-$page = 'Sales User Lists';
+$page = 'Sales Incentive Target';
 $show_breadcrumb = false;
 ?>
 <div class="row mb-4 ">
 <div class="d-flex justify-content-evenly align-items-center mb-4">
-    <h4 class="mb-0">All Sales Teams</h4>
+    <h4 class="mb-0">Sales Incentive Targets</h4>
    
 </div>
 <form method="GET" action="">
@@ -56,7 +56,8 @@ $show_breadcrumb = false;
                                 <h4 class="mb-8"><?= htmlspecialchars($user['full_name'] ?: "No Name") ?></h4>
                                 <p class="mb-0"><?= htmlspecialchars($user['designation_name'] ?: "No Designation") ?></p>
                                 <p class="mb-0"><?= htmlspecialchars($user['email'] ?: "No email") ?></p>
-                                <p class="mb-2"> <span class="fw-semibold fs-6 pe-1">Role:</span><?= htmlspecialchars($user['role_name'] ?: "No role ") ?></p>
+                                <p class="mb-0"> <span class="fw-semibold fs-6 pe-1">Role:</span><?= htmlspecialchars($user['role_name'] ?: "No role ") ?></p>
+                                <p class="mb-2"> <span class="fw-semibold fs-6 pe-1">Team:</span><?= htmlspecialchars($user['team_name'] ?: "No Team") ?></p>
                             </div>
                             <div class="common-social mb-20">
                                 <a href="<?= $user['media_link1'] ?>"><i class="fa-brands fa-facebook-f"></i></a>

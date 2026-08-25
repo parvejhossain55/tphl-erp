@@ -79,11 +79,13 @@ class IncentiveController extends Controller
         }
 
         $teamMetrics = $this->engine->getTeamMonthlyStats($userId, date('Y-m'));
+        $teamSalesBreakdown = $this->incentiveModel->getTeamSalesBreakdown($userId, date('Y-m'));
 
         $this->view("incentives/team-incentives", [
-            "current_route"   => "team-incentives",
-            "page_title"      => "Team Sales Incentives",
-            "teamMetrics"     => $teamMetrics
+            "current_route"      => "my-team-incentives",
+            "page_title"         => "Team Sales Incentives",
+            "teamMetrics"        => $teamMetrics,
+            "teamSalesBreakdown" => $teamSalesBreakdown
         ]);
     }
 
@@ -92,19 +94,26 @@ class IncentiveController extends Controller
      */
     public function manageIncentives()
     {
-        $companyMetrics         = $this->incentiveModel->getCompanyMetrics();
-        $salesClaimsQueue       = $this->incentiveModel->getSalesClaimsQueue();
+        $month = $_GET['month'] ?? date('Y-m');
+
+        $companyMetrics         = $this->incentiveModel->getCompanyMetrics($month);
+        $salesClaimsQueue       = $this->incentiveModel->getSalesClaimsQueue($month);
         $nonSalesEmployees      = $this->incentiveModel->getNonSalesEmployees();
         $availableProjectsFlats = $this->incentiveModel->getAvailableProjectsFlats();
         $externalClaimsList     = $this->incentiveModel->getExternalClaimsList();
         $employeeWallets        = $this->incentiveModel->getEmployeeWallets();
         $disbursementLogs       = $this->incentiveModel->getDisbursementLogs();
 
+        // Calculate dynamic real-time team stats and individual stats to show on the dashboard for this month
+        $realTimeStats = $this->incentiveModel->getRealTimeIncentivesByMonth($month);
+
         $this->view("incentives/manage-incentives", [
             "current_route"          => "incentive-management",
             "page_title"             => "Sales Incentive Accounts",
+            "selected_month"         => $month,
             "companyMetrics"         => $companyMetrics,
             "salesClaimsQueue"       => $salesClaimsQueue,
+            "realTimeStats"          => $realTimeStats,
             "nonSalesEmployees"      => $nonSalesEmployees,
             "availableProjectsFlats" => $availableProjectsFlats,
             "externalClaimsList"     => $externalClaimsList,

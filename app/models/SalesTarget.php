@@ -25,29 +25,31 @@ class SalesTarget extends Model
     /**
      * Insert or update target
      */
-    public function saveTarget($userId, $month, $siteVisit, $bookingTarget, $bookingValue, $categoryId = null, $projectIds = null)
+    public function saveTarget($userId, $month, $siteVisit, $bookingTarget, $bookingValue, $categoryId = null, $projectIds = null, $salesRole = null)
     {
         $sql = "
             INSERT INTO sales_targets
-            (sales_user_id, month, site_visit_target, booking_target, booking_value_target, category_id, project_ids)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (sales_user_id, month, site_visit_target, booking_target, booking_value_target, category_id, project_ids, sales_role)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 site_visit_target = VALUES(site_visit_target),
                 booking_target = VALUES(booking_target),
                 booking_value_target = VALUES(booking_value_target),
                 category_id = VALUES(category_id),
-                project_ids = VALUES(project_ids)
+                project_ids = VALUES(project_ids),
+                sales_role = VALUES(sales_role)
         ";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            "isiidis",
+            "isiidiss",
             $userId,
             $month,
             $siteVisit,
             $bookingTarget,
             $bookingValue,
             $categoryId,
-            $projectIds
+            $projectIds,
+            $salesRole
         );
         return $stmt->execute();
     }
