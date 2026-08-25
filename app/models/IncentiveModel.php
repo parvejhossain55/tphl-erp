@@ -344,7 +344,7 @@ class IncentiveModel
     /**
      * Get Company Overall Incentive Metrics
      */
-    public function getCompanyMetrics()
+    public function getCompanyMetrics($month = null)
     {
         $sql = "SELECT 
                     SUM(incentive_amount) AS total_pool,
@@ -353,6 +353,10 @@ class IncentiveModel
                     SUM(CASE WHEN claim_status IN ('approved', 'partially_paid', 'paid') THEN incentive_amount ELSE 0 END) AS total_approved,
                     SUM(CASE WHEN is_external = 1 THEN 1 ELSE 0 END) AS external_count
                 FROM project_incentive_claims";
+        
+        if ($month) {
+            $sql .= " WHERE DATE_FORMAT(created_at, '%Y-%m') = '" . $this->db->real_escape_string($month) . "'";
+        }
 
         $res = $this->db->query($sql);
         $row = $res ? $res->fetch_assoc() : [];
@@ -375,7 +379,7 @@ class IncentiveModel
      * Get Sales Persons Claims Queue for Accounts
      * ONLY returns claims that have actually been submitted by Sales Executives!
      */
-    public function getSalesClaimsQueue()
+    public function getSalesClaimsQueue($month = null)
     {
         $sql = "SELECT 
                     c.*,
@@ -394,8 +398,13 @@ class IncentiveModel
                 LEFT JOIN designations des ON e.designation_id = des.id
                 LEFT JOIN projects p ON c.project_id = p.id
                 LEFT JOIN flats f ON c.flat_id = f.id
-                WHERE c.is_external = 0
-                ORDER BY c.id DESC";
+                WHERE c.is_external = 0";
+
+        if ($month) {
+            $sql .= " AND DATE_FORMAT(c.created_at, '%Y-%m') = '" . $this->db->real_escape_string($month) . "'";
+        }
+        
+        $sql .= " ORDER BY c.id DESC";
 
         $res = $this->db->query($sql);
         $queue = [];
@@ -436,6 +445,130 @@ class IncentiveModel
         }
 
         return $queue;
+    }
+
+    /**
+     * Get Real-Time Sales Incentive Stats for the Month (Target vs Achievement)
+     */
+    public function getRealTimeIncentivesByMonth($month)
+    {
+        $stats = [];
+        
+        // Find all users who have a target this month OR who are team leaders/coordinators
+        $sql = "SELECT DISTINCT u.id, u.full_name, e.employee_id, d.name AS department, des.name AS designation, e.team_id 
+                FROM users u
+                LEFT JOIN employees e ON u.id = e.user_id
+                LEFT JOIN departments d ON e.department_id = d.id
+                LEFT JOIN designations des ON e.designation_id = des.id
+                WHERE u.id IN (
+                    SELECT sales_user_id FROM sales_targets WHERE DATE_FORMAT(month, '%Y-%m') = ?
+                ) OR u.role_id IN (5,6,7,9) OR e.is_sales_co_leader = 1";
+                
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("s", $month);
+        $stmt->execute();
+        $users = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        foreach ($users as $u) {
+            $userId = (int)$u['id'];
+            $ind = $this->engine->getExecutiveMonthlyStats($userId, $month);
+            $team = $this->engine->getTeamMonthlyStats($userId, $month);
+            
+            // Only add to list if they have some target or achievement
+            if ($ind['target_amount'] > 0 || $ind['assigned_achieved'] > 0 || $ind['unassigned_achieved'] > 0 || ($team['eligible'] && $team['team_target'] > 0)) {
+                $stats[] = [
+                    'user'       => $u,
+                    'individual' => $ind,
+                    'team'       => $team
+                ];
+            }
+        }
+        
+        return $stats;
+    }
+
+    /**
+     * Get Team Sales Breakdown for a specific manager and month
+     */
+    public function getTeamSalesBreakdown($managerId, $month)
+    {
+        $managerId = (int)$managerId;
+        
+        // Find if this user is a manager/head and get their team_id or logic
+        $sqlRole = "SELECT role_id FROM users WHERE id = ?";
+        $stmtRole = $this->db->prepare($sqlRole);
+        $stmtRole->bind_param("i", $managerId);
+        $stmtRole->execute();
+        $resRole = $stmtRole->get_result()->fetch_assoc();
+        $stmtRole->close();
+        
+        if (!$resRole) return [];
+        $roleId = (int)$resRole['role_id'];
+        
+        // Find team_id for this user
+        $sqlTeam = "SELECT team_id FROM employees WHERE user_id = ?";
+        $stmtTeam = $this->db->prepare($sqlTeam);
+        $stmtTeam->bind_param("i", $managerId);
+        $stmtTeam->execute();
+        $resTeam = $stmtTeam->get_result()->fetch_assoc();
+        $stmtTeam->close();
+        
+        $teamId = $resTeam ? (int)$resTeam['team_id'] : 0;
+        
+        if ($roleId != 6 && $roleId != 9 && $teamId == 0) {
+            // Not sales head, not management, and no team ID
+            return [];
+        }
+
+        // If sales head (role 6) or management (role 9), they see ALL team sales
+        if ($roleId == 6 || $roleId == 9) {
+            $sql = "SELECT 
+                        lb.id, lb.booking_date, 
+                        u.full_name as sales_person, 
+                        p.name as project_name, 
+                        f.flat_name, 
+                        IFNULL(f.land_share_value, 0.00) as land_share_value,
+                        lb.booking_status
+                    FROM lead_bookings lb
+                    JOIN users u ON lb.sales_by_id = u.id
+                    JOIN projects p ON lb.project_id = p.id
+                    JOIN flats f ON lb.flat_id = f.id
+                    WHERE DATE_FORMAT(lb.booking_date, '%Y-%m') = ?
+                    AND lb.deleted_at IS NULL
+                    AND lb.booking_status != 'Cancelled'
+                    ORDER BY lb.booking_date DESC";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param("s", $month);
+        } else {
+            // Normal Team Leader sees only their team members
+            $sql = "SELECT 
+                        lb.id, lb.booking_date, 
+                        u.full_name as sales_person, 
+                        p.name as project_name, 
+                        f.flat_name, 
+                        IFNULL(f.land_share_value, 0.00) as land_share_value,
+                        lb.booking_status
+                    FROM lead_bookings lb
+                    JOIN users u ON lb.sales_by_id = u.id
+                    JOIN projects p ON lb.project_id = p.id
+                    JOIN flats f ON lb.flat_id = f.id
+                    WHERE u.id IN (SELECT user_id FROM employees WHERE team_id = ?)
+                    AND DATE_FORMAT(lb.booking_date, '%Y-%m') = ?
+                    AND lb.deleted_at IS NULL
+                    AND lb.booking_status != 'Cancelled'
+                    ORDER BY lb.booking_date DESC";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param("is", $teamId, $month);
+        }
+        
+        $stmt->execute();
+        $breakdown = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        return $breakdown;
     }
 
     /**

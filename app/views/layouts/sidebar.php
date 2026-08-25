@@ -487,9 +487,9 @@
 
                         <!-- Incentives Module -->
                         <li
-                            class="slide has-sub <?= isActive(['my-incentives', 'incentive-management', 'incentive-config'], $current_route) ? 'active' : '' ?>">
+                            class="slide has-sub <?= isActive(['my-incentives', 'incentive-management', 'incentive-config', 'my-team-incentives'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['my-incentives', 'incentive-management', 'incentive-config'], $current_route) ? 'menu-open active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['my-incentives', 'incentive-management', 'incentive-config', 'my-team-incentives'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
                                 <span class="sidebar__menu-label">Incentives</span>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -500,16 +500,25 @@
                                         class="sidebar__menu-item <?= isActive('my-incentives', $current_route) ?>">My
                                         Incentives</a>
                                 </li>
-                                <!-- Visible to Management (1,3,33), Chief Officer (2), Sales Head (6), Sales Manager (5), Sales Team Head (9, 15) -->
-                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 9, 15, 33])): ?>
+                                <!-- Visible to Management, Accounts, HR, Chairman (1,2,3,4,33) -->
+                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 4, 33])): ?>
                                     <li class="slide child2">
                                         <a href="<?= $base_url ?>/incentive-management"
-                                            class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">My
+                                            class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">Company
+                                            Incentives & Accounts</a>
+                                    </li>
+                                <?php endif; ?>
+
+                                <!-- Visible to Sales Managers, Heads, Co-ordinators (5,6,9,15) and Management -->
+                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 9, 15, 33])): ?>
+                                    <li class="slide child2">
+                                        <a href="<?= $base_url ?>/my-team-incentives"
+                                            class="sidebar__menu-item <?= isActive('my-team-incentives', $current_route) ?>">My
                                             Team Incentives</a>
                                     </li>
                                     <li class="slide child2">
-                                        <a href="<?= $base_url ?>/team-targets"
-                                            class="sidebar__menu-item <?= isActive('team-targets', $current_route) ?>">My Team
+                                        <a href="<?= $base_url ?>/sales-executive-teams"
+                                            class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">My Team
                                             Targets</a>
                                     </li>
                                 <?php endif; ?>
@@ -555,14 +564,14 @@
                             </a>
                         </li>
 
-                        <?php if (!$isManagement && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
+                        <?php if (!$isManagement): ?>
                             <!-- Executive Team  -->
                             <!--target set-sales-target show here for sales executiive team  -->
                             <li class="slide ">
                                 <a href="<?= $base_url ?>/sales-executive-teams"
                                     class="sidebar__menu-item <?= isActive('sales-executive-teams', $current_route) ?>">
                                     <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
-                                    <span class="sidebar__menu-label">Sales Executive Team</span>
+                                    <span class="sidebar__menu-label">Sales Incentive Target</span>
                                 </a>
                             </li>
 

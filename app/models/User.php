@@ -117,7 +117,8 @@ public function getPaginatedWithSalesExecutive($limit, $offset, $search = '', $r
                 e.make_user,
                 d.name AS designation_name,
                 dep.name AS department_name,
-                r.name AS role_name
+                r.name AS role_name,
+                t.name AS team_name
             " . $this->baseUserQuery() . "
             WHERE (u.role_id IN (5,8) OR (u.role_id = 9 AND u.team_id IS NOT NULL))"; // important change
 

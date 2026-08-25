@@ -10,16 +10,7 @@ class IncentiveCalculationEngine
     }
 
     /**
-     * Calculates the incentive percentage for a specific user and month
-     * Returns an array with details:
-     * - target_amount
-     * - assigned_achieved
-     * - unassigned_achieved
-     * - achievement_pct
-     * - eligible_payout_pct
-     * - assigned_slab_pct
-     * - final_assigned_pct
-     * - final_unassigned_pct
+     * Calculates the incentive percentage for a specific user and month (Tier 1 - Individual)
      */
     public function getExecutiveMonthlyStats($userId, $yearMonth)
     {
@@ -36,7 +27,6 @@ class IncentiveCalculationEngine
         $assignedCategoryId = $targetRow ? (int)$targetRow['category_id'] : 0;
 
         // 2. Get Bookings for this month
-        // We only count bookings that are valid (not cancelled)
         $sql = "SELECT lb.id, p.category_id, IFNULL(f.land_share_value, 0) as land_share
                 FROM lead_bookings lb
                 JOIN projects p ON lb.project_id = p.id
@@ -75,13 +65,12 @@ class IncentiveCalculationEngine
         $ruleRow = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        $eligiblePayoutPct = $ruleRow ? (float)$ruleRow['payout_pct'] : 0.00; // e.g. 20%, 50%, 100%
+        $eligiblePayoutPct = $ruleRow ? (float)$ruleRow['payout_pct'] : 0.00; 
 
         // 5. Determine Slab Percentage
-        // If eligiblePayoutPct > 0 (meaning they hit at least the first criteria), we combine assigned + unassigned
         $volumeForSlab = $assignedAchieved;
         if ($eligiblePayoutPct > 0) {
-            $volumeForSlab += $unassignedAchieved;
+            $volumeForSlab += $unassignedAchieved; // Unassigned is merged if eligible
         }
 
         $baseSlabPct = 0.00;
@@ -89,7 +78,7 @@ class IncentiveCalculationEngine
             $stmt = $this->db->prepare("SELECT percentage FROM incentive_slabs 
                                         WHERE category_id = ? 
                                         AND ? >= min_volume 
-                                        AND (? <= max_volume OR max_volume IS NULL) LIMIT 1");
+                                        AND (? <= max_volume OR max_volume IS NULL OR max_volume = 0) LIMIT 1");
             $stmt->bind_param("idd", $assignedCategoryId, $volumeForSlab, $volumeForSlab);
             $stmt->execute();
             $slabRow = $stmt->get_result()->fetch_assoc();
@@ -98,12 +87,7 @@ class IncentiveCalculationEngine
         }
 
         // 6. Final Percentages
-        // They get a percentage of the base slab (e.g. 50% of 1%)
         $finalAssignedPct = $baseSlabPct * ($eligiblePayoutPct / 100.0);
-        
-        // Unassigned only yields 70% of the assigned percentage according to policy (as per original image rule)
-        // Wait, the image says "Unassigned prokolep er khetry 70% proyojjo hobe". 
-        // So unassigned gets 70% of finalAssignedPct, BUT ONLY if eligiblePayoutPct > 0.
         $finalUnassignedPct = 0.00;
         if ($eligiblePayoutPct > 0) {
             $finalUnassignedPct = $finalAssignedPct * 0.70;
@@ -124,15 +108,16 @@ class IncentiveCalculationEngine
     }
 
     /**
-     * Calculates the Team Leader / Manager / Sales Head incentive for a month
+     * Calculates the Team Leader / Manager / Sales Head incentive for a month (Tier 2 - Team)
      */
     public function getTeamMonthlyStats($userId, $yearMonth)
     {
         // 1. Identify User Role and Team scope
         $empStmt = $this->db->prepare("
-            SELECT e.team_id, e.is_sales_co_leader, u.role_id 
+            SELECT u.role_id, e.team_id, e.is_sales_co_leader, t.name as team_name
             FROM users u
             LEFT JOIN employees e ON u.id = e.user_id
+            LEFT JOIN teams t ON e.team_id = t.id
             WHERE u.id = ?
         ");
         $empStmt->bind_param("i", $userId);
@@ -144,47 +129,81 @@ class IncentiveCalculationEngine
         $teamId = $emp ? (int)$emp['team_id'] : 0;
         $isCoordinator = $emp ? (int)$emp['is_sales_co_leader'] : 0;
 
-        $roleType = 'sales_manager';
+        // Default role is empty, if not manager/head/coord, they don't get team incentive
+        $roleType = '';
         if ($roleId == 9) $roleType = 'sales_head';
-        if ($isCoordinator == 1 && $roleId != 9 && $roleId != 5) $roleType = 'coordinator';
+        else if ($isCoordinator == 1) $roleType = 'coordinator';
+        else if ($roleId == 5 || $roleId == 6 || $roleId == 7) $roleType = 'team_leader'; // Assuming 5,6,7 are manager roles
 
-        // 2. Calculate Total Team Collection for the month
-        // Total collection is based on payment dates or booking dates? Usually it's based on payment dates in that month.
-        // Let's sum verified payments in that yearMonth.
-        $collectionSql = "
-            SELECT SUM(lp.amount) as total_collection
-            FROM lead_payments lp
-            JOIN lead_bookings lb ON lp.booking_id = lb.id
-            JOIN leads l ON lb.lead_id = l.id
-            WHERE lp.verification_status = 'verified' 
-              AND lp.payment_status IN ('paid', 'partially_paid')
-              AND DATE_FORMAT(lp.payment_date, '%Y-%m') = ?
-        ";
-
-        if ($roleType != 'sales_head') {
-            // Filter by team_id
-            $collectionSql .= " AND (
-                lb.sales_by_id IN (SELECT user_id FROM employees WHERE team_id = ?) 
-                OR l.assigned_id IN (SELECT user_id FROM employees WHERE team_id = ?)
-            )";
-            $stmt = $this->db->prepare($collectionSql);
-            $stmt->bind_param("sii", $yearMonth, $teamId, $teamId);
-        } else {
-            $stmt = $this->db->prepare($collectionSql);
-            $stmt->bind_param("s", $yearMonth);
+        if (!$roleType) {
+            return ['eligible' => false, 'message' => 'Not a team leader role.'];
         }
 
+        // If they are a team leader but have no team assigned, they cannot get team incentives!
+        if ($roleType != 'sales_head' && $teamId == 0) {
+            return ['eligible' => false, 'message' => 'No team assigned.'];
+        }
+
+        // 2. Get the TEAM Target (Sum of individual targets in the team, or global if Sales Head)
+        $targetSql = "SELECT SUM(booking_value_target) as total_team_target 
+                      FROM sales_targets st 
+                      WHERE DATE_FORMAT(st.month, '%Y-%m') = ?";
+        if ($roleType != 'sales_head') {
+            $targetSql .= " AND st.sales_user_id IN (SELECT user_id FROM employees WHERE team_id = ?)";
+            $stmt = $this->db->prepare($targetSql);
+            $stmt->bind_param("si", $yearMonth, $teamId);
+        } else {
+            $stmt = $this->db->prepare($targetSql);
+            $stmt->bind_param("s", $yearMonth);
+        }
         $stmt->execute();
-        $colRow = $stmt->get_result()->fetch_assoc();
+        $targetRow = $stmt->get_result()->fetch_assoc();
         $stmt->close();
+        $teamTarget = $targetRow ? (float)$targetRow['total_team_target'] : 0.00;
 
-        $totalCollection = $colRow ? (float)$colRow['total_collection'] : 0.00;
+        // 3. Get the TEAM Achievement (Sum of all land_share sales in the team/global)
+        $achieveSql = "SELECT SUM(IFNULL(f.land_share_value, 0)) as total_team_achieved
+                       FROM lead_bookings lb
+                       JOIN flats f ON lb.flat_id = f.id
+                       WHERE DATE_FORMAT(lb.booking_date, '%Y-%m') = ?
+                       AND lb.deleted_at IS NULL
+                       AND lb.booking_status != 'cancelled'";
+        if ($roleType != 'sales_head') {
+            $achieveSql .= " AND lb.sales_by_id IN (SELECT user_id FROM employees WHERE team_id = ?)";
+            $stmt = $this->db->prepare($achieveSql);
+            $stmt->bind_param("si", $yearMonth, $teamId);
+        } else {
+            $stmt = $this->db->prepare($achieveSql);
+            $stmt->bind_param("s", $yearMonth);
+        }
+        $stmt->execute();
+        $achieveRow = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        $teamAchieved = $achieveRow ? (float)$achieveRow['total_team_achieved'] : 0.00;
 
-        // 3. Get Hierarchy Commission rules
+        $teamAchievementPct = ($teamTarget > 0) ? ($teamAchieved / $teamTarget) * 100 : 0;
+
+        // 4. Get Eligibility Rule for this Role
+        $stmt = $this->db->prepare("SELECT payout_pct FROM incentive_eligibility_rules 
+                                    WHERE rule_type = ? 
+                                    AND ? >= min_achievement_pct 
+                                    AND (? <= max_achievement_pct OR max_achievement_pct IS NULL) LIMIT 1");
+        $stmt->bind_param("sdd", $roleType, $teamAchievementPct, $teamAchievementPct);
+        $stmt->execute();
+        $ruleRow = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        $eligiblePayoutPct = $ruleRow ? (float)$ruleRow['payout_pct'] : 0.00;
+
+        // 5. Get Hierarchy Commission rules for reward amount
         $ruleStmt = $this->db->prepare("SELECT reward_amount, collection_threshold_amount FROM hierarchy_commissions WHERE role_type = ? LIMIT 1");
-        $ruleStmt->bind_param("s", $roleType);
+        // DB uses team_lead and co_leader
+        $dbRoleType = $roleType;
+        if ($roleType == 'team_leader') $dbRoleType = 'team_lead';
+        if ($roleType == 'coordinator') $dbRoleType = 'co_leader';
+        
+        $ruleStmt->bind_param("s", $dbRoleType);
         $ruleStmt->execute();
-        $rule = $ruleStmt->get_result()->fetch_assoc();
+        $hRule = $ruleStmt->get_result()->fetch_assoc();
         $ruleStmt->close();
 
         $rewardAmount = 0.00;
@@ -192,20 +211,26 @@ class IncentiveCalculationEngine
         $incentiveEarned = 0.00;
         $slabsHit = 0;
 
-        if ($rule) {
-            $rewardAmount = (float)$rule['reward_amount'];
-            $thresholdAmount = (float)$rule['collection_threshold_amount'];
+        if ($hRule) {
+            $rewardAmount = (float)$hRule['reward_amount'];
+            $thresholdAmount = (float)$hRule['collection_threshold_amount'];
             
-            if ($thresholdAmount > 0) {
-                $slabsHit = floor($totalCollection / $thresholdAmount);
-                $incentiveEarned = $slabsHit * $rewardAmount;
+            if ($thresholdAmount > 0 && $eligiblePayoutPct > 0) {
+                $slabsHit = floor($teamAchieved / $thresholdAmount);
+                // The payout is the reward amount * number of slabs * payout percentage
+                $incentiveEarned = $slabsHit * $rewardAmount * ($eligiblePayoutPct / 100.0);
             }
         }
 
         return [
+            'eligible' => true,
             'role_type' => $roleType,
             'team_id' => $teamId,
-            'total_collection' => $totalCollection,
+            'team_name' => $emp ? $emp['team_name'] : null,
+            'team_target' => $teamTarget,
+            'team_achieved' => $teamAchieved,
+            'team_achievement_pct' => $teamAchievementPct,
+            'eligible_payout_pct' => $eligiblePayoutPct,
             'threshold_amount' => $thresholdAmount,
             'reward_amount' => $rewardAmount,
             'slabs_hit' => $slabsHit,
