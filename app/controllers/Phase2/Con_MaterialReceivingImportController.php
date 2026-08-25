@@ -406,7 +406,8 @@ class Con_MaterialReceivingImportController extends Controller
                 $mgmtEmail = $firstRow['management_approved_email'] ?? '';
                 $mgmtApprovedId = !empty($mgmtEmail) ? ($userMap[strtolower($mgmtEmail)] ?? $fallbackUserId) : $fallbackUserId;
 
-                $receivingDate = $firstRow['receiving_date'];
+                $receivingDateStr = trim($firstRow['receiving_date'] ?? '');
+                $receivingDate = !empty($receivingDateStr) ? date('Y-m-d', strtotime($receivingDateStr)) : date('Y-m-d');
 
                 // Resolve or create warehouse
                 $warehouseId = $this->findOrCreateWarehouse($firstRow['warehouse_name'], $projectId, $createdById);
@@ -717,6 +718,7 @@ class Con_MaterialReceivingImportController extends Controller
                         $payDateStr = date('Y-m-d');
                     } else {
                         $payDateStr = date('Y-m-d', strtotime($payDate));
+                        $payDate = date('Y-m-d H:i:s', strtotime($payDate));
                     }
 
                     $stmtFt = $this->db->prepare(
