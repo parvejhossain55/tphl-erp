@@ -1077,7 +1077,7 @@ class PayrollController extends Controller
             FROM attendance_monthly_update
             WHERE payroll_project_id = " . ((int) $selectedProject ?: '0') . "
         ) override_att ON e.id = override_att.employee_id
-        WHERE 1=1
+        WHERE e.employee_status = 'active'
         ORDER BY e.employee_id ASC 
     ";
 
@@ -1195,7 +1195,8 @@ class PayrollController extends Controller
                    e.full_name, e.employee_id as emp_id
             FROM payslips p
             LEFT JOIN employees e ON p.employee_id = e.id
-            WHERE YEAR(p.payslip_month) = '$selectedYear' 
+            WHERE e.employee_status = 'active' 
+              AND YEAR(p.payslip_month) = '$selectedYear' 
               AND MONTH(p.payslip_month) = '$selectedMonth'
               AND p.status = 'on_hold'
             ORDER BY e.employee_id ASC
@@ -1231,7 +1232,8 @@ class PayrollController extends Controller
                    e.full_name, e.employee_id as emp_id
             FROM payslips p
             LEFT JOIN employees e ON p.employee_id = e.id
-            WHERE YEAR(p.payslip_month) = '$selectedYear' 
+            WHERE e.employee_status = 'active'
+              AND YEAR(p.payslip_month) = '$selectedYear' 
               AND MONTH(p.payslip_month) = '$selectedMonth'
               AND p.status = 'on_hold'
             ORDER BY e.employee_id ASC
@@ -1374,7 +1376,7 @@ class PayrollController extends Controller
             LEFT JOIN employees e ON p.employee_id = e.id
             LEFT JOIN departments dept ON e.department_id = dept.id
             LEFT JOIN designations desg ON e.designation_id = desg.id
-            WHERE YEAR(p.payslip_month) = '$selectedYear' AND MONTH(p.payslip_month) = '$selectedMonth'
+            WHERE e.employee_status = 'active' AND YEAR(p.payslip_month) = '$selectedYear' AND MONTH(p.payslip_month) = '$selectedMonth'
             ORDER BY e.employee_id ASC
         ";
 
@@ -2547,7 +2549,7 @@ class PayrollController extends Controller
                 LEFT JOIN employees e ON p.employee_id = e.id
                 LEFT JOIN departments dept ON e.department_id = dept.id
                 LEFT JOIN designations desg ON e.designation_id = desg.id
-                WHERE p.payroll_project_id = ?
+                WHERE p.payroll_project_id = ? AND e.employee_status = 'active'
                 ORDER BY dept.name ASC, e.employee_id ASC
             ";
 
@@ -2607,7 +2609,7 @@ class PayrollController extends Controller
             LEFT JOIN employees e ON p.employee_id = e.id
             LEFT JOIN departments dept ON e.department_id = dept.id
             LEFT JOIN designations desg ON e.designation_id = desg.id
-            WHERE p.payroll_project_id = ?
+            WHERE p.payroll_project_id = ? AND e.employee_status = 'active'
             ORDER BY dept.name ASC, e.employee_id ASC
         ";
 
@@ -2984,7 +2986,7 @@ class PayrollController extends Controller
                         FROM payslips p
                         JOIN employees e ON p.employee_id = e.id
                         JOIN departments d ON e.department_id = d.id
-                        WHERE p.payroll_project_id = ?
+                        WHERE p.payroll_project_id = ? AND e.employee_status = 'active'
                           AND p.status != 'cancelled'
                         GROUP BY d.id
                         ORDER BY d.name ASC";
@@ -3010,7 +3012,7 @@ class PayrollController extends Controller
                         FROM payslips p
                         JOIN employees e ON p.employee_id = e.id
                         LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
-                        WHERE p.payroll_project_id = ?
+                        WHERE p.payroll_project_id = ? AND e.employee_status = 'active'
                           AND p.status != 'cancelled'
                         GROUP BY ob.id
                         ORDER BY office_name ASC";
@@ -3064,7 +3066,7 @@ class PayrollController extends Controller
                     FROM payslips p
                     JOIN employees e ON p.employee_id = e.id
                     JOIN departments d ON e.department_id = d.id
-                    WHERE p.payroll_project_id = ? 
+                    WHERE p.payroll_project_id = ? AND e.employee_status = 'active' 
                       AND p.status != 'cancelled'
                     GROUP BY d.id
                     ORDER BY d.name ASC";
@@ -3090,7 +3092,7 @@ class PayrollController extends Controller
                     FROM payslips p
                     JOIN employees e ON p.employee_id = e.id
                     LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
-                    WHERE p.payroll_project_id = ? 
+                    WHERE p.payroll_project_id = ? AND e.employee_status = 'active' 
                       AND p.status != 'cancelled'
                     GROUP BY ob.id
                     ORDER BY office_name ASC";
@@ -3193,7 +3195,7 @@ class PayrollController extends Controller
                     FROM payslips p
                     JOIN employees e ON p.employee_id = e.id
                     JOIN departments d ON e.department_id = d.id
-                    WHERE p.payroll_project_id = ? 
+                    WHERE p.payroll_project_id = ? AND e.employee_status = 'active' 
                       AND p.status != 'cancelled'
                     GROUP BY d.id
                     ORDER BY d.name ASC";
@@ -3219,7 +3221,7 @@ class PayrollController extends Controller
                     FROM payslips p
                     JOIN employees e ON p.employee_id = e.id
                     LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
-                    WHERE p.payroll_project_id = ? 
+                    WHERE p.payroll_project_id = ? AND e.employee_status = 'active' 
                       AND p.status != 'cancelled'
                     GROUP BY ob.id
                     ORDER BY office_name ASC";
