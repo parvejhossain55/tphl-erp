@@ -737,7 +737,7 @@ class FlatController extends Controller
             $failedCount = count($errors);
 
             if ($successCount > 0) {
-                $msg = "✅ $successCount / $totalRows Shops imported successfully.";
+                $msg = " <b>$successCount</b> / <b>$totalRows</b> Shops imported successfully.";
                 if ($failedCount > 0) {
                     $msg .= " ⚠️ $failedCount skipped: " . implode(" | ", array_slice($errors, 0, 5));
                     if ($failedCount > 5) $msg .= " ... and " . ($failedCount - 5) . " more.";
