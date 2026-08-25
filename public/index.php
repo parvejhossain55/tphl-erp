@@ -86,7 +86,8 @@ $public_routes = [
     'admin-login',
     'logout',
     'admin-registration',
-    'api/client-payment-info'
+    'api/client-payment-info',
+    'api/project-expenses'
 ];
 
 if (!in_array($route, $public_routes)) {

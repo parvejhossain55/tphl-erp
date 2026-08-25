@@ -3,6 +3,76 @@
 class AiDataService
 {
     /**
+     * Gets project expense details grouped by category.
+     */
+    public static function getProjectExpenseDetails(\mysqli $db, int $projectId): array
+    {
+        $sql = "
+            SELECT 
+                COALESCE(c.name, 'Uncategorized') as category_name,
+                m.name as expense_name,
+                v.name as vendor_name,
+                poi.quantity as qty,
+                m.unit,
+                poi.unit_price,
+                (poi.quantity * poi.unit_price) as total_amount,
+                COALESCE(ft.transaction_date_str, DATE(po.created_at)) as payment_date
+            FROM purchase_order_items poi
+            JOIN purchase_orders po ON poi.purchase_order_id = po.id
+            JOIN purchase_requests pr ON po.request_id = pr.id
+            JOIN con_materials m ON poi.material_id = m.id
+            LEFT JOIN con_categories c ON m.category_id = c.id
+            LEFT JOIN vendors v ON poi.selected_vendor_id = v.id
+            LEFT JOIN vendor_payment_requests vpr ON vpr.purchase_order_id = po.id
+            LEFT JOIN con_financial_transactions ft ON ft.ref_type = 'vendor_payment' AND ft.ref_id = vpr.id
+            WHERE pr.project_id = ?
+            ORDER BY payment_date DESC
+        ";
+
+        $stmt = $db->prepare($sql);
+        $stmt->bind_param("i", $projectId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $breakdown = [];
+        $totalExpense = 0;
+
+        while ($row = $result->fetch_assoc()) {
+            $cat = $row['category_name'];
+            if (!isset($breakdown[$cat])) {
+                $breakdown[$cat] = [];
+            }
+            
+            $breakdown[$cat][] = [
+                'expense_name' => $row['expense_name'],
+                'vendor_name' => $row['vendor_name'] ?? 'Unknown',
+                'qty' => (float)$row['qty'],
+                'unit' => $row['unit'],
+                'unit_price' => (float)$row['unit_price'],
+                'total_amount' => (float)$row['total_amount'],
+                'payment_date' => $row['payment_date']
+            ];
+            
+            $totalExpense += (float)$row['total_amount'];
+        }
+
+        $formattedBreakdown = [];
+        foreach ($breakdown as $catName => $items) {
+            $formattedBreakdown[] = [
+                'category_name' => $catName,
+                'items' => $items
+            ];
+        }
+
+        return [
+            'summary' => [
+                'total_expense' => $totalExpense
+            ],
+            'breakdown' => $formattedBreakdown
+        ];
+    }
+
+    /**
      * Gets all pending approvals in the ERP.
      */
     public static function getPendingApprovals(\mysqli $db): array
