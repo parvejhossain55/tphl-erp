@@ -12,7 +12,7 @@ class ExternalApiService
     {
         $this->db = $db ?: db();
         $this->config = require dirname(__DIR__) . '/config/config.php';
-        
+
         $this->baseUrl = rtrim($this->config['tipsoi_base_url'] ?? '', '/') . '/';
         $this->email = $this->config['tipsoi_email'] ?? '';
         $this->password = $this->config['tipsoi_password'] ?? '';
@@ -70,14 +70,14 @@ class ExternalApiService
         }
 
         $data = json_decode($response, true);
-        
+
         // Extract token from common paths (access_token, token, data.token)
         $token = $data['token'] ?? $data['access_token'] ?? $data['data']['token'] ?? $data['data']['access_token'] ?? null;
 
         if ($token) {
             $_SESSION['tipsoi_api_token'] = $token;
             // Cache token for 55 minutes (usually tokens are valid for 1 hour)
-            $_SESSION['tipsoi_api_token_expires'] = time() + 3300; 
+            $_SESSION['tipsoi_api_token_expires'] = time() + 3300;
             return $token;
         }
 
@@ -137,7 +137,25 @@ class ExternalApiService
         // Parse and return formatted results
         // Standard Tipsoi format usually wraps array in 'data', 'employees', or 'content'
         $employees = $data['data'] ?? $data['employees'] ?? $data['content'] ?? $data;
-        $total = (int)($data['total'] ?? $data['totalElements'] ?? $data['meta']['total'] ?? count($employees));
+        $total = (int) ($data['total'] ?? $data['totalElements'] ?? $data['meta']['total'] ?? count($employees));
+
+        // Auto-sync joining_date for local employees based on Tipsoi startDate
+        if (is_array($employees)) {
+            $updateStmt = $this->db->prepare("UPDATE employees SET joining_date = ? WHERE employee_id = ?");
+            if ($updateStmt) {
+                foreach ($employees as $extEmp) {
+                    $officeId = trim((string) ($extEmp['employeeOfficeId'] ?? $extEmp['employeeId'] ?? ''));
+                    if ($officeId !== '' && !empty($extEmp['startDate'])) {
+                        $parsedDate = date('Y-m-d', strtotime($extEmp['startDate']));
+                        if ($parsedDate && $parsedDate !== '1970-01-01') {
+                            $updateStmt->bind_param("ss", $parsedDate, $officeId);
+                            $updateStmt->execute();
+                        }
+                    }
+                }
+                $updateStmt->close();
+            }
+        }
 
         return [
             'success' => true,

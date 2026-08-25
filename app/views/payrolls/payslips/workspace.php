@@ -119,7 +119,7 @@ $show_breadcrumb = true;
                         onclick="$('#workspaceTable').DataTable().button('.buttons-csv').trigger();">
                         <i class="fa-solid fa-file-csv me-1"></i> Export CSV
                     </button>
-                    <button type="button" class="btn btn-danger fw-semibold shadow-sm" onclick="
+                    <button type="button" class="btn btn-danger fw-semibold shadow-sm me-2" onclick="
                         var year = document.getElementById('year') ? document.getElementById('year').value : '';
                         var month = document.getElementById('month') ? document.getElementById('month').value : '';
                         window.location.href = '<?= $GLOBALS['base_url'] ?>/payroll-workspace-pdf?year=' + year + '&month=' + month;
@@ -128,10 +128,14 @@ $show_breadcrumb = true;
                     </button>
                 </div>
             </div>
-            <div class="table__wrapper table-responsive">
+            
+
+
+            <div class="table__wrapper" style="overflow: visible;">
                 <table id="workspaceTable" class="table no-border-table mb-20">
                     <thead>
                         <tr class="table__title table__sort">
+                            <th class="text-center" style="width: 40px;"><input type="checkbox" autocomplete="off" id="selectAllEmployees" class="form-check-input" checked style="cursor:pointer;" title="Select All"></th>
                             <th>SL</th>
                             <th>Department</th>
                             <th>Name</th>
@@ -265,6 +269,8 @@ $show_breadcrumb = true;
                                 }
                                 ?>
                                         <tr class="calc-row" data-payslip-id="<?= $p['id'] ?? 0 ?>" data-employee-id="<?= $p['real_emp_id_fk'] ?? $p['id'] ?? 0 ?>" data-employee-office-id="<?= htmlspecialchars($p['emp_id']) ?>" data-has-db="<?= isset($p['tipsoi_present']) ? 'true' : 'false' ?>">
+                                            <?php $excludedState = (isset($p['is_excluded']) && $p['is_excluded'] == 1) ? "" : "checked"; ?>
+                                            <td class="text-center"><input type="checkbox" autocomplete="off" class="form-check-input emp-checkbox" <?= $excludedState ?> style="cursor:pointer;"></td>
                                             <td><?= $sl++ ?></td>
                                             <td><?= htmlspecialchars($p['department_name'] ?? 'N/A') ?></td>
                                             <td><?= htmlspecialchars($p['full_name']) ?></td>
@@ -394,16 +400,46 @@ $show_breadcrumb = true;
                                         </tr>
                                 <?php endforeach; endif; ?>
                     </tbody>
+                    <tfoot>
+                        <tr class="fw-bold" style="background-color: #e6f2f1; color: #0f766e;"></tr>
+                    </tfoot>
                 </table>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Floating Scroll to Bottom Anchor -->
+<a href="#payroll-bottom-section" 
+   class="shadow rounded-circle d-flex align-items-center justify-content-center" 
+   style="position: fixed; top: 120px; right: 30px; width: 60px; height: 60px; z-index: 1050; background-color: #fff; border: 3px solid #0f766e; color: #0f766e; text-decoration: none; font-size: 28px;" 
+   title="Scroll down">
+   <i class="fa-solid fa-arrow-down"></i>
+</a>
+<!-- Target ID at bottom -->
+<div id="payroll-bottom-section"></div>
+
+
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         // --- Live Calculations ---
+
+        // Generate Footer Headers dynamically to perfectly match the columns
+        let footData = '';
+        $('#workspaceTable thead th').each(function(i) {
+            if (i === 7) {
+                footData += '<td class="text-end pe-3">Totals:</td>';
+            } else if (i < 8) {
+                footData += '<td></td>';
+            } else {
+                let isIgnore = $(this).text().toLowerCase().includes('date') || $(this).text().toLowerCase().includes('remark') || $(this).text().toLowerCase().includes('account') || $(this).text().toLowerCase().includes('id check') || $(this).text().toLowerCase().includes('salary hold');
+                footData += '<td class="text-end ' + (isIgnore ? 'tf-ignore' : '') + '">0.00</td>';
+            }
+        });
+        $('#workspaceTable tfoot tr').html(footData);
+
         function attachCalculations() {
+
             document.querySelectorAll('.calc-row').forEach(row => {
                 const inputs = row.querySelectorAll('input');
 
@@ -474,12 +510,97 @@ $show_breadcrumb = true;
 
                         let dispBank = parseFloat(bankInput.value) || 0;
                         row.querySelector('.cell-amount').textContent = dispBank.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        calculateFooterTotals();
                     });
                 });
             });
         }
 
         attachCalculations();
+        
+    
+            // Dynamic Sticky Header Calculation
+            setTimeout(function() {
+                var nav = document.querySelector('.header') || document.querySelector('.navbar') || document.querySelector('header') || document.getElementById('header');
+                var navHeight = nav ? nav.offsetHeight : 60;
+                
+                var style = document.createElement('style');
+                style.innerHTML = `
+                    .dataTables_scrollHead {
+                        position: sticky !important;
+                        top: ${navHeight}px !important;
+                        z-index: 1020 !important;
+                        background-color: #fff !important;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+                    }
+                    .dataTables_scrollHead table {
+                        background-color: #fff !important;
+                    }
+                `;
+                document.head.appendChild(style);
+                
+                // Force all wrappers to allow sticky inheritance
+                var parent = document.querySelector('.dataTables_scrollHead');
+                while(parent && parent.tagName !== 'BODY') {
+                    if (parent.classList.contains('card-body') || parent.classList.contains('card') || parent.classList.contains('table__wrapper')) {
+                        parent.style.overflow = 'visible';
+                    }
+                    parent = parent.parentElement;
+                }
+            }, 300);
+
+    function calculateFooterTotals() {
+        var nodes = [];
+        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#workspaceTable')) {
+            nodes = $('#workspaceTable').DataTable().rows().nodes();
+        } else {
+            nodes = document.querySelectorAll('.calc-row');
+        }
+        
+        let colCount = $('#workspaceTable thead th').length;
+        let totals = new Array(colCount).fill(0);
+        
+        $(nodes).each(function() {
+            var row = $(this);
+            if (!row.find('.emp-checkbox').is(':checked')) return;
+
+            row.find('td').each(function(index) {
+                if (index < 7) return; // Skip strings
+                
+                let val = 0;
+                let input = $(this).find('input[type="number"]');
+                if (input.length > 0) {
+                    val = parseFloat(input.val()) || 0;
+                } else if ($(this).hasClass('text-center') || $(this).find('button').length > 0 || $(this).text().includes('-') && $(this).text().trim().length > 6) {
+                    // Skip dates and buttons (Salary Hold, Joining Date, Resignation Date)
+                    val = 0;
+                } else {
+                    val = parseFloat($(this).text().replace(/,/g, '')) || 0;
+                }
+                if (!isNaN(val)) {
+                    totals[index] += val;
+                }
+            });
+        });
+
+        $('.dataTables_scrollFoot tfoot tr, #workspaceTable tfoot tr').each(function() {
+            $(this).find('td').each(function(index) {
+            if (index > 7) {
+                // Formatting
+                let valFormat = totals[index].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                if (totals[index] === 0 && $('#workspaceTable tbody tr:first td').eq(index).find('input, button, .text-center').length === 0 && $('#workspaceTable tbody tr:first td').eq(index).text().trim() === '') {
+                    // Skip empty columns like Remarks
+                    $(this).text('');
+                } else if ($(this).hasClass('tf-ignore')) {
+                    $(this).text('');
+                } else {
+                    $(this).text(valFormat);
+                }
+            }
+        });
+        });
+    }
+
 
         // Forcibly recalculate all rows on initial render so Net Salary and Net Payable are mapped
         document.querySelectorAll('.calc-row').forEach(row => {
@@ -592,6 +713,7 @@ $show_breadcrumb = true;
                 autoWidth: false,
                 responsive: true,
                 scrollX: true,
+                
                 language: {
                     search: "",
                     searchPlaceholder: "Search...",
@@ -607,6 +729,10 @@ $show_breadcrumb = true;
                         className: 'buttons-csv',
                         title: 'Payroll_Workplace_Export',
                         exportOptions: {
+                            rows: function ( idx, data, node ) {
+                                return $(node).find('.emp-checkbox').is(':checked');
+                            },
+                            columns: ':not(:first-child)',
                             format: {
                                 body: function (inner, rowidx, colidx, node) {
                                     if ($(node).find('input').length > 0) {
@@ -646,8 +772,10 @@ $show_breadcrumb = true;
 
                 $(dtNodes).each(function () {
                     var tr = $(this);
+                    if (!tr.find('.emp-checkbox').is(':checked')) return;
                     var rowArr = [];
-                    tr.find('td').each(function () {
+                    tr.find('td').each(function (index) {
+                        if (index === 0) return;
                         var cell = $(this);
                         if (cell.find('input').length > 0) {
                             rowArr.push(cell.find('input').val());
@@ -696,6 +824,7 @@ $show_breadcrumb = true;
                 $(dtNodes).each(function () {
                     var tr = $(this);
                     
+                    if (!tr.find('.emp-checkbox').is(':checked')) return;
                     var payslipIdStr = tr.attr('data-payslip-id');
                     var payslipId = parseInt(payslipIdStr || '0', 10);
                     var employeeId = parseInt(tr.attr('data-employee-id') || '0', 10);
@@ -793,4 +922,62 @@ $show_breadcrumb = true;
             btn.text('Hold').removeClass('btn-success').addClass('btn-danger');
         }
     });
+    // --- Database-driven Employee Selection ---
+    function updateMasterCheckbox() {
+        let allChecked = true;
+        let totalCount = 0;
+        var nodes = [];
+        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#workspaceTable')) {
+            nodes = $('#workspaceTable').DataTable().rows().nodes();
+        } else {
+            nodes = document.querySelectorAll('.calc-row');
+        }
+        $(nodes).each(function() {
+            if ($(this).find('.emp-checkbox').length > 0) {
+                totalCount++;
+                if (!$(this).find('.emp-checkbox').is(':checked')) {
+                    allChecked = false;
+                }
+            }
+        });
+        $('#selectAllEmployees').prop('checked', allChecked && totalCount > 0);
+    }
+    
+    $(document).ready(function() {
+        setTimeout(function() {
+            updateMasterCheckbox();
+            calculateFooterTotals();
+        }, 200);
+        if ($.fn.DataTable) {
+            $('#workspaceTable').on('draw.dt', function() {
+                updateMasterCheckbox();
+                calculateFooterTotals();
+            });
+        }
+    });
+
+    $(document).on('change', '#selectAllEmployees', function() {
+        var isChecked = $(this).is(':checked');
+        var nodes = [];
+        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#workspaceTable')) {
+            nodes = $('#workspaceTable').DataTable().rows().nodes();
+        } else {
+            nodes = document.querySelectorAll('.calc-row');
+        }
+        $(nodes).each(function() {
+            $(this).find('.emp-checkbox').prop('checked', isChecked);
+        });
+        calculateFooterTotals();
+    });
+    
+    $(document).on('change', '.emp-checkbox', function() {
+        if (!$(this).is(':checked')) {
+            $('#selectAllEmployees').prop('checked', false);
+        } else {
+            updateMasterCheckbox();
+        }
+        calculateFooterTotals();
+    });
+
 </script>
+
