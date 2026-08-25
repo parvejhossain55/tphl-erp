@@ -33,14 +33,57 @@ $show_breadcrumb = true;
             <form action="<?= $GLOBALS['base_url'] ?>/incentives/save-hierarchy" method="POST">
                 <div class="row">
                     <?php foreach ($hierarchies as $h): ?>
-                        <div class="col-md-4 mb-3">
-                            <label><?= ucwords(str_replace('_', ' ', $h['role_type'])) ?></label>
-                            <input type="number" step="0.01" name="amounts[<?= $h['id'] ?>]" class="form-control" value="<?= $h['amount_per_50_lakh'] ?>" required>
+                        <div class="col-md-6 mb-3">
+                            <label><?= ucwords(str_replace('_', ' ', $h['role_type'])) ?> Threshold (Collection)</label>
+                            <input type="number" step="0.01" name="thresholds[<?= $h['id'] ?>]" class="form-control mb-2" value="<?= $h['collection_threshold_amount'] ?? 5000000 ?>" required>
+                            
+                            <label><?= ucwords(str_replace('_', ' ', $h['role_type'])) ?> Reward Amount</label>
+                            <input type="number" step="0.01" name="amounts[<?= $h['id'] ?>]" class="form-control" value="<?= $h['reward_amount'] ?>" required>
                         </div>
                     <?php endforeach; ?>
                 </div>
                 <div class="text-end">
                     <button type="submit" class="btn btn-primary">Update Hierarchy Rates</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Eligibility Rules -->
+    <div class="col-lg-12 mb-4">
+        <div class="card__wrapper">
+            <h5 class="card__title mb-3">Eligibility Criteria (Target Achievement %)</h5>
+            <form action="<?= $GLOBALS['base_url'] ?>/incentives/save-eligibility-rules" method="POST">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Role / Level</th>
+                                <th>Min Achievement (%)</th>
+                                <th>Max Achievement (%)</th>
+                                <th>Payout (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($eligibility_rules as $rule): ?>
+                                <tr>
+                                    <td><strong><?= ucwords(str_replace('_', ' ', $rule['rule_type'])) ?></strong></td>
+                                    <td>
+                                        <input type="number" step="0.01" name="rules[<?= $rule['id'] ?>][min_achievement_pct]" class="form-control" value="<?= $rule['min_achievement_pct'] ?>" required>
+                                    </td>
+                                    <td>
+                                        <input type="number" step="0.01" name="rules[<?= $rule['id'] ?>][max_achievement_pct]" class="form-control" value="<?= $rule['max_achievement_pct'] ?>" placeholder="Leave blank for Infinity">
+                                    </td>
+                                    <td>
+                                        <input type="number" step="0.01" name="rules[<?= $rule['id'] ?>][payout_pct]" class="form-control" value="<?= $rule['payout_pct'] ?>" required>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary">Update Eligibility Rules</button>
                 </div>
             </form>
         </div>
@@ -63,6 +106,8 @@ $show_breadcrumb = true;
                             <th>Min Volume</th>
                             <th>Max Volume</th>
                             <th>Percentage</th>
+                            <th>Min Cap</th>
+                            <th>Max Cap</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -73,10 +118,12 @@ $show_breadcrumb = true;
                             <?php foreach ($slabs as $slab): ?>
                                 <tr>
                                     <td><?= htmlspecialchars($slab['location_name'] ?? 'All Locations') ?></td>
-                                    <td><?= htmlspecialchars($slab['category_name'] ?? 'All Categories') ?></td>
+                                    <td><?= htmlspecialchars($slab['category_name'] ?? 'All Categories') ?><?= !empty($slab['main_category']) ? ' - ' . htmlspecialchars($slab['main_category']) : '' ?></td>
                                     <td><?= number_format($slab['min_volume'], 2) ?></td>
                                     <td><?= $slab['max_volume'] ? number_format($slab['max_volume'], 2) : '10000000+' ?></td>
                                     <td><?= number_format($slab['percentage'], 2) ?>%</td>
+                                    <td><?= number_format($slab['lowest_incentive_cap'] ?? 0, 2) ?></td>
+                                    <td><?= number_format($slab['highest_incentive_cap'] ?? 0, 2) ?></td>
                                     <td>
                                         <button type="button" class="table__icon edit" 
                                             onclick='editSlab(<?= json_encode($slab) ?>)'
@@ -121,7 +168,7 @@ $show_breadcrumb = true;
                         <select name="category_id" id="slab_category" class="form-control">
                             <option value="">All Categories</option>
                             <?php foreach ($categories as $cat): ?>
-                                <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['category_name']) ?></option>
+                                <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['category_name']) ?><?= !empty($cat['main_category']) ? ' - ' . htmlspecialchars($cat['main_category']) : '' ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -139,6 +186,16 @@ $show_breadcrumb = true;
                     <div class="mb-3">
                         <label>Percentage <span>*</span></label>
                         <input type="number" step="0.01" name="percentage" id="slab_perc" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Lowest Incentive Cap</label>
+                        <input type="number" step="0.01" name="lowest_incentive_cap" id="slab_min_cap" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Highest Incentive Cap</label>
+                        <input type="number" step="0.01" name="highest_incentive_cap" id="slab_max_cap" class="form-control">
                     </div>
 
                     <div class="text-end">
@@ -159,6 +216,8 @@ function resetSlabForm() {
     document.getElementById('slab_min').value = '';
     document.getElementById('slab_max').value = '';
     document.getElementById('slab_perc').value = '';
+    document.getElementById('slab_min_cap').value = '';
+    document.getElementById('slab_max_cap').value = '';
 }
 
 function editSlab(slab) {
@@ -169,5 +228,7 @@ function editSlab(slab) {
     document.getElementById('slab_min').value = slab.min_volume;
     document.getElementById('slab_max').value = slab.max_volume || '';
     document.getElementById('slab_perc').value = slab.percentage;
+    document.getElementById('slab_min_cap').value = slab.lowest_incentive_cap || '';
+    document.getElementById('slab_max_cap').value = slab.highest_incentive_cap || '';
 }
 </script>

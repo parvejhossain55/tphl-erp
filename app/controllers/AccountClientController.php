@@ -1960,9 +1960,12 @@ public function discountStatement($bookingId = null)
                     }
 
                     // ====== TRIGGER 2: SMS VERIFIED NOTIFICATION ======
-                    require_once dirname(__DIR__) . '/services/SmsService.php';
-                    $smsService = new SmsService($this->db);
-                    $smsService->sendPaymentVerifiedSms($paymentId);
+                    $sendSms = isset($_POST['send_sms']) ? filter_var($_POST['send_sms'], FILTER_VALIDATE_BOOLEAN) : false;
+                    if ($sendSms) {
+                        require_once dirname(__DIR__) . '/services/SmsService.php';
+                        $smsService = new SmsService($this->db);
+                        $smsService->sendPaymentVerifiedSms($paymentId);
+                    }
                 }
             }
         }

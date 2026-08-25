@@ -6,11 +6,14 @@ class IncentiveController extends Controller
 {
     protected $db;
     protected $incentiveModel;
+    protected $engine;
 
     public function __construct($db)
     {
         $this->db = $db;
         $this->incentiveModel = new IncentiveModel($this->db);
+        require_once __DIR__ . '/../services/IncentiveCalculationEngine.php';
+        $this->engine = new IncentiveCalculationEngine($this->db);
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -54,6 +57,33 @@ class IncentiveController extends Controller
             "walletSummary"   => $walletSummary,
             "mySalesBookings" => $mySalesBookings,
             "payoutHistory"   => array_values($payoutHistory)
+        ]);
+    }
+
+    /**
+     * Team Leader / Manager / Head View: Team Incentives
+     */
+    public function teamIncentives()
+    {
+        $userId = (int)$_SESSION['user']['id'];
+        $roleId = (int)$_SESSION['user']['role_id'];
+
+        // Only allow Manager (5) or Sales Head (9) or Coordinator (is_sales_co_leader)
+        if (!in_array($roleId, [5, 9, 1, 3])) { // 1, 3 are admin
+            // check if co-leader
+            $emp = $this->db->query("SELECT is_sales_co_leader FROM employees WHERE user_id = {$userId}")->fetch_assoc();
+            if (empty($emp) || $emp['is_sales_co_leader'] != 1) {
+                header("Location: {$GLOBALS['base_url']}/my-incentives");
+                exit;
+            }
+        }
+
+        $teamMetrics = $this->engine->getTeamMonthlyStats($userId, date('Y-m'));
+
+        $this->view("incentives/team-incentives", [
+            "current_route"   => "team-incentives",
+            "page_title"      => "Team Sales Incentives",
+            "teamMetrics"     => $teamMetrics
         ]);
     }
 
@@ -224,12 +254,12 @@ class IncentiveController extends Controller
      */
     public function configSettings()
     {
-        if (!in_array($_SESSION['user']['role_id'], [1, 3, 33, 6, 2])) { // Adjust allowed roles as needed
+        if (!in_array($_SESSION['user']['role_id'], [1, 3, 33, 6, 2, 9, 5])) { // Added 9 (Sales Head) and 5 (Sales Manager)
             header("Location: {$GLOBALS['base_url']}/home");
             exit;
         }
 
-        $slabs = $this->db->query("SELECT s.*, l.name as location_name, c.name as category_name 
+        $slabs = $this->db->query("SELECT s.*, l.name as location_name, c.name as category_name, c.main_category 
             FROM incentive_slabs s 
             LEFT JOIN locations l ON s.location_id = l.id 
             LEFT JOIN project_categories c ON s.category_id = c.id
@@ -238,7 +268,9 @@ class IncentiveController extends Controller
         $hierarchies = $this->db->query("SELECT * FROM hierarchy_commissions")->fetch_all(MYSQLI_ASSOC);
         
         $locations = $this->db->query("SELECT * FROM locations")->fetch_all(MYSQLI_ASSOC);
-        $categories = $this->db->query("SELECT id, name AS category_name FROM project_categories")->fetch_all(MYSQLI_ASSOC);
+        $categories = $this->db->query("SELECT id, name AS category_name, main_category FROM project_categories")->fetch_all(MYSQLI_ASSOC);
+        
+        $eligibility_rules = $this->db->query("SELECT * FROM incentive_eligibility_rules ORDER BY rule_type ASC, min_achievement_pct ASC")->fetch_all(MYSQLI_ASSOC);
         
         $settingsRes = $this->db->query("SELECT * FROM incentive_settings")->fetch_all(MYSQLI_ASSOC);
         $settings = [];
@@ -253,6 +285,7 @@ class IncentiveController extends Controller
             "hierarchies" => $hierarchies,
             "locations" => $locations,
             "categories" => $categories,
+            "eligibility_rules" => $eligibility_rules,
             "settings" => $settings
         ]);
     }
@@ -266,13 +299,15 @@ class IncentiveController extends Controller
         $min_volume = (float)$_POST['min_volume'];
         $max_volume = !empty($_POST['max_volume']) ? (float)$_POST['max_volume'] : null;
         $percentage = (float)$_POST['percentage'];
+        $lowest_incentive_cap = (float)($_POST['lowest_incentive_cap'] ?? 0);
+        $highest_incentive_cap = (float)($_POST['highest_incentive_cap'] ?? 0);
 
         if ($id) {
-            $stmt = $this->db->prepare("UPDATE incentive_slabs SET location_id=?, category_id=?, min_volume=?, max_volume=?, percentage=? WHERE id=?");
-            $stmt->bind_param("iiddii", $location_id, $category_id, $min_volume, $max_volume, $percentage, $id);
+            $stmt = $this->db->prepare("UPDATE incentive_slabs SET location_id=?, category_id=?, min_volume=?, max_volume=?, percentage=?, lowest_incentive_cap=?, highest_incentive_cap=? WHERE id=?");
+            $stmt->bind_param("iidddddi", $location_id, $category_id, $min_volume, $max_volume, $percentage, $lowest_incentive_cap, $highest_incentive_cap, $id);
         } else {
-            $stmt = $this->db->prepare("INSERT INTO incentive_slabs (location_id, category_id, min_volume, max_volume, percentage) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("iiddi", $location_id, $category_id, $min_volume, $max_volume, $percentage);
+            $stmt = $this->db->prepare("INSERT INTO incentive_slabs (location_id, category_id, min_volume, max_volume, percentage, lowest_incentive_cap, highest_incentive_cap) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("iiddddd", $location_id, $category_id, $min_volume, $max_volume, $percentage, $lowest_incentive_cap, $highest_incentive_cap);
         }
         $stmt->execute();
         $_SESSION['success'] = "Slab saved successfully.";
@@ -289,8 +324,29 @@ class IncentiveController extends Controller
                 $stmt->bind_param("ss", $value, $key);
                 $stmt->execute();
             }
-            $_SESSION['success'] = "Settings updated successfully.";
         }
+        $_SESSION['success'] = "General Settings updated successfully.";
+        header("Location: {$GLOBALS['base_url']}/incentive-config");
+        exit;
+    }
+
+    public function saveEligibilityRules()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
+        
+        if (!empty($_POST['rules']) && is_array($_POST['rules'])) {
+            foreach ($_POST['rules'] as $id => $ruleData) {
+                $min = (float)$ruleData['min_achievement_pct'];
+                $max = ($ruleData['max_achievement_pct'] !== '') ? (float)$ruleData['max_achievement_pct'] : null;
+                $payout = (float)$ruleData['payout_pct'];
+                
+                $stmt = $this->db->prepare("UPDATE incentive_eligibility_rules SET min_achievement_pct=?, max_achievement_pct=?, payout_pct=? WHERE id=?");
+                $stmt->bind_param("dddi", $min, $max, $payout, $id);
+                $stmt->execute();
+            }
+        }
+        
+        $_SESSION['success'] = "Eligibility Criteria updated successfully.";
         header("Location: {$GLOBALS['base_url']}/incentive-config");
         exit;
     }
@@ -300,8 +356,9 @@ class IncentiveController extends Controller
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') exit;
         foreach ($_POST['amounts'] as $id => $amount) {
             $amt = (float)$amount;
-            $stmt = $this->db->prepare("UPDATE hierarchy_commissions SET amount_per_50_lakh=? WHERE id=?");
-            $stmt->bind_param("di", $amt, (int)$id);
+            $threshold = (float)($_POST['thresholds'][$id] ?? 5000000);
+            $stmt = $this->db->prepare("UPDATE hierarchy_commissions SET reward_amount=?, collection_threshold_amount=? WHERE id=?");
+            $stmt->bind_param("ddi", $amt, $threshold, (int)$id);
             $stmt->execute();
         }
         $_SESSION['success'] = "Hierarchy rates updated successfully.";

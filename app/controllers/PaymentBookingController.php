@@ -93,7 +93,9 @@ class PaymentBookingController extends Controller
         require_once dirname(__DIR__) . '/services/SmsService.php';
         $smsService = new SmsService($this->db);
 
-        if (!$isTestingMode) {
+        $sendSms = isset($_POST['send_sms']) ? filter_var($_POST['send_sms'], FILTER_VALIDATE_BOOLEAN) : false;
+
+        if ($sendSms && !$isTestingMode) {
             $bookingLead = $this->bookingModel->getById($data['booking_id']);
             $clientPhone = !empty($bookingLead['phone']) ? trim($bookingLead['phone']) : (!empty($bookingLead['phone_number']) ? trim($bookingLead['phone_number']) : '');
             $phoneCheck  = $smsService->validatePhoneNumber($clientPhone);
@@ -108,16 +110,20 @@ class PaymentBookingController extends Controller
         $created = $this->paymentModel->create($data);
 
         if (!empty($created)) {
-            // Trigger 1: Send Payment Received SMS
-            $smsResult = $smsService->sendPaymentReceivedSms($created, $isTestingMode);
+            if ($sendSms) {
+                // Trigger 1: Send Payment Received SMS
+                $smsResult = $smsService->sendPaymentReceivedSms($created, $isTestingMode);
 
-            if ($isTestingMode) {
-                setSuccess("Payment created successfully! (Testing Mode: SMS Skipped)");
-            } elseif (!empty($smsResult['success'])) {
-                setSuccess("Payment created successfully & SMS dispatched to client (" . htmlspecialchars($clientPhone ?? '') . ")!");
+                if ($isTestingMode) {
+                    setSuccess("Payment created successfully! (Testing Mode: SMS Skipped)");
+                } elseif (!empty($smsResult['success'])) {
+                    setSuccess("Payment created successfully & SMS dispatched to client (" . htmlspecialchars($clientPhone ?? '') . ")!");
+                } else {
+                    $errMsg = !empty($smsResult['response']) ? $smsResult['response'] : ($smsResult['message'] ?? 'Gateway Connection Error');
+                    setError("Payment created, BUT SMS dispatch failed for (" . htmlspecialchars($clientPhone ?? '') . "): " . htmlspecialchars($errMsg));
+                }
             } else {
-                $errMsg = !empty($smsResult['response']) ? $smsResult['response'] : ($smsResult['message'] ?? 'Gateway Connection Error');
-                setError("Payment created, BUT SMS dispatch failed for (" . htmlspecialchars($clientPhone ?? '') . "): " . htmlspecialchars($errMsg));
+                setSuccess("Payment created successfully! (SMS Notification Disabled)");
             }
         } else {
             setError("Failed to create payment!");

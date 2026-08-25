@@ -90,55 +90,67 @@ Update Claim Status: Paid / Partially Paid
 
 
 
-. New Controller: app/controllers/IncentiveController.php
-myIncentives(): Renders sales person view showing eligible sales, incentive amount, and claim buttons.
-manageIncentives(): Renders Accounts & Management dashboard with summary statistics, claim review queue, payment modal, and external assignment form.
-claimIncentive(): AJAX endpoint to handle sales person's claim request.
-approveClaim() / rejectClaim(): AJAX endpoint for Accounts/Management to approve or reject a claim.
-disbursePayment(): AJAX endpoint for Accounts to log a payment/disbursement.
-assignExternalIncentive(): AJAX endpoint for Management to assign incentives to non-sales employees.
-New Model: app/models/IncentiveModel.php
+ডাইনামিক কমিশন মডিউল ইমপ্লিমেন্টেশন প্ল্যান (Implementation Plan)
+আপনার দেওয়া উত্তরের ওপর ভিত্তি করে প্ল্যানটি পুরোপুরি আপডেট করা হয়েছে। এখন কোনো কনফিউশন নেই।
 
-Encapsulates database queries for fetching eligible bookings, calculating incentive amounts based on project categories, managing claims status, and tracking payments.
-Views:
+আমাদের কাজের ধাপসমূহ (Proposed Changes)
+ধাপ ১: ডাটাবেস আপডেট (Database Schema Updates)
+ডাইনামিক রুলসগুলো (যেমন: ইনসেনটিভের ক্যাপ, টিম লিডারের টার্গেট) সেভ করার জন্য আমাদের ডাটাবেসের কয়েকটি টেবিলে পরিবর্তন আনতে হবে।
 
-app/views/incentives/my-incentives.php: Clean, modern UI for Sales Persons with stats cards (Total Incentive, Claimed, Approved, Paid, Available Balance) and interactive claims table.
-app/views/incentives/manage-incentives.php: Premium Accounts/Management dashboard with metrics, filter tabs (Sales Claims, External Assignments, Payment History), Approve/Disburse modals, and Manual Assignment modal.
-Routes (index.php):
+১. incentive_slabs টেবিল
+ইনসেনটিভের সর্বোচ্চ ও সর্বনিম্ন সীমা (Cap) যুক্ত করা হবে।
 
-/my-incentives -> IncentiveController@myIncentives
-/incentive-management -> IncentiveController@manageIncentives
-/incentives/claim -> IncentiveController@claimIncentive
-/incentives/approve -> IncentiveController@approveClaim
-/incentives/reject -> IncentiveController@rejectClaim
-/incentives/disburse -> IncentiveController@disbursePayment
-/incentives/assign-external -> IncentiveController@assignExternalIncentive
-Sidebar Links (app/views/layouts/sidebar.php):
+[MODIFY] নতুন কলাম: lowest_incentive_cap (সর্বনিম্ন ইনসেনটিভ)
+[MODIFY] নতুন কলাম: highest_incentive_cap (সর্বোচ্চ ইনসেনটিভ)
+২. sales_targets টেবিল
+বর্তমানে টার্গেট দেওয়া হয় প্রজেক্ট অনুযায়ী। এখন থেকে এটি ক্যাটাগরি অনুযায়ী হবে।
 
-Under Sales Module: "My Incentives" for Sales Person / Executive / Manager roles.
-Under Accounts / Management Module: "Incentive Management" for Accounts & Management roles.
-🎨 UI / UX Design Highlights
-Stat Cards:
-💳 Total Eligible Incentive: Total amount earned across completed bookings.
-⏳ Pending Claims: Total value waiting for Accounts approval.
-✅ Approved & Disbursed: Total amount paid out.
-💰 Available Balance: Remaining amount ready for withdrawal/claim.
-Badges & Progress Indicators:
-Booking Status Badge (Booking Verified)
-Registration Status Badge (Registration Completed)
-Claim Status Badges (Eligible [Blue], Claimed [Orange], Approved [Teal], Paid [Green], Rejected [Red])
-Modals:
-Claim Modal: Input optional notes/bank account preference.
-Payment/Disbursement Modal: Input payout amount, payment method (Bank/Cash/Mobile Banking), transaction reference, and notes.
-External Incentive Assignment Modal: Employee dropdown, Project/Booking selector, Sale Value, Incentive %, Calculated Amount, and Reason/Remarks.
-🧪 Verification Plan
-Automated / CLI Testing:
-Create and execute a test script (scratch/test_incentives_flow.php) to test:
-Creation of database tables.
-Incentive calculation given a project category incentive % and flat total price (`flats.price_value`).
-Sales claim creation and status transition.
-Manual external incentive assignment.
-Disbursement recording and balance calculation.
-Manual / Browser Verification:
-Navigate to /my-incentives as a Sales Person and test claiming an eligible booking.
-Navigate to /incentive-management as Accounts / Management and test approving a claim, disbursing payment, and assigning an external employee incentive.
+[MODIFY] নতুন কলাম: category_id যুক্ত করা হবে, যাতে প্রজেক্টের বদলে ক্যাটাগরি (যেমন: Ashulia Model Town - Condominium) অনুযায়ী টার্গেট সেট করা যায়।
+৩. নতুন টেবিল: incentive_eligibility_rules
+০-২০%, ২১-৫০%, ৫১-৭০% এবং ৭০%+ অর্জনের ওপর ভিত্তি করে কে কত শতাংশ ইনসেনটিভ পাবে, তা ডাইনামিক করার জন্য এই টেবিলটি তৈরি করা হবে।
+
+কলামসমূহ: id, rule_type (এক্সিকিউটিভ, টিম লিডার ইত্যাদি), min_achievement_pct (সর্বনিম্ন অর্জন %), max_achievement_pct (সর্বোচ্চ অর্জন %), payout_pct (প্রাপ্ত ইনসেনটিভের হার)।
+৪. hierarchy_commissions টেবিল
+টিম লিডার এবং কো-অর্ডিনেটরদের "প্রতি ৫০ লাখ টাকার জন্য" যে নির্দিষ্ট কমিশন দেওয়ার নিয়ম, সেটি ডায়নামিক করার জন্য।
+
+[MODIFY] amount_per_50_lakh কলামের নাম পরিবর্তন করে reward_amount রাখা হবে।
+[NEW] নতুন কলাম: collection_threshold_amount যুক্ত করা হবে (যার ডিফল্ট মান হবে ৫০ লাখ)। ভবিষ্যতে এটি পরিবর্তন করে ৬০ বা ৭০ লাখও করা যাবে।
+ধাপ ২: মডিউল ইন্টারফেস বা উইন্ডো আপডেট (UI/UX)
+অ্যাডমিন যাতে খুব সহজেই এই রুলসগুলো কন্ট্রোল করতে পারেন, সেজন্য উইন্ডোগুলোতে কিছু পরিবর্তন আসবে।
+
+১. টার্গেট অ্যাসাইনমেন্ট মডিউল (Target Assignment)
+টার্গেট দেওয়ার পেজে এমপ্লয়ি এবং মাসের পাশাপাশি এখন থেকে ক্যাটাগরি সিলেক্ট করার অপশন থাকবে (আগে প্রজেক্ট সিলেক্ট করার অপশন ছিল)।
+এখানে ম্যানেজার ম্যানুয়ালি টার্গেটের পরিমাণটি (Amount) বসিয়ে দেবেন।
+২. ইনসেনটিভ স্লাব কনফিগারেশন (Incentive Slabs Setup)
+স্লাব তৈরির ফর্মে "Lowest Incentive" এবং "Highest Incentive" বসানোর অপশন যোগ করা হবে।
+পার্সেন্টেজ রুলস (যেমন: ২১-৫০% অর্জন করলে ২০% ইনসেনটিভ পাবে) সেট করার জন্য নতুন একটি সেটিংস পেজ তৈরি করা হবে।
+৩. হায়ারার্কি কমিশন সেটিংস (Hierarchy Commission Settings)
+টিম লিডার ও সেলস হেডদের কমিশন সেটিংসে collection_threshold_amount (যেমন: ৫০ লাখ) এবং reward_amount (যেমন: ২০০০ টাকা) ইনপুট দেওয়ার ব্যবস্থা করা হবে।
+ধাপ ৩: ইনসেনটিভ ক্যালকুলেশনের মূল লজিক (Core Logic)
+ক্যালকুলেশনের পুরো হিসাব-নিকাশ ব্যাকএন্ডে (যেমন: IncentiveCalculationService.php-তে) স্বয়ংক্রিয়ভাবে হবে।
+
+৩.১: সেলস এক্সিকিউটিভ (KAM/KAE) ক্যালকুলেশন
+১. মোট অর্জন (Achievement): নগদ টাকার হিসাবের বদলে, ওই মাসে বুকিং হওয়া ফ্ল্যাটগুলোর ল্যান্ড শেয়ারের মূল্য (Land Share Value) যোগ করে কর্মীর মোট অর্জন হিসাব করা হবে। ২. অর্জনের পার্সেন্টেজ: (মোট ল্যান্ড শেয়ার ভ্যালু / অ্যাসাইন করা টার্গেট অ্যামাউন্ট) * ১০০। ৩. অ্যাসাইনড প্রজেক্টের হিসাব:
+
+পার্সেন্টেজ অনুযায়ী তার এলিজিবিলিটি চেক করা হবে (যেমন: ৬০% অর্জন করলে সে ৫১-৭০% এর ব্র্যাকেটে পড়বে, অর্থাৎ সে ৫০% ইনসেনটিভ পাবে)।
+ল্যান্ড শেয়ারের ভলিউম অনুযায়ী স্লাব রেট (০.৫০%, ০.৭৫% ইত্যাদি) বের করা হবে। ৪. আন-অ্যাসাইনড প্রজেক্টের হিসাব:
+যদি সে অ্যাসাইনড প্রজেক্টের নূন্যতম ক্রাইটেরিয়া পূরণ না করে (অর্থাৎ ইনসেনটিভ ০% থাকে): তাহলে সে আন-অ্যাসাইনড প্রজেক্টের জন্য কোনো ইনসেনটিভ পাবে না।
+যদি সে নূন্যতম ক্রাইটেরিয়া পূরণ করে (অর্থাৎ ইনসেনটিভ ০% এর বেশি হয়): তাহলে তার আন-অ্যাসাইনড বুকিংয়ের ল্যান্ড শেয়ার ভ্যালুকে অ্যাসাইনড ল্যান্ড শেয়ার ভ্যালুর সাথে যোগ করে একটি বড় স্লাব নির্ধারণ করা হবে এবং সেই অনুযায়ী আন-অ্যাসাইনড ইনসেনটিভ হিসাব করা হবে। ৫. ক্যাপ (Cap) প্রয়োগ: সবশেষে ইনসেনটিভের সর্বনিম্ন ও সর্বোচ্চ সীমা (Highest/Lowest Cap) মিলিয়ে দেখা হবে।
+৩.২: টিম লিডার ও কো-অর্ডিনেটর ক্যালকুলেশন
+১. তাদের টিমের মোট টার্গেট এবং মোট বুকিংয়ের ল্যান্ড শেয়ার ভ্যালু বের করা হবে। ২. অর্জনের পার্সেন্টেজ হিসাব করা হবে। ৩. এলিজিবিলিটি রুল: ৫০% এর নিচে হলে কোনো টাকা নেই। ৫১-৬৯% হলে টাকার অর্ধেক (৫০%) পাবে। ৭০% বা
+ তার বেশি হলে পুরো টাকা পাবে। ৪. অ্যামাউন্ট হিসাব: (টিমের মোট ল্যান্ড শেয়ার ভ্যালু / ৫০ লাখ) * ২০০০ টাকা। এই হিসাবের ওপর উপরের এলিজিবিলিটি পার্সেন্টেজ প্রয়োগ করা হবে।
+
+৩.৩: হেড অফ সেলস ক্যালকুলেশন
+১. পুরো কোম্পানির মোট টার্গেট এবং মোট ল্যান্ড শেয়ার ভ্যালু বের করা হবে। ২. টিম লিডারের মতোই (৩.২ ধাপের মতো) পুরো কোম্পানির কালেকশনের ওপর ভিত্তি করে তার হিসাব হবে।
+
+ভেরিফিকেশন প্ল্যান (Testing)
+সব কাজ শেষ হওয়ার পর আমরা ৩টি ভিন্ন ভিন্ন পরিস্থিতি তৈরি করে টেস্ট করবো:
+
+টেস্ট ১: একজন কর্মী তার টার্গেটের মাত্র ১০% অর্জন করেছে। (সে ০% ইনসেনটিভ পাবে এবং আন-অ্যাসাইনড প্রজেক্টের সুবিধাও পাবে না)।
+টেস্ট ২: একজন কর্মী ১০০% টার্গেট পূরণ করেছে এবং আন-অ্যাসাইনড প্রজেক্টেও সেল করেছে। (তার দুটি ল্যান্ড শেয়ার ভ্যালু যোগ হয়ে বড় স্লাব অনুযায়ী ইনসেনটিভ পাবে)।
+টেস্ট ৩: একজন টিম লিডারের টিম ৬০% টার্গেট পূরণ করেছে। (সে ৫০ লাখের শর্ত অনুযায়ী মোট টাকার ৫০% পাবে)।
+Agent
+TPHL-ERP
+
+
+AI may make mistakes. Double-check all generated code.

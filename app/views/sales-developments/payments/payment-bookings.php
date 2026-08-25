@@ -292,14 +292,20 @@ if (!$is_booking_fully_paid) {
                                     <span class="badge bg-danger">SMS Notification Blocked</span>
                                 </div>
                             <?php endif; ?>
-
-                            <div class="form-check form-switch p-2 bg-light border rounded">
-                                <input class="form-check-input ms-0 me-2" type="checkbox" name="is_testing_mode" id="isTestingMode" value="1">
-                                <label class="form-check-label fw-semibold text-warning" for="isTestingMode">
-                                    <i class="fa-solid fa-vial me-1"></i> Testing Mode (Skip SMS & Bypass Phone Validation)
-                                </label>
+                            <div class="col-lg-12">
+                                <div class="form-check form-switch p-2 bg-light border rounded mb-2">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="send_sms" id="sendSmsToggle" value="1">
+                                    <label class="form-check-label fw-semibold text-primary" for="sendSmsToggle">
+                                        <i class="fa-solid fa-envelope me-1"></i> Send SMS Notification
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch p-2 bg-light border rounded">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="is_testing_mode" id="isTestingMode" value="1">
+                                    <label class="form-check-label fw-semibold text-warning" for="isTestingMode">
+                                        <i class="fa-solid fa-vial me-1"></i> Testing Mode (Skip SMS & Bypass Phone Validation)
+                                    </label>
+                                </div>
                             </div>
-                        </div>
                     </div>
 
                     <div class="mt-4">

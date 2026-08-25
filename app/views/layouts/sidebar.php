@@ -514,8 +514,8 @@
                                     </li>
                                 <?php endif; ?>
 
-                                <!-- Settings only for Top Management -->
-                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 6, 33])): ?>
+                                <!-- Settings for Management, Sales Manager and Sales Head -->
+                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 9, 33])): ?>
                                     <li class="slide child2">
                                         <a href="<?= $base_url ?>/incentive-config"
                                             class="sidebar__menu-item <?= isActive('incentive-config', $current_route) ?>">Settings</a>

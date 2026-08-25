@@ -1,12 +1,16 @@
 <?php
 
+require_once __DIR__ . '/../services/IncentiveCalculationEngine.php';
+
 class IncentiveModel
 {
     protected $db;
+    protected $engine;
 
     public function __construct($db)
     {
         $this->db = $db;
+        $this->engine = new IncentiveCalculationEngine($db);
     }
 
     /**
@@ -71,8 +75,18 @@ class IncentiveModel
         $result = $stmt->get_result();
 
         $bookings = [];
+        $monthlyStatsCache = [];
+
         while ($row = $result->fetch_assoc()) {
             $bookingId = (int)$row['booking_id'];
+            $bookingDate = $row['booking_date'];
+            $yearMonth = date('Y-m', strtotime($bookingDate));
+
+            // Cache monthly stats to avoid redundant DB calls
+            if (!isset($monthlyStatsCache[$yearMonth])) {
+                $monthlyStatsCache[$yearMonth] = $this->engine->getExecutiveMonthlyStats($userId, $yearMonth);
+            }
+            $stats = $monthlyStatsCache[$yearMonth];
 
             // Check if Booking Money is paid & verified
             $bookingMoneyVerified = $this->isPaymentVerified($bookingId, 'booking_money');
@@ -80,15 +94,15 @@ class IncentiveModel
             // Check if Registration is paid & verified
             $registrationVerified = $this->isPaymentVerified($bookingId, 'registration');
 
-            // Calculate incentive amount
+            // Calculate incentive amount based on new rules
             $flatPrice = (float)$row['flat_price'];
             $landShareValue = (float)$row['land_share_value'];
-            $incentivePct = (float)$row['incentive_percentage'];
-            if ($incentivePct <= 0) {
-                $incentivePct = 1.00; // Fallback default 1.00%
-            }
-            $calculatedIncentive = ($flatPrice * $incentivePct) / 100.0;
-
+            
+            $isAssigned = ($stats['assigned_category_id'] > 0 && $row['category_id'] == $stats['assigned_category_id']);
+            $applicablePct = $isAssigned ? $stats['final_assigned_pct'] : $stats['final_unassigned_pct'];
+            
+            $calculatedIncentive = ($flatPrice * $applicablePct) / 100.0;
+            
             // Claim status logic
             $claimStatus = $row['claim_status'];
             if (empty($claimStatus)) {
@@ -112,7 +126,7 @@ class IncentiveModel
                 'total_collected'        => (float)$row['total_collected_amount'],
                 'booking_money_collected'=> (float)$row['booking_money_amount'],
                 'category_name'          => $row['category_name'] ?? 'Standard',
-                'incentive_percentage'  => $incentivePct,
+                'incentive_percentage'   => $applicablePct,
                 'calculated_incentive'   => $calculatedIncentive,
                 'booking_completed'      => $bookingMoneyVerified ? 1 : 0,
                 'registration_completed' => $registrationVerified ? 1 : 0,
