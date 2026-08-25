@@ -31,90 +31,92 @@ class Payslip extends Model
         return $data;
     }
 
-// Get Paid Count for specific month/year
-public function getPaidCount($year = null, $month = null)
-{
-    $sql = "SELECT COUNT(*) AS paid_count FROM payslips WHERE status = 'paid'";
-    $params = [];
-    $types = "";
+    // Get Paid Count for specific month/year
+    public function getPaidCount($year = null, $month = null)
+    {
+        $sql = "SELECT COUNT(*) AS paid_count FROM payslips WHERE status = 'paid'";
+        $params = [];
+        $types = "";
 
-    if (!empty($year)) {
-        $sql .= " AND YEAR(payslip_month) = ?";
-        $params[] = $year;
-        $types .= "i";
+        if (!empty($year)) {
+            $sql .= " AND YEAR(payslip_month) = ?";
+            $params[] = $year;
+            $types .= "i";
+        }
+
+        if (!empty($month)) {
+            $sql .= " AND MONTH(payslip_month) = ?";
+            $params[] = $month;
+            $types .= "i";
+        }
+
+        $stmt = $this->db->prepare($sql);
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_assoc();
+        $stmt->close();
+
+        return $data['paid_count'] ?? 0;
     }
 
-    if (!empty($month)) {
-        $sql .= " AND MONTH(payslip_month) = ?";
-        $params[] = $month;
-        $types .= "i";
+    // Get Pending Count for specific month/year
+    public function getPendingCount($year = null, $month = null)
+    {
+        $sql = "SELECT COUNT(*) AS pending_count FROM payslips WHERE status = 'pending'";
+        $params = [];
+        $types = "";
+
+        if (!empty($year)) {
+            $sql .= " AND YEAR(payslip_month) = ?";
+            $params[] = $year;
+            $types .= "i";
+        }
+
+        if (!empty($month)) {
+            $sql .= " AND MONTH(payslip_month) = ?";
+            $params[] = $month;
+            $types .= "i";
+        }
+
+        $stmt = $this->db->prepare($sql);
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_assoc();
+        $stmt->close();
+
+        return $data['pending_count'] ?? 0;
     }
-
-    $stmt = $this->db->prepare($sql);
-
-    if (!empty($params)) {
-        $stmt->bind_param($types, ...$params);
-    }
-
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $data = $result->fetch_assoc();
-    $stmt->close();
-
-    return $data['paid_count'] ?? 0;
-}
-
-// Get Pending Count for specific month/year
-public function getPendingCount($year = null, $month = null)
-{
-    $sql = "SELECT COUNT(*) AS pending_count FROM payslips WHERE status = 'pending'";
-    $params = [];
-    $types = "";
-
-    if (!empty($year)) {
-        $sql .= " AND YEAR(payslip_month) = ?";
-        $params[] = $year;
-        $types .= "i";
-    }
-
-    if (!empty($month)) {
-        $sql .= " AND MONTH(payslip_month) = ?";
-        $params[] = $month;
-        $types .= "i";
-    }
-
-    $stmt = $this->db->prepare($sql);
-
-    if (!empty($params)) {
-        $stmt->bind_param($types, ...$params);
-    }
-
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $data = $result->fetch_assoc();
-    $stmt->close();
-
-    return $data['pending_count'] ?? 0;
-}
 
     // Create a new role
 
     public function create($data)
     {
         $stmt = $this->db->prepare("
-            INSERT INTO payslips
-            (employee_id, designation_id, payslip_month, total_earning, total_deduction, net_salary, status, company_bank_id, payment_method, upload_by, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        
+        INSERT INTO payslips
+        (employee_id, payroll_project_id, designation_id, payslip_month, total_earning, total_deduction, net_salary, status, company_bank_id, payment_method, upload_by, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
         $status = $data['status'] ?? 'pending';
         $companyBankId = isset($data['company_bank_id']) ? $data['company_bank_id'] : null;
         $paymentMethod = !empty($data['payment_method']) ? $data['payment_method'] : 'bank';
         $uploadBy = $data['upload_by'] ?? 'manual';
+        $payrollProjectId = $data['payroll_project_id'] ?? null;
 
         $stmt->bind_param(
-            "iisdddsissi",
+            "iiisdddsissi",
             $data['employee_id'],
+            $payrollProjectId,
             $data['designation_id'],
             $data['payslip_month'],
             $data['total_earning'],
@@ -214,7 +216,8 @@ public function getPendingCount($year = null, $month = null)
         $payslip = $result->fetch_assoc();
         $stmt->close();
 
-        if (!$payslip) return null;
+        if (!$payslip)
+            return null;
 
         // 2 Get item details for this payslip
         $stmt2 = $this->db->prepare("
@@ -283,10 +286,12 @@ public function getPendingCount($year = null, $month = null)
 
     public function getAllWithEmployeeFiltered($year = null, $month = null, $status = null)
     {
-        if (empty($year)) $year = date('Y');
-        if (empty($month)) $month = date('m');
+        if (empty($year))
+            $year = date('Y');
+        if (empty($month))
+            $month = date('m');
 
-         if ($status === 'unpaid') {
+        if ($status === 'unpaid') {
             $sql = "
                 SELECT 
                     p.id AS id,
@@ -402,7 +407,8 @@ public function getPendingCount($year = null, $month = null)
                 WHERE p.id IS NULL";
 
         $stmt = $this->db->prepare($sql);
-        if (!$stmt) die("Prepare failed: " . $this->db->error);
+        if (!$stmt)
+            die("Prepare failed: " . $this->db->error);
 
         $stmt->bind_param("s", $month);
         $stmt->execute();

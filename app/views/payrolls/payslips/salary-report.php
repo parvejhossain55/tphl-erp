@@ -20,22 +20,16 @@ $show_breadcrumb = true;
                     </select>
                 </div>
 
-                <!-- Month -->
-                <div class="col-lg-3 col-md-4 col-sm-6">
-                    <label class="form-label fw-semibold text-muted mb-2">Month</label>
-                    <select name="month" class="form-select">
-                        <?php foreach ($monthsList as $mVal => $mName): ?>
-                            <option value="<?= $mVal ?>" <?= $month === $mVal ? 'selected' : '' ?>><?= $mName ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <!-- Year -->
-                <div class="col-lg-3 col-md-4 col-sm-12">
-                    <label class="form-label fw-semibold text-muted mb-2">Year</label>
-                    <select name="year" class="form-select">
-                        <?php foreach ($yearsList as $yVal): ?>
-                            <option value="<?= $yVal ?>" <?= $year == $yVal ? 'selected' : '' ?>><?= $yVal ?></option>
+                <!-- Payroll Project -->
+                <div class="col-lg-6 col-md-8 col-sm-12">
+                    <label class="form-label fw-semibold text-muted mb-2">Payroll Project <span
+                            class="text-danger">*</span></label>
+                    <select name="payroll_project_id" class="form-select" required onchange="this.form.submit()">
+                        <option value="">Select Project</option>
+                        <?php foreach ($payroll_projects as $proj): ?>
+                            <option value="<?= htmlspecialchars($proj['id']) ?>" <?= ($payroll_project_id == $proj['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($proj['name']) ?> (<?= htmlspecialchars($proj['date'] ?? '') ?>)
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -62,12 +56,12 @@ $show_breadcrumb = true;
                     Salary Report
                 </h4>
                 <div>
-                    <a href="<?= $base_url ?>/payroll-salary-report-csv?report_type=<?= $reportType ?>&month=<?= $month ?>&year=<?= $year ?>"
-                        class="btn btn-success fw-semibold shadow-sm me-2">
+                    <a href="<?= $base_url ?>/payroll-salary-report-csv?report_type=<?= $reportType ?>&payroll_project_id=<?= $payroll_project_id ?>"
+                        class="btn btn-success fw-semibold shadow-sm me-2 <?= !$payroll_project_id ? 'disabled' : '' ?>">
                         <i class="fa-solid fa-file-csv me-1"></i> Export CSV
                     </a>
-                    <a href="<?= $base_url ?>/payroll-salary-report-pdf?report_type=<?= $reportType ?>&month=<?= $month ?>&year=<?= $year ?>"
-                        class="btn btn-danger fw-semibold shadow-sm">
+                    <a href="<?= $base_url ?>/payroll-salary-report-pdf?report_type=<?= $reportType ?>&payroll_project_id=<?= $payroll_project_id ?>"
+                        class="btn btn-danger fw-semibold shadow-sm <?= !$payroll_project_id ? 'disabled' : '' ?>">
                         <i class="fa-solid fa-file-pdf me-1"></i> Export PDF
                     </a>
                 </div>
