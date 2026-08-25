@@ -81,6 +81,58 @@ class ApiController extends Controller
         exit;
     }
     /**
+     * GET /api/project-expenses
+     * Accepts project_name via GET or POST parameters
+     * Authenticates with x-api-key header
+     */
+    public function projectExpenses()
+    {
+        header('Content-Type: application/json');
+        
+        // 1. Authenticate with API Key
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
+        $apiKey = $headers['x-api-key'] ?? $headers['X-Api-Key'] ?? $_SERVER['HTTP_X_API_KEY'] ?? null;
+        
+        global $config;
+        $validKey = $config['premium_homes_api_key'] ?? 'tphl_erp_key_9f8e7d6c5b4a392817065';
+        
+        if ($apiKey !== $validKey) {
+            http_response_code(401);
+            echo json_encode(["success" => false, "message" => "Unauthorized API Key"]);
+            exit;
+        }
+
+        $projectName = $_REQUEST['project_name'] ?? null;
+        
+        if (!$projectName) {
+            echo json_encode(["success" => false, "message" => "Missing project_name parameter"]);
+            exit;
+        }
+
+        // Find Project ID
+        $stmt = $this->db->prepare("SELECT id, name FROM projects WHERE name = ? LIMIT 1");
+        $stmt->bind_param("s", $projectName);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+
+        if (!$res) {
+            echo json_encode(["success" => false, "message" => "Project not found"]);
+            exit;
+        }
+
+        $projectId = (int)$res['id'];
+        
+        require_once __DIR__ . '/../ai/AiDataService.php';
+        $expenseDetails = AiDataService::getProjectExpenseDetails($this->db, $projectId);
+        
+        $expenseDetails['project_id'] = $projectId;
+        $expenseDetails['project_name'] = $res['name'];
+
+        echo json_encode(["success" => true, "data" => $expenseDetails], JSON_PRETTY_PRINT);
+        exit;
+    }
+
+    /**
      * GET /api/client-payment-info
      * Accepts phone, project_name, flat_name via GET or POST parameters
      * Authenticates with x-api-key header

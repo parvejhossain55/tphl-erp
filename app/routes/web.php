@@ -179,6 +179,7 @@ return [
     'api/flat-inventory-summary/(\d+)' => ['controller' => 'ApiController', 'method' => 'flatInventorySummary'],
     'api/financial-summary' => ['controller' => 'ApiController', 'method' => 'financialSummary'],
     'api/client-payment-info' => ['controller' => 'ApiController', 'method' => 'clientPaymentInfo'],
+    'api/project-expenses' => ['controller' => 'ApiController', 'method' => 'projectExpenses'],
 
     // =========================================================================
     // Controller: ErpTrackerController
