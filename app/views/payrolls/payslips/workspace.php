@@ -401,8 +401,45 @@ $show_breadcrumb = true;
                                 <?php endforeach; endif; ?>
                     </tbody>
                     <tfoot>
-                        <tr class="fw-bold" style="background-color: #e6f2f1; color: #0f766e;"></tr>
-                    </tfoot>
+    <tr class="fw-bold" style="background-color: #e6f2f1; color: #0f766e;">
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="text-end ps-3">Totals</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+    </tr>
+</tfoot>
                 </table>
             </div>
         </div>
@@ -583,6 +620,7 @@ $show_breadcrumb = true;
             });
         });
 
+        $('#workspaceTable tfoot').show();
         $('.dataTables_scrollFoot tfoot tr, #workspaceTable tfoot tr').each(function() {
             $(this).find('td').each(function(index) {
             if (index > 7) {
@@ -728,20 +766,24 @@ $show_breadcrumb = true;
                         text: 'CSV',
                         className: 'buttons-csv',
                         title: 'Payroll_Workplace_Export',
-                        exportOptions: {
+                          footer: true,
+                          exportOptions: {
                             rows: function ( idx, data, node ) {
                                 return $(node).find('.emp-checkbox').is(':checked');
                             },
                             columns: ':not(:first-child)',
                             format: {
-                                body: function (inner, rowidx, colidx, node) {
-                                    if ($(node).find('input').length > 0) {
-                                        return $(node).find('input').val();
-                                    } else {
-                                        return inner.replace(/(<([^>]+)>)/ig, "").trim();
-                                    }
-                                }
-                            }
+                                  body: function (inner, rowidx, colidx, node) {
+                                      if ($(node).find('input').length > 0) {
+                                          return $(node).find('input').val();
+                                      } else {
+                                          return inner.replace(/(<([^>]+)>)/ig, "").trim();
+                                      }
+                                  },
+                                  footer: function (inner, colidx, node) {
+                                      return inner ? inner.toString().replace(/(<([^>]+)>)/ig, "").trim() : "";
+                                  }
+                              }
                         }
                     },
                     {
@@ -772,7 +814,7 @@ $show_breadcrumb = true;
 
                 $(dtNodes).each(function () {
                     var tr = $(this);
-                    if (!tr.find('.emp-checkbox').is(':checked')) return;
+                    var isExcluded = tr.find('.emp-checkbox').is(':checked') ? 0 : 1;
                     var rowArr = [];
                     tr.find('td').each(function (index) {
                         if (index === 0) return;
@@ -824,7 +866,7 @@ $show_breadcrumb = true;
                 $(dtNodes).each(function () {
                     var tr = $(this);
                     
-                    if (!tr.find('.emp-checkbox').is(':checked')) return;
+                    var isExcluded = tr.find('.emp-checkbox').is(':checked') ? 0 : 1;
                     var payslipIdStr = tr.attr('data-payslip-id');
                     var payslipId = parseInt(payslipIdStr || '0', 10);
                     var employeeId = parseInt(tr.attr('data-employee-id') || '0', 10);
@@ -865,6 +907,7 @@ $show_breadcrumb = true;
                         late_unpaid_absent_days: lateUnpaidAbsentDays,
                         remarks: remarks,
                         attendance_remarks: attRemarks,
+                        is_excluded: isExcluded,
                         details: dynamicDetails
                     });
                 });
