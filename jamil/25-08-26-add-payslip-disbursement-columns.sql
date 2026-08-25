@@ -1,0 +1,5 @@
+ALTER TABLE payslips 
+ADD COLUMN paid_via_account_id INT(11) DEFAULT NULL, 
+ADD COLUMN disbursed_by INT(11) DEFAULT NULL, 
+ADD COLUMN disbursed_at DATETIME DEFAULT NULL, 
+ADD COLUMN journal_id INT(11) DEFAULT NULL;

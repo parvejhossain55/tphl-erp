@@ -908,7 +908,7 @@ class PayrollController extends Controller
                 SELECT p.*, e.full_name as employee_name
                 FROM payslips p
                 LEFT JOIN employees e ON p.employee_id = e.id
-                WHERE p.id IN ($placeholders) AND (p.status != 'paid' OR p.payment_status != 'paid')
+                WHERE p.id IN ($placeholders) AND p.status != 'paid'
             ");
             $types = str_repeat('i', count($payslipIds));
             $stmt->bind_param($types, ...$payslipIds);
@@ -1006,7 +1006,7 @@ class PayrollController extends Controller
             // 3. Update payslips status to PAID & link journal_voucher_id
             $stmtUpd = $this->db->prepare("
                 UPDATE payslips 
-                SET status = 'paid', payment_status = 'paid', hr_status = 'approved', mgmt_status = 'approved',
+                SET status = 'paid', paid_via_account_id = ?, disbursed_by = ?, disbursed_at = NOW(), journal_id = ?
                     bank_account_id = ?, disbursed_by = ?, disbursed_at = NOW(), journal_voucher_id = ?
                 WHERE id = ?
             ");
@@ -1655,18 +1655,18 @@ class PayrollController extends Controller
                 $details = $row['details'] ?? [];
 
                 if ($payslipId > 0) {
-                    $stmt = $this->db->prepare("UPDATE payslips SET total_earning=?, total_deduction=?, net_salary=?, salary_hold=?, bank_amount=?, cash_amount=?, late_unpaid_absent_days=?, remarks=?, attendance_remarks=? WHERE id=?");
+                    $stmt = $this->db->prepare("UPDATE payslips SET total_earning=?, total_deduction=?, net_salary=?, salary_hold=?, bank_amount=?, cash_amount=?, late_unpaid_absent_days=?, remarks=?, attendance_remarks=?, is_excluded=? WHERE id=?");
                     if ($stmt) {
-                        $stmt->bind_param("dddsdddssi", $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $payslipId);
+                        $stmt->bind_param("dddsdddssii", $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $payslipId);
                         $stmt->execute();
                         $stmt->close();
                     } else {
                         throw new Exception("Payslips update failed: " . $this->db->error);
                     }
                 } else {
-                    $stmt = $this->db->prepare("INSERT INTO payslips (employee_id, payroll_project_id, payslip_month, total_earning, total_deduction, net_salary, salary_hold, bank_amount, cash_amount, late_unpaid_absent_days, remarks, attendance_remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt = $this->db->prepare("INSERT INTO payslips (employee_id, payroll_project_id, payslip_month, total_earning, total_deduction, net_salary, salary_hold, bank_amount, cash_amount, late_unpaid_absent_days, remarks, attendance_remarks, is_excluded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     if ($stmt) {
-                        $stmt->bind_param("iisdddsdddss", $employeeId, $projectId, $payslipMonth, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks);
+                        $stmt->bind_param("iisdddsdddssi", $employeeId, $projectId, $payslipMonth, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded);
                         $stmt->execute();
                         $payslipId = $stmt->insert_id;
                         $stmt->close();
@@ -1766,7 +1766,7 @@ class PayrollController extends Controller
             $stmt = $this->db->prepare("
                 INSERT INTO attendance_monthly_update 
                 (employee_id, payroll_project_id, working_days, present, absent, leave_days, dayoff, late, approved_lates, final_late, deduction, late_unpaid_absent_days) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
                 working_days = VALUES(working_days),
                 present = VALUES(present),
