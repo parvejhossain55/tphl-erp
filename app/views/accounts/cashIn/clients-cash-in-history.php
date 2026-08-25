@@ -448,6 +448,14 @@ $show_breadcrumb = true;
                     <a href="<?= $base_url ?>/discount-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn mb-3" style="background: linear-gradient(135deg, #6c5ffc, #8b5cf6); color:#fff; border:none;">
                         <i class="fa-light fa-tags me-2"></i> Discount Statement
                     </a>
+                    <div class="ms-auto mb-3 d-flex align-items-center">
+                        <div class="form-check form-switch p-2 bg-light border rounded mb-0">
+                            <input class="form-check-input ms-0 me-2" type="checkbox" id="globalSendSmsToggle">
+                            <label class="form-check-label fw-semibold text-primary" for="globalSendSmsToggle" style="cursor: pointer;">
+                                <i class="fa-solid fa-envelope me-1"></i> Send SMS on Verify
+                            </label>
+                        </div>
+                    </div>
 
                 </div>
 
@@ -1337,12 +1345,13 @@ $show_breadcrumb = true;
 
         function submitForceVerify() {
             const note = document.getElementById('forceVerifyNote').value.trim();
+            const sendSms = document.getElementById('globalSendSmsToggle').checked ? 1 : 0;
             if (!note) {
                 Swal.fire('Error', 'A note is required for force verification', 'error');
                 return;
             }
             bootstrap.Modal.getInstance(document.getElementById('forceVerifyModal')).hide();
-            _doVerifyRequest(_forceVerifyPaymentId, 'verify', '', note);
+            _doVerifyRequest(_forceVerifyPaymentId, 'verify', '', note, sendSms);
         }
 
         // ─── Shared Note Modal ─────────────────────────────
@@ -1370,7 +1379,8 @@ $show_breadcrumb = true;
                     cancelButtonText:   'Cancel',
                 }).then(result => {
                     if (result.isConfirmed) {
-                        _doVerifyRequest(paymentId, action, rejectionReason);
+                        let sendSms = document.getElementById('globalSendSmsToggle').checked ? 1 : 0;
+                        _doVerifyRequest(paymentId, action, rejectionReason, '', sendSms);
                     } else {
                         // User dismissed (Cancel / Esc) — reload to stay in sync
                         location.reload();
@@ -1382,11 +1392,11 @@ $show_breadcrumb = true;
             }
         }
 
-        function _doVerifyRequest(paymentId, action, rejectionReason = '', forceVerifyNote = '') {
+        function _doVerifyRequest(paymentId, action, rejectionReason = '', forceVerifyNote = '', sendSms = 0) {
             const cell = document.getElementById('ver-cell-' + paymentId);
             if (cell) cell.innerHTML = '<span class="text-muted small"><i class="fa-light fa-spinner fa-spin"></i> Processing…</span>';
 
-            const body = new URLSearchParams({ payment_id: paymentId, action, rejection_reason: rejectionReason, force_verify_note: forceVerifyNote });
+            const body = new URLSearchParams({ payment_id: paymentId, action, rejection_reason: rejectionReason, force_verify_note: forceVerifyNote, send_sms: sendSms });
 
             fetch(BASE_URL + '/verify-payment', { method: 'POST', body })
                 .then(r => r.json())
