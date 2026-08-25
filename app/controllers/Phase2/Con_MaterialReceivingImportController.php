@@ -401,10 +401,13 @@ class Con_MaterialReceivingImportController extends Controller
                 $createdById  = !empty($creatorEmail) ? ($userMap[strtolower($creatorEmail)] ?? $fallbackUserId) : $fallbackUserId;
 
                 $pmEmail = $firstRow['pm_approved_email'] ?? '';
-                $pmApprovedId = !empty($pmEmail) ? ($userMap[strtolower($pmEmail)] ?? $fallbackUserId) : $fallbackUserId;
+                $pmApprovedId = (!empty($pmEmail) && isset($userMap[strtolower($pmEmail)])) ? $userMap[strtolower($pmEmail)] : 138;
 
                 $mgmtEmail = $firstRow['management_approved_email'] ?? '';
-                $mgmtApprovedId = !empty($mgmtEmail) ? ($userMap[strtolower($mgmtEmail)] ?? $fallbackUserId) : $fallbackUserId;
+                $mgmtApprovedId = (!empty($mgmtEmail) && isset($userMap[strtolower($mgmtEmail)])) ? $userMap[strtolower($mgmtEmail)] : 200;
+
+                $qcApprovedId = 81;
+                $opHeadApprovedId = 200;
 
                 $receivingDateStr = trim($firstRow['receiving_date'] ?? '');
                 $receivingDate = !empty($receivingDateStr) ? date('Y-m-d', strtotime($receivingDateStr)) : date('Y-m-d');
@@ -519,11 +522,12 @@ class Con_MaterialReceivingImportController extends Controller
                          approved_by_pm, pm_approved_at,
                          approved_by_se, se_approved_at,
                          qc_approved_by_id, qc_approved_at, qc_note,
+                         op_head_approved_by_id, op_head_approved_at, op_head_note,
                          mgmt_approved_by_id, mgmt_approved_at, mgmt_note,
                          vendor_id, upload_from, remarks)
-                     VALUES (?, ?, 'Fully Received', ?, ?, NOW(), ?, NOW(), ?, NOW(), 'CSV Import', ?, NOW(), 'CSV Import', ?, 'from CSV', ?)"
+                     VALUES (?, ?, 'Fully Received', ?, ?, NOW(), ?, NOW(), ?, NOW(), 'CSV Import', ?, NOW(), 'CSV Import', ?, NOW(), 'CSV Import', ?, 'from CSV', ?)"
                 );
-                $stmt2->bind_param('iisiiiiis', $prId, $createdById, $today, $pmApprovedId, $pmApprovedId, $pmApprovedId, $mgmtApprovedId, $vendorId, $poRemarks);
+                $stmt2->bind_param('iisiiiiiis', $prId, $createdById, $today, $pmApprovedId, $pmApprovedId, $qcApprovedId, $opHeadApprovedId, $mgmtApprovedId, $vendorId, $poRemarks);
                 $stmt2->execute();
                 $poId = $this->db->insert_id;
                 $summary['po']++;
@@ -560,7 +564,7 @@ class Con_MaterialReceivingImportController extends Controller
                 $stmt3->bind_param('iisiiii',
                     $poId, $createdById, $receivingDate,
                     $createdById, $warehouseId,
-                    $pmApprovedId, $pmApprovedId
+                    $qcApprovedId, $pmApprovedId
                 );
                 $stmt3->execute();
                 $recId = $this->db->insert_id;
@@ -686,7 +690,7 @@ class Con_MaterialReceivingImportController extends Controller
                 $invNum = 'INV-PO-' . $poId;
                 $stmtVpr->bind_param('iiiisdisddids',
                     $vendorId, $projectId, $poId, $createdById, $invNum,
-                    $totalPoAmount, $pmApprovedId, $vprStatus, $totalPoAmount,
+                    $totalPoAmount, $qcApprovedId, $vprStatus, $totalPoAmount,
                     $totalPoAmount, $mgmtApprovedId, $dueAmount, $paymentAttachment
                 );
                 $stmtVpr->execute();
@@ -696,7 +700,7 @@ class Con_MaterialReceivingImportController extends Controller
                 // ── 10. con_financial_transactions (if paymentAmount > 0) ──
                 if ($paymentAmount > 0) {
                     $accountsPaidEmail = $firstRow['accounts_paid_email'] ?? '';
-                    $accountsPaidId = !empty($accountsPaidEmail) ? ($userMap[strtolower($accountsPaidEmail)] ?? $fallbackUserId) : $fallbackUserId;
+                    $accountsPaidId = (!empty($accountsPaidEmail) && isset($userMap[strtolower($accountsPaidEmail)])) ? $userMap[strtolower($accountsPaidEmail)] : 207;
 
                     $rawPayMethod = trim($firstRow['payment_method'] ?? 'Other');
                     $normMethod = 'Other';
