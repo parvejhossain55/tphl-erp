@@ -315,6 +315,16 @@ class LeaveController extends Controller
         ]);
     }
 
+    public function appliedLeaveListView()
+    {
+        $this->view("hrm/leaves/applied-leave-list", [
+            "current_route"   => "applied-leave-list",
+            "page_title"      => "Applied Leave List",
+            "show_breadcrumb" => true
+        ]);
+    }
+
+
     public function leaveBalancesDashboardView()
     {
         $this->view("hrm/leaves/leave-balances", [

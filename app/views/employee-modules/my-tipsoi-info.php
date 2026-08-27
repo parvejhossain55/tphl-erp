@@ -116,6 +116,16 @@
                                 <i class="fa-solid fa-user-check text-primary me-2"></i>Approval Pending
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" id="apply-leave-tab" data-bs-toggle="tab" href="#applyLeaveTabContent" role="tab" aria-controls="applyLeaveTabContent" aria-selected="false">
+                                <i class="fa-solid fa-calendar-plus text-success me-2"></i>Apply Leave
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" id="applied-leave-list" data-bs-toggle="tab" href="#appliedLeaveListTabContent" role="tab" aria-controls="appliedLeaveListTabContent" aria-selected="false">
+                                <i class="fa-solid fa-list-check text-secondary me-2"></i>Applied Leave List
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -613,7 +623,7 @@
                         </div>
                         <div class="card-body p-4">
                             <!-- Filter Bar -->
-                            <div class="row g-3 mb-4 align-items-end  p-3 rounded border">
+                            <div class="row mb-4 align-items-end  p-3 rounded border">
                                 <div class="col-md-3 col-12">
                                     <label class="form-label fs-12 fw-bold text-secondary mb-1">Request Type</label>
                                     <select class="form-select form-select-sm" id="approvalReqTypeFilter">
@@ -681,8 +691,136 @@
                     </div>
                 </div>
 
+                <!-- 6. Apply Leave Tab -->
+                <div class="tab-pane fade" id="applyLeaveTabContent" role="tabpanel" aria-labelledby="apply-leave-tab">
+                    <div class="card custom-card border-top border-4 border-success shadow-sm">
+                        <div class="card-header py-3 bg-white border-bottom">
+                            <h5 class="card-title fw-bold mb-0 text-dark">
+                                <i class="fa-solid fa-calendar-plus text-success me-2"></i>Apply for Leave
+                            </h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <form id="applyLeaveForm" enctype="multipart/form-data">
+                                <div class="row ">
+                                    <!-- Leave Category -->
+                                    <div class="col-md-6 col-12">
+                                        <label class="form-label fw-bold text-secondary mb-1">Leave Category <span class="text-danger">*</span></label>
+                                        <select class="form-select form-select-sm" id="leaveCategoryId" name="leaveCategoryId" required>
+                                            <option value="" disabled selected>Select Leave Category...</option>
+                                            <!-- Dynamic Categories -->
+                                        </select>
+                                    </div>
+                                    <!-- Half Day -->
+                                    <div class="col-md-6 col-12 d-flex align-items-end">
+                                        <div class="form-check form-switch mb-1">
+                                            <input class="form-check-input" type="checkbox" id="isHalfDay" name="isHalfDay" value="true">
+                                            <label class="form-check-label fw-bold text-secondary" for="isHalfDay">Half Day Leave</label>
+                                        </div>
+                                    </div>
+                                    <!-- Start Date -->
+                                    <div class="col-md-6 col-12">
+                                        <label class="form-label fw-bold text-secondary mb-1">Start Date <span class="text-danger">*</span></label>
+                                        <input type="date" class="form-control form-control-sm" id="leaveStartDate" name="startDate" required>
+                                    </div>
+                                    <!-- End Date -->
+                                    <div class="col-md-6 col-12">
+                                        <label class="form-label fw-bold text-secondary mb-1">End Date <span class="text-danger">*</span></label>
+                                        <input type="date" class="form-control form-control-sm" id="leaveEndDate" name="endDate" required>
+                                    </div>
+                                    <!-- Reason -->
+                                    <div class="col-12">
+                                        <label class="form-label fw-bold text-secondary mb-1">Reason <span class="text-danger">*</span></label>
+                                        <textarea class="form-control form-control-sm" id="leaveReason" name="reason" rows="3" required placeholder="State your reason for leave..."></textarea>
+                                    </div>
+                                    <!-- Attachment -->
+                                    <div class="col-md-6 col-12">
+                                        <label class="form-label fw-bold text-secondary mb-1">Attachment <span class="text-muted">(Optional)</span></label>
+                                        <input type="file" class="form-control form-control-sm" id="leaveAttachment" name="attachment">
+                                    </div>
+                                </div>
+                                <div class="mt-4 pt-3 border-top d-flex gap-2">
+                                    <button type="submit" class="btn btn-sm btn-primary fw-semibold px-4 d-flex align-items-center" id="btnApplyLeave">
+                                        <i class="fa-solid fa-paper-plane me-2"></i> Submit Application
+                                    </button>
+                                    <button type="reset" class="btn btn-sm btn-outline-secondary fw-semibold px-4">Reset</button>
+                                </div>
+                                <div id="applyLeaveError" class="alert alert-danger mt-3 d-none fs-12 py-2" role="alert"></div>
+                                <div id="applyLeaveSuccess" class="alert alert-success mt-3 d-none fs-12 py-2" role="alert"></div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Applied Leave List Tab -->
+                <div class="tab-pane fade" id="appliedLeaveListTabContent" role="tabpanel" aria-labelledby="applied-leave-list">
+                    <div class="card custom-card border-top border-4 border-secondary shadow-sm">
+                        <div class="card-header py-3 bg-white border-bottom d-flex justify-content-between align-items-center">
+                            <h5 class="card-title fw-bold mb-0 text-dark">
+                                <i class="fa-solid fa-list-check text-secondary me-2"></i>Applied Leave List
+                            </h5>
+                            <button type="button" class="btn btn-sm btn-primary" id="btnRefreshAppliedLeaves">
+                                <i class="fa-solid fa-arrow-rotate-right me-1"></i> Refresh Data
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <!-- Filters -->
+                            <div class="bg-light p-3 border-bottom d-flex gap-2 align-items-center flex-wrap">
+                                <div style="width: 200px;">
+                                    <label class="form-label small fw-semibold text-muted mb-1">Search Employee</label>
+                                    <input type="text" id="filterKeyword" class="form-control form-control-sm" placeholder="Name or ID...">
+                                </div>
+                                <div style="width: 150px;">
+                                    <label class="form-label small fw-semibold text-muted mb-1">Status</label>
+                                    <select id="filterStatus" class="form-select form-select-sm">
+                                        <option value="" selected>All Statuses</option>
+                                        <option value="0">Pending</option>
+                                        <option value="1">Approved</option>
+                                        <option value="2">Rejected</option>
+                                    </select>
+                                </div>
+                                <div class="ms-auto mt-4">
+                                    <button class="btn btn-sm btn-dark" id="btnApplyFilters">Apply Filters</button>
+                                </div>
+                            </div>
+
+                            <!-- Table -->
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0" style="min-width: 1000px;">
+                                    <thead class="table-light text-secondary">
+                                        <tr>
+                                            <th>SN</th>
+                                            <th>Emp ID</th>
+                                            <th>Employee Name</th>
+                                            <th>Category</th>
+                                            <th>Start Date</th>
+                                            <th>End Date</th>
+                                            <th>Days</th>
+                                            <th>Reason</th>
+                                            <th>Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="appliedLeaveTableBody">
+                                        <tr>
+                                            <td colspan="10" class="text-center py-4 text-muted">
+                                                <span class="spinner-border spinner-border-sm me-2" role="status"></span> Loading data...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Pagination Info -->
+                            <div class="p-3 border-top bg-light d-flex justify-content-between align-items-center">
+                                <span class="text-muted small fw-semibold" id="paginationInfo"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
+
 
 <script>
 const baseUrl = window.base_url || '<?= $GLOBALS['base_url'] ?>';
@@ -774,6 +912,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 // General Information
                 document.getElementById("pName").textContent = profile.employeeName || erp.full_name || '—';
                 document.getElementById("pOfficeId").textContent = profile.employeeOfficeId || erp.employee_id || '—';
+                document.getElementById("pOfficeId").setAttribute("data-tipsoi-id", profile.id || "");
                 document.getElementById("p3rdPartyDevice").textContent = profile.personId3rdPartyDevice || 'Not Set';
                 document.getElementById("pEmail").textContent = profile.email || erp.email || '—';
                 document.getElementById("pDepartment").textContent = profile.departmentName || erp.department_name || '—';
@@ -1137,7 +1276,9 @@ document.addEventListener("DOMContentLoaded", function() {
         .then(res => {
             if (res.success) {
                 allTipsoiRequests = res.data || [];
+                console.log("Fetched Tipsoi Requests Data:", allTipsoiRequests);
                 loggedUserApproverInfo = res.logged_user || null;
+                console.log("Logged User Approver Info:", loggedUserApproverInfo);
                 renderApprovalsTable();
             } else {
                 tbody.innerHTML = `<tr><td colspan="11" class="text-center text-danger py-4">${res.message || 'Failed to load requests'}</td></tr>`;
@@ -1219,16 +1360,31 @@ document.addEventListener("DOMContentLoaded", function() {
                 (normUser && normSecond && (normUser.includes(normSecond) || normSecond.includes(normUser))) ||
                 (userOfficeId && secondAppName && secondAppName.includes(userOfficeId));
 
+            const isMyOwnRequest = (userOfficeId && String(rec.employeeOfficeId || '') === userOfficeId) || 
+                                   (normUser && normUser === normalizeName(rec.employeeName));
+
             let isForMe = false;
-            if (stageFilter === 'first') {
-                isForMe = (isFirstApprover && firstStatus == 0) || (isHr && firstStatus == 0);
-            } else if (stageFilter === 'second') {
-                isForMe = (isSecondApprover && secondStatus == 0) || (isHr && secondStatus == 0);
-            } else {
-                isForMe = (isFirstApprover && firstStatus == 0) || (isSecondApprover && secondStatus == 0);
-                if (!isForMe && isHr) {
-                    isForMe = true;
-                }
+            
+            // If the user sent the request themselves
+            if (isMyOwnRequest) {
+                isForMe = true;
+            }
+            
+            // If the user is the first approver (and it's pending)
+            if (isFirstApprover && firstStatus == 0) {
+                isForMe = true;
+            }
+            
+            // If the user is the second approver (and it's pending)
+            if (isSecondApprover && secondStatus == 0) {
+                isForMe = true;
+            }
+
+            // Apply dropdown stage filter if selected
+            if (isForMe && stageFilter === 'first' && firstStatus != 0) {
+                isForMe = false;
+            } else if (isForMe && stageFilter === 'second' && secondStatus != 0) {
+                isForMe = false;
             }
 
             return isForMe;
@@ -1391,5 +1547,319 @@ document.addEventListener("DOMContentLoaded", function() {
         `);
         win.document.close();
     });
+    
+    // ==========================================
+    // 6. Apply Leave Functionality
+    // ==========================================
+    const applyLeaveForm = document.getElementById("applyLeaveForm");
+    const leaveCategoryId = document.getElementById("leaveCategoryId");
+    
+    // Fetch Leave Categories
+    // Fetch Leave Categories immediately
+    function loadLeaveCategories() {
+        fetch(`${baseUrl}/api/hrm/leave-category`)
+            .then(async res => {
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error("HTTP " + res.status + ": " + text);
+                }
+                return res.json();
+            })
+            .then(data => {
+                console.log("Leave Categories Data:", data);
+                // Also check if data is in a different format
+                const list = data.leaveCategoryList || data.data || data;
+                if (Array.isArray(list)) {
+                    let html = '<option value="" disabled selected>Select Leave Category...</option>';
+                    list.forEach(cat => {
+                        // Accept status 1, or string "1", or no status field at all
+                        if (cat.status === undefined || cat.status == 1 || cat.status === true) { 
+                            html += `<option value="${cat.id}">${cat.name}</option>`;
+                        }
+                    });
+                    if (leaveCategoryId) leaveCategoryId.innerHTML = html;
+                } else {
+                    console.error("Leave categories list not found in response:", data);
+                }
+            })
+            .catch(err => {
+                console.error("Failed to load leave categories", err);
+                if (leaveCategoryId) {
+                    leaveCategoryId.innerHTML = '<option value="" disabled selected>Error loading categories</option>';
+                }
+            });
+    }
+    
+    // Load immediately to avoid click event issues
+    loadLeaveCategories();
+
+    if (applyLeaveForm) {
+        applyLeaveForm.addEventListener("submit", function(e) {
+            e.preventDefault();
+            
+            const btnSubmit = document.getElementById("btnApplyLeave");
+            const errorAlert = document.getElementById("applyLeaveError");
+            const successAlert = document.getElementById("applyLeaveSuccess");
+            
+            errorAlert.classList.add("d-none");
+            successAlert.classList.add("d-none");
+            
+            const startDateEl = document.getElementById("leaveStartDate");
+            const endDateEl = document.getElementById("leaveEndDate");
+            
+            const startDateVal = startDateEl.value;
+            const endDateVal = endDateEl.value;
+            
+            if (new Date(endDateVal) < new Date(startDateVal)) {
+                errorAlert.textContent = "End date cannot be earlier than start date.";
+                errorAlert.classList.remove("d-none");
+                return;
+            }
+            
+            // Get Tipsoi Employee ID from the already fetched profile
+            const tipsoiEmpId = document.getElementById("pOfficeId") ? document.getElementById("pOfficeId").getAttribute("data-tipsoi-id") : null;
+            
+            if (!tipsoiEmpId) {
+                errorAlert.textContent = "Could not find your Tipsoi Profile ID. Please make sure you are registered.";
+                errorAlert.classList.remove("d-none");
+                return;
+            }
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Submitting...';
+
+            const startYear = new Date(startDateVal).getFullYear();
+            const fiscalYearStartDate = new Date(startYear, 0, 1, 0, 0, 0).getTime(); // Jan 1st 00:00:00
+            const fiscalYearEndDate = new Date(startYear, 11, 31, 23, 59, 59).getTime(); // Dec 31st 23:59:59
+
+            const startDateMs = new Date(startDateVal + 'T00:00:00').getTime();
+            const endDateMs = new Date(endDateVal + 'T23:59:59').getTime();
+
+            const postBodyData = {
+                leaveCategoryId: parseInt(document.getElementById("leaveCategoryId").value),
+                reason: document.getElementById("leaveReason").value,
+                forceApproval: false,
+                fiscalYearStartDate: fiscalYearStartDate,
+                fiscalYearEndDate: fiscalYearEndDate,
+                startDate: startDateMs,
+                endDate: endDateMs,
+                isHalfDay: document.getElementById("isHalfDay").checked
+            };
+
+            const formData = new FormData();
+            formData.append('postBody', JSON.stringify(postBodyData));
+            
+            const fileInput = document.getElementById("leaveAttachment");
+            if (fileInput.files.length > 0) {
+                formData.append('file', fileInput.files[0]); // sending as 'file' to match backend expectation if we just pass through
+            }
+
+            fetch(`${baseUrl}/api/hrm/leave-management/apply/employee/${tipsoiEmpId}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success || data.message === "Success" || (data.code && data.code === 200)) {
+                    successAlert.textContent = "Leave application submitted successfully!";
+                    successAlert.classList.remove("d-none");
+                    applyLeaveForm.reset();
+                    // Optionally refresh dashboard after a short delay
+                    setTimeout(() => {
+                        document.getElementById("btnRefreshApprovals")?.click();
+                    }, 2000);
+                } else {
+                    errorAlert.textContent = data.message || "Failed to submit leave application.";
+                    errorAlert.classList.remove("d-none");
+                }
+            })
+            .catch(err => {
+                console.error("Error submitting leave:", err);
+                errorAlert.textContent = "An error occurred while submitting. Please try again.";
+                errorAlert.classList.remove("d-none");
+            })
+            .finally(() => {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Submit Application';
+            });
+        });
+    }
+    // ==========================================
+    // 7. Applied Leave List Functionality
+    // ==========================================
+    const appliedLeaveTableBody = document.getElementById("appliedLeaveTableBody");
+    const btnRefreshAppliedLeaves = document.getElementById("btnRefreshAppliedLeaves");
+    const btnApplyFilters = document.getElementById("btnApplyFilters");
+    const filterStatus = document.getElementById("filterStatus");
+    const filterKeyword = document.getElementById("filterKeyword");
+    const paginationInfo = document.getElementById("paginationInfo");
+
+    function fetchAppliedLeaves() {
+        if (!appliedLeaveTableBody) return;
+        
+        appliedLeaveTableBody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center py-4 text-muted">
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span> Loading data...
+                </td>
+            </tr>
+        `;
+        
+        const params = new URLSearchParams();
+        params.append('page', '0');
+        params.append('count', '2000'); // Increased count to get enough records for client-side filtering
+        
+        if (filterStatus.value !== "") {
+            params.append('status', filterStatus.value);
+        } else {
+            params.append('status', '0');
+            params.append('status', '1');
+            params.append('status', '2');
+            params.append('status', '3');
+            params.append('status', '4');
+            params.append('status', '5');
+        }
+
+        if (filterKeyword.value.trim() !== "") {
+            params.append('keyword', filterKeyword.value.trim());
+        }
+
+        fetch(`${baseUrl}/api/hrm/applied-leave-list?${params.toString()}`)
+            .then(res => res.json())
+            .then(res => {
+                if (res.success) {
+                    let finalData = res.data || [];
+
+                    console.log("Fetched Applied Leaves Data:", finalData);
+                    
+
+
+                    renderAppliedLeavesTable(finalData);
+                } else {
+                    appliedLeaveTableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">${res.message || 'Failed to load'}</td></tr>`;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                appliedLeaveTableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">Network error occurred</td></tr>`;
+            });
+    }
+
+    function renderAppliedLeavesTable(data) {
+        console.log("Rendering Applied Leaves Table with data:", data);
+        if (data.length === 0) {
+            appliedLeaveTableBody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4">No leave history found.</td></tr>`;
+            if(paginationInfo) paginationInfo.textContent = "Showing 0 records";
+            return;
+        }
+
+        const userOfficeIdEl = document.getElementById("pOfficeId");
+        const userTipsoiId = userOfficeIdEl ? userOfficeIdEl.getAttribute("data-tipsoi-id") : '';
+
+        let html = '';
+        let sn = 1;
+        data.forEach(item => {
+            const startDate = item.startDate ? new Date(item.startDate).toLocaleDateString() : 'N/A';
+            const endDate = item.endDate ? new Date(item.endDate).toLocaleDateString() : 'N/A';
+            
+            let statusBadge = '';
+            const statusInt = parseInt(item.approvalStatus || item.status);
+            if (statusInt === 1) statusBadge = '<span class="badge bg-success">Approved</span>';
+            else if (statusInt === 2) statusBadge = '<span class="badge bg-danger">Rejected</span>';
+            else statusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
+
+            let actionBtn = '-';
+            const firstAppId = String(item.firstApproverId || '');
+            const secondAppId = String(item.secondApproverId || '');
+            const firstStatus = parseInt(item.firstApprovalStatus || 0);
+            const secondStatus = parseInt(item.secondApprovalStatus || 0);
+            
+            if (userTipsoiId && statusInt !== 1 && statusInt !== 2) {
+                if (firstAppId === userTipsoiId && firstStatus === 0) {
+                    actionBtn = `<button class="btn btn-sm btn-success btn-approve-leave" data-id="${item.id}">Approve</button>`;
+                } else if (secondAppId === userTipsoiId && secondStatus === 0 && firstStatus === 1) {
+                    actionBtn = `<button class="btn btn-sm btn-success btn-approve-leave" data-id="${item.id}">Approve</button>`;
+                }
+            }
+
+            html += `
+                <tr>
+                    <td class="text-muted">${sn++}</td>
+                    <td class="fw-semibold">${item.employeeOfficeId || item.employeeId || 'N/A'}</td>
+                    <td class="fw-bold">${item.employeeName || 'Unknown'}</td>
+                    <td><span class="badge bg-light text-primary border border-primary-subtle">${item.categoryName || 'Leave'}</span></td>
+                    <td>${startDate}</td>
+                    <td>${endDate}</td>
+                    <td class="fw-semibold">${item.days || item.duration || '-'}</td>
+                    <td class="text-muted" style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${item.reason || ''}">${item.reason || ''}</td>
+                    <td>${statusBadge}</td>
+                    <td>${actionBtn}</td>
+                </tr>
+            `;
+        });
+        
+        appliedLeaveTableBody.innerHTML = html;
+        if(paginationInfo) paginationInfo.textContent = `Showing ${data.length} records`;
+
+        // Attach click listeners to approve buttons
+        document.querySelectorAll('.btn-approve-leave').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const leaveId = this.getAttribute('data-id');
+                approveLeaveRequest(leaveId, this);
+            });
+        });
+    }
+
+    function approveLeaveRequest(leaveId, btnEl) {
+        if (!confirm("Are you sure you want to approve this leave request?")) return;
+        
+        const originalText = btnEl.innerHTML;
+        btnEl.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
+        btnEl.disabled = true;
+
+        fetch(`${baseUrl}/api/hrm/leave-management/approve/${leaveId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.success) {
+                alert("Leave request approved successfully!");
+                fetchAppliedLeaves(); // Refresh the table
+            } else {
+                alert("Failed to approve leave: " + (res.message || "Unknown error"));
+                btnEl.innerHTML = originalText;
+                btnEl.disabled = false;
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Network error occurred.");
+            btnEl.innerHTML = originalText;
+            btnEl.disabled = false;
+        });
+    }
+
+    if (btnRefreshAppliedLeaves) btnRefreshAppliedLeaves.addEventListener("click", fetchAppliedLeaves);
+    if (btnApplyFilters) btnApplyFilters.addEventListener("click", fetchAppliedLeaves);
+
+    // Initial load when tab is clicked for the first time
+    const appliedLeaveListTab = document.getElementById("applied-leave-list");
+    if (appliedLeaveListTab) {
+        let appliedLeaveLoaded = false;
+        appliedLeaveListTab.addEventListener("shown.bs.tab", function () {
+            if (!appliedLeaveLoaded) {
+                fetchAppliedLeaves();
+                appliedLeaveLoaded = true;
+            }
+        });
+    }
+
+    // Also check on initial load in case hash is already #applied-leave-list
+    if (window.location.hash === '#applied-leave-list') {
+        fetchAppliedLeaves();
+    }
 });
 </script>

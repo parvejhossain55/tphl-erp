@@ -216,7 +216,7 @@ function getStatusBadge($status)
 
     <!-- Overview Cards Row -->
     <?php if ($viewType === 'cashin'): ?>
-    <div class="col-xl-4 col-lg-6 col-md-6 col-sm-6 mb-3">
+    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card card-success">
             <div class="d-flex align-items-center gap-2 h-100">
                 <div class="card__icon icon-success">
@@ -230,7 +230,7 @@ function getStatusBadge($status)
             </div>
         </div>
     </div>
-    <div class="col-xl-4 col-lg-6 col-md-6 col-sm-6 mb-3">
+    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card card-primary">
             <div class="d-flex align-items-center gap-2 h-100">
                 <div class="card__icon icon-primary">
@@ -243,7 +243,7 @@ function getStatusBadge($status)
             </div>
         </div>
     </div>
-    <div class="col-xl-4 col-lg-6 col-md-6 col-sm-6 mb-3">
+    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card card-danger">
             <div class="d-flex align-items-center gap-2 h-100">
                 <div class="card__icon icon-danger">
@@ -253,6 +253,20 @@ function getStatusBadge($status)
                     <h6 class="card__sub-title mb-2 text-muted">Total Expenses</h6>
                     <h4 class="card__title mb-0 text-danger text-break">TK.<?= number_format($overviewStats['total_cashout'] ?? 0, 2) ?></h4>
                     <small class="text-muted" style="font-size: 0.7rem;">All Outflows</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+        <div class="card__wrapper h-100 dashboard-card card-info">
+            <div class="d-flex align-items-center gap-2 h-100">
+                <div class="card__icon">
+                    <span><i class="fa-light fa-users"></i></span>
+                </div>
+                <div class="card__title-wrap flex-grow-1 overflow-hidden">
+                    <h6 class="card__sub-title mb-2 text-muted">Salary Expenses</h6>
+                    <h4 class="card__title mb-0 text-danger text-break">TK.<?= number_format($overviewStats['salary_payments'] ?? 0, 2) ?></h4>
+                    <small class="text-muted" style="font-size: 0.7rem;">Total Salary Paid</small>
                 </div>
             </div>
         </div>
@@ -289,7 +303,7 @@ function getStatusBadge($status)
     <div class="col-xl-4 col-lg-6 col-md-6 col-sm-6 mb-3">
         <div class="card__wrapper h-100 dashboard-card card-info">
             <div class="d-flex align-items-center gap-2 h-100">
-                <div class="card__icon icon-info">
+                <div class="card__icon">
                     <span><i class="fa-light fa-users"></i></span>
                 </div>
                 <div class="card__title-wrap flex-grow-1 overflow-hidden">
@@ -420,7 +434,7 @@ function getStatusBadge($status)
         <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions" class="text-decoration-none">
             <div class="card__wrapper h-100 dashboard-card ops-card" style="border-left: 3px solid #0d6efd;">
                 <div class="d-flex align-items-center gap-2 h-100">
-                    <div class="card__icon icon-info">
+                    <div class="card__icon ">
                         <span><i class="fa-light fa-wallet"></i></span>
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">
@@ -824,7 +838,7 @@ function getStatusBadge($status)
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
             <div class="card__wrapper h-100 dashboard-card">
                 <div class="d-flex align-items-center gap-2 h-100">
-                    <div class="card__icon icon-info">
+                    <div class="card__icon ">
                         <span><i class="fa-light fa-tools"></i></span>
                     </div>
                     <div class="card__title-wrap flex-grow-1 overflow-hidden">

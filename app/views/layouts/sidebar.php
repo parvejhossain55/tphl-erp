@@ -1411,8 +1411,7 @@
                     ?>
                     <!-- Tipsoi My Data -->
                     <li class="slide has-sub <?= isActive('my-tipsoi-info', $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive('my-tipsoi-info', $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive('my-tipsoi-info', $current_route) ? 'active' : '' ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             <div class="side-menu__icon"><i class="fa-solid fa-users-line"></i></div>
                             <span class="sidebar__menu-label">Tipsoi My Data</span>
@@ -1443,6 +1442,12 @@
                                     Approval Pending
                                 </a>
                             </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/my-tipsoi-info#appliedLeaveListTabContent" class="sidebar__menu-item">
+                                    Applied Leave List
+                                </a>
+                            </li>
+
                         </ul>
                     </li>
                 <?php endif; ?>
