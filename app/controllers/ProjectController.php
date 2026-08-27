@@ -107,6 +107,7 @@ class ProjectController extends Controller
             'convention'        => $_POST['convention'] ?? 0,
             'electricity_backup' => $_POST['electricity_backup'] ?? 0,
             'under_construction' => isset($_POST['under_construction']) ? 1 : 0,
+            'is_common'          => isset($_POST['is_common']) ? 1 : 0,
             'amenities_details' => $_POST['amenities_details'] ?? null,
             'map_link'          => $_POST['map_link'] ?? null,
             'description'       => $_POST['description'] ?? null,
@@ -152,8 +153,8 @@ class ProjectController extends Controller
         // ======================
         // Basic Validation
         // ======================
-        if (empty($data['name']) || empty($data['location_id']) || empty($data['community_id'])) {
-            setError("Project name, location and community are required");
+        if (empty($data['name'])) {
+            setError("Project name is required");
             header("Location: {$GLOBALS['base_url']}/create-project");
             exit;
         }
@@ -247,6 +248,7 @@ class ProjectController extends Controller
             'convention' => isset($_POST['convention']) ? 1 : 0,
             'electricity_backup' => isset($_POST['electricity_backup']) ? 1 : 0,
             'under_construction' => isset($_POST['under_construction']) ? 1 : 0,
+            'is_common'          => isset($_POST['is_common']) ? 1 : 0,
             'amenities_details' => $_POST['amenities_details'] ?? null,
             'map_link' => $_POST['map_link'] ?? null,
             'description' => $_POST['description'] ?? null,

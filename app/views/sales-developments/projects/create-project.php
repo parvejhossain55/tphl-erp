@@ -43,9 +43,9 @@ $show_breadcrumb = true;
 
                 <!-- Location -->
                 <div class="col-xl-6">
-                    <label>Location *</label>
+                    <label>Location</label>
                     <div class="d-flex gap-2">
-                        <select name="location_id" class="form-control" required style="flex:1;">
+                        <select name="location_id" class="form-control" style="flex:1;">
                             <option value="">Select Location</option>
                             <?php foreach ($locations as $location): ?>
                                 <option value="<?= $location['id']; ?>"><?= $location['name']; ?></option>
@@ -61,9 +61,9 @@ $show_breadcrumb = true;
 
                 <!-- Community -->
                 <div class="col-xl-6">
-                    <label>Community *</label>
+                    <label>Community</label>
                     <div class="d-flex gap-2">
-                        <select name="community_id" class="form-control" required style="flex:1;">
+                        <select name="community_id" class="form-control" style="flex:1;">
                             <option value="">Select Community</option>
                             <?php foreach ($communities as $community): ?>
                                 <option value="<?= $community['id']; ?>"><?= $community['name']; ?></option>
@@ -126,7 +126,7 @@ $show_breadcrumb = true;
                 <!-- Price Range -->
                 <div class="col-xl-6">
                     <label>Price Range</label>
-                    <select name="price_range" class="form-control" required>
+                    <select name="price_range" class="form-control">
                         <option value="">Select Price Range</option>
                         <option value="Under 50 Lac BDT">Under 50 Lac BDT</option>
                         <option value="50 Lac - 1 Crore BDT">50 Lac - 1 Crore BDT</option>
@@ -139,12 +139,12 @@ $show_breadcrumb = true;
                 <!-- Service Charge Per EMI -->
                 <div class="col-xl-6">
                     <label>Service Charge <span class="text-muted">(per EMI %)</span></label>
-                    <input type="number" step="0.01" min="0" name="service_charge_per_emi" class="form-control" required placeholder="e.g. 1.5">
+                    <input type="number" step="0.01" min="0" name="service_charge_per_emi" class="form-control" placeholder="e.g. 1.5">
                 </div>
             <!-- Project wise Status -->
                 <div class="col-xl-6">
                     <label>Project Sale Status</label>
-                    <select name="project_sale_status" class="form-control" required>
+                    <select name="project_sale_status" class="form-control">
                         <option value="">Select Sale Status</option>
                         <option value="Sold Out">Sold Out</option>
                         <option value="On Sale">On Sale</option>
@@ -253,6 +253,15 @@ $show_breadcrumb = true;
                 <div class="col-xxl-3 col-md-6 col-6">
                     <label>Image 3</label>
                     <input type="file" name="image3" class="form-control">
+                </div>
+
+                <!-- Common Project -->
+                <div class="col-xxl-3 col-md-6 col-6">
+                    <label class="d-block">&nbsp;</label>
+                    <div class="form-check mt-2">
+                        <input type="checkbox" class="form-check-input" name="is_common" id="is_common" value="1">
+                        <label class="form-check-label" for="is_common">Is Common Project</label>
+                    </div>
                 </div>
 
 

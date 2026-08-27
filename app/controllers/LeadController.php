@@ -535,7 +535,7 @@ class LeadController extends Controller
                         : ((!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00') ? date('d M, Y, h:i A', strtotime($lead['updated_at'])) : (!empty($lead['created_at']) ? date('d M, Y, h:i A', strtotime($lead['created_at'])) : '')),
                     'follow_up_count'  => $followUpCounts[$lead['id']] ?? 0,
                     'booking_count'    => $bookingCounts[$lead['id']] ?? 0,
-                    'created_at'       => $lead['created_at'] ?? '',
+                    'created_at'       => !empty($lead['created_at']) ? date('d M, Y, h:i A', strtotime($lead['created_at'])) : '',
                     'company'          => $lead['company'] ?? '',
                     'company_name'     => $lead['company_name'] ?? '',
                     'job_title'        => $lead['job_title'] ?? '',
@@ -563,7 +563,7 @@ class LeadController extends Controller
                 ' . ($start + $key + 1) . '
             ';
 
-            $row[] = $lead['created_at'] ? date('d F, Y', strtotime($lead['created_at'])) : '';
+            $row[] = $lead['created_at'] ? date('d M, Y, h:i A', strtotime($lead['created_at'])) : '';
 
             $jobCompanyStr = '';
             $jt = !empty($lead['job_title']) ? $lead['job_title'] : (!empty($lead['designation']) ? $lead['designation'] : '');

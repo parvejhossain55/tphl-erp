@@ -55,8 +55,8 @@ if (!empty($project['floor_wise_unit_meta'])) {
 
                 <!-- Location -->
                 <div class="col-xl-6">
-                    <label>Location *</label>
-                    <select name="location_id" class="form-control" required>
+                    <label>Location</label>
+                    <select name="location_id" class="form-control">
                         <option value="">Select Location</option>
                         <?php foreach ($locations as $location): ?>
                             <option value="<?= $location['id'] ?>"
@@ -69,8 +69,8 @@ if (!empty($project['floor_wise_unit_meta'])) {
 
                 <!-- Community -->
                 <div class="col-xl-6">
-                    <label>Community *</label>
-                    <select name="community_id" class="form-control" required>
+                    <label>Community</label>
+                    <select name="community_id" class="form-control">
                         <option value="">Select Community</option>
                         <?php foreach ($communities as $community): ?>
                             <option value="<?= $community['id'] ?>"
@@ -173,6 +173,7 @@ if (!empty($project['floor_wise_unit_meta'])) {
                     </select>
 
                 </div>
+
 
                 <!-- Service Charge Per EMI -->
                 <div class="col-xl-6">
@@ -353,6 +354,15 @@ if (!empty($project['floor_wise_unit_meta'])) {
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
+                </div>
+
+                <!-- Common Project -->
+                <div class="col-xl-3 col-12">
+                    <label class="d-block">&nbsp;</label>
+                    <div class="form-check mt-2">
+                        <input type="checkbox" class="form-check-input" name="is_common" id="is_common" value="1" <?= (!empty($project['is_common'])) ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="is_common">Is Common Project</label>
+                    </div>
                 </div>
 
                     <!-- Facilities -->

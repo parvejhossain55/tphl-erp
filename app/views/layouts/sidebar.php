@@ -275,7 +275,7 @@
 
                 <?php if ($hasErpAccess): ?>
                     <!-- ERP Tracker -->
-                    <li class="slide <?= isActive('erp-tracker', $current_route) ?>">
+                    <li class="slide d-none <?= isActive('erp-tracker', $current_route) ?>">
                         <a href="<?= $base_url ?>/erp-tracker"
                             class="sidebar__menu-item <?= isActive('erp-tracker', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fas fa-tasks"></i></div>
