@@ -286,7 +286,7 @@ if (!$is_booking_fully_paid) {
                             <?php if (!$isPhoneValid): ?>
                                 <div class="alert alert-warning d-flex align-items-center justify-content-between p-2 mb-2">
                                     <div class="small">
-                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+
                                         <strong>Invalid Client Phone:</strong> Client phone (<?= htmlspecialchars($clientPhone ?: 'Empty') ?>) is missing or not a valid 11-digit mobile number.
                                     </div>
                                     <span class="badge bg-danger">SMS Notification Blocked</span>

@@ -39,10 +39,10 @@ class ClientRefundController extends Controller
         return in_array($this->userRole, [1, 3]);
     }
 
-    /** Roles 1 (Admin), 3 (Super Admin), 4 (Sales Exec), 5 (Sales Mgr), 6 (Accounts) can create refund requests */
+    /** Roles 1 (Admin), 3 (Super Admin), 4 (Sales Exec), 5 (Sales Mgr), 6, 10, 30 (Accounts) can create refund requests */
     private function canCreateRefund()
     {
-        return in_array($this->userRole, [1, 3, 4, 5, 6]);
+        return in_array($this->userRole, [1, 3, 4, 5, 6, 10, 30]);
     }
 
     // =========================================================================
@@ -86,8 +86,8 @@ class ClientRefundController extends Controller
             exit;
         }
 
-        if ($booking['booking_status'] !== 'booked') {
-            setError('Only active (booked) bookings can be refunded.');
+        if (!in_array($booking['booking_status'], ['booked', 'completed'])) {
+            setError('Only active (booked or completed) bookings can be refunded.');
             header("Location: {$GLOBALS['base_url']}/client-refunds");
             exit;
         }

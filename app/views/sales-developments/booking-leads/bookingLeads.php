@@ -30,7 +30,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             <h5 class="mb-3">Booking Flat/Unit</h5>
 
 
-            <form action="<?= $GLOBALS['base_url'] ?>/booking-store" method="POST">
+            <form action="<?= $GLOBALS['base_url'] ?>/booking-store" method="POST" enctype="multipart/form-data">
                 <div class="row gy-3">
 
                     <!-- Lead ID (hidden) -->
@@ -69,11 +69,13 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             <option value="">Select Project</option>
                             <?php foreach ($projects as $project): ?>
                                 <?php 
-                                    $isRestricted = in_array($project['project_sale_status'], ['Sold Out', 'Upcoming']);
+                                    $isUpcoming = ($project['project_sale_status'] === 'Upcoming');
+                                    $isSoldOut = ($project['project_sale_status'] === 'Sold Out');
                                     $statusSuffix = !empty($project['project_sale_status']) ? " ({$project['project_sale_status']})" : '';
                                 ?>
                                 <option value="<?= $project['id'] ?>" 
-                                    <?= $isRestricted ? 'disabled style="color: red;"' : '' ?>>
+                                    <?= $isUpcoming ? 'disabled style="color: red;"' : '' ?>
+                                    <?= $isSoldOut ? 'style="color: red;"' : '' ?>>
                                     <?= htmlspecialchars($project['name']) ?><?= $statusSuffix ?>
                                 </option>
                             <?php endforeach; ?>
@@ -129,8 +131,35 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                             <label class="form-label">Discount Amount</label>
                         </div>
-                        <input type="number" name="discount_amount" class="form-control"
+                        <input type="number" name="discount_amount" id="discount_amount_input" class="form-control"
                             placeholder="" >
+                    </div>
+                    
+                    <!-- Already Approved Options -->
+                    <div class="col-lg-12 mt-3" id="already_approved_container" style="display: none;">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="is_already_approved" id="is_already_approved" value="1">
+                            <label class="form-check-label" for="is_already_approved">
+                                Is Discount Already Approved? (Backlog Data)
+                            </label>
+                        </div>
+                        <div class="row mt-2" id="already_approved_fields" style="display: none;">
+                            <div class="col-lg-6">
+                                <label class="form-label">Approved By *</label>
+                                <select name="approved_by" id="approved_by" class="form-select select2">
+                                    <option value="">Select Management User</option>
+                                    <?php if(!empty($managementUsers)): ?>
+                                        <?php foreach($managementUsers as $mu): ?>
+                                            <option value="<?= $mu['id'] ?>"><?= htmlspecialchars($mu['full_name']) ?></option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
+                            <div class="col-lg-6">
+                                <label class="form-label">Approval Attachment *</label>
+                                <input type="file" name="approval_attachment" id="approval_attachment" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -192,11 +221,11 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                         <?php if ($or['approval_status'] === 'pending'): ?>
                                             <span class="badge bg-warning">Pending Approval</span>
                                         <?php elseif ($or['approval_status'] === 'approved'): ?>
-                                            <span class="bd-badge bg-success">Approved</span>
-                                            <span class="bd-badge bg-primary"><?= $or['approved_amount'] ?></span>
+                                            <span class="badge bg-success">Approved</span>
+                                            <div class="mt-1" style="font-size: 12px; font-weight: 600;">৳ <?= number_format($or['approved_amount'], 2) ?></div>
                                         <?php elseif ($or['approval_status'] === 'partial'): ?>
-                                            <span class="bd-badge bg-success">Partial Approved</span>
-                                            <span class="bd-badge bg-primary"><?= $or['approved_amount'] ?></span>
+                                            <span class="badge bg-success">Partial Approved</span>
+                                            <div class="mt-1" style="font-size: 12px; font-weight: 600;">৳ <?= number_format($or['approved_amount'], 2) ?></div>
                                         <?php elseif ($or['approval_status'] === 'rejected'): ?>
                                             <span class="badge bg-danger">Rejected</span>
                                         <?php else: ?>
@@ -314,11 +343,13 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             <option value="">Select Project</option>
                             <?php foreach ($projects as $project): ?>
                                 <?php 
-                                    $isRestricted = in_array($project['project_sale_status'], ['Sold Out', 'Upcoming']);
+                                    $isUpcoming = ($project['project_sale_status'] === 'Upcoming');
+                                    $isSoldOut = ($project['project_sale_status'] === 'Sold Out');
                                     $statusSuffix = !empty($project['project_sale_status']) ? " ({$project['project_sale_status']})" : '';
                                 ?>
                                 <option value="<?= $project['id'] ?>" 
-                                    <?= $isRestricted ? 'disabled style="color: red;"' : '' ?>>
+                                    <?= $isUpcoming ? 'disabled style="color: red;"' : '' ?>
+                                    <?= $isSoldOut ? 'style="color: red;"' : '' ?>>
                                     <?= htmlspecialchars($project['name']) ?><?= $statusSuffix ?>
                                 </option>
                             <?php endforeach; ?>
@@ -419,6 +450,42 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         flatSelect.innerHTML = '<option value="">Error loading flats</option>';
                         refreshSelect2(flatSelect);
                     });
+            });
+        }
+        
+        // Toggle Already Approved fields
+        const discountInput = document.getElementById('discount_amount_input');
+        const alreadyApprovedContainer = document.getElementById('already_approved_container');
+        const isAlreadyApprovedCheckbox = document.getElementById('is_already_approved');
+        const alreadyApprovedFields = document.getElementById('already_approved_fields');
+        const approvedBySelect = document.getElementById('approved_by');
+        const approvalAttachmentInput = document.getElementById('approval_attachment');
+
+        if (discountInput) {
+            discountInput.addEventListener('input', function() {
+                if (parseFloat(this.value) > 0) {
+                    alreadyApprovedContainer.style.display = 'block';
+                } else {
+                    alreadyApprovedContainer.style.display = 'none';
+                    isAlreadyApprovedCheckbox.checked = false;
+                    alreadyApprovedFields.style.display = 'none';
+                    approvedBySelect.required = false;
+                    approvalAttachmentInput.required = false;
+                }
+            });
+        }
+
+        if (isAlreadyApprovedCheckbox) {
+            isAlreadyApprovedCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    alreadyApprovedFields.style.display = 'flex';
+                    approvedBySelect.required = true;
+                    approvalAttachmentInput.required = true;
+                } else {
+                    alreadyApprovedFields.style.display = 'none';
+                    approvedBySelect.required = false;
+                    approvalAttachmentInput.required = false;
+                }
             });
         }
 

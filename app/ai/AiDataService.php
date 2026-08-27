@@ -64,9 +64,47 @@ class AiDataService
             ];
         }
 
+        $pStmt = $db->prepare("SELECT total_share, floor_wise_unit_meta FROM projects WHERE id = ?");
+        $pStmt->bind_param("i", $projectId);
+        $pStmt->execute();
+        $pResult = $pStmt->get_result()->fetch_assoc();
+        
+        $totalSqft = 0;
+        $totalShare = 0;
+        $costPerSqft = 0;
+        
+        if ($pResult) {
+            $totalShare = (float)$pResult['total_share'];
+            $meta = json_decode($pResult['floor_wise_unit_meta'] ?? '{}', true);
+            
+            $floorSqft = 0;
+            if (isset($meta['typical_floor']) && is_array($meta['typical_floor'])) {
+                foreach ($meta['typical_floor'] as $unit) {
+                    $sqftVal = $unit['sqft'] ?? $unit['size'] ?? 0;
+                    $floorSqft += (float)$sqftVal;
+                }
+            } else {
+                if (is_array($meta)) {
+                    foreach ($meta as $unit) {
+                        if (is_array($unit)) {
+                            $sqftVal = $unit['sqft'] ?? $unit['size'] ?? 0;
+                            $floorSqft += (float)$sqftVal;
+                        }
+                    }
+                }
+            }
+            
+            $totalSqft = $floorSqft * $totalShare;
+            if ($totalSqft > 0) {
+                $costPerSqft = $totalExpense / $totalSqft;
+            }
+        }
+
         return [
             'summary' => [
-                'total_expense' => $totalExpense
+                'total_expense'  => $totalExpense,
+                'total_sqft'     => $totalSqft,
+                'cost_per_sqft'  => $costPerSqft
             ],
             'breakdown' => $formattedBreakdown
         ];
