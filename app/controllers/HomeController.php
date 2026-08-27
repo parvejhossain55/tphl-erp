@@ -154,52 +154,79 @@ class HomeController extends Controller
         // chart value get 
 
         $weeklySalesQuery = "
-            SELECT DATE(payment_date) AS date, SUM(amount) AS total
-            FROM lead_payments
-            WHERE payment_status IN ('paid','partially_paid') AND verification_status = 'verified' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-            GROUP BY DATE(payment_date)
-            ORDER BY DATE(payment_date)
+            SELECT p.name AS project_name, COUNT(lb.id) AS total_sales
+            FROM lead_bookings lb
+            JOIN projects p ON p.id = lb.project_id
+            WHERE lb.booking_status IN ('completed', 'booked') 
+            AND lb.deleted_at IS NULL
+            AND p.project_sale_status = 'On Sale'
+            AND lb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            GROUP BY p.name ORDER BY total_sales DESC
         ";
         $weeklySalesResult = $this->db->query($weeklySalesQuery);
         $weeklySales = [];
         while ($row = $weeklySalesResult->fetch_assoc()) {
             $weeklySales[] = [
-                'date' => $row['date'],
-                'total' => (float)$row['total']
+                'date' => $row['project_name'],
+                'total' => (int)$row['total_sales']
             ];
         }
 
-        // MONTHLY SALES (Last 30 days)
-        $monthlySalesQuery = "
-            SELECT DATE(payment_date) AS date, SUM(amount) AS total
-            FROM lead_payments
-            WHERE payment_status IN ('paid','partially_paid') AND verification_status = 'verified' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-            GROUP BY DATE(payment_date)
-            ORDER BY DATE(payment_date)
-        ";
+        // MONTHLY / CUSTOM SALES
+        $salesStartDate = $_GET['sales_start_date'] ?? null;
+        $salesEndDate = $_GET['sales_end_date'] ?? null;
+
+        if ($salesStartDate && $salesEndDate && preg_match('/^\d{4}-\d{2}-\d{2}$/', $salesStartDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $salesEndDate)) {
+            $monthlySalesQuery = "
+                SELECT p.name AS project_name, COUNT(lb.id) AS total_sales
+                FROM lead_bookings lb
+                JOIN projects p ON p.id = lb.project_id
+                WHERE lb.booking_status IN ('completed', 'booked') 
+                AND lb.deleted_at IS NULL
+                AND p.project_sale_status = 'On Sale'
+                AND DATE(lb.booking_date) >= '" . $salesStartDate . "' 
+                AND DATE(lb.booking_date) <= '" . $salesEndDate . "'
+                GROUP BY p.name ORDER BY total_sales DESC
+            ";
+        } else {
+            $monthlySalesQuery = "
+                SELECT p.name AS project_name, COUNT(lb.id) AS total_sales
+                FROM lead_bookings lb
+                JOIN projects p ON p.id = lb.project_id
+                WHERE lb.booking_status IN ('completed', 'booked') 
+                AND lb.deleted_at IS NULL
+                AND p.project_sale_status = 'On Sale'
+                AND lb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+                GROUP BY p.name ORDER BY total_sales DESC
+            ";
+        }
+        
         $monthlySalesResult = $this->db->query($monthlySalesQuery);
         $monthlySales = [];
         while ($row = $monthlySalesResult->fetch_assoc()) {
             $monthlySales[] = [
-                'date' => $row['date'],
-                'total' => (float)$row['total']
+                'date' => $row['project_name'],
+                'total' => (int)$row['total_sales']
             ];
         }
 
         // YEARLY SALES (Last 12 months)
         $yearlySalesQuery = "
-    SELECT DATE_FORMAT(payment_date, '%Y-%m') AS month, SUM(amount) AS total
-    FROM lead_payments
-    WHERE payment_status IN ('paid','partially_paid') AND verification_status = 'verified' AND payment_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
-    GROUP BY DATE_FORMAT(payment_date, '%Y-%m')
-    ORDER BY DATE_FORMAT(payment_date, '%Y-%m')
-";
+            SELECT p.name AS project_name, COUNT(lb.id) AS total_sales
+            FROM lead_bookings lb
+            JOIN projects p ON p.id = lb.project_id
+            WHERE lb.booking_status IN ('completed', 'booked') 
+            AND lb.deleted_at IS NULL
+            AND p.project_sale_status = 'On Sale'
+            AND lb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+            GROUP BY p.name ORDER BY total_sales DESC
+        ";
         $yearlySalesResult = $this->db->query($yearlySalesQuery);
         $yearlySales = [];
         while ($row = $yearlySalesResult->fetch_assoc()) {
             $yearlySales[] = [
-                'month' => $row['month'],
-                'total' => (float)$row['total']
+                'month' => $row['project_name'],
+                'total' => (int)$row['total_sales']
             ];
         }
 

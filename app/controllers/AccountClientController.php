@@ -197,19 +197,7 @@ public function indexTwo($bookingId = null)
         }
 
         $stmt = $this->clientModel->getDb()->prepare("
-            SELECT
-                l.full_name, l.phone, l.alt_phone_number, l.email, l.company,
-                l.designation, l.address, l.permanent_address,
-                l.father_name, l.mother_name, l.dob, l.nid_or_passport, l.identity_type,
-                l.nationality, l.religion, l.residency_type, l.country,
-                l.lead_image,
-                l.lead_name_bn, l.father_name_bn, l.mother_name_bn, l.profession_bn,
-                l.present_add_bn, l.permanent_add_bn,
-                -- Nominee
-                l.nominee_name, l.nomi_father_name, l.nomi_mother_name,
-                l.nomi_profession, l.relation_with_lead, l.nomi_dob,
-                l.nomi_nid_passport, l.nomi_phone, l.nomi_email,
-                l.nomi_present_add, l.nomi_permanent_address, l.nomi_image
+            SELECT l.*
             FROM leads l
             WHERE l.id = ?
         ");

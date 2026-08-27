@@ -160,64 +160,81 @@ class SalesDashboardController extends Controller
 
 
         $weeklySalesQuery = "
-            SELECT DATE(lp.payment_date) AS date, SUM(lp.amount) AS total
-            FROM lead_payments lp
-            JOIN lead_bookings lb ON lp.booking_id = lb.id
+            SELECT p.name AS project_name, COUNT(lb.id) AS total_sales
+            FROM lead_bookings lb
+            JOIN projects p ON p.id = lb.project_id
             JOIN leads l ON lb.lead_id = l.id
-            WHERE lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND lp.payment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            WHERE lb.booking_status IN ('completed', 'booked') 
+            AND lb.deleted_at IS NULL
+            AND p.project_sale_status = 'On Sale'
+            AND lb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
         ";
         if (!empty($teamId)) {
             $weeklySalesQuery .= " AND l.team_id = " . (int) $teamId;
         }
-        $weeklySalesQuery .= " GROUP BY DATE(lp.payment_date) ORDER BY DATE(lp.payment_date)";
+        $weeklySalesQuery .= " GROUP BY p.name ORDER BY total_sales DESC";
         $weeklySalesResult = $this->db->query($weeklySalesQuery);
         $weeklySales = [];
         while ($row = $weeklySalesResult->fetch_assoc()) {
             $weeklySales[] = [
-                'date' => $row['date'],
-                'total' => (float) $row['total']
+                'date' => $row['project_name'],
+                'total' => (int) $row['total_sales']
             ];
         }
 
-        // MONTHLY SALES (Last 30 days)
+        // MONTHLY / CUSTOM SALES
+        $salesStartDate = $_GET['sales_start_date'] ?? null;
+        $salesEndDate = $_GET['sales_end_date'] ?? null;
+
         $monthlySalesQuery = "
-            SELECT DATE(lp.payment_date) AS date, SUM(lp.amount) AS total
-            FROM lead_payments lp
-            JOIN lead_bookings lb ON lp.booking_id = lb.id
+            SELECT p.name AS project_name, COUNT(lb.id) AS total_sales
+            FROM lead_bookings lb
+            JOIN projects p ON p.id = lb.project_id
             JOIN leads l ON lb.lead_id = l.id
-            WHERE lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND lp.payment_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            WHERE lb.booking_status IN ('completed', 'booked') 
+            AND lb.deleted_at IS NULL
+            AND p.project_sale_status = 'On Sale'
         ";
+        
+        if ($salesStartDate && $salesEndDate && preg_match('/^\d{4}-\d{2}-\d{2}$/', $salesStartDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $salesEndDate)) {
+            $monthlySalesQuery .= " AND DATE(lb.booking_date) >= '" . $salesStartDate . "' AND DATE(lb.booking_date) <= '" . $salesEndDate . "'";
+        } else {
+            $monthlySalesQuery .= " AND lb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+        }
         if (!empty($teamId)) {
             $monthlySalesQuery .= " AND l.team_id = " . (int) $teamId;
         }
-        $monthlySalesQuery .= " GROUP BY DATE(lp.payment_date) ORDER BY DATE(lp.payment_date)";
+        $monthlySalesQuery .= " GROUP BY p.name ORDER BY total_sales DESC";
         $monthlySalesResult = $this->db->query($monthlySalesQuery);
         $monthlySales = [];
         while ($row = $monthlySalesResult->fetch_assoc()) {
             $monthlySales[] = [
-                'date' => $row['date'],
-                'total' => (float) $row['total']
+                'date' => $row['project_name'],
+                'total' => (int) $row['total_sales']
             ];
         }
 
         // YEARLY SALES (Last 12 months)
         $yearlySalesQuery = "
-            SELECT DATE_FORMAT(lp.payment_date, '%Y-%m') AS month, SUM(lp.amount) AS total
-            FROM lead_payments lp
-            JOIN lead_bookings lb ON lp.booking_id = lb.id
+            SELECT p.name AS project_name, COUNT(lb.id) AS total_sales
+            FROM lead_bookings lb
+            JOIN projects p ON p.id = lb.project_id
             JOIN leads l ON lb.lead_id = l.id
-            WHERE lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND lp.payment_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+            WHERE lb.booking_status IN ('completed', 'booked') 
+            AND lb.deleted_at IS NULL
+            AND p.project_sale_status = 'On Sale'
+            AND lb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
         ";
         if (!empty($teamId)) {
             $yearlySalesQuery .= " AND l.team_id = " . (int) $teamId;
         }
-        $yearlySalesQuery .= " GROUP BY DATE_FORMAT(lp.payment_date, '%Y-%m') ORDER BY DATE_FORMAT(lp.payment_date, '%Y-%m')";
+        $yearlySalesQuery .= " GROUP BY p.name ORDER BY total_sales DESC";
         $yearlySalesResult = $this->db->query($yearlySalesQuery);
         $yearlySales = [];
         while ($row = $yearlySalesResult->fetch_assoc()) {
             $yearlySales[] = [
-                'month' => $row['month'],
-                'total' => (float) $row['total']
+                'month' => $row['project_name'],
+                'total' => (int) $row['total_sales']
             ];
         }
 
@@ -277,9 +294,8 @@ class SalesDashboardController extends Controller
 
         $allSalesTeams = $this->userModel->getSalesTeams($roleId, $teamId);
         $executiveId = $_GET['executive'] ?? null;
-        $startMonth = $_GET['start_month'] ?? null;
-        $endMonth = $_GET['end_month'] ?? null;
-        $year = $_GET['year'] ?? null;
+        $startDate = $_GET['start_date'] ?? null;
+        $endDate = $_GET['end_date'] ?? null;
 
         $singleData = [
             'site_visit_target' => 0,
@@ -295,12 +311,12 @@ class SalesDashboardController extends Controller
         $errorMessage = '';
 
         if (!empty($executiveId)) {
-            if (empty($year)) {
-                // Employee selected but no year
-                $errorMessage = "Please select a Year first!";
+            if (empty($startDate) || empty($endDate)) {
+                // Employee selected but no date range
+                $errorMessage = "Please select Start Date and End Date!";
             } else {
-                // Employee + Year selected → fetch data
-                $data = $this->salesTargetModel->getExecutiveFullStats($executiveId, $startMonth, $endMonth, $year);
+                // Employee + Date range selected → fetch data
+                $data = $this->salesTargetModel->getExecutiveFullStats($executiveId, $startDate, $endDate);
 
                 if (!empty($data)) {
                     $singleData = $data[0];
@@ -386,9 +402,8 @@ class SalesDashboardController extends Controller
             "showCards" => $showCards,
             "errorMessage" => $errorMessage,
             "executiveId" => $executiveId,
-            "year" => $year,
-            "start_month" => $startMonth,
-            "end_month" => $endMonth,
+            "start_date" => $startDate,
+            "end_date" => $endDate,
             "teamFilterType" => $teamFilterType,
             "teamYear" => $teamYear,
             "teamStartMonth" => $teamStartMonth,

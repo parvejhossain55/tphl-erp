@@ -648,10 +648,13 @@ $(document).on('select2:open', function () {
                 let options = {
                     chart: {
                         type: 'bar',
-                        height: 300,
+                        height: 350,
                         toolbar: {
                             show: false
                         }
+                    },
+                    legend: {
+                        show: false
                     },
 
                     plotOptions: {
@@ -664,7 +667,7 @@ $(document).on('select2:open', function () {
 
                     dataLabels: {
                         enabled: defaultPeriod !== 'month',
-                        formatter: val => '৳ ' + val.toLocaleString()
+                        formatter: val => val.toLocaleString()
                     },
 
                     series: [{
@@ -697,7 +700,7 @@ $(document).on('select2:open', function () {
 
                     tooltip: {
                         y: {
-                            formatter: val => '৳ ' + val.toLocaleString()
+                            formatter: val => val.toLocaleString()
                         }
                     }
                 };

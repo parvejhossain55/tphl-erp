@@ -18,6 +18,31 @@ if (!isset($paymentSummary)) {
 }
 
 $isLandShareCompleted  = $paymentSummary['is_land_share_completed'] ?? false;
+// Calculate ordinal suffix for EMI numbers
+$getOrdinal = function($num) {
+    if (!is_numeric($num) || $num <= 0) return '';
+    if (!in_array(($num % 100), [11, 12, 13])) {
+        switch ($num % 10) {
+            case 1:  return $num . 'st';
+            case 2:  return $num . 'nd';
+            case 3:  return $num . 'rd';
+        }
+    }
+    return $num . 'th';
+};
+
+$nextEmiNum = ($paymentSummary['completed_emi'] ?? 0) + 1;
+$nextEmiStr = $getOrdinal($nextEmiNum);
+
+$dueEmiStr = '';
+$dueNos = [];
+if (!empty($outstandingDues)) {
+    $dueNos = array_filter(array_column($outstandingDues, 'emi_no'));
+    if (!empty($dueNos)) {
+        $dueEmiStr = " (Due for " . implode(', ', array_map($getOrdinal, $dueNos)) . ")";
+    }
+}
+
 $isRegistrationPaid    = $paymentSummary['is_registration_paid'] ?? false;
 $devChargePaid         = $isShop ? ($paymentSummary['shop_service_charge_paid'] ?? 0) : ($paymentSummary['development_charge_paid'] ?? 0);
 $flatDevCharges        = (float)($isShop ? ($paymentSummary['total_shop_service_charge'] ?? 0) : ($paymentSummary['flat_development_charges'] ?? 0));
@@ -118,17 +143,13 @@ if (!empty($virtualEmiSchedule)) {
                                 <?php endif; ?>
 
                                 <!-- EMI - Only if land share is completed -->
-                                <?php if (($isLandShareCompleted || $isShop) && $isDevChargeCompleted && $remainingCF > 0): ?>
+                                <?php if (($isLandShareCompleted || $isShop) && $remainingCF > 0): ?>
                                     <option value="emi" data-details="true">
-                                        EMI (Construction Fee)<?php if ($perEmiAmount > 0): ?> — Suggested: TK.<?= number_format($perEmiAmount, 2) ?><?php endif; ?><?php if ($totalEmiDue > 0): ?> — Outstanding Due: TK.<?= number_format($totalEmiDue, 2) ?><?php endif; ?>
+                                        <?= $nextEmiStr ?> EMI (Construction Fee)<?php if ($perEmiAmount > 0): ?> — Suggested: TK.<?= number_format($perEmiAmount, 2) ?><?php endif; ?><?php if ($totalEmiDue > 0): ?> — Outstanding Due: TK.<?= number_format($totalEmiDue, 2) ?><?= $dueEmiStr ?><?php endif; ?>
                                     </option>
-                                <?php elseif (($isLandShareCompleted || $isShop) && $isDevChargeCompleted && $remainingCF <= 0): ?>
+                                <?php elseif (($isLandShareCompleted || $isShop) && $remainingCF <= 0): ?>
                                     <option value="emi" disabled>
                                         EMI (Construction Fee) — Fully Paid ✓ (TK.<?= number_format($constructionFee, 2) ?>)
-                                    </option>
-                                <?php elseif ($isLandShareCompleted || $isShop): ?>
-                                    <option value="emi" disabled>
-                                        EMI (Locked — pay development charge first)
                                     </option>
                                 <?php else: ?>
                                     <option value="emi" disabled>
@@ -139,7 +160,7 @@ if (!empty($virtualEmiSchedule)) {
                                 <!-- Settle EMI Due — Advanced fallback (only shown when outstanding dues exist) -->
                                 <?php if ($hasOutstandingDues): ?>
                                     <option value="emi_due_settlement" data-details="false">
-                                        ⚙ Advanced: Settle Specific EMI Due (Outstanding: TK.<?= number_format($totalEmiDue, 2) ?>)
+                                        ⚙ Advanced: Settle <?= !empty($dueNos) ? implode(', ', array_map($getOrdinal, $dueNos)) . ' ' : '' ?>EMI Due (Outstanding: TK.<?= number_format($totalEmiDue, 2) ?>)
                                     </option>
                                 <?php endif; ?>
 
