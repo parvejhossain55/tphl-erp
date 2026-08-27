@@ -62,47 +62,16 @@
                 </select>
             </div>
 
-            <!-- Start Month Select -->
-            <div class="col-6 col-md-2">
-                <label for="startMonthSelect" class="form-label">Start Month</label>
-                <select class="form-select" name="start_month" id="startMonthSelect">
-                    <option value="">Select Month</option>
-                    <?php foreach (range(1, 12) as $m):
-                        $monthName = date('F', mktime(0, 0, 0, $m, 1));
-                    ?>
-                        <option value="<?= $m ?>" <?= ($start_month == $m) ? 'selected' : '' ?>>
-                            <?= $monthName ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+            <!-- Start Date -->
+            <div class="col-6 col-md-3">
+                <label for="startDate" class="form-label">Start Date</label>
+                <input type="date" class="form-control" name="start_date" id="startDate" value="<?= htmlspecialchars($start_date ?? '') ?>">
             </div>
 
-            <!-- End Month Select -->
-            <div class="col-6 col-md-2">
-                <label for="endMonthSelect" class="form-label">End Month</label>
-                <select class="form-select" name="end_month" id="endMonthSelect">
-                    <option value="">Select Month</option>
-                    <?php foreach (range(1, 12) as $m):
-                        $monthName = date('F', mktime(0, 0, 0, $m, 1));
-                    ?>
-                        <option value="<?= $m ?>" <?= ($end_month == $m) ? 'selected' : '' ?>>
-                            <?= $monthName ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
-            <!-- Year Select -->
-            <div class="col-6 col-md-2">
-                <label for="yearSelect" class="form-label">Select Year</label>
-                <select class="form-select" name="year" id="yearSelect">
-                    <option value="">Select Year</option>
-                    <?php for ($y = 2025; $y <= 2035; $y++): ?>
-                        <option value="<?= $y ?>" <?= ($year == $y) ? 'selected' : '' ?>>
-                            <?= $y ?>
-                        </option>
-                    <?php endfor; ?>
-                </select>
+            <!-- End Date -->
+            <div class="col-6 col-md-3">
+                <label for="endDate" class="form-label">End Date</label>
+                <input type="date" class="form-control" name="end_date" id="endDate" value="<?= htmlspecialchars($end_date ?? '') ?>">
             </div>
 
             <!-- Action Buttons -->
@@ -365,14 +334,21 @@
         <div class="col-xxl-6 col-xl-12 col-lg-12 col-12 mb-3">
             <div class="card__wrapper height-equal">
                 <div class="card__title-wrap d-flex flex-wrap gap-10 align-items-center justify-content-between mb-25">
-                    <h5 class="card__heading-title">Sales Overview</h5>
+                    <h5 class="card__heading-title">Project Wise Sales Count</h5>
+                    <form method="GET" class="d-flex gap-2 align-items-center mb-0">
+                        <input type="date" name="sales_start_date" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['sales_start_date'] ?? '') ?>">
+                        <input type="date" name="sales_end_date" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['sales_end_date'] ?? '') ?>">
+                        <button type="submit" class="btn btn-sm btn-primary">Search</button>
+                        <?php if(isset($_GET['sales_start_date'])): ?>
+                            <a href="?" class="btn btn-sm btn-outline-secondary">Clear</a>
+                        <?php endif; ?>
+                    </form>
                     <div class="card__tab">
                         <ul class="nav nav-pills" id="pills-tab" role="tablist">
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="pills-bar-year-tab" data-period="year" type="button">1Y</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="pills-bar-month-tab" data-period="month" type="button">1M</button>
+                                <button class="nav-link active" id="pills-bar-month-tab" data-period="month" type="button" style="<?= isset($_GET['sales_start_date']) ? 'width: auto; padding-left: 15px; padding-right: 15px; border-radius: 20px;' : '' ?>">
+                                    <?= isset($_GET['sales_start_date']) ? 'Custom' : '1M' ?>
+                                </button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link " id="pills-bar-week-tab" data-period="week" type="button">1W</button>

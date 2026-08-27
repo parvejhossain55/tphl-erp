@@ -904,22 +904,46 @@ $show_breadcrumb = true;
     }
 
     function renderProfile(p) {
+        if (!p) return '<div class="alert alert-danger">Error loading profile data.</div>';
         const v = (val) => escapeHtml(val || '—');
-        const formatDate = (d) => {
-            if (!d) return '—';
-            const dt = new Date(d);
-            return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-        };
         const imgBase = '<?= $GLOBALS['base_url'] ?>';
-        const clientImg = p.lead_image ? `<img src="${imgBase}/public/uploads/leads/${p.lead_image}" class="profile-img" alt="Client">` : '<div class="profile-img-placeholder"><i class="fa-light fa-user fa-3x"></i></div>';
-        const nomineeImg = p.nomi_image ? `<img src="${imgBase}/public/uploads/leads/${p.nomi_image}" class="profile-img" alt="Nominee">` : '<div class="profile-img-placeholder"><i class="fa-light fa-user-shield fa-3x"></i></div>';
+        const clientImg = p.lead_image ? `<img src="${imgBase}/public/uploads/leads/${p.lead_image}" class="profile-img shadow-sm" alt="Client Photo">` : `<div class="profile-img-placeholder shadow-sm"><i class="fa-light fa-user fa-3x text-secondary"></i></div>`;
+        const nomineeImg = p.nomi_image ? `<img src="${imgBase}/public/uploads/leads/${p.nomi_image}" class="profile-img shadow-sm" alt="Nominee Photo">` : `<div class="profile-img-placeholder shadow-sm"><i class="fa-light fa-user fa-3x text-secondary"></i></div>`;
+
+        // Calculate completeness
+        const expectedFields = [
+            'full_name', 'father_name', 'mother_name', 'dob', 'nationality', 'religion', 'residency_type', 'identity_type', 'nid_or_passport',
+            'phone', 'email', 'address', 'permanent_address', 'city', 'country',
+            'designation', 'job_title', 'company',
+            'nominee_name', 'relation_with_lead', 'nomi_father_name', 'nomi_mother_name', 'nomi_profession', 'nomi_dob', 'nomi_nid_passport', 'nomi_phone', 'nomi_present_add', 'nomi_permanent_address'
+        ];
+        let filledCount = 0;
+        expectedFields.forEach(f => {
+            if (p[f] && String(p[f]).trim() !== '') filledCount++;
+        });
+        let completionPct = Math.round((filledCount / expectedFields.length) * 100);
+        let pbColor = completionPct < 50 ? 'bg-danger' : (completionPct < 80 ? 'bg-warning' : 'bg-success');
 
         return `
         <div class="profile-card">
-            <!-- CLIENT SECTION -->
+            <!-- HEADER -->
+            <div class="profile-section" style="margin-bottom: 0; padding-bottom: 10px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0 text-primary"><i class="fa-light fa-user-circle me-2"></i>Client Profile</h5>
+                    <a href="${imgBase}/edit-lead/${p.id}?redirect=${encodeURIComponent(window.location.href)}" class="btn btn-sm btn-primary"><i class="fa-regular fa-pen-to-square me-1"></i>Edit Profile</a>
+                </div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <small class="text-muted fw-bold">Profile Completeness: ${completionPct}%</small>
+                </div>
+                <div class="progress mt-1" style="height: 6px;">
+                    <div class="progress-bar ${pbColor}" role="progressbar" style="width: ${completionPct}%;" aria-valuenow="${completionPct}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+
+            <!-- SECTION 1: PERSONAL INFO -->
             <div class="profile-section">
                 <div class="profile-section-header">
-                    <i class="fa-light fa-user me-2"></i>Client Information
+                    <i class="fa-light fa-user me-2"></i>1. Personal Information (ব্যক্তিগত তথ্য)
                 </div>
                 <div class="profile-content">
                     <div class="row">
@@ -928,41 +952,103 @@ $show_breadcrumb = true;
                         </div>
                         <div class="col-md-9">
                             <div class="row">
-                                <div class="col-sm-6 mb-2"><div class="profile-label">Full Name</div><div class="profile-value">${v(p.full_name)}</div></div>
-                                <div class="col-sm-6 mb-2"><div class="profile-label">Name (Bangla)</div><div class="profile-value">${v(p.lead_name_bn)}</div></div>
-                                <div class="col-sm-6 mb-2"><div class="profile-label">Phone</div><div class="profile-value">${v(p.phone)}</div></div>
-                                <div class="col-sm-6 mb-2"><div class="profile-label">Alt. Phone</div><div class="profile-value">${v(p.alt_phone_number)}</div></div>
-                                <div class="col-sm-6 mb-2"><div class="profile-label">Email</div><div class="profile-value">${v(p.email)}</div></div>
-                                <div class="col-sm-6 mb-2"><div class="profile-label">Company</div><div class="profile-value">${v(p.company)}</div></div>
-                                <div class="col-sm-6 mb-2"><div class="profile-label">Designation</div><div class="profile-value">${v(p.designation)}</div></div>
+                                <div class="col-sm-6 mb-2"><div class="profile-label">Full Name (English)</div><div class="profile-value">${v(p.full_name)}</div></div>
+                                <div class="col-sm-6 mb-2"><div class="profile-label">নাম (বাংলা)</div><div class="profile-value">${v(p.lead_name_bn)}</div></div>
+                                <div class="col-sm-6 mb-2"><div class="profile-label">Father's Name (English)</div><div class="profile-value">${v(p.father_name)}</div></div>
+                                <div class="col-sm-6 mb-2"><div class="profile-label">পিতার নাম (বাংলা)</div><div class="profile-value">${v(p.father_name_bn)}</div></div>
+                                <div class="col-sm-6 mb-2"><div class="profile-label">Mother's Name (English)</div><div class="profile-value">${v(p.mother_name)}</div></div>
+                                <div class="col-sm-6 mb-2"><div class="profile-label">মাতার নাম (বাংলা)</div><div class="profile-value">${v(p.mother_name_bn)}</div></div>
                                 <div class="col-sm-6 mb-2"><div class="profile-label">Date of Birth</div><div class="profile-value">${formatDate(p.dob)}</div></div>
+                                <div class="col-sm-6 mb-2"><div class="profile-label">Nationality</div><div class="profile-value">${v(p.nationality)}</div></div>
                             </div>
                         </div>
                     </div>
                     <hr style="border-color:#e5e7eb;">
                     <div class="row">
-                        <div class="col-sm-6 mb-2"><div class="profile-label">Father's Name</div><div class="profile-value">${v(p.father_name)}</div></div>
-                        <div class="col-sm-6 mb-2"><div class="profile-label">Mother's Name</div><div class="profile-value">${v(p.mother_name)}</div></div>
-                        <div class="col-sm-6 mb-2"><div class="profile-label">Father (Bangla)</div><div class="profile-value">${v(p.father_name_bn)}</div></div>
-                        <div class="col-sm-6 mb-2"><div class="profile-label">Mother (Bangla)</div><div class="profile-value">${v(p.mother_name_bn)}</div></div>
-                        <div class="col-sm-4 mb-2"><div class="profile-label">${v(p.identity_type) || 'NID'} No.</div><div class="profile-value">${v(p.nid_or_passport)}</div></div>
-                        <div class="col-sm-4 mb-2"><div class="profile-label">Nationality</div><div class="profile-value">${v(p.nationality)}</div></div>
-                        <div class="col-sm-4 mb-2"><div class="profile-label">Religion</div><div class="profile-value">${v(p.religion)}</div></div>
-                        <div class="col-sm-4 mb-2"><div class="profile-label">Residency</div><div class="profile-value">${v(p.residency_type)}</div></div>
-                        <div class="col-sm-4 mb-2"><div class="profile-label">Country</div><div class="profile-value">${v(p.country)}</div></div>
-                    </div>
-                    <hr style="border-color:#e5e7eb;">
-                    <div class="row">
-                        <div class="col-sm-6 mb-2"><div class="profile-label">Present Address</div><div class="profile-value">${v(p.address || p.present_add_bn)}</div></div>
-                        <div class="col-sm-6 mb-2"><div class="profile-label">Permanent Address</div><div class="profile-value">${v(p.permanent_address || p.permanent_add_bn)}</div></div>
+                        <div class="col-sm-3 mb-2"><div class="profile-label">Religion</div><div class="profile-value">${v(p.religion)}</div></div>
+                        <div class="col-sm-3 mb-2"><div class="profile-label">Residency Type</div><div class="profile-value">${v(p.residency_type)}</div></div>
+                        <div class="col-sm-3 mb-2"><div class="profile-label">Identity Document</div><div class="profile-value">${v(p.identity_type)}</div></div>
+                        <div class="col-sm-3 mb-2"><div class="profile-label">ID Number</div><div class="profile-value">${v(p.nid_or_passport)}</div></div>
                     </div>
                 </div>
             </div>
 
-            <!-- NOMINEE SECTION -->
+            <!-- SECTION 2: CONTACT & ADDRESS -->
+            <div class="profile-section">
+                <div class="profile-section-header">
+                    <i class="fa-light fa-address-book me-2"></i>2. Contact & Address (যোগাযোগ ও ঠিকানা)
+                </div>
+                <div class="profile-content">
+                    <div class="row">
+                        <div class="col-sm-4 mb-2"><div class="profile-label">Primary Phone (WhatsApp)</div><div class="profile-value">${v(p.phone)}</div></div>
+                        <div class="col-sm-4 mb-2"><div class="profile-label">Alternate Phone</div><div class="profile-value">${v(p.alt_phone_number)}</div></div>
+                        <div class="col-sm-4 mb-2"><div class="profile-label">Email Address</div><div class="profile-value">${v(p.email)}</div></div>
+                    </div>
+                    <hr style="border-color:#e5e7eb;">
+                    <div class="row">
+                        <div class="col-sm-6 mb-2"><div class="profile-label">Present Address (English)</div><div class="profile-value">${v(p.address)}</div></div>
+                        <div class="col-sm-6 mb-2"><div class="profile-label">বর্তমান ঠিকানা (বাংলা)</div><div class="profile-value">${v(p.present_add_bn)}</div></div>
+                        <div class="col-sm-6 mb-2"><div class="profile-label">Permanent Address (English)</div><div class="profile-value">${v(p.permanent_address)}</div></div>
+                        <div class="col-sm-6 mb-2"><div class="profile-label">স্থায়ী ঠিকানা (বাংলা)</div><div class="profile-value">${v(p.permanent_add_bn)}</div></div>
+                        <div class="col-sm-6 mb-2"><div class="profile-label">City</div><div class="profile-value">${v(p.city)}</div></div>
+                        <div class="col-sm-6 mb-2"><div class="profile-label">Country</div><div class="profile-value">${v(p.country)}</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: PROFESSIONAL INFO -->
+            <div class="profile-section">
+                <div class="profile-section-header">
+                    <i class="fa-light fa-briefcase me-2"></i>3. Professional Information (পেশাগত তথ্য)
+                </div>
+                <div class="profile-content">
+                    <div class="row">
+                        <div class="col-sm-6 mb-2"><div class="profile-label">Designation / Profession</div><div class="profile-value">${v(p.designation)}</div></div>
+                        <div class="col-sm-6 mb-2"><div class="profile-label">পেশা (বাংলা)</div><div class="profile-value">${v(p.profession_bn)}</div></div>
+                        <div class="col-sm-6 mb-2"><div class="profile-label">Job Title</div><div class="profile-value">${v(p.job_title)}</div></div>
+                        <div class="col-sm-6 mb-2"><div class="profile-label">Company Name</div><div class="profile-value">${v(p.company || p.company_name)}</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 4: SYSTEM META -->
+            <div class="profile-section">
+                <div class="profile-section-header">
+                    <i class="fa-light fa-bullhorn me-2"></i>4. Meta & Status (মেটা ও স্ট্যাটাস)
+                </div>
+                <div class="profile-content">
+                    <div class="row">
+                        <div class="col-sm-4 mb-2"><div class="profile-label">Lead Type</div><div class="profile-value">${v(p.lead_type)}</div></div>
+                        <div class="col-sm-4 mb-2"><div class="profile-label">Lead Quality</div><div class="profile-value">${v(p.lead_quality)}</div></div>
+                        <div class="col-sm-4 mb-2"><div class="profile-label">Last Action Status</div><div class="profile-value">${v(p.last_lead_action)}</div></div>
+                        <div class="col-sm-4 mb-2"><div class="profile-label">Call Status</div><div class="profile-value">${v(p.call_status)}</div></div>
+                        <div class="col-sm-4 mb-2"><div class="profile-label">Record Status</div><div class="profile-value">${v(p.status)}</div></div>
+                        <div class="col-sm-4 mb-2"><div class="profile-label">Value Amount</div><div class="profile-value">${v(p.value_amount)} ${v(p.currency)}</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 5: CUSTOMER PREFERENCES -->
+            <div class="profile-section">
+                <div class="profile-section-header">
+                    <i class="fa-light fa-city me-2"></i>5. Requirements & Preferences (চাহিদা ও পছন্দ)
+                </div>
+                <div class="profile-content">
+                    <div class="row">
+                        <div class="col-sm-6 mb-2"><div class="profile-label">Interested Apartment Size</div><div class="profile-value">${v(p.which_apartment_size_are_you_interested_in || p.pref_flat_size)}</div></div>
+                        <div class="col-sm-6 mb-2"><div class="profile-label">Floor Choice</div><div class="profile-value">${v(p.which_floor_are_you_for_shop)}</div></div>
+                        <div class="col-sm-6 mb-2"><div class="profile-label">Planning to Buy</div><div class="profile-value">${v(p.when_are_you_planning_to_buy)}</div></div>
+                        <div class="col-sm-6 mb-2"><div class="profile-label">Site Visit Pref.</div><div class="profile-value">${v(p.would_you_like_to_schedule_a_site_visit)}</div></div>
+                        <div class="col-sm-6 mb-2"><div class="profile-label">Best Time to Contact</div><div class="profile-value">${v(p.when_is_the_best_time_to_contact_you || p.preferred_contact_time)}</div></div>
+                        <div class="col-sm-6 mb-2"><div class="profile-label">Communication Type</div><div class="profile-value">${v(p.communication_type)}</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 6: NOMINEE INFO -->
             <div class="profile-section" style="margin-top:0;">
                 <div class="profile-section-header" style="background: linear-gradient(135deg, #065f46, #059669);">
-                    <i class="fa-light fa-user-shield me-2"></i>Nominee Information
+                    <i class="fa-light fa-user-shield me-2"></i>6. Nominee Information (নমিনি সংক্রান্ত তথ্য)
                 </div>
                 <div class="profile-content">
                     ${p.nominee_name ? `
@@ -980,7 +1066,7 @@ $show_breadcrumb = true;
                                 <div class="col-sm-6 mb-2"><div class="profile-label">Email</div><div class="profile-value">${v(p.nomi_email)}</div></div>
                                 <div class="col-sm-6 mb-2"><div class="profile-label">Profession</div><div class="profile-value">${v(p.nomi_profession)}</div></div>
                                 <div class="col-sm-6 mb-2"><div class="profile-label">Date of Birth</div><div class="profile-value">${formatDate(p.nomi_dob)}</div></div>
-                                <div class="col-sm-6 mb-2"><div class="profile-label">NID / Passport</div><div class="profile-value">${v(p.nomi_nid_passport)}</div></div>
+                                <div class="col-sm-12 mb-2"><div class="profile-label">NID / Passport</div><div class="profile-value">${v(p.nomi_nid_passport)}</div></div>
                             </div>
                         </div>
                     </div>

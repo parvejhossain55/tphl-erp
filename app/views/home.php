@@ -321,14 +321,21 @@ $hasTransactions = !empty($recentTransactions);
     <div class="col-xxl-4 col-xl-12 col-lg-12 col-12 mb-3 ">
         <div class="card__wrapper height-equal">
             <div class="card__title-wrap d-flex flex-wrap gap-10 align-items-center justify-content-between mb-25">
-                <h5 class="card__heading-title">Booking Overview</h5>
+                <h5 class="card__heading-title">Project Wise Sales Count</h5>
+                <form method="GET" class="d-flex gap-2 align-items-center mb-0">
+                    <input type="date" name="sales_start_date" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['sales_start_date'] ?? '') ?>">
+                    <input type="date" name="sales_end_date" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['sales_end_date'] ?? '') ?>">
+                    <button type="submit" class="btn btn-sm btn-primary">Search</button>
+                    <?php if(isset($_GET['sales_start_date'])): ?>
+                        <a href="?" class="btn btn-sm btn-outline-secondary">Clear</a>
+                    <?php endif; ?>
+                </form>
                 <div class="card__tab">
                     <ul class="nav nav-pills" id="pills-tab" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="pills-bar-year-tab" data-period="year" type="button">1Y</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="pills-bar-month-tab" data-period="month" type="button">1M</button>
+                            <button class="nav-link active" id="pills-bar-month-tab" data-period="month" type="button" style="<?= isset($_GET['sales_start_date']) ? 'width: auto; padding-left: 15px; padding-right: 15px; border-radius: 20px;' : '' ?>">
+                                <?= isset($_GET['sales_start_date']) ? 'Custom' : '1M' ?>
+                            </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="pills-bar-week-tab" data-period="week" type="button">1W</button>

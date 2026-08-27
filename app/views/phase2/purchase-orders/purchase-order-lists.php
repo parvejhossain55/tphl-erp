@@ -19,6 +19,26 @@
 </div>
 
     <div class="card__wrapper shadow-sm">
+        <div class="card__header d-flex justify-content-between align-items-center bg-white p-3 border-bottom">
+            <h6 class="mb-0"><i class="fa-solid fa-filter me-2 text-primary"></i>Filter Orders</h6>
+            <form method="GET" class="d-flex gap-2 mb-0">
+                <select name="project_id" class="form-select form-select-sm fw-semibold" onchange="this.form.submit()" style="width: 250px; border-color: #dee2e6;">
+                    <option value="">All Projects</option>
+                    <?php if (!empty($projects)): ?>
+                        <?php foreach ($projects as $proj): ?>
+                            <option value="<?= $proj['id'] ?>" <?= (string)($currentProjectId ?? '') === (string)$proj['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($proj['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+                <select name="filter" class="form-select form-select-sm fw-semibold" onchange="this.form.submit()" style="width: 200px; border-color: #dee2e6;">
+                    <option value="pending_my_approval" <?= ($currentFilter ?? '') === 'pending_my_approval' ? 'selected' : '' ?>>Pending My Approval</option>
+                    <option value="my_approved" <?= ($currentFilter ?? '') === 'my_approved' ? 'selected' : '' ?>>Approved By Me</option>
+                    <option value="all" <?= ($currentFilter ?? '') === 'all' ? 'selected' : '' ?>>All Orders</option>
+                </select>
+            </form>
+        </div>
         <div class="card__body p-0">
             <div class="table-responsive">
                 <table class="table table-hover table-striped custom-table mb-0 multiple-table">

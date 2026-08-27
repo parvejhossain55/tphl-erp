@@ -22,6 +22,7 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
             </div>
 
             <form action="<?= $GLOBALS['base_url'] ?>/update-lead/<?= $leadData['id'] ?>" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="redirect" value="<?= htmlspecialchars($redirect ?? '') ?>">
                 <div class="row ">
 
                     <!-- ========================================================================= -->

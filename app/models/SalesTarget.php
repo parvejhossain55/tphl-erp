@@ -407,30 +407,27 @@ public function getExecutiveBookingStats($type = 'monthly')
 
 
 //for searching by sales team
-public function getExecutiveFullStats($executiveId = null, $startMonth = null, $endMonth = null, $year = null)
+public function getExecutiveFullStats($executiveId = null, $startDate = null, $endDate = null)
 {
-    if (empty($executiveId) || empty($year)) return [];
+    if (empty($executiveId) || empty($startDate) || empty($endDate)) return [];
 
     $bookingWhere = ["lb.booking_status IN ('completed', 'booked')", "lb.sales_by_id = " . (int)$executiveId];
     $visitWhere   = ["lf.follow_up_type = 'visit'", "lf.status = 'completed'", "lf.assigned_with = " . (int)$executiveId];
     $targetWhere  = ["st.sales_user_id = " . (int)$executiveId];
 
-    // Year filter
-    $bookingWhere[] = "YEAR(lb.booking_date) = " . (int)$year;
-    $visitWhere[]   = "YEAR(lf.follow_up_date) = " . (int)$year;
-    $targetWhere[]  = "YEAR(st.month) = " . (int)$year;
+    // Date range filter
+    $safeStartDate = $this->db->real_escape_string($startDate);
+    $safeEndDate   = $this->db->real_escape_string($endDate);
 
-    // Month range filter (optional)
-    if (!empty($startMonth)) {
-        $bookingWhere[] = "MONTH(lb.booking_date) >= " . (int)$startMonth;
-        $visitWhere[]   = "MONTH(lf.follow_up_date) >= " . (int)$startMonth;
-        $targetWhere[]  = "MONTH(st.month) >= " . (int)$startMonth;
-    }
-    if (!empty($endMonth)) {
-        $bookingWhere[] = "MONTH(lb.booking_date) <= " . (int)$endMonth;
-        $visitWhere[]   = "MONTH(lf.follow_up_date) <= " . (int)$endMonth;
-        $targetWhere[]  = "MONTH(st.month) <= " . (int)$endMonth;
-    }
+    $bookingWhere[] = "DATE(lb.booking_date) >= '$safeStartDate'";
+    $bookingWhere[] = "DATE(lb.booking_date) <= '$safeEndDate'";
+
+    $visitWhere[] = "DATE(lf.follow_up_date) >= '$safeStartDate'";
+    $visitWhere[] = "DATE(lf.follow_up_date) <= '$safeEndDate'";
+
+    // Target table has 'month' column which is likely a date format like 'Y-m-01'
+    $targetWhere[] = "DATE(st.month) >= DATE_FORMAT('$safeStartDate', '%Y-%m-01')";
+    $targetWhere[] = "DATE(st.month) <= LAST_DAY('$safeEndDate')";
 
     $bookingCondition = implode(" AND ", $bookingWhere);
     $visitCondition   = implode(" AND ", $visitWhere);

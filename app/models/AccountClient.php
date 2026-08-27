@@ -2937,7 +2937,7 @@ ORDER BY lb.booking_date DESC
             }
 
             $stmt->bind_param(
-                "sddsssssisisssisii",
+                "sddsssssissssisii",
                 $u_paymentType,
                 $u_amount,
                 $u_landShare,

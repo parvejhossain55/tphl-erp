@@ -27,8 +27,8 @@ spl_autoload_register(function ($class) {
 });
 
 // Enable debug (local dev)
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// error_reporting(E_ALL);
+// ini_set('display_errors', 1);
 
 $root = dirname(__DIR__);
 $GLOBALS['base_url'] = '/TPHL-ERP';

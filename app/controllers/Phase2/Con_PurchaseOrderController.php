@@ -24,12 +24,75 @@ class Con_PurchaseOrderController extends Controller
 
     public function index()
     {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
+
+        // Fetch projects for filter
+        require_once __DIR__ . '/../../models/Project.php';
+        $projectModel = new \Project($this->db);
+        $projects = $projectModel->getAll();
+
         $orders = $this->poModel->getAll();
 
+        // Determine filters
+        $isApproverRole = in_array($currentRoleId, [17, 24, 20]);
+        $filter = $_GET['filter'] ?? ($isApproverRole ? 'pending_my_approval' : 'all');
+        $projectId = $_GET['project_id'] ?? '';
+
+        $filteredOrders = [];
+        foreach ($orders as $po) {
+            // Project filter
+            if ($projectId !== '' && $po['project_id'] != $projectId) {
+                continue;
+            }
+
+            $creatorRole   = (int)($po['creator_role_id'] ?? 0);
+            $phNeeded      = in_array($creatorRole, [23, 31]);
+            $phApproved    = !empty($po['purchase_head_approved_by_id']);
+            $qcApproved    = !empty($po['qc_approved_by_id']);
+            $opApproved    = !empty($po['op_head_approved_by_id']);
+
+            $canApprovePH   = ($currentRoleId === 17) && $phNeeded && !$phApproved;
+            $canApproveQC   = ($currentRoleId === 24) && (!$phNeeded || $phApproved) && !$qcApproved;
+            $canApproveOP   = ($currentRoleId === 20) && $qcApproved && !$opApproved;
+
+            $iCanApprove = $canApprovePH || $canApproveQC || $canApproveOP;
+            $iHaveApproved = ($po['purchase_head_approved_by_id'] == $currentUserId) ||
+                             ($po['qc_approved_by_id'] == $currentUserId) ||
+                             ($po['op_head_approved_by_id'] == $currentUserId);
+
+            if ($filter === 'pending_my_approval') {
+                if ($iCanApprove) {
+                    $filteredOrders[] = $po;
+                }
+            } elseif ($filter === 'my_approved') {
+                if ($iHaveApproved) {
+                    $filteredOrders[] = $po;
+                }
+            } else {
+                // 'all'
+                $filteredOrders[] = $po;
+            }
+        }
+
+        // Sort so that CSV uploads appear at the bottom
+        usort($filteredOrders, function($a, $b) {
+            $aCsv = (strpos(strtolower($a['upload_from'] ?? ''), 'csv') !== false) ? 1 : 0;
+            $bCsv = (strpos(strtolower($b['upload_from'] ?? ''), 'csv') !== false) ? 1 : 0;
+            if ($aCsv !== $bCsv) {
+                return $aCsv - $bCsv;
+            }
+            return $b['id'] <=> $a['id']; // Descending by ID for same upload_from type
+        });
+
         $this->view('phase2/purchase-orders/purchase-order-lists', [
-            'current_route' => 'con-purchase-orders',
-            'page_title'    => 'Purchase Orders',
-            'orders'        => $orders,
+            'current_route'    => 'con-purchase-orders',
+            'page_title'       => 'Purchase Orders',
+            'orders'           => $filteredOrders,
+            'currentFilter'    => $filter,
+            'projects'         => $projects,
+            'currentProjectId' => $projectId
         ]);
     }
 

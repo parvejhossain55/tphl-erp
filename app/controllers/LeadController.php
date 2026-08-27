@@ -1086,6 +1086,7 @@ class LeadController extends Controller
             "teams"             => $teams,
             "projectCategories" => $projectCategories,
             "show_breadcrumb"   => true,
+            "redirect"          => $_GET['redirect'] ?? '',
         ]);
     }
 
@@ -1097,11 +1098,18 @@ class LeadController extends Controller
         $leadData = $_POST;
         $leadData['created_by'] = $_SESSION['user']['id'] ?? null;
 
+        $redirect = $_POST['redirect'] ?? '';
+
         // Update lead
         try {
             $this->leadModel->update($id, $leadData);
             setSuccess("Lead updated successfully!");
-            header("Location: {$GLOBALS['base_url']}/lead-lists");
+            
+            if (!empty($redirect)) {
+                header("Location: " . $redirect);
+            } else {
+                header("Location: {$GLOBALS['base_url']}/lead-lists");
+            }
             exit;
         } catch (Exception $e) {
             setError($e->getMessage());
