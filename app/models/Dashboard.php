@@ -572,6 +572,23 @@ class Dashboard extends Model
             $stats['total_cashout'] = floatval($row['total']) - ($stats['expense_adjustment_cashin'] ?? 0) - ($stats['procurement_returns_cashin'] ?? 0);
         }
 
+        // Get Salary Payments
+        $stats['salary_payments'] = 0;
+        $sqlSalary = "
+            SELECT COALESCE(SUM(net_salary), 0) as total
+            FROM payslips
+            WHERE status = 'paid'
+            AND STR_TO_DATE(CONCAT(payslip_month, '-01'), '%Y-%m-%d') BETWEEN ? AND ?
+        ";
+        $stmt = $this->db->prepare($sqlSalary);
+        $stmt->bind_param("ss", $startDate, $endDate);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result && $row = $result->fetch_assoc()) {
+            $stats['salary_payments'] = floatval($row['total']);
+        }
+        $stmt->close();
+
         // Net Balance
         $stats['net_balance'] = $stats['total_cashin'] - $stats['total_cashout'];
 

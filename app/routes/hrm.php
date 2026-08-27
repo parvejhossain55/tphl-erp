@@ -240,6 +240,10 @@ return [
     // =========================================================================
     'hrm-leave-history' => ['controller' => 'LeaveController', 'method' => 'leaveHistoryDashboardView'],
     'api/hrm/leave-history' => ['controller' => 'HrmApiController', 'method' => 'getLeaveHistory'],
+    'api/hrm/leave-category' => ['controller' => 'HrmApiController', 'method' => 'getLeaveCategories'],
+    'api/hrm/applied-leave-list' => ['controller' => 'HrmApiController', 'method' => 'getAppliedLeaveList'],
+    'api/hrm/leave-management/approve/(.*)' => ['controller' => 'HrmApiController', 'method' => 'approveTipsoiLeave'],
+    'api/hrm/leave-management/apply/employee/(.*)' => ['controller' => 'HrmApiController', 'method' => 'applyTipsoiLeave'],
 
     // =========================================================================
     // Batch 4: Leave Balances & Analytics Views & API Routes
