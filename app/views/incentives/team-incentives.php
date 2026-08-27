@@ -8,13 +8,13 @@ $show_breadcrumb = true;
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
             <h3 class="fw-bold mb-1 text-dark">
-                <i class="fa-solid fa-users text-primary me-2"></i><?= $teamMetrics['team_name'] ? htmlspecialchars($teamMetrics['team_name']) : 'Team Sales' ?> Incentives
+                <i class="fa-solid fa-users text-primary me-2"></i><?= !empty($teamMetrics['team_name']) ? htmlspecialchars($teamMetrics['team_name']) : 'Team Sales' ?> Incentives
             </h3>
             <p class="text-muted small mb-0">Track your team's total collection and your hierarchy commissions.</p>
         </div>
         <div>
             <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fs-7 fw-semibold">
-                <i class="fa-solid fa-user-tie me-1"></i> <?= ucwords(str_replace('_', ' ', $teamMetrics['role_type'])) ?> Portal
+                <i class="fa-solid fa-user-tie me-1"></i> <?= ucwords(str_replace('_', ' ', $teamMetrics['role_type'] ?? 'Management')) ?> Portal
             </span>
         </div>
     </div>
@@ -24,7 +24,7 @@ $show_breadcrumb = true;
             <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-success">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted fw-semibold">Team Target & Achievement (<?= date('F Y', strtotime($teamMetrics['month'] . '-01')) ?>)</span>
+                        <span class="text-muted fw-semibold">Team Target & Achievement (<?= date('F Y', strtotime(($teamMetrics['month'] ?? date('Y-m')) . '-01')) ?>)</span>
                         <div class="avatar avatar-sm bg-success-subtle text-success rounded-2">
                             <i class="fa-solid fa-bullseye"></i>
                         </div>
@@ -80,7 +80,7 @@ $show_breadcrumb = true;
             <h5 class="fw-bold mb-0 text-dark">
                 <i class="fa-solid fa-list-check text-primary me-2"></i>This Month's Team Sales Breakdown
             </h5>
-            <span class="badge bg-light text-dark border"><i class="fa-solid fa-calendar me-1"></i> <?= date('F Y', strtotime($teamMetrics['month'] . '-01')) ?></span>
+            <span class="badge bg-light text-dark border"><i class="fa-solid fa-calendar me-1"></i> <?= date('F Y', strtotime(($teamMetrics['month'] ?? date('Y-m')) . '-01')) ?></span>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">

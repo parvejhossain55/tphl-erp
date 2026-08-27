@@ -103,6 +103,7 @@ class Con_PurchaseRequestController extends Controller
                     OR qc_id            = ?
                     OR operator_id      = ?
                     OR created_by       = ?
+                    OR is_common        = 1
                 )
                 ORDER BY name ASC
             ");

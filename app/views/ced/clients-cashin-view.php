@@ -165,7 +165,7 @@ $show_breadcrumb = true;
                         <div>
                             <h6 class="card__sub-title mb-0">Filter Data</h6>
                         </div>
-                        <select name="project_id" id="projectFilter" class="form-select" style="max-width: 350px;" onchange="document.getElementById('filterForm').submit()">
+                        <select name="project_id" id="projectFilter" class="form-select select2" style="max-width: 350px;" onchange="document.getElementById('filterForm').submit()">
                             <option value="">All Projects</option>
                             <?php if (!empty($projects)): ?>
                                 <?php foreach ($projects as $project): ?>
@@ -345,13 +345,7 @@ $show_breadcrumb = true;
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="12" class="text-center py-4">
-                                    <i class="fa-light fa-folder-open fa-2x d-block mb-2 text-muted"></i>
-                                    <span class="text-muted"><?= $selectedProjectId ? 'No clients found for this project' : 'No clients found' ?></span>
-                                </td>
-                            </tr>
+                      
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -556,6 +550,7 @@ $show_breadcrumb = true;
             </div>
         </div>
     </div>
+</div>
 <?php endif; ?>
 
 <!-- ===== CLIENT EMI FOLLOW UP MODAL ===== -->
@@ -1020,7 +1015,7 @@ $show_breadcrumb = true;
         
         const modalEl = document.getElementById('clientEmiFollowupModal');
         if (modalEl) {
-            clientEmiFollowupModalInstance = new bootstrap.Modal(modalEl);
+            clientEmiFollowupModalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
             clientEmiFollowupModalInstance.show();
         }
         
