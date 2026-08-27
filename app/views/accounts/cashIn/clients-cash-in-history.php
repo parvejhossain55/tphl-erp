@@ -438,6 +438,9 @@ $show_breadcrumb = true;
                         <a href="<?= $GLOBALS['base_url'] ?>/<?= $isShop ? 'shop-client-cash-in-form' : 'client-cash-in-form' ?>?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
                             <i class="fa-light fa-plus me-2"></i> Add Transaction
                         </a>
+                        <a href="<?= $GLOBALS['base_url'] ?>/client-refund-create/<?= $clientDetails['booking_id'] ?>" class="btn btn-danger mb-3">
+                            <i class="fa-light fa-undo me-2"></i> Refund
+                        </a>
                     <?php endif; ?>
                     <a href="<?= $GLOBALS['base_url'] ?>/csv-import-form" class="btn btn-info mb-3 text-white">
                         <i class="fa-light fa-file-csv me-2"></i> CSV Import
@@ -559,7 +562,7 @@ $show_breadcrumb = true;
                                         <?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $transaction['payment_method'] ?? 'N/A'))); ?>
                                     </td>
                                     <td>
-                                        <?php if ($transaction['payment_method'] === 'bank' || $transaction['payment_method'] === 'cheque'): ?>
+                                        <?php if (($transaction['payment_method'] ?? '') === 'bank' || ($transaction['payment_method'] ?? '') === 'cheque'): ?>
                                             <?php if (!empty($transaction['bank_name'])): ?>
                                                 <div style="font-size:11px;">
                                                     <strong>From:</strong> <?= htmlspecialchars($transaction['bank_name']) ?>

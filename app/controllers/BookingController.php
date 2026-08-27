@@ -40,10 +40,19 @@ class BookingController extends Controller
         $projects = $this->projectModel->getAll();
         $flats = []; // empty initially
 
+        $managementUsers = [];
+        $res = $this->db->query("SELECT id, full_name FROM users WHERE role_id IN (1, 3, 33)");
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $managementUsers[] = $row;
+            }
+        }
+
         $this->view("sales-developments/booking-leads/bookingLeads", [
             "lead" => $lead,
             "projects" => $projects,
             "flats" => $flats,
+            "managementUsers" => $managementUsers,
             "bookingRecords" => $bookingRecords,
             "selected_lead_id" => $lead_id,
             "current_route" => "booking-leads",
@@ -75,10 +84,33 @@ class BookingController extends Controller
         }
 
         $discount = $_POST['discount_amount'] ?? 0;
+        
+        $isAlreadyApproved = isset($_POST['is_already_approved']) && $_POST['is_already_approved'] == '1';
+        $approvalAttachmentPath = null;
+        
+        if ($isAlreadyApproved && isset($_FILES['approval_attachment']) && $_FILES['approval_attachment']['error'] === 0) {
+            $uploadDir = 'public/uploads/approvals/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+            $fileName = time() . '_' . basename($_FILES['approval_attachment']['name']);
+            $targetFilePath = $uploadDir . $fileName;
+            if (move_uploaded_file($_FILES['approval_attachment']['tmp_name'], $targetFilePath)) {
+                $approvalAttachmentPath = $targetFilePath;
+            }
+        }
 
         //  Get assigned_by from leads table
         $lead = $this->leadModel->find($_POST['lead_id']);
         $salesById = $lead['assigned_id'] ?? ''; // fallback to current user if null
+        
+        $approvalStatus = $discount > 0 ? 'pending' : 'not_required';
+        $approvedAmount = null;
+        
+        if ($discount > 0 && $isAlreadyApproved) {
+            $approvalStatus = 'approved';
+            $approvedAmount = $discount;
+        }
 
         $data = [
             'lead_id' => $_POST['lead_id'],
@@ -89,7 +121,9 @@ class BookingController extends Controller
             'booking_date' => $_POST['booking_date'],
             'booking_status' => 'booked',
             'discount_amount' => $discount,
-            'approval_status' => $discount > 0 ? 'pending' : 'not_required',
+            'approval_status' => $approvalStatus,
+            'approved_amount' => $approvedAmount,
+            'past_approval_attachment' => $approvalAttachmentPath,
             'sales_by_id' => $salesById, //  auto set
         ];
 
@@ -97,7 +131,7 @@ class BookingController extends Controller
 
         // Discount approval logic (same as before)
         if ($discount > 0) {
-            $this->approvalRequestModel->create([
+            $approvalData = [
                 'department'     => 'Sales',
                 'request_type'   => 'discount',
                 'title'          => 'Lead Booking Discount Approval',
@@ -110,7 +144,17 @@ class BookingController extends Controller
                     'lead_id' => $_POST['lead_id'],
                     'flat_id' => $flatId
                 ])
-            ]);
+            ];
+            
+            if ($isAlreadyApproved) {
+                $approvalData['status'] = 'approved';
+                $approvalData['approved_amount'] = $discount;
+                $approvalData['approved_by'] = $_POST['approved_by'] ?? null;
+                $approvalData['approved_at'] = date('Y-m-d H:i:s');
+                $approvalData['attachment'] = $approvalAttachmentPath;
+            }
+            
+            $this->approvalRequestModel->create($approvalData);
         }
 
         if ($bookingId) {
