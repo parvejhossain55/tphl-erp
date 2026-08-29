@@ -365,7 +365,7 @@ class PaymentBookingController extends Controller
         }
         $header = array_map('trim', $header);
         if (!empty($header[0])) {
-            $header[0] = preg_replace('/[\x{EF}\x{BB}\x{BF}]/u', '', $header[0]);
+            $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', $header[0]);
         }
 
         // Check required headers
@@ -502,17 +502,18 @@ class PaymentBookingController extends Controller
                 $rowIssues[] = "flat_name is empty";
             } else {
                 if ($projectId) {
-                    $flatCacheKey = $projectId . '_' . $cleanFlatName;
+                    $superCleanFlatName = str_replace([' ', '-'], '', $flatName);
+                    $flatCacheKey = $projectId . '_' . $superCleanFlatName;
                     if (isset($flatsCache[$flatCacheKey])) {
                         $flatId = $flatsCache[$flatCacheKey];
                     } else {
                         $stmt = $this->db->prepare("
                             SELECT id FROM flats 
                             WHERE project_id = ? 
-                              AND (flat_name = ? OR REPLACE(REPLACE(flat_name, '  ', ' '), '  ', ' ') = ?) 
+                              AND (flat_name = ? OR REPLACE(REPLACE(flat_name, '  ', ' '), '  ', ' ') = ? OR REPLACE(REPLACE(flat_name, ' ', ''), '-', '') = ?) 
                             LIMIT 1
                         ");
-                        $stmt->bind_param("iss", $projectId, $flatName, $cleanFlatName);
+                        $stmt->bind_param("isss", $projectId, $flatName, $cleanFlatName, $superCleanFlatName);
                         $stmt->execute();
                         $res = $stmt->get_result()->fetch_assoc();
                         if ($res) {
@@ -648,7 +649,7 @@ class PaymentBookingController extends Controller
                 if ($header) {
                     $header = array_map('trim', $header);
                     if (!empty($header[0])) {
-                        $header[0] = preg_replace('/[\x{EF}\x{BB}\x{BF}]/u', '', $header[0]);
+                        $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', $header[0]);
                     }
                 }
 
@@ -776,17 +777,18 @@ class PaymentBookingController extends Controller
                         $rowIssues[] = "flat_name is empty";
                     } else {
                         if ($projectId) {
-                            $flatCacheKey = $projectId . '_' . $cleanFlatName;
+                            $superCleanFlatName = str_replace([' ', '-'], '', $flatName);
+                            $flatCacheKey = $projectId . '_' . $superCleanFlatName;
                             if (isset($flatsCache[$flatCacheKey])) {
                                 $flatId = $flatsCache[$flatCacheKey];
                             } else {
                                 $stmt = $this->db->prepare("
                                     SELECT id FROM flats 
                                     WHERE project_id = ? 
-                                      AND (flat_name = ? OR REPLACE(REPLACE(flat_name, '  ', ' '), '  ', ' ') = ?) 
+                                      AND (flat_name = ? OR REPLACE(REPLACE(flat_name, '  ', ' '), '  ', ' ') = ? OR REPLACE(REPLACE(flat_name, ' ', ''), '-', '') = ?) 
                                     LIMIT 1
                                 ");
-                                $stmt->bind_param("iss", $projectId, $flatName, $cleanFlatName);
+                                $stmt->bind_param("isss", $projectId, $flatName, $cleanFlatName, $superCleanFlatName);
                                 $stmt->execute();
                                 $res = $stmt->get_result()->fetch_assoc();
                                 if ($res) {

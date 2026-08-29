@@ -940,8 +940,11 @@ $activeCard = $_GET['filter_card'] ?? '';
                     enctype="multipart/form-data">
 
                     <div class="from__input-box mb-20">
-                        <div class="form__input-title">
-                            <label>Upload CSV File <span>*</span></label>
+                        <div class="form__input-title d-flex justify-content-between align-items-center mb-2">
+                            <label class="mb-0">Upload CSV File <span class="text-danger">*</span></label>
+                            <a href="<?= $GLOBALS['base_url'] ?>/assets/templates/lead_template.csv" download class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-download me-1"></i> Download Template
+                            </a>
                         </div>
                         <div class="form__input">
                             <input type="file"
@@ -952,16 +955,23 @@ $activeCard = $_GET['filter_card'] ?? '';
                         </div>
                     </div>
 
-                <div class="submit__btn text-center">
-                        <button class="btn btn-primary">Import</button>
+                    <div class="submit__btn text-center mt-3">
+                        <button class="btn btn-primary px-4">Import</button>
                     </div>
                 </form>
 
-                <div class="mt-15 p-2  rounded text-muted" style="font-size: 12px; max-height: 200px; overflow-y: auto;">
-                    <strong>Required CSV Headers:</strong><br>
-                    full_name, job_title, company_name, phone, alt_phone_number, email, lead_image, lead_name_bn, father_name_bn, mother_name_bn, profession_bn, nationality, religion, nominee_name, nomi_father_name, nomi_mother_name, nomi_profession, relation_with_lead, nomi_dob, nomi_nid_passport, nomi_phone, nomi_email, nomi_present_add, nomi_permanent_address, nomi_image, team_id, assigned_id
-                    <br><br>
-                    <em>Note: For image columns, provide the exact file name (e.g., `user.jpg`). Ensure these images exist in the upload directory.</em>
+                <div class="mt-4 p-3 rounded" style="font-size: 13px; max-height: 250px; overflow-y: auto; background-color: #f8f9fa; border: 1px solid #e9ecef;">
+                    <strong class="text-danger d-block mb-1">Mandatory CSV Headers:</strong>
+                    <span class="text-dark fw-medium">full_name, phone</span>
+                    
+                    <div class="mt-3">
+                        <strong class="d-block mb-1 text-secondary">Optional CSV Headers:</strong>
+                        <span class="text-muted">job_title, company_name, alt_phone_number, email, lead_image, lead_name_bn, father_name_bn, mother_name_bn, profession_bn, nationality, religion, nominee_name, nomi_father_name, nomi_mother_name, nomi_profession, relation_with_lead, nomi_dob, nomi_nid_passport, nomi_phone, nomi_email, nomi_present_add, nomi_permanent_address, nomi_image, team_id, assigned_id</span>
+                    </div>
+                    
+                    <div class="mt-3 pt-2 border-top text-muted small">
+                        <em>Note: For image columns, provide the exact file name (e.g., `user.jpg`). Ensure these images exist in the upload directory.</em>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1997,6 +2007,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 tbody.innerHTML = '';
                 let hasErrors = false;
                 let rowCount = 0;
+                let validCount = 0;
+                let invalidCount = 0;
 
                 res.rows.forEach((rowResult, idx) => {
                     rowCount++;
@@ -2006,6 +2018,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     if (!valid) {
                         hasErrors = true;
+                        invalidCount++;
+                    } else {
+                        validCount++;
                     }
 
                     let typeBadge = '';
@@ -2054,12 +2069,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 if (hasErrors) {
-                    alertEl.className = 'alert alert-danger d-block';
-                    alertEl.innerHTML = `<i class="bi bi-exclamation-octagon-fill me-2"></i><strong>Validation Failed:</strong> The CSV contains invalid rows or mismatching database records. Please correct the CSV and try again.`;
-                    submitBtn.disabled = true;
+                    alertEl.className = 'alert alert-warning d-block';
+                    alertEl.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Validation Warning:</strong> ${invalidCount} invalid row(s) will be skipped. ${validCount} valid row(s) are ready to import. Please check the errors in the table below.`;
+                    submitBtn.disabled = (validCount === 0);
                 } else {
                     alertEl.className = 'alert alert-success d-block';
-                    alertEl.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i><strong>Ready to Import:</strong> All ${rowCount} rows are valid and match database bookings. Please verify the information below before importing.`;
+                    alertEl.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i><strong>Ready to Import:</strong> All ${validCount} rows are valid and match database bookings. Please verify the information below before importing.`;
                     submitBtn.disabled = false;
                 }
             })

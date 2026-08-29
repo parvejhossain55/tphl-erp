@@ -1596,6 +1596,22 @@ class LeadController extends Controller
         header('Content-Type: application/json');
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Handle bulk IDs
+            if (isset($_POST['row_ids']) && is_array($_POST['row_ids'])) {
+                if (!isset($_SESSION['ignored_csv_rows'])) {
+                    $_SESSION['ignored_csv_rows'] = [];
+                }
+                foreach ($_POST['row_ids'] as $rId) {
+                    $rowId = (int)$rId;
+                    if ($rowId > 0 && !in_array($rowId, $_SESSION['ignored_csv_rows'])) {
+                        $_SESSION['ignored_csv_rows'][] = $rowId;
+                    }
+                }
+                echo json_encode(['success' => true]);
+                exit;
+            }
+
+            // Handle single ID
             $rowId = isset($_POST['row_id']) ? (int)$_POST['row_id'] : 0;
             if ($rowId > 0) {
                 if (!isset($_SESSION['ignored_csv_rows'])) {
@@ -1608,7 +1624,7 @@ class LeadController extends Controller
                 exit;
             }
         }
-        echo json_encode(['success' => false, 'message' => 'Invalid row id']);
+        echo json_encode(['success' => false, 'message' => 'Invalid row id(s)']);
         exit;
     }
 

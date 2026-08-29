@@ -98,13 +98,13 @@ if (!empty($virtualEmiSchedule)) {
                 </div>
 
                 <?php if (!$isLandShareCompleted && !$isShop): ?>
-                    <div class="alert alert-danger mb-4 d-flex align-items-center">
+                    <div class="alert alert-warning mb-4 d-flex align-items-center">
                         <div>
-                            <strong>Land Share Required!</strong>
-                            Land share payment must be completed before adding any transactions from CED.
+                            <strong>Note:</strong>
+                            Land share payment is not completed yet, but you can still add transactions.
                         </div>
                     </div>
-                <?php else: ?>
+                <?php endif; ?>
 
                 <?php if ($hasOutstandingDues): ?>
                     <div class="alert alert-danger alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
@@ -127,33 +127,25 @@ if (!empty($virtualEmiSchedule)) {
                             <select name="payment_type" class="form-control" id="paymentType" required>
                                 <option value="">-- Select Payment Type --</option>
 
-                                <!-- Development Charges or Shop Service Charge — requires landshare completed for flats -->
-                                <?php if (($isLandShareCompleted || $isShop) && !$isDevChargeCompleted): ?>
+                                <!-- Development Charges or Shop Service Charge -->
+                                <?php if (!$isDevChargeCompleted): ?>
                                     <option value="<?= $devChargeValue ?>" data-details="false">
                                         <?= $devChargeLabel ?> (Remaining: TK.<?= number_format(max(0, $flatDevCharges - $devChargePaid), 2) ?>)
                                     </option>
-                                <?php elseif ($isDevChargeCompleted): ?>
+                                <?php else: ?>
                                     <option value="<?= $devChargeValue ?>" disabled>
                                         <?= $devChargeLabel ?> — Fully Paid ✓ (TK.<?= number_format($devChargePaid, 2) ?>)
                                     </option>
-                                <?php else: ?>
-                                    <option value="<?= $devChargeValue ?>" disabled>
-                                        <?= $devChargeLabel ?> (Locked — complete land share first)
-                                    </option>
                                 <?php endif; ?>
 
-                                <!-- EMI - Only if land share is completed -->
-                                <?php if (($isLandShareCompleted || $isShop) && $remainingCF > 0): ?>
+                                <!-- EMI -->
+                                <?php if ($remainingCF > 0): ?>
                                     <option value="emi" data-details="true">
                                         <?= $nextEmiStr ?> EMI (Construction Fee)<?php if ($perEmiAmount > 0): ?> — Suggested: TK.<?= number_format($perEmiAmount, 2) ?><?php endif; ?><?php if ($totalEmiDue > 0): ?> — Outstanding Due: TK.<?= number_format($totalEmiDue, 2) ?><?= $dueEmiStr ?><?php endif; ?>
                                     </option>
-                                <?php elseif (($isLandShareCompleted || $isShop) && $remainingCF <= 0): ?>
-                                    <option value="emi" disabled>
-                                        EMI (Construction Fee) — Fully Paid ✓ (TK.<?= number_format($constructionFee, 2) ?>)
-                                    </option>
                                 <?php else: ?>
                                     <option value="emi" disabled>
-                                        EMI (Requires: Land Share Completed)
+                                        EMI (Construction Fee) — Fully Paid ✓ (TK.<?= number_format($constructionFee, 2) ?>)
                                     </option>
                                 <?php endif; ?>
 
@@ -168,17 +160,10 @@ if (!empty($virtualEmiSchedule)) {
 
                             <!-- Help text -->
                             <small class="text-muted mt-2 d-block">
-                                <?php if (!$isLandShareCompleted && !$isShop): ?>
-                                    <span class="text-warning">
-                                        <i class="fa-light fa-exclamation-triangle"></i>
-                                        Land share must be completed before EMI payments
-                                    </span>
-                                <?php else: ?>
-                                    <span class="text-success">
-                                        <i class="fa-light fa-circle-check"></i>
-                                        Ready for <?= strtolower($devChargeLabel) ?> and construction fee payments
-                                    </span>
-                                <?php endif; ?>
+                                <span class="text-success">
+                                    <i class="fa-light fa-circle-check"></i>
+                                    Ready for <?= strtolower($devChargeLabel) ?> and construction fee payments
+                                </span>
                             </small>
                         </div>
 
@@ -465,7 +450,6 @@ if (!empty($virtualEmiSchedule)) {
                         </div>
                     </div>
                 </form>
-                <?php endif; ?>
             </div>
         </div>
     </div>
