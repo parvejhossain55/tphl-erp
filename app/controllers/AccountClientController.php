@@ -525,13 +525,15 @@ public function addCedTransaction()
         }
     }
 
-    // Land Share must be completed
+    // Land Share must be completed (Disabled as requested)
     $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
+    /*
     if (empty($paymentSummary['is_land_share_completed'])) {
         setError("Land share payment must be fully completed before adding CED transactions.");
         header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
         exit;
     }
+    */
 
 
 

@@ -241,7 +241,9 @@ class BookingController extends Controller
 
         if (($handle = fopen($tempPath, "r")) !== false) {
             $header = fgetcsv($handle);
-            $header[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $header[0]);
+            if (!empty($header[0])) {
+                $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', $header[0]);
+            }
             $header = array_map(function ($value) { return trim($value); }, $header);
 
             $normalizeText = function($str) {
@@ -513,7 +515,9 @@ class BookingController extends Controller
 
         if (($handle = fopen($tempFile, "r")) !== false) {
             $header = fgetcsv($handle);
-            $header[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $header[0]);
+            if (!empty($header[0])) {
+                $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', $header[0]);
+            }
             $header = array_map(function ($value) { return trim($value); }, $header);
 
             $normalizeText = function($str) {

@@ -54,8 +54,11 @@ $page_title = "CSV Bulk Import Preview";
                 <div class="row">
                     <div class="col-12">
                         <div class="card">
-                            <div class="card-header border-bottom-dashed">
+                            <div class="card-header border-bottom-dashed d-flex justify-content-between align-items-center">
                                 <h5 class="card-title mb-0">Duplicate Leads</h5>
+                                <button type="button" class="btn btn-sm btn-warning" id="ignore-all-csv-btn">
+                                    <i class="ri-close-circle-line align-bottom me-1"></i>Delete All from CSV
+                                </button>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
@@ -182,5 +185,46 @@ $page_title = "CSV Bulk Import Preview";
                 }
             });
         });
+
+        const ignoreAllBtn = document.getElementById('ignore-all-csv-btn');
+        if (ignoreAllBtn) {
+            ignoreAllBtn.addEventListener('click', function() {
+                const buttons = document.querySelectorAll('.ignore-csv-btn');
+                if (buttons.length === 0) return;
+
+                if (confirm('Are you sure you want to delete ALL duplicate rows from the CSV upload?')) {
+                    const rowIds = Array.from(buttons).map(btn => btn.getAttribute('data-row-id'));
+                    const formData = new URLSearchParams();
+                    rowIds.forEach(id => formData.append('row_ids[]', id));
+
+                    fetch(`${base_url}/ignore-csv-lead-ajax`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: formData.toString()
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            rowIds.forEach(id => {
+                                const row = document.getElementById(`duplicate-row-${id}`);
+                                if (row) row.remove();
+                            });
+                            alert('All CSV duplicates deleted successfully.');
+                            
+                            // Hide the button since there are no more duplicates
+                            ignoreAllBtn.style.display = 'none';
+                        } else {
+                            alert(data.message || 'Error deleting rows');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error:', err);
+                        alert('An error occurred');
+                    });
+                }
+            });
+        }
     });
 </script>
