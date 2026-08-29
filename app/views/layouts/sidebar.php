@@ -1007,6 +1007,12 @@
                                 </a>
                             </li>
                             <li class="slide">
+                                <a href="<?= $base_url ?>/hrm-create-tipsoi-employee"
+                                    class="sidebar__menu-item <?= isActive('hrm-create-tipsoi-employee', $current_route) ?>">
+                                    Create Employee
+                                </a>
+                            </li>
+                            <li class="slide">
                                 <a href="<?= $base_url ?>/hrm-attendance-dashboard"
                                     class="sidebar__menu-item <?= isActive('hrm-attendance-dashboard', $current_route) ?>">
                                     Tipsoi Attendance
@@ -1410,8 +1416,8 @@
                 if ($showTipsoiMyData):
                     ?>
                     <!-- Tipsoi My Data -->
-                    <li class="slide has-sub <?= isActive('my-tipsoi-info', $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive('my-tipsoi-info', $current_route) ? 'active' : '' ?>">
+                    <li class="slide has-sub <?= isActive(['my-tipsoi-info', 'tipsoi-pending-requests'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['my-tipsoi-info', 'tipsoi-pending-requests'], $current_route) ? 'active' : '' ?>">
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             <div class="side-menu__icon"><i class="fa-solid fa-users-line"></i></div>
                             <span class="sidebar__menu-label">Tipsoi My Data</span>
@@ -1440,6 +1446,11 @@
                             <li class="slide">
                                 <a href="<?= $base_url ?>/my-tipsoi-info#approvals" class="sidebar__menu-item">
                                     Approval Pending
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('tipsoi-pending-requests', $current_route) ? 'active' : '' ?>">
+                                <a href="<?= $base_url ?>/tipsoi-pending-requests" class="sidebar__menu-item <?= isActive('tipsoi-pending-requests', $current_route) ? 'active' : '' ?>">
+                                    Pending Requests Filter
                                 </a>
                             </li>
                             <li class="slide">

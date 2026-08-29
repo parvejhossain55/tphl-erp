@@ -23,7 +23,7 @@ if ($current_server == 1) {
         "premium_homes_api_key" => "tphl_erp_key_9f8e7d6c5b4a392817065",
 
         // Tipsoi API Configuration
-        "tipsoi_base_url" => "https://app.tipsoi.ai/inovace-client/api/v1/",
+        "tipsoi_base_url" => "https://hrm.tipsoi.pro/inovace-client/api/v1/",
         "tipsoi_email" => "info@dpremiumhomes.com",
         "tipsoi_password" => "HRD@tphl@1274",
 

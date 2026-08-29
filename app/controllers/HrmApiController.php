@@ -619,6 +619,78 @@ class HrmApiController extends Controller
     }
 
     /**
+     * POST /api/hrm/tipsoi-action
+     * Handle dynamic Tipsoi API actions (e.g. approvals)
+     */
+    public function handleTipsoiAction()
+    {
+        header('Content-Type: application/json');
+        try {
+            $token = $this->externalApiService->getBearerToken();
+            if (!$token) {
+                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                exit;
+            }
+
+            $input = json_decode(file_get_contents('php://input'), true);
+            $endpoint = $input['endpoint'] ?? '';
+            $payload = $input['payload'] ?? [];
+            $method = $input['method'] ?? 'POST';
+
+            if (empty($endpoint)) {
+                echo json_encode(['success' => false, 'message' => 'Endpoint is required.']);
+                exit;
+            }
+
+            $url = "https://app.tipsoi.ai/inovace-client/api/v1" . $endpoint;
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            if (strtoupper($method) === 'POST') {
+                curl_setopt($ch, CURLOPT_POST, true);
+                if (!empty($payload)) {
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+                }
+            } elseif (strtoupper($method) === 'PUT') {
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
+                if (!empty($payload)) {
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+                }
+            }
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer ' . $token,
+                'Content-Type: application/json',
+                'Accept: application/json'
+            ]);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+            $res = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            $tipsoiData = json_decode($res, true);
+
+            if ($httpCode >= 200 && $httpCode < 300) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Action successful.',
+                    'data' => $tipsoiData
+                ]);
+            } else {
+                echo json_encode([
+                    'success' => false,
+                    'message' => $tipsoiData['message'] ?? 'Action failed.',
+                    'data' => $tipsoiData
+                ]);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    /**
      * GET /api/hrm/leave-balances
      * Fetch leave balance definitions from Tipsoi
      */
@@ -1560,6 +1632,200 @@ class HrmApiController extends Controller
                 'success' => false,
                 'message' => $e->getMessage()
             ]);
+        }
+        exit;
+    }
+
+    public function getTipsoiDropdowns()
+    {
+        header('Content-Type: application/json');
+        
+        try {
+            $token = $this->externalApiService->getBearerToken();
+            if (!$token) {
+                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                exit;
+            }
+
+            $baseUrl = 'https://app.tipsoi.ai/inovace-client/api/v1';
+            $endpoints = [
+                'designations' => '/designation',
+                'departments' => '/department',
+                'leavePolicies' => '/leave-policy',
+                'employmentTypes' => '/employment-type',
+                'shiftGroups' => '/shift-group',
+                'workplaces' => '/workplace'
+            ];
+
+            $multi = curl_multi_init();
+            $channels = [];
+            
+            foreach ($endpoints as $key => $endpoint) {
+                $ch = curl_init($baseUrl . $endpoint . '?order=asc&pageNumber=0&perPage=500');
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'Authorization: Bearer ' . $token,
+                    'Accept: application/json'
+                ]);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+                curl_multi_add_handle($multi, $ch);
+                $channels[$key] = $ch;
+            }
+
+            $active = null;
+            do {
+                $mrc = curl_multi_exec($multi, $active);
+            } while ($mrc == CURLM_CALL_MULTI_PERFORM);
+
+            while ($active && $mrc == CURLM_OK) {
+                if (curl_multi_select($multi) != -1) {
+                    do {
+                        $mrc = curl_multi_exec($multi, $active);
+                    } while ($mrc == CURLM_CALL_MULTI_PERFORM);
+                }
+            }
+
+            $results = [];
+            foreach ($channels as $key => $ch) {
+                $res = curl_multi_getcontent($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_multi_remove_handle($multi, $ch);
+                curl_close($ch);
+
+                if ($httpCode >= 200 && $httpCode < 300 && $res) {
+                    $data = json_decode($res, true);
+                    
+                    $extractedList = [];
+                    if (is_array($data)) {
+                        if (isset($data['designationList'])) $extractedList = $data['designationList'];
+                        elseif (isset($data['departmentList'])) $extractedList = $data['departmentList'];
+                        elseif (isset($data['leavePolicies'])) $extractedList = $data['leavePolicies'];
+                        elseif (isset($data['employmentTypeList'])) $extractedList = $data['employmentTypeList'];
+                        elseif (isset($data['shiftGroupList'])) $extractedList = $data['shiftGroupList'];
+                        elseif (isset($data['shiftGroups'])) $extractedList = $data['shiftGroups'];
+                        elseif (isset($data['workplaceList'])) $extractedList = $data['workplaceList'];
+                        elseif (isset($data['data']) && is_array($data['data'])) $extractedList = $data['data'];
+                        elseif (isset($data['content']) && is_array($data['content'])) $extractedList = $data['content'];
+                        else {
+                            // Automatically find the first array that looks like a list
+                            foreach ($data as $k => $v) {
+                                if (is_array($v) && count($v) > 0 && isset($v[0]['id'])) {
+                                    $extractedList = $v;
+                                    break;
+                                }
+                            }
+                            if (empty($extractedList)) {
+                                // fallback if the root is an array of items
+                                if (isset($data[0]) && is_array($data[0])) {
+                                    $extractedList = $data;
+                                }
+                            }
+                        }
+                    }
+                    
+                    $results[$key] = is_array($extractedList) ? $extractedList : [];
+                } else {
+                    $results[$key] = [];
+                }
+            }
+            curl_multi_close($multi);
+
+            echo json_encode(['success' => true, 'data' => $results]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    public function createTipsoiEmployee()
+    {
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
+            exit;
+        }
+
+        try {
+            $token = $this->externalApiService->getBearerToken();
+            if (!$token) {
+                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                exit;
+            }
+
+            $rawPost = file_get_contents('php://input');
+            $postData = json_decode($rawPost, true) ?: $_POST;
+
+            $required = ['name', 'employeeOfficeId', 'email', 'password', 'gender'];
+            foreach ($required as $req) {
+                if (empty($postData[$req])) {
+                    echo json_encode(['success' => false, 'message' => "Field '$req' is required."]);
+                    exit;
+                }
+            }
+
+            // Tipsoi date format is often milliseconds since epoch
+            $dateOfJoin = !empty($postData['dateOfJoin']) ? strtotime($postData['dateOfJoin']) * 1000 : null;
+
+            $payload = [
+                "name" => trim($postData['name']),
+                "employeeOfficeId" => is_numeric(trim($postData['employeeOfficeId'])) ? (int)trim($postData['employeeOfficeId']) : trim($postData['employeeOfficeId']),
+                "email" => trim($postData['email']),
+                "gender" => (int)$postData['gender'],
+                "password" => $postData['password'],
+                "reportPosition" => null,
+                "shiftId" => null,
+                "shiftGroupId" => !empty($postData['shiftGroupId']) ? (int)$postData['shiftGroupId'] : null,
+                "leavePolicyId" => !empty($postData['leavePolicyId']) ? (int)$postData['leavePolicyId'] : null,
+                "primaryDisplayText" => null,
+                "secondaryDisplayText" => null,
+                "departmentId" => !empty($postData['departmentId']) ? (int)$postData['departmentId'] : null,
+                "subDepartmentId" => null,
+                "designationId" => !empty($postData['designationId']) ? (int)$postData['designationId'] : null,
+                "employeeIdentifier" => null,
+                "weeklyOffDayPolicyId" => null,
+                "rfid" => null,
+                "personId3rdPartyDevice" => null,
+                "workplaceId" => !empty($postData['workplaceId']) ? (int)$postData['workplaceId'] : null,
+                "dateOfJoin" => $dateOfJoin,
+                "dateOfResignation" => !empty($postData['dateOfResignation']) ? strtotime($postData['dateOfResignation']) * 1000 : null,
+                "employmentTypeId" => !empty($postData['employmentTypeId']) ? (int)$postData['employmentTypeId'] : null,
+                "subsidiaryId" => null
+            ];
+
+            $baseUrl = 'https://app.tipsoi.ai/inovace-client/api/v1';
+            $ch = curl_init($baseUrl . '/employee');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer ' . $token,
+                'Content-Type: application/json',
+                'Accept: application/json'
+            ]);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            $res = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+
+            if ($curlError) {
+                echo json_encode(['success' => false, 'message' => 'Network error connecting to Tipsoi.']);
+                exit;
+            }
+
+            $response = json_decode($res, true);
+            if ($httpCode >= 200 && $httpCode < 300) {
+                echo json_encode(['success' => true, 'message' => 'Employee created successfully.']);
+            } else {
+                $msg = $response['message'] ?? 'Unable to create employee. Please check the information and try again.';
+                echo json_encode(['success' => false, 'message' => $msg]);
+            }
+
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
         exit;
     }
