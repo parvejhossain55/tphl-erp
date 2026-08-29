@@ -51,9 +51,9 @@ $page_title = $page_title ?? 'New Contractor Bill';
                             <!-- Work Order (cascades from project) -->
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold">
-                                    Link to Work Order <span class="text-danger">*</span>
+                                    Link to Work Order (optional)
                                 </label>
-                                <select name="work_order_id" id="work_order_id" class="form-select" required disabled>
+                                <select name="work_order_id" id="work_order_id" class="form-select" disabled>
                                     <option value="">-- Select Project First --</option>
                                 </select>
                                 <div id="woDetailsBox" class="alert alert-info mt-2 d-none py-2 small">

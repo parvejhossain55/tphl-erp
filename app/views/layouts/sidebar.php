@@ -56,6 +56,32 @@
         }
     }
 
+    // Calculate pending contractor bills for the current user's role
+    $conPendingBillsCount = 0;
+    if (isset($db)) {
+        $ur = (int)($_SESSION['user']['role_id'] ?? 0);
+        $qcRoles = [1, 24, 25];
+        $mgmtRoles = [1, 3, 33, 22];
+        $isQc = in_array($ur, $qcRoles) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'qc & internal audit') || hasPermission('QC & Internal Audit');
+        $isMgmt = in_array($ur, $mgmtRoles);
+        
+        if ($isQc || $isMgmt) {
+            $statusConditions = [];
+            if ($isQc) {
+                $statusConditions[] = "status IN ('submitted', 'verified')";
+            }
+            if ($isMgmt) {
+                $statusConditions[] = "status IN ('submitted', 'verified', 'qc_approved')";
+            }
+            
+            $condStr = implode(" OR ", $statusConditions);
+            $cbbStmt = $db->query("SELECT COUNT(id) as cnt FROM contractor_bill_requests WHERE ($condStr) AND status != 'rejected'");
+            if ($cbbStmt) {
+                $conPendingBillsCount = (int)$cbbStmt->fetch_assoc()['cnt'];
+            }
+        }
+    }
+
     // Calculate pending tasks count for logged in user
     $pendingTasksCount = 0;
     if (isset($db) && isset($_SESSION['user']['id'])) {
@@ -500,8 +526,8 @@
                                         class="sidebar__menu-item <?= isActive('my-incentives', $current_route) ?>">My
                                         Incentives</a>
                                 </li>
-                                <!-- Visible to Management, Accounts, HR, Chairman (1,2,3,4,33) -->
-                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 4, 33])): ?>
+                                <!-- Visible to Management, Accounts, HR, Chairman, and Sales Heads/Managers -->
+                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 4, 5, 6, 9, 33])): ?>
                                     <li class="slide child2">
                                         <a href="<?= $base_url ?>/incentive-management"
                                             class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">Company
@@ -1674,7 +1700,7 @@
                             <span class="sidebar__menu-label">Central Statement</span>
                         </a>
                     </li>
-                    <li class="slide d-none <?= isActive('incentive-management', $current_route) ?>">
+                    <li class="slide <?= isActive('incentive-management', $current_route) ?>">
                         <a href="<?= $base_url ?>/incentive-management"
                             class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-coins text-warning"></i></div>
@@ -1806,6 +1832,9 @@
                                 <a href="<?= $base_url ?>/con-contractor-bills"
                                     class="sidebar__menu-item <?= isActive('con-contractor-bills', $current_route) ?>">
                                     <i class="bi bi-receipt me-1"></i>Contractor Bills
+                                    <?php if (isset($conPendingBillsCount) && $conPendingBillsCount > 0): ?>
+                                        <span class="badge bg-danger rounded-pill ms-2"><?= $conPendingBillsCount ?></span>
+                                    <?php endif; ?>
                                 </a>
                             </li>
                             <li class="slide <?= isActive('con-transactions', $current_route) ?>">
@@ -2726,6 +2755,9 @@
                             <a href="<?= $base_url ?>/con-contractor-bills"
                                 class="sidebar__menu-item <?= isActive('con-contractor-bills', $current_route) ?>">
                                 <i class="bi bi-receipt me-1"></i>Contractor Bills
+                                <?php if (isset($conPendingBillsCount) && $conPendingBillsCount > 0): ?>
+                                    <span class="badge bg-danger rounded-pill ms-2"><?= $conPendingBillsCount ?></span>
+                                <?php endif; ?>
                             </a>
                         </li>
                     <?php endif; ?>
@@ -2761,7 +2793,7 @@
 
 
                     <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
-                    <?php if (hasPermission('Contractor Bill') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 22])): ?>
+                    <?php if (hasPermission('Contractor Bill') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 17, 22, 23, 31])): ?>
                         <li
                             class="slide has-sub <?= isActive(['con-contractor-bills', 'con-contractor-bill-create', 'con-fund-requests', 'con-fund-request-create'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
@@ -2775,6 +2807,9 @@
                                     <a href="<?= $base_url ?>/con-contractor-bills"
                                         class="sidebar__menu-item <?= isActive('con-contractor-bills', $current_route) ?>">
                                         <i class="bi bi-receipt me-1"></i> Contractor Bills
+                                        <?php if (isset($conPendingBillsCount) && $conPendingBillsCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill ms-2"><?= $conPendingBillsCount ?></span>
+                                        <?php endif; ?>
                                     </a>
                                 </li>
                                 <li class="slide">

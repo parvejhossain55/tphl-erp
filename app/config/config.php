@@ -26,7 +26,6 @@ if ($current_server == 1) {
         "tipsoi_base_url" => "https://hrm.tipsoi.pro/inovace-client/api/v1/",
         "tipsoi_email" => "info@dpremiumhomes.com",
         "tipsoi_password" => "HRD@tphl@1274",
-
         // Automas Bulk SMS API Configuration
         "automas_sms_api_url" => "https://api.automas.com.bd/smsapiv4",
         "automas_sms_api_key" => "734f99f126704a937debae6c0ce52516",
@@ -116,7 +115,6 @@ if ($current_server == 3) {
         "automas_sms_sender_id" => "TPHL",
         "sms_testing_mode" => false,
 
-
         "smtp_host" => "smtp.gmail.com",
         "smtp_user" => "tech@dpremiumhomes.com",
         "smtp_pass" => "mmericivwzybdogl",
@@ -125,6 +123,8 @@ if ($current_server == 3) {
     ];
 
 }
+
+
 
 /// if emi data uploaded wrong then deleted with
 // -- ধাপ ১: EMI শিডিউল ডিলিট করা
@@ -143,5 +143,3 @@ if ($current_server == 3) {
 
 // INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
 // WHERE lb.project_id = 45 AND lp.payment_type IN ('emi', 'emi_due_settlement', 'development_charge');
-
-//////////////////////////////

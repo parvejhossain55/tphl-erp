@@ -1,3 +1,10 @@
+<?php
+$userRole = $_SESSION['user']['role_id'] ?? 0;
+// Management / Operations (Super Admin, Admin, Sales Heads, Managers, Coordinators)
+$isManagement = in_array($userRole, [1, 2, 5, 6, 9, 15, 33]);
+// Accounts / HR (Super Admin, Admin, Accounts, HR, Chairman)
+$isAccounts = in_array($userRole, [1, 2, 3, 4, 33]);
+?>
 <div class="container-fluid py-4">
     <!-- Page Header -->
     <div class="d-flex align-items-center justify-content-between mb-4">
@@ -165,8 +172,8 @@
                                     ?>
                                     <tr>
                                         <td class="ps-4">
-                                            <div class="d-flex align-items-center gap-3">
-                                                <div class="avatar avatar-sm bg-primary-subtle text-primary rounded-circle fw-bold">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar avatar-sm bg-primary-subtle text-primary rounded-circle fw-bold flex-shrink-0 d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px; font-size: 16px;">
                                                     <?= strtoupper(substr($u['full_name'], 0, 1)) ?>
                                                 </div>
                                                 <div>
@@ -358,25 +365,33 @@
                                                         <i class="fa-solid fa-hourglass-start me-1"></i>Not Claimed Yet
                                                     </button>
                                                 <?php elseif ($claim['claim_status'] === 'claimed'): ?>
-                                                    <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" data-id="<?= $claim['id'] ?>" title="Approve Claim">
-                                                        <i class="fa-solid fa-check me-1"></i>Approve
-                                                    </button>
-                                                    <button class="btn btn-sm btn-outline-danger rounded-2 px-2 btn-reject-claim" data-id="<?= $claim['id'] ?>" title="Reject Claim">
-                                                        <i class="fa-solid fa-times"></i>
-                                                    </button>
+                                                    <?php if ($isManagement): ?>
+                                                        <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" data-id="<?= $claim['id'] ?>" title="Approve Claim">
+                                                            <i class="fa-solid fa-check me-1"></i>Approve
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger rounded-2 px-2 btn-reject-claim" data-id="<?= $claim['id'] ?>" title="Reject Claim">
+                                                            <i class="fa-solid fa-times"></i>
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <span class="text-muted extra-small">Waiting for Mgmt Approval</span>
+                                                    <?php endif; ?>
                                                 <?php elseif (in_array($claim['claim_status'], ['approved', 'partially_paid'])): ?>
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm btn-disburse-modal"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#disbursePaymentModal"
-                                                            data-toggle="modal"
-                                                            data-target="#disbursePaymentModal"
-                                                            data-id="<?= $claim['id'] ?>"
-                                                            data-recipient="<?= htmlspecialchars($claim['user_name']) ?> (<?= htmlspecialchars($claim['employee_id']) ?>)"
-                                                            data-claim="<?= htmlspecialchars($claim['claim_code']) ?>"
-                                                            data-amount="<?= $claim['due_amount'] > 0 ? $claim['due_amount'] : $claim['incentive_amount'] ?>">
-                                                        <i class="fa-solid fa-money-bill-transfer me-1"></i>Disburse Payout
-                                                    </button>
+                                                    <?php if ($isAccounts): ?>
+                                                        <button type="button" 
+                                                                class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm btn-disburse-modal"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#disbursePaymentModal"
+                                                                data-toggle="modal"
+                                                                data-target="#disbursePaymentModal"
+                                                                data-id="<?= $claim['id'] ?>"
+                                                                data-recipient="<?= htmlspecialchars($claim['user_name']) ?> (<?= htmlspecialchars($claim['employee_id']) ?>)"
+                                                                data-claim="<?= htmlspecialchars($claim['claim_code']) ?>"
+                                                                data-amount="<?= $claim['due_amount'] > 0 ? $claim['due_amount'] : $claim['incentive_amount'] ?>">
+                                                            <i class="fa-solid fa-money-bill-transfer me-1"></i>Disburse Payout
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <span class="text-info extra-small fw-bold">Approved (Pending Payout)</span>
+                                                    <?php endif; ?>
                                                 <?php else: ?>
                                                     <span class="text-muted extra-small">Settled / Closed</span>
                                                 <?php endif; ?>
@@ -463,18 +478,22 @@
                                             </td>
                                             <td class="pe-4 text-end">
                                                 <?php if ($ext['claim_status'] === 'approved'): ?>
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm btn-disburse-modal"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#disbursePaymentModal"
-                                                            data-toggle="modal"
-                                                            data-target="#disbursePaymentModal"
-                                                            data-id="<?= $ext['id'] ?>"
-                                                            data-recipient="<?= htmlspecialchars($ext['user_name']) ?> (<?= htmlspecialchars($ext['employee_id']) ?>)"
-                                                            data-claim="<?= htmlspecialchars($ext['claim_code']) ?>"
-                                                            data-amount="<?= $ext['incentive_amount'] ?>">
-                                                        <i class="fa-solid fa-money-bill-transfer me-1"></i>Pay Now
-                                                    </button>
+                                                    <?php if ($isAccounts): ?>
+                                                        <button type="button" 
+                                                                class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm btn-disburse-modal"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#disbursePaymentModal"
+                                                                data-toggle="modal"
+                                                                data-target="#disbursePaymentModal"
+                                                                data-id="<?= $ext['id'] ?>"
+                                                                data-recipient="<?= htmlspecialchars($ext['user_name']) ?> (<?= htmlspecialchars($ext['employee_id']) ?>)"
+                                                                data-claim="<?= htmlspecialchars($ext['claim_code']) ?>"
+                                                                data-amount="<?= $ext['incentive_amount'] ?>">
+                                                            <i class="fa-solid fa-money-bill-transfer me-1"></i>Pay Now
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <span class="text-info extra-small fw-bold">Approved (Pending Payout)</span>
+                                                    <?php endif; ?>
                                                 <?php else: ?>
                                                     <span class="text-success extra-small fw-bold"><i class="fa-solid fa-check-circle me-1"></i>Settled</span>
                                                 <?php endif; ?>

@@ -53,10 +53,10 @@ class Con_FundRequestController extends Controller
     ====================== */
     public function index()
     {
-        // Roles 1 (Admin), 3 (Super Admin), 6 (Accounts) see ALL requests
+        // Roles 1 (Admin), 3 (Super Admin), 6 (Accounts), 33 (Chief Officer), 22 (Project Manager Head), 17, 23, 31 (Purchase) see ALL requests
         // Other roles only see their own requests
         $filterUserId = null;
-        if (!in_array($this->userRole, [1, 3, 33, 6, 22])) {
+        if (!in_array($this->userRole, [1, 3, 33, 6, 17, 22, 23, 31])) {
             $filterUserId = $this->userId;
         }
 

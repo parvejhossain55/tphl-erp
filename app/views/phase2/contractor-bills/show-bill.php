@@ -415,6 +415,18 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                         <small class="text-muted d-block">Current Status</small>
                         <span class="badge bg-<?= $statusInfo['color'] ?> fs-6"><?= $statusInfo['label'] ?></span>
                     </div>
+                    <?php if (in_array($status, ['submitted', 'verified'])): ?>
+                        <div class="mb-3">
+                            <small class="text-muted d-block fw-bold text-warning">Pending Approval From</small>
+                            <span class="d-block small"><i class="bi bi-shield-check me-1 text-warning"></i> QC & Internal Audit</span>
+                            <span class="d-block small"><i class="bi bi-shield-lock me-1 text-success"></i> Management (Admin / PM Head)</span>
+                        </div>
+                    <?php elseif ($status === 'qc_approved'): ?>
+                        <div class="mb-3">
+                            <small class="text-muted d-block fw-bold text-warning">Pending Approval From</small>
+                            <span class="d-block small"><i class="bi bi-shield-lock me-1 text-success"></i> Management (Admin / PM Head)</span>
+                        </div>
+                    <?php endif; ?>
                     <div class="mb-3">
                         <small class="text-muted d-block text-muted">Submitted At</small>
                         <strong class="text-muted"><?= date('d M Y h:i A', strtotime($bill['created_at'])) ?></strong>
