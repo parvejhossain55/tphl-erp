@@ -393,6 +393,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     <th>First Approver</th>
                     <th>Second Approver</th>
                     <th style="width: 110px;">Status</th>
+                    <th style="width: 100px;">Action</th>
                 </tr>
             `;
         } else if (reqType === 'all_pending') {
@@ -409,6 +410,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     <th>First Approver</th>
                     <th>Second Approver</th>
                     <th style="width: 110px;">Status</th>
+                    <th style="width: 100px;">Action</th>
                 </tr>
             `;
         } else {
@@ -426,10 +428,12 @@ document.addEventListener("DOMContentLoaded", function() {
                     <th>First Approver</th>
                     <th>Second Approver</th>
                     <th style="width: 110px;">Status</th>
+                    <th style="width: 100px;">Action</th>
                 </tr>
             `;
         }
     }
+
 
     function renderTableRows(records) {
         const offset = (currentPage - 1) * limit;
@@ -479,6 +483,45 @@ document.addEventListener("DOMContentLoaded", function() {
                 ? rec.startDate 
                 : `${rec.startDate} to ${rec.endDate}`;
 
+            // Determine if user can approve
+            const loggedUser = loggedUserApproverInfo;
+            const userName = loggedUser ? (loggedUser.full_name || '').toLowerCase().trim() : '';
+            const userOfficeId = loggedUser ? (loggedUser.employee_id || loggedUser.tipsoi_office_id || '').trim() : '';
+            const userTipsoiId = loggedUser ? String(loggedUser.tipsoi_id || '') : '';
+            const isHr = loggedUser ? loggedUser.is_hr : false;
+
+            const firstAppName = String(rec.firstApproverName || '').toLowerCase().trim();
+            const firstAppId = String(rec.firstApproverId || '');
+            const firstStatus = rec.firstApprovalStatus;
+
+            const secondAppName = String(rec.secondApproverName || '').toLowerCase().trim();
+            const secondAppId = String(rec.secondApproverId || '');
+            const secondStatus = rec.secondApprovalStatus;
+
+            const isFirstApprover = (userTipsoiId && firstAppId && userTipsoiId === firstAppId) ||
+                (userName && firstAppName && (userName.includes(firstAppName) || firstAppName.includes(userName))) ||
+                (userOfficeId && firstAppName && firstAppName.includes(userOfficeId));
+
+            const isSecondApprover = (userTipsoiId && secondAppId && userTipsoiId === secondAppId) ||
+                (userName && secondAppName && (userName.includes(secondAppName) || secondAppName.includes(userName))) ||
+                (userOfficeId && secondAppName && secondAppName.includes(userOfficeId));
+            
+            let actionBtnHtml = '—';
+            let actionEndpoint = '';
+            
+            if (rec.requestType === 'Leave Request') {
+                actionEndpoint = `/leave-management/approve/${rec.id}`;
+            } else if (rec.requestType === 'Late Excuse') {
+                actionEndpoint = `/late-approval-management/approve/${rec.id}`;
+            } else if (rec.requestType === 'Manual Entry' || rec.requestType === 'Field Visit') {
+                // Tipsoi treats manual entry, missing punch, field visit as manual approver endpoint
+                actionEndpoint = `/employee/profile/manual/approver/approve/${rec.id}`;
+            }
+
+            if ((isFirstApprover && firstStatus == 0) || (isSecondApprover && secondStatus == 0) || isHr) {
+                actionBtnHtml = `<button class="btn btn-sm btn-success fw-bold approve-btn" data-endpoint="${actionEndpoint}" data-id="${rec.id}">Approve</button>`;
+            }
+
             if (reqType === 'pending_leaves') {
                 return `
                     <tr>
@@ -493,6 +536,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         <td>${firstApp}</td>
                         <td>${secondApp}</td>
                         <td>${statusBadge}</td>
+                        <td>${actionBtnHtml}</td>
                     </tr>
                 `;
             } else if (reqType === 'all_pending') {
@@ -509,6 +553,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         <td>${firstApp}</td>
                         <td>${secondApp}</td>
                         <td>${statusBadge}</td>
+                        <td>${actionBtnHtml}</td>
                     </tr>
                 `;
             } else {
@@ -529,6 +574,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         <td>${firstApp}</td>
                         <td>${secondApp}</td>
                         <td>${statusBadge}</td>
+                        <td>${actionBtnHtml}</td>
                     </tr>
                 `;
             }
@@ -802,6 +848,50 @@ document.addEventListener("DOMContentLoaded", function() {
 
     btnExportCSV.addEventListener("click", exportToCSV);
     btnExportPDF.addEventListener("click", exportToPDF);
+
+    tableBody.addEventListener('click', function(e) {
+        if (e.target.classList.contains('approve-btn')) {
+            const btn = e.target;
+            const endpoint = btn.getAttribute('data-endpoint');
+            const userName = loggedUserApproverInfo ? loggedUserApproverInfo.full_name : 'User';
+            
+            if (confirm('Are you sure you want to approve this request?')) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                
+                fetch(`${baseUrl}/api/hrm/tipsoi-action`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        endpoint: endpoint,
+                        method: 'POST',
+                        payload: {
+                            approverComment: `Approved by ${userName}`
+                        }
+                    })
+                })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.success) {
+                        alert('Successfully approved!');
+                        fetchRequestsData(); // Refresh data
+                    } else {
+                        alert('Failed to approve: ' + (res.message || 'Unknown error'));
+                        btn.disabled = false;
+                        btn.textContent = 'Approve';
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('An error occurred while approving.');
+                    btn.disabled = false;
+                    btn.textContent = 'Approve';
+                });
+            }
+        }
+    });
 
     // Initial load
     setupStatsCardListeners();

@@ -658,4 +658,12 @@ class EmployeeController extends Controller
             "page_title" => "Tipsoi Employees"
         ]);
     }
+
+    public function createTipsoiEmployeeView()
+    {
+        $this->view("hrm/employees/create-tipsoi-employee", [
+            "current_route" => "hrm-create-tipsoi-employee",
+            "page_title" => "Create Employee"
+        ]);
+    }
 }

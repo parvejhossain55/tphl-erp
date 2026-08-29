@@ -1372,4 +1372,139 @@ class EmployeeDashboardController extends Controller
         }
         exit;
     }
+
+    // ─── Tipsoi Pending Requests View
+    public function tipsoiPendingRequests()
+    {
+        $data = $this->getSessionEmployee();
+        if (!$data) {
+            echo "Employee not found";
+            return;
+        }
+
+        $employee = $data['employee'];
+
+        $this->view('employee-modules/tipsoi-pending-requests', [
+            'current_route' => 'tipsoi-pending-requests',
+            'page_title'    => 'Tipsoi Pending Requests Filter',
+            'employee'      => $employee,
+        ]);
+    }
+
+    // ─── Get Tipsoi Pending Requests API
+    public function getTipsoiPendingRequests()
+    {
+        header('Content-Type: application/json');
+
+        try {
+            $token = $this->externalApiService->getBearerToken();
+            if (!$token) {
+                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                exit;
+            }
+
+            $config = require dirname(__DIR__) . '/config/config.php';
+            $baseUrl = rtrim($config['tipsoi_base_url'] ?? 'https://app.tipsoi.ai/inovace-client/api/v1', '/');
+
+            // Collect parameters
+            $type = $_GET['type'] ?? '';
+            $approverLevel = $_GET['approverLevel'] ?? '';
+            $employeeId = $_GET['employeeId'] ?? '';
+            $keyword = $_GET['keyword'] ?? '';
+            $page = $_GET['page'] ?? '0';
+            $count = $_GET['count'] ?? '100';
+            $status = $_GET['status'] ?? '0';
+
+            $queryParams = [
+                'page' => $page,
+                'count' => $count,
+                'status' => $status
+            ];
+            
+            if ($type !== '') $queryParams['type'] = $type;
+            if ($approverLevel !== '') $queryParams['approverLevel'] = $approverLevel;
+            if ($employeeId !== '') $queryParams['employeeId'] = $employeeId;
+            if ($keyword !== '') $queryParams['keyword'] = $keyword;
+
+            $queryString = http_build_query($queryParams);
+            // Notice: API doc from image says endpoint is /application/pending-list
+            $url = $baseUrl . '/application/pending-list?' . $queryString;
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer ' . $token,
+                'Accept: application/json'
+            ]);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            $res = curl_exec($ch);
+            
+            if (curl_errno($ch)) {
+                echo json_encode(['success' => false, 'message' => 'cURL Error: ' . curl_error($ch)]);
+                curl_close($ch);
+                exit;
+            }
+            
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            $data = json_decode($res, true);
+            if ($httpCode >= 200 && $httpCode < 300) {
+                echo json_encode(['success' => true, 'data' => $data]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'API Error: ' . $httpCode, 'response' => $data]);
+            }
+
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    // ─── Get Tipsoi Employees API
+    public function getTipsoiEmployees()
+    {
+        header('Content-Type: application/json');
+
+        $data = $this->getSessionEmployee();
+        if (!$data) {
+            echo json_encode(['success' => false, 'message' => 'Employee session not found.']);
+            exit;
+        }
+
+        try {
+            $token = $this->externalApiService->getBearerToken();
+            if (!$token) {
+                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                exit;
+            }
+
+            $empUrl = "https://app.tipsoi.ai/inovace-client/api/v1/employee?order=asc&pageNumber=0&perPage=2000&status=1";
+            $ch = curl_init($empUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer ' . $token,
+                'Accept: application/json'
+            ]);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            $res = curl_exec($ch);
+            
+            if (curl_errno($ch)) {
+                echo json_encode(['success' => false, 'message' => 'Network error while fetching employees.']);
+                curl_close($ch);
+                exit;
+            }
+            curl_close($ch);
+            
+            $empData = json_decode($res, true);
+            $externalEmployees = $empData['data'] ?? $empData['employees'] ?? $empData['content'] ?? $empData ?? [];
+
+            echo json_encode(['success' => true, 'employees' => $externalEmployees]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+        }
+        exit;
+    }
 }

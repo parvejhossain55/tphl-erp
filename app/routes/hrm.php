@@ -52,6 +52,8 @@ return [
     'api/employee/tipsoi-department-data' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiDepartmentData'],
     'update-task-status-employee' => ['controller' => 'EmployeeDashboardController', 'method' => 'updateTaskStatus'],
     'update-task-progress-employee' => ['controller' => 'EmployeeDashboardController', 'method' => 'updateTaskProgress'],
+    'tipsoi-pending-requests' => ['controller' => 'EmployeeDashboardController', 'method' => 'tipsoiPendingRequests'],
+    'api/employee/tipsoi-pending-requests' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiPendingRequests'],
 
     // =========================================================================
     // Controller: EmpAttendanceController
@@ -226,8 +228,11 @@ return [
     // =========================================================================
 
     'hrm-external-employees' => ['controller' => 'EmployeeController', 'method' => 'externalEmployeesView'],
+    'hrm-create-tipsoi-employee' => ['controller' => 'EmployeeController', 'method' => 'createTipsoiEmployeeView'],
     'api/hrm/employees' => ['controller' => 'HrmApiController', 'method' => 'getErpEmployees'],
     'api/hrm/external-employees' => ['controller' => 'HrmApiController', 'method' => 'getExternalEmployees'],
+    'api/hrm/create-tipsoi-employee' => ['controller' => 'HrmApiController', 'method' => 'createTipsoiEmployee'],
+    'api/hrm/tipsoi-dropdowns' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiDropdowns'],
 
     // =========================================================================
     // Batch 2: Attendance & Absence Views & API Routes
@@ -256,6 +261,7 @@ return [
     // =========================================================================
     'hrm-tipsoi-requests' => ['controller' => 'LeaveController', 'method' => 'tipsoiRequestsDashboardView'],
     'api/hrm/tipsoi-requests' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiRequests'],
+    'api/hrm/tipsoi-action' => ['controller' => 'HrmApiController', 'method' => 'handleTipsoiAction'],
     'tipsoi-email-logs' => ['controller' => 'LeaveController', 'method' => 'tipsoiEmailLogsView'],
     'api/hrm/tipsoi-email-logs' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiEmailLogs'],
     'api/hrm/send-tipsoi-reminders' => ['controller' => 'HrmApiController', 'method' => 'sendTipsoiReminders'],
