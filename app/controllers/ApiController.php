@@ -241,6 +241,14 @@ class ApiController extends Controller
             exit;
         }
 
+        $finalDataArray = [];
+        if (empty($bookingsToProcess) && $erpClient) {
+            $finalDataArray[] = [
+                "client_info" => $responseData['client_info'],
+                "bookings" => []
+            ];
+        }
+
         foreach ($bookingsToProcess as $booking) {
             $projectId = (int)$booking['project_id'];
             $flatId = (int)$booking['flat_id'];
@@ -424,7 +432,7 @@ class ApiController extends Controller
                 }
             }
 
-            $responseData['bookings'][] = [
+            $bookingBlock = [
                 "booking_id" => $bookingId,
                 "agent_info" => ["agent_name" => $agentName],
                 "project_info" => [
@@ -450,8 +458,10 @@ class ApiController extends Controller
                         "total_land_share_amount" => $landShareTarget,
                         "booking_money_paid" => $bookingMoneyPaid,
                         "registration_money_paid" => $registrationPaid,
-                        "total_land_share_paid" => ($bookingMoneyPaid + $registrationPaid),
-                        "land_share_due" => max(0, $landShareTarget - ($bookingMoneyPaid + $registrationPaid)),
+                        "mutation_cost_paid" => $mutationCostPaid,
+                        "additional_land_share_paid" => $additionalLandSharePaid,
+                        "total_land_share_paid" => $totalLandSharePaid,
+                        "land_share_due" => max(0, $landShareTarget - $totalLandSharePaid),
                         // Land Share Breakdown
                         "land_share_history" => $landShareHistory
                     ],
@@ -485,16 +495,20 @@ class ApiController extends Controller
                         "emi_history" => $emiHistory
                     ]
                 ]
+            ];  
+
+            $finalDataArray[] = [
+                "client_info" => $responseData['client_info'],
+                "bookings" => [$bookingBlock]
             ];
         }
 
         echo json_encode([
             "success" => true,
-            "message" => count($responseData['bookings']) > 0 ? "Dynamic payment data loaded." : "Static user data loaded.",
-            "data" => [$responseData]
+            "message" => count($finalDataArray) > 0 && !empty($finalDataArray[0]['bookings']) ? "Dynamic payment data loaded." : "Static user data loaded.",
+            "data" => $finalDataArray
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         exit;
     }
-
 
 }

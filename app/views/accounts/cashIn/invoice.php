@@ -101,78 +101,120 @@ $disable_layout = true;
         <!-- Payment Details -->
         <div class="payment-details">
             <h3>Payment Details</h3>
-            <div class="payment-row">
-                <span>Payment Type:</span>
-                <span style="font-weight: 600;">
-                    <?php if ($payment['payment_type'] === 'emi'): ?>
-                        <span class="badge badge-emi"><?= $payment['installment_label'] ?? 'EMI Payment' ?></span>
-                    <?php elseif ($payment['payment_type'] === 'booking_money'): ?>
-                        <span class="badge badge-booking">BOOKING MONEY</span>
-                    <?php elseif ($payment['payment_type'] === 'registration'): ?>
-                        <span class="badge badge-registration">REGISTRATION MONEY</span>
-                    <?php else: ?>
-                        <?= strtoupper(str_replace('_', ' ', $payment['payment_type'])) ?>
-                    <?php endif; ?>
-                </span>
-            </div>
-            <div class="payment-row">
-                <span>Payment Date:</span>
-                <span style="font-weight: 600;"><?= date('d M, Y', strtotime($payment['payment_date'] ?? 'now')) ?></span>
-            </div>
-            <?php if (!empty($payment['transaction_ref'])): ?>
+            
+            <?php if (!empty($isBulk)): ?>
+                <table class="table" style="width: 100%; text-align: left; margin-bottom: 20px; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #e0e0e0;">
+                            <th style="padding: 10px 0;">Date</th>
+                            <th style="padding: 10px 0;">Type</th>
+                            <th style="padding: 10px 0;">Ref</th>
+                            <th style="padding: 10px 0; text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                        $grandTotal = 0;
+                        foreach ($payments as $p): 
+                            $grandTotal += (float)$p['amount'];
+                        ?>
+                        <tr style="border-bottom: 1px solid #f0f0f0;">
+                            <td style="padding: 10px 0;"><?= date('d M, Y', strtotime($p['payment_date'] ?? 'now')) ?></td>
+                            <td style="padding: 10px 0;">
+                                <?php if ($p['payment_type'] === 'emi'): ?>
+                                    <span class="badge badge-emi"><?= $p['installment_label'] ?? 'EMI Payment' ?></span>
+                                <?php elseif ($p['payment_type'] === 'booking_money'): ?>
+                                    <span class="badge badge-booking">BOOKING MONEY</span>
+                                <?php elseif ($p['payment_type'] === 'registration'): ?>
+                                    <span class="badge badge-registration">REGISTRATION MONEY</span>
+                                <?php else: ?>
+                                    <?= strtoupper(str_replace('_', ' ', $p['payment_type'])) ?>
+                                <?php endif; ?>
+                            </td>
+                            <td style="padding: 10px 0;"><?= htmlspecialchars($p['transaction_ref'] ?? '-') ?></td>
+                            <td style="padding: 10px 0; text-align: right; font-weight: 600;">TK.<?= number_format($p['amount'] ?? 0, 2) ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <div class="payment-row total">
+                    <span>Grand Total Amount Paid:</span>
+                    <span class="amount-highlight">TK.<?= number_format($grandTotal, 2) ?></span>
+                </div>
+            <?php else: ?>
                 <div class="payment-row">
-                    <span>Transaction Reference:</span>
-                    <span style="font-weight: 600;"><?= htmlspecialchars($payment['transaction_ref']) ?></span>
+                    <span>Payment Type:</span>
+                    <span style="font-weight: 600;">
+                        <?php if ($payment['payment_type'] === 'emi'): ?>
+                            <span class="badge badge-emi"><?= $payment['installment_label'] ?? 'EMI Payment' ?></span>
+                        <?php elseif ($payment['payment_type'] === 'booking_money'): ?>
+                            <span class="badge badge-booking">BOOKING MONEY</span>
+                        <?php elseif ($payment['payment_type'] === 'registration'): ?>
+                            <span class="badge badge-registration">REGISTRATION MONEY</span>
+                        <?php else: ?>
+                            <?= strtoupper(str_replace('_', ' ', $payment['payment_type'])) ?>
+                        <?php endif; ?>
+                    </span>
                 </div>
-            <?php endif; ?>
-            
-            <?php 
-            // Get service fee for EMI transactions
-            $serviceFee = 0;
-            $netPaidEmi = 0;
-            
-            if ($payment['payment_type'] === 'emi' && isset($payment['id'])) {
-                // Fetch service fee from emi_schedules
-                $serviceFeeStmt = $this->db->prepare("
-                    SELECT service_fee 
-                    FROM emi_schedules 
-                    WHERE lead_payment_id = ?
-                ");
-                if ($serviceFeeStmt) {
-                    $serviceFeeStmt->bind_param("i", $payment['id']);
-                    $serviceFeeStmt->execute();
-                    $serviceFeeResult = $serviceFeeStmt->get_result();
-                    $serviceFeeData = $serviceFeeResult ? $serviceFeeResult->fetch_assoc() : null;
-                    $serviceFee = $serviceFeeData['service_fee'] ?? 0;
+                <div class="payment-row">
+                    <span>Payment Date:</span>
+                    <span style="font-weight: 600;"><?= date('d M, Y', strtotime($payment['payment_date'] ?? 'now')) ?></span>
+                </div>
+                <?php if (!empty($payment['transaction_ref'])): ?>
+                    <div class="payment-row">
+                        <span>Transaction Reference:</span>
+                        <span style="font-weight: 600;"><?= htmlspecialchars($payment['transaction_ref']) ?></span>
+                    </div>
+                <?php endif; ?>
+                
+                <?php 
+                // Get service fee for EMI transactions
+                $serviceFee = 0;
+                $netPaidEmi = 0;
+                
+                if ($payment['payment_type'] === 'emi' && isset($payment['id'])) {
+                    // Fetch service fee from emi_schedules
+                    $serviceFeeStmt = $this->db->prepare("
+                        SELECT service_fee 
+                        FROM emi_schedules 
+                        WHERE lead_payment_id = ?
+                    ");
+                    if ($serviceFeeStmt) {
+                        $serviceFeeStmt->bind_param("i", $payment['id']);
+                        $serviceFeeStmt->execute();
+                        $serviceFeeResult = $serviceFeeStmt->get_result();
+                        $serviceFeeData = $serviceFeeResult ? $serviceFeeResult->fetch_assoc() : null;
+                        $serviceFee = $serviceFeeData['service_fee'] ?? 0;
+                    }
+                    
+                    // Calculate Net Paid EMI = Paid Amount - Service Fee
+                    $netPaidEmi = ($payment['amount'] ?? 0) - $serviceFee;
                 }
+                ?>
                 
-                // Calculate Net Paid EMI = Paid Amount - Service Fee
-                $netPaidEmi = ($payment['amount'] ?? 0) - $serviceFee;
-            }
-            ?>
-            
-            <?php if ($payment['payment_type'] === 'emi' && $serviceFee > 0): ?>
-                <!-- EMI Payment Breakdown -->
-                <div class="payment-row" style="border-top: 2px solid #e0e0e0; margin-top: 15px; padding-top: 15px;">
-                    <span style="font-weight: 600; color: #2c3e50;">Payment Breakdown:</span>
-                    <span></span>
-                </div>
+                <?php if ($payment['payment_type'] === 'emi' && $serviceFee > 0): ?>
+                    <!-- EMI Payment Breakdown -->
+                    <div class="payment-row" style="border-top: 2px solid #e0e0e0; margin-top: 15px; padding-top: 15px;">
+                        <span style="font-weight: 600; color: #2c3e50;">Payment Breakdown:</span>
+                        <span></span>
+                    </div>
 
-                <div class="payment-row" style="border-bottom: 1px solid #e0e0e0; padding-bottom: 10px;">
-                    <span >Paid EMI:</span>
-                    <span style="font-weight: 600; color: #27ae60;">TK.<?= number_format($netPaidEmi, 2) ?></span>
-                </div>
+                    <div class="payment-row" style="border-bottom: 1px solid #e0e0e0; padding-bottom: 10px;">
+                        <span >Paid EMI:</span>
+                        <span style="font-weight: 600; color: #27ae60;">TK.<?= number_format($netPaidEmi, 2) ?></span>
+                    </div>
+                    
+                    <div class="payment-row" >
+                        <span>Service Fee (10%):</span>
+                        <span style="font-weight: 600; color: #e67e22;"> TK.<?= number_format($serviceFee, 2) ?></span>
+                    </div>
+                <?php endif; ?>
                 
-                <div class="payment-row" >
-                    <span>Service Fee (10%):</span>
-                    <span style="font-weight: 600; color: #e67e22;"> TK.<?= number_format($serviceFee, 2) ?></span>
+                <div class="payment-row total">
+                    <span>Total Amount Paid:</span>
+                    <span class="amount-highlight">TK.<?= number_format($payment['amount'] ?? 0, 2) ?></span>
                 </div>
             <?php endif; ?>
-            
-            <div class="payment-row total">
-                <span>Total Amount Paid:</span>
-                <span class="amount-highlight">TK.<?= number_format($payment['amount'] ?? 0, 2) ?></span>
-            </div>
         </div>
 
         <!-- Payment Method Details -->

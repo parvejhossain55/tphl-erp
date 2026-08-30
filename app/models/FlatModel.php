@@ -321,7 +321,7 @@ class FlatModel extends Model
         $balcony              = isset($data['balcony']) && trim($data['balcony']) !== '' ? $extractInt($data['balcony'])           : null;
         $drawing_dining       = isset($data['drawing_dining_kitchen']) ? (int)$data['drawing_dining_kitchen'] : 0;
         $common_dining        = isset($data['common_dining'])          ? (int)$data['common_dining']         : 0;
-        $floor_no             = isset($data['floor_no'])    && trim($data['floor_no'])    !== '' ? $extractInt($data['floor_no'])  : null;
+        $floor_no             = isset($data['floor_no'])    && trim($data['floor_no'])    !== '' ? trim($data['floor_no'])         : null;
         $facing_site          = isset($data['facing_site']) && trim($data['facing_site']) !== '' ? trim($data['facing_site'])      : null;
         $is_shop              = isset($data['is_shop'])     ? (int)$data['is_shop']                                                : 0;
         $unit_type            = !empty($data['unit_type'])  ? trim($data['unit_type'])                                             : 'residential';

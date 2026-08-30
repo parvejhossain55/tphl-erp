@@ -429,29 +429,38 @@ $show_breadcrumb = true;
             <div class="col-xxl-12 mb-4">
 
 
-                <div class="mt-3 d-flex gap-2 position ">
+                <div class="mt-3 d-flex flex-wrap gap-2 align-items-center mb-3">
                     <?php if (isset($refundDetails) && $refundDetails['status'] === 'approved'): ?>
-                        <button class="btn btn-secondary mb-3" disabled title="Refund approved, cannot add transactions">
+                        <button class="btn btn-secondary" disabled title="Refund approved, cannot add transactions">
                             <i class="fa-light fa-ban me-2"></i> Add Transaction (Disabled)
                         </button>
                     <?php else: ?>
-                        <a href="<?= $GLOBALS['base_url'] ?>/<?= $isShop ? 'shop-client-cash-in-form' : 'client-cash-in-form' ?>?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
+                        <a href="<?= $GLOBALS['base_url'] ?>/<?= $isShop ? 'shop-client-cash-in-form' : 'client-cash-in-form' ?>?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary">
                             <i class="fa-light fa-plus me-2"></i> Add Transaction
                         </a>
-                        <a href="<?= $GLOBALS['base_url'] ?>/client-refund-create/<?= $clientDetails['booking_id'] ?>" class="btn btn-danger mb-3">
+                        <a href="<?= $GLOBALS['base_url'] ?>/client-refund-create/<?= $clientDetails['booking_id'] ?>" class="btn btn-danger">
                             <i class="fa-light fa-undo me-2"></i> Refund
                         </a>
                     <?php endif; ?>
-                    <a href="<?= $GLOBALS['base_url'] ?>/csv-import-form" class="btn btn-info mb-3 text-white">
+                    <a href="<?= $GLOBALS['base_url'] ?>/csv-import-form" class="btn btn-info text-white">
                         <i class="fa-light fa-file-csv me-2"></i> CSV Import
                     </a>
-                    <a href="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-primary mb-3">
+                    <a href="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-success">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
                     </a>
-                    <a href="<?= $base_url ?>/discount-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn mb-3" style="background: linear-gradient(135deg, #6c5ffc, #8b5cf6); color:#fff; border:none;">
+                    <a href="<?= $base_url ?>/discount-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn" style="background: linear-gradient(135deg, #6c5ffc, #8b5cf6); color:#fff; border:none;">
                         <i class="fa-light fa-tags me-2"></i> Discount Statement
                     </a>
-                    <div class="ms-auto mb-3 d-flex align-items-center">
+                    
+                    <!-- Bulk Actions -->
+                    <button type="button" class="btn btn-success" id="btnBulkVerify" disabled>
+                        <i class="fa-solid fa-check-double me-1"></i> Verify Selected (<span id="bulkSelectedCount">0</span>)
+                    </button>
+                    <button type="button" class="btn" id="btnBulkReceipt" style="background-color: #6c5ffc; color: #fff;" disabled>
+                        <i class="fa-solid fa-file-invoice me-1"></i> Generate Combined Receipt
+                    </button>
+
+                    <div class="ms-auto d-flex align-items-center">
                         <div class="form-check form-switch p-2 bg-light border rounded mb-0">
                             <input class="form-check-input ms-0 me-2" type="checkbox" id="globalSendSmsToggle">
                             <label class="form-check-label fw-semibold text-primary" for="globalSendSmsToggle" style="cursor: pointer;">
@@ -459,29 +468,46 @@ $show_breadcrumb = true;
                             </label>
                         </div>
                     </div>
-
                 </div>
 
-                <!-- Payment Type Filter -->
-                <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
-                    <span class="text-muted me-1" style="font-size:13px;font-weight:600;">Filter:</span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary payment-filter active" data-filter="all">All</button>
-                    <button type="button" class="btn btn-sm btn-outline-primary payment-filter" data-filter="booking_money">Booking Money</button>
-                    <button type="button" class="btn btn-sm btn-outline-info payment-filter" data-filter="registration">Registration</button>
-                    <button type="button" class="btn btn-sm btn-outline-success payment-filter" data-filter="land_share">Land Share</button>
-                    <?php if ($isShop): ?>
-                        <button type="button" class="btn btn-sm btn-outline-warning payment-filter" data-filter="shop_service_charge">Shop Svc Charge</button>
-                    <?php else: ?>
-                        <button type="button" class="btn btn-sm btn-outline-warning payment-filter" data-filter="development_charge">Dev. Charge</button>
-                    <?php endif; ?>
-                    <button type="button" class="btn btn-sm btn-outline-danger payment-filter" data-filter="emi">EMI</button>
-                    <button type="button" class="btn btn-sm btn-outline-dark payment-filter" data-filter="emi_due_settlement">EMI Settlement</button>
+                <!-- Payment Type Filter and Search -->
+                <div class="mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="text-muted me-1" style="font-size:13px;font-weight:600;">Filter:</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary payment-filter active" data-filter="all">All</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary payment-filter" data-filter="booking_money">Booking Money</button>
+                        <button type="button" class="btn btn-sm btn-outline-info payment-filter" data-filter="registration">Registration</button>
+                        <button type="button" class="btn btn-sm btn-outline-success payment-filter" data-filter="land_share">Land Share</button>
+                        <?php if ($isShop): ?>
+                            <button type="button" class="btn btn-sm btn-outline-warning payment-filter" data-filter="shop_service_charge">Shop Svc Charge</button>
+                        <?php else: ?>
+                            <button type="button" class="btn btn-sm btn-outline-warning payment-filter" data-filter="development_charge">Dev. Charge</button>
+                        <?php endif; ?>
+                        <button type="button" class="btn btn-sm btn-outline-danger payment-filter" data-filter="emi">EMI</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark payment-filter" data-filter="emi_due_settlement">EMI Settlement</button>
+                    </div>
+                    
+                    <div class="d-flex flex-wrap align-items-center gap-3">
+                        <div class="form-check form-switch m-0" style="background:rgba(255, 193, 7, 0.2); padding: 5px 10px 5px 35px; border-radius: 20px; border: 1px solid rgba(255, 193, 7, 0.4);">
+                            <input class="form-check-input" type="checkbox" id="autoSelectLatestPending" style="cursor: pointer;">
+                            <label class="form-check-label fw-bold text-dark" for="autoSelectLatestPending" style="cursor: pointer; font-size: 13px;">
+                                Same Transaction (Latest Pending)
+                            </label>
+                        </div>
+                        <div class="input-group input-group-sm" style="width: 250px;">
+                            <span class="input-group-text bg-light"><i class="fa-light fa-search"></i></span>
+                            <input type="text" id="transactionSearchInput" class="form-control" placeholder="Search Trx ID / Ref...">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="table__wrapper table-responsive">
                     <table class="table table-hover" id="transactionTable">
                         <thead>
                             <tr>
+                                <th style="width: 40px; text-align: center;">
+                                    <input type="checkbox" id="selectAllTransactions" class="form-check-input">
+                                </th>
                                 <th style="white-space:nowrap;">Date</th>
                                 <th>Payment Type</th>
                                 <th>Details</th>
@@ -504,7 +530,17 @@ $show_breadcrumb = true;
                         </thead>
                         <tbody>
                             <?php foreach ($transactions as $transaction): ?>
-                                <tr data-payment-type="<?= htmlspecialchars($transaction['payment_type'] ?? '') ?>">
+                                <?php 
+                                    $vs = $transaction['verification_status'] ?? 'pending';
+                                ?>
+                                <tr data-payment-id="<?= $transaction['id'] ?>" 
+                                    data-batch-id="<?= htmlspecialchars($transaction['batch_id'] ?? '') ?>"
+                                    data-trx-id="<?= htmlspecialchars($transaction['transaction_ref'] ?? '') ?>"
+                                    data-verification-status="<?= $vs ?>"
+                                    data-payment-type="<?= htmlspecialchars($transaction['payment_type'] ?? '') ?>">
+                                    <td style="text-align: center;">
+                                        <input type="checkbox" class="form-check-input row-checkbox" value="<?= $transaction['id'] ?>">
+                                    </td>
                                     <td><?php echo $transaction['formatted_date']; ?></td>
                                     <td>
                                         <span class="badge bg-primary">
@@ -1185,7 +1221,7 @@ $show_breadcrumb = true;
                     if (!data.files || data.files.length === 0) {
                         html += `<div class="alert alert-info"><i class="fa-light fa-info-circle me-1"></i>No documents attached to this transaction.</div>`;
                     } else {
-                        html += `<div class="row g-3">`;
+                        html += `<div class="row">`;
                         data.files.forEach((filePath, idx) => {
                             const fullUrl  = BASE_URL + '/public/' + filePath;
                             const ext      = filePath.split('.').pop().toLowerCase();
@@ -1537,22 +1573,240 @@ $show_breadcrumb = true;
     document.addEventListener('DOMContentLoaded', function() {
         var filters = document.querySelectorAll('.payment-filter');
         var rows = document.querySelectorAll('#transactionTable tbody tr[data-payment-type]');
+        var transactionSearchInput = document.getElementById('transactionSearchInput');
+
+        function updateSelectAllState() {
+            var selectAllCheckbox = document.getElementById('selectAllTransactions');
+            var rowCheckboxes = document.querySelectorAll('.row-checkbox');
+            if (selectAllCheckbox) {
+                var visibleCheckboxes = Array.from(rowCheckboxes).filter(function(c) { return c.closest('tr').style.display !== 'none'; });
+                var allVisibleChecked = visibleCheckboxes.length > 0 && visibleCheckboxes.every(function(c) { return c.checked; });
+                selectAllCheckbox.checked = allVisibleChecked;
+            }
+        }
+
+        function applyFilters() {
+            var activeBtn = document.querySelector('.payment-filter.active');
+            var filter = activeBtn ? activeBtn.getAttribute('data-filter') : 'all';
+            var searchTerm = transactionSearchInput ? transactionSearchInput.value.toLowerCase().trim() : '';
+
+            rows.forEach(function(row) {
+                var typeMatch = (filter === 'all' || row.getAttribute('data-payment-type') === filter);
+                var trxId = row.getAttribute('data-trx-id') || '';
+                var searchMatch = (searchTerm === '' || trxId.toLowerCase().includes(searchTerm));
+
+                if (typeMatch && searchMatch) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            updateSelectAllState();
+        }
 
         filters.forEach(function(btn) {
             btn.addEventListener('click', function() {
                 filters.forEach(function(b) { b.classList.remove('active'); });
                 btn.classList.add('active');
-
-                var filter = btn.getAttribute('data-filter');
-                rows.forEach(function(row) {
-                    if (filter === 'all' || row.getAttribute('data-payment-type') === filter) {
-                        row.style.display = '';
+                applyFilters();
+            });
+        });
+        
+        if (transactionSearchInput) {
+            transactionSearchInput.addEventListener('input', applyFilters);
+        }
+        
+        // --- BULK ACTION LOGIC ---
+        const selectAllCheckbox = document.getElementById('selectAllTransactions');
+        const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+        const btnBulkVerify = document.getElementById('btnBulkVerify');
+        const btnBulkReceipt = document.getElementById('btnBulkReceipt');
+        const bulkSelectedCount = document.getElementById('bulkSelectedCount');
+        
+        function updateBulkActionState() {
+            let checkedCount = 0;
+            let allPending = true;
+            
+            rowCheckboxes.forEach(cb => {
+                if (cb.checked) {
+                    checkedCount++;
+                    let tr = cb.closest('tr');
+                    if (tr.getAttribute('data-verification-status') !== 'pending') {
+                        allPending = false;
+                    }
+                }
+            });
+            
+            bulkSelectedCount.textContent = checkedCount;
+            
+            if (checkedCount > 0) {
+                btnBulkVerify.disabled = !allPending;
+                btnBulkReceipt.disabled = false;
+            } else {
+                btnBulkVerify.disabled = true;
+                btnBulkReceipt.disabled = true;
+            }
+        }
+        
+        // Handle "Select All" click
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                const isChecked = this.checked;
+                rowCheckboxes.forEach(cb => {
+                    // Only check visible rows
+                    if (cb.closest('tr').style.display !== 'none') {
+                        cb.checked = isChecked;
+                    }
+                });
+                updateBulkActionState();
+            });
+        }
+        
+        // Handle individual row checkbox click + Smart Batch Selection
+        rowCheckboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                const tr = this.closest('tr');
+                const batchId = tr.getAttribute('data-batch-id');
+                const isChecked = this.checked;
+                
+                // If it has a batch_id, auto-select other rows with the same batch_id
+                if (batchId && batchId !== '') {
+                    rowCheckboxes.forEach(otherCb => {
+                        const otherTr = otherCb.closest('tr');
+                        if (otherTr.getAttribute('data-batch-id') === batchId) {
+                            otherCb.checked = isChecked;
+                        }
+                    });
+                }
+                
+                // Update "Select All" state
+                updateSelectAllState();
+                
+                updateBulkActionState();
+            });
+        });
+        
+        // Auto-select latest pending batch
+        const autoSelectLatestPending = document.getElementById('autoSelectLatestPending');
+        if (autoSelectLatestPending) {
+            autoSelectLatestPending.addEventListener('change', function() {
+                if (this.checked) {
+                    let latestPendingBatchId = null;
+                    let latestPendingTrxId = null;
+                    
+                    // Find the first (latest) row that is pending
+                    for (let i = 0; i < rowCheckboxes.length; i++) {
+                        let tr = rowCheckboxes[i].closest('tr');
+                        if (tr.getAttribute('data-verification-status') === 'pending') {
+                            latestPendingBatchId = tr.getAttribute('data-batch-id');
+                            latestPendingTrxId = tr.getAttribute('data-trx-id');
+                            break; // Rows are ordered DESC, so the first one is the latest
+                        }
+                    }
+                    
+                    if (latestPendingBatchId || latestPendingTrxId) {
+                        rowCheckboxes.forEach(cb => {
+                            let tr = cb.closest('tr');
+                            let bId = tr.getAttribute('data-batch-id');
+                            let tId = tr.getAttribute('data-trx-id');
+                            let isPending = tr.getAttribute('data-verification-status') === 'pending';
+                            
+                            if (latestPendingBatchId && latestPendingBatchId !== '') {
+                                if (bId === latestPendingBatchId) cb.checked = true;
+                                else cb.checked = false;
+                            } else if (latestPendingTrxId && latestPendingTrxId !== '') {
+                                if (tId === latestPendingTrxId && isPending) cb.checked = true;
+                                else cb.checked = false;
+                            } else {
+                                cb.checked = false;
+                            }
+                        });
                     } else {
-                        row.style.display = 'none';
+                        this.checked = false;
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'No Pending Transactions',
+                            text: 'There are no pending transactions to select.',
+                            confirmButtonColor: '#6c5ffc'
+                        });
+                    }
+                } else {
+                    rowCheckboxes.forEach(cb => cb.checked = false);
+                }
+                updateSelectAllState();
+                updateBulkActionState();
+            });
+        }
+        
+        // Bulk Verify Button Click
+        if (btnBulkVerify) {
+            btnBulkVerify.addEventListener('click', function() {
+                const selectedIds = Array.from(rowCheckboxes)
+                                         .filter(cb => cb.checked)
+                                         .map(cb => cb.value);
+                
+                if (selectedIds.length === 0) return;
+                
+                // Calculate total amount for the modal
+                let totalAmount = 0;
+                rowCheckboxes.forEach(cb => {
+                    if(cb.checked) {
+                        let tr = cb.closest('tr');
+                        // Find amount cell. Note: Need to be careful with formatting commas.
+                        // Assuming Amount is in a specific cell or we fetch from DB, but we can do a pre-flight ajax call
+                        // or just show the count. Let's do a confirmation with count.
+                    }
+                });
+                
+                Swal.fire({
+                    title: 'Verify ' + selectedIds.length + ' Transactions?',
+                    text: 'Are you sure you want to verify all selected transactions?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Verify All',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const sendSms = document.getElementById('globalSendSmsToggle') && document.getElementById('globalSendSmsToggle').checked ? 1 : 0;
+                        
+                        $.ajax({
+                            url: '<?= $GLOBALS['base_url'] ?>/account-client/bulkVerify',
+                            type: 'POST',
+                            data: { payment_ids: selectedIds, send_sms: sendSms },
+                            dataType: 'json',
+                            success: function(res) {
+                                if(res.success) {
+                                    Swal.fire('Verified!', res.message, 'success').then(() => {
+                                        location.reload();
+                                    });
+                                } else {
+                                    Swal.fire('Error', res.message, 'error');
+                                }
+                            },
+                            error: function() {
+                                Swal.fire('Error', 'Failed to connect to server.', 'error');
+                            }
+                        });
                     }
                 });
             });
-        });
+        }
+        
+        // Bulk Receipt Button Click
+        if (btnBulkReceipt) {
+            btnBulkReceipt.addEventListener('click', function() {
+                const selectedIds = Array.from(rowCheckboxes)
+                                         .filter(cb => cb.checked)
+                                         .map(cb => cb.value);
+                
+                if (selectedIds.length === 0) return;
+                
+                // Open receipt in new tab
+                const idsParam = selectedIds.join(',');
+                window.open('<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=' + idsParam, '_blank');
+            });
+        }
+        
     });
 
     function openEmiFollowupModal(bookingId, emiNo) {

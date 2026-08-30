@@ -11,6 +11,7 @@ $finalAmount = !empty($booking['approved_amount'])
 
 $booking_paid = 0;
 $booking_pending_and_paid = 0;
+$registration_pending_and_paid = 0;
 $has_registration = false;
 $existing_emi_no = null;
 
@@ -28,6 +29,7 @@ foreach ($payments as $p) {
         }
     } elseif ($p['payment_type'] === 'registration') {
         if (in_array($p['verification_status'], ['verified', 'pending'])) {
+            $registration_pending_and_paid += $p['amount'];
             $has_registration = true;
         }
     }
@@ -36,13 +38,17 @@ foreach ($payments as $p) {
 $remaining = $finalAmount - $booking_pending_and_paid;
 $is_booking_fully_paid = ($remaining <= 0);
 
+$totalRegistrationAmount = abs((float)($booking['land_share_value'] ?? 0) - (float)($booking['agreement_value'] ?? 0));
+$registrationRemaining = $totalRegistrationAmount - $registration_pending_and_paid;
+$is_registration_fully_paid = ($registrationRemaining <= 0);
+
 $showBookingForm = false;
 $form_mode = 'booking_money';
 
 if (!$is_booking_fully_paid) {
     $showBookingForm = true;
     $form_mode = 'booking_money';
-} elseif (!$has_registration) {
+} elseif (!$is_registration_fully_paid) {
     $showBookingForm = true;
     $form_mode = 'registration';
 }
@@ -213,9 +219,8 @@ if (!$is_booking_fully_paid) {
                         <?php
                         $registrationAmountValue = '';
                         if ($form_mode === 'registration') {
-                            $placeholderText = "Enter Registration Amount";
-                            $calcAmount = abs((float)($booking['land_share_value'] ?? 0) - (float)($booking['agreement_value'] ?? 0));
-                            $registrationAmountValue = $calcAmount;
+                            $placeholderText = "Remaining: " . number_format($registrationRemaining, 2);
+                            $registrationAmountValue = $registrationRemaining;
                         } else {
                             if ($booking_pending_and_paid == 0) {
                                 $placeholderText = ($booking['approved_amount'] > 0)
@@ -232,12 +237,15 @@ if (!$is_booking_fully_paid) {
                         <div class="col-lg-6">
                             <div class="form__input-title">
                                 <label class="form__input-title"><?= $form_mode === 'registration' ? 'Pay Registration Money' : 'Pay Booking Money' ?> *</label>
+                                <?php if ($form_mode === 'registration'): ?>
+                                    <small class="text-muted d-block" style="font-size: 0.8rem; margin-top: -5px; margin-bottom: 5px;">Remaining: <?= number_format($registrationRemaining, 2) ?></small>
+                                <?php endif; ?>
                             </div>
                             <input type="number" step="1" name="amount"
                                 class="form-control"
                                 placeholder="<?= $placeholderText ?>"
                                 <?= $form_mode === 'booking_money' ? 'max="' . $remaining . '"' : '' ?>
-                                <?= $form_mode === 'registration' ? 'value="' . $registrationAmountValue . '" readonly' : '' ?>
+                                <?= $form_mode === 'registration' ? 'max="' . $registrationRemaining . '" value="' . $registrationAmountValue . '"' : '' ?>
                                 required>
                         </div>
 
@@ -328,7 +336,7 @@ if (!$is_booking_fully_paid) {
                         <tr>
                             <th># Payment Date</th>
                             <th>Type</th>
-                            <th>Total Booking Money</th>
+                            <th>Total Amount</th>
                             <th>Paid Amount</th>
                             <th>Remaining Amount</th>
                             <th>Method</th>
@@ -352,6 +360,8 @@ if (!$is_booking_fully_paid) {
 
                             // Step 2: running total for ledger style remaining
                             $running_paid = 0;
+                            $registration_running_paid = 0;
+                            $totalRegistrationAmount = abs((float)($booking['land_share_value'] ?? 0) - (float)($booking['agreement_value'] ?? 0));
                             ?>
 
                             <?php foreach ($payments as $index => $p): ?>
@@ -363,9 +373,15 @@ if (!$is_booking_fully_paid) {
                                     $p['verification_status'] === 'verified'
                                 ) {
                                     $running_paid += $p['amount'];
+                                } elseif (
+                                    $p['payment_type'] === 'registration' &&
+                                    $p['verification_status'] === 'verified'
+                                ) {
+                                    $registration_running_paid += $p['amount'];
                                 }
 
                                 $row_remaining = $finalAmount - $running_paid;
+                                $reg_row_remaining = $totalRegistrationAmount - $registration_running_paid;
                                 ?>
                         
                                 <tr>
@@ -375,15 +391,27 @@ if (!$is_booking_fully_paid) {
 
                                     <td><?= ucfirst($p['payment_type']) ?></td>
 
-                                    <td><?= number_format($p['agreement_value'], 2) ?></td>
+                                    <td>
+                                        <?php if ($p['payment_type'] === 'booking_money'): ?>
+                                            <?= number_format($p['agreement_value'], 2) ?>
+                                        <?php elseif ($p['payment_type'] === 'registration'): ?>
+                                            <?= number_format($totalRegistrationAmount, 2) ?>
+                                        <?php else: ?>
+                                            -
+                                        <?php endif; ?>
+                                    </td>
 
                                     <td><?= number_format($p['amount'], 2) ?></td>
 
                                     <!--  Correct Remaining (ledger style) -->
                                     <td>
-                                        <?= ($p['payment_type'] === 'booking_money')
-                                            ? number_format($row_remaining, 2)
-                                            : '-' ?>
+                                        <?php if ($p['payment_type'] === 'booking_money'): ?>
+                                            <?= number_format($row_remaining, 2) ?>
+                                        <?php elseif ($p['payment_type'] === 'registration'): ?>
+                                            <?= number_format($reg_row_remaining, 2) ?>
+                                        <?php else: ?>
+                                            -
+                                        <?php endif; ?>
                                     </td>
 
                                     <td><?= ucfirst($p['payment_method']) ?></td>

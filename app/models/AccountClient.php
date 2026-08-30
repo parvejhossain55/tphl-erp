@@ -49,16 +49,12 @@ class AccountClient extends Model
             ) AS agent_name,
             COUNT(lb.id) AS total_bookings,
             SUM(lb.agreement_value) AS total_agreement_value,
-            -- First booking's project and flat for quick context
-            (SELECT p2.name FROM lead_bookings lb2
-             INNER JOIN projects p2 ON lb2.project_id = p2.id
-             WHERE lb2.lead_id = l.id
-             ORDER BY lb2.created_at DESC LIMIT 1) AS project_name,
-            (SELECT CONCAT(f2.flat_name, ' - Floor ', f2.floor_no)
+            -- Concatenated list of all projects and flats for this client
+            (SELECT GROUP_CONCAT(CONCAT(p2.name, '||', f2.flat_name) SEPARATOR ';;')
              FROM lead_bookings lb2
+             INNER JOIN projects p2 ON lb2.project_id = p2.id
              INNER JOIN flats f2 ON lb2.flat_id = f2.id
-             WHERE lb2.lead_id = l.id
-             ORDER BY lb2.created_at DESC LIMIT 1) AS flat_no,
+             WHERE lb2.lead_id = l.id) AS project_flats_combined,
             -- Latest verification status across all this client's payments
             (SELECT lp.verification_status
              FROM lead_payments lp
@@ -2381,6 +2377,7 @@ ORDER BY lb.booking_date DESC
         $this->db->begin_transaction();
 
         try {
+            $batchId = 'batch_' . uniqid() . '_' . time();
             $serviceFee = 0;
             $landShareAmount = 0;
             $bookingId = (int) $transactionData['booking_id'];
@@ -2425,8 +2422,8 @@ ORDER BY lb.booking_date DESC
                         booking_id, payment_type, amount, land_share_amount, service_fee,
                         payment_method, payment_status, payment_date, transaction_ref,
                         bank_name, bank_account_no, cheque_no, online_type,
-                        attachment_paths, created_by, handover_to, handover_status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        attachment_paths, created_by, handover_to, handover_status, batch_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if (!$stmt) throw new Exception("Prepare failed: " . $this->db->error);
 
@@ -2449,11 +2446,11 @@ ORDER BY lb.booking_date DESC
                 $p_handoverStatus = $p_handoverTo ? 'pending' : null;
 
                 $stmt->bind_param(
-                    "isdddsssssssssiis",
+                    "isdddsssssssssiiss",
                     $p_bookingId, $p_type, $p_amount, $p_landShare, $p_svcFee,
                     $p_method, $p_status, $p_date, $p_txRef,
                     $p_bankName, $p_bankAccNo, $p_chequeNo, $p_onlineType,
-                    $attachmentPathsJson, $p_createdBy, $p_handoverTo, $p_handoverStatus
+                    $attachmentPathsJson, $p_createdBy, $p_handoverTo, $p_handoverStatus, $batchId
                 );
 
                 if (!$stmt->execute()) throw new Exception("Insert failed: " . $stmt->error);
@@ -2575,8 +2572,8 @@ ORDER BY lb.booking_date DESC
                         payment_method, payment_status, payment_date, transaction_ref,
                         bank_name, bank_account_no, cheque_no, online_type,
                         attachment_paths, due_emi_amount, parent_payment_id, settlement_type, created_by,
-                        handover_to, handover_status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        handover_to, handover_status, batch_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if (!$settleStmt) throw new Exception("Settlement prepare failed: " . $this->db->error);
 
@@ -2591,12 +2588,12 @@ ORDER BY lb.booking_date DESC
                 $handoverStatus = $handoverToId ? 'pending' : null;
 
                 $settleStmt->bind_param(
-                    "isdddsssssssssdisiis",
+                    "isdddsssssssssdisiiss",
                     $bookingId, $stPayType, $settle, $stLandShare, $settleSvcFee,
                     $paymentMethod, $stStatus, $paymentDate, $transactionRef,
                     $bankName, $bankAccNo, $chequeNo, $onlineType,
                     $attachmentPathsJson, $stDue, $parentId, $stType, $createdBy,
-                    $handoverToId, $handoverStatus
+                    $handoverToId, $handoverStatus, $batchId
                 );
 
                 if (!$settleStmt->execute()) throw new Exception("Settlement insert failed: " . $settleStmt->error);
@@ -2684,8 +2681,8 @@ ORDER BY lb.booking_date DESC
                         payment_method, payment_status, payment_date, transaction_ref,
                         bank_name, bank_account_no, cheque_no, online_type,
                         attachment_paths, due_emi_amount, bulk_emi_discount, bulk_pay_amount, created_by,
-                        handover_to, handover_status, bulk_parent_id
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        handover_to, handover_status, bulk_parent_id, batch_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if (!$emiStmt) throw new Exception("EMI payment prepare failed: " . $this->db->error);
 
@@ -2701,12 +2698,12 @@ ORDER BY lb.booking_date DESC
                 $thisBulkParentId = ($firstPaymentId) ? $firstPaymentId : null;
 
                 $emiStmt->bind_param(
-                    "isdddsssssssssdddiisi",
+                    "isdddsssssssssdddiisis",
                     $bookingId, $emiPayType, $thisEmi, $emiLandShare, $thisSvcFee,
                     $paymentMethod, $thisStatus, $paymentDate, $transactionRef,
                     $bankName, $bankAccNo, $chequeNo, $onlineType,
                     $attachmentPathsJson, $thisDue, $thisDiscount, $thisBulkPayAmount, $createdBy,
-                    $thisHandoverToId, $handoverStatus, $thisBulkParentId
+                    $thisHandoverToId, $handoverStatus, $thisBulkParentId, $batchId
                 );
 
                 if (!$emiStmt->execute()) throw new Exception("EMI payment insert failed: " . $emiStmt->error);
@@ -4371,3 +4368,4 @@ ORDER BY lb.booking_date DESC
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 }
+

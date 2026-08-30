@@ -280,7 +280,7 @@ $show_breadcrumb = true;
                             <th>Phone</th>
                             <th>Email</th>
                             <th>Booking Agent(s)</th>
-                            <th>Designation</th>
+                            <th>Project & Flats</th>
                             <th>Total Agreement Value</th>
                             <th>Total Paid</th>
                             <th>Last Payment Date</th>
@@ -298,7 +298,52 @@ $show_breadcrumb = true;
                                     <td><?= htmlspecialchars($client['phone'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['email'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['agent_name'] ?? 'N/A') ?></td>
-                                    <td><?= htmlspecialchars($client['designation'] ?? 'N/A') ?></td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <?php 
+                                            if (!empty($client['project_flats_combined'])) {
+                                                $properties = explode(';;', $client['project_flats_combined']);
+                                                $totalProps = count($properties);
+                                                $visibleProps = array_slice($properties, 0, 3);
+                                                $hiddenProps = array_slice($properties, 3);
+                                                $clientId = $client['lead_id'] ?? uniqid();
+                                                
+                                                foreach($visibleProps as $prop) {
+                                                    $parts = explode('||', $prop);
+                                                    $pName = $parts[0] ?? '';
+                                                    $fName = $parts[1] ?? '';
+                                                    echo '<div class="property-chip">
+                                                            <span class="project-name" title="'.htmlspecialchars($pName).'"><i class="fa-solid fa-building me-1"></i>' . htmlspecialchars($pName) . '</span>
+                                                            ' . (!empty($fName) ? '<span class="flat-name" title="Flat/Unit">' . htmlspecialchars($fName) . '</span>' : '') . '
+                                                          </div>';
+                                                }
+
+                                                if ($totalProps > 3) {
+                                                    $collapseId = "collapse_props_" . $clientId;
+                                                    echo '<div class="collapse w-100" id="'.$collapseId.'">
+                                                            <div class="d-flex flex-wrap gap-2 mt-1">';
+                                                    foreach($hiddenProps as $prop) {
+                                                        $parts = explode('||', $prop);
+                                                        $pName = $parts[0] ?? '';
+                                                        $fName = $parts[1] ?? '';
+                                                        echo '<div class="property-chip">
+                                                                <span class="project-name" title="'.htmlspecialchars($pName).'"><i class="fa-solid fa-building me-1"></i>' . htmlspecialchars($pName) . '</span>
+                                                                ' . (!empty($fName) ? '<span class="flat-name" title="Flat/Unit">' . htmlspecialchars($fName) . '</span>' : '') . '
+                                                              </div>';
+                                                    }
+                                                    echo '  </div>
+                                                          </div>
+                                                          <button class="btn btn-sm btn-link text-decoration-none p-0 fw-bold mt-1 w-100 text-start view-more-btn collapsed" style="font-size: 11.5px; color: #1d4ed8;" type="button" data-bs-toggle="collapse" data-bs-target="#'.$collapseId.'" aria-expanded="false" aria-controls="'.$collapseId.'">
+                                                              <span class="show-more-text">View ' . ($totalProps - 3) . ' more units <i class="fa-solid fa-caret-down ms-1"></i></span>
+                                                              <span class="show-less-text d-none">View less <i class="fa-solid fa-caret-up ms-1"></i></span>
+                                                          </button>';
+                                                }
+                                            } else {
+                                                echo '<span class="badge bg-light text-muted border">No Properties</span>';
+                                            }
+                                            ?>
+                                        </div>
+                                    </td>
 
                                     <td>TK.<?= number_format($client['total_agreement_value'] ?? 0, 2) ?></td>
                                     <td>TK.<?= number_format($client['total_paid'] ?? 0, 2) ?></td>
@@ -1562,6 +1607,51 @@ $show_breadcrumb = true;
         </div>
     </div>
 </div>
+
+<style>
+    /* ── Property Chips ── */
+    .property-chip {
+        display: inline-flex;
+        align-items: stretch;
+        background: #ffffff;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        overflow: hidden;
+        font-size: 11.5px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        transition: all 0.2s ease;
+    }
+    .property-chip:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+        border-color: #9ca3af;
+    }
+    .property-chip .project-name {
+        padding: 4px 8px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+    }
+    .property-chip .flat-name {
+        padding: 4px 8px;
+        background: #ffffff;
+        color: #374151;
+        font-weight: 700;
+        border-left: 1px dashed #d1d5db;
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+    }
+    .view-more-btn:not(.collapsed) .show-more-text {
+        display: none !important;
+    }
+    .view-more-btn:not(.collapsed) .show-less-text {
+        display: inline !important;
+    }
+</style>
 
 <script>
 function openProjectCollectionModal(highlightType = 'all') {

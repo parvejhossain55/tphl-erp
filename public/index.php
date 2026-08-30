@@ -4,7 +4,9 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 mysqli_report(MYSQLI_REPORT_OFF);
-
+// Disable all error reporting for production/live
+// error_reporting(0);
+// ini_set('display_errors', 0);
 // Load helper functions and composer autoloader
 require_once("../app/helpers/helper.php");
 require_once __DIR__ . '/../vendor/autoload.php';

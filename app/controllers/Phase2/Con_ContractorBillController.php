@@ -695,8 +695,8 @@ class Con_ContractorBillController extends Controller
         $uid = $this->userId;
         $rid = $this->userRole;
 
-        // Admin, Director, PM Head → see ALL projects
-        if (in_array($rid, [1, 3, 33, 22])) {
+        // Admin, Director, PM Head, Purchase Roles (17, 23, 31) → see ALL projects
+        if (in_array($rid, [1, 3, 33, 22, 17, 23, 31])) {
             $filter = "1=1";
         } else {
             // All other roles → only their assigned projects
@@ -860,8 +860,8 @@ class Con_ContractorBillController extends Controller
                             ppi.item_name = pmti.work_item_name COLLATE utf8mb4_general_ci
                             OR pmti.work_item_name LIKE CONCAT(ppi.item_name COLLATE utf8mb4_general_ci, ' - %')
                             OR pmti.work_item_name LIKE CONCAT(ppi.item_name COLLATE utf8mb4_general_ci, '%')
-                        )
-                  )
+                       )
+                  ) 
               )
             GROUP BY pmti.id
         ");
