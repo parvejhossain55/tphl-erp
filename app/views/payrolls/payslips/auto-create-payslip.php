@@ -365,11 +365,15 @@
                 payslipItems.forEach(item => {
                     if (item.type === 'earning') {
                         let val = parseFloat(emp.configured_items[item.id] || 0);
-                        if (val === 0 && item.percentage && parseFloat(item.percentage) > 0) {
-                            const nameStr = (item.name || '').toLowerCase();
-                            if (nameStr.includes('recreation') || nameStr.includes('conveyance') || nameStr.includes('medical') || nameStr.includes('house rent')) {
-                                val = (gross / 2) * (parseFloat(item.percentage) / 100);
-                            }
+                        const nameStr = (item.name || '').toLowerCase();
+                        if (nameStr.includes('recreation')) {
+                            val = basic * 0.10;
+                        } else if (nameStr.includes('conveyance')) {
+                            val = basic * 0.10;
+                        } else if (nameStr.includes('medical')) {
+                            val = basic * 0.30;
+                        } else if (nameStr.includes('house rent')) {
+                            val = basic * 0.50;
                         }
                         html += `<td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning" data-item-id="${item.id}" value="${val.toFixed(2)}" style="min-width: 80px;"></td>`;
                     }
@@ -444,11 +448,16 @@
                  currentUnpaid.value = (absentDays * daily).toFixed(2);
             }
 
-            let totalEarning = basic;
+            let gross = parseFloat(row.querySelector('.cell-gross').textContent.replace(/,/g, '')) || 0;
+            let totalEarning = gross;
             row.querySelectorAll('.in-earning').forEach(inp => {
-                totalEarning += (parseFloat(inp.value) || 0);
+                if (inp.classList.contains('in-punctuality') || 
+                    inp.classList.contains('in-overtime') || 
+                    inp.classList.contains('in-arrear') || 
+                    inp.classList.contains('in-otherallow')) {
+                    totalEarning += (parseFloat(inp.value) || 0);
+                }
             });
-            row.querySelector('.cell-gross').textContent = totalEarning.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
             let totalDeduction = 0;
             row.querySelectorAll('.in-deduct').forEach(inp => {

@@ -283,33 +283,37 @@ $show_breadcrumb = true;
                                             <?php foreach ($items as $item): ?>
                                                     <?php if ($item['type'] === 'earning'): ?>
                                                             <?php
-                                                                // Calculate fallback percentage for specific allowances if no value is set
-                                                                $val = 0;
-                                                                if (isset($p['dynamic_details'][$item['id']])) {
-                                                                    $val = round($p['dynamic_details'][$item['id']], 2);
+                                                                $isBasicAllow = false;
+                                                                $nameStr = strtolower($item['name']);
+                                                                if (strpos($nameStr, 'recreation') !== false) {
+                                                                    $val = round($basic * 0.10, 2);
+                                                                    $isBasicAllow = true;
+                                                                } elseif (strpos($nameStr, 'conveyance') !== false) {
+                                                                    $val = round($basic * 0.10, 2);
+                                                                    $isBasicAllow = true;
+                                                                } elseif (strpos($nameStr, 'medical') !== false) {
+                                                                    $val = round($basic * 0.30, 2);
+                                                                    $isBasicAllow = true;
+                                                                } elseif (strpos($nameStr, 'house rent') !== false) {
+                                                                    $val = round($basic * 0.50, 2);
+                                                                    $isBasicAllow = true;
                                                                 } else {
-                                                                    $nameStr = strtolower($item['name']);
-                                                                    if (strpos($nameStr, 'recreation') !== false ||
-                                                                        strpos($nameStr, 'conveyance') !== false ||
-                                                                        strpos($nameStr, 'medical') !== false ||
-                                                                        strpos($nameStr, 'house rent') !== false) {
-                                                                        
-                                                                        $percentage = (float)($item['percentage'] ?? 0);
-                                                                        if ($percentage > 0) {
-                                                                            $val = round(($gross / 2) * ($percentage / 100), 2);
-                                                                        }
+                                                                    if (isset($p['dynamic_details'][$item['id']])) {
+                                                                        $val = round($p['dynamic_details'][$item['id']], 2);
+                                                                    } else {
+                                                                        $val = 0;
                                                                     }
                                                                 }
                                                             ?>
                                                             <td><input type="number" step="0.01"
-                                                                    class="form-control form-control-sm text-end in-earning"
+                                                                    class="form-control form-control-sm text-end in-earning <?= $isBasicAllow ? 'in-basic-allowance' : '' ?>"
                                                                     data-item-id="<?= $item['id'] ?>"
                                                                     value="<?= $val ?>"
                                                                     style="min-width: 80px;"></td>
                                                     <?php endif; ?>
                                             <?php endforeach; ?>
 
-                                            <td class="cell-gross fw-bold text-nowrap"><?= number_format($gross, 2) ?></td>
+                                            <td class="cell-gross fw-bold text-nowrap" data-val="<?= $gross ?>"><?= number_format($gross, 2) ?></td>
                                             <td class="cell-daily text-nowrap" data-val="<?= $daily ?>"><?= number_format($daily, 2) ?>
                                             </td>
                                             <td><input type="number" step="0.01"
@@ -499,15 +503,15 @@ $show_breadcrumb = true;
                         const absentDays = parseFloat(row.querySelector('.in-absent-days').value) || 0;
                         row.querySelector('.in-unpaid').value = (absentDays * daily).toFixed(2);
 
-                        // Re-sum gross salary
-                        let totalEarning = basic;
+                        // Use existing gross salary from database
+                        let gross = parseFloat(row.querySelector('.cell-gross').dataset.val) || 0;
+                        
+                        let totalEarning = gross;
                         row.querySelectorAll('.in-earning').forEach(inp => {
-                            totalEarning += (parseFloat(inp.value) || 0);
+                            if (!inp.classList.contains('in-basic-allowance')) {
+                                totalEarning += (parseFloat(inp.value) || 0);
+                            }
                         });
-
-                        row.querySelector('.cell-gross').textContent = totalEarning.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-                        // Re-sum deductions
                         let totalDeduction = 0;
                         row.querySelectorAll('.in-deduct').forEach(inp => {
                             totalDeduction += (parseFloat(inp.value) || 0);
