@@ -1448,9 +1448,10 @@
                                     Approval Pending
                                 </a>
                             </li>
-                            <li class="slide <?= isActive('tipsoi-pending-requests', $current_route) ? 'active' : '' ?>">
-                                <a href="<?= $base_url ?>/tipsoi-pending-requests" class="sidebar__menu-item <?= isActive('tipsoi-pending-requests', $current_route) ? 'active' : '' ?>">
-                                    Pending Requests Filter
+
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/my-tipsoi-info#apply-leave" class="sidebar__menu-item">
+                                    Apply Leave
                                 </a>
                             </li>
                             <li class="slide">
