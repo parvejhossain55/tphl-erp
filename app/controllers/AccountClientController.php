@@ -1214,6 +1214,84 @@ public function updateTransaction()
         exit;
     }
 
+    /**
+     * Delete a full booking transaction and associated payments.
+     * Only accessible for Management roles (e.g. Admin, Super Admin, Management)
+     */
+    public function deleteBooking()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        
+        $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+        
+        // Allowed roles: 1 (Admin), 3 (Super Admin), 33 (Management)
+        if (!in_array($roleId, [1, 3, 33])) {
+            echo json_encode(['success' => false, 'message' => 'You do not have permission to delete bookings.']);
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
+            exit;
+        }
+
+        // Get JSON payload
+        $input = json_decode(file_get_contents('php://input'), true);
+        $bookingId = isset($input['booking_id']) ? (int) $input['booking_id'] : 0;
+
+        if (!$bookingId) {
+            echo json_encode(['success' => false, 'message' => 'Booking ID is required.']);
+            exit;
+        }
+
+        // Get the flat_id associated with this booking
+        $stmt = $this->db->prepare("SELECT flat_id FROM lead_bookings WHERE id = ?");
+        $stmt->bind_param('i', $bookingId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows === 0) {
+            echo json_encode(['success' => false, 'message' => 'Booking not found.']);
+            exit;
+        }
+        
+        $row = $result->fetch_assoc();
+        $flatId = $row['flat_id'];
+        $stmt->close();
+
+        // Start transaction
+        $this->db->begin_transaction();
+
+        try {
+            // 1. Delete all payments associated with this booking
+            $stmt1 = $this->db->prepare("DELETE FROM lead_payments WHERE booking_id = ?");
+            $stmt1->bind_param('i', $bookingId);
+            $stmt1->execute();
+            $stmt1->close();
+
+            // 2. Delete the main booking
+            $stmt2 = $this->db->prepare("DELETE FROM lead_bookings WHERE id = ?");
+            $stmt2->bind_param('i', $bookingId);
+            $stmt2->execute();
+            $stmt2->close();
+
+            // 3. Reset the flat status
+            $stmt3 = $this->db->prepare("UPDATE flats SET status = 'available', is_booked = 0 WHERE id = ?");
+            $stmt3->bind_param('i', $flatId);
+            $stmt3->execute();
+            $stmt3->close();
+
+            $this->db->commit();
+            echo json_encode(['success' => true, 'message' => 'Booking and all associated payments deleted successfully.']);
+            exit;
+
+        } catch (\Exception $e) {
+            $this->db->rollback();
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+            exit;
+        }
+    }
+
     public function clientStatement($booking_id) {
     try {
         // Get period from query params

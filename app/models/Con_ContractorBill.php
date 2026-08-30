@@ -37,8 +37,12 @@ class Con_ContractorBill extends Model
                 LEFT JOIN (
                     SELECT ref_id, processed_by
                     FROM con_financial_transactions
-                    WHERE ref_type = 'contractor_bill'
-                    ORDER BY id DESC
+                    WHERE id IN (
+                        SELECT MAX(id)
+                        FROM con_financial_transactions
+                        WHERE ref_type = 'contractor_bill'
+                        GROUP BY ref_id
+                    )
                 ) latest_txn ON latest_txn.ref_id = cbr.id
                 LEFT JOIN users pb ON pb.id = latest_txn.processed_by
                 LEFT JOIN phase_weekly_progress pwp ON pwp.id = cbr.target_id
@@ -60,7 +64,7 @@ class Con_ContractorBill extends Model
             $sql .= " WHERE (" . implode(' OR ', $conditions) . ")";
         }
 
-        $sql .= " GROUP BY cbr.id ORDER BY cbr.created_at DESC";
+        $sql .= " ORDER BY cbr.created_at DESC";
 
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
