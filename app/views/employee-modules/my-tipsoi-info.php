@@ -1055,7 +1055,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 document.getElementById("infoCardSearchName").value = profile.employeeName || '—';
 
                 if (response.dates) {
-                    response.dates.forEach(d => {
+                    [...response.dates].reverse().forEach(d => {
                         // d is e.g. "01.07.2026 (Wed)"
                         const cleanD = d.split(" ")[0]; // "01.07.2026"
                         const dayName = d.split(" ").slice(1).join(" ") || "";

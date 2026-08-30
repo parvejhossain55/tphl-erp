@@ -1171,6 +1171,12 @@ class PayrollController extends Controller
             }
 
             $stmt = $this->db->prepare("INSERT INTO payroll_projects (name, date) VALUES (?, ?)");
+            
+            if (!$stmt) {
+                echo "<script>alert('Database error: Failed to prepare statement.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
+                exit;
+            }
+
             $stmt->bind_param("ss", $name, $date);
 
             if ($stmt->execute()) {
@@ -1528,7 +1534,20 @@ class PayrollController extends Controller
 
             foreach ($items as $item) {
                 if ($item['type'] === 'earning') {
-                    $html .= '<td>' . number_format($p['dynamic_details'][$item['id']] ?? 0, 2) . '</td>';
+                    $val = 0;
+                    $nameStr = strtolower($item['name']);
+                    if (strpos($nameStr, 'recreation') !== false) {
+                        $val = round($basic * 0.10, 2);
+                    } elseif (strpos($nameStr, 'conveyance') !== false) {
+                        $val = round($basic * 0.10, 2);
+                    } elseif (strpos($nameStr, 'medical') !== false) {
+                        $val = round($basic * 0.30, 2);
+                    } elseif (strpos($nameStr, 'house rent') !== false) {
+                        $val = round($basic * 0.50, 2);
+                    } else {
+                        $val = $p['dynamic_details'][$item['id']] ?? 0;
+                    }
+                    $html .= '<td>' . number_format($val, 2) . '</td>';
                 }
             }
 
