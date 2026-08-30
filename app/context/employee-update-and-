@@ -1,0 +1,739 @@
+You are working on our existing TPHL ERP project.
+
+I want you to enhance the existing "Tipsoi Employees" page.
+
+IMPORTANT:
+- Do NOT create a new/demo page.
+- Modify the existing Tipsoi Employees page and its existing table.
+- First inspect the existing codebase, API services, authentication, employee data structure, and UI components.
+- Follow the existing project architecture and styling.
+- Do not break any existing functionality.
+- Use the existing TPHL ERP theme and components.
+- Reuse existing API utilities, authentication/JWT handling, modals, toast/SweetAlert components, form components, and table components wherever possible.
+
+==================================================
+1. ADD ACTION BUTTONS TO THE EMPLOYEE TABLE
+==================================================
+
+In the existing "Tipsoi External Employees List" table, add a new "Actions" column.
+
+Each employee row must have TWO action buttons:
+
+1. Update
+2. Delete
+
+Use appropriate existing icons from the project, such as:
+- Edit/Pencil icon for Update
+- Trash icon for Delete
+
+The buttons should be compact and visually consistent with the existing ERP design.
+
+Do not use browser alert().
+
+Use the project's existing SweetAlert/modal/toast system.
+
+==================================================
+2. UPDATE EMPLOYEE
+==================================================
+
+When the user clicks the "Update" button for an employee:
+
+Open a proper modal/dialog containing an employee update form.
+
+The form should be pre-filled with the selected employee's current Tipsoi data.
+
+The employee ID must come dynamically from the selected employee.
+
+DO NOT hardcode employee IDs.
+
+The update API is:
+
+POST /employee/profile/{employeeId}
+
+Example:
+
+POST /employee/profile/12345
+
+Request body:
+
+{
+  "name": "Test Ilham 2",
+  "employeeOfficeId": "9870",
+  "Email": "ilhamtest99@gmail.com",
+  "departmentId": 0,
+  "subDepartmentId": 0,
+  "designationId": 0,
+  "employmentTypeId": 0,
+  "shiftGroupId": null,
+  "primaryDisplayText": "Welcome",
+  "secondaryDisplayText": "Test",
+  "rfid": null,
+  "reportPosition": null,
+  "dateOfJoin": null,
+  "dateOfResignation": null,
+  "workplaceId": null,
+  "lineManagerId": -1,
+  "hrManagerId": -1
+}
+
+IMPORTANT:
+Do not blindly use the example values above.
+
+Populate the request using the selected employee's actual existing data.
+
+==================================================
+3. UPDATE FORM FIELDS
+==================================================
+
+The update modal should contain the relevant employee fields.
+
+At minimum, support:
+
+- Name
+- Employee Office ID
+- Email
+- Department
+- Sub Department
+- Designation
+- Employment Type
+- Shift Group
+- Primary Display Text
+- Secondary Display Text
+- RFID
+- Report Position
+- Date of Join
+- Date of Resignation
+- Workplace
+- Line Manager
+- HR Manager
+
+However, follow the existing Tipsoi employee data structure.
+
+If some fields are not currently available in the employee list response, inspect the existing Tipsoi employee APIs/code to determine whether the information is available elsewhere.
+
+Do not fabricate values.
+
+==================================================
+4. DROPDOWN FIELDS
+==================================================
+
+The following fields MUST be dropdown/select fields:
+
+- Line Manager
+- HR Manager
+- Workplace
+- Designation
+- Department
+- Employment Type
+
+Load the dropdown options from the Tipsoi APIs.
+
+------------------------------------------
+DESIGNATION
+------------------------------------------
+
+Endpoint:
+
+GET /designation
+
+Example response:
+
+{
+  "message": "Success",
+  "designationList": [
+    {
+      "id": 39249,
+      "name": "CEO",
+      "hierarchy": 1,
+      "officeId": 4699,
+      "status": 1,
+      "createdBy": 298780,
+      "updatedBy": null,
+      "creationDate": 1762150496480,
+      "updateDate": 1762150496480,
+      "subsidiaryId": null,
+      "externalSyncId": null
+    }
+  ]
+}
+
+Use:
+
+designationList[].id
+designationList[].name
+
+as the dropdown value/label.
+
+------------------------------------------
+DEPARTMENT
+------------------------------------------
+
+Endpoint:
+
+GET /department
+
+Example response:
+
+{
+  "message": "Success",
+  "departmentList": [
+    {
+      "id": 23186,
+      "name": "Management",
+      "officeId": 4699,
+      "status": 1,
+      "isForGuests": false,
+      "hierarchy": 1,
+      "subsidiaryId": null,
+      "externalSyncId": null
+    }
+  ]
+}
+
+Use:
+
+departmentList[].id
+departmentList[].name
+
+as the dropdown value/label.
+
+------------------------------------------
+LEAVE POLICY
+------------------------------------------
+
+Endpoint:
+
+GET /leave-policy
+
+Example response:
+
+{
+  "message": "Success",
+  "leavePolicies": [
+    {
+      "id": 2011,
+      "name": "Employee Policy",
+      "officeId": 4699,
+      "status": 1
+    }
+  ]
+}
+
+Use:
+
+leavePolicies[].id
+leavePolicies[].name
+
+for the Leave Policy dropdown if Leave Policy is part of the existing employee form/data model.
+
+------------------------------------------
+EMPLOYMENT TYPE
+------------------------------------------
+
+Endpoint:
+
+GET /employment-type
+
+Example response:
+
+{
+  "message": "Success",
+  "employmentTypeList": [
+    {
+      "id": 2880,
+      "name": "Full-time",
+      "officeId": 4699,
+      "status": 1,
+      "createdBy": 298780,
+      "updatedBy": null,
+      "creationDate": 1762150496496,
+      "updateDate": 1762150496496,
+      "subsidiaryId": null,
+      "externalSyncId": null
+    }
+  ]
+}
+
+Use:
+
+employmentTypeList[].id
+employmentTypeList[].name
+
+as the dropdown value/label.
+
+==================================================
+5. LINE MANAGER / HR MANAGER
+==================================================
+
+Line Manager and HR Manager must also be dropdowns.
+
+Do NOT hardcode manager IDs.
+
+Inspect the existing Tipsoi API integration and determine which existing employee/manager endpoint provides valid employee IDs and names.
+
+Use the existing Tipsoi employee data if it already contains enough information.
+
+The dropdown should display something human-readable, for example:
+
+Abdul Kader
+Abdur Rashid
+Abeer Israkul Islam Arka
+
+but submit the corresponding Tipsoi employee ID.
+
+If the existing employee API provides employee IDs, use those IDs.
+
+The submitted fields must be:
+
+"lineManagerId": <selected employee ID>
+
+"hrManagerId": <selected employee ID>
+
+Support the existing special value -1 if that is what Tipsoi expects for "no manager".
+
+Do not invent a new manager endpoint unless absolutely necessary.
+
+==================================================
+6. WORKPLACE DROPDOWN
+==================================================
+
+Workplace must be a dropdown.
+
+Inspect the existing project/API integration to determine where Tipsoi workplace data is already loaded.
+
+Use the actual:
+
+workplaceId
+
+as the submitted value.
+
+Display the workplace name in the dropdown.
+
+Do not hardcode workplace options.
+
+If there is already an existing workplace API/service in the project, reuse it.
+
+==================================================
+7. FORM BEHAVIOR
+==================================================
+
+When opening Update:
+
+1. Load the selected employee's current values.
+2. Populate all available fields.
+3. Populate dropdowns with the correct options.
+4. Automatically select the employee's current:
+   - Department
+   - Designation
+   - Employment Type
+   - Workplace
+   - Line Manager
+   - HR Manager
+5. Allow the user to change them.
+6. Submit the updated values.
+
+The form must not reset existing employee values accidentally.
+
+For nullable fields:
+
+- shiftGroupId
+- rfid
+- reportPosition
+- dateOfJoin
+- dateOfResignation
+- workplaceId
+- lineManagerId
+- hrManagerId
+
+handle null correctly.
+
+Do not convert null into the string "null".
+
+==================================================
+8. UPDATE REQUEST
+==================================================
+
+When the user clicks "Update/Save":
+
+Send:
+
+POST /employee/profile/{employeeId}
+
+with the complete required request body.
+
+Use the existing authentication/JWT mechanism.
+
+Do not create a second authentication implementation.
+
+Show a loading state on the Save/Update button while submitting.
+
+Prevent duplicate submissions.
+
+On successful update:
+
+1. Show a success SweetAlert/toast.
+2. Close the modal.
+3. Refresh the employee list.
+4. Show the updated employee information in the table.
+
+If the API returns an error:
+
+- Keep the modal open.
+- Show a useful error message.
+- Do not lose the user's entered values.
+- Do not expose sensitive JWT/token information.
+
+==================================================
+9. DELETE EMPLOYEE
+==================================================
+
+The Delete button must use:
+
+POST /employee/delete
+
+Request body:
+
+{
+  "employeeIdList": [
+    "placeholder"
+  ]
+}
+
+Replace "placeholder" dynamically with the selected employee's actual employee ID.
+
+Example:
+
+{
+  "employeeIdList": [
+    "12345"
+  ]
+}
+
+DO NOT hardcode the ID.
+
+==================================================
+10. DELETE CONFIRMATION
+==================================================
+
+When the user clicks Delete:
+
+Show a proper SweetAlert confirmation dialog.
+
+Example:
+
+"Are you sure you want to delete this employee?"
+
+Show the employee's name in the confirmation message if available.
+
+Buttons:
+
+Cancel
+Delete
+
+Do not use browser confirm().
+
+Only call:
+
+POST /employee/delete
+
+after the user confirms.
+
+==================================================
+11. DELETE SUCCESS
+==================================================
+
+After successful deletion:
+
+1. Show a success SweetAlert/toast.
+2. Refresh the employee list.
+3. Remove the deleted employee from the table.
+4. Update the total employee count/cards if the current page calculates them from the employee list.
+
+Do not require a full browser refresh.
+
+If the delete API fails:
+
+- Keep the employee in the table.
+- Show the API error.
+- Do not falsely show a successful deletion.
+
+==================================================
+12. TABLE ACTION COLUMN
+==================================================
+
+Add:
+
+Actions
+
+to the existing employee table.
+
+Example:
+
+| S/N | External ID | Full Name | Designation | Department | Email | Phone | ERP Status | Actions |
+|-----|-------------|-----------|-------------|------------|-------|-------|------------|---------|
+| 1   | 1101        | ABDUL KADER | ... | ... | ... | ... | Registered | Edit Delete |
+
+Use icon buttons or compact buttons consistent with the existing TPHL ERP UI.
+
+Add tooltips if the existing project supports them.
+
+==================================================
+13. MODAL DESIGN
+==================================================
+
+The Update Employee modal should look like a native part of our ERP.
+
+Use:
+
+- Existing modal component if available.
+- Existing form components if available.
+- Existing Tailwind/theme classes.
+- Responsive layout.
+- Two-column form layout on desktop where appropriate.
+- One-column layout on mobile.
+
+Example:
+
+------------------------------------------------
+        Update Tipsoi Employee
+------------------------------------------------
+
+Name                    Employee Office ID
+[................]      [................]
+
+Email                   Department
+[................]      [ Select Department ]
+
+Sub Department          Designation
+[................]      [ Select Designation ]
+
+Employment Type         Workplace
+[................]      [ Select Type ]
+
+Line Manager            HR Manager
+[................]      [................]
+
+Shift Group             RFID
+[................]      [................]
+
+Date of Join            Date of Resignation
+[................]      [................]
+
+Primary Display Text    Secondary Display Text
+[................]      [................]
+
+Report Position
+[...........................................]
+
+                    [Cancel] [Update]
+------------------------------------------------
+
+Adjust the exact layout based on the existing project components.
+
+==================================================
+14. DROPDOWN LOADING
+==================================================
+
+Dropdown API calls should be handled properly.
+
+When opening the update modal:
+
+- If dropdown data is already loaded, reuse it.
+- Do not repeatedly fetch the same lists unnecessarily.
+- If the data has not been loaded, fetch it.
+- Show loading indicators where appropriate.
+
+Handle API failures independently.
+
+For example, if Department API fails, the Designation dropdown should still work.
+
+==================================================
+15. CURRENT PAGE INTEGRATION
+==================================================
+
+The screenshot shows the existing page:
+
+"Tipsoi External Employees List"
+
+with:
+
+- Total Tipsoi Employees
+- Registered in ERP
+- Missing in ERP
+- Search Employee
+- Department filter
+- ERP Status filter
+- Employee table
+
+DO NOT remove or redesign these existing features unnecessarily.
+
+Only enhance the table with:
+
+- Actions column
+- Update modal
+- Delete functionality
+
+Keep the current search/filter/pagination behavior working.
+
+==================================================
+16. IMPORTANT API / DATA RULES
+==================================================
+
+Do NOT guess response field names.
+
+Before implementation:
+
+1. Inspect existing employee API response.
+2. Inspect existing API service files.
+3. Inspect existing employee components.
+4. Inspect existing Tipsoi integration.
+5. Identify the actual employee ID field.
+6. Identify existing department/designation/employment/workplace/manager fields.
+7. Reuse existing API utilities.
+
+Normalize the API data if necessary.
+
+Do not hardcode:
+
+- employee IDs
+- department IDs
+- designation IDs
+- employment type IDs
+- workplace IDs
+- manager IDs
+- leave policy IDs
+
+All of these must come from API data or the selected employee's existing data.
+
+==================================================
+17. VALIDATION
+==================================================
+
+Add appropriate validation for editable fields.
+
+At minimum:
+
+- Name → required
+- Email → validate email format if provided
+- Employee Office ID → required if required by Tipsoi
+- Department → valid selection
+- Designation → valid selection
+- Employment Type → valid selection
+
+Do not introduce validation that conflicts with Tipsoi's actual requirements.
+
+==================================================
+18. ERROR / EDGE CASE HANDLING
+==================================================
+
+Handle:
+
+- Employee with missing department
+- Employee with missing designation
+- Employee with no manager
+- Employee with null workplace
+- Employee with null dates
+- Employee with null RFID
+- Empty dropdown responses
+- API timeout
+- API 401
+- API 403
+- API 404
+- API 422
+- API 500
+
+For dropdown values that are no longer present in the API response, preserve/display the current value appropriately rather than silently replacing it.
+
+==================================================
+19. PERFORMANCE
+==================================================
+
+Avoid unnecessary API calls.
+
+Do not fetch designation/department/employment type repeatedly every time the component rerenders.
+
+Use appropriate React state/useEffect/query caching based on the existing project architecture.
+
+Do not introduce dependency bugs that cause infinite API requests.
+
+==================================================
+20. FINAL VERIFICATION
+==================================================
+
+After implementing:
+
+1. Run the application.
+2. Open:
+   /hrm-external-employees
+3. Verify the employee table still loads.
+4. Verify the new Actions column appears.
+5. Click Update on a real employee.
+6. Verify the modal opens.
+7. Verify existing employee values are populated.
+8. Verify Department dropdown works.
+9. Verify Designation dropdown works.
+10. Verify Employment Type dropdown works.
+11. Verify Workplace dropdown works.
+12. Verify Line Manager dropdown works.
+13. Verify HR Manager dropdown works.
+14. Verify Leave Policy if included in the form.
+15. Change a field and submit.
+16. Verify:
+    POST /employee/profile/{employeeId}
+    is called with the correct employee ID and body.
+17. Verify success handling.
+18. Verify the table refreshes after update.
+19. Click Delete.
+20. Verify SweetAlert confirmation.
+21. Confirm deletion.
+22. Verify:
+    POST /employee/delete
+    is called with:
+    {
+      "employeeIdList": ["actualEmployeeId"]
+    }
+23. Verify success handling.
+24. Verify employee disappears from the table.
+25. Verify counters update.
+26. Verify search/filter functionality still works.
+27. Verify there are no console errors.
+28. Verify there are no duplicate API calls.
+29. Verify there are no React key/warning errors.
+30. Verify desktop and mobile responsiveness.
+
+==================================================
+MOST IMPORTANT
+==================================================
+
+This is an existing production-style ERP integration.
+
+Do not rewrite working parts of the page.
+
+Make the smallest clean architectural changes necessary to add:
+
+UPDATE + DELETE
+
+to the existing Tipsoi Employees table.
+
+Follow the existing project's architecture and UI conventions.
+
+Use real API data.
+
+Use dynamic employee IDs.
+
+Use the existing authentication mechanism.
+
+Do not hardcode IDs.
+
+Do not fabricate API responses.
+
+Do not create fake functionality.
+
+After completing the implementation, explain briefly:
+1. Which files were changed.
+2. Which API endpoints were integrated.
+3. How employee IDs are obtained.
+4. How the dropdown data is loaded.
+5. How Update works.
+6. How Delete works.
+7. Any assumptions made because of missing API information.
