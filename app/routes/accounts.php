@@ -69,6 +69,7 @@ return [
     'clients-cash-in-history-view/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'indexTwoView'],
     'save-transfer-note' => ['controller' => 'AccountClientController', 'method' => 'saveTransferNote'],
     'verify-payment' => ['controller' => 'AccountClientController', 'method' => 'verifyPayment'],
+    'account-client/bulkVerify' => ['controller' => 'AccountClientController', 'method' => 'bulkVerify'],
     'assign-handover' => ['controller' => 'AccountClientController', 'method' => 'assignHandover'],
     'get-banks' => ['controller' => 'AccountClientController', 'method' => 'getBanks'],
     'upload-transaction-proof' => ['controller' => 'AccountClientController', 'method' => 'uploadTransactionProof'],

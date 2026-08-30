@@ -181,23 +181,33 @@ if (!empty($virtualEmiSchedule)) {
                         <div class="col-md-12 emi-fields" style="display: none;">
                             <div class="from__input-box p-3" style="background:#f8f9fa;border-radius:8px;border:1px solid #dee2e6;">
                                 <label class="form__input-title">EMI Payment Info <small class="text-muted">(Smart Allocation)</small></label>
-                                <div class="d-flex flex-column gap-2">
+                                <div class="w-100 mt-2">
                                     <?php if ($totalEmiDue > 0): ?>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <span class="badge bg-warning text-dark"><i class="fa-light fa-exclamation-triangle me-1"></i>Outstanding Due</span>
-                                            <strong class="text-danger">TK.<?= number_format($totalEmiDue, 2) ?></strong>
-                                            <small class="text-muted">— will be auto-cleared first from your payment (oldest due first)</small>
+                                        <div class="d-block w-100 mb-2 p-2 bg-warning bg-opacity-10 border border-warning rounded">
+                                            <div class="d-flex align-items-center mb-1">
+                                                <span class="badge bg-warning text-dark"><i class="fa-light fa-exclamation-triangle me-1"></i>Outstanding Due</span>
+                                                <strong class="text-danger ms-2">TK.<?= number_format($totalEmiDue, 2) ?></strong>
+                                            </div>
+                                            <div class="d-block text-muted small" style="line-height: 1.4;">
+                                                — will be auto-cleared first from your payment (oldest due first)
+                                            </div>
                                         </div>
                                     <?php endif; ?>
-                                    <small class="text-muted">
+                                    
+                                    <div class="d-block w-100 text-muted small p-2 bg-light border rounded">
                                         <?php if ($perEmiAmount > 0): ?>
-                                            Suggested EMI: <strong>TK.<?= number_format($perEmiAmount, 2) ?></strong>.
+                                            <div class="mb-1">Suggested EMI: <strong>TK.<?= number_format($perEmiAmount, 2) ?></strong>.</div>
                                             <?php if ($serviceChargeRate > 0): ?>
-                                                Service charge of <strong><?= number_format($serviceChargeRate, 2) ?>%</strong> applies on total amount.
+                                                <div class="mb-1">Service charge of <strong><?= number_format($serviceChargeRate, 2) ?>%</strong> applies on total amount.</div>
                                             <?php endif; ?>
                                         <?php endif; ?>
-                                        Enter any amount — the system will: ① clear outstanding dues (oldest first) → ② cover current installment → ③ carry surplus to next installment(s).
-                                    </small>
+                                        <div class="mb-1">Enter any amount — the system will:</div>
+                                        <ol class="mb-0 ps-3" style="line-height: 1.4;">
+                                            <li>Clear outstanding dues (oldest first)</li>
+                                            <li>Cover current installment</li>
+                                            <li>Carry surplus to next installment(s)</li>
+                                        </ol>
+                                    </div>
                                 </div>
                                 <input type="hidden" name="due_emi_amount" id="dueEmiAmount" value="0">
 
@@ -227,35 +237,52 @@ if (!empty($virtualEmiSchedule)) {
 
                                 <!-- Late Payment Penalty & Waiver Section -->
                                 <div id="penaltyWaiverSection" class="mt-3 p-3" style="background:rgba(220,53,69,0.05);border-radius:8px;border:1px solid rgba(220,53,69,0.2);">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <label class="form__input-title mb-0" style="color:#dc3545;">
-                                            <i class="fa-light fa-clock-rotate-left me-1"></i>Late Payment Penalty (5% Compounded Monthly)
-                                        </label>
-                                        <span id="penaltyBadge" class="badge bg-danger" style="display:none;">Overdue</span>
+                                    <div class="d-block w-100 mb-2">
+                                        <div class="d-flex align-items-start justify-content-between">
+                                            <label class="form__input-title mb-0 text-danger" style="line-height:1.4;">
+                                                <i class="fa-light fa-clock-rotate-left me-1"></i>Late Payment Penalty<br>
+                                                <small class="text-muted" style="font-size:0.85em;">(5% Compounded Monthly)</small>
+                                            </label>
+                                            <span id="penaltyBadge" class="badge bg-danger mt-1" style="display:none; white-space:nowrap;">Overdue</span>
+                                        </div>
                                     </div>
                                     
                                     <div class="row align-items-center mt-2">
-                                        <div class="col-md-7">
-                                            <div class="d-flex flex-column gap-1">
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <small class="text-muted">Calculated Penalty:</small>
-                                                    <strong id="calculatedPenaltyText" class="text-danger fs-15">TK. 0.00</strong>
+                                        <div class="col-12 col-md-7">
+                                            <div class="d-block w-100 mb-2">
+                                                <div class="d-block mb-1">
+                                                    <span class="text-muted small">Calculated Penalty:</span>
+                                                    <strong id="calculatedPenaltyText" class="text-danger fs-15 ms-2">TK. 0.00</strong>
                                                 </div>
-                                                <div id="penaltyTotalBreakdown" class="fs-13 mt-1" style="display:none;">
-                                                    <span class="text-dark">Suggested Total (1 EMI + Penalty):</span>
-                                                    <strong id="totalPayableWithPenaltyText" class="text-primary fs-15 me-2">TK. 0.00</strong>
-                                                    <button type="button" id="btnFillTotalWithPenalty" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size:11px;">
-                                                        <i class="fa-light fa-plus-circle me-1"></i>Auto Fill Paid Amount
-                                                    </button>
+                                                <div id="penaltyTotalBreakdown" class="d-block fs-13 mt-2" style="display:none;">
+                                                    <div class="d-block mb-1">
+                                                        <span class="text-dark">Suggested Total:</span>
+                                                        <strong id="totalPayableWithPenaltyText" class="text-primary fs-15 ms-1">TK. 0.00</strong>
+                                                    </div>
+                                                    <div class="d-block mt-2">
+                                                        <button type="button" id="btnFillTotalWithPenalty" class="btn btn-sm btn-outline-primary py-1 px-2" style="font-size:12px;">
+                                                            <i class="fa-light fa-plus-circle me-1"></i>Auto Fill Amount
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <input type="hidden" name="penalty_amount" id="penaltyAmount" value="0">
                                             <input type="hidden" name="penalty_paid" id="penaltyPaid" value="0">
                                         </div>
-                                        <div class="col-md-5 text-end">
-                                            <div class="form-check form-switch d-inline-block">
-                                                <input class="form-check-input" type="checkbox" id="toggleWaiver" name="apply_waiver" value="1">
-                                                <label class="form-check-label text-dark fw-bold" for="toggleWaiver">Request Penalty Waiver</label>
+                                        <div class="col-12 col-md-5 mt-3 mt-md-0">
+                                            <div class="d-block w-100">
+                                                <div class="d-flex flex-wrap align-items-center justify-content-start justify-content-md-end gap-3 mb-2">
+                                                    <div class="form-check form-switch m-0">
+                                                        <input class="form-check-input" type="checkbox" id="toggleNoPenalty" name="no_penalty" value="1">
+                                                        <label class="form-check-label text-success fw-bold" for="toggleNoPenalty">Penalty Not Required</label>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex flex-wrap align-items-center justify-content-start justify-content-md-end gap-3">
+                                                    <div class="form-check form-switch m-0">
+                                                        <input class="form-check-input" type="checkbox" id="toggleWaiver" name="apply_waiver" value="1">
+                                                        <label class="form-check-label text-dark fw-bold" for="toggleWaiver">Request Penalty Waiver</label>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -263,7 +290,7 @@ if (!empty($virtualEmiSchedule)) {
                                     <!-- Waiver Input Box -->
                                     <div id="waiverFields" class="mt-3 p-3 bg-white" style="display:none;border-radius:6px;border:1px solid #ced4da;">
                                         <h6 class="text-primary fs-14 mb-2"><i class="fa-light fa-file-signature me-1"></i>Penalty Waiver Details (Requires Management Approval)</h6>
-                                        <div class="row g-3">
+                                        <div class="row ">
                                             <div class="col-md-6">
                                                 <label class="form-label fs-13 font-semibold">Waived Penalty Amount (TK.) <span class="text-danger">*</span></label>
                                                 <input type="number" name="penalty_waived" id="penaltyWaived" class="form-control form-control-sm" step="0.01" min="0" value="0">
@@ -438,13 +465,13 @@ if (!empty($virtualEmiSchedule)) {
 
                         <!-- Submit Buttons -->
                         <div class="col-md-12">
-                            <div class="submit__btn text-center mt-30">
-                                <button type="submit" class="btn btn-primary me-3">
-                                    <i class="fa-solid fa-save me-2"></i>Save Transaction
+                            <div class="submit__btn text-center mt-4 d-grid gap-2 d-md-block">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa-solid fa-save me-1"></i>Save Transaction
                                 </button>
                                 <a href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history-view/<?= $bookingId ?>"
-                                    class="btn btn-secondary">
-                                    <i class="fa-solid fa-times me-2"></i>Cancel
+                                    class="btn btn-danger">
+                                    <i class="fa-solid fa-times me-1"></i>Cancel
                                 </a>
                             </div>
                         </div>
@@ -679,6 +706,7 @@ if (!empty($virtualEmiSchedule)) {
             const penaltyPaidInput      = document.getElementById('penaltyPaid');
             const penaltyWaivedInput    = document.getElementById('penaltyWaived');
             const toggleWaiver          = document.getElementById('toggleWaiver');
+            const toggleNoPenalty       = document.getElementById('toggleNoPenalty');
 
             const pTypeValue = paymentType ? paymentType.value : '';
 
@@ -705,16 +733,34 @@ if (!empty($virtualEmiSchedule)) {
                 if (penaltyAmountInput) penaltyAmountInput.value = overduePenaltySum.toFixed(2);
 
                 let effectivePenaltyPaid = overduePenaltySum;
-                if (toggleWaiver && toggleWaiver.checked) {
-                    const waivedVal = parseFloat(penaltyWaivedInput?.value) || overduePenaltySum;
-                    effectivePenaltyPaid = Math.max(0, overduePenaltySum - waivedVal);
-                    if (penaltyPaidInput) penaltyPaidInput.value = effectivePenaltyPaid.toFixed(2);
-                    if (penaltyWaivedInput && (!penaltyWaivedInput.value || parseFloat(penaltyWaivedInput.value) <= 0)) {
-                        penaltyWaivedInput.value = overduePenaltySum.toFixed(2);
-                    }
-                } else {
-                    if (penaltyPaidInput) penaltyPaidInput.value = overduePenaltySum.toFixed(2);
+                if (toggleNoPenalty && toggleNoPenalty.checked) {
+                    effectivePenaltyPaid = 0;
+                    if (penaltyPaidInput) penaltyPaidInput.value = '0';
                     if (penaltyWaivedInput) penaltyWaivedInput.value = '0';
+                    if (toggleWaiver) {
+                        toggleWaiver.checked = false;
+                        toggleWaiver.disabled = true;
+                    }
+                    const waiverFields = document.getElementById('waiverFields');
+                    const waiverReason = document.getElementById('waiverReason');
+                    const waiverFile   = document.getElementById('waiverFile');
+                    if (waiverFields) waiverFields.style.display = 'none';
+                    if (waiverReason) waiverReason.removeAttribute('required');
+                    if (waiverFile) waiverFile.removeAttribute('required');
+                } else {
+                    if (toggleWaiver) toggleWaiver.disabled = false;
+                    
+                    if (toggleWaiver && toggleWaiver.checked) {
+                        const waivedVal = parseFloat(penaltyWaivedInput?.value) || overduePenaltySum;
+                        effectivePenaltyPaid = Math.max(0, overduePenaltySum - waivedVal);
+                        if (penaltyPaidInput) penaltyPaidInput.value = effectivePenaltyPaid.toFixed(2);
+                        if (penaltyWaivedInput && (!penaltyWaivedInput.value || parseFloat(penaltyWaivedInput.value) <= 0)) {
+                            penaltyWaivedInput.value = overduePenaltySum.toFixed(2);
+                        }
+                    } else {
+                        if (penaltyPaidInput) penaltyPaidInput.value = overduePenaltySum.toFixed(2);
+                        if (penaltyWaivedInput) penaltyWaivedInput.value = '0';
+                    }
                 }
 
                 // Total Payable = Suggested 1 EMI Base + Effective Penalty Paid
@@ -759,6 +805,13 @@ if (!empty($virtualEmiSchedule)) {
                     if (waiverReason) waiverReason.removeAttribute('required');
                     if (waiverFile) waiverFile.removeAttribute('required');
                 }
+                updatePenaltyDisplay();
+            });
+        }
+
+        const toggleNoPenalty = document.getElementById('toggleNoPenalty');
+        if (toggleNoPenalty) {
+            toggleNoPenalty.addEventListener('change', function() {
                 updatePenaltyDisplay();
             });
         }
@@ -1006,7 +1059,7 @@ if (!empty($virtualEmiSchedule)) {
             <div class="modal-body p-4 bg-light">
                 <form id="companyBankForm">
                     <input type="hidden" name="id" id="cb_id" value="">
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-12">
                             <label class="form-label fs-14 fw-semibold text-dark">Bank Name <span class="text-danger">*</span></label>
                             <input type="text" name="bank_name" id="cb_bank_name" class="form-control" required placeholder="e.g. Dutch Bangla Bank">

@@ -571,11 +571,19 @@ public function addCedTransaction()
         }
     }
 
-    $penaltyAmount = isset($_POST['penalty_amount']) ? (float)$_POST['penalty_amount'] : 0;
-    $penaltyWaived = isset($_POST['penalty_waived']) ? (float)$_POST['penalty_waived'] : 0;
-    $penaltyPaid   = max(0, $penaltyAmount - $penaltyWaived);
-    $waiverReason  = $_POST['waiver_reason'] ?? null;
-    $waiverStatus  = (!empty($_POST['apply_waiver']) && $penaltyWaived > 0) ? 'pending' : 'none';
+    if (!empty($_POST['no_penalty'])) {
+        $penaltyAmount = 0;
+        $penaltyWaived = 0;
+        $penaltyPaid = 0;
+        $waiverReason = null;
+        $waiverStatus = 'none';
+    } else {
+        $penaltyAmount = isset($_POST['penalty_amount']) ? (float)$_POST['penalty_amount'] : 0;
+        $penaltyWaived = isset($_POST['penalty_waived']) ? (float)$_POST['penalty_waived'] : 0;
+        $penaltyPaid   = max(0, $penaltyAmount - $penaltyWaived);
+        $waiverReason  = $_POST['waiver_reason'] ?? null;
+        $waiverStatus  = (!empty($_POST['apply_waiver']) && $penaltyWaived > 0) ? 'pending' : 'none';
+    }
 
     // Prepare transaction data
     $transactionData = [
@@ -631,9 +639,10 @@ public function addCedTransaction()
         $phoneCheck    = $smsService->validatePhoneNumber($clientPhone);
 
         if (!$phoneCheck['valid']) {
-            setError("Cannot process payment: " . $phoneCheck['message'] . ". Please update the client's phone number first or enable Testing Mode.");
-            header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
-            exit;
+            // Do not block payment. It will gracefully show a warning instead.
+            // setError("Cannot process payment: " . $phoneCheck['message'] . ". Please update the client's phone number first or enable Testing Mode.");
+            // header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
+            // exit;
         }
     }
 
@@ -896,9 +905,10 @@ public function addTransaction()
             $phoneCheck    = $smsService->validatePhoneNumber($clientPhone);
 
             if (!$phoneCheck['valid']) {
-                setError("Cannot process payment: " . $phoneCheck['message'] . ". Please update the client's phone number first or enable Testing Mode.");
-                header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
-                exit;
+                // Do not block payment. It will gracefully show a warning instead.
+                // setError("Cannot process payment: " . $phoneCheck['message'] . ". Please update the client's phone number first or enable Testing Mode.");
+                // header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
+                // exit;
             }
         }
 
@@ -1391,7 +1401,6 @@ public function viewPaymentInvoice($paymentId = null)
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-
     // Get payment_id from URL parameter or query string
     if (!$paymentId) {
         $paymentId = $_GET['payment_id'] ?? null;
@@ -1403,17 +1412,42 @@ public function viewPaymentInvoice($paymentId = null)
         exit;
     }
 
-    // Get payment details
-    $payment = $this->clientModel->getTransactionById($paymentId);
+    $paymentIds = array_filter(array_map('trim', explode(',', $paymentId)));
+    $payments = [];
+    $clientDetails = null;
 
-    if (!$payment) {
-        setError("Payment not found");
+    foreach ($paymentIds as $pid) {
+        $pay = $this->clientModel->getTransactionById($pid);
+        if ($pay) {
+            if ($pay['payment_type'] === 'emi') {
+                $emiSchedule = $this->clientModel->getEMIScheduleByPaymentId($pid);
+                if ($emiSchedule && isset($emiSchedule['emi_no'])) {
+                    $emiNo = $emiSchedule['emi_no'];
+                    if ($emiNo % 100 >= 11 && $emiNo % 100 <= 13) {
+                        $suffix = 'th';
+                    } else {
+                        switch ($emiNo % 10) {
+                            case 1: $suffix = 'st'; break;
+                            case 2: $suffix = 'nd'; break;
+                            case 3: $suffix = 'rd'; break;
+                            default: $suffix = 'th';
+                        }
+                    }
+                    $pay['installment_label'] = $emiNo . $suffix . ' Installment';
+                }
+            }
+            $payments[] = $pay;
+            if (!$clientDetails) {
+                $clientDetails = $this->clientModel->getClientByBookingId($pay['booking_id']);
+            }
+        }
+    }
+
+    if (empty($payments)) {
+        setError("Payment(s) not found");
         header("Location: {$GLOBALS['base_url']}/clients-cash-in");
         exit;
     }
-
-    // Get client details
-    $clientDetails = $this->clientModel->getClientByBookingId($payment['booking_id']);
 
     if (!$clientDetails) {
         setError("Client not found");
@@ -1421,30 +1455,9 @@ public function viewPaymentInvoice($paymentId = null)
         exit;
     }
 
-    // Get EMI schedule if payment type is EMI
-    $emiSchedule = null;
-    if ($payment['payment_type'] === 'emi') {
-        $emiSchedule = $this->clientModel->getEMIScheduleByPaymentId($paymentId);
-        
-        // Add installment label to payment
-        if ($emiSchedule && isset($emiSchedule['emi_no'])) {
-            $emiNo = $emiSchedule['emi_no'];
-            
-            // Determine suffix for ordinal numbers
-            if ($emiNo % 100 >= 11 && $emiNo % 100 <= 13) {
-                $suffix = 'th';
-            } else {
-                switch ($emiNo % 10) {
-                    case 1: $suffix = 'st'; break;
-                    case 2: $suffix = 'nd'; break;
-                    case 3: $suffix = 'rd'; break;
-                    default: $suffix = 'th';
-                }
-            }
-            
-            $payment['installment_label'] = $emiNo . $suffix . ' Installment';
-        }
-    }
+    // Set $payment as the first one for header metadata compatibility
+    $payment = $payments[0];
+    $isBulk = count($payments) > 1;
 
     // Use absolute path from root
     $root = dirname(dirname(__DIR__)); // Go up to project root
@@ -1550,11 +1563,12 @@ public function addPayment()
             $phoneCheck    = $smsService->validatePhoneNumber($clientPhone);
 
             if (!$phoneCheck['valid']) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Cannot process payment: ' . $phoneCheck['message'] . '. Please update the client\'s phone number first or enable Testing Mode.'
-                ]);
-                return;
+                // Do not block payment. It will gracefully show a warning instead.
+                // echo json_encode([
+                //     'success' => false,
+                //     'message' => 'Cannot process payment: ' . $phoneCheck['message'] . '. Please update the client\'s phone number first or enable Testing Mode.'
+                // ]);
+                // return;
             }
         }
 
@@ -2010,6 +2024,130 @@ public function discountStatement($bookingId = null)
             'verified_by_name' => $verifierName,
             'verified_at'      => date('Y-m-d H:i:s')
         ]);
+        exit;
+    }
+
+    /**
+     * Verify multiple payments at once (Accounts team action)
+     * POST: payment_ids (array), send_sms
+     */
+    public function bulkVerify()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        $userRoleId     = (int)($_SESSION['user']['role_id'] ?? 0);
+        $allowedRoleIds = [1, 3, 6, 30];
+        if (!in_array($userRoleId, $allowedRoleIds)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+            exit;
+        }
+
+        $paymentIds = $_POST['payment_ids'] ?? [];
+        $sendSms    = isset($_POST['send_sms']) ? filter_var($_POST['send_sms'], FILTER_VALIDATE_BOOLEAN) : false;
+        $userId     = $_SESSION['user']['id'] ?? 0;
+
+        if (empty($paymentIds) || !is_array($paymentIds)) {
+            echo json_encode(['success' => false, 'message' => 'No payments selected']);
+            exit;
+        }
+
+        $verifiedCount = 0;
+
+        require_once dirname(__DIR__) . '/controllers/PaymentBookingController.php';
+        $paymentController = new PaymentBookingController($this->db);
+
+        require_once dirname(__DIR__) . '/services/AutoPostingService.php';
+        $autoService = new AutoPostingService($this->db);
+
+        $smsService = null;
+        if ($sendSms) {
+            require_once dirname(__DIR__) . '/services/SmsService.php';
+            $smsService = new SmsService($this->db);
+        }
+
+        $this->db->begin_transaction();
+
+        try {
+            foreach ($paymentIds as $pid) {
+                $paymentId = (int)$pid;
+
+                // 1. Fetch payment
+                $payQuery = $this->db->prepare("SELECT p.*, b.id as booking_id, b.project_id, b.lead_id FROM lead_payments p INNER JOIN lead_bookings b ON p.booking_id = b.id WHERE p.id = ?");
+                if (!$payQuery) continue;
+                $payQuery->bind_param('i', $paymentId);
+                $payQuery->execute();
+                $payRes = $payQuery->get_result();
+                $paymentData = $payRes->fetch_assoc();
+
+                if (!$paymentData || $paymentData['handover_status'] === 'pending' || $paymentData['verification_status'] === 'verified') {
+                    continue; 
+                }
+                
+                // If handover is rejected, bulk verify cannot force verify it (requires note). Skip it.
+                if ($paymentData['handover_status'] === 'rejected') {
+                    continue;
+                }
+
+                // 2. Mark as verified
+                $updStmt = $this->db->prepare("UPDATE lead_payments SET verification_status = 'verified', verified_by = ?, verified_at = NOW() WHERE (id = ? OR bulk_parent_id = ?) AND verification_status = 'pending'");
+                $updStmt->bind_param("iii", $userId, $paymentId, $paymentId);
+                $updStmt->execute();
+
+                if ($updStmt->affected_rows > 0) {
+                    $verifiedCount++;
+                    $bookingId = (int)$paymentData['booking_id'];
+
+                    // 3. Sync Booking Status
+                    $newBookingStatus = $paymentController->updateBookingPaymentStatus($bookingId);
+                    $paymentStatusMap = ['paid' => 'paid', 'partial' => 'partially_paid', 'unpaid' => 'pending'];
+                    $newPaymentStatus = $paymentStatusMap[$newBookingStatus] ?? 'paid';
+
+                    $updStatus = $this->db->prepare("UPDATE lead_payments SET payment_status = ? WHERE id = ?");
+                    $updStatus->bind_param('si', $newPaymentStatus, $paymentId);
+                    $updStatus->execute();
+
+                    if ($newBookingStatus === 'paid') {
+                        $paymentController->handleFlatBooking($bookingId);
+                    }
+
+                    // 4. Auto Posting Journal
+                    if ((float)$paymentData['amount'] > 0) {
+                        $methodLower = strtolower($paymentData['payment_method'] ?? '');
+                        $bankNameStr = $paymentData['bank_name'] ?? ($paymentData['bank'] ?? '');
+                        $bankAccId   = $autoService->getBankOrCashAccountId($methodLower, $bankNameStr);
+
+                        $autoService->postSalesPaymentEntry(
+                            $paymentData['id'],
+                            $bankAccId,
+                            $paymentData['amount'],
+                            $paymentData['payment_type'],
+                            "Verified Client Payment - " . ucfirst($paymentData['payment_type']) . " (Booking #" . $paymentData['booking_id'] . ")",
+                            $paymentData['project_id'],
+                            $paymentData['lead_id'],
+                            $userId
+                        );
+                    }
+
+                    // 5. Send SMS
+                    if ($sendSms && $smsService) {
+                        $smsService->sendPaymentVerifiedSms($paymentId);
+                    }
+                }
+            }
+
+            $this->db->commit();
+            echo json_encode(['success' => true, 'message' => "Successfully verified $verifiedCount transactions."]);
+        } catch (Exception $e) {
+            $this->db->rollback();
+            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+        }
         exit;
     }
 
