@@ -418,7 +418,12 @@ $show_breadcrumb = true;
         }
     }
 
+    let currentLeadId = null;
+    let currentClientName = '';
+
     function openProjectsModal(leadId, clientName) {
+        currentLeadId = leadId;
+        currentClientName = clientName;
         document.getElementById('modal_client_name').textContent = clientName;
         document.getElementById('projects_loading').style.display = 'block';
         document.getElementById('projects_content').style.display = 'none';
@@ -450,6 +455,27 @@ $show_breadcrumb = true;
                 ? '<span class="badge bg-warning text-dark ms-1" style="font-size:0.7em;">Transferred</span>' 
                 : '<span class="badge bg-success ms-1" style="font-size:0.7em;">Current</span>';
 
+            
+            const isManagement = <?= in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33]) ? 'true' : 'false' ?>;
+            let actionHtml = `
+                <div class="d-flex align-items-center gap-1 justify-content-center">
+                    <a class="table__icon download"
+                        href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history/${land.booking_id}"
+                        title="View Transaction History">
+                        <i class="fa-regular fa-eye"></i>
+                    </a>`;
+                
+            if (isManagement) {
+                actionHtml += `
+                    <button type="button" class="table__icon delete" style="color: #dc3545; border: 1px solid #dc3545;"
+                        onclick="deleteBooking(${land.booking_id})"
+                        title="Delete Booking & All Payments">
+                        <i class="fa-regular fa-trash-can"></i>
+                    </button>`;
+            }
+            
+            actionHtml += `</div>`;
+
             row.innerHTML = `
             <td>${escapeHtml(land.project_name)} ${transferBadge}</td>
             <td>${escapeHtml(land.unit_name)} - Floor ${escapeHtml(land.flat_no)}</td>
@@ -465,18 +491,69 @@ $show_breadcrumb = true;
             <td><span class="bd-badge ${bookingStatusClass}">${escapeHtml(land.booking_status || 'N/A')}</span></td>
             <td><span class="bd-badge ${landshareStatusClass}">${escapeHtml(land.landshare_status || 'N/A')}</span></td>
             <td>${land.last_payment_date ? formatDate(land.last_payment_date) : 'No Payment'}</td>
-            <td>
-                <a class="table__icon download"
-                    href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history/${land.booking_id}"
-                    title="View Transaction History">
-                    <i class="fa-regular fa-eye"></i>
-                </a>
-            </td>`;
+            <td style="white-space: nowrap;">${actionHtml}</td>`;
             tbody.appendChild(row);
         });
 
         document.getElementById('projects_loading').style.display = 'none';
         document.getElementById('projects_content').style.display = 'block';
+    }
+
+    function deleteBooking(bookingId) {
+        // Find the modal element to set it as target to prevent z-index issues
+        const modalElement = document.getElementById('projectsModal');
+        
+        Swal.fire({
+            title: 'Are you sure?',
+            html: '<p class="text-danger">This will permanently delete the booking and ALL associated payments.</p><p>The flat will also be marked as available. This action cannot be undone!</p>',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete it!',
+            target: modalElement // This renders Swal inside the modal, fixing the z-index issue!
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('<?= $GLOBALS['base_url'] ?>/delete-booking', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ booking_id: bookingId })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Deleted!',
+                            text: data.message,
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                        // Refresh the modal content
+                        if (currentLeadId) {
+                            openProjectsModal(currentLeadId, currentClientName);
+                        } else {
+                            window.location.reload();
+                        }
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'Failed to delete booking.'
+                        });
+                    }
+                })
+                .catch(err => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'A network error occurred.'
+                    });
+                });
+            }
+        });
     }
 
     function showError(message) {
