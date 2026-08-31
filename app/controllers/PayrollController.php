@@ -1803,7 +1803,7 @@ class PayrollController extends Controller
             $stmt = $this->db->prepare("
                 INSERT INTO attendance_monthly_update 
                 (employee_id, payroll_project_id, working_days, present, absent, leave_days, dayoff, late, approved_lates, final_late, deduction, late_unpaid_absent_days) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
                 working_days = VALUES(working_days),
                 present = VALUES(present),
