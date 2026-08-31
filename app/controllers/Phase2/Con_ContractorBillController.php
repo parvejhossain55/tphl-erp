@@ -281,6 +281,144 @@ class Con_ContractorBillController extends Controller
     }
 
     // =========================================================================
+    // EDIT
+    // =========================================================================
+
+    public function edit($id)
+    {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31])) {
+            setError('You do not have permission to edit contractor bills.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+            exit;
+        }
+
+        $bill = $this->billModel->find($id);
+        if (!$bill) {
+            setError('Bill not found.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+            exit;
+        }
+
+        if (in_array($bill['status'], ['approved', 'paid', 'partially_paid', 'fully_paid'])) {
+            setError('Approved or paid bills cannot be edited.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+            exit;
+        }
+
+        $operators = $this->operatorModel->getActiveContractors();
+        $projects  = $this->getProjects();
+        $targets   = [];
+        $workTypes = $this->db->query("SELECT id, work_type_name FROM work_types ORDER BY work_type_name ASC")->fetch_all(MYSQLI_ASSOC);
+
+        $this->view('phase2/contractor-bills/edit-bill', [
+            'current_route' => 'con-contractor-bills',
+            'page_title'    => 'Edit Contractor Bill',
+            'bill'          => $bill,
+            'operators'     => $operators,
+            'projects'      => $projects,
+            'targets'       => $targets,
+            'workTypes'     => $workTypes,
+        ]);
+    }
+
+    // =========================================================================
+    // UPDATE
+    // =========================================================================
+
+    public function update($id)
+    {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31])) {
+            setError('You do not have permission to edit contractor bills.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+            exit;
+        }
+
+        $bill = $this->billModel->find($id);
+        if (!$bill) {
+            setError('Bill not found.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+            exit;
+        }
+
+        if (in_array($bill['status'], ['approved', 'paid', 'partially_paid', 'fully_paid'])) {
+            setError('Approved or paid bills cannot be edited.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+            exit;
+        }
+
+        $data = [
+            'project_id'       => $_POST['project_id'] ?? null,
+            'operator_id'      => $_POST['operator_id'] ?? null,
+            'work_order_id'    => !empty($_POST['work_order_id']) ? $_POST['work_order_id'] : null,
+            'target_id'        => !empty($_POST['target_id']) ? $_POST['target_id'] : null,
+            'bill_type'        => $_POST['bill_type'] ?? 'Progress',
+            'bill_date'        => $_POST['bill_date'] ?? date('Y-m-d'),
+            'work_description' => trim($_POST['work_description'] ?? ''),
+            'bill_amount'      => $_POST['bill_amount'] ?? 0,
+        ];
+
+        // Handle file upload
+        if (!empty($_FILES['attachment']['name'])) {
+            $uploadDir = __DIR__ . '/../../../public/uploads/contractor-bills/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $filename = time() . '_' . basename($_FILES['attachment']['name']);
+            if (move_uploaded_file($_FILES['attachment']['tmp_name'], $uploadDir . $filename)) {
+                $data['attachment_path'] = 'uploads/contractor-bills/' . $filename;
+            }
+        }
+
+        if (empty($data['project_id']) || empty($data['operator_id']) || empty($data['work_description'])) {
+            setError('Project, Contractor, and Work Description are required.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill-edit/{$id}");
+            exit;
+        }
+
+        $this->billModel->update($id, $data);
+        
+        // Also update the approval_request amount if it exists and hasn't been approved yet
+        $this->db->query("UPDATE approval_requests SET request_amount = " . (float)$data['bill_amount'] . " WHERE source_table = 'contractor_bill_requests' AND source_id = " . (int)$id . " AND status = 'pending'");
+
+        setSuccess('Contractor bill updated successfully!');
+        header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+        exit;
+    }
+
+    // =========================================================================
+    // DELETE
+    // =========================================================================
+
+    public function delete($id)
+    {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31])) {
+            setError('You do not have permission to delete contractor bills.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+            exit;
+        }
+
+        $bill = $this->billModel->find($id);
+        if (!$bill) {
+            setError('Bill not found.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+            exit;
+        }
+
+        if (in_array($bill['status'], ['approved', 'paid', 'partially_paid', 'fully_paid'])) {
+            setError('Approved or paid bills cannot be deleted.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+            exit;
+        }
+
+        $this->billModel->delete($id);
+        
+        // delete associated approval request
+        $this->db->query("DELETE FROM approval_requests WHERE source_table = 'contractor_bill_requests' AND source_id = " . (int)$id);
+
+        setSuccess('Contractor bill deleted successfully!');
+        header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
+        exit;
+    }
+
+    // =========================================================================
     // SHOW — Enhanced single-page experience
     // =========================================================================
 

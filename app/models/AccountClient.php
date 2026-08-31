@@ -2378,45 +2378,83 @@ ORDER BY lb.booking_date DESC
 
         try {
             $batchId = 'batch_' . uniqid() . '_' . time();
-            $serviceFee = 0;
-            $landShareAmount = 0;
             $bookingId = (int) $transactionData['booking_id'];
             $paymentType = $transactionData['payment_type'];
             $totalAmount = (float) $transactionData['amount'];
+            
             $clientDetails = $this->getClientByBookingId($bookingId);
-
-            // ─── NON-EMI PAYMENTS: land_share, registration, etc. (unchanged) ───
-            if ($paymentType !== 'emi') {
-                if ($paymentType === 'land_share') {
-                    $landShareAmount = $totalAmount;
-                    $remainingLandShare = $clientDetails['remaining_land_share'];
-                    if ($remainingLandShare <= 0) {
-                        throw new Exception("Land share payment is already completed!");
-                    }
-                    if ($landShareAmount > $remainingLandShare) {
-                        throw new Exception("Land share amount cannot exceed remaining land share: ৳" . number_format($remainingLandShare, 2));
-                    }
-                } elseif ($paymentType === 'development_charge') {
-                    $summary = $this->getPaymentSummaryByBookingId($bookingId);
-                    $devTarget = (float) ($summary['flat_development_charges'] ?? 0);
-                    $devPaid   = (float) ($summary['development_charge_paid_total'] ?? 0);
-                    $devRemaining = max(0, $devTarget - $devPaid);
-                    if ($devRemaining <= 0) {
-                        throw new Exception("Development charge is already fully paid!");
-                    }
-                    if ($totalAmount > $devRemaining) {
-                        throw new Exception("Amount exceeds remaining development charge: ৳" . number_format($devRemaining, 2));
-                    }
+            $summary = $this->getPaymentSummaryByBookingId($bookingId);
+            
+            $pool = $totalAmount;
+            $paymentsToInsert = [];
+            
+            // Calculate remaining targets
+            $bookingMoneyRemaining = max(0, $summary['effective_booking_target'] - $summary['booking_money_total']);
+            $landShareRemaining = max(0, $summary['remaining_land_share']);
+            $devTarget = (float) ($summary['flat_development_charges'] ?? 0);
+            $devPaid   = (float) ($summary['development_charge_paid_total'] ?? 0);
+            $devRemaining = max(0, $devTarget - $devPaid);
+            
+            // ─── CASCADING WATERFALL LOGIC ───
+            if ($paymentType === 'booking_money') {
+                if ($bookingMoneyRemaining > 0) {
+                    $payAmount = min($pool, $bookingMoneyRemaining);
+                    $paymentsToInsert[] = ['type' => 'booking_money', 'amount' => $payAmount];
+                    $pool -= $payAmount;
                 }
-
-                // Encode attachment paths
-                $attachmentPathsJson = null;
-                if (!empty($transactionData['attachment_paths'])) {
-                    $attachmentPathsJson = is_array($transactionData['attachment_paths'])
-                        ? json_encode($transactionData['attachment_paths'])
-                        : $transactionData['attachment_paths'];
+                if ($pool > 0) $paymentType = 'land_share';
+            }
+            
+            if (in_array($paymentType, ['land_share', 'registration', 'mutation_cost'])) {
+                if ($landShareRemaining > 0) {
+                    $payAmount = min($pool, $landShareRemaining);
+                    $paymentsToInsert[] = ['type' => $paymentType, 'amount' => $payAmount];
+                    $pool -= $payAmount;
                 }
+                if ($pool > 0) $paymentType = 'development_charge';
+            }
+            
+            if ($paymentType === 'development_charge') {
+                if ($devRemaining > 0) {
+                    $payAmount = min($pool, $devRemaining);
+                    $paymentsToInsert[] = ['type' => 'development_charge', 'amount' => $payAmount];
+                    $pool -= $payAmount;
+                }
+                if ($pool > 0) $paymentType = 'emi';
+            }
+            
+            // Encode attachment paths once
+            $attachmentPathsJson = null;
+            if (!empty($transactionData['attachment_paths'])) {
+                $attachmentPathsJson = is_array($transactionData['attachment_paths'])
+                    ? json_encode($transactionData['attachment_paths'])
+                    : $transactionData['attachment_paths'];
+            }
+            
+            // Insert Non-EMI Payments
+            $paymentMethod  = $transactionData['payment_method']   ?? 'cash';
+            $paymentStatus  = $transactionData['payment_status']   ?? 'paid';
+            $paymentDate    = $transactionData['payment_date']     ?? date('Y-m-d');
+            $transactionRef = $transactionData['transaction_ref']  ?? '';
+            $bankName       = $transactionData['bank_name']        ?? '';
+            $bankAccNo      = $transactionData['bank_account_no']  ?? '';
+            $chequeNo       = $transactionData['cheque_no']        ?? '';
+            $onlineType     = $transactionData['online_type']      ?? '';
+            $createdBy      = (int) ($transactionData['created_by'] ?? 1);
+            $handoverTo     = !empty($transactionData['handover_to']) ? (int) $transactionData['handover_to'] : null;
+            $handoverStatus = $handoverTo ? 'pending' : null;
 
+            $lastPaymentId = null;
+            
+            foreach ($paymentsToInsert as $pay) {
+                if ($pay['amount'] <= 0) continue;
+                
+                $pType = $pay['type'];
+                $pAmount = $pay['amount'];
+                // Only booking_money, land_share, registration, mutation_cost contribute to land_share target
+                $pLandShare = in_array($pType, ['land_share', 'booking_money', 'registration', 'mutation_cost']) ? $pAmount : 0;
+                $pSvcFee = 0.0;
+                
                 $stmt = $this->db->prepare("
                     INSERT INTO lead_payments (
                         booking_id, payment_type, amount, land_share_amount, service_fee,
@@ -2426,37 +2464,20 @@ ORDER BY lb.booking_date DESC
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if (!$stmt) throw new Exception("Prepare failed: " . $this->db->error);
-
-                $p_bookingId  = $bookingId;
-                $p_type       = $paymentType;
-                $p_amount     = $totalAmount;
-                $p_landShare  = (float) $landShareAmount;
-                $p_svcFee     = 0.0;
-                $p_method     = $transactionData['payment_method']   ?? 'cash';
-                $p_status     = $transactionData['payment_status']   ?? 'paid';
-                $p_date       = $transactionData['payment_date']     ?? date('Y-m-d');
-                $p_txRef      = $transactionData['transaction_ref']  ?? '';
-                $p_bankName   = $transactionData['bank_name']        ?? '';
-                $p_bankAccNo  = $transactionData['bank_account_no']  ?? '';
-                $p_chequeNo   = $transactionData['cheque_no']        ?? '';
-                $p_onlineType = $transactionData['online_type']      ?? '';
-                $p_createdBy  = (int) $transactionData['created_by'];
-
-                $p_handoverTo = !empty($transactionData['handover_to']) ? (int) $transactionData['handover_to'] : null;
-                $p_handoverStatus = $p_handoverTo ? 'pending' : null;
-
+                
                 $stmt->bind_param(
                     "isdddsssssssssiiss",
-                    $p_bookingId, $p_type, $p_amount, $p_landShare, $p_svcFee,
-                    $p_method, $p_status, $p_date, $p_txRef,
-                    $p_bankName, $p_bankAccNo, $p_chequeNo, $p_onlineType,
-                    $attachmentPathsJson, $p_createdBy, $p_handoverTo, $p_handoverStatus, $batchId
+                    $bookingId, $pType, $pAmount, $pLandShare, $pSvcFee,
+                    $paymentMethod, $paymentStatus, $paymentDate, $transactionRef,
+                    $bankName, $bankAccNo, $chequeNo, $onlineType,
+                    $attachmentPathsJson, $createdBy, $handoverTo, $handoverStatus, $batchId
                 );
-
+                
                 if (!$stmt->execute()) throw new Exception("Insert failed: " . $stmt->error);
-                $paymentId = $this->db->insert_id;
-
-                if (!empty($p_handoverTo)) {
+                $lastPaymentId = $this->db->insert_id;
+                
+                // Handover Approval
+                if (!empty($handoverTo)) {
                     if (!class_exists('ApprovalRequest')) {
                         require_once __DIR__ . '/ApprovalRequest.php';
                     }
@@ -2464,41 +2485,49 @@ ORDER BY lb.booking_date DESC
                     $approvalModel->create([
                         'department' => 'Accounts',
                         'request_type' => 'Cash In Handover',
-                        'title' => 'Handover Approval Request for Payment #' . $paymentId,
+                        'title' => 'Handover Approval Request for Payment #' . $lastPaymentId,
                         'source_table' => 'lead_payments',
-                        'source_id' => $paymentId,
+                        'source_id' => $lastPaymentId,
                         'requested_days' => 0,
-                        'requested_by' => $p_createdBy,
+                        'requested_by' => $createdBy,
                         'approve_role' => 'management',
                         'meta_data' => json_encode([
-                            'Amount' => $p_amount,
-                            'Payment Type' => ucfirst(str_replace('_', ' ', $p_type))
+                            'Amount' => $pAmount,
+                            'Payment Type' => ucfirst(str_replace('_', ' ', $pType))
                         ]),
-                        'request_amount' => $p_amount
+                        'request_amount' => $pAmount
                     ]);
                 }
-
+            }
+            
+            // If pool is fully depleted, return success
+            if ($pool <= 0) {
                 $this->db->commit();
                 return [
                     'success' => true,
-                    'message' => 'Transaction added successfully!',
-                    'payment_id' => $paymentId,
+                    'message' => 'Transaction added successfully! ' . (count($paymentsToInsert) > 1 ? 'Amount was automatically divided across ' . count($paymentsToInsert) . ' payment stages.' : ''),
+                    'payment_id' => $lastPaymentId,
                     'service_fee' => 0,
-                    'land_share_amount' => $landShareAmount
+                    'land_share_amount' => 0
                 ];
             }
 
             // ═══════════════════════════════════════════════════════════════════
             // ─── EMI PAYMENT: Smart FIFO Allocation ──────────────────────────
             // ═══════════════════════════════════════════════════════════════════
+            
+            // The rest of the pool goes to EMI
+            $totalAmount = $pool; 
+            
+            // Check dev charge status dynamically
+            $devPaidInThisTx = 0;
+            foreach ($paymentsToInsert as $p) {
+                if ($p['type'] === 'development_charge') $devPaidInThisTx += $p['amount'];
+            }
+            $devRemainingAfterTx = $devRemaining - $devPaidInThisTx;
 
-            // 0. Get payment summary for validations
-            $summary = $this->getPaymentSummaryByBookingId($bookingId);
-
-            if (empty($summary['is_dev_charge_completed'])) {
-                $devTarget = (float) ($summary['flat_development_charges'] ?? 0);
-                $devPaid   = (float) ($summary['development_charge_paid'] ?? 0);
-                throw new Exception("Development charge must be fully paid before EMI. Paid: ৳" . number_format($devPaid, 2) . " / Required: ৳" . number_format($devTarget, 2));
+            if (empty($summary['is_dev_charge_completed']) && $devRemainingAfterTx > 0.01) {
+                throw new Exception("Development charge must be fully paid before EMI. Remaining: ৳" . number_format($devRemainingAfterTx, 2));
             }
 
             // Service charge on FULL amount (user's answer: YES)
@@ -3807,6 +3836,7 @@ ORDER BY lb.booking_date DESC
             'd/m/Y', 'd-m-Y', 'm/d/Y', 'm-d-Y',
             'd/m/y', 'd-m-y', 'm/d/y', 'm-d-y',
             'j/n/Y', 'j/n/y', 'j-n-Y', 'j-n-y',
+            'n/j/Y', 'n/j/y', 'n-j-Y', 'n-j-y', // Added MM/DD/YYYY without leading zero support
             'd-M-Y', 'd-M-y', 'j-M-Y', 'j-M-y',
             'd M Y', 'd M y', 'j M Y', 'j M y'
         ];
