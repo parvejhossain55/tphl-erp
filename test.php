@@ -1,1 +1,0 @@
-<?php mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT); try { $db = new mysqli("127.0.0.1", "root", "", "tphl_db"); $res = $db->query("SHOW TABLES;"); while ($row = $res->fetch_array()) { echo $row[0] . "\n"; } } catch (Exception $e) { echo $e->getMessage(); } ?>

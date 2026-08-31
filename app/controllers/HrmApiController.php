@@ -1840,5 +1840,100 @@ class HrmApiController extends Controller
         }
         exit;
     }
+
+    // =========================================================================
+    // LATE REQUEST FEATURE
+    // =========================================================================
+
+    private function proxyTipsoiRequest($url, $method, $postData = null) {
+        header('Content-Type: application/json');
+        try {
+            $token = $this->externalApiService->getBearerToken();
+            if (!$token) {
+                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                exit;
+            }
+            
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            
+            $headers = [
+                'Authorization: Bearer ' . $token,
+                'Accept: application/json'
+            ];
+
+            if ($method === 'POST') {
+                curl_setopt($ch, CURLOPT_POST, true);
+                if ($postData !== null) {
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+                    $headers[] = 'Content-Type: application/json';
+                } else {
+                    $headers[] = 'Content-Type: application/json';
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([]));
+                }
+            }
+            
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            
+            $res = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+            
+            if ($curlError) {
+                echo json_encode(['success' => false, 'message' => 'Tipsoi API connection error: ' . $curlError]);
+                exit;
+            }
+            
+            if ($httpCode >= 200 && $httpCode < 300) {
+                $decoded = json_decode($res, true);
+                $decoded['success'] = true;
+                echo json_encode($decoded);
+            } else {
+                $decoded = json_decode($res, true);
+                $msg = $decoded['message'] ?? 'Tipsoi API Error. HTTP Code: ' . $httpCode;
+                $msg .= ' (Debug: ' . $res . ')';
+                echo json_encode(['success' => false, 'message' => $msg]);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    public function applyTipsoiLateRequest($employeeId) {
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/apply/employee/" . urlencode($employeeId);
+        $input = json_decode(file_get_contents('php://input'), true);
+        $this->proxyTipsoiRequest($url, 'POST', $input);
+    }
+
+    public function getTipsoiLateRequests($employeeId) {
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/approval-requests/" . urlencode($employeeId);
+        $this->proxyTipsoiRequest($url, 'GET');
+    }
+
+    public function approveTipsoiLateRequest($logId) {
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/approve/" . urlencode($logId);
+        $input = json_decode(file_get_contents('php://input'), true);
+        $this->proxyTipsoiRequest($url, 'POST', $input);
+    }
+
+    public function rejectTipsoiLateRequest($logId) {
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/reject/" . urlencode($logId);
+        $input = json_decode(file_get_contents('php://input'), true);
+        $this->proxyTipsoiRequest($url, 'POST', $input);
+    }
+
+    public function cancelTipsoiLateRequest($logId) {
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/cancel/" . urlencode($logId);
+        $input = json_decode(file_get_contents('php://input'), true);
+        $this->proxyTipsoiRequest($url, 'POST', $input);
+    }
+
+    public function getTipsoiLateHistory($employeeId) {
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/late-approvals/" . urlencode($employeeId);
+        $this->proxyTipsoiRequest($url, 'GET');
+    }
 }
 

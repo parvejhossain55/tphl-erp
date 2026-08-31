@@ -250,6 +250,14 @@ return [
     'api/hrm/applied-leave-list' => ['controller' => 'HrmApiController', 'method' => 'getAppliedLeaveList'],
     'api/hrm/leave-management/approve/(.*)' => ['controller' => 'HrmApiController', 'method' => 'approveTipsoiLeave'],
     'api/hrm/leave-management/apply/employee/(.*)' => ['controller' => 'HrmApiController', 'method' => 'applyTipsoiLeave'],
+    
+    // Late Request APIs
+    'api/hrm/late-approval-management/apply/employee/(.*)' => ['controller' => 'HrmApiController', 'method' => 'applyTipsoiLateRequest'],
+    'api/hrm/late-approval-management/approval-requests/(.*)' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiLateRequests'],
+    'api/hrm/late-approval-management/approve/(.*)' => ['controller' => 'HrmApiController', 'method' => 'approveTipsoiLateRequest'],
+    'api/hrm/late-approval-management/reject/(.*)' => ['controller' => 'HrmApiController', 'method' => 'rejectTipsoiLateRequest'],
+    'api/hrm/late-approval-management/cancel/(.*)' => ['controller' => 'HrmApiController', 'method' => 'cancelTipsoiLateRequest'],
+    'api/hrm/late-approval-management/late-approvals/(.*)' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiLateHistory'],
 
     // =========================================================================
     // Batch 4: Leave Balances & Analytics Views & API Routes
