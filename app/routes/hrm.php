@@ -205,6 +205,7 @@ return [
     'import-payslips' => ['controller' => 'PayrollController', 'method' => 'showImportForm'],
     'execute-import-payslips' => ['controller' => 'PayrollController', 'method' => 'importCSV'],
     'download-sample-payslips-csv' => ['controller' => 'PayrollController', 'method' => 'downloadSampleCSV'],
+    'bulk-delete-payslips' => ['controller' => 'PayrollController', 'method' => 'bulkDelete'],
 
     // =========================================================================
     // Controller: AdvanceSalaryController

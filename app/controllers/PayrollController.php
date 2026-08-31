@@ -1163,21 +1163,39 @@ class PayrollController extends Controller
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = isset($_POST['name']) ? $this->db->real_escape_string($_POST['name']) : '';
+            $project_type = isset($_POST['project_type']) ? $_POST['project_type'] : 'monthly';
             $date = isset($_POST['date']) ? $this->db->real_escape_string($_POST['date']) : '';
+            $start_date = isset($_POST['start_date']) ? $this->db->real_escape_string($_POST['start_date']) : '';
+            $end_date = isset($_POST['end_date']) ? $this->db->real_escape_string($_POST['end_date']) : '';
 
-            if (empty($name) || empty($date)) {
-                echo "<script>alert('Project name and date are required.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
+            $is_custom = ($project_type === 'custom') ? 1 : 0;
+            
+            if (empty($name)) {
+                echo "<script>alert('Project name is required.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
+                exit;
+            }
+            if ($is_custom && (empty($start_date) || empty($end_date))) {
+                echo "<script>alert('Start date and end date are required for custom projects.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
+                exit;
+            }
+            if (!$is_custom && empty($date)) {
+                echo "<script>alert('Project date is required for monthly projects.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
                 exit;
             }
 
-            $stmt = $this->db->prepare("INSERT INTO payroll_projects (name, date) VALUES (?, ?)");
+            if ($is_custom) {
+                // For custom projects, the 'date' field could be null or derived (e.g. from start_date month) to satisfy UI backward compatibility.
+                $date = date('Y-m', strtotime($start_date)); 
+            }
+
+            $stmt = $this->db->prepare("INSERT INTO payroll_projects (name, date, is_custom_date, start_date, end_date) VALUES (?, ?, ?, ?, ?)");
             
             if (!$stmt) {
                 echo "<script>alert('Database error: Failed to prepare statement.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
                 exit;
             }
 
-            $stmt->bind_param("ss", $name, $date);
+            $stmt->bind_param("ssiss", $name, $date, $is_custom, $start_date, $end_date);
 
             if ($stmt->execute()) {
                 echo "<script>window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";

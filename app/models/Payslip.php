@@ -284,12 +284,14 @@ class Payslip extends Model
 
 
 
-    public function getAllWithEmployeeFiltered($year = null, $month = null, $status = null)
+    public function getAllWithEmployeeFiltered($year = null, $month = null, $status = null, $projectId = null)
     {
         if (empty($year))
             $year = date('Y');
         if (empty($month))
             $month = date('m');
+
+        $projectId = ($projectId && (int)$projectId > 0) ? (int)$projectId : null;
 
         if ($status === 'unpaid') {
             $sql = "
@@ -330,8 +332,11 @@ class Payslip extends Model
                     WHERE rn = 1
                 ) AS ar ON ar.source_id = p.id
                 WHERE (p.id IS NOT NULL AND p.status NOT IN ('paid', 'draft')) OR (p.id IS NULL)
-                ORDER BY CASE WHEN p.status = 'draft' THEN 1 ELSE 0 END ASC, p.id DESC, e.full_name ASC
             ";
+            if ($projectId) {
+                $sql .= " AND p.payroll_project_id = $projectId";
+            }
+            $sql .= " ORDER BY CASE WHEN p.status = 'draft' THEN 1 ELSE 0 END ASC, p.id DESC, e.full_name ASC";
         } else {
             $sql = "
                 SELECT 
@@ -377,6 +382,10 @@ class Payslip extends Model
                 $sql .= " AND p.status = 'paid'";
             } elseif ($status === 'draft') {
                 $sql .= " AND p.status = 'draft'";
+            }
+
+            if ($projectId) {
+                $sql .= " AND p.payroll_project_id = $projectId";
             }
 
             $sql .= " ORDER BY CASE WHEN p.status = 'draft' THEN 1 ELSE 0 END ASC, p.id DESC";
