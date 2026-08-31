@@ -1425,6 +1425,9 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
     if ($req['status'] === 'pending_dept') {
         $statusClass = 'bg-warning-transparent text-dark border border-warning';
         $statusText = 'Pending Dept Head';
+    } elseif ($req['status'] === 'pending_qc') {
+        $statusClass = 'bg-warning-transparent text-dark border border-warning';
+        $statusText = 'Pending QC Head';
     } elseif ($req['status'] === 'pending') {
         $statusClass = 'bg-info-transparent text-info border border-info';
         $statusText = 'Pending Management';
@@ -1531,6 +1534,10 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
                 <div class="fs-9 text-muted mt-1">
                     Pending: <?= htmlspecialchars(($req['reporting_boss_name'] ?? 'Dept Head') . (!empty($req['reporting_boss_designation_name']) ? ' (' . $req['reporting_boss_designation_name'] . ')' : '')) ?>
                 </div>
+            <?php elseif ($req['status'] === 'pending_qc'): ?>
+                <div class="fs-9 text-muted mt-1">
+                    Pending: QC & Internal Audit Head
+                </div>
             <?php elseif (in_array($req['status'], ['partially_approved', 'partially_paid'])): ?>
                 <div class="fs-9 text-muted mt-1">
                     Pending: for remaining amount
@@ -1566,7 +1573,6 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
                     </a>
                 <?php endif; ?>
 
-                <!-- Dept Head Approval button -->
                 <?php 
                 $canApproveDept = ($userId == ($req['requester_reporting_boss_id'] ?? 0) || in_array($roleId, [1, 3]));
                 if ($req['status'] === 'pending_dept' && $canApproveDept): 
@@ -1574,6 +1580,17 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
                     <button type="button" class="btn btn-sm btn-warning d-inline-flex align-items-center gap-1 text-dark" 
                             onclick="openDeptApproveModal(<?= $req['id'] ?>, '<?= addslashes($req['requester_name']) ?>', '<?= addslashes($req['department_name']) ?>', '<?= $req['requisition_type'] ?>', <?= $req['amount'] ?>)">
                         <i class="fa-solid fa-stamp"></i> Dept Approve
+                    </button>
+                <?php endif; ?>
+
+                <!-- QC Head Approval button -->
+                <?php 
+                $canApproveQc = in_array($roleId, [24, 1, 3, 33]);
+                if ($req['status'] === 'pending_qc' && $canApproveQc): 
+                ?>
+                    <button type="button" class="btn btn-sm btn-info d-inline-flex align-items-center gap-1 text-white" 
+                            onclick="window.location.href='<?= $GLOBALS['base_url'] ?>/fund-requisitions/view/<?= $req['id'] ?>'">
+                        <i class="fa-solid fa-stamp"></i> QC Approve
                     </button>
                 <?php endif; ?>
 

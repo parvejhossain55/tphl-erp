@@ -53,9 +53,7 @@ if (!empty($isEdit) && !empty($quotationItems)) {
                                 <th>Valid Until</th>
                                 <th>Attachment</th>
                                 <th>Status</th>
-                                <?php if ($pr['status'] !== 'PO Issued'): ?>
-                                    <th>Action</th>
-                                <?php endif; ?>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -100,7 +98,6 @@ if (!empty($isEdit) && !empty($quotationItems)) {
                                     <?php endif; ?>
                                 </td>
                                 <td><span class="badge bg-info"><?= $eq['status'] ?></span></td>
-                                <?php if ($pr['status'] !== 'PO Issued'): ?>
                                 <td>
                                     <a href="<?= $base_url ?>/con-quotation-edit/<?= $eq['id'] ?>" class="btn btn-sm btn-primary py-0 px-2 me-1">
                                         <i class="bi bi-pencil-square"></i> Edit
@@ -109,7 +106,6 @@ if (!empty($isEdit) && !empty($quotationItems)) {
                                         <i class="bi bi-trash"></i> Delete
                                     </button>
                                 </td>
-                                <?php endif; ?>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>

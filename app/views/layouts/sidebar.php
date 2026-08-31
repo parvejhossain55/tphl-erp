@@ -221,23 +221,31 @@
             // 2. Pending Purchase Orders awaiting approval / receiving action
             if ($sidebarRoleId === 17) { // Purchase Head
                 $poRes = $db->query("
-                    SELECT COUNT(*) AS c 
-                    FROM purchase_orders 
-                    WHERE purchase_head_approved_by_id IS NULL AND (status != 'Cancelled' OR status IS NULL)
+                    SELECT COUNT(po.id) AS c 
+                    FROM purchase_orders po
+                    LEFT JOIN users u ON u.id = po.created_by
+                    WHERE po.purchase_head_approved_by_id IS NULL 
+                      AND (po.status != 'Cancelled' OR po.status IS NULL)
+                      AND u.role_id IN (23, 31)
                 ");
                 $sidebarPendingPOCount = $poRes ? (int) $poRes->fetch_assoc()['c'] : 0;
             } elseif ($sidebarRoleId === 24) { // QC User
                 $poRes = $db->query("
-                    SELECT COUNT(*) AS c 
-                    FROM purchase_orders 
-                    WHERE qc_approved_by_id IS NULL AND (status != 'Cancelled' OR status IS NULL)
+                    SELECT COUNT(po.id) AS c 
+                    FROM purchase_orders po
+                    LEFT JOIN users u ON u.id = po.created_by
+                    WHERE po.qc_approved_by_id IS NULL 
+                      AND (po.status != 'Cancelled' OR po.status IS NULL)
+                      AND (u.role_id NOT IN (23, 31) OR po.purchase_head_approved_by_id IS NOT NULL)
                 ");
                 $sidebarPendingPOCount = $poRes ? (int) $poRes->fetch_assoc()['c'] : 0;
             } elseif ($sidebarRoleId === 20) { // Operation Head
                 $poRes = $db->query("
-                    SELECT COUNT(*) AS c 
-                    FROM purchase_orders 
-                    WHERE op_head_approved_by_id IS NULL AND (status != 'Cancelled' OR status IS NULL)
+                    SELECT COUNT(po.id) AS c 
+                    FROM purchase_orders po
+                    WHERE po.op_head_approved_by_id IS NULL 
+                      AND po.qc_approved_by_id IS NOT NULL
+                      AND (po.status != 'Cancelled' OR po.status IS NULL)
                 ");
                 $sidebarPendingPOCount = $poRes ? (int) $poRes->fetch_assoc()['c'] : 0;
             } else { // Admin, Super Admin, PMs, Site Engineers, Executives

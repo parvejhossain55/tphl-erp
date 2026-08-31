@@ -398,6 +398,83 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                             <?php endif; ?>
                         </div>
 
+                        <!-- Step 2.5: QC & Internal Audit Head Approval -->
+                        <div class="d-flex gap-3 mb-4 position-relative align-items-start">
+                            <?php if ($req['status'] === 'pending_qc'): ?>
+                                <div class="avatar avatar-sm bg-warning text-dark rounded-circle flex-shrink-0 z-1 fs-12">
+                                    <i class="fa-solid fa-clock"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold fs-13 mb-0 text-dark">Pending QC & Internal Audit Head Approval</h6>
+                                    <p class="fs-12 text-muted mb-0 mt-1">
+                                        Awaiting approval from QC & Internal Audit Head (Role 24).
+                                    </p>
+                                    <?php if (in_array($sessionRoleId, [24, 1, 3, 33])): ?>
+                                        <button class="btn btn-sm btn-info text-white mt-2 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#qcApproveModal">
+                                            <i class="fa-solid fa-stamp me-1"></i> QC Head Approve / Reject
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
+                            <?php elseif (!empty($req['qc_approved_by']) || ($req['status'] === 'rejected' && $req['dept_head_status'] === 'approved' && empty($req['approved_by']))): ?>
+                                <?php $qcStatus = ($req['status'] === 'rejected' && empty($req['approved_by'])) ? 'rejected' : 'approved'; ?>
+                                <?php if ($qcStatus === 'approved'): ?>
+                                    <div class="avatar avatar-sm bg-success text-white rounded-circle flex-shrink-0 z-1 fs-12">
+                                        <i class="fa-solid fa-check"></i>
+                                    </div>
+                                    <div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <h6 class="fw-bold fs-13 mb-0 text-dark">QC & Internal Audit Head Approved</h6>
+                                            <span class="badge bg-success-transparent text-success fs-10">Approved</span>
+                                        </div>
+                                        <p class="fs-12 text-muted mb-0 mt-1">
+                                            Approved by <strong><?php echo htmlspecialchars($req['qc_approved_by_name'] ?? 'QC Head'); ?></strong>
+                                            <?php if (!empty($req['qc_approved_by_designation_name'])): ?>
+                                                <em>(<?php echo htmlspecialchars($req['qc_approved_by_designation_name']); ?>)</em>
+                                            <?php endif; ?>
+                                            <?php echo !empty($req['qc_approved_at']) ? 'on ' . date('d M Y, h:i A', strtotime($req['qc_approved_at'])) : ''; ?>
+                                        </p>
+                                        <?php if (!empty($req['qc_approval_note'])): ?>
+                                            <div class="bg-light p-2 rounded fs-12 mt-2 text-dark border">
+                                                <i class="fa-solid fa-quote-left text-muted me-1 fs-11"></i><?php echo htmlspecialchars($req['qc_approval_note']); ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="avatar avatar-sm bg-danger text-white rounded-circle flex-shrink-0 z-1 fs-12">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold fs-13 mb-0 text-danger">QC & Internal Audit Head Rejected</h6>
+                                        <p class="fs-12 text-muted mb-0 mt-1">
+                                            Rejected by <strong><?php echo htmlspecialchars($req['qc_approved_by_name'] ?? 'QC Head'); ?></strong>
+                                            <?php if (!empty($req['qc_approved_by_designation_name'])): ?>
+                                                <em>(<?php echo htmlspecialchars($req['qc_approved_by_designation_name']); ?>)</em>
+                                            <?php endif; ?>
+                                        </p>
+                                        <?php if (!empty($req['qc_approval_note'])): ?>
+                                            <p class="fs-12 text-muted mb-0 mt-1 bg-light p-2 rounded border"><?php echo htmlspecialchars($req['qc_approval_note']); ?></p>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+                            <?php elseif (in_array($req['status'], ['pending', 'approved', 'partially_approved', 'paid', 'partially_paid']) && empty($req['qc_approved_by'])): ?>
+                                <div class="avatar avatar-sm bg-light text-muted rounded-circle flex-shrink-0 z-1 fs-12 border">
+                                    <i class="fa-solid fa-forward-step text-secondary"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold fs-13 mb-0 text-dark">QC & Internal Audit Head Approval</h6>
+                                    <p class="fs-12 text-muted mb-0 mt-1"><span class="badge bg-secondary-transparent text-secondary fs-10">Bypassed (Legacy Request)</span></p>
+                                </div>
+                            <?php else: ?>
+                                <div class="avatar avatar-sm bg-light text-muted rounded-circle flex-shrink-0 z-1 fs-12 border">
+                                    <i class="fa-solid fa-hourglass-start"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold fs-13 mb-0 text-muted">Pending QC & Internal Audit Head Approval</h6>
+                                    <p class="fs-12 text-muted mb-0 mt-1">Will be enabled after Department Head approval.</p>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
                         <!-- Step 3: Management Approval -->
                         <div class="d-flex gap-3 mb-4 position-relative align-items-start">
                             <?php if (in_array($req['status'], ['approved', 'paid'])): ?>
@@ -468,7 +545,7 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                                 </div>
                                 <div>
                                     <h6 class="fw-bold fs-13 mb-0 text-muted">Pending Management / Operation Head Approval</h6>
-                                    <p class="fs-12 text-muted mb-0 mt-1">Will be enabled after Department Head approval. (Operation Head: Up to 1 Lakh BDT)</p>
+                                    <p class="fs-12 text-muted mb-0 mt-1">Will be enabled after QC & Internal Audit Head approval. (Operation Head: Up to 1 Lakh BDT)</p>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -695,6 +772,27 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
         </div>
     </div>
 </div>
+
+<?php 
+$canApproveQc = in_array($sessionRoleId, [24, 1, 3, 33]);
+if ($req['status'] === 'pending_qc' && $canApproveQc): 
+?>
+<div class="modal fade" id="qcApproveModal" tabindex="-1">
+    <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve-qc" method="POST">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">QC & Internal Audit Head Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                <div class="mb-3"><label class="form-label">Action</label>
+                    <select name="status" class="form-select" required><option value="approved">Approve (Send to Management)</option><option value="rejected">Reject</option></select></div>
+                <div class="mb-3"><label class="form-label">Remarks / Note</label>
+                    <textarea name="approval_note" class="form-control" rows="3" placeholder="Enter remarks..."></textarea></div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-info text-white btn-sm">Submit Decision</button></div>
+        </div>
+    </form></div>
+</div>
+<?php endif; ?>
 
 <?php 
 $canApproveDept = ($sessionUserId == ($req['requester_reporting_boss_id'] ?? 0) || in_array($sessionRoleId, [1, 3]));
