@@ -26,19 +26,9 @@ class PayrollController extends Controller
         $selectedYear = isset($_GET['year']) ? $_GET['year'] : $currentYear;
         $selectedMonth = isset($_GET['month']) ? $_GET['month'] : $currentMonth;
         $selectedStatus = isset($_GET['status']) ? $_GET['status'] : '';
-        $selectedProjectId = isset($_GET['project_id']) && (int)$_GET['project_id'] > 0 ? (int)$_GET['project_id'] : null;
 
-        // Fetch all payroll projects for dropdown
-        $payroll_projects = [];
-        $projectRes = $this->db->query("SELECT id, name, date FROM payroll_projects ORDER BY id DESC");
-        if ($projectRes) {
-            while ($pRow = $projectRes->fetch_assoc()) {
-                $payroll_projects[] = $pRow;
-            }
-        }
-
-        // Fetch payslips with status + project filter
-        $payslips = $this->paymentModel->getAllWithEmployeeFiltered($selectedYear, $selectedMonth, $selectedStatus, $selectedProjectId);
+        // Fetch payslips with status filter
+        $payslips = $this->paymentModel->getAllWithEmployeeFiltered($selectedYear, $selectedMonth, $selectedStatus);
 
         $totalEmployees = $this->employeeModel->getTotalCount();
         $paidCount = $this->paymentModel->getPaidCount($selectedYear, $selectedMonth);
@@ -79,8 +69,6 @@ class PayrollController extends Controller
             "selectedYear" => $selectedYear,
             "selectedMonth" => $selectedMonth,
             "selectedStatus" => $selectedStatus,
-            "selectedProjectId" => $selectedProjectId,
-            "payroll_projects" => $payroll_projects,
             "allLocalEmployees" => $allLocalEmployees,
         ]);
     }
@@ -241,34 +229,6 @@ class PayrollController extends Controller
         exit;
     }
 
-    public function bulkDelete()
-    {
-        header('Content-Type: application/json');
-
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        $input = file_get_contents('php://input');
-        $payload = json_decode($input, true);
-
-        if (empty($payload) || empty($payload['payslip_ids']) || !is_array($payload['payslip_ids'])) {
-            echo json_encode(['success' => false, 'message' => 'No payslips selected for deletion.']);
-            exit;
-        }
-
-        $deletedCount = 0;
-        foreach ($payload['payslip_ids'] as $id) {
-            $payslipId = (int)$id;
-            if ($payslipId) {
-                $this->paymentModel->delete($payslipId);
-                $deletedCount++;
-            }
-        }
-
-        echo json_encode(['success' => true, 'message' => "$deletedCount payslips deleted successfully."]);
-        exit;
-    }
 
 
     public function updatePay()
@@ -1203,21 +1163,39 @@ class PayrollController extends Controller
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = isset($_POST['name']) ? $this->db->real_escape_string($_POST['name']) : '';
+            $project_type = isset($_POST['project_type']) ? $_POST['project_type'] : 'monthly';
             $date = isset($_POST['date']) ? $this->db->real_escape_string($_POST['date']) : '';
+            $start_date = isset($_POST['start_date']) ? $this->db->real_escape_string($_POST['start_date']) : '';
+            $end_date = isset($_POST['end_date']) ? $this->db->real_escape_string($_POST['end_date']) : '';
 
-            if (empty($name) || empty($date)) {
-                echo "<script>alert('Project name and date are required.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
+            $is_custom = ($project_type === 'custom') ? 1 : 0;
+            
+            if (empty($name)) {
+                echo "<script>alert('Project name is required.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
+                exit;
+            }
+            if ($is_custom && (empty($start_date) || empty($end_date))) {
+                echo "<script>alert('Start date and end date are required for custom projects.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
+                exit;
+            }
+            if (!$is_custom && empty($date)) {
+                echo "<script>alert('Project date is required for monthly projects.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
                 exit;
             }
 
-            $stmt = $this->db->prepare("INSERT INTO payroll_projects (name, date) VALUES (?, ?)");
+            if ($is_custom) {
+                // For custom projects, the 'date' field could be null or derived (e.g. from start_date month) to satisfy UI backward compatibility.
+                $date = date('Y-m', strtotime($start_date)); 
+            }
+
+            $stmt = $this->db->prepare("INSERT INTO payroll_projects (name, date, is_custom_date, start_date, end_date) VALUES (?, ?, ?, ?, ?)");
             
             if (!$stmt) {
                 echo "<script>alert('Database error: Failed to prepare statement.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
                 exit;
             }
 
-            $stmt->bind_param("ss", $name, $date);
+            $stmt->bind_param("ssiss", $name, $date, $is_custom, $start_date, $end_date);
 
             if ($stmt->execute()) {
                 echo "<script>window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
@@ -1711,7 +1689,6 @@ class PayrollController extends Controller
                 $lateUnpaidAbsentDays = (float) ($row['late_unpaid_absent_days'] ?? 0);
                 $remarks = trim((string) ($row['remarks'] ?? ''));
                 $attRemarks = trim((string) ($row['attendance_remarks'] ?? ''));
-                $isExcluded = isset($row['is_excluded']) ? (int) $row['is_excluded'] : 0;
                 $details = $row['details'] ?? [];
 
                 if ($payslipId > 0) {
@@ -1826,7 +1803,7 @@ class PayrollController extends Controller
             $stmt = $this->db->prepare("
                 INSERT INTO attendance_monthly_update 
                 (employee_id, payroll_project_id, working_days, present, absent, leave_days, dayoff, late, approved_lates, final_late, deduction, late_unpaid_absent_days) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
                 working_days = VALUES(working_days),
                 present = VALUES(present),
