@@ -1,53 +1,91 @@
 <?php
 $page = "Payroll Workplace";
 $show_breadcrumb = true;
+
+$_filterType    = $filterType      ?? 'monthly';
+$_fromDate      = $selectedFromDate ?? date('Y-m-01');
+$_toDate        = $selectedToDate  ?? date('Y-m-t');
+$_selectedYear  = $selectedYear    ?? date('Y');
+$_selectedMonth = $selectedMonth   ?? date('m');
 ?>
 
 <!-- Filter Section -->
 <div class="row mb-3">
     <div class="col-12">
         <div class="filters card__wrapper p-3 bg-white rounded shadow-sm">
-            <form method="GET" action="<?= $GLOBALS['base_url'] ?>/payroll-workspace" class="row gx-3 gy-2 align-items-center">
-                <div class="col-sm-3">
-                    <label for="year">Year</label>
-                    <select class="form-select" name="year" id="year" onchange="this.form.submit()">
-                        <?php
-                        $startYear = 2020;
-                        $endYear = 2035;
-                        $sysYear = $selectedYear ?: date('Y');
-                        for ($y = $startYear; $y <= $endYear; $y++): ?>
-                            <option value="<?= $y ?>" <?= $y == $sysYear ? 'selected' : '' ?>>
-                                <?= $y ?>
-                            </option>
-                        <?php endfor; ?>
+            <form method="GET" action="<?= $GLOBALS['base_url'] ?>/payroll-workspace" class="row gx-3 gy-2 align-items-end" id="workspaceFilterForm">
+
+                <!-- Hidden: carries filter_type on submit -->
+                <input type="hidden" name="filter_type" id="filterTypeInput" value="<?= htmlspecialchars($_filterType) ?>">
+
+                <!-- Filter Type Toggle -->
+                <div class="col-sm-2">
+                    <label class="form-label fw-semibold text-muted mb-1">Filter Type</label>
+                    <select class="form-select" id="filterTypeSelect">
+                        <option value="monthly" <?= $_filterType === 'monthly' ? 'selected' : '' ?>>Monthly</option>
+                        <option value="custom"  <?= $_filterType === 'custom'  ? 'selected' : '' ?>>Custom Range</option>
                     </select>
                 </div>
-                <div class="col-sm-3">
-                    <label for="month">Month</label>
-                    <select class="form-select" name="month" id="month" onchange="this.form.submit()">
-                        <?php
-                        $sysMonth = $selectedMonth ?: date('m');
-                        for ($m = 1; $m <= 12; $m++):
-                            $monthNum = str_pad($m, 2, "0", STR_PAD_LEFT);
-                            $monthName = date('F', mktime(0, 0, 0, $m, 1));
-                            ?>
-                                <option value="<?= $monthNum ?>" <?= $monthNum == str_pad($sysMonth, 2, "0", STR_PAD_LEFT) ? 'selected' : '' ?>>
-                                    <?= $monthName ?>
-                                </option>
-                        <?php endfor; ?>
-                    </select>
+
+                <!-- Monthly: Year + Month -->
+                <div class="col-sm-4" id="monthlyContainer" <?= $_filterType === 'custom' ? 'style="display:none;"' : '' ?>>
+                    <div class="row gx-2">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-muted mb-1">Year</label>
+                            <select class="form-select" name="year" id="year">
+                                <?php
+                                $startYear = 2020;
+                                $endYear   = 2035;
+                                for ($y = $startYear; $y <= $endYear; $y++): ?>
+                                    <option value="<?= $y ?>" <?= $y == $_selectedYear ? 'selected' : '' ?>><?= $y ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-muted mb-1">Month</label>
+                            <select class="form-select" name="month" id="month">
+                                <?php
+                                for ($m = 1; $m <= 12; $m++):
+                                    $monthNum  = str_pad($m, 2, "0", STR_PAD_LEFT);
+                                    $monthName = date('F', mktime(0, 0, 0, $m, 1)); ?>
+                                    <option value="<?= $monthNum ?>" <?= $monthNum == str_pad($_selectedMonth, 2, "0", STR_PAD_LEFT) ? 'selected' : '' ?>><?= $monthName ?></option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-sm-4">
-                    <label for="payrollProject">Payroll Project</label>
+
+                <!-- Custom Range: From Date + To Date -->
+                <div class="col-sm-4" id="customContainer" <?= $_filterType !== 'custom' ? 'style="display:none;"' : '' ?>>
+                    <div class="row gx-2">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-muted mb-1">From Date</label>
+                            <input type="date" class="form-control" name="from_date" id="fromDate" value="<?= htmlspecialchars($_fromDate) ?>">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-muted mb-1">To Date</label>
+                            <input type="date" class="form-control" name="to_date" id="toDate" value="<?= htmlspecialchars($_toDate) ?>">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payroll Project -->
+                <div class="col-sm-3">
+                    <label class="form-label fw-semibold text-muted mb-1" for="payrollProject">Payroll Project</label>
                     <div class="d-flex align-items-center gap-2">
                         <select class="form-select w-100" name="payroll_project_id" id="payrollProject">
                             <option value="">Select Project (Optional)</option>
                             <?php if (!empty($payroll_projects)): ?>
-                                    <?php foreach ($payroll_projects as $proj): ?>
-                                            <option value="<?= htmlspecialchars($proj['id']) ?>" data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>" <?= (isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] == $proj['id']) ? 'selected' : '' ?>>
-                                                <?= htmlspecialchars($proj['name']) ?>
-                                            </option>
-                                    <?php endforeach; ?>
+                                <?php foreach ($payroll_projects as $proj): ?>
+                                    <option value="<?= htmlspecialchars($proj['id']) ?>"
+                                        data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>"
+                                        data-iscustom="<?= htmlspecialchars($proj['is_custom_date'] ?? '0') ?>"
+                                        data-start="<?= htmlspecialchars($proj['start_date'] ?? '') ?>"
+                                        data-end="<?= htmlspecialchars($proj['end_date'] ?? '') ?>"
+                                        <?= (isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] == $proj['id']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($proj['name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
                             <?php endif; ?>
                         </select>
                         <button type="button" class="btn btn-primary text-nowrap" data-bs-toggle="modal"
@@ -56,13 +94,94 @@ $show_breadcrumb = true;
                         </button>
                     </div>
                 </div>
-                <div class="col-auto align-self-end mt-4 d-none">
-                    <button type="submit" class="btn btn-primary d-none">Filter</button>
+
+                <!-- Search Button -->
+                <div class="col-sm-auto">
+                    <button type="submit" class="btn btn-primary" style="height:38px;">
+                        <i class="fa-solid fa-search me-1"></i> Search
+                    </button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/payroll-workspace" class="btn btn-outline-secondary ms-1" style="height:38px;">
+                        <i class="fa-solid fa-rotate-left me-1"></i> Reset
+                    </a>
                 </div>
+
             </form>
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    const filterTypeSelect  = document.getElementById('filterTypeSelect');
+    const filterTypeInput   = document.getElementById('filterTypeInput');
+    const monthlyContainer  = document.getElementById('monthlyContainer');
+    const customContainer   = document.getElementById('customContainer');
+    const yearSel           = document.getElementById('year');
+    const monthSel          = document.getElementById('month');
+    const fromDateInput     = document.getElementById('fromDate');
+    const toDateInput       = document.getElementById('toDate');
+    const projectSelect     = document.getElementById('payrollProject');
+
+    function applyFilterType(type) {
+        filterTypeInput.value = type;
+        if (type === 'custom') {
+            monthlyContainer.style.display = 'none';
+            customContainer.style.display  = '';
+            // disable monthly fields so they are not submitted
+            if (yearSel)  yearSel.disabled  = true;
+            if (monthSel) monthSel.disabled = true;
+            // enable custom fields
+            if (fromDateInput) fromDateInput.disabled = false;
+            if (toDateInput)   toDateInput.disabled   = false;
+        } else {
+            monthlyContainer.style.display = '';
+            customContainer.style.display  = 'none';
+            if (yearSel)      yearSel.disabled      = false;
+            if (monthSel)     monthSel.disabled      = false;
+            if (fromDateInput) fromDateInput.disabled = true;
+            if (toDateInput)   toDateInput.disabled   = true;
+        }
+    }
+
+    // Init on load
+    applyFilterType(filterTypeSelect.value);
+
+    filterTypeSelect.addEventListener('change', function () {
+        applyFilterType(this.value);
+    });
+
+    // Auto-sync Project Date (keep existing behaviour and handle custom projects)
+    if (projectSelect) {
+        projectSelect.addEventListener('change', function () {
+            const selectedOpt = this.options[this.selectedIndex];
+            if (selectedOpt && selectedOpt.value) {
+                const isCustom = selectedOpt.getAttribute('data-iscustom') === '1';
+                
+                if (isCustom) {
+                    filterTypeSelect.value = 'custom';
+                    applyFilterType('custom');
+                    if (fromDateInput) fromDateInput.value = selectedOpt.getAttribute('data-start');
+                    if (toDateInput) toDateInput.value = selectedOpt.getAttribute('data-end');
+                } else {
+                    const dateVal = selectedOpt.getAttribute('data-date');
+                    if (dateVal) {
+                        filterTypeSelect.value = 'monthly';
+                        applyFilterType('monthly');
+                        const parts = dateVal.split('-');
+                        if (parts.length >= 2) {
+                            if (yearSel)  yearSel.value  = parts[0];
+                            if (monthSel) monthSel.value = parts[1];
+                        }
+                    }
+                }
+            }
+            setTimeout(() => document.getElementById('workspaceFilterForm').submit(), 50);
+        });
+    }
+})();
+</script>
+
+
 
 <!-- Create Project Modal -->
 <div class="modal fade" id="createProjectModal" tabindex="-1" aria-labelledby="createProjectModalLabel"
@@ -82,10 +201,62 @@ $show_breadcrumb = true;
                         <input type="text" name="name" class="form-control" placeholder="Enter project name" required>
                     </div>
                     <div class="form__group mb-3">
+                        <label class="form-label" style="font-weight: 600;">Project Type <span
+                                class="text-danger">*</span></label>
+                        <select name="project_type" id="createProjectType" class="form-select" required>
+                            <option value="monthly">Monthly</option>
+                            <option value="custom">Custom Date Range</option>
+                        </select>
+                    </div>
+
+                    <!-- Monthly -->
+                    <div class="form__group mb-3" id="createMonthlyContainer">
                         <label class="form-label" style="font-weight: 600;">Project Month/Year <span
                                 class="text-danger">*</span></label>
-                        <input type="month" name="date" class="form-control" required>
+                        <input type="month" name="date" id="createProjectDate" class="form-control">
                     </div>
+
+                    <!-- Custom Range -->
+                    <div class="row mb-3" id="createCustomContainer" style="display: none;">
+                        <div class="col-6">
+                            <label class="form-label" style="font-weight: 600;">Start Date <span class="text-danger">*</span></label>
+                            <input type="date" name="start_date" id="createProjectStart" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" style="font-weight: 600;">End Date <span class="text-danger">*</span></label>
+                            <input type="date" name="end_date" id="createProjectEnd" class="form-control">
+                        </div>
+                    </div>
+
+                    <script>
+                        document.addEventListener("DOMContentLoaded", function() {
+                            const pType = document.getElementById('createProjectType');
+                            const mCont = document.getElementById('createMonthlyContainer');
+                            const cCont = document.getElementById('createCustomContainer');
+                            const pDate = document.getElementById('createProjectDate');
+                            const pStart = document.getElementById('createProjectStart');
+                            const pEnd = document.getElementById('createProjectEnd');
+
+                            pType.addEventListener('change', function() {
+                                if(this.value === 'monthly') {
+                                    mCont.style.display = 'block';
+                                    cCont.style.display = 'none';
+                                    pDate.required = true;
+                                    pStart.required = false;
+                                    pEnd.required = false;
+                                } else {
+                                    mCont.style.display = 'none';
+                                    cCont.style.display = 'flex';
+                                    pDate.required = false;
+                                    pStart.required = true;
+                                    pEnd.required = true;
+                                }
+                            });
+                            
+                            // Initialize
+                            pType.dispatchEvent(new Event('change'));
+                        });
+                    </script>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary border" style="background:#fff; color:#000;"
@@ -380,7 +551,7 @@ $show_breadcrumb = true;
                                             </td>
                                             <td><?= !empty($p['deleted_at']) ? date('d-M-Y', strtotime($p['deleted_at'])) : '&nbsp;' ?>
                                             </td>
-                                            <td>30</td>
+                                            <td class="cell-effective-days text-center">30</td>
                                             <td class="cell-net fw-bold text-primary text-nowrap"
                                                 data-payment-method="<?= htmlspecialchars($p['payment_method']) ?>">
                                                 <?= number_format($netSalary, 2) ?>
@@ -652,64 +823,72 @@ $show_breadcrumb = true;
             }
         });
 
+        // --- Date range from PHP (works for both Monthly and Custom Range modes) ---
+        const fromDateStr = "<?= $selectedFromDate ?? date('Y-m-01') ?>";
+        const toDateStr   = "<?= $selectedToDate   ?? date('Y-m-t')  ?>";
+
+        // Calculate effective days in the range and update "Actual Effective Days" cells
+        (function () {
+            const from = new Date(fromDateStr);
+            const to   = new Date(toDateStr);
+            const diffMs   = to - from;
+            const effectiveDays = Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1; // inclusive
+            document.querySelectorAll('.cell-effective-days').forEach(cell => {
+                cell.textContent = effectiveDays;
+            });
+        })();
+
         // --- Tipsoi Auto-Fallback for Missing DB Data ---
-        const selectedYear = "<?= $selectedYear ?? '' ?>";
-        const selectedMonth = "<?= $selectedMonth ?? '' ?>";
+        const missingRows = document.querySelectorAll('.calc-row[data-has-db="false"]');
+        if (fromDateStr && toDateStr && missingRows.length > 0) {
+            const params = new URLSearchParams({
+                from_date: fromDateStr,
+                to_date:   toDateStr
+            });
 
-        if (selectedYear && selectedMonth) {
-            const missingRows = document.querySelectorAll('.calc-row[data-has-db="false"]');
-            if (missingRows.length > 0) {
-                const toDateObj = new Date(selectedYear, selectedMonth, 0); 
-                const fromDateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
-                const toDateStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(toDateObj.getDate()).padStart(2, '0')}`;
-                
-                const params = new URLSearchParams({
-                    from_date: fromDateStr,
-                    to_date: toDateStr
-                });
+            fetch(`<?= $GLOBALS['base_url'] ?>/api/hrm/attendance?` + params.toString())
+            .then(r => r.json())
+            .then(res => {
+                if (res.success && res.data) {
+                    const rawData = res.data;
+                    const localEmployees = res.local_employees || [];
 
-                fetch(`<?= $GLOBALS['base_url'] ?>/api/hrm/attendance?` + params.toString())
-                .then(r => r.json())
-                .then(res => {
-                    if (res.success && res.data) {
-                        const rawData = res.data;
-                        const localEmployees = res.local_employees || [];
+                    rawData.forEach(emp => {
+                         const attMap = emp.attendance || {};
+                         const officeId = String(emp.employeeOfficeId || emp.employeeId).toLowerCase().trim();
+                         const nameNormalized = String(emp.employeeName || '').toLowerCase().trim();
 
-                        rawData.forEach(emp => {
-                             const attMap = emp.attendance || {};
-                             const officeId = String(emp.employeeOfficeId || emp.employeeId).toLowerCase().trim();
-                             const nameNormalized = String(emp.employeeName || '').toLowerCase().trim();
+                         const localMatch = localEmployees.find(le => {
+                            const leId = String(le.employee_id || '').toLowerCase().trim();
+                            const leName = String(le.full_name || '').toLowerCase().trim();
+                            return (officeId && leId === officeId) || (nameNormalized && leName === nameNormalized);
+                         });
 
-                             const localMatch = localEmployees.find(le => {
-                                const leId = String(le.employee_id || '').toLowerCase().trim();
-                                const leName = String(le.full_name || '').toLowerCase().trim();
-                                return (officeId && leId === officeId) || (nameNormalized && leName === nameNormalized);
-                             });
+                         if (localMatch) {
+                             const matchedRow = document.querySelector(`.calc-row[data-has-db="false"][data-employee-id="${localMatch.id}"]`);
+                             if (matchedRow) {
+                                 let present = 0;
+                                 let absent  = 0;
+                                 
+                                 Object.keys(attMap).forEach(timestamp => {
+                                     const dayAtt = attMap[timestamp];
+                                     if (dayAtt.isPresent) present++;
+                                     else if (!dayAtt.isOffday && !dayAtt.isHoliday && !dayAtt.isLeave) absent++;
+                                 });
 
-                             if (localMatch) {
-                                 const matchedRow = document.querySelector(`.calc-row[data-has-db="false"][data-employee-id="${localMatch.id}"]`);
-                                 if (matchedRow) {
-                                     let present = 0;
-                                     let absent = 0;
-                                     
-                                     Object.keys(attMap).forEach(timestamp => {
-                                         const dayAtt = attMap[timestamp];
-                                         if (dayAtt.isPresent) present++;
-                                         else if (!dayAtt.isOffday && !dayAtt.isHoliday && !dayAtt.isLeave) absent++;
-                                     });
-
-                                     matchedRow.querySelector('.in-mealcount').value = present;
-                                     matchedRow.querySelector('.in-absent-days').value = absent;
-                                     
-                                     matchedRow.querySelector('input').dispatchEvent(new Event('input'));
-                                 }
+                                 matchedRow.querySelector('.in-mealcount').value    = present;
+                                 matchedRow.querySelector('.in-absent-days').value  = absent;
+                                 
+                                 matchedRow.querySelector('input').dispatchEvent(new Event('input'));
                              }
-                        });
-                    }
-                })
-                .catch(err => console.error("Tipsoi Background Sync failed:", err));
-            }
+                         }
+                    });
+                }
+            })
+            .catch(err => console.error("Tipsoi Background Sync failed:", err));
         }
+
+
 
         // Auto-sync Project Date
         const projectSelect = document.getElementById('payrollProject');

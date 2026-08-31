@@ -175,10 +175,19 @@ class HrmApiController extends Controller
             }
 
             // Fetch local employees details for name/email/ID mapping and joining_date fallback
-            $localQuery = $this->db->query("SELECT id, employee_id, email, full_name, joining_date FROM employees");
+            $localQuery = $this->db->query("SELECT id, employee_id, email, full_name, joining_date, payroll_project_id, department_id, designation_id FROM employees WHERE deleted_at IS NULL");
             $localEmployees = [];
             $localIds = [];
             $localEmails = [];
+            
+            // For joining with departments and designations in JS (if needed, though workspace uses PHP)
+            // Actually let's just get department and designation names too so JS can render them nicely
+            $localQuery = $this->db->query("SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, d.name as department_name, des.name as designation_name 
+                                            FROM employees e 
+                                            LEFT JOIN departments d ON e.department_id = d.id 
+                                            LEFT JOIN designations des ON e.designation_id = des.id
+                                            WHERE e.employee_status = 'active'");
+
             if ($localQuery) {
                 while ($row = $localQuery->fetch_assoc()) {
                     $pid = $row['id'];
@@ -192,7 +201,9 @@ class HrmApiController extends Controller
                         'employee_id' => $empId,
                         'email' => strtolower($empEmail),
                         'full_name' => $empName,
-                        'joining_date' => $empJoin
+                        'joining_date' => $empJoin,
+                        'department_name' => $row['department_name'] ?? 'N/A',
+                        'designation_name' => $row['designation_name'] ?? 'N/A'
                     ];
 
                     if ($empId !== '') {
