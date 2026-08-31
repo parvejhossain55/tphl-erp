@@ -234,11 +234,15 @@ class Con_QuotationController extends Controller
             exit;
         }
 
-        // Check if PO is already generated
-        if ($pr['status'] === 'PO Issued') {
-            setError('Purchase Order has already been generated. You cannot edit this quotation.');
-            header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$requestId}");
-            exit;
+        // Check if PO is already generated and approved
+        $poCheck = $this->db->query("SELECT status FROM purchase_orders WHERE request_id = {$requestId} ORDER BY id DESC LIMIT 1");
+        if ($poCheck && $poCheck->num_rows > 0) {
+            $poStatus = $poCheck->fetch_assoc()['status'];
+            if (in_array($poStatus, ['Approved', 'Purchase Head Approved', 'Fully Received', 'Partially Received'])) {
+                setError('Purchase Order is already approved or processed. You cannot edit this quotation anymore.');
+                header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$requestId}");
+                exit;
+            }
         }
 
         $prItems        = $this->prModel->getItems($requestId);
@@ -287,11 +291,15 @@ class Con_QuotationController extends Controller
             exit;
         }
 
-        // Check if PO is already generated
-        if ($pr['status'] === 'PO Issued') {
-            setError('Purchase Order has already been generated. You cannot edit this quotation.');
-            header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$requestId}");
-            exit;
+        // Check if PO is already generated and approved
+        $poCheck = $this->db->query("SELECT status FROM purchase_orders WHERE request_id = {$requestId} ORDER BY id DESC LIMIT 1");
+        if ($poCheck && $poCheck->num_rows > 0) {
+            $poStatus = $poCheck->fetch_assoc()['status'];
+            if (in_array($poStatus, ['Approved', 'Purchase Head Approved', 'Fully Received', 'Partially Received'])) {
+                setError('Purchase Order is already approved or processed. You cannot edit this quotation anymore.');
+                header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$requestId}");
+                exit;
+            }
         }
 
         // Handle attachment upload if any
@@ -369,11 +377,15 @@ class Con_QuotationController extends Controller
             exit;
         }
 
-        // Check if PO is already generated
-        if ($pr['status'] === 'PO Issued') {
-            setError('Purchase Order has already been generated. You cannot delete this quotation.');
-            header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$requestId}");
-            exit;
+        // Check if PO is already generated and approved
+        $poCheck = $this->db->query("SELECT status FROM purchase_orders WHERE request_id = {$requestId} ORDER BY id DESC LIMIT 1");
+        if ($poCheck && $poCheck->num_rows > 0) {
+            $poStatus = $poCheck->fetch_assoc()['status'];
+            if (in_array($poStatus, ['Approved', 'Purchase Head Approved', 'Fully Received', 'Partially Received'])) {
+                setError('Purchase Order is already approved or processed. You cannot delete this quotation anymore.');
+                header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$requestId}");
+                exit;
+            }
         }
 
         // Delete attachment file if exists

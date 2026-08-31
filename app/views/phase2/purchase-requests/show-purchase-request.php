@@ -25,9 +25,11 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
         $isPRCreator = (int)($pr['created_by'] ?? 0) === $reqUserId;
         $isPRAdmin = in_array($reqUserRole, [1, 3]);
         $isPRDraft = ($pr['status'] ?? '') === 'Draft';
-        $canDeletePR = ($isPRCreator || $isPRAdmin) && !in_array($pr['status'] ?? '', ['Approved', 'PO Issued']);
+        $isPurchase = in_array($reqUserRole, [17, 23, 31]);
+        $canDeletePR = ($isPRCreator || $isPRAdmin || $isPurchase);
         ?>
-        <?php if ($isPRDraft && ($isPRCreator || $isPRAdmin)): ?>
+        <?php $canEditPR = ($isPRCreator || $isPRAdmin || $isPurchase); ?>
+        <?php if ($canEditPR): ?>
             <a href="<?= $base_url ?>/con-purchase-request-edit/<?= $pr['id'] ?>" class="btn btn-outline-primary btn-sm">
                 <i class="bi bi-pencil me-1"></i> Edit Request
             </a>
@@ -329,11 +331,11 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                 <p class="small text-muted mb-2">
                                     <?= count($quotations) ?> quotation(s) collected
                                 </p>
-                                <?php if ($pr['status'] === 'Approved'): ?>
+                                <?php if (in_array($pr['status'], ['Approved', 'PO Issued'])): ?>
                                     <?php if (!$isReadOnly): ?>
                                         <a href="<?= $base_url ?>/con-quotation-create/<?= $pr['id'] ?>"
                                            class="btn btn-outline-info btn-sm">
-                                            <i class="bi bi-plus me-1"></i> Add Quotation
+                                            <i class="bi bi-plus me-1"></i> Add / View Quotations
                                         </a>
                                     <?php else: ?>
                                         <span class="badge bg-secondary">Awaiting Quotations</span>

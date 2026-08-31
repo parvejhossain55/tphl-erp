@@ -917,15 +917,23 @@ class Con_PurchaseRequestController extends Controller
         }
 
         if (in_array($pr['status'], ['Approved', 'PO Issued'])) {
-            setError('Approved purchase requests cannot be deleted.');
-            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
-            exit;
+            // Check if PO is already generated and approved
+            $poCheck = $this->db->query("SELECT status FROM purchase_orders WHERE request_id = {$id} ORDER BY id DESC LIMIT 1");
+            if ($poCheck && $poCheck->num_rows > 0) {
+                $poStatus = $poCheck->fetch_assoc()['status'];
+                if (in_array($poStatus, ['Approved', 'Purchase Head Approved', 'Fully Received', 'Partially Received'])) {
+                    setError('Purchase Order is already approved or processed. You cannot delete this Purchase Request anymore.');
+                    header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+                    exit;
+                }
+            }
         }
 
         $isCreator = (int)($pr['created_by'] ?? 0) === $userId;
         $isAdmin = in_array($userRole, [1, 3, 33, 33]);
+        $isPurchase = in_array($userRole, [17, 23, 31]);
 
-        if (!$isCreator && !$isAdmin) {
+        if (!$isCreator && !$isAdmin && !$isPurchase) {
             setError('You do not have permission to delete this purchase request.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
             exit;
@@ -955,16 +963,24 @@ class Con_PurchaseRequestController extends Controller
             exit;
         }
 
-        if ($pr['status'] !== 'Draft') {
-            setError('Submitted or approved purchase requests cannot be edited.');
-            header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
-            exit;
+        if (in_array($pr['status'], ['Approved', 'PO Issued'])) {
+            // Check if PO is already generated and approved
+            $poCheck = $this->db->query("SELECT status FROM purchase_orders WHERE request_id = {$id} ORDER BY id DESC LIMIT 1");
+            if ($poCheck && $poCheck->num_rows > 0) {
+                $poStatus = $poCheck->fetch_assoc()['status'];
+                if (in_array($poStatus, ['Approved', 'Purchase Head Approved', 'Fully Received', 'Partially Received'])) {
+                    setError('Purchase Order is already approved or processed. You cannot edit this Purchase Request anymore.');
+                    header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+                    exit;
+                }
+            }
         }
 
         $isCreator = (int)($pr['created_by'] ?? 0) === $userId;
         $isAdmin = in_array($userRole, [1, 3, 33, 33]);
+        $isPurchase = in_array($userRole, [17, 23, 31]);
 
-        if (!$isCreator && !$isAdmin) {
+        if (!$isCreator && !$isAdmin && !$isPurchase) {
             setError('You do not have permission to edit this Purchase Request.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
             exit;
@@ -979,7 +995,6 @@ class Con_PurchaseRequestController extends Controller
             SELECT m.id, m.name, m.unit, m.category_id, COALESCE(c.name, 'Uncategorized') AS category_name
             FROM con_materials m
             LEFT JOIN con_material_categories c ON c.id = m.category_id
-            WHERE m.deleted_at IS NULL
             ORDER BY c.name ASC, m.name ASC
         ");
         $materials = $mResult ? $mResult->fetch_all(MYSQLI_ASSOC) : [];
@@ -1008,16 +1023,24 @@ class Con_PurchaseRequestController extends Controller
             exit;
         }
 
-        if ($pr['status'] !== 'Draft') {
-            setError('Submitted or approved purchase requests cannot be edited.');
-            header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
-            exit;
+        if (in_array($pr['status'], ['Approved', 'PO Issued'])) {
+            // Check if PO is already generated and approved
+            $poCheck = $this->db->query("SELECT status FROM purchase_orders WHERE request_id = {$id} ORDER BY id DESC LIMIT 1");
+            if ($poCheck && $poCheck->num_rows > 0) {
+                $poStatus = $poCheck->fetch_assoc()['status'];
+                if (in_array($poStatus, ['Approved', 'Purchase Head Approved', 'Fully Received', 'Partially Received'])) {
+                    setError('Purchase Order is already approved or processed. You cannot edit this Purchase Request anymore.');
+                    header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+                    exit;
+                }
+            }
         }
 
         $isCreator = (int)($pr['created_by'] ?? 0) === $userId;
         $isAdmin = in_array($userRole, [1, 3, 33, 33]);
+        $isPurchase = in_array($userRole, [17, 23, 31]);
 
-        if (!$isCreator && !$isAdmin) {
+        if (!$isCreator && !$isAdmin && !$isPurchase) {
             setError('You do not have permission to edit this Purchase Request.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
             exit;

@@ -119,9 +119,12 @@
                                         $isPRAdmin = in_array($userRole, [1, 3]);
                                         ?>
 
-                                        <?php if ($r['status'] === 'Draft' && ($isPRCreator || $isPRAdmin)): ?>
+                                        <?php 
+                                        $isPurchase = in_array($userRole, [17, 23, 31]);
+                                        $canEditPR = ($isPRCreator || $isPRAdmin || $isPurchase);
+                                        if ($canEditPR): ?>
                                             <a href="<?= $base_url ?>/con-purchase-request-edit/<?= $r['id'] ?>"
-                                                class="btn btn-sm btn-outline-primary ms-1" title="Edit Draft Request">
+                                                class="btn btn-sm btn-outline-primary ms-1" title="Edit Request">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
                                         <?php endif; ?>
@@ -139,7 +142,8 @@
                                         $reqUserId = (int)($_SESSION['user']['id'] ?? 0);
                                         $isPRCreator = (int)($r['created_by'] ?? 0) === $reqUserId;
                                         $isPRAdmin = in_array($userRole, [1, 3]);
-                                        $canDeletePR = ($isPRCreator || $isPRAdmin) && !in_array($r['status'], ['Approved', 'PO Issued']);
+                                        $isPurchase = in_array($userRole, [17, 23, 31]);
+                                        $canDeletePR = ($isPRCreator || $isPRAdmin || $isPurchase);
                                         ?>
                                         <?php if ($canDeletePR): ?>
                                             <a href="<?= $base_url ?>/con-purchase-request-delete/<?= $r['id'] ?>"

@@ -19,9 +19,9 @@ class FundRequisitionController extends Controller {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Management (role 3), Admin (role 1), Accounts (role 6, 30), Operations (role 20, 12, 19, 23, 32) see everything
+        // Management (role 3), Admin (role 1), Accounts (role 6, 30), Operations (role 20, 12, 19, 23, 32), QC & Internal Audit (role 24) see everything
         $where = "1=1";
-        if (!in_array($roleId, [1, 3, 33, 6, 12, 19, 20, 23, 30, 32])) {
+        if (!in_array($roleId, [1, 3, 33, 6, 12, 19, 20, 23, 24, 30, 32])) {
             // Start with: own requisitions
             $conditions = ["fr.requested_by = $userId"];
 
@@ -61,7 +61,7 @@ class FundRequisitionController extends Controller {
         }
         if (!empty($statusFilter)) {
             if ($statusFilter === 'pending') {
-                $where .= " AND fr.status IN ('pending', 'pending_dept', 'dept_approved')";
+                $where .= " AND fr.status IN ('pending', 'pending_dept', 'pending_qc')";
             } else {
                 $where .= " AND fr.status = ?";
                 $params[] = $statusFilter;
@@ -98,6 +98,24 @@ class FundRequisitionController extends Controller {
         $assetSelect = $hasAssetId ? "oa.asset_code, oa.item_name as asset_name" : "NULL as asset_code, NULL as asset_name";
         $assetJoin = $hasAssetId ? "LEFT JOIN office_assets oa ON fr.asset_id = oa.id" : "";
 
+        // Determine what status requires the current user's action
+        $pendingCondition = "0";
+        if (in_array($roleId, [1, 3, 33])) { // Admin / Management
+            $pendingCondition = "fr.status IN ('pending_dept', 'pending_qc', 'pending', 'partially_approved', 'partially_paid')";
+        } elseif ($roleId == 24) { // QC
+            $pendingCondition = "fr.status = 'pending_qc'";
+        } elseif (in_array($roleId, [20, 32])) { // Operation Head
+            $pendingCondition = "(fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 100000)";
+        } elseif (in_array($roleId, [6, 30])) { // Accounts
+            $pendingCondition = "fr.status IN ('approved', 'partially_approved', 'partially_paid')";
+        }
+
+        $pendingActionSql = "(
+            ($pendingCondition) OR 
+            (fr.status = 'pending_dept' AND e_req.reporting_user_id = $userId) OR 
+            (fr.status IN ('paid', 'partially_paid') AND (fr.is_received IS NULL OR fr.is_received = 0) AND fr.requested_by = $userId)
+        )";
+
         $sql = "
             SELECT fr.*, 
                    p.name as project_name,
@@ -111,6 +129,8 @@ class FundRequisitionController extends Controller {
                    u_dept_app.full_name as dept_head_approved_by_name,
                    des_dept_app.name as dept_head_approved_by_designation_name,
                    dept_dept_app.name as dept_head_approved_by_department_name,
+                   u_qc_app.full_name as qc_approved_by_name,
+                   des_qc_app.name as qc_approved_by_designation_name,
                    u_boss.full_name as reporting_boss_name,
                    des_boss.name as reporting_boss_designation_name,
                    e_req.reporting_user_id as requester_reporting_boss_id,
@@ -129,12 +149,16 @@ class FundRequisitionController extends Controller {
             LEFT JOIN users u_dept_app ON fr.dept_head_approved_by = u_dept_app.id
             LEFT JOIN designations des_dept_app ON u_dept_app.designation_id = des_dept_app.id
             LEFT JOIN departments dept_dept_app ON des_dept_app.department_id = dept_dept_app.id
+            LEFT JOIN users u_qc_app ON fr.qc_approved_by = u_qc_app.id
+            LEFT JOIN designations des_qc_app ON u_qc_app.designation_id = des_qc_app.id
             LEFT JOIN users u_boss ON e_req.reporting_user_id = u_boss.id
             LEFT JOIN employees e_boss ON (e_boss.user_id = u_boss.id OR e_boss.id = u_boss.employee_id)
             LEFT JOIN designations des_boss ON des_boss.id = COALESCE(e_boss.designation_id, u_boss.designation_id)
             {$assetJoin}
             WHERE $where
-            ORDER BY fr.id DESC
+            ORDER BY 
+                CASE WHEN {$pendingActionSql} THEN 0 ELSE 1 END ASC,
+                fr.id DESC
             $limitClause
         ";
 
@@ -238,6 +262,8 @@ class FundRequisitionController extends Controller {
                    u_dept_app.full_name AS dept_head_approved_by_name,
                    des_dept_app.name AS dept_head_approved_by_designation_name,
                    dept_dept_app.name AS dept_head_approved_by_department_name,
+                   u_qc_app.full_name AS qc_approved_by_name,
+                   des_qc_app.name AS qc_approved_by_designation_name,
                    u_boss.full_name AS reporting_boss_name,
                    des_boss.name AS reporting_boss_designation_name,
                    e_req.reporting_user_id AS requester_reporting_boss_id,
@@ -258,6 +284,8 @@ class FundRequisitionController extends Controller {
             LEFT JOIN users u_dept_app ON fr.dept_head_approved_by = u_dept_app.id
             LEFT JOIN designations des_dept_app ON u_dept_app.designation_id = des_dept_app.id
             LEFT JOIN departments dept_dept_app ON des_dept_app.department_id = dept_dept_app.id
+            LEFT JOIN users u_qc_app ON fr.qc_approved_by = u_qc_app.id
+            LEFT JOIN designations des_qc_app ON u_qc_app.designation_id = des_qc_app.id
             LEFT JOIN users u_boss ON e_req.reporting_user_id = u_boss.id
             LEFT JOIN employees e_boss ON (e_boss.user_id = u_boss.id OR e_boss.id = u_boss.employee_id)
             LEFT JOIN designations des_boss ON des_boss.id = COALESCE(e_boss.designation_id, u_boss.designation_id)
@@ -376,7 +404,7 @@ class FundRequisitionController extends Controller {
         } else {
             $isDeptApprovalRequired = 0;
             $deptHeadStatus = 'not_required';
-            $status = 'pending';
+            $status = 'pending_qc';
         }
 
         $stmt = $this->db->prepare("
@@ -414,11 +442,11 @@ class FundRequisitionController extends Controller {
                     }
                 }
             } else {
-                $mgmtRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id IN (1, 3)");
-                if ($mgmtRes) {
-                    while ($mgmt = $mgmtRes->fetch_assoc()) {
-                        if (!empty($mgmt['email'])) {
-                            $sent = $mailService->sendRequisitionNotification($mgmt['email'], $mgmt['full_name'], 'Pending Management Approval', 'Fund Requisition', $reqDetails, $link);
+                $qcRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id = 24");
+                if ($qcRes) {
+                    while ($qc = $qcRes->fetch_assoc()) {
+                        if (!empty($qc['email'])) {
+                            $sent = $mailService->sendRequisitionNotification($qc['email'], $qc['full_name'], 'Pending QC & Internal Audit Head Approval', 'Fund Requisition', $reqDetails, $link);
                             if ($sent) $emailSent = true;
                         }
                     }
@@ -482,7 +510,7 @@ class FundRequisitionController extends Controller {
         }
 
         $newDeptStatus = ($status === 'approved') ? 'approved' : 'rejected';
-        $newMainStatus = ($status === 'approved') ? 'pending' : 'rejected';
+        $newMainStatus = ($status === 'approved') ? 'pending_qc' : 'rejected';
 
         $stmt = $this->db->prepare("
             UPDATE fund_requisitions 
@@ -514,13 +542,11 @@ class FundRequisitionController extends Controller {
 
             $emailSent = false;
             if ($newDeptStatus === 'approved') {
-                $reqAmt = (float)($req['amount'] ?? 0);
-                $allowedRoles = $reqAmt <= 100000 ? "1, 3, 33, 20, 32" : "1, 3, 33";
-                $mgmtRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id IN ($allowedRoles)");
-                if ($mgmtRes) {
-                    while ($mgmt = $mgmtRes->fetch_assoc()) {
-                        if (!empty($mgmt['email'])) {
-                            $sent = $mailService->sendRequisitionNotification($mgmt['email'], $mgmt['full_name'], 'Pending Management Approval', 'Fund Requisition', $reqDetails, $link);
+                $qcRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id = 24");
+                if ($qcRes) {
+                    while ($qc = $qcRes->fetch_assoc()) {
+                        if (!empty($qc['email'])) {
+                            $sent = $mailService->sendRequisitionNotification($qc['email'], $qc['full_name'], 'Pending QC & Internal Audit Head Approval', 'Fund Requisition', $reqDetails, $link);
                             if ($sent) $emailSent = true;
                         }
                     }
@@ -543,6 +569,105 @@ class FundRequisitionController extends Controller {
             }
         } else {
             setError("Failed to update status: " . $this->db->error);
+        }
+
+        $referer = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/fund-requisitions");
+        header("Location: " . $referer);
+        exit;
+    }
+
+    public function approveQc() {
+        $sessionUserId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if ($roleId !== 24 && !in_array($roleId, [1, 3, 33])) {
+            setError('Only QC & Internal Audit Head or Admins can approve this stage.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        $id = (int)($_POST['id'] ?? 0);
+        $status = $_POST['status'] ?? 'approved'; // 'approved' or 'rejected'
+        $approval_note = trim($_POST['approval_note'] ?? '');
+
+        if (!$id || !in_array($status, ['approved', 'rejected'])) {
+            setError('Invalid request or status.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        $sql = "SELECT * FROM fund_requisitions WHERE id = $id";
+        $req = $this->db->query($sql)->fetch_assoc();
+        if (!$req) {
+            setError('Requisition not found.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        if ($req['status'] !== 'pending_qc') {
+            setError('Requisition is not waiting for QC approval.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        $newMainStatus = ($status === 'approved') ? 'pending' : 'rejected';
+        
+        // If approved, it's just setting status to 'pending' for Management. If rejected, it dies here.
+        $stmt = $this->db->prepare("
+            UPDATE fund_requisitions 
+            SET status = ?, 
+                qc_approved_by = ?, 
+                qc_approval_note = ?, 
+                qc_approved_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ");
+        $stmt->bind_param("sisi", $newMainStatus, $sessionUserId, $approval_note, $id);
+
+        if ($stmt->execute()) {
+            $this->syncApprovalRequest($id);
+
+            // --- Email Notification Start ---
+            require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
+            $mailService = new \MailService();
+            $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id;
+
+            $reqUserRes = $this->db->query("SELECT full_name, email FROM users WHERE id = {$req['requested_by']}");
+            $requesterInfo = ($reqUserRes && $reqUserRes->num_rows > 0) ? $reqUserRes->fetch_assoc() : null;
+            $requesterName = $requesterInfo['full_name'] ?? 'Unknown';
+
+            $reqDetails = [
+                'title' => $req['purpose'] ?? 'Fund Requisition',
+                'requester_name' => $requesterName,
+                'amount' => $req['amount'] ?? 0
+            ];
+
+            $emailSent = false;
+            if ($status === 'approved') {
+                $reqAmt = (float)($req['amount'] ?? 0);
+                $allowedRoles = $reqAmt <= 100000 ? "1, 3, 33, 20, 32" : "1, 3, 33";
+                $mgmtRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id IN ($allowedRoles)");
+                if ($mgmtRes) {
+                    while ($mgmt = $mgmtRes->fetch_assoc()) {
+                        if (!empty($mgmt['email'])) {
+                            $sent = $mailService->sendRequisitionNotification($mgmt['email'], $mgmt['full_name'], 'Pending Management Approval', 'Fund Requisition', $reqDetails, $link);
+                            if ($sent) $emailSent = true;
+                        }
+                    }
+                }
+            } else if ($status === 'rejected') {
+                if ($requesterInfo && !empty($requesterInfo['email'])) {
+                    $emailSent = $mailService->sendRequisitionNotification($requesterInfo['email'], $requesterName, 'Rejected by QC & Internal Audit Head', 'Fund Requisition', $reqDetails, $link);
+                }
+            }
+            // --- Email Notification End ---
+
+            if ($emailSent) {
+                setSuccess("QC status updated. Notification sent.");
+            } else {
+                setSuccess("QC status updated (No email was sent).");
+            }
+        } else {
+            setError("Failed to update QC status: " . $this->db->error);
         }
 
         $referer = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/fund-requisitions");
