@@ -516,9 +516,9 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
             switch (paymentTypeValue) {
                 case 'booking_money':
                     if (bookingBalance > 0) {
-                        helpText = 'Maximum payable: TK.' + bookingBalance.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (agreement minus discount)';
-                        amountField.setAttribute('max', bookingBalance.toFixed(2));
-                        amountField.setAttribute('placeholder', 'Max: TK.' + bookingBalance.toLocaleString('en-IN', {minimumFractionDigits:2}));
+                        helpText = 'Next payable amount: TK.' + bookingBalance.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (agreement minus discount)';
+                        // amountField.setAttribute('max', bookingBalance.toFixed(2));
+                        amountField.setAttribute('placeholder', 'Next payable: TK.' + bookingBalance.toLocaleString('en-IN', {minimumFractionDigits:2}));
                     } else {
                         helpText = 'Booking already fully paid';
                         amountField.setAttribute('disabled', 'disabled');
@@ -528,8 +528,8 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
 
                 case 'land_share':
                     if (remainingLandShare > 0) {
-                        helpText = 'Maximum: TK.' + remainingLandShare.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
-                        amountField.setAttribute('max', remainingLandShare.toFixed(2));
+                        helpText = 'Next payable: TK.' + remainingLandShare.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+                        // amountField.setAttribute('max', remainingLandShare.toFixed(2));
                     } else {
                         helpText = 'Land share already completed';
                         amountField.setAttribute('disabled', 'disabled');
@@ -547,12 +547,12 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                         const effectiveMax = Math.min(perEmiAmount, remainingCF);
                         if (remainingCF < perEmiAmount) {
                             helpText = 'Remaining CF: TK.' + remainingCF.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (less than per EMI).' + svcPct + dueNote;
-                            amountField.setAttribute('placeholder', 'Max: TK.' + remainingCF.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}));
-                            amountField.setAttribute('max', remainingCF.toFixed(2));
+                            amountField.setAttribute('placeholder', 'Next payable: TK.' + remainingCF.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}));
+                            // amountField.setAttribute('max', remainingCF.toFixed(2));
                         } else {
                             helpText = 'Suggested: TK.' + perEmiAmount.toLocaleString('en-IN', {minimumFractionDigits:2}) + svcPct + '.' + dueNote + ' Enter any amount — system allocates automatically.';
                             amountField.setAttribute('placeholder', 'Suggested EMI: TK.' + perEmiAmount.toLocaleString('en-IN', {minimumFractionDigits:2}));
-                            amountField.setAttribute('max', remainingCF.toFixed(2));
+                            // amountField.setAttribute('max', remainingCF.toFixed(2));
                         }
                         amountField.removeAttribute('disabled');
                     } else {
@@ -563,8 +563,8 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
 
                 case 'registration':
                     if (remainingLandShare > 0) {
-                        helpText = 'Registration fee (Max: TK.' + remainingLandShare.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')';
-                        amountField.setAttribute('max', remainingLandShare.toFixed(2));
+                        helpText = 'Registration fee (Next payable: TK.' + remainingLandShare.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')';
+                        // amountField.setAttribute('max', remainingLandShare.toFixed(2));
                     } else {
                         helpText = 'Land share fully paid — registration not needed.';
                         amountField.setAttribute('disabled', 'disabled');

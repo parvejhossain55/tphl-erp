@@ -2137,6 +2137,7 @@ public function discountStatement($bookingId = null)
         }
 
         $verifiedCount = 0;
+        $paymentsByBookingForSms = [];
 
         require_once dirname(__DIR__) . '/controllers/PaymentBookingController.php';
         $paymentController = new PaymentBookingController($this->db);
@@ -2213,10 +2214,29 @@ public function discountStatement($bookingId = null)
                         );
                     }
 
-                    // 5. Send SMS
-                    if ($sendSms && $smsService) {
-                        $smsService->sendPaymentVerifiedSms($paymentId);
+                    // Collect data for bulk SMS
+                    if ($sendSms) {
+                        if (!isset($paymentsByBookingForSms[$bookingId])) {
+                            $paymentsByBookingForSms[$bookingId] = [
+                                'total_amount' => 0,
+                                'payment_id' => $paymentId,
+                                'types' => []
+                            ];
+                        }
+                        $paymentsByBookingForSms[$bookingId]['total_amount'] += (float)$paymentData['amount'];
+                        $typeStr = ucfirst(str_replace('_', ' ', $paymentData['payment_type']));
+                        if (!in_array($typeStr, $paymentsByBookingForSms[$bookingId]['types'])) {
+                            $paymentsByBookingForSms[$bookingId]['types'][] = $typeStr;
+                        }
                     }
+                }
+            }
+
+            // 5. Send Grouped SMS
+            if ($sendSms && $smsService && !empty($paymentsByBookingForSms)) {
+                foreach ($paymentsByBookingForSms as $bId => $smsData) {
+                    $typesStr = implode(', ', $smsData['types']);
+                    $smsService->sendPaymentVerifiedSms($smsData['payment_id'], false, $smsData['total_amount'], $typesStr);
                 }
             }
 
