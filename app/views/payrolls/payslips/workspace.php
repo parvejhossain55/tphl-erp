@@ -316,13 +316,10 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                             <th>Designation</th>
                             <th>Basic Salary</th>
 
-                            <!-- Dynamic Earnings mapping as close to Excel as possible -->
-                            <?php foreach ($items as $item): ?>
-                                    <?php if ($item['type'] === 'earning'): ?>
-                                            <th><?= htmlspecialchars($item['name']) ?></th>
-                                    <?php endif; ?>
-                            <?php endforeach; ?>
-
+                            <th>Recreation Allowance</th>
+                            <th>Conveyance Allowance</th>
+                            <th>Medical Allowance</th>
+                            <th>House Rent Allowance</th>
                             <th>Gross</th>
                             <th>Daily Salary</th>
                             <th>Advance on Salary</th>
@@ -331,15 +328,8 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                             <th>Late/Unpaid/Absent (Days)</th>
                             <th>Late/Unpaid/Absent (Amount)</th>
                             <th>Salary Hold</th>
-
-                            <!-- Other Dynamic Deductions -->
-                            <?php foreach ($items as $item): ?>
-                                    <?php if ($item['type'] === 'deduction'): ?>
-                                            <?php if (strpos(strtolower($item['name']), 'advance') === false && strpos(strtolower($item['name']), 'lunch') === false && strpos(strtolower($item['name']), 'absent') === false && strpos(strtolower($item['name']), 'lwp') === false && strpos(strtolower($item['name']), 'salary hold') === false): ?>
-                                                    <th><?= htmlspecialchars($item['name']) ?></th>
-                                            <?php endif; ?>
-                                    <?php endif; ?>
-                            <?php endforeach; ?>
+                            <th>Arrears</th>
+                            <th>Others Deduction</th>
 
                             <th>Punctuality Bonus</th>
                             <th>Overtime</th>
@@ -376,10 +366,12 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                 $itemMap['punctuality'] = $x['id'];
                             elseif (strpos($name, 'overtime') !== false)
                                 $itemMap['overtime'] = $x['id'];
-                            elseif (strpos($name, 'arrear') !== false)
+                            elseif (strpos($name, 'arrear') !== false && $x['type'] === 'earning')
                                 $itemMap['arrear'] = $x['id'];
                             elseif (strpos($name, 'tax') !== false)
                                 $itemMap['tax'] = $x['id'];
+                            elseif (strpos($name, 'duty') !== false || strpos($name, 'food') !== false || strpos($name, 'car') !== false)
+                                $itemMap['duty_allowance'] = $x['id'];
                             elseif (strpos($name, 'other') !== false)
                                 $itemMap['other'] = $x['id'];
                         }
@@ -396,48 +388,24 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                 $bank = isset($p['bank_amount']) ? (float)$p['bank_amount'] : (($paymentMethod == 'bank' || $paymentMethod == 'bank transfer') ? $netSalary : 0);
                                 $cash = isset($p['cash_amount']) ? (float)$p['cash_amount'] : (($paymentMethod == 'cash') ? $netSalary : 0);
 
-                                $advanceSalary = 0;
-                                $mealCount = isset($p['tipsoi_present']) ? (float) $p['tipsoi_present'] : 0;
-                                $subsidizeLunch = 0;
-                                // Prioritize late_unpaid_absent_days for correct deduction logic
+                                $isExisting = !empty($p['id']);
+                                $advanceSalary = $isExisting ? (float)($p['advance_salary'] ?? 0) : 0;
+                                $mealCount = $isExisting ? (float)($p['meal_count'] ?? 0) : (isset($p['tipsoi_present']) ? (float) $p['tipsoi_present'] : 0);
+                                $subsidizeLunch = $isExisting ? (float)($p['subsidized_lunch'] ?? 0) : 0;
                                 $unpaidAbsentsDays = isset($p['late_unpaid_absent_days']) ? (float)$p['late_unpaid_absent_days'] : (isset($p['tipsoi_absent']) ? (float) $p['tipsoi_absent'] : 0);
-                                $unpaidAbsents = 0; // The amount
-                                $punctBonus = 0;
-                                $overtime = 0;
-                                $arrear = 0;
-                                $tax = 0;
-                                $otherAllow = 0;
+                                $unpaidAbsentsAmount = $isExisting ? (float)($p['unpaid_absent_amount'] ?? 0) : 0;
+                                $punctBonus = $isExisting ? (float)($p['punctuality_bonus'] ?? 0) : 0;
+                                $overtime = $isExisting ? (float)($p['overtime'] ?? 0) : 0;
+                                $arrearsEarning = $isExisting ? (float)($p['arrears_earning'] ?? 0) : 0;
+                                $dutyAllow = $isExisting ? (float)($p['duty_allowance'] ?? 0) : 0;
+                                $tax = $isExisting ? (float)($p['tax'] ?? 0) : 0;
+                                $arrearsDeduction = $isExisting ? (float)($p['arrears_deduction'] ?? 0) : 0;
+                                $othersDeduction = $isExisting ? (float)($p['others_deduction'] ?? 0) : 0;
 
-                                foreach ($items as $i) {
-                                    $amt = isset($p['dynamic_details'][$i['id']]) ? (float) $p['dynamic_details'][$i['id']] : 0;
-                                    $lname = strtolower($i['name']);
-                                    if (strpos($lname, 'advance') !== false) {
-                                        $advanceSalary += $amt;
-                                    }
-                                    if (strpos($lname, 'lunch') !== false || strpos($lname, 'meal') !== false) {
-                                        $subsidizeLunch += $amt;
-                                        // Attempting a pseudo meal count based on per_meal_amount if available
-                                        $perMeal = (float) ($p['per_meal_amount'] ?? 0);
-                                        if ($perMeal > 0 && $amt > 0) {
-                                            $mealCount = $amt / $perMeal;
-                                        }
-                                    }
-                                    if (strpos($lname, 'absent') !== false || strpos($lname, 'lwp') !== false) {
-                                        $unpaidAbsents += $amt;
-                                    }
-                                    if (strpos($lname, 'punctuality') !== false) {
-                                        $punctBonus += $amt;
-                                    }
-                                    if (strpos($lname, 'overtime') !== false) {
-                                        $overtime += $amt;
-                                    }
-                                    if (strpos($lname, 'arrear') !== false) {
-                                        $arrear += $amt;
-                                    }
-                                    if (strpos($lname, 'tax') !== false) {
-                                        $tax += $amt;
-                                    }
-                                }
+                                $recAllow = $isExisting ? (float)($p['recreation_allowance'] ?? 0) : round($basic * 0.10, 2);
+                                $convAllow = $isExisting ? (float)($p['conveyance_allowance'] ?? 0) : round($basic * 0.10, 2);
+                                $medAllow = $isExisting ? (float)($p['medical_allowance'] ?? 0) : round($basic * 0.30, 2);
+                                $hrAllow = $isExisting ? (float)($p['house_rent_allowance'] ?? 0) : round($basic * 0.50, 2);
                                 ?>
                                         <tr class="calc-row" data-payslip-id="<?= $p['id'] ?? 0 ?>" data-employee-id="<?= $p['real_emp_id_fk'] ?? $p['id'] ?? 0 ?>" data-employee-office-id="<?= htmlspecialchars($p['emp_id']) ?>" data-has-db="<?= isset($p['tipsoi_present']) ? 'true' : 'false' ?>">
                                             <?php $excludedState = (isset($p['is_excluded']) && $p['is_excluded'] == 1) ? "" : "checked"; ?>
@@ -451,61 +419,19 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                             <td><?= htmlspecialchars($p['designation_name'] ?? 'N/A') ?></td>
                                             <td class="cell-basic" data-val="<?= $basic ?>"><?= number_format($basic, 2) ?></td>
 
-                                            <?php foreach ($items as $item): ?>
-                                                    <?php if ($item['type'] === 'earning'): ?>
-                                                            <?php
-                                                                $isBasicAllow = false;
-                                                                $nameStr = strtolower($item['name']);
-                                                                if (strpos($nameStr, 'recreation') !== false) {
-                                                                    $val = round($basic * 0.10, 2);
-                                                                    $isBasicAllow = true;
-                                                                } elseif (strpos($nameStr, 'conveyance') !== false) {
-                                                                    $val = round($basic * 0.10, 2);
-                                                                    $isBasicAllow = true;
-                                                                } elseif (strpos($nameStr, 'medical') !== false) {
-                                                                    $val = round($basic * 0.30, 2);
-                                                                    $isBasicAllow = true;
-                                                                } elseif (strpos($nameStr, 'house rent') !== false) {
-                                                                    $val = round($basic * 0.50, 2);
-                                                                    $isBasicAllow = true;
-                                                                } else {
-                                                                    if (isset($p['dynamic_details'][$item['id']])) {
-                                                                        $val = round($p['dynamic_details'][$item['id']], 2);
-                                                                    } else {
-                                                                        $val = 0;
-                                                                    }
-                                                                }
-                                                            ?>
-                                                            <td><input type="number" step="0.01"
-                                                                    class="form-control form-control-sm text-end in-earning <?= $isBasicAllow ? 'in-basic-allowance' : '' ?>"
-                                                                    data-item-id="<?= $item['id'] ?>"
-                                                                    value="<?= $val ?>"
-                                                                    style="min-width: 80px;"></td>
-                                                    <?php endif; ?>
-                                            <?php endforeach; ?>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-recreation" value="<?= $recAllow ?>" style="min-width: 80px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-conveyance" value="<?= $convAllow ?>" style="min-width: 80px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-medical" value="<?= $medAllow ?>" style="min-width: 80px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-basic-allowance in-houserent" value="<?= $hrAllow ?>" style="min-width: 80px;"></td>
 
                                             <td class="cell-gross fw-bold text-nowrap" data-val="<?= $gross ?>"><?= number_format($gross, 2) ?></td>
                                             <td class="cell-daily text-nowrap" data-val="<?= $daily ?>"><?= number_format($daily, 2) ?>
                                             </td>
-                                            <td><input type="number" step="0.01"
-                                                    class="form-control form-control-sm text-end in-deduct in-advance"
-                                                    <?= isset($itemMap['advance']) ? 'data-item-id="' . $itemMap['advance'] . '"' : '' ?>
-                                                    value="<?= round($advanceSalary, 2) ?>" style="min-width: 80px;"></td>
-                                            <td><input type="number" step="0.01"
-                                                    class="form-control form-control-sm text-end in-mealcount"
-                                                    data-permeal="<?= $p['per_meal_amount'] ?? 0 ?>" value="<?= $mealCount ?>"
-                                                    style="width: 60px;"></td>
-                                            <td><input type="number" step="0.01"
-                                                    class="form-control form-control-sm text-end in-deduct in-sublunch"
-                                                    <?= isset($itemMap['lunch']) ? 'data-item-id="' . $itemMap['lunch'] . '"' : '' ?>
-                                                    value="<?= round($subsidizeLunch, 2) ?>" style="min-width: 80px;"></td>
-                                            <td><input type="number" step="0.01"
-                                                    class="form-control form-control-sm text-end in-absent-days" value="<?= $unpaidAbsentsDays ?>"
-                                                    style="width: 60px;"></td>
-                                            <td><input type="number" step="0.01"
-                                                    class="form-control form-control-sm text-end in-deduct in-unpaid"
-                                                    <?= isset($itemMap['absent']) ? 'data-item-id="' . $itemMap['absent'] . '"' : '' ?>
-                                                    value="<?= round($unpaidAbsents, 2) ?>" style="min-width: 80px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-advance" value="<?= round($advanceSalary, 2) ?>" style="min-width: 80px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-mealcount" data-permeal="<?= $p['per_meal_amount'] ?? 0 ?>" value="<?= $mealCount ?>" style="width: 60px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-sublunch" value="<?= round($subsidizeLunch, 2) ?>" style="min-width: 80px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-absent-days" value="<?= $unpaidAbsentsDays ?>" style="width: 60px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-unpaid" value="<?= round($unpaidAbsentsAmount, 2) ?>" style="min-width: 80px;"></td>
                                             <?php
                                             $isHold = strtolower(trim($p['salary_hold'] ?? '')) === 'hold';
                                             ?>
@@ -516,37 +442,13 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                                 <input type="hidden" class="in-salary-hold-string" value="<?= $isHold ? 'Hold' : '' ?>">
                                             </td>
 
-                                            <?php foreach ($items as $item): ?>
-                                                    <?php if ($item['type'] === 'deduction'): ?>
-                                                            <?php if (strpos(strtolower($item['name']), 'advance') === false && strpos(strtolower($item['name']), 'lunch') === false && strpos(strtolower($item['name']), 'absent') === false && strpos(strtolower($item['name']), 'lwp') === false && strpos(strtolower($item['name']), 'salary hold') === false): ?>
-                                                                    <?php
-                                                                    $existingAmt = round($p['dynamic_details'][$item['id']] ?? 0, 2);
-                                                                    ?>
-                                                                    <td><input type="number" step="0.01"
-                                                                            class="form-control form-control-sm text-end in-deduct in-other-deduct"
-                                                                            data-item-id="<?= $item['id'] ?>"
-                                                                            value="<?= $existingAmt ?>"
-                                                                            style="min-width: 80px;"></td>
-                                                            <?php endif; ?>
-                                                    <?php endif; ?>
-                                            <?php endforeach; ?>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-arrears-deduct" value="<?= round($arrearsDeduction, 2) ?>" style="min-width: 80px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-others-deduct" value="<?= round($othersDeduction, 2) ?>" style="min-width: 80px;"></td>
 
-                                            <td><input type="number" step="0.01"
-                                                    class="form-control form-control-sm text-end in-earning in-punctuality"
-                                                    <?= isset($itemMap['punctuality']) ? 'data-item-id="' . $itemMap['punctuality'] . '"' : '' ?>
-                                                    value="<?= round($punctBonus, 2) ?>" style="min-width: 80px;"></td>
-                                            <td><input type="number" step="0.01"
-                                                    class="form-control form-control-sm text-end in-earning in-overtime"
-                                                    <?= isset($itemMap['overtime']) ? 'data-item-id="' . $itemMap['overtime'] . '"' : '' ?>
-                                                    value="<?= round($overtime, 2) ?>" style="min-width: 80px;"></td>
-                                            <td><input type="number" step="0.01"
-                                                    class="form-control form-control-sm text-end in-earning in-arrear"
-                                                    <?= isset($itemMap['arrear']) ? 'data-item-id="' . $itemMap['arrear'] . '"' : '' ?>
-                                                    value="<?= round($arrear, 2) ?>" style="min-width: 80px;"></td>
-                                            <td><input type="number" step="0.01"
-                                                    class="form-control form-control-sm text-end in-earning in-otherallow"
-                                                    <?= isset($itemMap['other']) ? 'data-item-id="' . $itemMap['other'] . '"' : '' ?>
-                                                    value="<?= round($otherAllow, 2) ?>" style="min-width: 80px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-punctuality" value="<?= round($punctBonus, 2) ?>" style="min-width: 80px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-overtime" value="<?= round($overtime, 2) ?>" style="min-width: 80px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-arrear" value="<?= round($arrearsEarning, 2) ?>" style="min-width: 80px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-otherallow" value="<?= round($dutyAllow, 2) ?>" style="min-width: 80px;"></td>
                                             <td><?= !empty($p['joining_date']) ? date('d-M-Y', strtotime($p['joining_date'])) : '&nbsp;' ?>
                                             </td>
                                             <td><?= !empty($p['deleted_at']) ? date('d-M-Y', strtotime($p['deleted_at'])) : '&nbsp;' ?>
@@ -556,9 +458,7 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                                 data-payment-method="<?= htmlspecialchars($p['payment_method']) ?>">
                                                 <?= number_format($netSalary, 2) ?>
                                             </td>
-                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-tax"
-                                                    <?= isset($itemMap['tax']) ? 'data-item-id="' . $itemMap['tax'] . '"' : '' ?>
-                                                    value="<?= round($tax, 2) ?>" style="min-width: 80px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-tax" value="<?= round($tax, 2) ?>" style="min-width: 80px;"></td>
                                             <td class="cell-netpayable fw-bold text-success text-nowrap">
                                                 <?= number_format($netSalary, 2) ?>
                                             </td>
@@ -1056,7 +956,8 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                     console.log('Sending row:', { payslipIdStr: payslipIdStr, parsedPayslipId: payslipId, employeeId: employeeId });
                     
                     var netSalary = parseFloat(tr.find('.cell-net').text().trim().replace(/,/g, '')) || 0;
-                    var totalEarning = parseFloat(tr.find('.cell-gross').text().trim().replace(/,/g, '')) || 0;
+                    var totalEarningBase = parseFloat(tr.find('.cell-gross').attr('data-val')) || 0;
+                    var totalEarning = totalEarningBase;
                     var totalDeduction = 0;
                     var salaryHoldString = tr.find('.in-salary-hold-string').val() || '';
                     var bankAmount = parseFloat(tr.find('.in-bank').val()) || 0;
@@ -1064,17 +965,33 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                     var lateUnpaidAbsentDays = parseFloat(tr.find('.in-absent-days').val()) || 0;
                     var remarks = tr.find('.in-remarks').val() || '';
                     var attRemarks = tr.find('.in-att-remarks').val() || '';
+
+                    // New fields
+                    var recreation_allowance = parseFloat(tr.find('.in-recreation').val()) || 0;
+                    var conveyance_allowance = parseFloat(tr.find('.in-conveyance').val()) || 0;
+                    var medical_allowance = parseFloat(tr.find('.in-medical').val()) || 0;
+                    var house_rent_allowance = parseFloat(tr.find('.in-houserent').val()) || 0;
+                    var advance_salary = parseFloat(tr.find('.in-advance').val()) || 0;
+                    var meal_count = parseFloat(tr.find('.in-mealcount').val()) || 0;
+                    var subsidized_lunch = parseFloat(tr.find('.in-sublunch').val()) || 0;
+                    var unpaid_absent_amount = parseFloat(tr.find('.in-unpaid').val()) || 0;
+                    var arrears_deduction = parseFloat(tr.find('.in-arrears-deduct').val()) || 0;
+                    var others_deduction = parseFloat(tr.find('.in-others-deduct').val()) || 0;
+                    var punctuality_bonus = parseFloat(tr.find('.in-punctuality').val()) || 0;
+                    var overtime = parseFloat(tr.find('.in-overtime').val()) || 0;
+                    var arrears_earning = parseFloat(tr.find('.in-arrear').val()) || 0;
+                    var duty_allowance = parseFloat(tr.find('.in-otherallow').val()) || 0;
+                    var tax = parseFloat(tr.find('.in-tax').val()) || 0;
                     
-                    var dynamicDetails = {};
+                    var dynamicDetails = {}; // Unused now but kept for compatibility
                     
                     tr.find('.in-earning, .in-deduct').each(function() {
-                        var itemId = $(this).attr('data-item-id');
                         var val = parseFloat($(this).val()) || 0;
-                        if (itemId && val > 0) {
-                            dynamicDetails[itemId] = val;
-                        }
                         if ($(this).hasClass('in-deduct')) {
                             totalDeduction += val;
+                        }
+                        if ($(this).hasClass('in-earning') && !$(this).hasClass('in-basic-allowance')) {
+                            totalEarning += val;
                         }
                     });
 
@@ -1091,7 +1008,22 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                         remarks: remarks,
                         attendance_remarks: attRemarks,
                         is_excluded: isExcluded,
-                        details: dynamicDetails
+                        details: dynamicDetails,
+                        recreation_allowance: recreation_allowance,
+                        conveyance_allowance: conveyance_allowance,
+                        medical_allowance: medical_allowance,
+                        house_rent_allowance: house_rent_allowance,
+                        advance_salary: advance_salary,
+                        meal_count: meal_count,
+                        subsidized_lunch: subsidized_lunch,
+                        unpaid_absent_amount: unpaid_absent_amount,
+                        arrears_deduction: arrears_deduction,
+                        others_deduction: others_deduction,
+                        punctuality_bonus: punctuality_bonus,
+                        overtime: overtime,
+                        arrears_earning: arrears_earning,
+                        duty_allowance: duty_allowance,
+                        tax: tax
                     });
                 });
 
@@ -1108,8 +1040,8 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                     dataType: 'json',
                     data: JSON.stringify({
                         project_id: projectId,
-                        year: $('select[name="year"]').val(),
-                        month: $('select[name="month"]').val(),
+                        year: $('select[name="year"]').val() || '',
+                        month: $('select[name="month"]').val() || '',
                         rows: rowData
                     }),
                     success: function (res) {
@@ -1121,7 +1053,7 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                         
                         if (res.success) {
                             Swal.fire('Success', res.message, 'success').then(() => {
-                                window.location.reload();
+                                window.location.href = '<?= $GLOBALS['base_url'] ?>/payroll-workspace?payroll_project_id=' + projectId;
                             });
                         } else {
                             Swal.fire('Error', res.message || 'Operation failed', 'error');

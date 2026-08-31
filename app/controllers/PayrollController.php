@@ -1041,9 +1041,43 @@ class PayrollController extends Controller
         $currentMonth = date('m');
 
         // GET param use, fallback to current month/year
-        $selectedYear = isset($_GET['year']) ? $_GET['year'] : $currentYear;
-        $selectedMonth = isset($_GET['month']) ? $_GET['month'] : $currentMonth;
-        $selectedProject = isset($_GET['payroll_project_id']) ? $_GET['payroll_project_id'] : '';
+        $selectedYear = isset($_GET['year']) && $_GET['year'] !== 'undefined' ? $_GET['year'] : '';
+        $selectedMonth = isset($_GET['month']) && $_GET['month'] !== 'undefined' ? $_GET['month'] : '';
+        $selectedProject = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== 'undefined' ? $_GET['payroll_project_id'] : '';
+
+        // If project selected, fetch project date to ensure year/month/effective dates are synchronized with the project
+        $targetStartDate = '';
+        $targetEndDate = '';
+        if ($selectedProject) {
+            $projQuery = $this->db->query("SELECT * FROM payroll_projects WHERE id = " . (int)$selectedProject);
+            if ($projQuery && $projData = $projQuery->fetch_assoc()) {
+                if (!empty($projData['is_custom_date']) && !empty($projData['start_date']) && !empty($projData['end_date'])) {
+                    $targetStartDate = $projData['start_date'];
+                    $targetEndDate = $projData['end_date'];
+                    $selectedYear = date('Y', strtotime($targetStartDate));
+                    $selectedMonth = date('m', strtotime($targetStartDate));
+                } elseif (!empty($projData['date'])) {
+                    $parts = explode('-', $projData['date']);
+                    if (count($parts) >= 2) {
+                        $selectedYear = $parts[0];
+                        $selectedMonth = $parts[1];
+                        $targetStartDate = sprintf('%04d-%02d-01', (int)$selectedYear, (int)$selectedMonth);
+                        $targetEndDate = date('Y-m-t', strtotime($targetStartDate));
+                    }
+                }
+            }
+        }
+
+        if (empty($selectedYear)) {
+            $selectedYear = $currentYear;
+        }
+        if (empty($selectedMonth)) {
+            $selectedMonth = $currentMonth;
+        }
+        if (empty($targetStartDate)) {
+            $targetStartDate = sprintf('%04d-%02d-01', (int)$selectedYear, (int)$selectedMonth);
+            $targetEndDate = date('Y-m-t', strtotime($targetStartDate));
+        }
 
         // Fetch dynamic payslip items
         $items = $this->payslipItemModel->getAll(); // returns id, name, type etc.
@@ -1055,6 +1089,9 @@ class PayrollController extends Controller
                 $payroll_projects[] = $pRow;
             }
         }
+
+        $escapedTargetStart = $this->db->real_escape_string($targetStartDate);
+        $escapedTargetEnd = $this->db->real_escape_string($targetEndDate);
 
         // Build an exhaustive query joining payslips, employees, departments, designations
         $query = "
@@ -1070,14 +1107,20 @@ class PayrollController extends Controller
         LEFT JOIN departments dept ON e.department_id = dept.id
         LEFT JOIN designations desg ON e.designation_id = desg.id
         LEFT JOIN payslips p ON e.id = p.employee_id 
-            " . ($selectedYear && $selectedMonth ? " AND YEAR(p.payslip_month) = '$selectedYear' AND MONTH(p.payslip_month) = '$selectedMonth'" : "") . "
-            " . ($selectedProject ? " AND p.payroll_project_id = " . (int) $selectedProject : "") . "
+            " . ($selectedProject ? " AND p.payroll_project_id = " . (int) $selectedProject : " AND YEAR(p.payslip_month) = '$selectedYear' AND MONTH(p.payslip_month) = '$selectedMonth'") . "
         LEFT JOIN (
             SELECT employee_id, present as tipsoi_present, absent as tipsoi_absent, leave_days as tipsoi_leave, late as tipsoi_late, late_unpaid_absent_days 
             FROM attendance_monthly_update
             WHERE payroll_project_id = " . ((int) $selectedProject ?: '0') . "
         ) override_att ON e.id = override_att.employee_id
         WHERE e.employee_status = 'active'
+          AND (
+              p.id IS NOT NULL 
+              OR (
+                  (e.joining_date IS NULL OR e.joining_date = '' OR e.joining_date <= '$escapedTargetEnd')
+                  AND (e.deleted_at IS NULL OR e.deleted_at >= '$escapedTargetStart')
+              )
+          )
         ORDER BY e.employee_id ASC 
     ";
 
@@ -1691,19 +1734,46 @@ class PayrollController extends Controller
                 $attRemarks = trim((string) ($row['attendance_remarks'] ?? ''));
                 $details = $row['details'] ?? [];
 
+                $recreation_allowance = (float)($row['recreation_allowance'] ?? 0);
+                $conveyance_allowance = (float)($row['conveyance_allowance'] ?? 0);
+                $medical_allowance = (float)($row['medical_allowance'] ?? 0);
+                $house_rent_allowance = (float)($row['house_rent_allowance'] ?? 0);
+                $advance_salary = (float)($row['advance_salary'] ?? 0);
+                $meal_count = (float)($row['meal_count'] ?? 0);
+                $subsidized_lunch = (float)($row['subsidized_lunch'] ?? 0);
+                $unpaid_absent_amount = (float)($row['unpaid_absent_amount'] ?? 0);
+                $arrears_deduction = (float)($row['arrears_deduction'] ?? 0);
+                $others_deduction = (float)($row['others_deduction'] ?? 0);
+                $punctuality_bonus = (float)($row['punctuality_bonus'] ?? 0);
+                $overtime = (float)($row['overtime'] ?? 0);
+                $arrears_earning = (float)($row['arrears_earning'] ?? 0);
+                $duty_allowance = (float)($row['duty_allowance'] ?? 0);
+                $tax = (float)($row['tax'] ?? 0);
+
+                $checkStmt = $this->db->prepare("SELECT id FROM payslips WHERE employee_id=? AND payroll_project_id=? AND payslip_month=?");
+                if ($checkStmt) {
+                    $checkStmt->bind_param("iis", $employeeId, $projectId, $payslipMonth);
+                    $checkStmt->execute();
+                    $checkRes = $checkStmt->get_result();
+                    if ($checkRow = $checkRes->fetch_assoc()) {
+                        $payslipId = (int)$checkRow['id'];
+                    }
+                    $checkStmt->close();
+                }
+
                 if ($payslipId > 0) {
-                    $stmt = $this->db->prepare("UPDATE payslips SET total_earning=?, total_deduction=?, net_salary=?, salary_hold=?, bank_amount=?, cash_amount=?, late_unpaid_absent_days=?, remarks=?, attendance_remarks=?, is_excluded=? WHERE id=?");
+                    $stmt = $this->db->prepare("UPDATE payslips SET total_earning=?, total_deduction=?, net_salary=?, salary_hold=?, bank_amount=?, cash_amount=?, late_unpaid_absent_days=?, remarks=?, attendance_remarks=?, is_excluded=?, recreation_allowance=?, conveyance_allowance=?, medical_allowance=?, house_rent_allowance=?, advance_salary=?, meal_count=?, subsidized_lunch=?, unpaid_absent_amount=?, arrears_deduction=?, others_deduction=?, punctuality_bonus=?, overtime=?, arrears_earning=?, duty_allowance=?, tax=? WHERE id=?");
                     if ($stmt) {
-                        $stmt->bind_param("dddsdddssii", $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $payslipId);
+                        $stmt->bind_param("dddsdddssidddddddddddddddi", $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $recreation_allowance, $conveyance_allowance, $medical_allowance, $house_rent_allowance, $advance_salary, $meal_count, $subsidized_lunch, $unpaid_absent_amount, $arrears_deduction, $others_deduction, $punctuality_bonus, $overtime, $arrears_earning, $duty_allowance, $tax, $payslipId);
                         $stmt->execute();
                         $stmt->close();
                     } else {
                         throw new Exception("Payslips update failed: " . $this->db->error);
                     }
                 } else {
-                    $stmt = $this->db->prepare("INSERT INTO payslips (employee_id, payroll_project_id, payslip_month, total_earning, total_deduction, net_salary, salary_hold, bank_amount, cash_amount, late_unpaid_absent_days, remarks, attendance_remarks, is_excluded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt = $this->db->prepare("INSERT INTO payslips (employee_id, payroll_project_id, payslip_month, total_earning, total_deduction, net_salary, salary_hold, bank_amount, cash_amount, late_unpaid_absent_days, remarks, attendance_remarks, is_excluded, recreation_allowance, conveyance_allowance, medical_allowance, house_rent_allowance, advance_salary, meal_count, subsidized_lunch, unpaid_absent_amount, arrears_deduction, others_deduction, punctuality_bonus, overtime, arrears_earning, duty_allowance, tax) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     if ($stmt) {
-                        $stmt->bind_param("iisdddsdddssi", $employeeId, $projectId, $payslipMonth, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded);
+                        $stmt->bind_param("iisdddsdddssiddddddddddddddd", $employeeId, $projectId, $payslipMonth, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $recreation_allowance, $conveyance_allowance, $medical_allowance, $house_rent_allowance, $advance_salary, $meal_count, $subsidized_lunch, $unpaid_absent_amount, $arrears_deduction, $others_deduction, $punctuality_bonus, $overtime, $arrears_earning, $duty_allowance, $tax);
                         $stmt->execute();
                         $payslipId = $stmt->insert_id;
                         $stmt->close();

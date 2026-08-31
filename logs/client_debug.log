@@ -1,1 +1,3 @@
 
+[2026-08-31 18:41:27] URL: http://localhost/TPHL-ERP/hrm-dashboard | Type: js-error | Message: Uncaught TypeError: Cannot read properties of null (reading 'querySelector') | Details: {"filename":"http://localhost/TPHL-ERP/hrm-dashboard","lineno":3593,"colno":31,"stack":"TypeError: Cannot read properties of null (reading 'querySelector')\n    at HTMLDocument.<anonymous> (http://localhost/TPHL-ERP/hrm-dashboard:3593:31)"}
+[2026-08-31 20:41:33] URL: http://localhost/TPHL-ERP/payroll-attendance-report | Type: js-error | Message: Uncaught SyntaxError: Function statements require a function name | Details: {"filename":"http://localhost/TPHL-ERP/payroll-attendance-report","lineno":3018,"colno":35,"stack":"SyntaxError: Function statements require a function name"}

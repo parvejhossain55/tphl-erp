@@ -126,6 +126,11 @@
                                 <i class="fa-solid fa-list-check text-secondary me-2"></i>Applied Leave List
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" id="late-request-tab" data-bs-toggle="tab" href="#lateRequestTabContent" role="tab" aria-controls="lateRequestTabContent" aria-selected="false">
+                                <i class="fa-solid fa-clock text-danger me-2"></i>Late Request
+                            </a>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -818,6 +823,109 @@
                     </div>
                 </div>
 
+                <!-- Late Request Tab -->
+                <div class="tab-pane fade" id="lateRequestTabContent" role="tabpanel" aria-labelledby="late-request-tab">
+                    <div class="card custom-card border-top border-4 border-danger shadow-sm">
+                        <div class="card-header py-3 bg-white border-bottom d-flex justify-content-between align-items-center">
+                            <h5 class="card-title fw-bold mb-0 text-dark">
+                                <i class="fa-solid fa-clock text-danger me-2"></i>Late Request
+                            </h5>
+                            <button type="button" class="btn btn-sm btn-primary" id="btnCreateLateRequest" data-bs-toggle="modal" data-bs-target="#createLateRequestModal">
+                                <i class="fa-solid fa-plus me-1"></i> Create Late Request
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <!-- Filters -->
+                            <div class="bg-light p-3 border-bottom d-flex gap-2 align-items-center justify-content-between">
+                                <div class="d-flex gap-2 align-items-center">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRefreshLateRequests">
+                                        <i class="fa-solid fa-arrow-rotate-right me-1"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Table -->
+                            <div class="table-responsive">
+                                <table class="table table-hover table-striped align-middle fs-12 mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Employee</th>
+                                            <th>Attendance Time</th>
+                                            <th>Late By</th>
+                                            <th>Reason</th>
+                                            <th>Status</th>
+                                            <th>Approval Progress</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="lateRequestTableBody">
+                                        <tr>
+                                            <td colspan="8" class="text-center py-4 text-muted">
+                                                <span class="spinner-border spinner-border-sm me-2" role="status"></span> Loading data...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Create Late Request Modal -->
+        <div class="modal fade" id="createLateRequestModal" tabindex="-1" aria-labelledby="createLateRequestModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createLateRequestModalLabel">Create Late Request</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="createLateRequestForm">
+                            <div class="mb-3">
+                                <label for="lateRequestDate" class="form-label fw-semibold">Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="lateRequestDate" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="lateRequestReason" class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="lateRequestReason" rows="3" required placeholder="Reason for being late..."></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="btnSubmitLateRequest">Submit Request</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Late Request Modal -->
+        <div class="modal fade" id="actionLateRequestModal" tabindex="-1" aria-labelledby="actionLateRequestModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="actionLateRequestModalLabel">Late Request Action</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="actionLateRequestForm">
+                            <input type="hidden" id="actionLateRequestId">
+                            <input type="hidden" id="actionLateRequestType">
+                            <div class="mb-3">
+                                <label for="actionLateRequestComment" class="form-label fw-semibold">Comment</label>
+                                <textarea class="form-control" id="actionLateRequestComment" rows="3" placeholder="Optional comment..."></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="btnSubmitActionLateRequest">Submit Action</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1860,6 +1968,310 @@ document.addEventListener("DOMContentLoaded", function() {
     // Also check on initial load in case hash is already #applied-leave-list
     if (window.location.hash === '#applied-leave-list') {
         fetchAppliedLeaves();
+    }
+
+    // -------------------------------------------------------------------------
+    // LATE REQUEST LOGIC
+    // -------------------------------------------------------------------------
+    
+    const lateRequestTableBody = document.getElementById("lateRequestTableBody");
+    const btnRefreshLateRequests = document.getElementById("btnRefreshLateRequests");
+    const btnSubmitLateRequest = document.getElementById("btnSubmitLateRequest");
+    const btnSubmitActionLateRequest = document.getElementById("btnSubmitActionLateRequest");
+
+    function fetchLateRequests() {
+        if (!lateRequestTableBody) return;
+        
+        const tipsoiEmpId = document.getElementById("pOfficeId") ? document.getElementById("pOfficeId").getAttribute("data-tipsoi-id") : null;
+        if (!tipsoiEmpId) {
+            lateRequestTableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-danger">Employee ID not found.</td></tr>`;
+            return;
+        }
+
+        lateRequestTableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-4 text-muted">
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span> Fetching data...
+                </td>
+            </tr>
+        `;
+        
+        // Use the history endpoint as it provides comprehensive state
+        fetch(`${baseUrl}/api/hrm/late-approval-management/late-approvals/${tipsoiEmpId}`)
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                return res.text();
+            })
+            .then(text => {
+                let res;
+                try {
+                    res = JSON.parse(text);
+                } catch (e) {
+                    console.error("Failed to parse JSON: ", text);
+                    throw new Error("Invalid JSON response from server.");
+                }
+
+                if (res.success && res.lateLogList) {
+                    const data = res.lateLogList;
+                    if (!Array.isArray(data) || data.length === 0) {
+                        lateRequestTableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted">No late requests found.</td></tr>`;
+                        return;
+                    }
+
+                    let html = '';
+                    data.forEach(item => {
+                        let attendanceDate = item.attendanceTime ? new Date(item.attendanceTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+                        let attendanceTime = item.attendanceTime ? new Date(item.attendanceTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '-';
+
+                        // Status Badge
+                        let statusBadge = '';
+                        if (item.status === 0) statusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
+                        else if (item.status === 1) statusBadge = '<span class="badge bg-success">Approved</span>';
+                        else if (item.status === 2) statusBadge = '<span class="badge bg-danger">Rejected</span>';
+                        else if (item.status === 3) statusBadge = '<span class="badge bg-secondary">Cancelled</span>';
+                        else statusBadge = `<span class="badge bg-secondary">Unknown (${item.status})</span>`;
+
+                        // Approval Progress
+                        let approvalProgress = `
+                            <div class="fs-11 text-muted text-start">
+                                <div>1st: ${getApprovalStatusText(item.firstApprovalStatus)}</div>
+                                <div>2nd: ${getApprovalStatusText(item.secondApprovalStatus)}</div>
+                            </div>
+                        `;
+
+                        // Actions
+                        let actionsHtml = '';
+                        if (item.status === 0) {
+                            actionsHtml = `
+                                <button class="btn btn-sm btn-outline-success action-late-btn" data-id="${item.id}" data-type="approve" title="Approve"><i class="fa-solid fa-check"></i></button>
+                                <button class="btn btn-sm btn-outline-danger action-late-btn" data-id="${item.id}" data-type="reject" title="Reject"><i class="fa-solid fa-xmark"></i></button>
+                                <button class="btn btn-sm btn-outline-secondary action-late-btn" data-id="${item.id}" data-type="cancel" title="Cancel"><i class="fa-solid fa-ban"></i></button>
+                            `;
+                        }
+
+                        html += `
+                            <tr>
+                                <td>${attendanceDate}</td>
+                                <td>${item.employeeName || '-'}</td>
+                                <td>${attendanceTime}</td>
+                                <td>${item.lateByStr || '-'}</td>
+                                <td>${item.reason || '-'}</td>
+                                <td>${statusBadge}</td>
+                                <td>${approvalProgress}</td>
+                                <td>${actionsHtml}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    lateRequestTableBody.innerHTML = html;
+                    
+                    // Add event listeners to dynamic action buttons
+                    document.querySelectorAll('.action-late-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const id = this.getAttribute('data-id');
+                            const type = this.getAttribute('data-type');
+                            
+                            document.getElementById('actionLateRequestId').value = id;
+                            document.getElementById('actionLateRequestType').value = type;
+                            
+                            const modalLabel = document.getElementById('actionLateRequestModalLabel');
+                            if (type === 'approve') modalLabel.textContent = 'Approve Late Request';
+                            if (type === 'reject') modalLabel.textContent = 'Reject Late Request';
+                            if (type === 'cancel') modalLabel.textContent = 'Cancel Late Request';
+                            
+                            const myModal = new bootstrap.Modal(document.getElementById('actionLateRequestModal'));
+                            myModal.show();
+                        });
+                    });
+
+                } else {
+                    lateRequestTableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-danger">Failed to load: ${res.message || 'Unknown error'}</td></tr>`;
+                }
+            })
+            .catch(err => {
+                console.error("Fetch Late Requests Error:", err);
+                lateRequestTableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-danger">Error: ${err.message || 'Network error occurred.'}</td></tr>`;
+            });
+    }
+
+    function getApprovalStatusText(status) {
+        if (status === 0) return '<span class="text-warning"><i class="fa-solid fa-hourglass-half me-1"></i>Pending</span>';
+        if (status === 1) return '<span class="text-success"><i class="fa-solid fa-check me-1"></i>Approved</span>';
+        if (status === 2) return '<span class="text-danger"><i class="fa-solid fa-xmark me-1"></i>Rejected</span>';
+        return '<span class="text-muted">N/A</span>';
+    }
+
+    if (btnRefreshLateRequests) btnRefreshLateRequests.addEventListener("click", fetchLateRequests);
+
+    // Create Late Request
+    if (btnSubmitLateRequest) {
+        btnSubmitLateRequest.addEventListener("click", function() {
+            const tipsoiEmpId = document.getElementById("pOfficeId") ? document.getElementById("pOfficeId").getAttribute("data-tipsoi-id") : null;
+            if (!tipsoiEmpId) {
+                alert("Employee ID not found.");
+                return;
+            }
+
+            const dateInput = document.getElementById("lateRequestDate");
+            const reasonInput = document.getElementById("lateRequestReason");
+            
+            if (!dateInput.value || !reasonInput.value) {
+                alert("Please fill in all required fields.");
+                return;
+            }
+
+            const originalText = this.innerHTML;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+            this.disabled = true;
+
+            const postData = {
+                attendanceDate: new Date(dateInput.value).getTime(),
+                reason: reasonInput.value
+            };
+
+            fetch(`${baseUrl}/api/hrm/late-approval-management/apply/employee/${tipsoiEmpId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(postData)
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.success) {
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success',
+                            text: 'Late request submitted successfully.'
+                        });
+                    } else {
+                        alert('Late request submitted successfully.');
+                    }
+                    const modalEl = document.getElementById('createLateRequestModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    
+                    dateInput.value = '';
+                    reasonInput.value = '';
+                    
+                    fetchLateRequests();
+                } else {
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: res.message || 'Failed to submit request.'
+                        });
+                    } else {
+                        alert(res.message || 'Failed to submit request.');
+                    }
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Network error occurred.'
+                    });
+                } else {
+                    alert('Network error occurred.');
+                }
+            })
+            .finally(() => {
+                this.innerHTML = originalText;
+                this.disabled = false;
+            });
+        });
+    }
+
+    // Submit Action (Approve/Reject/Cancel)
+    if (btnSubmitActionLateRequest) {
+        btnSubmitActionLateRequest.addEventListener("click", function() {
+            const logId = document.getElementById("actionLateRequestId").value;
+            const type = document.getElementById("actionLateRequestType").value;
+            const comment = document.getElementById("actionLateRequestComment").value;
+            
+            const originalText = this.innerHTML;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+            this.disabled = true;
+
+            const postData = {
+                approverComment: comment
+            };
+
+            fetch(`${baseUrl}/api/hrm/late-approval-management/${type}/${logId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(postData)
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.success) {
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success',
+                            text: `Late request ${type}d successfully.`
+                        });
+                    } else {
+                        alert(`Late request ${type}d successfully.`);
+                    }
+                    const modalEl = document.getElementById('actionLateRequestModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    
+                    fetchLateRequests();
+                } else {
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: res.message || `Failed to ${type} request.`
+                        });
+                    } else {
+                        alert(res.message || `Failed to ${type} request.`);
+                    }
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Network error occurred.'
+                    });
+                } else {
+                    alert('Network error occurred.');
+                }
+            })
+            .finally(() => {
+                this.innerHTML = originalText;
+                this.disabled = false;
+            });
+        });
+    }
+
+    // Initial load when tab is clicked for the first time
+    const lateRequestTab = document.getElementById("late-request-tab");
+    if (lateRequestTab) {
+        lateRequestTab.addEventListener("shown.bs.tab", function () {
+            fetchLateRequests();
+        });
+    }
+
+    if (window.location.hash === '#late-request') {
+        // Find the tab element and click it
+        if (lateRequestTab) {
+            new bootstrap.Tab(lateRequestTab).show();
+        }
     }
 });
 </script>

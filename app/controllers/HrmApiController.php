@@ -106,8 +106,31 @@ class HrmApiController extends Controller
         date_default_timezone_set('Asia/Dhaka');
 
         // Extract dates (expecting Y-m-d format, e.g. 2026-07-06)
-        $fromDateStr = $_GET['from_date'] ?? date('Y-m-d'); // default today
-        $toDateStr = $_GET['to_date'] ?? date('Y-m-d');
+        $projectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== 'undefined' ? (int)$_GET['payroll_project_id'] : (isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0);
+        $fromDateStr = $_GET['from_date'] ?? '';
+        $toDateStr = $_GET['to_date'] ?? '';
+
+        // If project_id provided, automatically resolve date boundaries from payroll_projects if not supplied
+        if ($projectId > 0 && (empty($fromDateStr) || empty($toDateStr))) {
+            $projQuery = $this->db->query("SELECT * FROM payroll_projects WHERE id = $projectId");
+            if ($projQuery && $projData = $projQuery->fetch_assoc()) {
+                if (!empty($projData['is_custom_date']) && !empty($projData['start_date']) && !empty($projData['end_date'])) {
+                    $fromDateStr = $projData['start_date'];
+                    $toDateStr = $projData['end_date'];
+                } elseif (!empty($projData['date'])) {
+                    $parts = explode('-', $projData['date']);
+                    if (count($parts) >= 2) {
+                        $y = (int)$parts[0];
+                        $m = (int)$parts[1];
+                        $fromDateStr = sprintf('%04d-%02d-01', $y, $m);
+                        $toDateStr = date('Y-m-t', strtotime($fromDateStr));
+                    }
+                }
+            }
+        }
+
+        if (empty($fromDateStr)) $fromDateStr = date('Y-m-d');
+        if (empty($toDateStr)) $toDateStr = date('Y-m-d');
 
         // Convert to millisecond timestamps for Tipsoi API (Tipsoi expects 'from' and 'to' in milliseconds)
         // The 'from' should start at 00:00:00 of from_date, and 'to' should end at 23:59:59 of to_date
@@ -175,18 +198,22 @@ class HrmApiController extends Controller
             }
 
             // Fetch local employees details for name/email/ID mapping and joining_date fallback
-            $localQuery = $this->db->query("SELECT id, employee_id, email, full_name, joining_date, payroll_project_id, department_id, designation_id FROM employees WHERE deleted_at IS NULL");
             $localEmployees = [];
             $localIds = [];
             $localEmails = [];
             
-            // For joining with departments and designations in JS (if needed, though workspace uses PHP)
-            // Actually let's just get department and designation names too so JS can render them nicely
+            // Join with departments and designations and filter by project/effective dates
+            $escapedToDate = $this->db->real_escape_string($toDateStr);
+            $escapedFromDate = $this->db->real_escape_string($fromDateStr);
+            
             $localQuery = $this->db->query("SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, d.name as department_name, des.name as designation_name 
                                             FROM employees e 
                                             LEFT JOIN departments d ON e.department_id = d.id 
                                             LEFT JOIN designations des ON e.designation_id = des.id
-                                            WHERE e.employee_status = 'active'");
+                                            WHERE e.employee_status = 'active'
+                                              AND (e.joining_date IS NULL OR e.joining_date = '' OR e.joining_date <= '$escapedToDate')
+                                              AND (e.deleted_at IS NULL OR e.deleted_at >= '$escapedFromDate')
+                                            ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC");
 
             if ($localQuery) {
                 while ($row = $localQuery->fetch_assoc()) {
@@ -1839,6 +1866,101 @@ class HrmApiController extends Controller
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
         exit;
+    }
+
+    // =========================================================================
+    // LATE REQUEST FEATURE
+    // =========================================================================
+
+    private function proxyTipsoiRequest($url, $method, $postData = null) {
+        header('Content-Type: application/json');
+        try {
+            $token = $this->externalApiService->getBearerToken();
+            if (!$token) {
+                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                exit;
+            }
+            
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            
+            $headers = [
+                'Authorization: Bearer ' . $token,
+                'Accept: application/json'
+            ];
+
+            if ($method === 'POST') {
+                curl_setopt($ch, CURLOPT_POST, true);
+                if ($postData !== null) {
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+                    $headers[] = 'Content-Type: application/json';
+                } else {
+                    $headers[] = 'Content-Type: application/json';
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([]));
+                }
+            }
+            
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            
+            $res = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+            
+            if ($curlError) {
+                echo json_encode(['success' => false, 'message' => 'Tipsoi API connection error: ' . $curlError]);
+                exit;
+            }
+            
+            if ($httpCode >= 200 && $httpCode < 300) {
+                $decoded = json_decode($res, true);
+                $decoded['success'] = true;
+                echo json_encode($decoded);
+            } else {
+                $decoded = json_decode($res, true);
+                $msg = $decoded['message'] ?? 'Tipsoi API Error. HTTP Code: ' . $httpCode;
+                $msg .= ' (Debug: ' . $res . ')';
+                echo json_encode(['success' => false, 'message' => $msg]);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    public function applyTipsoiLateRequest($employeeId) {
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/apply/employee/" . urlencode($employeeId);
+        $input = json_decode(file_get_contents('php://input'), true);
+        $this->proxyTipsoiRequest($url, 'POST', $input);
+    }
+
+    public function getTipsoiLateRequests($employeeId) {
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/approval-requests/" . urlencode($employeeId);
+        $this->proxyTipsoiRequest($url, 'GET');
+    }
+
+    public function approveTipsoiLateRequest($logId) {
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/approve/" . urlencode($logId);
+        $input = json_decode(file_get_contents('php://input'), true);
+        $this->proxyTipsoiRequest($url, 'POST', $input);
+    }
+
+    public function rejectTipsoiLateRequest($logId) {
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/reject/" . urlencode($logId);
+        $input = json_decode(file_get_contents('php://input'), true);
+        $this->proxyTipsoiRequest($url, 'POST', $input);
+    }
+
+    public function cancelTipsoiLateRequest($logId) {
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/cancel/" . urlencode($logId);
+        $input = json_decode(file_get_contents('php://input'), true);
+        $this->proxyTipsoiRequest($url, 'POST', $input);
+    }
+
+    public function getTipsoiLateHistory($employeeId) {
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/late-approvals/" . urlencode($employeeId);
+        $this->proxyTipsoiRequest($url, 'GET');
     }
 }
 

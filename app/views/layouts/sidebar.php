@@ -1493,6 +1493,11 @@
                                     Applied Leave List
                                 </a>
                             </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/my-tipsoi-info#late-request" class="sidebar__menu-item">
+                                    Late Request
+                                </a>
+                            </li>
 
                         </ul>
                     </li>
