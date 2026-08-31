@@ -49,7 +49,10 @@ $default_to = date('Y-m-d');
                         <?php if (isset($payroll_projects)): ?>
                             <?php foreach ($payroll_projects as $proj): ?>
                                 <option value="<?= htmlspecialchars($proj['id']) ?>"
-                                    data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>">
+                                    data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>"
+                                    data-iscustom="<?= htmlspecialchars($proj['is_custom_date'] ?? '0') ?>"
+                                    data-start="<?= htmlspecialchars($proj['start_date'] ?? '') ?>"
+                                    data-end="<?= htmlspecialchars($proj['end_date'] ?? '') ?>">
                                     <?= htmlspecialchars($proj['name']) ?>
                                 </option>
                             <?php endforeach; ?>
@@ -307,10 +310,23 @@ dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"
                             scrollX: true,
                             autoWidth: false,
                             pageLength: 50,
-                            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]]
+                            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+                            columnDefs: [{
+                                searchable: false,
+                                orderable: false,
+                                targets: 0
+                            }],
+                            order: [[1, 'asc']] // Default sort by Employee Name
+                        });
+                        
+                        dataTableInstance.on('order.dt search.dt', function () {
+                            let i = 1;
+                            dataTableInstance.cells(null, 0, { search: 'applied', order: 'applied' }).every(function (cell) {
+                                this.data(i++);
                             });
-                            }
-                            }
+                        }).draw();
+                    }
+                }
 
                             // Toggle logic
                             filterType.addEventListener("change", function(e) {
@@ -386,66 +402,65 @@ dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"
                             let aggregatedRows = "";
                             let index = 1;
 
-                            rawData.forEach(emp => {
-                            const attMap = emp.attendance || {};
-                            const officeId = normalizeId(emp.employeeOfficeId || emp.employeeId);
-                            const nameNormalized = String(emp.employeeName || '').toLowerCase().trim();
+                            // We want to show all active employees just like the payroll workspace does
+                            let targetEmployees = localEmployees;
 
-                            const localMatch = localEmployees.find(le => {
-                            const leId = normalizeId(le.employee_id);
-                            const leName = String(le.full_name || '').toLowerCase().trim();
-                            return (officeId && leId === officeId) || (nameNormalized && leName === nameNormalized);
-                            });
+                            targetEmployees.forEach(localMatch => {
+                                const leId = normalizeId(localMatch.employee_id);
+                                const leName = String(localMatch.full_name || '').toLowerCase().trim();
 
-                            // Stats accumulation
-                            let workingDays = 0;
-                            let present = 0;
-                            let absent = 0;
-                            let leave = 0;
-                            let dayOff = 0;
-                            let late = 0;
+                                // Find matching emp in Tipsoi data
+                                const emp = rawData.find(e => {
+                                    const officeId = normalizeId(e.employeeOfficeId || e.employeeId);
+                                    const nameNormalized = String(e.employeeName || '').toLowerCase().trim();
+                                    return (officeId && leId === officeId) || (nameNormalized && leName === nameNormalized);
+                                });
 
-                            const shiftStartTime = emp.shiftStartTime || '';
+                                const attMap = emp ? (emp.attendance || {}) : {};
+                                const shiftStartTime = emp ? (emp.shiftStartTime || '') : '';
 
-                            Object.keys(attMap).forEach(timestamp => {
-                            const dayAtt = attMap[timestamp];
-                            workingDays++; // Wait, what if it's a holiday/offday? Usually workingdays = present +
-                            absent +
-                            leave
+                                // Stats accumulation
+                                let workingDays = 0;
+                                let present = 0;
+                                let absent = 0;
+                                let leave = 0;
+                                let dayOff = 0;
+                                let late = 0;
 
-                            const isLateOverride = dayAtt.isPresent && checkIfLate(dayAtt.firstLoggedTime,
-                            shiftStartTime);
+                                Object.keys(attMap).forEach(timestamp => {
+                                    const dayAtt = attMap[timestamp];
+                                    workingDays++; // Following existing logic
 
-                            if (dayAtt.isLeave) {
-                            leave++;
-                            } else if (dayAtt.isPresent) {
-                            present++;
-                            if (isLateOverride) late++;
-                            } else if (dayAtt.isOffday || dayAtt.isHoliday) {
-                            dayOff++;
-                            workingDays--; // Typically offdays don't strictly count as "Working Days" if unpresent.
-                            } else {
-                            absent++;
-                            }
-                            });
+                                    const isLateOverride = dayAtt.isPresent && checkIfLate(dayAtt.firstLoggedTime, shiftStartTime);
 
-                            // Calculations
-                            let finalLate = late; // Without HR overrides
-                            let approvedLates = 0;
-                            let deduction = 0;
-                            let lateUnpaidAbsentDays = absent; // Custom logic
-                            let idCheck = localMatch ? "OK" : "Mismatch";
-                            let nameCheck = localMatch ? "OK" : "Mismatch";
+                                    if (dayAtt.isLeave) {
+                                        leave++;
+                                    } else if (dayAtt.isPresent) {
+                                        present++;
+                                        if (isLateOverride) late++;
+                                    } else if (dayAtt.isOffday || dayAtt.isHoliday) {
+                                        dayOff++;
+                                        workingDays--; 
+                                    } else {
+                                        absent++;
+                                    }
+                                });
 
-                            // Employment Type (Pull from backend if linked later, here defaulting)
-                            let empType = "Regular";
-                            let rowEmpId = localMatch ? localMatch.id : "";
+                                // Calculations
+                                let finalLate = late;
+                                let approvedLates = 0;
+                                let deduction = 0;
+                                let lateUnpaidAbsentDays = absent;
+                                let idCheck = emp ? "OK" : "Tipsoi Missing";
+                                let nameCheck = emp ? "OK" : "Tipsoi Missing";
 
-                            let displayJoinDate = emp.dateOfJoin || (localMatch ? (localMatch.joining_date || '-') :
-                            '-');
+                                let empType = "Regular";
+                                let rowEmpId = localMatch.id;
 
-                            // Apply DB Overrides if they exist
-                            if (rowEmpId && dbOverrides[rowEmpId]) {
+                                let displayJoinDate = localMatch.joining_date || (emp ? emp.dateOfJoin : '-');
+
+                                // Apply DB Overrides if they exist
+                                if (rowEmpId && dbOverrides[rowEmpId]) {
                             const override = dbOverrides[rowEmpId];
                             workingDays = override.working_days ?? workingDays;
                             present = override.present ?? present;
@@ -462,11 +477,11 @@ dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"
                             aggregatedRows += `
                             <tr data-populated="true" class="att-record-row" data-employee-id="${rowEmpId}">
                                 <td>${index++}</td>
-                                <td class="fw-bold">${emp.employeeName || '-'}</td>
-                                <td>${emp.employeeOfficeId || '-'}</td>
-                                <td>${emp.designationName || '-'}</td>
-                                <td>${emp.departmentName || '-'}</td>
-                                <td>${emp.workplaceName || '-'}</td>
+                                <td class="fw-bold">${localMatch.full_name || (emp ? emp.employeeName : '-')}</td>
+                                <td>${localMatch.employee_id || (emp ? emp.employeeOfficeId : '-')}</td>
+                                <td>${localMatch.designation_name || (emp ? emp.designationName : '-')}</td>
+                                <td>${localMatch.department_name || (emp ? emp.departmentName : '-')}</td>
+                                <td>${emp ? emp.workplaceName : '-'}</td>
                                 <td>${empType}</td>
                                 <td><input type="number" step="0.01"
                                         class="form-control form-control-sm text-end in-workingdays"
@@ -512,7 +527,7 @@ dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"
                             `;
                             });
 
-                            if(rawData.length === 0) {
+                            if(targetEmployees.length === 0) {
                             tableBody.innerHTML = `<tr>
                                 <td colspan="23" class="text-center py-4">No records found for this period.</td>
                             </tr>`;
@@ -671,21 +686,36 @@ dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"
                             $(projectSelect).on('change', function() {
                             const selectedOpt = this.options[this.selectedIndex];
                             if (selectedOpt && selectedOpt.value) {
-                            const dateVal = selectedOpt.getAttribute('data-date');
-                            if (dateVal) {
-                            const parts = dateVal.split('-');
-                            if (parts.length >= 2) {
-                            const yearSelect = document.getElementById('filterYear');
-                            const monthSelect = document.getElementById('filterMonth');
-                            if (yearSelect && monthSelect) {
-                            yearSelect.value = parts[0];
-                            monthSelect.value = parts[1];
-                            $(yearSelect).trigger('change');
-                            $(monthSelect).trigger('change');
+                            const isCustom = selectedOpt.getAttribute('data-iscustom') === '1';
+
+                            if (isCustom) {
+                                filterType.value = 'custom';
+                                filterType.dispatchEvent(new Event('change'));
+                                fromDateInput.value = selectedOpt.getAttribute('data-start');
+                                toDateInput.value = selectedOpt.getAttribute('data-end');
+                            } else {
+                                const dateVal = selectedOpt.getAttribute('data-date');
+                                if (dateVal) {
+                                    filterType.value = 'monthly';
+                                    filterType.dispatchEvent(new Event('change'));
+                                    const parts = dateVal.split('-');
+                                    if (parts.length >= 2) {
+                                        const yearSelect = document.getElementById('filterYear');
+                                        const monthSelect = document.getElementById('filterMonth');
+                                        if (yearSelect && monthSelect) {
+                                            yearSelect.value = parts[0];
+                                            monthSelect.value = parts[1];
+                                            // The trigger('change') on filterYear/filterMonth will call fetchAttendanceData
+                                            $(yearSelect).trigger('change');
+                                            $(monthSelect).trigger('change');
+                                        }
+                                    }
+                                }
                             }
+                            // Call fetch manually just in case trigger('change') didn't handle it for custom
+                            if (isCustom) {
+                                fetchAttendanceData();
                             }
-                            }
-                            fetchAttendanceData();
                             }
                             });
                             }
