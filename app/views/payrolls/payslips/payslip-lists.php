@@ -93,8 +93,28 @@ $show_breadcrumb = true;
             </div>
         </div>
 
+        <!-- Payroll Project Select -->
+        <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-12 animate__animated animate__fadeIn">
+            <div class="card__wrapper h-100">
+                <div class="from__input-box">
+                    <select name="project_id" class="form-control">
+                        <option value="">All Projects</option>
+                        <?php if (!empty($payroll_projects)): ?>
+                            <?php foreach ($payroll_projects as $proj): ?>
+                                <option value="<?= htmlspecialchars($proj['id']) ?>"
+                                    <?= (isset($selectedProjectId) && $selectedProjectId == $proj['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($proj['name']) ?>
+                                    <?= !empty($proj['date']) ? '(' . date('M Y', strtotime($proj['date'])) . ')' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+            </div>
+        </div>
+
         <!-- Buttons -->
-        <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-12 col-12 animate__animated animate__fadeIn">
+        <div class="col-xxl-12 col-xl-12 col-lg-12 col-md-12 col-12 animate__animated animate__fadeIn mt-3">
             <div class="card__wrapper ">
                 <div class="d-flex flex-column flex-sm-row gap-2">
                     <button type="submit" class="btn btn-secondary w-100 px-0">
@@ -263,26 +283,29 @@ $show_breadcrumb = true;
                             <small class="text-muted">Select un-disbursed payslips below, choose payment account & disburse in 1 click.</small>
                         </div>
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <label class="form-label mb-0 fw-bold fs-13">Paying Bank/Cash:</label>
-                        <select id="disburse_bank_account_id" class="form-select form-select-sm" style="min-width: 220px;">
-                            <option value="0">Petty Cash / Cash Account</option>
-                            <?php foreach ($companyBanks as $bank): ?>
-                                <option value="<?= $bank['id'] ?>">
-                                    <?= htmlspecialchars($bank['bank_name']) ?> - <?= htmlspecialchars($bank['account_number']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <button type="button" class="btn btn-success btn-sm px-3 fw-bold" onclick="disburseSelectedPayroll()">
-                            <i class="fa-light fa-money-check-dollar me-1"></i> Disburse Selected & Post Journal
-                        </button>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <label class="form-label mb-0 fw-bold fs-13">Paying Bank/Cash:</label>
+                            <select id="disburse_bank_account_id" class="form-select form-select-sm" style="min-width: 220px;">
+                                <option value="0">Petty Cash / Cash Account</option>
+                                <?php foreach ($companyBanks as $bank): ?>
+                                    <option value="<?= $bank['id'] ?>">
+                                        <?= htmlspecialchars($bank['bank_name']) ?> - <?= htmlspecialchars($bank['account_number']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="button" class="btn btn-success btn-sm px-3 fw-bold" onclick="disburseSelectedPayroll()">
+                                <i class="fa-light fa-money-check-dollar me-1"></i> Disburse Selected & Post Journal
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm px-3 fw-bold" onclick="bulkDeleteSelected()">
+                                <i class="fa-light fa-trash-can me-1"></i> Bulk Delete
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="table__wrapper table-responsive">
-                <table class="table hover mb-20" id="payslipListTable">
-                    <thead>
+                <div class="table__wrapper table-responsive">
+                    <table class="table hover mb-20" id="payslipListTable">
+                        <thead>
                         <tr class="table__title">
                             <th><input type="checkbox" id="selectAllPayslips" onclick="toggleSelectAllPayslips(this)"></th>
                             <th>SL</th>
@@ -420,6 +443,7 @@ $show_breadcrumb = true;
             <table class="table hover mb-20" id="draftPayslipListTable">
                 <thead>
                     <tr class="table__title">
+                        <th><input type="checkbox" id="selectAllDraftPayslips" onclick="toggleSelectAllDraftPayslips(this)"></th>
                         <th>SL</th>
                         <th class="th_1">Employee</th>
                         <th>Designation</th>
@@ -436,6 +460,7 @@ $show_breadcrumb = true;
                     <?php foreach ($payslips as $payslip): ?>
                         <?php if ($payslip['status'] != 'draft') continue; ?>
                         <tr>
+                            <td><input type="checkbox" class="draft-payslip-checkbox payslip-checkbox" value="<?= $payslip['id'] ?>"></td>
                             <td><?= $sl2++ ?></td>
                             <td class="td_1">
                                 <span class="table-avatar">
@@ -975,14 +1000,84 @@ $show_breadcrumb = true;
     });
 
     function toggleSelectAllPayslips(master) {
-        document.querySelectorAll('.payslip-checkbox:not(:disabled)').forEach(cb => {
+        document.querySelectorAll('#payslipListTable .payslip-checkbox:not(:disabled)').forEach(cb => {
             cb.checked = master.checked;
+        });
+    }
+
+    function toggleSelectAllDraftPayslips(master) {
+        document.querySelectorAll('#draftPayslipListTable .payslip-checkbox:not(:disabled)').forEach(cb => {
+            cb.checked = master.checked;
+        });
+    }
+
+    function bulkDeleteSelected() {
+        const selectedIds = [];
+        document.querySelectorAll('.payslip-checkbox:checked').forEach(cb => {
+            selectedIds.push(cb.value);
+        });
+
+        if (selectedIds.length === 0) {
+            Swal.fire('Warning', 'Please select at least one payslip to delete.', 'warning');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Delete Selected Payslips?',
+            html: `Are you sure you want to delete <b>${selectedIds.length}</b> selected payslips?<br><br><small class="text-danger">This action cannot be undone.</small>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Delete',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#dc3545',
+            showLoaderOnConfirm: true,
+            preConfirm: () => {
+                return fetch('<?= $GLOBALS['base_url'] ?>/bulk-delete-payslips', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        payslip_ids: selectedIds
+                    })
+                })
+                .then(response => {
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        return response.json().then(data => {
+                            if (!response.ok || !data.success) {
+                                throw new Error(data.message || 'Failed to delete payslips.');
+                            }
+                            return data;
+                        });
+                    } else {
+                        return response.text().then(text => {
+                            console.error("Server non-JSON response:", text);
+                            throw new Error('Server returned an invalid format. Check console.');
+                        });
+                    }
+                })
+                .catch(error => {
+                    Swal.showValidationMessage(`${error}`);
+                });
+            },
+            allowOutsideClick: () => !Swal.isLoading()
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Deleted!',
+                    text: result.value.message,
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
+                });
+            }
         });
     }
 
     function disburseSelectedPayroll() {
         const selectedIds = [];
-        document.querySelectorAll('.payslip-checkbox:checked').forEach(cb => {
+        document.querySelectorAll('#payslipListTable .payslip-checkbox:checked').forEach(cb => {
             selectedIds.push(cb.value);
         });
 
