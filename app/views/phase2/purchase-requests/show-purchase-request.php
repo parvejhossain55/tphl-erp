@@ -112,7 +112,7 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                     </div>
 
                     <!-- Independent PR: Required Date + Purpose -->
-                    <?php if ($prType === 'independent' && (!empty($pr['required_date']) || !empty($pr['purpose']))): ?>
+                    <?php if (!empty($pr['required_date']) || !empty($pr['purpose']) || !empty($pr['notes'])): ?>
                     <div class="rounded p-3 mb-3" style="background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.2)">
                         <div class="row g-3">
                             <?php if (!empty($pr['required_date'])): ?>
@@ -123,12 +123,20 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                 <span class="fw-bold text-warning"><?= date('d M Y', strtotime($pr['required_date'])) ?></span>
                             </div>
                             <?php endif; ?>
-                            <?php if (!empty($pr['purpose'])): ?>
+                            <?php if (!empty($pr['purpose']) || !empty($pr['notes'])): ?>
                             <div class="col-md-9">
                                 <label class="small text-uppercase text-muted d-block">
-                                    <i class="bi bi-justify-left me-1 text-info"></i> Purpose / Description
+                                    <i class="bi bi-justify-left me-1 text-info"></i> Purpose / Notes
                                 </label>
-                                <span class="fw-bold"><?= htmlspecialchars($pr['purpose']) ?></span>
+                                <?php if (!empty($pr['purpose'])): ?>
+                                    <div class="fw-bold mb-1"><?= nl2br(htmlspecialchars($pr['purpose'])) ?></div>
+                                <?php endif; ?>
+                                <?php if (!empty($pr['notes'])): ?>
+                                    <div class="<?= empty($pr['purpose']) ? 'fw-bold' : 'text-muted small' ?>">
+                                        <?= empty($pr['purpose']) ? '' : '<i class="bi bi-sticky me-1"></i> Notes: ' ?>
+                                        <?= nl2br(htmlspecialchars($pr['notes'])) ?>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -200,11 +208,7 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                     </div>
                     <?php endif; ?>
 
-                    <?php if (!empty($pr['notes'])): ?>
-                    <div class="alert alert-light border-start border-primary border-3 mb-3">
-                        <strong>Notes:</strong> <?= htmlspecialchars($pr['notes']) ?>
-                    </div>
-                    <?php endif; ?>
+
 
                     <!-- Items Table -->
                     <div class="table-responsive">

@@ -87,7 +87,8 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     </div>
                 <?php endif; ?>
                 <?php if ($hasOutstandingDues && $remainingCF > 0): ?>
-                      
+                    <div class="alert alert-warning alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
+                        <i class="fa-light fa-triangle-exclamation fs-4 me-2"></i>
                         <div>
                             <strong>Outstanding EMI Due: TK.<?= number_format($totalEmiDue, 2) ?></strong>
                             — Select <em>"Settle EMI Due"</em> below to clear the balance.
@@ -419,9 +420,11 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                             ?>
                             <?php if (!$isPhoneValid): ?>
                                 <div class="alert alert-warning d-flex align-items-center justify-content-between p-2 mb-2 mt-2">
-                                    <div class="small">
-                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
-                                        <strong>Invalid Client Phone:</strong> Client phone (<?= htmlspecialchars($clientPhone ?: 'Empty') ?>) is missing or not a valid 11-digit mobile number.
+                                    <div class="small d-flex align-items-center">
+                                        <i class="fa-solid fa-triangle-exclamation me-2 fs-5"></i>
+                                        <div>
+                                            <strong>Invalid Client Phone:</strong> Client phone (<?= htmlspecialchars($clientPhone ?: 'Empty') ?>) is missing or not a valid 11-digit mobile number.
+                                        </div>
                                     </div>
                                     <span class="badge bg-danger">SMS Notification Blocked</span>
                                 </div>

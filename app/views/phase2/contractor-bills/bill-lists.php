@@ -97,6 +97,7 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
                                             <span class="text-muted">—</span>
                                         <?php endif; ?>
                                     </td>
+                                    <td>
                                         <a href="<?= $base_url ?>/con-contractor-bill/<?= $b['id'] ?>" class="btn btn-sm btn-outline-primary" title="View">
                                             <i class="bi bi-eye"></i>
                                         </a>

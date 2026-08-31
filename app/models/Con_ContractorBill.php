@@ -137,6 +137,38 @@ class Con_ContractorBill extends Model
         return $stmt->insert_id;
     }
 
+    /* update */
+    public function update($id, $data)
+    {
+        $fields = [];
+        $types  = '';
+        $params = [];
+
+        foreach ($data as $col => $val) {
+            $fields[] = "`$col` = ?";
+            if (is_int($val))   { $types .= 'i'; }
+            elseif (is_float($val)) { $types .= 'd'; }
+            else                { $types .= 's'; }
+            $params[] = $val;
+        }
+
+        $types .= 'i';
+        $params[] = $id;
+
+        $sql = "UPDATE {$this->table} SET " . implode(', ', $fields) . " WHERE id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        return $stmt->execute();
+    }
+
+    /* delete */
+    public function delete($id)
+    {
+        $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = ?");
+        $stmt->bind_param('i', $id);
+        return $stmt->execute();
+    }
+
     /* updateStatus — called by verify / approve / pay actions */
     public function updateStatus($id, $data)
     {
