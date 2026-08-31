@@ -193,536 +193,496 @@ $default_to = date('Y-m-d');
 
 <?php ob_start(); ?>
 document.addEventListener("DOMContentLoaded", function () {
-const baseUrl = "<?= $GLOBALS['base_url'] ?>";
-const filterType = document.getElementById("filterType");
-const monthlyContainer = document.getElementById("monthlyContainer");
-const customContainer = document.getElementById("customContainer");
-const filterMonthInput = document.getElementById("filterMonth");
-const filterYearInput = document.getElementById("filterYear");
-const fromDateInput = document.getElementById("fromDate");
-const toDateInput = document.getElementById("toDate");
-const btnFilterSearch = document.getElementById("btnFilterSearch");
-const tableBody = document.getElementById("attendanceReportBody");
+    const baseUrl = "<?= $GLOBALS['base_url'] ?>";
+    const filterType = document.getElementById("filterType");
+    const monthlyContainer = document.getElementById("monthlyContainer");
+    const customContainer = document.getElementById("customContainer");
+    const filterMonthInput = document.getElementById("filterMonth");
+    const filterYearInput = document.getElementById("filterYear");
+    const fromDateInput = document.getElementById("fromDate");
+    const toDateInput = document.getElementById("toDate");
+    const tableBody = document.getElementById("attendanceReportBody");
 
-const statusCard = document.getElementById("apiStatusCard");
-const statusIcon = document.getElementById("apiStatusIcon");
-const statusTitle = document.getElementById("apiStatusTitle");
-const statusDesc = document.getElementById("apiStatusDesc");
-const modeBadge = document.getElementById("apiModeBadge");
+    const statusCard = document.getElementById("apiStatusCard");
+    const statusIcon = document.getElementById("apiStatusIcon");
+    const statusTitle = document.getElementById("apiStatusTitle");
+    const statusDesc = document.getElementById("apiStatusDesc");
+    const modeBadge = document.getElementById("apiModeBadge");
 
-let dataTableInstance = null;
-let activeFromDate = "";
-let activeToDate = "";
+    let dataTableInstance = null;
+    let activeFromDate = "";
+    let activeToDate = "";
+    let isFetching = false;
 
-// Helper functions from tipsoi integration map
-const normalizeId = (id) => {
-const str = String(id || '').trim();
-return /^\d+$/.test(str) ? String(parseInt(str, 10)) : str;
-};
+    // Helper functions from tipsoi integration map
+    const normalizeId = (id) => {
+        const str = String(id || '').trim();
+        return /^\d+$/.test(str) ? String(parseInt(str, 10)) : str;
+    };
 
-const parseTimeToMinutes = (timeStr) => {
-if (!timeStr || timeStr === '-' || timeStr === ' ' || timeStr.trim() === '') return null;
-const match = timeStr.trim().match(/^(\d+):(\d+)\s*(AM|PM)$/i);
-if (!match) return null;
-let hours = parseInt(match[1], 10);
-const minutes = parseInt(match[2], 10);
-const ampm = match[3].toUpperCase();
-if (ampm === 'PM' && hours !== 12) hours += 12;
-else if (ampm === 'AM' && hours === 12) hours = 0;
-return hours * 60 + minutes;
-};
+    const parseTimeToMinutes = (timeStr) => {
+        if (!timeStr || timeStr === '-' || timeStr === ' ' || timeStr.trim() === '') return null;
+        const match = timeStr.trim().match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+        if (!match) return null;
+        let hours = parseInt(match[1], 10);
+        const minutes = parseInt(match[2], 10);
+        const ampm = match[3].toUpperCase();
+        if (ampm === 'PM' && hours !== 12) hours += 12;
+        else if (ampm === 'AM' && hours === 12) hours = 0;
+        return hours * 60 + minutes;
+    };
 
-const checkIfLate = (firstLogTime, shiftStartTime) => {
-const checkInMin = parseTimeToMinutes(firstLogTime);
-if (checkInMin === null) return false;
-const shiftStartMin = parseTimeToMinutes(shiftStartTime) ?? 570;
-const lateThreshold = shiftStartMin + 10;
-return checkInMin > lateThreshold;
-};
+    const checkIfLate = (firstLogTime, shiftStartTime) => {
+        const checkInMin = parseTimeToMinutes(firstLogTime);
+        if (checkInMin === null) return false;
+        const shiftStartMin = parseTimeToMinutes(shiftStartTime) ?? 570;
+        const lateThreshold = shiftStartMin + 10;
+        return checkInMin > lateThreshold;
+    };
 
-function showErrorRow(msg) {
-statusCard.style.display = "flex";
-statusCard.className = "card__wrapper mb-20 border-start border-danger border-4";
-statusIcon.className = "bi bi-exclamation-circle-fill text-danger fs-4";
-statusTitle.textContent = "Tipsoi API Error";
-statusDesc.textContent = msg;
-modeBadge.className = "badge bg-danger text-light px-3 py-2";
-modeBadge.textContent = "Error";
+    function showErrorRow(msg) {
+        statusCard.style.display = "flex";
+        statusCard.className = "card__wrapper mb-20 border-start border-danger border-4";
+        statusIcon.className = "bi bi-exclamation-circle-fill text-danger fs-4";
+        statusTitle.textContent = "Tipsoi API Error";
+        statusDesc.textContent = msg;
+        modeBadge.className = "badge bg-danger text-light px-3 py-2";
+        modeBadge.textContent = "Error";
 
-if (dataTableInstance) {
-dataTableInstance.clear().destroy();
-dataTableInstance = null;
-}
+        if (typeof $ !== 'undefined' && $.fn.DataTable && $.fn.DataTable.isDataTable('#payrollAttendanceTable')) {
+            $('#payrollAttendanceTable').DataTable().clear().destroy();
+            dataTableInstance = null;
+        }
 
-tableBody.innerHTML = `
-<tr>
-    <td colspan="23" class="text-center py-5 text-danger fw-bold">
-        <i class="bi bi-exclamation-triangle-fill fs-2 mb-2 d-block"></i>
-        ${msg}
-    </td>
-</tr>
-`;
-}
+        tableBody.innerHTML = `
+        <tr>
+            <td colspan="23" class="text-center py-5 text-danger fw-bold">
+                <i class="bi bi-exclamation-triangle-fill fs-2 mb-2 d-block"></i>
+                ${msg}
+            </td>
+        </tr>
+        `;
+    }
 
-// Initialize datatables
-function initDataTable() {
-if (typeof $ !== 'undefined' && $.fn.DataTable) {
-if (dataTableInstance) {
-dataTableInstance.destroy();
-}
+    // Initialize datatables
+    function initDataTable() {
+        if (typeof $ !== 'undefined' && $.fn.DataTable) {
+            if ($.fn.DataTable.isDataTable('#payrollAttendanceTable')) {
+                $('#payrollAttendanceTable').DataTable().clear().destroy();
+                dataTableInstance = null;
+            }
 
-// Clean un-populated rows before init
-if (!tableBody.querySelector('tr[data-populated]')) {
-// don't init over empty
-return;
-}
+            // Clean un-populated rows before init
+            if (!tableBody.querySelector('tr[data-populated]')) {
+                return;
+            }
 
-dataTableInstance = $('#payrollAttendanceTable').DataTable({
-dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"f><"d-none"B>>' +
-            '<"row"<"col-sm-12"tr>>' +
-                '<"row align-items-center mt-3"<"col-sm-6 text-start"i><"col-sm-6 text-end"p>>',
-                        buttons: [
-                        {
+            dataTableInstance = $('#payrollAttendanceTable').DataTable({
+                destroy: true,
+                dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"f><"d-none"B>>' +
+                     '<"row"<"col-sm-12"tr>>' +
+                     '<"row align-items-center mt-3"<"col-sm-6 text-start"i><"col-sm-6 text-end"p>>',
+                buttons: [
+                    {
                         extend: 'csvHtml5', text: 'CSV', className: 'buttons-csv',
                         title: 'Payroll_Attendance_Report_' + activeFromDate + '_to_' + activeToDate,
                         exportOptions: {
-                        format: {
-                        body: function ( inner, rowidx, colidx, node ) {
-                        if ($(node).find('input').length > 0) {
-                        return $(node).find('input').val();
-                        } else {
-                        return inner.replace(/(<([^>]+)>)/ig, "").trim();
-                            }
-                            }
-                            }
-                            }
-                            },
-                            {
-                            text: 'PDF', className: 'buttons-pdf',
-                            action: function (e, dt, node, config) {
-                            document.getElementById('pdfFromDate').value = activeFromDate;
-                            document.getElementById('pdfToDate').value = activeToDate;
-                            document.getElementById('exportPdfForm').submit();
-                            }
-                            }
-                            ],
-                            responsive: false, // Turn off responsive collapsing for 23 columns
-                            scrollX: true,
-                            autoWidth: false,
-                            pageLength: 50,
-                            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
-                            columnDefs: [{
-                                searchable: false,
-                                orderable: false,
-                                targets: 0
-                            }],
-                            order: [[1, 'asc']] // Default sort by Employee Name
-                        });
-                        
-                        dataTableInstance.on('order.dt search.dt', function () {
-                            let i = 1;
-                            dataTableInstance.cells(null, 0, { search: 'applied', order: 'applied' }).every(function (cell) {
-                                this.data(i++);
-                            });
-                        }).draw();
-                    }
-                }
-
-                            // Toggle logic
-                            filterType.addEventListener("change", function(e) {
-                            if (this.value === 'monthly') {
-                            monthlyContainer.style.display = 'block';
-                            customContainer.style.display = 'none';
-                            } else {
-                            monthlyContainer.style.display = 'none';
-                            customContainer.style.display = 'block';
-                            }
-                            });
-
-                            // Trigger API fetch and compilation
-                            function fetchAttendanceData() {
-
-                            // Determine boundaries
-                            if (filterType.value === 'monthly') {
-                            const m = filterMonthInput.value;
-                            const y = filterYearInput.value;
-                            const dateStrFrom = new Date(y, m - 1, 1).toISOString().substring(0, 10);
-                            const dateStrTo = new Date(y, m, 0).toISOString().substring(0, 10);
-                            activeFromDate = dateStrFrom;
-                            activeToDate = dateStrTo;
-                            } else {
-                            activeFromDate = fromDateInput.value;
-                            activeToDate = toDateInput.value;
-                            }
-
-                            // Show spinner
-                            if (dataTableInstance) {
-                            dataTableInstance.destroy();
-                            dataTableInstance = null;
-                            }
-
-                            tableBody.innerHTML = `
-                            <tr>
-                                <td colspan="23" class="text-center py-5">
-                                    <div class="spinner-border text-primary" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                    <div class="text-muted mt-2">Aggregating attendance over ${activeFromDate} to
-                                        ${activeToDate} from Tipsoi...</div>
-                                </td>
-                            </tr>
-                            `;
-
-                            const params = new URLSearchParams({
-                            from_date: activeFromDate,
-                            to_date: activeToDate
-                            });
-
-                            const projId = document.getElementById("payrollProject").value;
-
-                            Promise.all([
-                            fetch(`${baseUrl}/api/hrm/attendance?${params.toString()}`).then(r => r.json()),
-                            fetch(`${baseUrl}/api/payroll/attendance-overrides?project_id=${projId}`).then(r =>
-                            r.json())
-                            ])
-                            .then(([res, overridesRes]) => {
-                            if (res.success) {
-                            statusCard.style.display = "flex";
-                            statusCard.className = "card__wrapper mb-20 border-start border-success border-4";
-                            statusIcon.className = "bi bi-check-circle-fill text-success fs-4";
-                            statusTitle.textContent = "API Synchronization Success";
-                            statusDesc.textContent = "Attendance mapped against Tipsoi accurately.";
-                            modeBadge.className = "badge bg-success text-light px-3 py-2";
-                            modeBadge.textContent = "Aggregated";
-
-                            const rawData = res.data || [];
-                            const localEmployees = res.local_employees || [];
-                            const dbOverrides = overridesRes.success ? overridesRes.data : {};
-
-                            let aggregatedRows = "";
-                            let index = 1;
-
-                            // We want to show all active employees just like the payroll workspace does
-                            let targetEmployees = localEmployees;
-
-                            targetEmployees.forEach(localMatch => {
-                                const leId = normalizeId(localMatch.employee_id);
-                                const leName = String(localMatch.full_name || '').toLowerCase().trim();
-
-                                // Find matching emp in Tipsoi data
-                                const emp = rawData.find(e => {
-                                    const officeId = normalizeId(e.employeeOfficeId || e.employeeId);
-                                    const nameNormalized = String(e.employeeName || '').toLowerCase().trim();
-                                    return (officeId && leId === officeId) || (nameNormalized && leName === nameNormalized);
-                                });
-
-                                const attMap = emp ? (emp.attendance || {}) : {};
-                                const shiftStartTime = emp ? (emp.shiftStartTime || '') : '';
-
-                                // Stats accumulation
-                                let workingDays = 0;
-                                let present = 0;
-                                let absent = 0;
-                                let leave = 0;
-                                let dayOff = 0;
-                                let late = 0;
-
-                                Object.keys(attMap).forEach(timestamp => {
-                                    const dayAtt = attMap[timestamp];
-                                    workingDays++; // Following existing logic
-
-                                    const isLateOverride = dayAtt.isPresent && checkIfLate(dayAtt.firstLoggedTime, shiftStartTime);
-
-                                    if (dayAtt.isLeave) {
-                                        leave++;
-                                    } else if (dayAtt.isPresent) {
-                                        present++;
-                                        if (isLateOverride) late++;
-                                    } else if (dayAtt.isOffday || dayAtt.isHoliday) {
-                                        dayOff++;
-                                        workingDays--; 
+                            format: {
+                                body: function (inner, rowidx, colidx, node) {
+                                    if ($(node).find('input').length > 0) {
+                                        return $(node).find('input').val();
                                     } else {
-                                        absent++;
-                                    }
-                                });
-
-                                // Calculations
-                                let finalLate = late;
-                                let approvedLates = 0;
-                                let deduction = 0;
-                                let lateUnpaidAbsentDays = absent;
-                                let idCheck = emp ? "OK" : "Tipsoi Missing";
-                                let nameCheck = emp ? "OK" : "Tipsoi Missing";
-
-                                let empType = "Regular";
-                                let rowEmpId = localMatch.id;
-
-                                let displayJoinDate = localMatch.joining_date || (emp ? emp.dateOfJoin : '-');
-
-                                // Apply DB Overrides if they exist
-                                if (rowEmpId && dbOverrides[rowEmpId]) {
-                            const override = dbOverrides[rowEmpId];
-                            workingDays = override.working_days ?? workingDays;
-                            present = override.present ?? present;
-                            absent = override.absent ?? absent;
-                            leave = override.leave_days ?? leave;
-                            dayOff = override.dayoff ?? dayOff;
-                            late = override.late ?? late;
-                            approvedLates = override.approved_lates ?? approvedLates;
-                            finalLate = override.final_late ?? finalLate;
-                            deduction = override.deduction ?? deduction;
-                            lateUnpaidAbsentDays = override.late_unpaid_absent_days ?? lateUnpaidAbsentDays;
-                            }
-
-                            aggregatedRows += `
-                            <tr data-populated="true" class="att-record-row" data-employee-id="${rowEmpId}">
-                                <td>${index++}</td>
-                                <td class="fw-bold">${localMatch.full_name || (emp ? emp.employeeName : '-')}</td>
-                                <td>${localMatch.employee_id || (emp ? emp.employeeOfficeId : '-')}</td>
-                                <td>${localMatch.designation_name || (emp ? emp.designationName : '-')}</td>
-                                <td>${localMatch.department_name || (emp ? emp.departmentName : '-')}</td>
-                                <td>${emp ? emp.workplaceName : '-'}</td>
-                                <td>${empType}</td>
-                                <td><input type="number" step="0.01"
-                                        class="form-control form-control-sm text-end in-workingdays"
-                                        value="${workingDays}" style="min-width:70px;"></td>
-                                <td><input type="number" step="0.01"
-                                        class="form-control form-control-sm text-end in-present fw-bold text-success"
-                                        value="${present}" style="min-width:70px;"></td>
-                                <td><input type="number" step="0.01"
-                                        class="form-control form-control-sm text-end in-absent text-danger"
-                                        value="${absent}" style="min-width:70px;"></td>
-                                <td><input type="number" step="0.01"
-                                        class="form-control form-control-sm text-end in-leave" value="${leave}"
-                                        style="min-width:70px;"></td>
-                                <td><input type="number" step="0.01"
-                                        class="form-control form-control-sm text-end in-dayoff" value="${dayOff}"
-                                        style="min-width:70px;"></td>
-                                <td><input type="number" step="0.01"
-                                        class="form-control form-control-sm text-end in-late text-warning"
-                                        value="${late}" style="min-width:70px;"></td>
-                                <td><input type="number" step="0.01"
-                                        class="form-control form-control-sm text-end in-approvedlates"
-                                        value="${approvedLates}" style="min-width:70px;"></td>
-                                <td><input type="number" step="0.01"
-                                        class="form-control form-control-sm text-end in-finallate" value="${finalLate}"
-                                        style="min-width:70px;"></td>
-                                <td><input type="number" step="0.01"
-                                        class="form-control form-control-sm text-end in-deduction" value="${deduction}"
-                                        style="min-width:70px;"></td>
-                                <td><input type="number" step="0.01"
-                                        class="form-control form-control-sm text-end in-lateunpaidabsent"
-                                        value="${lateUnpaidAbsentDays}" style="min-width:70px;"></td>
-                                <td>${displayJoinDate}</td>
-                                <td>-</td>
-                                <td>-</td>
-                                <td>-</td>
-                                <td><span
-                                        class="badge ${idCheck === 'OK' ? 'bg-success' : 'bg-danger'}">${idCheck}</span>
-                                </td>
-                                <td><span
-                                        class="badge ${nameCheck === 'OK' ? 'bg-success' : 'bg-danger'}">${nameCheck}</span>
-                                </td>
-                            </tr>
-                            `;
-                            });
-
-                            if(targetEmployees.length === 0) {
-                            tableBody.innerHTML = `<tr>
-                                <td colspan="23" class="text-center py-4">No records found for this period.</td>
-                            </tr>`;
-                            } else {
-                            tableBody.innerHTML = aggregatedRows;
-                            initDataTable();
-                            }
-
-                            } else {
-                            showErrorRow(res.message || "Failed to fetch Tipsoi records.");
-                            }
-                            })
-                            .catch(err => {
-                            console.error("API Fetch Error:", err);
-                            tableBody.innerHTML = `<tr>
-                                <td colspan="23" class="text-center text-danger py-4">Failed to fetch data</td>
-                            </tr>`;
-                            });
-                            }
-
-                            // Bind auto-fetch triggers for custom dates
-                            fromDateInput.addEventListener('change', fetchAttendanceData);
-                            toDateInput.addEventListener('change', fetchAttendanceData);
-
-                            // Bind auto-fetch for manual month/year selection
-                            $('#filterYear, #filterMonth').on('change', function(e) {
-                            // Allow project selection auto-trigger to happen cleanly without duplicate fires
-                            if (e.originalEvent) {
-                            fetchAttendanceData();
-                            }
-                            });
-
-                            // Trigger initial load so current month shows immediately
-                            fetchAttendanceData();
-
-                            // Save data logic
-                            document.getElementById('btnSaveAttendance').addEventListener('click', function() {
-                            const projectId = document.getElementById('payrollProject').value;
-                            if (!projectId) {
-                            Swal.fire({
-                            icon: 'warning',
-                            title: 'Missing Project',
-                            text: 'Please select a Payroll Project first.'
-                            });
-                            return;
-                            }
-
-                            if (!dataTableInstance) {
-                            Swal.fire({
-                            icon: 'info',
-                            title: 'No Data',
-                            text: 'No data available to save.'
-                            });
-                            return;
-                            }
-
-                            const rows = [];
-                            const nodes = dataTableInstance.rows().nodes(); // Get all rows across pagination
-                            $(nodes).each(function() {
-                            const tr = $(this);
-                            const employeeId = tr.data('employee-id');
-                            if (employeeId) {
-                            rows.push({
-                            employee_id: employeeId,
-                            working_days: tr.find('.in-workingdays').val() || 0,
-                            present: tr.find('.in-present').val() || 0,
-                            absent: tr.find('.in-absent').val() || 0,
-                            leave: tr.find('.in-leave').val() || 0,
-                            dayoff: tr.find('.in-dayoff').val() || 0,
-                            late: tr.find('.in-late').val() || 0,
-                            approved_lates: tr.find('.in-approvedlates').val() || 0,
-                            final_late: tr.find('.in-finallate').val() || 0,
-                            deduction: tr.find('.in-deduction').val() || 0,
-                            late_unpaid_absent_days: tr.find('.in-lateunpaidabsent').val() || 0
-                            });
-                            }
-                            });
-
-                            if (rows.length === 0) {
-                            Swal.fire({
-                            icon: 'warning',
-                            title: 'No Match',
-                            text: 'No matched employees found in the table to save.'
-                            });
-                            return;
-                            }
-
-                            this.disabled = true;
-                            this.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"
-                                aria-hidden="true"></span> Saving...`;
-
-                            const tmDate = new Date(activeFromDate);
-                            const targetMonthStr = tmDate.getFullYear() + "-" + String(tmDate.getMonth() +
-                            1).padStart(2, '0') + "-01";
-
-                            fetch(`${baseUrl}/save-attendance-modifications`, {
-                            method: "POST",
-                            headers: {
-                            "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify({
-                            project_id: projectId,
-                            target_month: targetMonthStr,
-                            rows: rows
-                            })
-                            })
-                            .then(res => res.json())
-                            .then(data => {
-                            if (data.success) {
-                            Swal.fire({
-                            icon: 'success',
-                            title: 'Saved!',
-                            text: data.message,
-                            timer: 2000,
-                            showConfirmButton: false
-                            });
-                            } else {
-                            Swal.fire({
-                            icon: 'error',
-                            title: 'Save Failed',
-                            text: data.message
-                            });
-                            }
-                            })
-                            .catch(err => {
-                            console.error(err);
-                            Swal.fire({
-                            icon: 'error',
-                            title: 'Network Error',
-                            text: 'A network error occurred while saving.'
-                            });
-                            })
-                            .finally(() => {
-                            this.disabled = false;
-                            this.innerHTML = '<i class="fa-solid fa-save me-1"></i> Save Data';
-                            });
-
-                            });
-
-                            // Synchronize Late/Unpaid/Absent days to raw Absent automatically to assist user flow
-                            document.addEventListener('input', function(e) {
-                            if (e.target.classList.contains('in-absent')) {
-                            const tr = e.target.closest('tr');
-                            if (tr) {
-                            const absentVal = parseFloat(e.target.value) || 0;
-                            const lateUnpaidInput = tr.querySelector('.in-lateunpaidabsent');
-                            if (lateUnpaidInput) {
-                            lateUnpaidInput.value = absentVal.toFixed(2);
-                            }
-                            }
-                            }
-                            });
-
-                            const projectSelect = document.getElementById('payrollProject');
-                            if (projectSelect) {
-                            $(projectSelect).on('change', function() {
-                            const selectedOpt = this.options[this.selectedIndex];
-                            if (selectedOpt && selectedOpt.value) {
-                            const isCustom = selectedOpt.getAttribute('data-iscustom') === '1';
-
-                            if (isCustom) {
-                                filterType.value = 'custom';
-                                filterType.dispatchEvent(new Event('change'));
-                                fromDateInput.value = selectedOpt.getAttribute('data-start');
-                                toDateInput.value = selectedOpt.getAttribute('data-end');
-                            } else {
-                                const dateVal = selectedOpt.getAttribute('data-date');
-                                if (dateVal) {
-                                    filterType.value = 'monthly';
-                                    filterType.dispatchEvent(new Event('change'));
-                                    const parts = dateVal.split('-');
-                                    if (parts.length >= 2) {
-                                        const yearSelect = document.getElementById('filterYear');
-                                        const monthSelect = document.getElementById('filterMonth');
-                                        if (yearSelect && monthSelect) {
-                                            yearSelect.value = parts[0];
-                                            monthSelect.value = parts[1];
-                                            // The trigger('change') on filterYear/filterMonth will call fetchAttendanceData
-                                            $(yearSelect).trigger('change');
-                                            $(monthSelect).trigger('change');
-                                        }
+                                        return inner.replace(/(<([^>]+)>)/ig, "").trim();
                                     }
                                 }
                             }
-                            // Call fetch manually just in case trigger('change') didn't handle it for custom
-                            if (isCustom) {
-                                fetchAttendanceData();
-                            }
-                            }
-                            });
-                            }
+                        }
+                    },
+                    {
+                        text: 'PDF', className: 'buttons-pdf',
+                        action: function (e, dt, node, config) {
+                            document.getElementById('pdfFromDate').value = activeFromDate;
+                            document.getElementById('pdfToDate').value = activeToDate;
+                            document.getElementById('exportPdfForm').submit();
+                        }
+                    }
+                ],
+                responsive: false,
+                scrollX: true,
+                autoWidth: false,
+                pageLength: 50,
+                lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+                columnDefs: [{
+                    searchable: false,
+                    orderable: false,
+                    targets: 0
+                }],
+                order: [[1, 'asc']]
+            });
+        }
+    }
 
-                            // Trigger search automatically on load
-                            btnFilterSearch.click();
-                            });
-                            <?php
-                            $page_script = ob_get_clean();
-                            ?>
+    // Toggle logic
+    filterType.addEventListener("change", function () {
+        if (this.value === 'monthly') {
+            monthlyContainer.style.display = 'block';
+            customContainer.style.display = 'none';
+        } else {
+            monthlyContainer.style.display = 'none';
+            customContainer.style.display = 'block';
+        }
+    });
+
+    // Trigger API fetch and compilation
+    function fetchAttendanceData() {
+        if (isFetching) return;
+        isFetching = true;
+
+        const projId = document.getElementById("payrollProject").value;
+
+        // Determine boundaries
+        if (filterType.value === 'monthly') {
+            const m = filterMonthInput.value;
+            const y = filterYearInput.value;
+            const dateStrFrom = new Date(y, m - 1, 1).toISOString().substring(0, 10);
+            const dateStrTo = new Date(y, m, 0).toISOString().substring(0, 10);
+            activeFromDate = dateStrFrom;
+            activeToDate = dateStrTo;
+        } else {
+            activeFromDate = fromDateInput.value;
+            activeToDate = toDateInput.value;
+        }
+
+        // Show spinner safely
+        if (typeof $ !== 'undefined' && $.fn.DataTable && $.fn.DataTable.isDataTable('#payrollAttendanceTable')) {
+            $('#payrollAttendanceTable').DataTable().clear().destroy();
+            dataTableInstance = null;
+        }
+
+        tableBody.innerHTML = `
+        <tr>
+            <td colspan="23" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div class="text-muted mt-2">Aggregating attendance over ${activeFromDate} to ${activeToDate} from Tipsoi...</div>
+            </td>
+        </tr>
+        `;
+
+        const params = new URLSearchParams({
+            from_date: activeFromDate,
+            to_date: activeToDate,
+            payroll_project_id: projId
+        });
+
+        Promise.all([
+            fetch(`${baseUrl}/api/hrm/attendance?${params.toString()}`).then(r => r.json()),
+            fetch(`${baseUrl}/api/payroll/attendance-overrides?project_id=${projId}`).then(r => r.json())
+        ])
+        .then(([res, overridesRes]) => {
+            isFetching = false;
+
+            if (res && res.success) {
+                statusCard.style.display = "flex";
+                statusCard.className = "card__wrapper mb-20 border-start border-success border-4";
+                statusIcon.className = "bi bi-check-circle-fill text-success fs-4";
+                statusTitle.textContent = "API Synchronization Success";
+                statusDesc.textContent = "Attendance mapped against Tipsoi accurately.";
+                modeBadge.className = "badge bg-success text-light px-3 py-2";
+                modeBadge.textContent = "Aggregated";
+
+                const rawData = res.data || [];
+                const localEmployees = res.local_employees || [];
+                const dbOverrides = (overridesRes && overridesRes.success) ? overridesRes.data : {};
+
+                let aggregatedRows = "";
+                let index = 1;
+
+                let targetEmployees = localEmployees;
+
+                targetEmployees.forEach(localMatch => {
+                    const leId = normalizeId(localMatch.employee_id);
+                    const leName = String(localMatch.full_name || '').toLowerCase().trim();
+
+                    // Find matching emp in Tipsoi data
+                    const emp = rawData.find(e => {
+                        const officeId = normalizeId(e.employeeOfficeId || e.employeeId);
+                        const nameNormalized = String(e.employeeName || '').toLowerCase().trim();
+                        return (officeId && leId === officeId) || (nameNormalized && leName === nameNormalized);
+                    });
+
+                    const attMap = emp ? (emp.attendance || {}) : {};
+                    const shiftStartTime = emp ? (emp.shiftStartTime || '') : '';
+
+                    // Stats accumulation
+                    let workingDays = 0;
+                    let present = 0;
+                    let absent = 0;
+                    let leave = 0;
+                    let dayOff = 0;
+                    let late = 0;
+
+                    Object.keys(attMap).forEach(timestamp => {
+                        const dayAtt = attMap[timestamp];
+                        workingDays++;
+
+                        const isLateOverride = dayAtt.isPresent && checkIfLate(dayAtt.firstLoggedTime, shiftStartTime);
+
+                        if (dayAtt.isLeave) {
+                            leave++;
+                        } else if (dayAtt.isPresent) {
+                            present++;
+                            if (isLateOverride) late++;
+                        } else if (dayAtt.isOffday || dayAtt.isHoliday) {
+                            dayOff++;
+                            workingDays--; 
+                        } else {
+                            absent++;
+                        }
+                    });
+
+                    // Calculations
+                    let finalLate = late;
+                    let approvedLates = 0;
+                    let deduction = 0;
+                    let lateUnpaidAbsentDays = absent;
+                    let idCheck = emp ? "OK" : "Tipsoi Missing";
+                    let nameCheck = emp ? "OK" : "Tipsoi Missing";
+
+                    let empType = "Regular";
+                    let rowEmpId = localMatch.id;
+
+                    let displayJoinDate = localMatch.joining_date || (emp ? emp.dateOfJoin : '-');
+
+                    // Apply DB Overrides if they exist
+                    if (rowEmpId && dbOverrides[rowEmpId]) {
+                        const override = dbOverrides[rowEmpId];
+                        workingDays = override.working_days ?? workingDays;
+                        present = override.present ?? present;
+                        absent = override.absent ?? absent;
+                        leave = override.leave_days ?? leave;
+                        dayOff = override.dayoff ?? dayOff;
+                        late = override.late ?? late;
+                        approvedLates = override.approved_lates ?? approvedLates;
+                        finalLate = override.final_late ?? finalLate;
+                        deduction = override.deduction ?? deduction;
+                        lateUnpaidAbsentDays = override.late_unpaid_absent_days ?? lateUnpaidAbsentDays;
+                    }
+
+                    aggregatedRows += `
+                    <tr data-populated="true" class="att-record-row" data-employee-id="${rowEmpId}">
+                        <td>${index++}</td>
+                        <td class="fw-bold">${localMatch.full_name || (emp ? emp.employeeName : '-')}</td>
+                        <td>${localMatch.employee_id || (emp ? emp.employeeOfficeId : '-')}</td>
+                        <td>${localMatch.designation_name || (emp ? emp.designationName : '-')}</td>
+                        <td>${localMatch.department_name || (emp ? emp.departmentName : '-')}</td>
+                        <td>${emp ? emp.workplaceName : '-'}</td>
+                        <td>${empType}</td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-workingdays" value="${workingDays}" style="min-width:70px;"></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-present fw-bold text-success" value="${present}" style="min-width:70px;"></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-absent text-danger" value="${absent}" style="min-width:70px;"></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-leave" value="${leave}" style="min-width:70px;"></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-dayoff" value="${dayOff}" style="min-width:70px;"></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-late text-warning" value="${late}" style="min-width:70px;"></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-approvedlates" value="${approvedLates}" style="min-width:70px;"></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-finallate" value="${finalLate}" style="min-width:70px;"></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduction" value="${deduction}" style="min-width:70px;"></td>
+                        <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-lateunpaidabsent" value="${lateUnpaidAbsentDays}" style="min-width:70px;"></td>
+                        <td>${displayJoinDate}</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td><span class="badge ${idCheck === 'OK' ? 'bg-success' : 'bg-danger'}">${idCheck}</span></td>
+                        <td><span class="badge ${nameCheck === 'OK' ? 'bg-success' : 'bg-danger'}">${nameCheck}</span></td>
+                    </tr>
+                    `;
+                });
+
+                if (typeof $ !== 'undefined' && $.fn.DataTable && $.fn.DataTable.isDataTable('#payrollAttendanceTable')) {
+                    $('#payrollAttendanceTable').DataTable().clear().destroy();
+                    dataTableInstance = null;
+                }
+
+                if (targetEmployees.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="23" class="text-center py-4">No records found for this period.</td></tr>`;
+                } else {
+                    tableBody.innerHTML = aggregatedRows;
+                    initDataTable();
+                }
+
+            } else {
+                showErrorRow((res && res.message) || "Failed to fetch Tipsoi records.");
+            }
+        })
+        .catch(err => {
+            isFetching = false;
+            console.error("API Fetch Error:", err);
+            showErrorRow("Network or API error occurred while fetching attendance data.");
+        });
+    }
+
+    // Bind auto-fetch triggers for custom dates
+    fromDateInput.addEventListener('change', fetchAttendanceData);
+    toDateInput.addEventListener('change', fetchAttendanceData);
+
+    // Bind auto-fetch for manual month/year selection
+    $('#filterYear, #filterMonth').on('change', function(e) {
+        if (e.originalEvent) {
+            fetchAttendanceData();
+        }
+    });
+
+    // Save data logic
+    document.getElementById('btnSaveAttendance').addEventListener('click', function() {
+        const projectId = document.getElementById('payrollProject').value;
+        if (!projectId) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Missing Project',
+                text: 'Please select a Payroll Project first.'
+            });
+            return;
+        }
+
+        if (!dataTableInstance) {
+            Swal.fire({
+                icon: 'info',
+                title: 'No Data',
+                text: 'No data available to save.'
+            });
+            return;
+        }
+
+        const rows = [];
+        const nodes = dataTableInstance.rows().nodes();
+        $(nodes).each(function() {
+            const tr = $(this);
+            const employeeId = tr.data('employee-id');
+            if (employeeId) {
+                rows.push({
+                    employee_id: employeeId,
+                    working_days: tr.find('.in-workingdays').val() || 0,
+                    present: tr.find('.in-present').val() || 0,
+                    absent: tr.find('.in-absent').val() || 0,
+                    leave: tr.find('.in-leave').val() || 0,
+                    dayoff: tr.find('.in-dayoff').val() || 0,
+                    late: tr.find('.in-late').val() || 0,
+                    approved_lates: tr.find('.in-approvedlates').val() || 0,
+                    final_late: tr.find('.in-finallate').val() || 0,
+                    deduction: tr.find('.in-deduction').val() || 0,
+                    late_unpaid_absent_days: tr.find('.in-lateunpaidabsent').val() || 0
+                });
+            }
+        });
+
+        if (rows.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Match',
+                text: 'No matched employees found in the table to save.'
+            });
+            return;
+        }
+
+        this.disabled = true;
+        this.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...`;
+
+        const tmDate = new Date(activeFromDate);
+        const targetMonthStr = tmDate.getFullYear() + "-" + String(tmDate.getMonth() + 1).padStart(2, '0') + "-01";
+
+        fetch(`${baseUrl}/save-attendance-modifications`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                project_id: projectId,
+                target_month: targetMonthStr,
+                rows: rows
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Saved!',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Save Failed',
+                    text: data.message
+                });
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Network Error',
+                text: 'A network error occurred while saving.'
+            });
+        })
+        .finally(() => {
+            this.disabled = false;
+            this.innerHTML = '<i class="fa-solid fa-save me-1"></i> Save Data';
+        });
+    });
+
+    // Synchronize Late/Unpaid/Absent days to raw Absent automatically to assist user flow
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('in-absent')) {
+            const tr = e.target.closest('tr');
+            if (tr) {
+                const absentVal = parseFloat(e.target.value) || 0;
+                const lateUnpaidInput = tr.querySelector('.in-lateunpaidabsent');
+                if (lateUnpaidInput) {
+                    lateUnpaidInput.value = absentVal.toFixed(2);
+                }
+            }
+        }
+    });
+
+    // Project Select Change Handler
+    const projectSelect = document.getElementById('payrollProject');
+    if (projectSelect) {
+        $(projectSelect).on('change', function() {
+            const selectedOpt = this.options[this.selectedIndex];
+            if (selectedOpt && selectedOpt.value) {
+                const isCustom = selectedOpt.getAttribute('data-iscustom') === '1';
+
+                if (isCustom) {
+                    filterType.value = 'custom';
+                    monthlyContainer.style.display = 'none';
+                    customContainer.style.display = 'block';
+                    fromDateInput.value = selectedOpt.getAttribute('data-start') || '';
+                    toDateInput.value = selectedOpt.getAttribute('data-end') || '';
+                } else {
+                    filterType.value = 'monthly';
+                    monthlyContainer.style.display = 'block';
+                    customContainer.style.display = 'none';
+                    const dateVal = selectedOpt.getAttribute('data-date');
+                    if (dateVal) {
+                        const parts = dateVal.split('-');
+                        if (parts.length >= 2) {
+                            filterYearInput.value = parts[0];
+                            filterMonthInput.value = parts[1];
+                        }
+                    }
+                }
+                fetchAttendanceData();
+            }
+        });
+    }
+
+    // Initial load
+    fetchAttendanceData();
+});
+<?php
+$page_script = ob_get_clean();
+?>

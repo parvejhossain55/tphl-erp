@@ -1045,19 +1045,25 @@ class PayrollController extends Controller
         $selectedMonth = isset($_GET['month']) && $_GET['month'] !== 'undefined' ? $_GET['month'] : '';
         $selectedProject = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== 'undefined' ? $_GET['payroll_project_id'] : '';
 
-        // If project selected, fetch project date to ensure year/month are always synchronized with the project
+        // If project selected, fetch project date to ensure year/month/effective dates are synchronized with the project
+        $targetStartDate = '';
+        $targetEndDate = '';
         if ($selectedProject) {
             $projQuery = $this->db->query("SELECT * FROM payroll_projects WHERE id = " . (int)$selectedProject);
             if ($projQuery && $projData = $projQuery->fetch_assoc()) {
-                if (!empty($projData['date'])) {
+                if (!empty($projData['is_custom_date']) && !empty($projData['start_date']) && !empty($projData['end_date'])) {
+                    $targetStartDate = $projData['start_date'];
+                    $targetEndDate = $projData['end_date'];
+                    $selectedYear = date('Y', strtotime($targetStartDate));
+                    $selectedMonth = date('m', strtotime($targetStartDate));
+                } elseif (!empty($projData['date'])) {
                     $parts = explode('-', $projData['date']);
                     if (count($parts) >= 2) {
                         $selectedYear = $parts[0];
                         $selectedMonth = $parts[1];
+                        $targetStartDate = sprintf('%04d-%02d-01', (int)$selectedYear, (int)$selectedMonth);
+                        $targetEndDate = date('Y-m-t', strtotime($targetStartDate));
                     }
-                } elseif (!empty($projData['start_date'])) {
-                    $selectedYear = date('Y', strtotime($projData['start_date']));
-                    $selectedMonth = date('m', strtotime($projData['start_date']));
                 }
             }
         }
@@ -1067,6 +1073,10 @@ class PayrollController extends Controller
         }
         if (empty($selectedMonth)) {
             $selectedMonth = $currentMonth;
+        }
+        if (empty($targetStartDate)) {
+            $targetStartDate = sprintf('%04d-%02d-01', (int)$selectedYear, (int)$selectedMonth);
+            $targetEndDate = date('Y-m-t', strtotime($targetStartDate));
         }
 
         // Fetch dynamic payslip items
@@ -1079,6 +1089,9 @@ class PayrollController extends Controller
                 $payroll_projects[] = $pRow;
             }
         }
+
+        $escapedTargetStart = $this->db->real_escape_string($targetStartDate);
+        $escapedTargetEnd = $this->db->real_escape_string($targetEndDate);
 
         // Build an exhaustive query joining payslips, employees, departments, designations
         $query = "
@@ -1101,6 +1114,13 @@ class PayrollController extends Controller
             WHERE payroll_project_id = " . ((int) $selectedProject ?: '0') . "
         ) override_att ON e.id = override_att.employee_id
         WHERE e.employee_status = 'active'
+          AND (
+              p.id IS NOT NULL 
+              OR (
+                  (e.joining_date IS NULL OR e.joining_date = '' OR e.joining_date <= '$escapedTargetEnd')
+                  AND (e.deleted_at IS NULL OR e.deleted_at >= '$escapedTargetStart')
+              )
+          )
         ORDER BY e.employee_id ASC 
     ";
 
