@@ -181,28 +181,69 @@ class Con_PurchaseOrderController extends Controller
         $notesQuery->execute();
         $negotiationNotes = $notesQuery->get_result()->fetch_all(MYSQLI_ASSOC);
 
+        // Fetch vendor payment requests & payment transactions for this PO
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        $canProcessPayment = (
+            in_array($currentRoleId, [1, 3, 33, 6, 30])
+            || strpos($roleName, 'admin') !== false
+            || strpos($roleName, 'management') !== false
+            || strpos($roleName, 'accounts') !== false
+        );
+
+        $poPaymentsStmt = $this->db->prepare("
+            SELECT vpr.*, u.full_name AS created_by_name, ab.full_name AS approved_by_name, qc.full_name AS qc_approved_by_name,
+                   COALESCE((SELECT SUM(cft.amount_paid) FROM con_financial_transactions cft WHERE cft.ref_id = vpr.id AND cft.ref_type = 'vendor_payment'), 0) AS total_paid
+            FROM vendor_payment_requests vpr
+            LEFT JOIN users u ON u.id = vpr.created_by
+            LEFT JOIN users ab ON ab.id = vpr.approved_by
+            LEFT JOIN users qc ON qc.id = vpr.qc_approved_by_id
+            WHERE vpr.purchase_order_id = ?
+            ORDER BY vpr.id DESC
+        ");
+        $poPayments = [];
+        if ($poPaymentsStmt) {
+            $poPaymentsStmt->bind_param('i', $id);
+            $poPaymentsStmt->execute();
+            $poPayments = $poPaymentsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
+        $poTotalValue = 0;
+        foreach ($items as $itm) {
+            $poTotalValue += (float)($itm['quantity'] * $itm['unit_price']);
+        }
+        $poTotalPaid = 0;
+        foreach ($poPayments as $vpr) {
+            $poTotalPaid += (float)($vpr['total_paid'] ?? 0);
+        }
+        $poDueBalance = max(0, $poTotalValue - $poTotalPaid);
+
         $this->view('phase2/purchase-orders/show-purchase-order', [
-            'current_route'  => 'con-purchase-orders',
-            'page_title'     => 'Purchase Order #' . $id,
-            'po'             => $po,
-            'items'          => $items,
-            'pendingItems'   => $pendingItems,
-            'phNeeded'       => $phNeeded,
-            'phApproved'     => $phApproved,
-            'qcApproved'     => $qcApproved,
-            'opApproved'     => $opApproved,
-            'fullyApproved'  => $fullyApproved,
-            'canApprovePH'   => $canApprovePH,
-            'canApproveQC'   => $canApproveQC,
-            'canApproveOP'   => $canApproveOP,
-            'mgmtApproved'   => $mgmtApproved,
-            'canApproveMgmt' => $canApproveMgmt,
-            'currentRoleId'  => $currentRoleId,
-            'linkedBoq'      => $linkedBoq,
-            'hasReceiving'   => $hasReceiving,
+            'current_route'       => 'con-purchase-orders',
+            'page_title'          => 'Purchase Order #' . $id,
+            'po'                  => $po,
+            'items'               => $items,
+            'pendingItems'        => $pendingItems,
+            'phNeeded'            => $phNeeded,
+            'phApproved'          => $phApproved,
+            'qcApproved'          => $qcApproved,
+            'opApproved'          => $opApproved,
+            'fullyApproved'       => $fullyApproved,
+            'canApprovePH'        => $canApprovePH,
+            'canApproveQC'        => $canApproveQC,
+            'canApproveOP'        => $canApproveOP,
+            'mgmtApproved'        => $mgmtApproved,
+            'canApproveMgmt'      => $canApproveMgmt,
+            'currentRoleId'       => $currentRoleId,
+            'linkedBoq'           => $linkedBoq,
+            'hasReceiving'        => $hasReceiving,
             'vendorSelectionData' => $vendorSelectionData,
-            'cstMatrix'      => $cstMatrix,
-            'negotiationNotes' => $negotiationNotes,
+            'cstMatrix'           => $cstMatrix,
+            'negotiationNotes'    => $negotiationNotes,
+            'canProcessPayment'   => $canProcessPayment,
+            'poPayments'          => $poPayments,
+            'poTotalValue'        => $poTotalValue,
+            'poTotalPaid'         => $poTotalPaid,
+            'poDueBalance'        => $poDueBalance,
         ]);
     }
 

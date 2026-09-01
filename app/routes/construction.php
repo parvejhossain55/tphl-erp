@@ -455,6 +455,8 @@ return [
     'con-vendor-payment-show/(\d+)' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'show'],
     'con-vendor-payment-approve/(\d+)' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'approve'],
     'con-vendor-payment-reject/(\d+)' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'reject'],
+    'con-vendor-payment-qc-approve/(\d+)' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'approveQC'],
+    'con-vendor-payment-qc-reject/(\d+)' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'rejectQC'],
     'con-vendor-payment-ajax-penalty' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetPenalty'],
     'con-vendor-payment-ajax-advance' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'ajaxGetAdvanceSummary'],
     'con-vendor-payment-payment/(\d+)' => ['controller' => 'Phase2\Con_VendorPaymentRequestController', 'method' => 'addPayment'],

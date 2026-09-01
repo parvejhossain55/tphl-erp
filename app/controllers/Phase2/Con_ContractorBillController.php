@@ -49,19 +49,35 @@ class Con_ContractorBillController extends Controller
     // ROLE HELPERS
     // =========================================================================
 
-    /** Roles 1 (Admin), 3 (Super Admin), 22 (PM Head) can approve */
+    /** Roles 1 (Admin), 3 (Super Admin), 22 (PM Head), 20 (Operation Head), 32 (Admin Operation), 33 (Chief Officer) can approve */
     private function canApprove()
     {
-        return in_array($this->userRole, [1, 3, 33, 22]);
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        return (
+            in_array($this->userRole, [1, 3, 33, 22, 20, 32])
+            || str_contains($roleName, 'admin')
+            || str_contains($roleName, 'management')
+            || str_contains($roleName, 'operation')
+            || str_contains($roleName, 'operator')
+            || str_contains($roleName, 'pm head')
+            || str_contains($roleName, 'project manager')
+        );
     }
 
     /** QC & Internal Audit role or specific permission check */
     private function canApproveQC()
     {
-        if (in_array($this->userRole, [3, 22])) return false;
+        if (in_array($this->userRole, [3, 22, 20])) return false;
         if (in_array($this->userRole, [1, 24, 25])) return true;
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        return (str_contains($roleName, 'qc & internal audit') || hasPermission('QC & Internal Audit'));
+        return (
+            str_contains($roleName, 'qc') 
+            || str_contains($roleName, 'quality controller') 
+            || str_contains($roleName, 'internal audit') 
+            || str_contains($roleName, 'audit')
+            || hasPermission('QC & Internal Audit')
+            || hasPermission('QC Dashboard')
+        );
     }
 
     /** Roles 1, 3, 6 (Accounts) can process payments */
@@ -79,7 +95,17 @@ class Con_ContractorBillController extends Controller
         $filterUserId = null;
         $filterProjectIds = [];
 
-        if (!in_array($this->userRole, [1, 3, 33, 6, 17, 22, 23, 31])) {
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        $isGlobalViewRole = in_array($this->userRole, [1, 3, 6, 17, 20, 22, 23, 24, 25, 30, 31, 32, 33])
+            || str_contains($roleName, 'admin')
+            || str_contains($roleName, 'qc')
+            || str_contains($roleName, 'audit')
+            || str_contains($roleName, 'operation')
+            || str_contains($roleName, 'management')
+            || str_contains($roleName, 'pm head')
+            || str_contains($roleName, 'accounts');
+
+        if (!$isGlobalViewRole) {
             // Restricted role: show only bills they created
             $filterUserId = $this->userId;
 

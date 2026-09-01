@@ -45,14 +45,16 @@ class Con_VendorPaymentRequestController extends Controller
     // ROLE HELPERS
     // =========================================================================
 
-    /** Roles 1 (Admin), 3 (Super Admin) can approve */
+    /** Roles 1 (Admin), 3 (Super Admin), 33 (Chief Officer), 20 (Operation Head/Site Operator), 32 (Admin Operation) can approve */
     private function canApprove()
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         return (
-            in_array($this->userRole, [1, 3, 33]) 
+            in_array($this->userRole, [1, 3, 33, 20, 32]) 
             || strpos($roleName, 'admin') !== false 
             || strpos($roleName, 'management') !== false
+            || strpos($roleName, 'operation') !== false
+            || strpos($roleName, 'operator') !== false
         );
     }
     
@@ -240,14 +242,27 @@ class Con_VendorPaymentRequestController extends Controller
         $qcApprovedPOs = [];
         $stmtPO = $this->db->prepare("
             SELECT po.id, po.status, po.created_at,
+                   po.purchase_head_approved_by_id, po.qc_approved_by_id, po.op_head_approved_by_id,
+                   po.purchase_head_approved_at, po.qc_approved_at, po.op_head_approved_at,
+                   po.creator_role_id,
+                   u_ph.full_name AS ph_name,
+                   u_qc.full_name AS qc_name,
+                   u_op.full_name AS op_name,
                    pr.project_id, p.name AS project_name,
                    v.id AS vendor_id, v.name AS vendor_name, v.company_name AS vendor_company,
                    (SELECT COALESCE(SUM(quantity * unit_price), 0) FROM purchase_order_items WHERE purchase_order_id = po.id) AS total_amount,
-                   (SELECT COALESCE(SUM(vpr.net_payable_amount), 0) FROM vendor_payment_requests vpr WHERE vpr.purchase_order_id = po.id AND vpr.status IN ('Approved','Paid','Partially_Paid','Fully_Paid')) AS total_paid
+                   COALESCE((SELECT SUM(cft.amount_paid) 
+                             FROM con_financial_transactions cft 
+                             JOIN vendor_payment_requests vpr ON vpr.id = cft.ref_id AND cft.ref_type = 'vendor_payment' 
+                             WHERE vpr.purchase_order_id = po.id), 0) AS total_paid,
+                   (SELECT COUNT(*) FROM vendor_payment_requests WHERE purchase_order_id = po.id) AS vpr_count
             FROM purchase_orders po
             JOIN purchase_requests pr ON pr.id = po.request_id
             LEFT JOIN projects p ON p.id = pr.project_id
             LEFT JOIN vendors v ON v.id = po.vendor_id
+            LEFT JOIN users u_ph ON u_ph.id = po.purchase_head_approved_by_id
+            LEFT JOIN users u_qc ON u_qc.id = po.qc_approved_by_id
+            LEFT JOIN users u_op ON u_op.id = po.op_head_approved_by_id
             WHERE po.qc_approved_by_id IS NOT NULL 
               AND po.status != 'Cancelled'
             ORDER BY po.id DESC
@@ -258,11 +273,13 @@ class Con_VendorPaymentRequestController extends Controller
         }
 
         $this->view('phase2/vendor-payment-requests/payment-lists', [
-            'current_route'   => 'con-vendor-payment-requests',
-            'page_title'      => 'Vendor Payment Requests',
-            'requests'        => $requests,
-            'qc_approved_pos' => $qcApprovedPOs,
-            'userRole'        => $this->userRole,
+            'current_route'     => 'con-vendor-payment-requests',
+            'page_title'        => 'Vendor Payment Requests',
+            'requests'          => $requests,
+            'qc_approved_pos'   => $qcApprovedPOs,
+            'userRole'          => $this->userRole,
+            'canProcessPayment' => $this->canProcessPayment(),
+            'canApprove'        => $this->canApprove(),
         ]);
     }
 
@@ -697,7 +714,99 @@ class Con_VendorPaymentRequestController extends Controller
     }
 
     // =========================================================================
-    // REJECT
+    // QC AUDIT APPROVE
+    // =========================================================================
+
+    public function approveQC($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        if (!$this->canApproveQC()) {
+            setError('You are not authorized to perform QC approval.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        $request = $this->model->find($id);
+        if (!$request || $request['status'] !== 'Submitted') {
+            setError('Invalid request status for QC approval.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        $qcNote = trim($_POST['qc_note'] ?? '');
+
+        if ($this->model->approveQC($id, $this->userId, $qcNote)) {
+            // Notify Management roles [1, 3, 33]
+            try {
+                $updatedRequest = $this->model->find($id);
+                if ($updatedRequest) {
+                    $vendor = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
+                    $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($request['project_id'] ?? 0))->fetch_assoc();
+                    $updatedRequest['vendor_name']  = $vendor['name'] ?? '';
+                    $updatedRequest['project_name'] = $project['name'] ?? '';
+
+                    $this->mailService->sendVendorPaymentToApprovalRoles(
+                        $updatedRequest,
+                        [1, 3, 33],
+                        'Management'
+                    );
+                }
+            } catch (\Exception $e) {
+                error_log("Vendor Payment QC approval email failed: " . $e->getMessage());
+            }
+
+            setSuccess('Payment Request successfully audited and approved by QC. Forwarded to Management for final approval.');
+        } else {
+            setError('Failed to QC approve payment request.');
+        }
+
+        header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+        exit;
+    }
+
+    // =========================================================================
+    // QC AUDIT REJECT
+    // =========================================================================
+
+    public function rejectQC($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        if (!$this->canApproveQC()) {
+            setError('You are not authorized to perform QC rejection.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        $request = $this->model->find($id);
+        if (!$request || $request['status'] !== 'Submitted') {
+            setError('Invalid request status for QC rejection.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        $qcNote = trim($_POST['qc_note'] ?? '');
+
+        if ($this->model->rejectQC($id, $this->userId, $qcNote)) {
+            $this->syncApprovalRequest($id, 'rejected');
+            setSuccess('Payment Request rejected during QC audit.');
+        } else {
+            setError('Failed to reject payment request.');
+        }
+
+        header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+        exit;
+    }
+
+    // =========================================================================
+    // REJECT (MANAGEMENT)
     // =========================================================================
 
     public function reject($id)
