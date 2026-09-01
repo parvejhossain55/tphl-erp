@@ -508,9 +508,9 @@ public function addCedTransaction()
 
     $paymentType = $_POST['payment_type'] ?? '';
 
-    // CED can only add development_charge, shop_service_charge, emi, or emi_due_settlement
-    if (!in_array($paymentType, ['development_charge', 'shop_service_charge', 'emi', 'emi_due_settlement'])) {
-        setError("CED can only add Development Charges, Shop Service Charges, EMI, or EMI Settlement transactions.");
+    // CED can only add development_charge, shop_service_charge, emi, emi_due_settlement, or land_share
+    if (!in_array($paymentType, ['development_charge', 'shop_service_charge', 'emi', 'emi_due_settlement', 'land_share'])) {
+        setError("CED can only add Development Charges, Shop Service Charges, EMI, EMI Settlement, or Land Share transactions.");
         header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
         exit;
     }
@@ -647,7 +647,7 @@ public function addCedTransaction()
     }
 
     // Route to correct model method
-    if ($transactionData['payment_type'] === 'emi_due_settlement' || $transactionData['payment_type'] === 'development_charge' || $transactionData['payment_type'] === 'shop_service_charge') {
+    if ($transactionData['payment_type'] === 'emi_due_settlement' || $transactionData['payment_type'] === 'development_charge' || $transactionData['payment_type'] === 'shop_service_charge' || $transactionData['payment_type'] === 'land_share') {
         // Use addTransaction (not WithEMI) so settlement_type & parent_payment_id are handled
         // and non-EMI payments skip the EMI scheduler
         $result = $this->clientModel->addTransaction($transactionData, null);

@@ -354,6 +354,12 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                     <tbody>
                         <?php
                         $itemMap = [];
+                        $itemPercents = [
+                            'recreation' => 0.10,
+                            'conveyance' => 0.10,
+                            'medical' => 0.30,
+                            'houserent' => 0.50
+                        ];
                         foreach ($items as $x) {
                             $name = strtolower($x['name']);
                             if (strpos($name, 'advance') !== false)
@@ -374,6 +380,11 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                 $itemMap['duty_allowance'] = $x['id'];
                             elseif (strpos($name, 'other') !== false)
                                 $itemMap['other'] = $x['id'];
+
+                            if (strpos($name, 'recreation') !== false) $itemPercents['recreation'] = (float)($x['percentage'] ?? 10) / 100;
+                            if (strpos($name, 'conveyance') !== false) $itemPercents['conveyance'] = (float)($x['percentage'] ?? 10) / 100;
+                            if (strpos($name, 'medical') !== false) $itemPercents['medical'] = (float)($x['percentage'] ?? 30) / 100;
+                            if (strpos($name, 'house rent') !== false) $itemPercents['houserent'] = (float)($x['percentage'] ?? 50) / 100;
                         }
 
                         $sl = 1;
@@ -402,10 +413,10 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                 $arrearsDeduction = $isExisting ? (float)($p['arrears_deduction'] ?? 0) : 0;
                                 $othersDeduction = $isExisting ? (float)($p['others_deduction'] ?? 0) : 0;
 
-                                $recAllow = $isExisting ? (float)($p['recreation_allowance'] ?? 0) : round($basic * 0.10, 2);
-                                $convAllow = $isExisting ? (float)($p['conveyance_allowance'] ?? 0) : round($basic * 0.10, 2);
-                                $medAllow = $isExisting ? (float)($p['medical_allowance'] ?? 0) : round($basic * 0.30, 2);
-                                $hrAllow = $isExisting ? (float)($p['house_rent_allowance'] ?? 0) : round($basic * 0.50, 2);
+                                $recAllow = ($isExisting && isset($p['recreation_allowance']) && $p['recreation_allowance'] > 0) ? (float)$p['recreation_allowance'] : round($basic * $itemPercents['recreation'], 2);
+                                $convAllow = ($isExisting && isset($p['conveyance_allowance']) && $p['conveyance_allowance'] > 0) ? (float)$p['conveyance_allowance'] : round($basic * $itemPercents['conveyance'], 2);
+                                $medAllow = ($isExisting && isset($p['medical_allowance']) && $p['medical_allowance'] > 0) ? (float)$p['medical_allowance'] : round($basic * $itemPercents['medical'], 2);
+                                $hrAllow = ($isExisting && isset($p['house_rent_allowance']) && $p['house_rent_allowance'] > 0) ? (float)$p['house_rent_allowance'] : round($basic * $itemPercents['houserent'], 2);
                                 ?>
                                         <tr class="calc-row" data-payslip-id="<?= $p['id'] ?? 0 ?>" data-employee-id="<?= $p['real_emp_id_fk'] ?? $p['id'] ?? 0 ?>" data-employee-office-id="<?= htmlspecialchars($p['emp_id']) ?>" data-has-db="<?= isset($p['tipsoi_present']) ? 'true' : 'false' ?>">
                                             <?php $excludedState = (isset($p['is_excluded']) && $p['is_excluded'] == 1) ? "" : "checked"; ?>
@@ -561,18 +572,20 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                         const daily = parseFloat(row.querySelector('.cell-daily').dataset.val) || 0;
                         const perMeal = parseFloat(row.querySelector('.in-mealcount').dataset.permeal) || 0;
 
-                        if (!e.target.classList.contains('in-sublunch')) {
+                        if (e.target.classList.contains('in-mealcount')) {
                             const mealCount = parseFloat(row.querySelector('.in-mealcount').value) || 0;
                             row.querySelector('.in-sublunch').value = (mealCount * perMeal).toFixed(2);
-                        } else {
+                        } else if (e.target.classList.contains('in-sublunch')) {
                             if (perMeal > 0) {
                                 const subLunch = parseFloat(row.querySelector('.in-sublunch').value) || 0;
                                 row.querySelector('.in-mealcount').value = (subLunch / perMeal).toFixed(2);
                             }
                         }
 
-                        const absentDays = parseFloat(row.querySelector('.in-absent-days').value) || 0;
-                        row.querySelector('.in-unpaid').value = (absentDays * daily).toFixed(2);
+                        if (e.target.classList.contains('in-absent-days')) {
+                            const absentDays = parseFloat(row.querySelector('.in-absent-days').value) || 0;
+                            row.querySelector('.in-unpaid').value = (absentDays * daily).toFixed(2);
+                        }
 
                         // Use existing gross salary from database
                         let gross = parseFloat(row.querySelector('.cell-gross').dataset.val) || 0;

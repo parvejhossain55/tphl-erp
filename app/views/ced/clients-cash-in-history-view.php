@@ -502,16 +502,12 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                 <div class="mt-3 d-flex gap-2 justify-content-end">
                     <?php if ($hasRefund): ?>
                         <button class="btn btn-secondary mb-3" disabled title="A refund has been requested for this booking">
-                            <i class="fa-light fa-plus me-2"></i> Add Transaction
+                            <i class="fa-light fa-ban me-2"></i> Add Transaction (Disabled)
                         </button>
-                    <?php elseif ($isLandShareCompleted): ?>
+                    <?php else: ?>
                         <a href="<?= $GLOBALS['base_url'] ?>/ced-add-transaction-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
                             <i class="fa-light fa-plus me-2"></i> Add Transaction
                         </a>
-                    <?php else: ?>
-                        <button class="btn btn-secondary mb-3" disabled title="Land share must be completed before adding transactions">
-                            <i class="fa-light fa-lock me-2"></i> Add Transaction (Requires Land Share)
-                        </button>
                     <?php endif; ?>
                     <a href="<?= $GLOBALS['base_url'] ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-primary mb-3">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement

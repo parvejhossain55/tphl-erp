@@ -211,7 +211,7 @@ class HrmApiController extends Controller
                                             LEFT JOIN departments d ON e.department_id = d.id 
                                             LEFT JOIN designations des ON e.designation_id = des.id
                                             WHERE e.employee_status = 'active'
-                                              AND (e.joining_date IS NULL OR e.joining_date = '' OR e.joining_date <= '$escapedToDate')
+                                              AND (e.joining_date IS NULL OR e.joining_date <= '$escapedToDate')
                                               AND (e.deleted_at IS NULL OR e.deleted_at >= '$escapedFromDate')
                                             ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC");
 

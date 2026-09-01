@@ -1117,7 +1117,7 @@ class PayrollController extends Controller
           AND (
               p.id IS NOT NULL 
               OR (
-                  (e.joining_date IS NULL OR e.joining_date = '' OR e.joining_date <= '$escapedTargetEnd')
+                  (e.joining_date IS NULL OR e.joining_date <= '$escapedTargetEnd')
                   AND (e.deleted_at IS NULL OR e.deleted_at >= '$escapedTargetStart')
               )
           )

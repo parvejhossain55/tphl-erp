@@ -101,7 +101,7 @@ if (!empty($virtualEmiSchedule)) {
                     <div class="alert alert-warning mb-4 d-flex align-items-center">
                         <div>
                             <strong>Note:</strong>
-                            Land share payment is not completed yet, but you can still add transactions.
+                            Land share payment is not completed yet (Remaining: TK.<?= number_format($paymentSummary['remaining_land_share'] ?? 0, 2) ?>). You can pay it by selecting 'Land Share' from the dropdown below.
                         </div>
                     </div>
                 <?php endif; ?>
@@ -126,6 +126,13 @@ if (!empty($virtualEmiSchedule)) {
                             <label class="form-label">Payment Type: <span class="text-danger">*</span></label>
                             <select name="payment_type" class="form-control" id="paymentType" required>
                                 <option value="">-- Select Payment Type --</option>
+
+                                <!-- Land Share -->
+                                <?php if (!$isLandShareCompleted && !$isShop): ?>
+                                    <option value="land_share" data-details="false">
+                                        Land Share (Remaining: TK.<?= number_format($paymentSummary['remaining_land_share'] ?? 0, 2) ?>)
+                                    </option>
+                                <?php endif; ?>
 
                                 <!-- Development Charges or Shop Service Charge -->
                                 <?php if (!$isDevChargeCompleted): ?>
@@ -540,6 +547,13 @@ if (!empty($virtualEmiSchedule)) {
                 case 'development_charge':
                     helpText = 'Development charge payment';
                     amountField.removeAttribute('max');
+                    amountField.removeAttribute('disabled');
+                    break;
+                case 'land_share':
+                    var cedRemainingLS = <?= json_encode((float)($paymentSummary['remaining_land_share'] ?? 0)) ?>;
+                    helpText = 'Land share payment. Remaining: TK.' + cedRemainingLS.toLocaleString('en-IN', {minimumFractionDigits:2});
+                    amountField.setAttribute('placeholder', 'Max: TK.' + cedRemainingLS.toLocaleString('en-IN', {minimumFractionDigits:2}));
+                    amountField.setAttribute('max', cedRemainingLS.toFixed(2));
                     amountField.removeAttribute('disabled');
                     break;
                 case 'emi_due_settlement':
