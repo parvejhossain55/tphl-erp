@@ -487,6 +487,8 @@ ORDER BY lb.booking_date DESC
                  AND lp.verification_status = 'verified'), 
                  0) AS booking_money,
                 lb.discount_amount,
+                lb.approved_amount,
+                lb.approval_status,
                 lb.booking_status,
                 lb.landshare_status,
                 lb.service_fee_balance,
@@ -1277,10 +1279,6 @@ ORDER BY lb.booking_date DESC
                     break;
 
                 case 'land_share':
-                    // Block land_share until the full agreed booking money has been received
-                    if (empty($summary['is_booking_fully_paid'])) {
-                        throw new Exception("Booking money must be fully settled before land share payments can be recorded.");
-                    }
                     if ($summary['remaining_land_share'] <= 0) {
                         throw new Exception("Land share payment is already completed!");
                     }
@@ -1291,33 +1289,14 @@ ORDER BY lb.booking_date DESC
                     break;
 
                 case 'registration':
-                    // Registration unlocks AND locks at the same time as Land Share
-                    if (empty($summary['is_booking_fully_paid'])) {
-                        throw new Exception("Booking money must be fully settled before registration payment can be recorded.");
-                    }
-                    if (!empty($summary['is_land_share_completed'])) {
-                        throw new Exception("Registration is already completed (land share completion marks registration and mutation cost as complete).");
-                    }
                     $landShareAmount = $amount;
                     break;
 
                 case 'mutation_cost':
-                    // Mutation cost unlocks AND locks at the same time as Land Share
-                    if (empty($summary['is_booking_fully_paid'])) {
-                        throw new Exception("Booking money must be fully settled before mutation cost payment can be recorded.");
-                    }
-                    if (!empty($summary['is_land_share_completed'])) {
-                        throw new Exception("Mutation cost is already completed (land share completion marks registration and mutation cost as complete).");
-                    }
                     $landShareAmount = $amount;
                     break;
 
                 case 'development_charge':
-                    // Dev charge requires land share to be fully completed (which also means registration is done)
-                    if (empty($summary['is_land_share_completed'])) {
-                        $remaining = number_format($summary['remaining_land_share'] ?? 0, 2);
-                        throw new Exception("Land share (and registration) must be fully completed before development charge can be recorded. Remaining land share: ৳{$remaining}");
-                    }
                     $devTarget = (float) ($summary['flat_development_charges'] ?? 0);
                     $devPaid   = (float) ($summary['development_charge_paid_total'] ?? 0);
                     $devRemaining = max(0, $devTarget - $devPaid);
@@ -1330,12 +1309,6 @@ ORDER BY lb.booking_date DESC
                     break;
 
                 case 'emi':
-                    // EMI requires development charge to be fully paid (or no dev charge defined on flat)
-                    if (empty($summary['is_dev_charge_completed'])) {
-                        $devTarget = (float) ($summary['flat_development_charges'] ?? 0);
-                        $devPaid   = (float) ($summary['development_charge_paid_total'] ?? 0);
-                        throw new Exception("Development charge must be fully paid before EMI can be recorded. Paid: ৳" . number_format($devPaid, 2) . " / Required: ৳" . number_format($devTarget, 2));
-                    }
                     // Service fee = amount_paid × (service_charge_per_emi% / 100)
                     $serviceChargeRate = (float) ($summary['service_charge_per_emi'] ?? 0);
                     $serviceFee        = ($serviceChargeRate > 0) ? round($amount * ($serviceChargeRate / 100)) : 0;
@@ -4396,6 +4369,66 @@ ORDER BY lb.booking_date DESC
         $result = $this->db->query($sql);
         if (!$result) return [];
         return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Update/Approve Booking Discount by Management
+     */
+    public function updateManagementBookingDiscount($bookingId, $approvedDiscount, $approvedBy)
+    {
+        $bookingId = (int)$bookingId;
+        $approvedDiscount = (float)$approvedDiscount;
+        $approvedBy = (int)$approvedBy;
+
+        $this->db->begin_transaction();
+        try {
+            // 1. Update lead_bookings table
+            $stmt = $this->db->prepare("
+                UPDATE lead_bookings SET
+                    discount_amount = ?,
+                    approved_amount = ?,
+                    approval_status = 'approved',
+                    updated_at = NOW()
+                WHERE id = ?
+            ");
+            if (!$stmt) {
+                throw new Exception($this->db->error);
+            }
+            $stmt->bind_param("ddi", $approvedDiscount, $approvedDiscount, $bookingId);
+            $stmt->execute();
+
+            // 2. Synchronize approval_requests table
+            $check = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'lead_bookings' AND source_id = {$bookingId} LIMIT 1")->fetch_assoc();
+            if ($check) {
+                $appId = (int)$check['id'];
+                $stmtApp = $this->db->prepare("
+                    UPDATE approval_requests SET
+                        request_amount = ?,
+                        approved_amount = ?,
+                        status = 'approved',
+                        approved_by = ?,
+                        approved_at = NOW(),
+                        updated_at = NOW()
+                    WHERE id = ?
+                ");
+                $stmtApp->bind_param("ddii", $approvedDiscount, $approvedDiscount, $approvedBy, $appId);
+                $stmtApp->execute();
+            } else {
+                $stmtApp = $this->db->prepare("
+                    INSERT INTO approval_requests 
+                    (department, request_type, title, source_table, source_id, request_amount, approved_amount, status, requested_by, approve_role, approved_by, approved_at, created_at)
+                    VALUES ('Sales', 'discount', 'Lead Booking Discount Approval', 'lead_bookings', ?, ?, ?, 'approved', ?, 'Management', ?, NOW(), NOW())
+                ");
+                $stmtApp->bind_param("iddii", $bookingId, $approvedDiscount, $approvedDiscount, $approvedBy, $approvedBy);
+                $stmtApp->execute();
+            }
+
+            $this->db->commit();
+            return ['success' => true];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
     }
 }
 

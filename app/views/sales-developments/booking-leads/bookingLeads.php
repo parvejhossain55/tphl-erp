@@ -235,21 +235,36 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                                     <!-- Actions -->
                                     <td>
-                                        <div class="d-flex align-items-center gap-2">
+                                        <div class="d-flex align-items-center gap-2 flex-wrap">
 
-                                            <!-- Edit -->
-                                            <button  type="button"
-                                                class="d-none table__icon edit editBookingBtn"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#editModalBooking"
-                                                data-id="<?= $or['id'] ?>"
-                                                data-project="<?= $or['project_id'] ?>"
-                                                data-flat="<?= $or['flat_id'] ?>"
-                                                data-date="<?= $or['booking_date'] ?>"
-                                                data-agreement="<?= $or['agreement_value'] ?>"
-                                                data-status="<?= $or['booking_status'] ?>">
-                                                Edit
-                                            </button>
+                                            <?php 
+                                                $isBookingVerified = (!empty($or['verified_payment_count']) && (int)$or['verified_payment_count'] > 0);
+                                            ?>
+
+                                            <!-- Edit & Delete (Enabled only if payments not verified) -->
+                                            <?php if (!$isBookingVerified && !in_array($or['booking_status'] ?? '', ['refunded', 'cancelled'])): ?>
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-primary editBookingBtn"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#editModalBooking"
+                                                    data-id="<?= $or['id'] ?>"
+                                                    data-project="<?= $or['project_id'] ?>"
+                                                    data-flat="<?= $or['flat_id'] ?>"
+                                                    data-date="<?= $or['booking_date'] ?>"
+                                                    data-agreement="<?= $or['agreement_value'] ?>"
+                                                    data-discount="<?= $or['discount_amount'] ?? 0 ?>"
+                                                    data-approval="<?= $or['approval_status'] ?? '' ?>"
+                                                    data-approved-amt="<?= $or['approved_amount'] ?? '' ?>"
+                                                    data-status="<?= $or['booking_status'] ?>">
+                                                    <i class="fa-solid fa-pen-to-square"></i> Edit
+                                                </button>
+
+                                                <a href="<?= $GLOBALS['base_url'] ?>/booking-delete/<?= $or['id'] ?>"
+                                                    class="btn btn-sm btn-outline-danger"
+                                                    onclick="return confirm('Are you sure you want to delete this booking? All unverified payment records will be removed and the flat will be reset to available status.');">
+                                                    <i class="fa-solid fa-trash"></i> Delete
+                                                </a>
+                                            <?php endif; ?>
 
                                             <!-- Payments -->
                                             <?php if (($or['booking_status'] ?? '') === 'refunded'): ?>
@@ -284,7 +299,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                                 </a>
 
                                                 <?php if ($or['approval_status'] === 'pending'): ?>
-                                                    <br><small class="text-warning mt-1 d-block" style="font-size:11px;">
+                                                    <small class="text-warning d-block w-100" style="font-size:11px;">
                                                         <i class="fa-solid fa-clock"></i> Discount Pending Approval
                                                     </small>
                                                 <?php endif; ?>
@@ -327,44 +342,68 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
             <div class="modal-body">
 
-                <form action="<?= $GLOBALS['base_url'] ?>/update-flats-by-project" method="POST">
+                <form action="<?= $GLOBALS['base_url'] ?>/booking-update" method="POST">
                     <input type="hidden" name="booking_id" id="edit_booking_id">
+                    <input type="hidden" name="lead_id" value="<?= $lead['id'] ?? '' ?>">
 
-                    <!-- Agreement Value -->
-                    <div class="mb-3">
-                        <label class="form-label">Agreement Value/Booking Money *</label>
-                        <input type="number" name="agreement_value" id="edit_agreement" class="form-control" required>
+                    <div class="row gy-3">
+                        <!-- Booking Date -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Booking Date *</label>
+                            <input type="date" name="booking_date" id="edit_booking_date" class="form-control" required>
+                        </div>
+
+                        <!-- Agreement Value -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Agreement Value / Booking Target *</label>
+                            <input type="number" step="any" name="agreement_value" id="edit_agreement" class="form-control" required>
+                        </div>
+
+                        <!-- Project -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Project *</label>
+                            <select name="project_id" id="edit_project" class="form-select select2" data-placeholder="Select Project" required>
+                                <option value="">Select Project</option>
+                                <?php foreach ($projects as $project): ?>
+                                    <?php 
+                                        $isUpcoming = ($project['project_sale_status'] === 'Upcoming');
+                                        $isSoldOut = ($project['project_sale_status'] === 'Sold Out');
+                                        $statusSuffix = !empty($project['project_sale_status']) ? " ({$project['project_sale_status']})" : '';
+                                    ?>
+                                    <option value="<?= $project['id'] ?>" 
+                                        <?= $isUpcoming ? 'disabled style="color: red;"' : '' ?>
+                                        <?= $isSoldOut ? 'style="color: red;"' : '' ?>>
+                                        <?= htmlspecialchars($project['name']) ?><?= $statusSuffix ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Flat -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Flat / Unit *</label>
+                            <select name="flat_id" id="edit_flat" class="form-select select2" data-placeholder="Select Flat" required>
+                                <option value="">Select Flat</option>
+                            </select>
+                        </div>
+
+                        <!-- Discount Amount -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label d-flex justify-content-between align-items-center mb-1">
+                                <span>Discount Amount</span>
+                                <span id="edit_discount_lock_badge" class="badge bg-success d-none" style="font-size:11px;">
+                                    <i class="fa-solid fa-lock me-1"></i> Approved by Management
+                                </span>
+                            </label>
+                            <input type="number" step="any" name="discount_amount" id="edit_discount" class="form-control" value="0">
+                            <small id="edit_discount_lock_help" class="text-muted d-none" style="font-size:11px;">
+                                <i class="fa-solid fa-info-circle"></i> Discount was already approved by management and cannot be modified.
+                            </small>
+                        </div>
                     </div>
 
-                    <!-- Project -->
-                    <div class="mb-3">
-                        <label class="form-label">Project *</label>
-                        <select name="project_id" id="edit_project" class="form-select select2" data-placeholder="Select Project" required>
-                            <option value="">Select Project</option>
-                            <?php foreach ($projects as $project): ?>
-                                <?php 
-                                    $isUpcoming = ($project['project_sale_status'] === 'Upcoming');
-                                    $isSoldOut = ($project['project_sale_status'] === 'Sold Out');
-                                    $statusSuffix = !empty($project['project_sale_status']) ? " ({$project['project_sale_status']})" : '';
-                                ?>
-                                <option value="<?= $project['id'] ?>" 
-                                    <?= $isUpcoming ? 'disabled style="color: red;"' : '' ?>
-                                    <?= $isSoldOut ? 'style="color: red;"' : '' ?>>
-                                    <?= htmlspecialchars($project['name']) ?><?= $statusSuffix ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <!-- Flat -->
-                    <div class="mb-3">
-                        <label class="form-label">Flat / Unit *</label>
-                        <select name="flat_id" id="edit_flat" class="form-select select2" data-placeholder="Select Flat" required>
-                            <option value="">Select Flat</option>
-                        </select>
-                    </div>
-
-                    <div class="text-end">
+                    <div class="text-end mt-3">
+                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-success">Update Booking</button>
                     </div>
                 </form>
@@ -502,10 +541,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         let flatDataEdit = []; // store flats for edit modal
+        let currentEditingFlatId = null;
 
         const editProjectSelect = document.getElementById('edit_project');
         const editFlatSelect = document.getElementById('edit_flat');
-        const editFlatPriceInput = document.getElementById('edit_flatPrice');
 
         function refreshSelect2(el) {
             if (window.jQuery && $(el).data('select2')) {
@@ -513,63 +552,57 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             }
         }
 
-        if (editProjectSelect) {
-            $(editProjectSelect).on('change', function() {
-                const projectId = this.value;
-                editFlatSelect.innerHTML = '<option value="">Loading...</option>';
+        function loadEditFlats(projectId, targetFlatId) {
+            if (!editFlatSelect) return;
+            editFlatSelect.innerHTML = '<option value="">Loading...</option>';
+            refreshSelect2(editFlatSelect);
+
+            if (!projectId) {
+                editFlatSelect.innerHTML = '<option value="">Select Flat</option>';
                 refreshSelect2(editFlatSelect);
+                return;
+            }
 
-                if (!projectId) {
+            fetch("<?= $GLOBALS['base_url'] ?>/get-flats-by-project/" + projectId)
+                .then(res => {
+                    if (!res.ok) throw new Error('Network response was not ok');
+                    return res.json();
+                })
+                .then(data => {
+                    flatDataEdit = data;
                     editFlatSelect.innerHTML = '<option value="">Select Flat</option>';
-                    refreshSelect2(editFlatSelect);
-                    return;
-                }
 
-                fetch("<?= $GLOBALS['base_url'] ?>/get-flats-by-project/" + projectId)
-                    .then(res => {
-                        if (!res.ok) throw new Error('Network response was not ok');
-                        return res.json();
-                    })
-                    .then(data => {
-                        flatDataEdit = data;
-                        editFlatSelect.innerHTML = '<option value="">Select Flat</option>';
+                    data.forEach(flat => {
+                        const opt = document.createElement('option');
+                        opt.value = flat.flat_id;
 
-                        data.forEach(flat => {
-                            const opt = document.createElement('option');
-                            opt.value = flat.flat_id;
+                        const isCurrentFlat = (targetFlatId && flat.flat_id == targetFlatId);
+                        const isBooked = (flat.is_booked == 1);
 
-                            const now = new Date();
-                            const bTime = flat.booking_time ? new Date(flat.booking_time) : null;
-                            const isLocked = flat.booking_status === 'booked' && bTime && (now - bTime < 48 * 60 * 60 * 1000);
-
-                            if (isLocked) {
-                                opt.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Locked for 48 hours]`;
-                                opt.style.color = 'red';
-                                opt.disabled = true;
-                            } else if (flat.is_booked == 1) {
-                                opt.disabled = true;
-                                opt.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
-                            } else {
-                                opt.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
-                            }
-                            editFlatSelect.appendChild(opt);
-                        });
-
-                        refreshSelect2(editFlatSelect);
-                    })
-                    .catch(error => {
-                        console.error('Error fetching flats (edit):', error);
-                        editFlatSelect.innerHTML = '<option value="">Error loading flats</option>';
-                        refreshSelect2(editFlatSelect);
+                        if (isBooked && !isCurrentFlat) {
+                            opt.disabled = true;
+                            opt.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
+                        } else {
+                            opt.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft` + (isCurrentFlat ? ' (Current)' : '');
+                        }
+                        editFlatSelect.appendChild(opt);
                     });
-            });
+
+                    if (targetFlatId) {
+                        editFlatSelect.value = targetFlatId;
+                    }
+                    refreshSelect2(editFlatSelect);
+                })
+                .catch(error => {
+                    console.error('Error fetching flats (edit):', error);
+                    editFlatSelect.innerHTML = '<option value="">Error loading flats</option>';
+                    refreshSelect2(editFlatSelect);
+                });
         }
 
-        if (editFlatSelect && editFlatPriceInput) {
-            $(editFlatSelect).on('change', function() {
-                const selectedFlatId = this.value;
-                const flat = flatDataEdit.find(f => f.flat_id == selectedFlatId);
-                editFlatPriceInput.value = flat ? Number(flat.price_value).toLocaleString() : '';
+        if (editProjectSelect) {
+            $(editProjectSelect).on('change', function() {
+                loadEditFlats(this.value, currentEditingFlatId);
             });
         }
 
@@ -579,15 +612,41 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 const projectId = this.dataset.project;
                 const flatId = this.dataset.flat;
                 const agreement = this.dataset.agreement;
+                const date = this.dataset.date;
+                const discount = this.dataset.discount;
+                const approval = this.dataset.approval;
+
+                currentEditingFlatId = flatId;
 
                 document.getElementById('edit_booking_id').value = bookingId;
                 document.getElementById('edit_agreement').value = agreement;
+                if (document.getElementById('edit_booking_date')) {
+                    document.getElementById('edit_booking_date').value = date;
+                }
+                
+                const discountInput = document.getElementById('edit_discount');
+                const lockBadge = document.getElementById('edit_discount_lock_badge');
+                const lockHelp = document.getElementById('edit_discount_lock_help');
 
-                $(editProjectSelect).val(projectId).trigger('change');
+                if (discountInput) {
+                    discountInput.value = discount || 0;
+                    if (approval === 'approved' || approval === 'partial') {
+                        discountInput.readOnly = true;
+                        discountInput.classList.add('bg-light');
+                        if (lockBadge) lockBadge.classList.remove('d-none');
+                        if (lockHelp) lockHelp.classList.remove('d-none');
+                    } else {
+                        discountInput.readOnly = false;
+                        discountInput.classList.remove('bg-light');
+                        if (lockBadge) lockBadge.classList.add('d-none');
+                        if (lockHelp) lockHelp.classList.add('d-none');
+                    }
+                }
 
-                setTimeout(() => {
-                    $(editFlatSelect).val(flatId).trigger('change');
-                }, 400);
+                $(editProjectSelect).val(projectId);
+                refreshSelect2(editProjectSelect);
+
+                loadEditFlats(projectId, flatId);
             });
         });
     });

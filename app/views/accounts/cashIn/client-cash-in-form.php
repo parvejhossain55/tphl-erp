@@ -119,8 +119,8 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                     </option>
                                 <?php endif; ?>
 
-                                <!-- Land Share & Registration unlock simultaneously after booking paid, lock simultaneously when landshare target reached -->
-                                <?php if ($isBookingFullyPaid && !$isLandShareCompleted): ?>
+                                <!-- Land Share & Registration -->
+                                <?php if (!$isLandShareCompleted): ?>
                                     <option value="land_share">
                                         Land Share (Remaining: TK.<?= number_format($remainingLandShare, 2) ?>)
                                     </option>
@@ -130,19 +130,15 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                     <option value="mutation_cost">
                                         Mutation Cost
                                     </option>
-                                <?php elseif ($isLandShareCompleted): ?>
-                                    <option value="land_share" disabled>Land Share (Completed)</option>
-                                    <option value="registration" disabled>Registration (Completed with Land Share)</option>
-                                    <option value="mutation_cost" disabled>Mutation Cost (Completed with Land Share)</option>
                                 <?php else: ?>
-                                    <option value="land_share" disabled>Land Share (Locked — complete booking first)</option>
-                                    <option value="registration" disabled>Registration (Locked — complete booking first)</option>
-                                    <option value="mutation_cost" disabled>Mutation Cost (Locked — complete booking first)</option>
+                                    <option value="land_share" disabled>Land Share (Completed ✓)</option>
+                                    <option value="registration" disabled>Registration (Completed ✓)</option>
+                                    <option value="mutation_cost" disabled>Mutation Cost (Completed ✓)</option>
                                 <?php endif; ?>
 
-                                <!-- Development Charge — requires landshare completed -->
-                                <?php if ($isLandShareCompleted && !$isDevChargeCompleted): ?>
-                                    <?php if ($devChargePaid >= $flatDevCharges): ?>
+                                <!-- Development Charge -->
+                                <?php if (!$isDevChargeCompleted): ?>
+                                    <?php if ($devChargePaid >= $flatDevCharges && $flatDevCharges > 0): ?>
                                         <option value="development_charge" disabled>
                                             Development Charges (Pending Verification — TK.<?= number_format($devChargePaid, 2) ?>)
                                         </option>
@@ -151,32 +147,20 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                             Development Charges (Remaining: TK.<?= number_format(max(0, $flatDevCharges - $devChargePaid), 2) ?>)
                                         </option>
                                     <?php endif; ?>
-                                <?php elseif ($isDevChargeCompleted): ?>
-                                    <option value="development_charge" disabled>
-                                        Development Charges (Fully Paid — TK.<?= number_format($devChargePaid, 2) ?>)
-                                    </option>
                                 <?php else: ?>
                                     <option value="development_charge" disabled>
-                                        Development Charges (Locked — complete land share first)
+                                        Development Charges (Fully Paid ✓ — TK.<?= number_format($devChargePaid, 2) ?>)
                                     </option>
                                 <?php endif; ?>
 
-                                <!-- EMI — requires dev charge and land share completed -->
-                                <?php if ($isLandShareCompleted && $isDevChargeCompleted && $remainingCF > 0): ?>
+                                <!-- EMI -->
+                                <?php if ($remainingCF > 0): ?>
                                     <option value="emi" data-details="true">
                                         EMI (Construction Fee)<?php if ($perEmiAmount > 0): ?> — Suggested: TK.<?= number_format($perEmiAmount, 2) ?><?php endif; ?><?php if ($totalEmiDue > 0): ?> — Outstanding Due: TK.<?= number_format($totalEmiDue, 2) ?><?php endif; ?>
                                     </option>
-                                <?php elseif ($isLandShareCompleted && $isDevChargeCompleted && $remainingCF <= 0): ?>
-                                    <option value="emi" disabled>
-                                        EMI (Construction Fee) — Fully Paid ✓ (TK.<?= number_format($constructionFee, 2) ?>)
-                                    </option>
-                                <?php elseif ($isLandShareCompleted): ?>
-                                    <option value="emi" disabled>
-                                        EMI (Locked — pay development charge first)
-                                    </option>
                                 <?php else: ?>
                                     <option value="emi" disabled>
-                                        EMI (Locked — complete land share &amp; dev charge first)
+                                        EMI (Construction Fee) — Fully Paid ✓ (TK.<?= number_format($constructionFee, 2) ?>)
                                     </option>
                                 <?php endif; ?>
 

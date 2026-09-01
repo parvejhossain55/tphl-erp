@@ -120,48 +120,34 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                     </option>
                                 <?php endif; ?>
 
-                                <!-- Registration unlock after booking paid, lock when landshare target reached -->
-                                <?php if ($isBookingFullyPaid && !$isLandShareCompleted): ?>
+                                <!-- Registration -->
+                                <?php if (!$isLandShareCompleted): ?>
                                     <option value="registration">
                                         Registration (Remaining: TK.<?= number_format($remainingLandShare, 2) ?>)
                                     </option>
-                                <?php elseif ($isLandShareCompleted): ?>
-                                    <option value="registration" disabled>Registration (Completed)</option>
                                 <?php else: ?>
-                                    <option value="registration" disabled>Registration (Locked — complete booking first)</option>
+                                    <option value="registration" disabled>Registration (Completed ✓)</option>
                                 <?php endif; ?>
 
-                                <!-- Shop Service Charge — requires registration completed -->
-                                <?php if ($isLandShareCompleted && !$isShopServiceChargeCompleted): ?>
+                                <!-- Shop Service Charge -->
+                                <?php if (!$isShopServiceChargeCompleted): ?>
                                     <option value="shop_service_charge">
                                         Shop Service Charge (Remaining: TK.<?= number_format(max(0, $shopServiceChargeTarget - $shopServiceChargePaid), 2) ?>)
                                     </option>
-                                <?php elseif ($isShopServiceChargeCompleted): ?>
-                                    <option value="shop_service_charge" disabled>
-                                        Shop Service Charge (Fully Paid — TK.<?= number_format($shopServiceChargePaid, 2) ?>)
-                                    </option>
                                 <?php else: ?>
                                     <option value="shop_service_charge" disabled>
-                                        Shop Service Charge (Locked — complete registration first)
+                                        Shop Service Charge (Fully Paid ✓ — TK.<?= number_format($shopServiceChargePaid, 2) ?>)
                                     </option>
                                 <?php endif; ?>
 
-                                <!-- EMI — requires dev charge and land share completed -->
-                                <?php if ($isLandShareCompleted && $isShopServiceChargeCompleted && $remainingCF > 0): ?>
+                                <!-- EMI -->
+                                <?php if ($remainingCF > 0): ?>
                                     <option value="emi" data-details="true">
                                         EMI (Construction Fee)<?php if ($perEmiAmount > 0): ?> — Suggested: TK.<?= number_format($perEmiAmount, 2) ?><?php endif; ?><?php if ($totalEmiDue > 0): ?> — Outstanding Due: TK.<?= number_format($totalEmiDue, 2) ?><?php endif; ?>
                                     </option>
-                                <?php elseif ($isLandShareCompleted && $isShopServiceChargeCompleted && $remainingCF <= 0): ?>
-                                    <option value="emi" disabled>
-                                        EMI (Construction Fee) — Fully Paid ✓ (TK.<?= number_format($constructionFee, 2) ?>)
-                                    </option>
-                                <?php elseif ($isLandShareCompleted): ?>
-                                    <option value="emi" disabled>
-                                        EMI (Locked — pay development charge first)
-                                    </option>
                                 <?php else: ?>
                                     <option value="emi" disabled>
-                                        EMI (Locked — complete registration &amp; shop service charge first)
+                                        EMI (Construction Fee) — Fully Paid ✓ (TK.<?= number_format($constructionFee, 2) ?>)
                                     </option>
                                 <?php endif; ?>
 
