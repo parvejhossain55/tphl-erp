@@ -60,10 +60,11 @@
     $conPendingBillsCount = 0;
     if (isset($db)) {
         $ur = (int)($_SESSION['user']['role_id'] ?? 0);
+        $roleNameLower = strtolower($_SESSION['user']['role_name'] ?? '');
         $qcRoles = [1, 24, 25];
-        $mgmtRoles = [1, 3, 33, 22];
-        $isQc = in_array($ur, $qcRoles) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'qc & internal audit') || hasPermission('QC & Internal Audit');
-        $isMgmt = in_array($ur, $mgmtRoles);
+        $mgmtRoles = [1, 3, 33, 22, 20, 32];
+        $isQc = in_array($ur, $qcRoles) || str_contains($roleNameLower, 'qc') || str_contains($roleNameLower, 'audit') || hasPermission('QC & Internal Audit');
+        $isMgmt = in_array($ur, $mgmtRoles) || str_contains($roleNameLower, 'operation') || str_contains($roleNameLower, 'operator') || str_contains($roleNameLower, 'management') || str_contains($roleNameLower, 'admin') || str_contains($roleNameLower, 'pm head');
         
         if ($isQc || $isMgmt) {
             $statusConditions = [];
@@ -255,6 +256,35 @@
                     WHERE status IN ('Issued', 'Partially Received', 'Pending')
                 ");
                 $sidebarPendingPOCount = $poRes ? (int) $poRes->fetch_assoc()['c'] : 0;
+            }
+
+            // 3. Pending Vendor Payment Requests awaiting action based on user's role
+            $sidebarPendingVprCount = 0;
+            $sbRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
+            $isQcRole = in_array($sidebarRoleId, [24, 25]) || strpos($sbRoleName, 'qc') !== false;
+            $isMgmtRole = in_array($sidebarRoleId, [1, 3, 33, 20, 32]) || strpos($sbRoleName, 'admin') !== false || strpos($sbRoleName, 'management') !== false || strpos($sbRoleName, 'operation') !== false;
+            $isAccountsRole = in_array($sidebarRoleId, [6, 30]) || strpos($sbRoleName, 'accounts') !== false;
+
+            if ($isQcRole && !$isMgmtRole) {
+                // QC: Awaiting QC Verification (Submitted)
+                $vprRes = $db->query("SELECT COUNT(*) AS c FROM vendor_payment_requests WHERE status = 'Submitted'");
+                $sidebarPendingVprCount = $vprRes ? (int)$vprRes->fetch_assoc()['c'] : 0;
+            } elseif ($isAccountsRole && !$isMgmtRole) {
+                // Accounts: Awaiting Disbursal (Approved / Partially Paid with due amount > 0)
+                $vprRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM vendor_payment_requests vpr
+                    WHERE vpr.status IN ('Approved', 'Partially_Paid')
+                      AND (
+                          vpr.due_amount > 0 
+                          OR (vpr.due_amount IS NULL AND vpr.net_payable > COALESCE((SELECT SUM(cft.amount_paid) FROM con_financial_transactions cft WHERE cft.ref_id = vpr.id AND cft.ref_type = 'vendor_payment'), 0))
+                      )
+                ");
+                $sidebarPendingVprCount = $vprRes ? (int)$vprRes->fetch_assoc()['c'] : 0;
+            } elseif ($isMgmtRole) {
+                // Management / Operation Head / Admin: Awaiting Management Decision (QC Approved or Submitted)
+                $vprRes = $db->query("SELECT COUNT(*) AS c FROM vendor_payment_requests WHERE status IN ('QC Approved', 'Submitted')");
+                $sidebarPendingVprCount = $vprRes ? (int)$vprRes->fetch_assoc()['c'] : 0;
             }
         } catch (\Throwable $e) {
         }
@@ -1838,8 +1868,12 @@
                         <ul class="sidebar-menu child2" style="display:block;">
                             <li class="slide <?= isActive('con-vendor-payment-requests', $current_route) ?>">
                                 <a href="<?= $base_url ?>/con-vendor-payment-requests"
-                                    class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?>">
-                                    <i class="bi bi-wallet2 me-1"></i> Vendor Payments
+                                    class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?> d-flex align-items-center justify-content-between">
+                                    <span><i class="bi bi-wallet2 me-1"></i> Vendor Payments</span>
+                                    <?php if (!empty($sidebarPendingVprCount) && $sidebarPendingVprCount > 0): ?>
+                                        <span class="badge bg-danger rounded-pill me-1"
+                                            style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingVprCount ?></span>
+                                    <?php endif; ?>
                                 </a>
                             </li>
                             <li class="slide <?= isActive('con-contractor-bills', $current_route) ?>">
@@ -2679,8 +2713,12 @@
                                 <li
                                     class="slide <?= isActive('con-vendor-payment-requests', $current_route) ? 'active' : '' ?>">
                                     <a href="<?= $base_url ?>/con-vendor-payment-requests"
-                                        class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?>">
-                                        <i class="bi bi-wallet2 me-1"></i> Payment Requests
+                                        class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        <span><i class="bi bi-wallet2 me-1"></i> Payment Requests</span>
+                                        <?php if (!empty($sidebarPendingVprCount) && $sidebarPendingVprCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill me-1"
+                                                style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingVprCount ?></span>
+                                        <?php endif; ?>
                                     </a>
                                 </li>
                                 <li class="slide <?= isActive('con-vendor-payment-create', $current_route) ? 'active' : '' ?>">
@@ -2807,7 +2845,7 @@
 
 
                     <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
-                    <?php if (hasPermission('Contractor Bill') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 17, 22, 23, 31])): ?>
+                    <?php if (hasPermission('Contractor Bill') || hasPermission('QC & Internal Audit') || hasPermission('Operation manage') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 17, 20, 22, 23, 24, 25, 30, 31, 32, 33])): ?>
                         <li
                             class="slide has-sub <?= isActive(['con-contractor-bills', 'con-contractor-bill-create', 'con-fund-requests', 'con-fund-request-create'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
@@ -3040,8 +3078,22 @@
                                 </li>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/con-vendor-payment-requests"
-                                        class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?>">
-                                        <i class="bi bi-cash-stack me-1"></i> Vendor Payments
+                                        class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        <span><i class="bi bi-cash-stack me-1"></i> Vendor Payments</span>
+                                        <?php if (!empty($sidebarPendingVprCount) && $sidebarPendingVprCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill me-1"
+                                                style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingVprCount ?></span>
+                                        <?php endif; ?>
+                                    </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/con-contractor-bills"
+                                        class="sidebar__menu-item <?= isActive('con-contractor-bills', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        <span><i class="bi bi-receipt me-1"></i> Contractor Bills</span>
+                                        <?php if (isset($conPendingBillsCount) && $conPendingBillsCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill me-1"
+                                                style="font-size:10px; padding: 2px 6px;"><?= $conPendingBillsCount ?></span>
+                                        <?php endif; ?>
                                     </a>
                                 </li>
                             </ul>

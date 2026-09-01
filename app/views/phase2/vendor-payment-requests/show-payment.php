@@ -1027,13 +1027,46 @@ if ($status === 'Draft') {
             </div>
         </div>
 
+        <!-- Approval Actions (QC & Internal Audit) -->
+        <?php if (($canApproveQC ?? false) && $isSubmitted): ?>
+            <div class="card custom-card border-info mb-0 shadow-sm">
+                <div class="card-header bg-info bg-opacity-10 d-flex align-items-center justify-content-between">
+                    <h6 class="card-title mb-0 text-info fw-bold">
+                        <i class="bi bi-shield-check me-2"></i>QC Audit & Verification Action
+                    </h6>
+                    <span class="badge bg-info text-white">Step 1 of 3</span>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-3">
+                        Review delivery details, materials received, invoice amount and submit your QC verification to forward to Management.
+                    </p>
+                    <form action="<?= $base_url ?>/con-vendor-payment-qc-approve/<?= $request['id'] ?>" method="POST" id="qcApproveVprForm" class="mb-3">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">QC & Audit Observation Note <span class="text-muted">(Optional)</span></label>
+                            <textarea name="qc_note" class="form-control" rows="2" placeholder="Write observation, material verification notes or comments..."></textarea>
+                        </div>
+                        <button type="button" id="btnQcApprove" class="btn btn-info text-white w-100 fw-bold mb-2">
+                            <i class="bi bi-shield-check me-1"></i> Approve & Verify as QC
+                        </button>
+                    </form>
+                    <form action="<?= $base_url ?>/con-vendor-payment-qc-reject/<?= $request['id'] ?>" method="POST" id="qcRejectVprForm">
+                        <input type="hidden" name="qc_note" id="qcRejectNoteHidden" value="">
+                        <button type="button" id="btnQcReject" class="btn btn-outline-danger w-100 btn-sm">
+                            <i class="bi bi-x-circle me-1"></i> Reject Request
+                        </button>
+                    </form>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <!-- Approval Actions (Management) -->
         <?php if ($canApproveReq): ?>
-            <div class="card custom-card border-warning mb-0">
-                <div class="card-header bg-warning bg-opacity-10">
-                    <h6 class="card-title mb-0"><i
-                            class="bi bi-shield-lock me-2"></i><?= ($isApproved) ? 'Additional Approval Action' : 'Approval Action' ?>
+            <div class="card custom-card border-warning mb-0 shadow-sm">
+                <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center justify-content-between">
+                    <h6 class="card-title mb-0 fw-bold">
+                        <i class="bi bi-shield-lock me-2"></i><?= ($isApproved) ? 'Additional Approval Action' : 'Management Final Approval Action' ?>
                     </h6>
+                    <span class="badge bg-warning text-dark">Step 2 of 3</span>
                 </div>
                 <div class="card-body">
                     <!-- Management Approval Form -->
@@ -1274,7 +1307,59 @@ if ($status === 'Draft') {
             toggleBankField();
         }
 
-        // ── Approve Button ─────────────────────────────────────────────────────
+        // ── QC Approve Button ──────────────────────────────────────────────────
+        var btnQcApprove = document.getElementById('btnQcApprove');
+        var qcApproveForm = document.getElementById('qcApproveVprForm');
+        if (btnQcApprove && qcApproveForm) {
+            btnQcApprove.addEventListener('click', function () {
+                Swal.fire({
+                    title: 'Approve QC Verification?',
+                    text: 'This will verify and forward this payment request to Management for final approval.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0dcaf0',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Approve QC',
+                    cancelButtonText: 'Cancel'
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        qcApproveForm.submit();
+                    }
+                });
+            });
+        }
+
+        // ── QC Reject Button ───────────────────────────────────────────────────
+        var btnQcReject = document.getElementById('btnQcReject');
+        var qcRejectForm = document.getElementById('qcRejectVprForm');
+        if (btnQcReject && qcRejectForm) {
+            btnQcReject.addEventListener('click', function () {
+                Swal.fire({
+                    title: 'Reject Payment Request (QC)?',
+                    text: 'Please enter rejection reason / observation:',
+                    input: 'textarea',
+                    inputPlaceholder: 'Reason for QC rejection...',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Reject',
+                    cancelButtonText: 'Cancel',
+                    inputValidator: function (val) {
+                        if (!val || !val.trim()) {
+                            return 'Rejection reason is required!';
+                        }
+                    }
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        document.getElementById('qcRejectNoteHidden').value = result.value;
+                        qcRejectForm.submit();
+                    }
+                });
+            });
+        }
+
+        // ── Management Approve Button ──────────────────────────────────────────
         var approveBtn = document.getElementById('approveVprBtn');
         var approveForm = document.getElementById('approveVprForm');
         if (approveBtn && approveForm) {
@@ -1301,7 +1386,7 @@ if ($status === 'Draft') {
             });
         }
 
-        // ── Reject Button ──────────────────────────────────────────────────────
+        // ── Management Reject Button ───────────────────────────────────────────
         var rejectBtn = document.getElementById('rejectVprBtn');
         var rejectForm = document.getElementById('rejectVprForm');
         if (rejectBtn && rejectForm) {
@@ -1321,6 +1406,15 @@ if ($status === 'Draft') {
                     }
                 });
             });
+        }
+
+        // ── Auto-Open Payment Modal if Hash is #disburse or #pay ───────────────
+        if (window.location.hash === '#disburse' || window.location.hash === '#pay') {
+            var payModalEl = document.getElementById('addPaymentModal');
+            if (payModalEl) {
+                var payModal = new bootstrap.Modal(payModalEl);
+                payModal.show();
+            }
         }
     });
 </script>

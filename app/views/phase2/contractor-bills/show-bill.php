@@ -419,12 +419,12 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                         <div class="mb-3">
                             <small class="text-muted d-block fw-bold text-warning">Pending Approval From</small>
                             <span class="d-block small"><i class="bi bi-shield-check me-1 text-warning"></i> QC & Internal Audit</span>
-                            <span class="d-block small"><i class="bi bi-shield-lock me-1 text-success"></i> Management (Admin / PM Head)</span>
+                            <span class="d-block small"><i class="bi bi-shield-lock me-1 text-success"></i> Management (Admin / Operation Head / PM Head)</span>
                         </div>
                     <?php elseif ($status === 'qc_approved'): ?>
                         <div class="mb-3">
                             <small class="text-muted d-block fw-bold text-warning">Pending Approval From</small>
-                            <span class="d-block small"><i class="bi bi-shield-lock me-1 text-success"></i> Management (Admin / PM Head)</span>
+                            <span class="d-block small"><i class="bi bi-shield-lock me-1 text-success"></i> Management (Admin / Operation Head / PM Head)</span>
                         </div>
                     <?php endif; ?>
                     <div class="mb-3">
@@ -483,7 +483,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
             <?php if ($canApproveReq && ($isQCApproved || $status === 'submitted' || $status === 'verified')): ?>
             <div class="card custom-card border-success mb-3">
                 <div class="card-header bg-success bg-opacity-10">
-                    <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Management Approval</h6>
+                    <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Management Approval (Operation / PM Head / Admin)</h6>
                 </div>
                 <div class="card-body">
                     <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST" class="mb-3">

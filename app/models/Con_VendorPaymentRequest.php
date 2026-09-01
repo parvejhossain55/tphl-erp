@@ -28,6 +28,8 @@ class Con_VendorPaymentRequest extends Model
                        u.full_name  AS created_by_name,
                        ab.full_name AS approved_by_name,
                        ab_r.name    AS approved_by_role,
+                       qc.full_name AS qc_approved_by_name,
+                       qc_r.name    AS qc_approved_by_role,
                        pb.full_name AS payment_by_name,
                        COALESCE(txn_sum.total_paid, 0) AS already_paid
                 FROM {$this->table} pr
@@ -37,6 +39,8 @@ class Con_VendorPaymentRequest extends Model
                 LEFT JOIN users u            ON u.id  = pr.created_by
                 LEFT JOIN users ab           ON ab.id = pr.approved_by
                 LEFT JOIN roles ab_r         ON ab_r.id = ab.role_id
+                LEFT JOIN users qc           ON qc.id = pr.qc_approved_by_id
+                LEFT JOIN roles qc_r         ON qc_r.id = qc.role_id
                 LEFT JOIN (
                     SELECT t1.ref_id, t1.processed_by
                     FROM con_financial_transactions t1
@@ -70,7 +74,18 @@ class Con_VendorPaymentRequest extends Model
             $sql .= " WHERE " . implode(" AND ", $whereClauses);
         }
 
-        $sql .= " ORDER BY pr.id DESC";
+        $sql .= " ORDER BY 
+            CASE 
+                WHEN pr.status = 'Submitted' THEN 1
+                WHEN pr.status = 'QC Approved' THEN 2
+                WHEN pr.status = 'Approved' THEN 3
+                WHEN pr.status = 'Partially_Paid' THEN 4
+                WHEN pr.status = 'Draft' THEN 5
+                WHEN pr.status IN ('Fully_Paid', 'Paid') THEN 6
+                WHEN pr.status = 'Rejected' THEN 7
+                ELSE 8
+            END ASC,
+            pr.id DESC";
 
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
@@ -229,6 +244,57 @@ class Con_VendorPaymentRequest extends Model
         } catch (\Throwable $e) {
             $this->db->rollback();
             error_log("VPR create failed: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // =========================================================================
+    // QC AUDIT APPROVE & REJECT
+    // =========================================================================
+
+    public function approveQC($id, $userId, $qcNote = '')
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET status = 'QC Approved', 
+                 qc_verified = 1, 
+                 qc_approved_by_id = ?, 
+                 qc_approved_at = NOW(), 
+                 qc_note = ?
+             WHERE id = ? AND status = 'Submitted'"
+        );
+        $stmt->bind_param('isi', $userId, $qcNote, $id);
+        return $stmt->execute();
+    }
+
+    public function rejectQC($id, $userId, $qcNote = '')
+    {
+        $this->db->begin_transaction();
+        try {
+            $stmt = $this->db->prepare(
+                "UPDATE {$this->table}
+                 SET status = 'Rejected', 
+                     qc_approved_by_id = ?, 
+                     qc_approved_at = NOW(), 
+                     qc_note = ?
+                 WHERE id = ? AND status = 'Submitted'"
+            );
+            $stmt->bind_param('isi', $userId, $qcNote, $id);
+            $stmt->execute();
+
+            // Unlink penalties so they can be applied to future requests
+            $updStmt = $this->db->prepare(
+                "UPDATE vendor_penalties
+                 SET payment_request_id = NULL
+                 WHERE payment_request_id = ?"
+            );
+            $updStmt->bind_param('i', $id);
+            $updStmt->execute();
+
+            $this->db->commit();
+            return true;
+        } catch (\Throwable $e) {
+            $this->db->rollback();
             return false;
         }
     }

@@ -209,7 +209,7 @@ class Con_ContractorBill extends Model
              SET status = 'approved', approved_amount = ?, approved_by = ?, due_amount = ?, management_note = ?
              WHERE id = ?"
         );
-        $stmt->bind_param('didis', $approvedAmount, $userId, $approvedAmount, $managementNote, $id);
+        $stmt->bind_param('didsi', $approvedAmount, $userId, $approvedAmount, $managementNote, $id);
         return $stmt->execute();
     }
 

@@ -287,59 +287,124 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
       </div>
     </div>
 
-    <!-- GRN Button — for Purchase Head, Sr Purchase Exec, PM, Site Eng, Admin -->
+    <!-- Actions Section: GRN & Payment Disbursal -->
     <?php 
       $hasReceiving = $hasReceiving ?? false;
+      $canProcessPayment = $canProcessPayment ?? false;
       $isViewOnlyRole = in_array((int)$currentRoleId, [20, 24, 25, 32], true);
       $canLogGrn = !$isViewOnlyRole;
       if ($currentRoleId == 12 && $hasReceiving) {
           $canLogGrn = false; // Site Engineer can only create GRN once per PO
       }
+      $poTotalValue = $poTotalValue ?? 0;
+      $poTotalPaid  = $poTotalPaid ?? 0;
+      $poDueBalance = $poDueBalance ?? max(0, $poTotalValue - $poTotalPaid);
+      $poPayments   = $poPayments ?? [];
     ?>
-    <?php if (!$isViewOnlyRole) : ?>
-      <?php if ($fullyApproved && $po['status'] !== 'Fully Received' && $po['status'] !== 'Cancelled' && $canLogGrn): ?>
-        <div class="po-panel" style="border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.04)">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-            <div>
-              <div style="font-size:13px;font-weight:700;color:#059669"><i class="fal fa-check-circle me-2"></i>PO is Fully Approved</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">All approvals completed. You can now log material receiving.</div>
-            </div>
-            <a href="<?= $base_url ?>/con-material-receiving-create/<?= $po['id'] ?>"
-              style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:10px;padding:9px 22px;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:7px">
-              <i class="fal fa-box-seam"></i> Log Material Receiving (GRN)
+
+    <?php if ($fullyApproved && $po['status'] !== 'Cancelled'): ?>
+      <div class="po-panel" style="border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.04)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#059669"><i class="fal fa-check-circle me-2"></i>PO is Fully Approved</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">All approvals completed. Material receiving and payment disbursal can now be processed.</div>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <?php if ($canLogGrn && $po['status'] !== 'Fully Received'): ?>
+              <a href="<?= $base_url ?>/con-material-receiving-create/<?= $po['id'] ?>"
+                style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:7px">
+                <i class="fal fa-box-seam"></i> Log Material Receiving (GRN)
+              </a>
+            <?php endif; ?>
+            
+            <a href="<?= $base_url ?>/con-vendor-payment-create?po_id=<?= $po['id'] ?>&project_id=<?= $po['project_id'] ?? '' ?>&vendor_id=<?= $po['vendor_id'] ?? '' ?>"
+              style="background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-size:12px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:7px">
+              <i class="fal fa-wallet"></i> <?= ($poTotalPaid > 0) ? 'Pay / Disburse Balance' : 'Create Payment Request / Pay' ?>
             </a>
           </div>
         </div>
-      <?php elseif (!$fullyApproved && $po['status'] !== 'Cancelled'): ?>
-        <div class="po-panel" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03)">
-          <div style="display:flex;align-items:center;gap:10px">
-            <i class="fal fa-lock" style="color:#d97706;font-size:20px"></i>
-            <div>
-              <div style="font-size:13px;font-weight:700;color:#d97706">Material Receiving Locked</div>
-              <div style="font-size:11px;color:var(--text-muted)">Waiting for required approvals.</div>
-            </div>
-          </div>
-        </div>
-      <?php endif; ?>
-    <?php else: ?>
-      <!-- Operations, QC & Internal Audit View-Only receiving status panel -->
-      <div class="po-panel" style="border-color:<?= $hasReceiving ? 'rgba(16,185,129,.35)' : 'rgba(245,158,11,.35)' ?>;background:<?= $hasReceiving ? 'rgba(16,185,129,.04)' : 'rgba(245,158,11,.04)' ?>">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      </div>
+    <?php elseif (!$fullyApproved && $po['status'] !== 'Cancelled'): ?>
+      <div class="po-panel" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <i class="fal fa-lock" style="color:#d97706;font-size:20px"></i>
           <div>
-            <div style="font-size:13px;font-weight:700;color:<?= $hasReceiving ? '#059669' : '#b45309' ?>">
-              <i class="fal <?= $hasReceiving ? 'fa-boxes' : 'fa-exclamation-circle' ?> me-2"></i>
-              Material Receiving Status: <?= $hasReceiving ? 'Logged / Received' : 'Not Logged Yet (Pending Delivery)' ?>
-            </div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
-              <?= $hasReceiving ? 'Material receiving entry has been recorded for this Purchase Order.' : 'Awaiting Site Engineer / Purchase team to record material receiving.' ?>
-            </div>
+            <div style="font-size:13px;font-weight:700;color:#d97706">Material Receiving & Payment Locked</div>
+            <div style="font-size:11px;color:var(--text-muted)">Waiting for all required department approvals before receiving and payment processing.</div>
           </div>
-          <span class="badge <?= $hasReceiving ? 'bg-success' : 'bg-warning text-dark' ?> px-3 py-2" style="font-size:11px;">
-            <?= $hasReceiving ? '✓ Material Logged' : '⌛ No Log Yet' ?>
-          </span>
         </div>
       </div>
     <?php endif; ?>
+
+    <!-- PO Payment & Disbursal Status Panel -->
+    <div class="po-panel" style="border-color:rgba(59,130,246,.25);background:#fff">
+      <div class="po-panel-title d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-2">
+          <div class="po-dot" style="background:#2563eb"></div>
+          <span style="font-size:12px;font-weight:700;">Vendor Payment & Disbursal Status</span>
+        </div>
+        <div class="d-flex gap-3 text-end">
+          <div><small class="text-muted d-block" style="font-size:10px">Total PO Value</small><strong class="text-dark" style="font-size:13px">৳ <?= number_format($poTotalValue, 2) ?></strong></div>
+          <div><small class="text-muted d-block" style="font-size:10px">Total Paid</small><strong class="text-success" style="font-size:13px">৳ <?= number_format($poTotalPaid, 2) ?></strong></div>
+          <div><small class="text-muted d-block" style="font-size:10px">Due Balance</small><strong class="text-danger" style="font-size:13px">৳ <?= number_format($poDueBalance, 2) ?></strong></div>
+        </div>
+      </div>
+
+      <?php if (!empty($poPayments)): ?>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle mb-0" style="font-size:11.5px">
+            <thead class="table-light">
+              <tr>
+                <th>VPR ID</th>
+                <th>Type</th>
+                <th>Created</th>
+                <th class="text-end">Invoice Amount</th>
+                <th class="text-end">Net Payable</th>
+                <th class="text-end">Total Paid</th>
+                <th class="text-center">Status</th>
+                <th class="text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($poPayments as $vp): ?>
+                <?php 
+                  $vpStatus = $vp['status'] ?? 'Draft';
+                  $vpBadgeClass = match($vpStatus) {
+                    'Approved' => 'bg-success',
+                    'Fully_Paid', 'Paid' => 'bg-secondary',
+                    'Partially_Paid' => 'bg-info text-white',
+                    'QC Approved' => 'bg-primary',
+                    'Rejected' => 'bg-danger',
+                    default => 'bg-warning text-dark'
+                  };
+                ?>
+                <tr>
+                  <td class="fw-bold">VPR-<?= $vp['id'] ?></td>
+                  <td><span class="badge bg-light text-dark border"><?= $vp['payment_type'] ?></span></td>
+                  <td><?= !empty($vp['created_at']) ? date('d M Y', strtotime($vp['created_at'])) : '—' ?></td>
+                  <td class="text-end">৳ <?= number_format($vp['invoice_amount'] ?? 0, 2) ?></td>
+                  <td class="text-end fw-bold">৳ <?= number_format($vp['net_payable'] ?? 0, 2) ?></td>
+                  <td class="text-end text-success fw-bold">৳ <?= number_format($vp['total_paid'] ?? 0, 2) ?></td>
+                  <td class="text-center"><span class="badge <?= $vpBadgeClass ?>"><?= str_replace('_', ' ', $vpStatus) ?></span></td>
+                  <td class="text-center">
+                    <a href="<?= $base_url ?>/con-vendor-payment-show/<?= $vp['id'] ?>" class="btn btn-xs btn-outline-primary" style="font-size:11px;padding:2px 8px" title="View & Process Payment">
+                      <i class="fal fa-eye me-1"></i> View / Pay
+                    </a>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      <?php else: ?>
+        <div class="text-center py-2 text-muted" style="font-size:11.5px">
+          <i class="fal fa-info-circle me-1"></i> No payment requests created for this PO yet.
+          <?php if ($fullyApproved): ?>
+            <a href="<?= $base_url ?>/con-vendor-payment-create?po_id=<?= $po['id'] ?>&project_id=<?= $po['project_id'] ?? '' ?>&vendor_id=<?= $po['vendor_id'] ?? '' ?>" class="fw-bold text-primary ms-1">Create Payment Request Now</a>
+          <?php endif; ?>
+        </div>
+      <?php endif; ?>
+    </div>
   </div>
 
 
