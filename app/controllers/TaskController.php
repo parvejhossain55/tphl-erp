@@ -93,21 +93,7 @@ class TaskController extends Controller
         $stmt2->execute();
         $assignedBy = $stmt2->get_result()->fetch_assoc();
 
-        // 
-        if ($user && !empty($user['email'])) {
-            try {
-                sendMail(
-                    $user['email'],
-                    'New Task Assigned: ' . $data['title'],
-                    'https://thepremiumhomesltd.com/TPHL-ERP/admin-login',
-                    $assignedBy
-                );
-                // echo "<p style='color:green'>Email sent successfully to " . htmlspecialchars($user['email']) . "</p>";
-                // exit;
-            } catch (\Throwable $th) {
-                error_log("Mail Sending Failed: " . $th->getMessage());
-            }
-        }
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
         // save task data to database
         if ($this->taskModel->create($data)) {
@@ -121,11 +107,28 @@ class TaskController extends Controller
             $stmt3->bind_param("iiis", $data['user_id'], $taskId, $data['assigned_by'], $message);
             $stmt3->execute();
 
+            // Send notification email
+            if ($user && !empty($user['email'])) {
+                try {
+                    sendMail(
+                        $user['email'],
+                        'New Task Assigned: ' . $data['title'],
+                        $GLOBALS['base_url'] . '/task-lists',
+                        $assignedBy
+                    );
+                } catch (\Throwable $th) {
+                    error_log("Mail Sending Failed: " . $th->getMessage());
+                }
+            }
+
+            setSuccess("Task created successfully!");
             header("Location: {$GLOBALS['base_url']}/task-lists");
             exit;
         }
 
-        echo "<h3 style='color:red'>Failed to create task</h3>";
+        setError("Failed to create task");
+        header("Location: {$GLOBALS['base_url']}/create-task");
+        exit;
     }
     // Edit Employee Page
     public function edit($id)

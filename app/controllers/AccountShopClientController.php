@@ -64,27 +64,10 @@ class AccountShopClientController extends AccountClientController
 
             $paymentType = $_POST['payment_type'] ?? '';
             
-            // Validate sequence for shops
-            $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
-            $landShareExempt = ['land_share', 'booking_money', 'registration', 'mutation_cost', 'emi_due_settlement'];
-            if (!in_array($paymentType, $landShareExempt) && empty($paymentSummary['is_land_share_completed'])) {
-                setError("Land share must be fully paid before adding " . ucfirst(str_replace('_', ' ', $paymentType)) . " payments.");
-                header("Location: {$GLOBALS['base_url']}/shop-client-cash-in-form?booking_id={$bookingId}");
-                exit;
-            }
-
             if ($paymentType === 'emi_due_settlement') {
                 $parentPaymentId = !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : 0;
                 if (!$parentPaymentId) {
                     setError("EMI settlement requires selecting the original EMI payment.");
-                    header("Location: {$GLOBALS['base_url']}/shop-client-cash-in-form?booking_id={$bookingId}");
-                    exit;
-                }
-            }
-
-            if ($paymentType === 'emi') {
-                if (empty($paymentSummary['is_shop_service_charge_completed'])) {
-                    setError("Shop Service Charge must be fully completed before adding EMI payments.");
                     header("Location: {$GLOBALS['base_url']}/shop-client-cash-in-form?booking_id={$bookingId}");
                     exit;
                 }

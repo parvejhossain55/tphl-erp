@@ -1000,35 +1000,88 @@ class PaymentBookingController extends Controller
 
     public function update()
     {
-        $flatId = $_POST['flat_id'] ?? null;
-        $flatId = ($flatId === '' || $flatId === '0') ? null : (int)$flatId;
-        $id = (int)($_POST['id'] ?? 0);
-        $followUpData = [
-            'id' => (int)$_POST['id'],
-            'lead_id' => (int)$_POST['lead_id'],
-            'flat_id' => $flatId,   //  NULL or flats.id only
-            'follow_up_date' => $_POST['follow_up_date'],
-            'follow_up_time' => $_POST['follow_up_time'] ?: null,
-            'follow_up_type' => $_POST['follow_up_type'],
-            'status' => $_POST['status'] ?? 'pending',
-            'discussion_note' => $_POST['discussion_note'] ?? null,
-            'next_follow_up_date' => $_POST['next_follow_up_date'] ?: null,
-            'next_action' => $_POST['next_action'] ?? null,
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $id = (int)($_POST['payment_id'] ?? $_POST['id'] ?? 0);
+        $bookingId = (int)($_POST['booking_id'] ?? 0);
+
+        if (!$id || !$bookingId) {
+            setError("Invalid payment or booking reference!");
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/onboard-leads"));
+            exit;
+        }
+
+        if ($this->paymentModel->isPaymentVerified($id)) {
+            setError("Cannot edit payment because it has already been verified by Accounts!");
+            header("Location: {$GLOBALS['base_url']}/payments-booking/{$bookingId}");
+            exit;
+        }
+
+        $data = [
+            'id'              => $id,
+            'amount'          => floatval($_POST['amount'] ?? 0),
+            'payment_method'  => $_POST['payment_method'] ?? 'cash',
+            'payment_date'    => $_POST['payment_date'] ?? date('Y-m-d'),
+            'transaction_ref' => $_POST['transaction_ref'] ?? null,
+            'bank_id'         => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
+            'bank_name'       => $_POST['bank_name'] ?? null,
+            'bank_account_no' => $_POST['bank_account_no'] ?? null,
+            'cheque_no'       => $_POST['cheque_no'] ?? null,
+            'online_type'     => $_POST['online_type'] ?? null,
         ];
 
-
-        if ($this->bookingModel->update($followUpData, $id)) {
-            setSuccess("Follow-up updated successfully!");
-        } else {
-            setError("Failed to update follow-up!");
+        // Handle attachment upload if new file provided
+        if (isset($_FILES['attachment_image']) && $_FILES['attachment_image']['error'] === UPLOAD_ERR_OK) {
+            $uploadedFileName = uploadImage('attachment_image', 'payments');
+            if ($uploadedFileName) {
+                $data['attachment_image'] = $uploadedFileName;
+            }
         }
-        $leadId = $_POST['lead_id'];
-        header("Location: {$GLOBALS['base_url']}/follow-up-leads/{$leadId}");
+
+        if ($this->paymentModel->updatePayment($data)) {
+            $this->updateBookingPaymentStatus($bookingId);
+            setSuccess("Payment record updated successfully!");
+        } else {
+            setError("Failed to update payment record!");
+        }
+
+        header("Location: {$GLOBALS['base_url']}/payments-booking/{$bookingId}");
         exit;
     }
 
+    public function delete($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $paymentId = (int)$id;
 
+        if (!$paymentId) {
+            setError("Invalid payment reference!");
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/onboard-leads"));
+            exit;
+        }
 
-    // Delete Employee
-    public function delete($id) {}
+        $payment = $this->paymentModel->find($paymentId);
+        if (!$payment) {
+            setError("Payment record not found!");
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/onboard-leads"));
+            exit;
+        }
+
+        $bookingId = (int)($payment['booking_id'] ?? 0);
+
+        if ($this->paymentModel->isPaymentVerified($paymentId)) {
+            setError("Cannot delete payment because it has already been verified by Accounts!");
+            header("Location: {$GLOBALS['base_url']}/payments-booking/{$bookingId}");
+            exit;
+        }
+
+        if ($this->paymentModel->deletePayment($paymentId)) {
+            $this->updateBookingPaymentStatus($bookingId);
+            setSuccess("Payment record deleted successfully!");
+        } else {
+            setError("Failed to delete payment record!");
+        }
+
+        header("Location: {$GLOBALS['base_url']}/payments-booking/{$bookingId}");
+        exit;
+    }
 }

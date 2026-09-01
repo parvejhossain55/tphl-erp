@@ -816,30 +816,11 @@ public function addTransaction()
 
         $paymentType = $_POST['payment_type'] ?? '';
         
-        // CHECK 0: Land share must be complete before most payment types
-        // Exceptions: land_share, booking_money, and registration are always allowed
-        $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
-        $landShareExempt = ['land_share', 'booking_money', 'registration', 'mutation_cost', 'emi_due_settlement'];
-        if (!in_array($paymentType, $landShareExempt) && empty($paymentSummary['is_land_share_completed'])) {
-            setError("Land share must be fully paid before adding " . ucfirst(str_replace('_', ' ', $paymentType)) . " payments.");
-            header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
-            exit;
-        }
-
         // CHECK: EMI due settlement requires a parent payment ID
         if ($paymentType === 'emi_due_settlement') {
             $parentPaymentId = !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : 0;
             if (!$parentPaymentId) {
                 setError("EMI settlement requires selecting the original EMI payment.");
-                header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
-                exit;
-            }
-        }
-
-        // CHECK: EMI requires land share to be fully completed
-        if ($paymentType === 'emi') {
-            if (empty($paymentSummary['is_land_share_completed'])) {
-                setError("Land share must be fully completed before adding EMI payments.");
                 header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
                 exit;
             }
@@ -2942,5 +2923,44 @@ public function discountStatement($bookingId = null)
             "page_title" => "Trash Client Payment",
             "trashedTransactions" => $trashedTransactions
         ]);
+    }
+
+    public function updateManagementDiscount()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+
+        $isManagement = ($userRole === 1 || $userRole === 3 || strpos($roleName, 'management') !== false || strpos($roleName, 'admin') !== false);
+
+        if (!$isManagement) {
+            setError("Permission denied! Only Management can approve/update booking discount.");
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/clients-cashin-view"));
+            exit;
+        }
+
+        $bookingId = (int)($_POST['booking_id'] ?? 0);
+        $approvedDiscount = floatval($_POST['approved_discount'] ?? 0);
+
+        if ($bookingId <= 0) {
+            setError("Invalid booking ID.");
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/clients-cashin-view"));
+            exit;
+        }
+
+        $res = $this->clientModel->updateManagementBookingDiscount($bookingId, $approvedDiscount, $userId);
+
+        if ($res['success']) {
+            setSuccess("Booking discount successfully updated and approved! Land share target and remaining balances recalculated.");
+        } else {
+            setError($res['message'] ?? "Failed to update discount.");
+        }
+
+        header("Location: {$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}");
+        exit;
     }
 }

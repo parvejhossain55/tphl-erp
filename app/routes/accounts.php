@@ -68,6 +68,7 @@ return [
     'clients-cashin-view' => ['controller' => 'AccountClientController', 'method' => 'indexView'],
     'clients-cash-in-history-view' => ['controller' => 'AccountClientController', 'method' => 'indexTwoView'],
     'clients-cash-in-history-view/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'indexTwoView'],
+    'update-management-booking-discount' => ['controller' => 'AccountClientController', 'method' => 'updateManagementDiscount'],
     'save-transfer-note' => ['controller' => 'AccountClientController', 'method' => 'saveTransferNote'],
     'verify-payment' => ['controller' => 'AccountClientController', 'method' => 'verifyPayment'],
     'account-client/bulkVerify' => ['controller' => 'AccountClientController', 'method' => 'bulkVerify'],

@@ -274,52 +274,91 @@ class PaymentLeadBooking extends Model
         return $stmt->get_result()->fetch_assoc();
     }
 
-    // Update follow-up by ID
-    public function update($data)
+    public function isPaymentVerified($payment_id)
     {
-        $stmt = $this->db->prepare("
-        UPDATE lead_follow_ups SET
-            lead_id = ?,
-            flat_id = ?,
-            follow_up_date = ?,
-            follow_up_time = ?,
-            follow_up_type = ?,
-            status = ?,
-            discussion_note = ?,
-            next_follow_up_date = ?,
-            next_action = ?
-        WHERE id = ?
-    ");
+        $stmt = $this->db->prepare("SELECT verification_status FROM lead_payments WHERE id = ?");
+        $stmt->bind_param("i", $payment_id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return ($row && ($row['verification_status'] === 'verified'));
+    }
 
-        if (!$stmt) {
-            setError($this->db->error);
+    public function hasVerifiedPayment($booking_id)
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS cnt FROM lead_payments WHERE booking_id = ? AND verification_status = 'verified'");
+        $stmt->bind_param("i", $booking_id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return ($row && (int)$row['cnt'] > 0);
+    }
+
+    public function find($id)
+    {
+        $stmt = $this->db->prepare("SELECT * FROM lead_payments WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_assoc();
+    }
+
+    // Update payment by ID (only allowed if not verified)
+    public function updatePayment($data)
+    {
+        $id = (int)($data['id'] ?? 0);
+        if ($this->isPaymentVerified($id)) {
             return false;
         }
-        $stmt->bind_param(
-            "iisssssssi",
-            $data['lead_id'],
-            $data['flat_id'],   // NULL or valid flats.id
-            $data['follow_up_date'],
-            $data['follow_up_time'],
-            $data['follow_up_type'],
-            $data['status'],
-            $data['discussion_note'],
-            $data['next_follow_up_date'],
-            $data['next_action'],
-            $data['id']
-        );
 
+        $sql = "UPDATE lead_payments SET
+                    amount = ?,
+                    payment_method = ?,
+                    payment_date = ?,
+                    transaction_ref = ?,
+                    bank_id = ?,
+                    bank_name = ?,
+                    bank_account_no = ?,
+                    cheque_no = ?,
+                    online_type = ?";
+        
+        $params = [
+            (float)($data['amount'] ?? 0),
+            $data['payment_method'] ?? 'cash',
+            $data['payment_date'] ?? date('Y-m-d'),
+            $data['transaction_ref'] ?? null,
+            !empty($data['bank_id']) ? (int)$data['bank_id'] : null,
+            $data['bank_name'] ?? null,
+            $data['bank_account_no'] ?? null,
+            $data['cheque_no'] ?? null,
+            $data['online_type'] ?? null
+        ];
+        $types = "dssssisss";
 
+        if (!empty($data['attachment_image'])) {
+            $sql .= ", attachment_image = ?";
+            $params[] = $data['attachment_image'];
+            $types .= "s";
+        }
+
+        $sql .= " WHERE id = ? AND (verification_status != 'verified' OR verification_status IS NULL)";
+        $params[] = $id;
+        $types .= "i";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return false;
+        }
+
+        $stmt->bind_param($types, ...$params);
         return $stmt->execute();
     }
-    // Optional: get onboard records by lead
 
-
-
-    // Delete follow-up by ID
-    public function delete($id)
+    // Delete payment by ID (only allowed if not verified)
+    public function deletePayment($id)
     {
-        $stmt = $this->db->prepare("DELETE FROM lead_follow_ups WHERE id = ?");
+        if ($this->isPaymentVerified($id)) {
+            return false;
+        }
+
+        $stmt = $this->db->prepare("DELETE FROM lead_payments WHERE id = ? AND (verification_status != 'verified' OR verification_status IS NULL)");
         $stmt->bind_param("i", $id);
         return $stmt->execute();
     }

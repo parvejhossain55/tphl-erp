@@ -26,6 +26,10 @@ if (isset($error_message) && !empty($error_message)):
 // Check if land share is completed (enables Add Transaction for dev charges & EMI)
 $accountModel = new AccountClient();
 $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
+
+$userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+$userRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
+$isManagementUser = ($userRoleId === 1 || $userRoleId === 3 || strpos($userRoleName, 'management') !== false || strpos($userRoleName, 'admin') !== false);
 ?>
 
 <div class="row">
@@ -728,26 +732,39 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
                                      </td>
                                     
                                     <td>
-                                        <?php
-                                            $hasId = (!empty($transaction['id']) && strpos($transaction['id'], 'booking-') === false);
-                                            $isVerified = (($transaction['verification_status'] ?? 'pending') === 'verified');
-                                        ?>
-                                        <?php if ($hasId && $isVerified): ?>
-                                            <a href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $transaction['id'] ?>"
-                                               class="table__icon invoice"
-                                               style="color:#fff;background-color:#6c5ffc;"
-                                               title="View Invoice" target="_blank">
-                                                <i class="fa-light fa-file-invoice"></i>
-                                            </a>
-                                        <?php elseif ($hasId): ?>
-                                            <span class="table__icon disabled"
-                                                  title="Invoice available after verification"
-                                                  style="background-color:#fef3cd;color:#856404;cursor:not-allowed;">
-                                                <i class="fa-light fa-file-invoice"></i>
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="text-muted">—</span>
-                                        <?php endif; ?>
+                                        <div class="d-inline-flex align-items-center gap-1">
+                                            <?php
+                                                $hasId = (!empty($transaction['id']) && strpos($transaction['id'], 'booking-') === false);
+                                                $isVerified = (($transaction['verification_status'] ?? 'pending') === 'verified');
+                                            ?>
+                                            <?php if ($hasId && $isVerified): ?>
+                                                <a href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $transaction['id'] ?>"
+                                                   class="table__icon invoice"
+                                                   style="color:#fff;background-color:#6c5ffc;"
+                                                   title="View Invoice" target="_blank">
+                                                    <i class="fa-light fa-file-invoice"></i>
+                                                </a>
+                                            <?php elseif ($hasId): ?>
+                                                <span class="table__icon disabled"
+                                                      title="Invoice available after verification"
+                                                      style="background-color:#fef3cd;color:#856404;cursor:not-allowed;">
+                                                    <i class="fa-light fa-file-invoice"></i>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="text-muted">—</span>
+                                            <?php endif; ?>
+
+                                            <?php if ($isManagementUser && ($transaction['payment_type'] ?? '') === 'booking_money'): ?>
+                                                <button type="button"
+                                                        class="table__icon edit border-0"
+                                                        style="color:#fff;background-color:#f59e0b;cursor:pointer;"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#editManagementDiscountModal"
+                                                        title="Edit / Approve Management Discount">
+                                                    <i class="fa-solid fa-pen-to-square"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -1363,3 +1380,70 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
         </div>
     </div>
 </div>
+
+<!-- Management Discount Approval Modal -->
+<?php if ($isManagementUser && isset($clientDetails['booking_id'])): ?>
+<div class="modal fade" id="editManagementDiscountModal" tabindex="-1" aria-labelledby="editManagementDiscountModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff;">
+                <h5 class="modal-title text-white" id="editManagementDiscountModalLabel">
+                    <i class="fa-solid fa-tags me-2"></i>Edit / Approve Booking Discount
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="<?= $GLOBALS['base_url'] ?>/update-management-booking-discount" method="POST">
+                <div class="modal-body p-4">
+                    <input type="hidden" name="booking_id" value="<?= (int)$clientDetails['booking_id'] ?>">
+                    
+                    <!-- Client & Unit info summary card -->
+                    <div class="p-3 mb-3 rounded bg-light border">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted fs-13">Client:</span>
+                            <span class="fw-bold fs-13"><?= htmlspecialchars($clientDetails['client_name'] ?? 'N/A') ?></span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted fs-13">Project / Unit:</span>
+                            <span class="fw-semibold fs-13"><?= htmlspecialchars($clientDetails['project_name'] ?? '') ?> - Unit <?= htmlspecialchars($clientDetails['unit_name'] ?? '') ?></span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted fs-13">Total Land Share (Original):</span>
+                            <span class="fw-bold fs-13 text-primary">TK. <?= number_format((float)($clientDetails['total_land_share'] ?? 0), 2) ?></span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted fs-13">Current Remaining Land Share:</span>
+                            <span class="fw-bold fs-13 text-danger">TK. <?= number_format((float)($clientDetails['remaining_land_share'] ?? 0), 2) ?></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Approved Discount Amount (TK) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white">TK.</span>
+                            <input type="number" 
+                                   step="any" 
+                                   min="0" 
+                                   max="<?= (float)($clientDetails['total_land_share'] ?? 999999999) ?>"
+                                   name="approved_discount" 
+                                   id="mgmt_approved_discount_input" 
+                                   class="form-control form-control-lg fw-bold text-success" 
+                                   value="<?= (float)($clientDetails['approved_amount'] ?? $clientDetails['discount_amount'] ?? 0) ?>" 
+                                   required>
+                        </div>
+                        <small class="text-muted mt-1 d-block" style="font-size: 12px;">
+                            <i class="fa-solid fa-circle-info text-primary me-1"></i>
+                            This discount will be approved by <strong>Management</strong> and automatically deducted from the client's <strong>Land Share</strong> target and remaining balance.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning text-dark fw-bold px-4">
+                        <i class="fa-solid fa-check-circle me-1"></i> Save & Approve Discount
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
