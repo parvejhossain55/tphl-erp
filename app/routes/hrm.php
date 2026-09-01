@@ -44,6 +44,9 @@ return [
     'my-profile' => ['controller' => 'EmployeeDashboardController', 'method' => 'myProfile'],
     'my-tipsoi-info' => ['controller' => 'EmployeeDashboardController', 'method' => 'myTipsoiInfo'],
     'api/employee/tipsoi-data' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiData'],
+    'api/employee/tipsoi-history' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiHistory'],
+    'api/hrm/devices' => ['controller' => 'EmployeeDashboardController', 'method' => 'getDevices'],
+    'api/employee/manual-entry/apply' => ['controller' => 'EmployeeDashboardController', 'method' => 'applyManualEntry'],
     'tipsoi-monthly-report' => ['controller' => 'EmployeeDashboardController', 'method' => 'tipsoiMonthlyReport'],
     'tipsoi-daily-report' => ['controller' => 'EmployeeDashboardController', 'method' => 'tipsoiDailyReport'],
     'tipsoi-department-report' => ['controller' => 'EmployeeDashboardController', 'method' => 'tipsoiDepartmentReport'],
@@ -249,6 +252,7 @@ return [
     'api/hrm/leave-category' => ['controller' => 'HrmApiController', 'method' => 'getLeaveCategories'],
     'api/hrm/applied-leave-list' => ['controller' => 'HrmApiController', 'method' => 'getAppliedLeaveList'],
     'api/hrm/leave-management/approve/(.*)' => ['controller' => 'HrmApiController', 'method' => 'approveTipsoiLeave'],
+    'api/hrm/leave-management/cancel/(.*)' => ['controller' => 'HrmApiController', 'method' => 'cancelTipsoiLeave'],
     'api/hrm/leave-management/apply/employee/(.*)' => ['controller' => 'HrmApiController', 'method' => 'applyTipsoiLeave'],
     
     // Late Request APIs
@@ -258,6 +262,10 @@ return [
     'api/hrm/late-approval-management/reject/(.*)' => ['controller' => 'HrmApiController', 'method' => 'rejectTipsoiLateRequest'],
     'api/hrm/late-approval-management/cancel/(.*)' => ['controller' => 'HrmApiController', 'method' => 'cancelTipsoiLateRequest'],
     'api/hrm/late-approval-management/late-approvals/(.*)' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiLateHistory'],
+    'api/hrm/late-approval-management/late-entries/(.*)' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiLateEntries'],
+
+    // Manual Entry Cancel
+    'api/hrm/manual-entry/cancel/(.*)' => ['controller' => 'HrmApiController', 'method' => 'cancelTipsoiManualEntry'],
 
     // =========================================================================
     // Batch 4: Leave Balances & Analytics Views & API Routes

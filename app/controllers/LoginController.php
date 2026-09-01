@@ -108,6 +108,23 @@ class LoginController extends Controller
                                 "is_sales_co_leader" => (int)($user['is_sales_co_leader'] ?? 0),
                             ];
 
+                            // Tipsoi Authentication Sync
+                            try {
+                                $externalApi = new ExternalApiService($this->db);
+                                $tipsoiAuth = $externalApi->authenticateUser($user['email'], $password);
+                                if (!empty($tipsoiAuth['success'])) {
+                                    $_SESSION['user']['tipsoi_authenticated'] = true;
+                                    $_SESSION['user']['tipsoi_token'] = $tipsoiAuth['token'];
+                                    $_SESSION['user']['tipsoi_token_expires'] = $tipsoiAuth['expires'];
+                                    $_SESSION['user']['tipsoi_id'] = $tipsoiAuth['tipsoi_id'] ?? null;
+                                } else {
+                                    $_SESSION['user']['tipsoi_authenticated'] = false;
+                                }
+                            } catch (Exception $e) {
+                                error_log("Tipsoi Login Sync Error: " . $e->getMessage());
+                                $_SESSION['user']['tipsoi_authenticated'] = false;
+                            }
+
                             $_SESSION['user']['permissions'] =
                                 $this->userModel->getPermissionsByRole($user['role_id']);
 
