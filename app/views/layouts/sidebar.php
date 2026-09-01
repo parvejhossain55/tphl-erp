@@ -1519,16 +1519,20 @@
                                 </a>
                             </li>
                             <li class="slide">
-                                <a href="<?= $base_url ?>/my-tipsoi-info#appliedLeaveListTabContent" class="sidebar__menu-item">
-                                    Applied Leave List
-                                </a>
-                            </li>
-                            <li class="slide">
                                 <a href="<?= $base_url ?>/my-tipsoi-info#late-request" class="sidebar__menu-item">
                                     Late Request
                                 </a>
                             </li>
-
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/my-tipsoi-info#history" class="sidebar__menu-item">
+                                    History
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/my-tipsoi-info#manual-entry" class="sidebar__menu-item">
+                                    Manual Entry
+                                </a>
+                            </li>
                         </ul>
                     </li>
                 <?php endif; ?>
