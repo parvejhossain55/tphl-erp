@@ -29,14 +29,34 @@ class AdvanceSalary extends Model
             `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
             `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )";
-        $this->db->query($sql);
-        @$this->db->query("ALTER TABLE advance_salaries ADD COLUMN deduction_start_month VARCHAR(7) NULL AFTER reason");
-        @$this->db->query("ALTER TABLE advance_salaries ADD COLUMN deduction_end_month VARCHAR(7) NULL AFTER deduction_start_month");
-        @$this->db->query("ALTER TABLE advance_salaries ADD COLUMN deduction_months INT NULL AFTER deduction_end_month");
-        @$this->db->query("ALTER TABLE advance_salaries ADD COLUMN paid_back_amount DECIMAL(10,2) DEFAULT 0.00 AFTER amount");
-        @$this->db->query("ALTER TABLE advance_salaries ADD COLUMN approved_date DATETIME NULL AFTER status");
-        @$this->db->query("ALTER TABLE advance_salaries MODIFY COLUMN status ENUM('pending', 'pending_hr', 'pending_accounts', 'approved', 'paid', 'deducted', 'rejected') DEFAULT 'pending_hr'");
-        @$this->db->query("UPDATE advance_salaries SET status = 'pending_hr' WHERE status = '' OR status = 'pending' OR status IS NULL");
+        try {
+            $colsRes = $this->db->query("SHOW COLUMNS FROM advance_salaries");
+            $existingCols = [];
+            if ($colsRes) {
+                while ($c = $colsRes->fetch_assoc()) {
+                    $existingCols[] = $c['Field'];
+                }
+            }
+            if (!in_array('deduction_start_month', $existingCols)) {
+                $this->db->query("ALTER TABLE advance_salaries ADD COLUMN deduction_start_month VARCHAR(7) NULL AFTER reason");
+            }
+            if (!in_array('deduction_end_month', $existingCols)) {
+                $this->db->query("ALTER TABLE advance_salaries ADD COLUMN deduction_end_month VARCHAR(7) NULL AFTER deduction_start_month");
+            }
+            if (!in_array('deduction_months', $existingCols)) {
+                $this->db->query("ALTER TABLE advance_salaries ADD COLUMN deduction_months INT NULL AFTER deduction_end_month");
+            }
+            if (!in_array('paid_back_amount', $existingCols)) {
+                $this->db->query("ALTER TABLE advance_salaries ADD COLUMN paid_back_amount DECIMAL(10,2) DEFAULT 0.00 AFTER amount");
+            }
+            if (!in_array('approved_date', $existingCols)) {
+                $this->db->query("ALTER TABLE advance_salaries ADD COLUMN approved_date DATETIME NULL AFTER status");
+            }
+            $this->db->query("ALTER TABLE advance_salaries MODIFY COLUMN status ENUM('pending', 'pending_hr', 'pending_accounts', 'approved', 'paid', 'deducted', 'rejected') DEFAULT 'pending_hr'");
+            $this->db->query("UPDATE advance_salaries SET status = 'pending_hr' WHERE status = '' OR status = 'pending' OR status IS NULL");
+        } catch (Throwable $e) {
+            // Ignore schema alter errors if already present
+        }
     }
 
     public function getAll()
