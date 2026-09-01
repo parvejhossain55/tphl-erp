@@ -33,6 +33,16 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
+    public function getAllBooking($year = null, $month = null, $project_id = null)
+    {
+        return $this->getAllOnboardClientBooking($year, $month, $project_id);
+    }
+
+    public function getAllBookings($year = null, $month = null, $project_id = null)
+    {
+        return $this->getAllOnboardClientBooking($year, $month, $project_id);
+    }
+
 
 
 
@@ -539,7 +549,9 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                f.price_value, 
                us.full_name as created_user,
                u_sales.full_name as sales_user,
-               COALESCE(u_sales.full_name, o.sales_agent_old) AS sales_agent_display
+               COALESCE(u_sales.full_name, o.sales_agent_old) AS sales_agent_display,
+               (SELECT COUNT(*) FROM lead_payments lp WHERE lp.booking_id = o.id AND lp.verification_status = 'verified') AS verified_payment_count,
+               (SELECT COUNT(*) FROM lead_payments lp WHERE lp.booking_id = o.id) AS total_payment_count
         FROM lead_bookings o
         LEFT JOIN projects p ON o.project_id = p.id
         LEFT JOIN flats f ON o.flat_id = f.id
@@ -547,6 +559,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         LEFT JOIN users u_sales ON o.sales_by_id = u_sales.id
         WHERE o.deleted_at IS NULL
           AND o.lead_id = ?
+        ORDER BY o.id DESC
     ");
 
         if (!$stmt) {
@@ -660,6 +673,15 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $data;
     }
 
+    public function hasVerifiedPayment($bookingId)
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS cnt FROM lead_payments WHERE booking_id = ? AND verification_status = 'verified'");
+        $stmt->bind_param("i", $bookingId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        return ($row && (int)$row['cnt'] > 0);
+    }
+
     public function getById($id)
     {
         $stmt = $this->db->prepare("SELECT lb.*, 
@@ -672,7 +694,9 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                f.price_value,
                f.land_share_value,
                f.sqft,
-               f.flat_name AS unit_name
+               f.flat_name AS unit_name,
+               (SELECT COUNT(*) FROM lead_payments lp WHERE lp.booking_id = lb.id AND lp.verification_status = 'verified') AS verified_payment_count,
+               (SELECT COUNT(*) FROM lead_payments lp WHERE lp.booking_id = lb.id) AS total_payment_count
         FROM lead_bookings lb
         LEFT JOIN leads l ON lb.lead_id = l.id
         LEFT JOIN flats f ON lb.flat_id = f.id
@@ -686,30 +710,154 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $result->fetch_assoc(); // single record
     }
 
-
-    public function getAllBooking()
+    public function updateBooking($id, $data)
     {
-        $stmt = $this->db->prepare("SELECT lb.*, l.full_name,l.lead_image,l.phone, p.name AS project_name,f.price_value,f.flat_name,f.sqft,f.is_booked
-            FROM lead_bookings lb LEFT JOIN leads l ON lb.lead_id = l.id 
-            LEFT JOIN projects p ON lb.project_id = p.id
-            LEFT JOIN flats f ON lb.flat_id = f.id
-            Where lb.deleted_at IS NULL");
-
-        if (!$stmt) {
-            setError($this->db->error);
-            return false;
+        if ($this->hasVerifiedPayment($id)) {
+            return ['success' => false, 'message' => 'Cannot edit booking because payments have already been verified by Accounts.'];
         }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        return $result->fetch_all(MYSQLI_ASSOC);
+
+        $existing = $this->db->query("SELECT * FROM lead_bookings WHERE id = {$id}")->fetch_assoc();
+        if (!$existing) {
+            return ['success' => false, 'message' => 'Booking not found.'];
+        }
+
+        $this->db->begin_transaction();
+        try {
+            $oldFlatId = !empty($existing['flat_id']) ? (int)$existing['flat_id'] : null;
+            $newFlatId = !empty($data['flat_id']) ? (int)$data['flat_id'] : null;
+
+            // If flat changed, release old flat and reserve new flat
+            if ($oldFlatId && $oldFlatId !== $newFlatId) {
+                $stmtOld = $this->db->prepare("UPDATE flats SET status = 'available', is_booked = 0 WHERE id = ?");
+                $stmtOld->bind_param("i", $oldFlatId);
+                $stmtOld->execute();
+            }
+
+            if ($newFlatId && $oldFlatId !== $newFlatId) {
+                $stmtNew = $this->db->prepare("UPDATE flats SET status = 'booked', is_booked = 1 WHERE id = ?");
+                $stmtNew->bind_param("i", $newFlatId);
+                $stmtNew->execute();
+            }
+
+            // If discount was already approved by management, preserve the approved values
+            $isManagementApproved = in_array($existing['approval_status'] ?? '', ['approved', 'partial']);
+            if ($isManagementApproved) {
+                $discount = (float)($existing['discount_amount'] ?? 0);
+                $approvedAmt = $existing['approved_amount'] ?? null;
+                $approvalStatus = $existing['approval_status'];
+            } else {
+                $discount = (float)($data['discount_amount'] ?? 0);
+                $approvalStatus = ($discount > 0) ? 'pending' : 'not_required';
+                $approvedAmt = null;
+
+                // Sync approval_requests
+                if ($discount > 0) {
+                    $checkApp = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'lead_bookings' AND source_id = {$id} LIMIT 1")->fetch_assoc();
+                    if ($checkApp) {
+                        $this->db->query("UPDATE approval_requests SET request_amount = {$discount}, status = 'pending', approved_amount = NULL, updated_at = NOW() WHERE id = " . (int)$checkApp['id']);
+                    } else {
+                        $requestedBy = (int)($_SESSION['user']['id'] ?? 1);
+                        $stmtIns = $this->db->prepare("INSERT INTO approval_requests (department, request_type, title, source_table, source_id, request_amount, status, requested_by, approve_role, created_at) VALUES ('Sales', 'discount', 'Lead Booking Discount Approval', 'lead_bookings', ?, ?, 'pending', ?, 'Management', NOW())");
+                        if ($stmtIns) {
+                            $stmtIns->bind_param("idi", $id, $discount, $requestedBy);
+                            $stmtIns->execute();
+                        }
+                    }
+                } else {
+                    $this->db->query("DELETE FROM approval_requests WHERE source_table = 'lead_bookings' AND source_id = {$id}");
+                }
+            }
+
+            $stmt = $this->db->prepare("
+                UPDATE lead_bookings SET
+                    project_id = ?,
+                    flat_id = ?,
+                    agreement_value = ?,
+                    booking_date = ?,
+                    discount_amount = ?,
+                    approved_amount = ?,
+                    approval_status = ?
+                WHERE id = ?
+            ");
+
+            $projectId = (int)($data['project_id'] ?? $existing['project_id']);
+            $agreementVal = (float)($data['agreement_value'] ?? $existing['agreement_value']);
+            $bookingDate = $data['booking_date'] ?? $existing['booking_date'];
+
+            $stmt->bind_param(
+                "iidssdsi",
+                $projectId,
+                $newFlatId,
+                $agreementVal,
+                $bookingDate,
+                $discount,
+                $approvedAmt,
+                $approvalStatus,
+                $id
+            );
+
+            if (!$stmt->execute()) {
+                throw new Exception("Booking update failed: " . $stmt->error);
+            }
+
+            $this->db->commit();
+            return ['success' => true];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
     }
 
-    // Delete follow-up by ID
+    // Delete booking and cascade delete unverified payments & release flat
+    public function deleteCascade($bookingId)
+    {
+        if ($this->hasVerifiedPayment($bookingId)) {
+            return ['success' => false, 'message' => 'Cannot delete booking because payments have already been verified by Accounts.'];
+        }
+
+        $existing = $this->db->query("SELECT * FROM lead_bookings WHERE id = {$bookingId}")->fetch_assoc();
+        if (!$existing) {
+            return ['success' => false, 'message' => 'Booking not found.'];
+        }
+
+        $this->db->begin_transaction();
+        try {
+            $flatId = !empty($existing['flat_id']) ? (int)$existing['flat_id'] : null;
+            $leadId = (int)($existing['lead_id'] ?? 0);
+
+            // 1. Delete related lead_payments
+            $stmtP = $this->db->prepare("DELETE FROM lead_payments WHERE booking_id = ?");
+            $stmtP->bind_param("i", $bookingId);
+            $stmtP->execute();
+
+            // 2. Delete related approval_requests
+            $stmtA = $this->db->prepare("DELETE FROM approval_requests WHERE source_table = 'lead_bookings' AND source_id = ?");
+            $stmtA->bind_param("i", $bookingId);
+            $stmtA->execute();
+
+            // 3. Delete lead_bookings record
+            $stmtB = $this->db->prepare("DELETE FROM lead_bookings WHERE id = ?");
+            $stmtB->bind_param("i", $bookingId);
+            $stmtB->execute();
+
+            // 4. Release flat in flats table
+            if ($flatId) {
+                $stmtF = $this->db->prepare("UPDATE flats SET status = 'available', is_booked = 0 WHERE id = ?");
+                $stmtF->bind_param("i", $flatId);
+                $stmtF->execute();
+            }
+
+            $this->db->commit();
+            return ['success' => true, 'lead_id' => $leadId];
+        } catch (Exception $e) {
+            $this->db->rollback();
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
     public function delete($id)
     {
-        $stmt = $this->db->prepare("DELETE FROM lead_follow_ups WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        return $stmt->execute();
+        return $this->deleteCascade($id);
     }
 
 

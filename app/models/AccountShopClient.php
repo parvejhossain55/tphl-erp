@@ -672,10 +672,6 @@ class AccountShopClient extends AccountClient
                     break;
 
                 case 'land_share':
-                    // Block land_share until the full agreed booking money has been received
-                    if (empty($summary['is_booking_fully_paid'])) {
-                        throw new Exception("Booking money must be fully settled before land share payments can be recorded.");
-                    }
                     if ($summary['remaining_land_share'] <= 0) {
                         throw new Exception("Land share payment is already completed!");
                     }
@@ -686,13 +682,6 @@ class AccountShopClient extends AccountClient
                     break;
 
                 case 'registration':
-                    // Registration unlocks AND locks at the same time as Land Share
-                    if (empty($summary['is_booking_fully_paid'])) {
-                        throw new Exception("Booking money must be fully settled before registration payment can be recorded.");
-                    }
-                    if (!empty($summary['is_land_share_completed'])) {
-                        throw new Exception("Registration is already completed (land share completion marks registration as complete).");
-                    }
                     break;
 
                 case 'shop_service_charge':

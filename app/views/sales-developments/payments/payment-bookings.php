@@ -62,7 +62,19 @@ if (!$is_booking_fully_paid) {
     <div class="row mb-4" id="bookingPayment">
         <div class="col-xxl-12">
             <div class="card__wrapper p-3">
-                <h5><?= $form_mode === 'registration' ? 'Add Registration Payment for' : 'Add Booking Payment for' ?> <?= $booking['full_name'] ?? 'Lead' ?></h5>
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <h5 class="mb-0"><?= $form_mode === 'registration' ? 'Add Registration Payment for' : 'Add Booking Payment for' ?> <?= htmlspecialchars($booking['full_name'] ?? 'Lead') ?></h5>
+                    <?php if (empty($booking['verified_payment_count']) || (int)$booking['verified_payment_count'] === 0): ?>
+                        <div class="d-flex gap-2">
+                            <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $booking['lead_id'] ?>" class="btn btn-sm btn-outline-primary">
+                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit Booking
+                            </a>
+                            <a href="<?= $GLOBALS['base_url'] ?>/booking-delete/<?= $booking['id'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this entire booking? All unverified payment records will be removed and the flat will be reset to available status.');">
+                                <i class="fa-solid fa-trash me-1"></i> Delete Booking
+                            </a>
+                        </div>
+                    <?php endif; ?>
+                </div>
 
                 <form action="<?= $GLOBALS['base_url'] ?>/payment-booking-store" method="POST" enctype="multipart/form-data">
                     <div class="row gy-3">
@@ -435,17 +447,44 @@ if (!$is_booking_fully_paid) {
                                     </td>
 
                                     <td style="white-space: nowrap;">
-                                        <?php if ($p['verification_status'] == 'verified'): ?>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <!-- Print Invoice (Always enabled so money receipt can be generated even if verification is pending) -->
                                             <a target="_blank"
                                                 href="<?= $GLOBALS['base_url'] ?>/payment-booking-invoice/<?= $p['id'] ?>"
-                                                class="btn btn-success btn-sm">
-                                                <?= $p['payment_type'] === 'registration' ? 'Print Registration Invoice' : 'Print Booking Invoice' ?>
+                                                class="btn btn-success btn-sm"
+                                                title="Print Money Receipt / Invoice">
+                                                <i class="fa-solid fa-receipt me-1"></i> <?= $p['payment_type'] === 'registration' ? 'Registration Invoice' : 'Booking Invoice' ?>
                                             </a>
-                                        <?php else: ?>
-                                            <button class="btn btn-secondary btn-sm" disabled>
-                                                <?= $p['payment_type'] === 'registration' ? 'Print Registration Invoice' : 'Print Booking Invoice' ?>
-                                            </button>
-                                        <?php endif; ?>
+
+                                            <!-- Edit & Delete only for unverified payments -->
+                                            <?php if ($p['verification_status'] != 'verified'): ?>
+                                                <button type="button" 
+                                                    class="btn btn-outline-primary btn-sm editPaymentBtn"
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#editPaymentModal"
+                                                    data-id="<?= $p['id'] ?>"
+                                                    data-booking-id="<?= $booking['id'] ?>"
+                                                    data-amount="<?= $p['amount'] ?>"
+                                                    data-method="<?= $p['payment_method'] ?>"
+                                                    data-date="<?= $p['payment_date'] ?>"
+                                                    data-ref="<?= htmlspecialchars($p['transaction_ref'] ?? '') ?>"
+                                                    data-bank-id="<?= $p['bank_id'] ?? '' ?>"
+                                                    data-bank-name="<?= htmlspecialchars($p['bank_name'] ?? '') ?>"
+                                                    data-account-no="<?= htmlspecialchars($p['bank_account_no'] ?? '') ?>"
+                                                    data-cheque="<?= htmlspecialchars($p['cheque_no'] ?? '') ?>"
+                                                    data-online="<?= htmlspecialchars($p['online_type'] ?? '') ?>"
+                                                    title="Edit Payment Record">
+                                                    <i class="fa-solid fa-pen-to-square"></i>
+                                                </button>
+
+                                                <a href="<?= $GLOBALS['base_url'] ?>/payment-booking-delete/<?= $p['id'] ?>"
+                                                    class="btn btn-outline-danger btn-sm"
+                                                    onclick="return confirm('Are you sure you want to delete this payment record?');"
+                                                    title="Delete Payment">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                 </tr>
 
@@ -661,4 +700,110 @@ if (!$is_booking_fully_paid) {
         });
     });
 
+    // Edit Payment Modal logic
+    document.querySelectorAll('.editPaymentBtn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const pId = this.dataset.id;
+            const amount = this.dataset.amount;
+            const method = this.dataset.method;
+            const date = this.dataset.date;
+            const ref = this.dataset.ref;
+            const bankId = this.dataset.bankId;
+            const bankName = this.dataset.bankName;
+            const accountNo = this.dataset.accountNo;
+            const cheque = this.dataset.cheque;
+            const online = this.dataset.online;
+
+            document.getElementById('edit_p_id').value = pId;
+            document.getElementById('edit_p_amount').value = amount;
+            document.getElementById('edit_p_date').value = date;
+            document.getElementById('edit_p_ref').value = ref || '';
+            document.getElementById('edit_p_method').value = method;
+            document.getElementById('edit_p_bank_name').value = bankName || '';
+            document.getElementById('edit_p_account_no').value = accountNo || '';
+            document.getElementById('edit_p_cheque').value = cheque || '';
+            document.getElementById('edit_p_online').value = online || '';
+
+            toggleEditMethodFields(method);
+        });
+    });
+
+    function toggleEditMethodFields(method) {
+        document.querySelectorAll('.edit-bank-fields').forEach(el => el.style.display = (method === 'bank') ? 'block' : 'none');
+        document.querySelectorAll('.edit-cheque-fields').forEach(el => el.style.display = (method === 'cheque') ? 'block' : 'none');
+        document.querySelectorAll('.edit-online-fields').forEach(el => el.style.display = (method === 'online') ? 'block' : 'none');
+    }
+
+    document.getElementById('edit_p_method')?.addEventListener('change', function() {
+        toggleEditMethodFields(this.value);
+    });
 </script>
+
+<!-- Edit Payment Modal -->
+<div id="editPaymentModal" class="modal custom-modal fade" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Payment Record</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/payment-booking-update" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="payment_id" id="edit_p_id">
+                    <input type="hidden" name="booking_id" value="<?= $booking['id'] ?>">
+
+                    <div class="row gy-3">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Payment Amount *</label>
+                            <input type="number" step="any" name="amount" id="edit_p_amount" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Payment Method *</label>
+                            <select name="payment_method" id="edit_p_method" class="form-select" required>
+                                <option value="cash">Cash</option>
+                                <option value="bank">Bank Transfer</option>
+                                <option value="cheque">Cheque</option>
+                                <option value="online">Online</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Payment Date *</label>
+                            <input type="date" name="payment_date" id="edit_p_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Transaction Reference</label>
+                            <input type="text" name="transaction_ref" id="edit_p_ref" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-3 edit-bank-fields" style="display:none;">
+                            <label class="form-label">Bank Name</label>
+                            <input type="text" name="bank_name" id="edit_p_bank_name" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-3 edit-bank-fields" style="display:none;">
+                            <label class="form-label">Bank Account No</label>
+                            <input type="text" name="bank_account_no" id="edit_p_account_no" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-3 edit-cheque-fields" style="display:none;">
+                            <label class="form-label">Cheque No</label>
+                            <input type="text" name="cheque_no" id="edit_p_cheque" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-3 edit-online-fields" style="display:none;">
+                            <label class="form-label">Online Type</label>
+                            <input type="text" name="online_type" id="edit_p_online" class="form-control" placeholder="bKash / Nagad / Rocket / etc.">
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Update Attachment Image (Optional)</label>
+                            <input type="file" name="attachment_image" class="form-control" accept="image/*,application/pdf">
+                        </div>
+                    </div>
+
+                    <div class="text-end mt-3">
+                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">Update Payment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

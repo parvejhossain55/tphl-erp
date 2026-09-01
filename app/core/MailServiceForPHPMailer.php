@@ -38,9 +38,8 @@ class MailService
         try {
             // SMTP config
 
-            // SMTP config
             $mail->isSMTP();
-            $mail->SMTPDebug = 2; // for debugging, set to 0 in production
+            $mail->SMTPDebug = 0; // set to 0 to prevent raw debug output from breaking HTTP redirects
 
             $mail->Host       = $this->host;
             $mail->SMTPAuth   = true;

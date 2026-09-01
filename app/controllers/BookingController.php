@@ -172,37 +172,76 @@ class BookingController extends Controller
 
     public function update()
     {
-        $id = (int)($_POST['id'] ?? 0);
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $id = (int)($_POST['booking_id'] ?? $_POST['id'] ?? 0);
+        $leadId = (int)($_POST['lead_id'] ?? 0);
         $flatId = ($_POST['flat_id'] ?? '') === '' ? null : (int)$_POST['flat_id'];
 
-        $bookingData = [
-            'lead_id' => (int)($_POST['lead_id'] ?? 0),
-            'project_id' => (int)($_POST['project_id'] ?? 0),
-            'flat_id' => $flatId,
-            'agreement_value' => $_POST['agreement_value'] ?? 0,
-            'booking_date' => $_POST['booking_date'] ?? date('Y-m-d'),
-            'booking_status' => $_POST['booking_status'] ?? 'booked',
-            'created_by' => $_SESSION['user']['id'] ?? 1
-        ];
-
-        // Update lead_bookings table
-        if ($this->bookingModel->update($bookingData, $id)) {
-
-            // Removed automatic update of lead_payments because there can be multiple payments
-            // and this would incorrectly overwrite them with the full agreement value.
-
-            setSuccess("Booking updated successfully!");
-        } else {
-            setError("Failed to update booking!");
+        if (!$id) {
+            setError("Invalid Booking ID!");
+            header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+            exit;
         }
 
-        $leadId = $_POST['lead_id'] ?? 0;
+        if ($this->bookingModel->hasVerifiedPayment($id)) {
+            setError("Cannot edit booking because payments have already been verified by Accounts!");
+            header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+            exit;
+        }
+
+        $discount = (float)($_POST['discount_amount'] ?? 0);
+        $approvalStatus = $discount > 0 ? 'pending' : 'not_required';
+        $approvedAmount = null;
+
+        $bookingData = [
+            'lead_id'         => $leadId,
+            'project_id'      => (int)($_POST['project_id'] ?? 0),
+            'flat_id'         => $flatId,
+            'agreement_value' => (float)($_POST['agreement_value'] ?? 0),
+            'booking_date'    => $_POST['booking_date'] ?? date('Y-m-d'),
+            'discount_amount' => $discount,
+            'approval_status' => $approvalStatus,
+            'approved_amount' => $approvedAmount,
+        ];
+
+        $res = $this->bookingModel->updateBooking($id, $bookingData);
+        if ($res['success']) {
+            setSuccess("Booking updated successfully!");
+        } else {
+            setError($res['message'] ?? "Failed to update booking!");
+        }
+
         header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
         exit;
     }
 
-    // Delete Employee
-    public function delete($id) {}
+    public function delete($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $bookingId = (int)$id;
+
+        if (!$bookingId) {
+            setError("Invalid Booking ID!");
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/onboard-leads"));
+            exit;
+        }
+
+        $res = $this->bookingModel->deleteCascade($bookingId);
+        if ($res['success']) {
+            setSuccess("Booking and related unverified records deleted successfully! Flat is now available.");
+            $leadId = $res['lead_id'] ?? 0;
+            if ($leadId > 0) {
+                header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+            } else {
+                header("Location: {$GLOBALS['base_url']}/onboard-leads");
+            }
+            exit;
+        } else {
+            setError($res['message'] ?? "Failed to delete booking!");
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/onboard-leads"));
+            exit;
+        }
+    }
 
     public function importCsvBulkBookings()
     {

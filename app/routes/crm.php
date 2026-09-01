@@ -68,6 +68,8 @@ return [
     'bulk-bookings-import-execute' => ['controller' => 'BookingController', 'method' => 'executeCsvBulkBookings'],
     'booking-leads/(\d+)' => ['controller' => 'BookingController', 'method' => 'index'],
     'booking-store' => ['controller' => 'BookingController', 'method' => 'store'],
+    'booking-update' => ['controller' => 'BookingController', 'method' => 'update'],
+    'booking-delete/(\d+)' => ['controller' => 'BookingController', 'method' => 'delete'],
     'get-flats-by-project/(\d+)' => ['controller' => 'BookingController', 'method' => 'getFlatsByProject'],
     'update-flats-by-project' => ['controller' => 'BookingController', 'method' => 'update'],
 
@@ -78,6 +80,8 @@ return [
     'bulk-payments-validate-csv' => ['controller' => 'PaymentBookingController', 'method' => 'validateCsvBulkPayments'],
     'payments-booking/(\d+)' => ['controller' => 'PaymentBookingController', 'method' => 'index'],
     'payment-booking-store' => ['controller' => 'PaymentBookingController', 'method' => 'store'],
+    'payment-booking-update' => ['controller' => 'PaymentBookingController', 'method' => 'update'],
+    'payment-booking-delete/(\d+)' => ['controller' => 'PaymentBookingController', 'method' => 'delete'],
     'payment-booking-invoice/(\d+)' => ['controller' => 'PaymentBookingController', 'method' => 'invoice'],
 
     // =========================================================================
