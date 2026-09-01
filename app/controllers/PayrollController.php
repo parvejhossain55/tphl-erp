@@ -608,9 +608,14 @@ class PayrollController extends Controller
 
         // 1. Fetch active employees
         $sql = "
-            SELECT e.id, e.full_name, e.employee_id, e.email, e.gross_salary, e.basic_salary, e.designation_id, desg.name AS designation_name
+            SELECT e.id, e.full_name, e.employee_id, e.email, e.gross_salary, e.basic_salary, e.designation_id,
+                   e.workplace, e.joining_date, e.per_meal_amount, e.account_number, e.bank_name, e.account_holder_name,
+                   IF(e.account_number IS NOT NULL AND TRIM(e.account_number) != '', 'bank', 'cash') AS payment_method,
+                   desg.name AS designation_name,
+                   dept.name AS department_name
             FROM employees e
             LEFT JOIN designations desg ON e.designation_id = desg.id
+            LEFT JOIN departments dept ON e.department_id = dept.id
             WHERE e.employee_status = 'active'
         ";
         if ($departmentId > 0) {
@@ -656,12 +661,14 @@ class PayrollController extends Controller
             $stmt->close();
         }
 
-        // 4. Calculate absent days for each employee (set to 0 as requested)
+        // 4. Calculate attendance and absent days for each employee
         foreach ($employees as &$emp) {
             $empId = $emp['id'];
 
             $emp['matched_in_tipsoi'] = false;
-            $emp['absent_days'] = 0;
+            $emp['absent_days'] = isset($localAttMap[$empId]) ? (float) ($localAttMap[$empId]['absent'] ?? 0) : 0;
+            $emp['late_unpaid_absent_days'] = isset($localAttMap[$empId]) ? (float) ($localAttMap[$empId]['late_unpaid_absent_days'] ?? 0) : 0;
+            $emp['tipsoi_present'] = isset($localAttMap[$empId]) ? (float) ($localAttMap[$empId]['present'] ?? 0) : 0;
             $emp['absent_deduction'] = 0;
 
             // Pre-fill configured allowances/deductions
@@ -1732,6 +1739,7 @@ class PayrollController extends Controller
                 $lateUnpaidAbsentDays = (float) ($row['late_unpaid_absent_days'] ?? 0);
                 $remarks = trim((string) ($row['remarks'] ?? ''));
                 $attRemarks = trim((string) ($row['attendance_remarks'] ?? ''));
+                $isExcluded = isset($row['is_excluded']) ? (int) $row['is_excluded'] : 0;
                 $details = $row['details'] ?? [];
 
                 $recreation_allowance = (float)($row['recreation_allowance'] ?? 0);
