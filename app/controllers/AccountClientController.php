@@ -1157,21 +1157,24 @@ public function updateTransaction()
         $paymentId = isset($_GET['payment_id']) ? (int) $_GET['payment_id'] : 0;
         $bookingId = isset($_GET['booking_id']) ? (int) $_GET['booking_id'] : 0;
 
-        if (!$paymentId || !$bookingId) {
-            setError("Invalid request: missing payment or booking ID.");
-            header("Location: {$GLOBALS['base_url']}/clients-cash-in");
-            exit;
-        }
-
         // Determine redirect based on role
         $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+        $roleName = strtolower($_SESSION['user']['role'] ?? '');
         $isCED = ($roleId === 5);
         $isAccounts = in_array($roleId, [1, 3, 6, 30]);
-        $redirectUrl = $isCED
+        $isManagementUser = ($roleId === 1 || $roleId === 3 || strpos($roleName, 'management') !== false || strpos($roleName, 'admin') !== false);
+        
+        $redirectUrl = ($isCED || $isManagementUser)
             ? "{$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}"
             : "{$GLOBALS['base_url']}/clients-cash-in-history?booking_id={$bookingId}";
 
-        if (!$isCED && !$isAccounts) {
+        if (!$paymentId || !$bookingId) {
+            setError("Invalid request: missing payment or booking ID.");
+            header("Location: " . ($bookingId ? $redirectUrl : "{$GLOBALS['base_url']}/clients-cashin-view"));
+            exit;
+        }
+
+        if (!$isCED && !$isAccounts && !$isManagementUser) {
             setError("You do not have permission to delete transactions.");
             header("Location: {$redirectUrl}");
             exit;

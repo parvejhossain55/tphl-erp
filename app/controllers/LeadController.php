@@ -141,11 +141,11 @@ class LeadController extends Controller
 
         //  Conversion Rate
         $conversionRate = $leadCounts > 0 ? ($totalBookingCount / $leadCounts) * 100 : 0;
-        $totalHotLeads = $this->leadModel->getTotalHotLeads();
-        $totalContactedLeads = $this->leadModel->getTotalContactedLeads();
-        $totalNotContactedLeads = $this->leadModel->getTotalNotContactedLeads();
-        $totalAssignedLeads = $this->leadModel->getTotalAssignedLeads();
-        $totalNotAssignedLeads = $this->leadModel->getTotalNotAssignedLeads();
+        $totalHotLeads = $this->leadModel->getTotalHotLeads(null, $teamIdForQuery);
+        $totalContactedLeads = $this->leadModel->getTotalContactedLeads(null, $teamIdForQuery);
+        $totalNotContactedLeads = $this->leadModel->getTotalNotContactedLeads(null, $teamIdForQuery);
+        $totalAssignedLeads = $this->leadModel->getTotalAssignedLeads(null, $teamIdForQuery);
+        $totalNotAssignedLeads = $this->leadModel->getTotalNotAssignedLeads(null, $teamIdForQuery);
 
         // ── Filtered stats when a Sales Executive is selected ────────────────
         if (!empty($assigned_user)) {

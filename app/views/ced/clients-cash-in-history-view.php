@@ -30,6 +30,7 @@ $isLandShareCompleted = $paymentSummary['is_land_share_completed'] ?? false;
 $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
 $userRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
 $isManagementUser = ($userRoleId === 1 || $userRoleId === 3 || strpos($userRoleName, 'management') !== false || strpos($userRoleName, 'admin') !== false);
+$bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET['booking_id'] : 0);
 ?>
 
 <div class="row">
@@ -785,6 +786,15 @@ $isManagementUser = ($userRoleId === 1 || $userRoleId === 3 || strpos($userRoleN
                                                         title="Edit / Approve Management Discount">
                                                     <i class="fa-solid fa-tags"></i>
                                                 </button>
+                                            <?php endif; ?>
+
+                                            <?php if ($isManagementUser && $hasId): ?>
+                                                <a href="<?= $GLOBALS['base_url'] ?>/delete-transaction?payment_id=<?= htmlspecialchars($transaction['id']) ?>&booking_id=<?= htmlspecialchars($bookingId) ?>"
+                                                   class="table__icon text-white bg-danger border-0"
+                                                   onclick="return confirm('Are you sure you want to PERMANENTLY delete this transaction? This action cannot be undone.');"
+                                                   title="Permanently Delete Transaction">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </a>
                                             <?php endif; ?>
                                         </div>
                                     </td>

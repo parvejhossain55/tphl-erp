@@ -20,3 +20,9 @@ github_brach.Php
 construction-phase2.txt
 refund_module.php
 vendor
+
+# Antigravity Agent Rules
+.agents/
+
+# Custom DB Migration
+custme-migration/tphl_db.sql
