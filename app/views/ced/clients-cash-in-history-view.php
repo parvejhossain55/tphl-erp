@@ -560,8 +560,8 @@ $isManagementUser = ($userRoleId === 1 || $userRoleId === 3 || strpos($userRoleN
                                 <th>Verification</th>
                                 <th>Verified By</th>
                                 <th>Document</th>
-                                <th>Added By</th>
-                                <th style="white-space:nowrap;">Invoice</th>
+                                <th>Added / Edited By</th>
+                                <th style="white-space:nowrap;">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -714,10 +714,10 @@ $isManagementUser = ($userRoleId === 1 || $userRoleId === 3 || strpos($userRoleN
                                      <td>
                                          <div><?php echo !empty($transaction['created_by_name']) ? htmlspecialchars($transaction['created_by_name']) : '<span class="text-muted">System</span>'; ?></div>
                                          <?php if (!empty($transaction['updated_by_name'])): ?>
-                                             <div class="text-muted mt-1 border-top pt-1" style="font-size: 0.85em;" title="Last Updated By">
-                                                 <i class="fa-light fa-pen-to-square me-1"></i><?= htmlspecialchars($transaction['updated_by_name']) ?>
+                                             <div class="text-primary mt-1 border-top pt-1" style="font-size: 0.82em;" title="Last Updated By">
+                                                 <i class="fa-solid fa-pen-to-square me-1 text-info"></i>Edited by: <strong><?= htmlspecialchars($transaction['updated_by_name']) ?></strong>
                                                  <?php if (!empty($transaction['updated_at'])): ?>
-                                                     <br><small>(<?= date('d M, y h:i A', strtotime($transaction['updated_at'])) ?>)</small>
+                                                     <br><span class="text-muted" style="font-size:10px;">(<?= date('d M, Y h:i A', strtotime($transaction['updated_at'])) ?>)</span>
                                                  <?php endif; ?>
                                              </div>
                                          <?php endif; ?>
@@ -754,6 +754,28 @@ $isManagementUser = ($userRoleId === 1 || $userRoleId === 3 || strpos($userRoleN
                                                 <span class="text-muted">—</span>
                                             <?php endif; ?>
 
+                                            <?php if ($hasId && !$isVerified): ?>
+                                                <button type="button"
+                                                        class="table__icon edit border-0 btn-edit-unverified-payment"
+                                                        style="color:#fff;background-color:#0284c7;cursor:pointer;"
+                                                        data-payment-id="<?= htmlspecialchars($transaction['id']) ?>"
+                                                        data-booking-id="<?= htmlspecialchars($bookingId) ?>"
+                                                        data-payment-type="<?= htmlspecialchars($transaction['payment_type'] ?? '') ?>"
+                                                        data-amount="<?= htmlspecialchars($transaction['amount'] ?? 0) ?>"
+                                                        data-payment-date="<?= htmlspecialchars($transaction['payment_date'] ?? date('Y-m-d')) ?>"
+                                                        data-payment-method="<?= htmlspecialchars($transaction['payment_method'] ?? 'cash') ?>"
+                                                        data-bank-name="<?= htmlspecialchars($transaction['bank_name'] ?? '') ?>"
+                                                        data-bank-id="<?= htmlspecialchars($transaction['bank_id'] ?? '') ?>"
+                                                        data-bank-account-no="<?= htmlspecialchars($transaction['bank_account_no'] ?? '') ?>"
+                                                        data-cheque-no="<?= htmlspecialchars($transaction['cheque_no'] ?? '') ?>"
+                                                        data-online-type="<?= htmlspecialchars($transaction['online_type'] ?? '') ?>"
+                                                        data-transaction-ref="<?= htmlspecialchars($transaction['transaction_ref'] ?? '') ?>"
+                                                        data-due-emi-amount="<?= htmlspecialchars($transaction['due_emi_amount'] ?? 0) ?>"
+                                                        title="Edit Unverified Payment">
+                                                    <i class="fa-solid fa-pen-to-square"></i>
+                                                </button>
+                                            <?php endif; ?>
+
                                             <?php if ($isManagementUser && ($transaction['payment_type'] ?? '') === 'booking_money'): ?>
                                                 <button type="button"
                                                         class="table__icon edit border-0"
@@ -761,7 +783,7 @@ $isManagementUser = ($userRoleId === 1 || $userRoleId === 3 || strpos($userRoleN
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#editManagementDiscountModal"
                                                         title="Edit / Approve Management Discount">
-                                                    <i class="fa-solid fa-pen-to-square"></i>
+                                                    <i class="fa-solid fa-tags"></i>
                                                 </button>
                                             <?php endif; ?>
                                         </div>
@@ -1447,3 +1469,194 @@ $isManagementUser = ($userRoleId === 1 || $userRoleId === 3 || strpos($userRoleN
     </div>
 </div>
 <?php endif; ?>
+
+<!-- Modal: Edit Unverified Transaction -->
+<div class="modal fade" id="editUnverifiedPaymentModal" tabindex="-1" aria-labelledby="editUnverifiedPaymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #fff;">
+                <h5 class="modal-title text-white" id="editUnverifiedPaymentModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2"></i>Edit Unverified Transaction
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="<?= $GLOBALS['base_url'] ?>/update-transaction" method="POST" enctype="multipart/form-data">
+                <div class="modal-body p-4">
+                    <input type="hidden" name="payment_id" id="edit_unverified_payment_id">
+                    <input type="hidden" name="booking_id" id="edit_unverified_booking_id" value="<?= htmlspecialchars($bookingId ?? '') ?>">
+                    <input type="hidden" name="redirect_to" value="clients-cash-in-history-view/<?= htmlspecialchars($bookingId ?? '') ?>">
+
+                    <div class="alert alert-info py-2 px-3 mb-3 d-flex align-items-center gap-2" style="font-size: 13px;">
+                        <i class="fa-solid fa-circle-info fs-5 text-primary"></i>
+                        <div>
+                            This transaction is not verified yet. Updating will record your name (<strong><?= htmlspecialchars($_SESSION['user']['full_name'] ?? 'Current User') ?></strong>) as the editor.
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <!-- Payment Type -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Payment Type <span class="text-danger">*</span></label>
+                            <select name="payment_type" id="edit_unverified_payment_type" class="form-select" required>
+                                <option value="development_charge">Development Charge</option>
+                                <option value="shop_service_charge">Shop Service Charge</option>
+                                <option value="emi">EMI Payment</option>
+                                <option value="land_share">Land Share</option>
+                                <option value="booking_money">Booking Money</option>
+                                <option value="registration">Registration</option>
+                                <option value="mutation_cost">Mutation Cost</option>
+                            </select>
+                        </div>
+
+                        <!-- Amount -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Paid Amount (TK) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light">TK.</span>
+                                <input type="number" step="any" min="1" name="amount" id="edit_unverified_amount" class="form-control fw-bold" required>
+                            </div>
+                        </div>
+
+                        <!-- Payment Date -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Payment Date <span class="text-danger">*</span></label>
+                            <input type="date" name="payment_date" id="edit_unverified_payment_date" class="form-control" required>
+                        </div>
+
+                        <!-- Payment Method -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Payment Method <span class="text-danger">*</span></label>
+                            <select name="payment_method" id="edit_unverified_payment_method" class="form-select" required>
+                                <option value="cash">Cash</option>
+                                <option value="bank">Bank / Cheque</option>
+                                <option value="online">Online / MFS</option>
+                            </select>
+                        </div>
+
+                        <!-- Bank Dropdown -->
+                        <div class="col-md-6 edit-bank-group">
+                            <label class="form-label fw-bold">Bank Name</label>
+                            <select name="bank_id" id="edit_unverified_bank_id" class="form-select">
+                                <option value="">-- Select Bank --</option>
+                                <?php if (!empty($banks)): ?>
+                                    <?php foreach ($banks as $b): ?>
+                                        <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['bank_name'] . (!empty($b['branch_name']) ? ' - ' . $b['branch_name'] : '')) ?></option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </select>
+                        </div>
+
+                        <!-- Account No -->
+                        <div class="col-md-6 edit-bank-group">
+                            <label class="form-label fw-bold">Bank Account Number</label>
+                            <input type="text" name="bank_account_no" id="edit_unverified_bank_account_no" class="form-control" placeholder="Account Number">
+                        </div>
+
+                        <!-- Cheque No -->
+                        <div class="col-md-6 edit-cheque-group">
+                            <label class="form-label fw-bold">Cheque No</label>
+                            <input type="text" name="cheque_no" id="edit_unverified_cheque_no" class="form-control" placeholder="Cheque Number">
+                        </div>
+
+                        <!-- Online Type -->
+                        <div class="col-md-6 edit-online-group">
+                            <label class="form-label fw-bold">Online / MFS Type</label>
+                            <input type="text" name="online_type" id="edit_unverified_online_type" class="form-control" placeholder="e.g. bKash, Nagad, Card">
+                        </div>
+
+                        <!-- Transaction Reference -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Transaction Reference / Trx ID</label>
+                            <input type="text" name="transaction_ref" id="edit_unverified_transaction_ref" class="form-control" placeholder="Trx ID / Ref No">
+                        </div>
+
+                        <!-- Due Amount (for EMI only) -->
+                        <div class="col-md-6 edit-due-group" style="display:none;">
+                            <label class="form-label fw-bold">Due EMI Amount (TK)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light">TK.</span>
+                                <input type="number" step="any" min="0" name="due_emi_amount" id="edit_unverified_due_emi_amount" class="form-control" value="0">
+                            </div>
+                        </div>
+
+                        <!-- Proof Attachments -->
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Upload New Document / Proof (Optional)</label>
+                            <input type="file" name="proof_files[]" class="form-control" multiple accept="image/*,application/pdf">
+                            <small class="text-muted">Max 5MB per file (JPG, PNG, PDF).</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> Update Payment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function toggleEditFields() {
+        const method = document.getElementById('edit_unverified_payment_method') ? document.getElementById('edit_unverified_payment_method').value : 'cash';
+        const type = document.getElementById('edit_unverified_payment_type') ? document.getElementById('edit_unverified_payment_type').value : '';
+        
+        const bankGroups = document.querySelectorAll('.edit-bank-group');
+        const chequeGroups = document.querySelectorAll('.edit-cheque-group');
+        const onlineGroups = document.querySelectorAll('.edit-online-group');
+        const dueGroup = document.querySelector('.edit-due-group');
+
+        if (method === 'bank') {
+            bankGroups.forEach(el => el.style.display = '');
+            chequeGroups.forEach(el => el.style.display = '');
+            onlineGroups.forEach(el => el.style.display = 'none');
+        } else if (method === 'online') {
+            bankGroups.forEach(el => el.style.display = '');
+            chequeGroups.forEach(el => el.style.display = 'none');
+            onlineGroups.forEach(el => el.style.display = '');
+        } else {
+            bankGroups.forEach(el => el.style.display = 'none');
+            chequeGroups.forEach(el => el.style.display = 'none');
+            onlineGroups.forEach(el => el.style.display = 'none');
+        }
+
+        if (dueGroup) {
+            dueGroup.style.display = (type === 'emi') ? '' : 'none';
+        }
+    }
+
+    const methodSelect = document.getElementById('edit_unverified_payment_method');
+    if (methodSelect) methodSelect.addEventListener('change', toggleEditFields);
+
+    const typeSelect = document.getElementById('edit_unverified_payment_type');
+    if (typeSelect) typeSelect.addEventListener('change', toggleEditFields);
+
+    document.querySelectorAll('.btn-edit-unverified-payment').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.getElementById('edit_unverified_payment_id').value = this.dataset.paymentId || '';
+            document.getElementById('edit_unverified_booking_id').value = this.dataset.bookingId || '';
+            document.getElementById('edit_unverified_payment_type').value = this.dataset.paymentType || 'development_charge';
+            document.getElementById('edit_unverified_amount').value = this.dataset.amount || '';
+            document.getElementById('edit_unverified_payment_date').value = this.dataset.paymentDate || '';
+            document.getElementById('edit_unverified_payment_method').value = this.dataset.paymentMethod || 'cash';
+            document.getElementById('edit_unverified_bank_id').value = this.dataset.bankId || '';
+            document.getElementById('edit_unverified_bank_account_no').value = this.dataset.bankAccountNo || '';
+            document.getElementById('edit_unverified_cheque_no').value = this.dataset.chequeNo || '';
+            document.getElementById('edit_unverified_online_type').value = this.dataset.onlineType || '';
+            document.getElementById('edit_unverified_transaction_ref').value = this.dataset.transactionRef || '';
+            document.getElementById('edit_unverified_due_emi_amount').value = this.dataset.dueEmiAmount || 0;
+
+            toggleEditFields();
+
+            const modalEl = document.getElementById('editUnverifiedPaymentModal');
+            if (modalEl) {
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            }
+        });
+    });
+});
+</script>
