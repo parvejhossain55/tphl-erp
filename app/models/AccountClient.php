@@ -1618,7 +1618,8 @@ ORDER BY lb.booking_date DESC
                 throw new Exception("No payment was deleted. It may have already been removed.");
             }
 
-            // 4. Renumber EMI schedules to eliminate gaps
+            // 4. Renumber EMI schedules to eliminate gaps (DISABLED AS PER REQUEST)
+            /*
             if ($paymentType === 'emi') {
                 $allEmis = $this->db->prepare("
                     SELECT id FROM emi_schedules 
@@ -1638,6 +1639,7 @@ ORDER BY lb.booking_date DESC
                     $newNo++;
                 }
             }
+            */
 
             $this->db->commit();
 

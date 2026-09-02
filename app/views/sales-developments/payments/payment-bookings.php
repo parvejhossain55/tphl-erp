@@ -9,6 +9,10 @@ $finalAmount = !empty($booking['approved_amount'])
     ? $booking['agreement_value'] - $booking['approved_amount']
     : $booking['agreement_value'];
 
+if ($finalAmount <= 0) {
+    $finalAmount = $booking['agreement_value'];
+}
+
 $booking_paid = 0;
 $booking_pending_and_paid = 0;
 $registration_pending_and_paid = 0;
@@ -370,6 +374,10 @@ if (!$is_booking_fully_paid) {
                                 ? $booking['agreement_value'] - $booking['approved_amount']
                                 : $booking['agreement_value'];
 
+                            if ($finalAmount <= 0) {
+                                $finalAmount = $booking['agreement_value'];
+                            }
+
                             // Step 2: running total for ledger style remaining
                             $running_paid = 0;
                             $registration_running_paid = 0;
@@ -450,7 +458,7 @@ if (!$is_booking_fully_paid) {
                                         <div class="d-flex align-items-center gap-1">
                                             <!-- Print Invoice (Always enabled so money receipt can be generated even if verification is pending) -->
                                             <a target="_blank"
-                                                href="<?= $GLOBALS['base_url'] ?>/payment-booking-invoice/<?= $p['id'] ?>"
+                                                href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $p['id'] ?>"
                                                 class="btn btn-success btn-sm"
                                                 title="Print Money Receipt / Invoice">
                                                 <i class="fa-solid fa-receipt me-1"></i> <?= $p['payment_type'] === 'registration' ? 'Registration Invoice' : 'Booking Invoice' ?>
@@ -537,6 +545,7 @@ if (!$is_booking_fully_paid) {
             } else if (method === 'online') {
                 document.querySelector('#onlineFields').style.display = 'block';
                 document.querySelector('#onlineFields input').setAttribute('required', 'required');
+
             }
         });
     });
@@ -797,7 +806,6 @@ if (!$is_booking_fully_paid) {
                             <input type="file" name="attachment_image" class="form-control" accept="image/*,application/pdf">
                         </div>
                     </div>
-
                     <div class="text-end mt-3">
                         <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-success">Update Payment</button>

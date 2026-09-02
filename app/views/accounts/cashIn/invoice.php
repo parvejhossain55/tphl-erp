@@ -56,8 +56,6 @@ $disable_layout = true;
                         if ($isVerified): 
                     ?>
                         <span class="paid-stamp">VERIFIED AND PAID </span>
-                    <?php else: ?>
-                        <span class="pending-stamp">SUBJECT TO BANK VERIFICATION</span>
                     <?php endif; ?>
                 </div>
             </div>
@@ -262,16 +260,21 @@ $disable_layout = true;
 
 
 
-        <!-- Signature Section -->
-        <div class="signature-section">
-            <div class="signature-box">
-                <div class="signature-line">Authorized Signature</div>
-                <p style="font-size: 9px; color: #7f8c8d; margin-top: 5px;">Company Representative</p>
-            </div>
-            <div class="signature-box">
-                <div class="signature-line">Client Signature</div>
-                <p style="font-size: 8px; color: #7f8c8d; margin-top: 5px;">Acknowledgment of Receipt</p>
-            </div>
+        <!-- Verification Section -->
+        <div class="verification-section" style="margin-top: 50px; text-align: center; border-top: 1px dashed #ddd; padding-top: 20px;">
+            <?php if (isset($payment['verification_status']) && $payment['verification_status'] === 'verified'): ?>
+                <div style="display: inline-block; padding: 10px 20px; border: 2px solid #28a745; border-radius: 5px; color: #28a745; font-weight: bold; background: #f8fff9;">
+                    <i class="fa-solid fa-check-circle" style="margin-right: 5px;"></i> VERIFIED BY ADMIN
+                    <div style="font-size: 11px; margin-top: 5px; font-weight: normal; color: #555;">
+                        <?php if (!empty($payment['verified_by_name'])): ?>
+                            Verified By: <?= htmlspecialchars($payment['verified_by_name']) ?><br>
+                        <?php endif; ?>
+                        <?php if (!empty($payment['verified_at'])): ?>
+                            Date: <?= date('d M, Y h:i A', strtotime($payment['verified_at'])) ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
         </div>
 
     </div>

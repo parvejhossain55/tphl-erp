@@ -719,14 +719,22 @@ class Lead extends Model
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 
-    public function getTotalHotLeads()
+    public function getTotalHotLeads($assignedUserId = null, $teamId = null)
     {
-        $sql = $this->db->prepare("SELECT COUNT(*) AS total_hot FROM leads where lead_type = 'Hot' And deleted_at IS NULL AND status = 'active' AND last_lead_action != 'cancel'");
-        $sql->execute();
-        $result = $sql->get_result()->fetch_assoc();
-        return $result['total_hot'] ?? 0;
+        $sql = "SELECT COUNT(DISTINCT l.id) AS total_hot FROM leads l
+                LEFT JOIN employees emp ON emp.user_id = l.assigned_id
+                WHERE l.deleted_at IS NULL AND l.status = 'active' AND l.last_lead_action != 'cancel' AND l.lead_type = 'Hot'
+                  AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+        if (!empty($assignedUserId)) {
+            $sql .= " AND l.assigned_id = " . (int)$assignedUserId;
+        }
+        if (!empty($teamId)) {
+            $sql .= " AND l.team_id = " . (int)$teamId;
+        }
+        $res = $this->db->query($sql);
+        return $res ? (int)($res->fetch_assoc()['total_hot'] ?? 0) : 0;
     }
-    public function getTotalContactedLeads($assignedUserId = null)
+    public function getTotalContactedLeads($assignedUserId = null, $teamId = null)
     {
         $sql = "SELECT COUNT(DISTINCT l.id) AS total_contacted 
                 FROM leads l
@@ -743,11 +751,14 @@ class Lead extends Model
         if (!empty($assignedUserId)) {
             $sql .= " AND l.assigned_id = " . (int)$assignedUserId;
         }
+        if (!empty($teamId)) {
+            $sql .= " AND l.team_id = " . (int)$teamId;
+        }
         $res = $this->db->query($sql);
         return $res ? (int)($res->fetch_assoc()['total_contacted'] ?? 0) : 0;
     }
 
-    public function getTotalNotContactedLeads($assignedUserId = null)
+    public function getTotalNotContactedLeads($assignedUserId = null, $teamId = null)
     {
         $sql = "SELECT COUNT(DISTINCT l.id) AS total_not_contacted 
                 FROM leads l
@@ -762,11 +773,14 @@ class Lead extends Model
         if (!empty($assignedUserId)) {
             $sql .= " AND l.assigned_id = " . (int)$assignedUserId;
         }
+        if (!empty($teamId)) {
+            $sql .= " AND l.team_id = " . (int)$teamId;
+        }
         $res = $this->db->query($sql);
         return $res ? (int)($res->fetch_assoc()['total_not_contacted'] ?? 0) : 0;
     }
 
-    public function getTotalAssignedLeads($assignedUserId = null)
+    public function getTotalAssignedLeads($assignedUserId = null, $teamId = null)
     {
         $sql = "SELECT COUNT(DISTINCT l.id) AS total_assigned 
                 FROM leads l
@@ -777,11 +791,14 @@ class Lead extends Model
         if (!empty($assignedUserId)) {
             $sql .= " AND l.assigned_id = " . (int)$assignedUserId;
         }
+        if (!empty($teamId)) {
+            $sql .= " AND l.team_id = " . (int)$teamId;
+        }
         $res = $this->db->query($sql);
         return $res ? (int)($res->fetch_assoc()['total_assigned'] ?? 0) : 0;
     }
 
-    public function getTotalNotAssignedLeads($assignedUserId = null)
+    public function getTotalNotAssignedLeads($assignedUserId = null, $teamId = null)
     {
         if (!empty($assignedUserId)) {
             return 0;
@@ -792,6 +809,9 @@ class Lead extends Model
                 WHERE l.deleted_at IS NULL 
                   AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
                   AND (l.assigned_id IS NULL OR l.assigned_id = 0)";
+        if (!empty($teamId)) {
+            $sql .= " AND l.team_id = " . (int)$teamId;
+        }
         $res = $this->db->query($sql);
         return $res ? (int)($res->fetch_assoc()['total_not_assigned'] ?? 0) : 0;
     }
