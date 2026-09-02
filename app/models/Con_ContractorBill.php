@@ -214,17 +214,21 @@ class Con_ContractorBill extends Model
     }
 
     /** QC Approve */
-    public function updateQCStatus($id, $userId, $qcNote = null)
+    public function updateQCStatus($id, $userId, $qcNote = null, $approvedAmount = null)
     {
         $bill = $this->find($id);
         if (!$bill || !in_array($bill['status'], ['submitted', 'verified'])) return false;
 
+        if ($approvedAmount === null || $approvedAmount <= 0) {
+            $approvedAmount = (float)($bill['bill_amount'] ?? 0);
+        }
+
         $stmt = $this->db->prepare(
             "UPDATE {$this->table}
-             SET status = 'qc_approved', qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ?
+             SET status = 'qc_approved', qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ?, approved_amount = ?, due_amount = ?
              WHERE id = ?"
         );
-        $stmt->bind_param('isi', $userId, $qcNote, $id);
+        $stmt->bind_param('isddi', $userId, $qcNote, $approvedAmount, $approvedAmount, $id);
         return $stmt->execute();
     }
 
