@@ -461,6 +461,13 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                     <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST" class="mb-3">
                         <input type="hidden" name="status" value="qc_approved">
                         <div class="mb-3">
+                            <label class="form-label fw-semibold">Approved Amount (৳)</label>
+                            <input type="number" name="approved_amount" class="form-control"
+                                   value="<?= number_format($bill['bill_amount'], 2, '.', '') ?>"
+                                   step="0.01" min="0.01" max="<?= $bill['bill_amount'] ?>" required>
+                            <small class="text-muted">Bill amount: ৳ <?= number_format($bill['bill_amount'], 2) ?></small>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label fw-semibold">QC Note (Optional)</label>
                             <textarea name="approval_note" class="form-control form-control-sm" rows="2" placeholder="Add QC remarks..."></textarea>
                         </div>
@@ -490,7 +497,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Approved Amount (৳)</label>
                             <input type="number" name="approved_amount" class="form-control"
-                                   value="<?= number_format($bill['bill_amount'], 2, '.', '') ?>"
+                                   value="<?= number_format($bill['approved_amount'] ?? $bill['bill_amount'], 2, '.', '') ?>"
                                    step="0.01" min="0.01" max="<?= $bill['bill_amount'] ?>" required>
                             <small class="text-muted">Bill amount: ৳ <?= number_format($bill['bill_amount'], 2) ?></small>
                         </div>

@@ -102,7 +102,7 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
                                             <i class="bi bi-eye"></i>
                                         </a>
                                         <?php if (!in_array($b['status'], ['approved', 'paid', 'partially_paid', 'fully_paid'])): ?>
-                                            <?php if (hasPermission('Contractor Bill') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 17, 23, 31])): ?>
+                                            <?php if (hasPermission('Contractor Bill') || in_array($userRole ?? ($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 17, 23, 31])): ?>
                                                 <a href="<?= $base_url ?>/con-contractor-bill-edit/<?= $b['id'] ?>" class="btn btn-sm btn-outline-info" title="Edit">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
