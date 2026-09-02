@@ -1879,6 +1879,8 @@ ORDER BY lb.booking_date DESC
                 f.flat_name as unit_name,
                 CONCAT(f.flat_name, ' - FLOOR ', f.floor_no) as flat_no,
                 u.full_name as created_by_name,
+                uv.full_name as verified_by_name,
+                uu.full_name as updated_by_name,
                 es.emi_no,
                 es.emi_amount,
                 es.due_emi_amount,
@@ -1925,6 +1927,8 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN projects p ON p.id = lb.project_id
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN users u ON u.id = lp.created_by
+            LEFT JOIN users uv ON uv.id = lp.verified_by
+            LEFT JOIN users uu ON uu.id = lp.updated_by
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
             LEFT JOIN banks b ON b.id = lp.bank_id
             WHERE lp.is_trashed = 0 AND lp.booking_id = ?
@@ -2387,10 +2391,10 @@ ORDER BY lb.booking_date DESC
                 if ($pool > 0) $paymentType = 'development_charge';
             }
             
-            if ($paymentType === 'development_charge') {
+            if (in_array($paymentType, ['development_charge', 'shop_service_charge'])) {
                 if ($devRemaining > 0) {
                     $payAmount = min($pool, $devRemaining);
-                    $paymentsToInsert[] = ['type' => 'development_charge', 'amount' => $payAmount];
+                    $paymentsToInsert[] = ['type' => $paymentType, 'amount' => $payAmount];
                     $pool -= $payAmount;
                 }
                 if ($pool > 0) $paymentType = 'emi';
@@ -2495,7 +2499,7 @@ ORDER BY lb.booking_date DESC
             // Check dev charge status dynamically
             $devPaidInThisTx = 0;
             foreach ($paymentsToInsert as $p) {
-                if ($p['type'] === 'development_charge') $devPaidInThisTx += $p['amount'];
+                if ($p['type'] === 'development_charge' || $p['type'] === 'shop_service_charge') $devPaidInThisTx += $p['amount'];
             }
             $devRemainingAfterTx = $devRemaining - $devPaidInThisTx;
 
@@ -2859,18 +2863,22 @@ ORDER BY lb.booking_date DESC
                 throw new Exception("Transaction not found");
             }
 
+            if (($oldTransaction['verification_status'] ?? '') === 'verified') {
+                throw new Exception("Verified transactions cannot be edited. Please contact Accounts.");
+            }
+
             $finalAmount = (float) $transactionData['amount'];
             $finalServiceFee = 0;
             $landShareAmount = 0;
 
-            if ($transactionData['payment_type'] === 'land_share') {
-                $landShareAmount = $finalAmount;
-            } elseif ($transactionData['payment_type'] === 'booking_money') {
+            if (in_array($transactionData['payment_type'], ['land_share', 'booking_money', 'registration', 'mutation_cost'])) {
                 $landShareAmount = $finalAmount;
             }
 
             if ($transactionData['payment_type'] === 'emi') {
-                $finalServiceFee = $finalAmount * 0.10;
+                $summary = $this->getPaymentSummaryByBookingId($oldTransaction['booking_id']);
+                $serviceChargeRate = (float) ($summary['service_charge_per_emi'] ?? 0);
+                $finalServiceFee = ($serviceChargeRate > 0) ? round($finalAmount * ($serviceChargeRate / 100)) : round($finalAmount * 0.10);
             }
 
             // Encode attachment paths
@@ -2886,6 +2894,7 @@ ORDER BY lb.booking_date DESC
                     payment_type = ?,
                     amount = ?,
                     land_share_amount = ?,
+                    service_fee = ?,
                     payment_method = ?,
                     payment_status = ?,
                     payment_date = ?,
@@ -2898,7 +2907,8 @@ ORDER BY lb.booking_date DESC
                     attachment_paths = ?,
                     handover_to = COALESCE(?, handover_to),
                     handover_status = COALESCE(?, handover_status),
-                    updated_by = ?
+                    updated_by = ?,
+                    updated_at = NOW()
                 WHERE id = ?
             ");
 
@@ -2910,8 +2920,9 @@ ORDER BY lb.booking_date DESC
             $u_paymentType  =         $transactionData['payment_type'];
             $u_amount       = (float) $finalAmount;
             $u_landShare    = (float) $landShareAmount;
+            $u_serviceFee   = (float) $finalServiceFee;
             $u_method       =         $transactionData['payment_method']   ?? 'cash';
-            $u_status       =         $transactionData['payment_status']   ?? 'paid';
+            $u_status       =         $transactionData['payment_status']   ?? 'pending';
             $u_date         =         $transactionData['payment_date']     ?? date('Y-m-d');
             $u_txRef        =         $transactionData['transaction_ref']  ?? '';
             $u_bankName     =         $transactionData['bank_name']        ?? '';
@@ -2920,7 +2931,7 @@ ORDER BY lb.booking_date DESC
             $u_chequeNo     =         $transactionData['cheque_no']        ?? '';
             $u_onlineType   =         $transactionData['online_type']      ?? '';
             $u_paymentId    = (int)   $transactionData['payment_id'];
-            $u_updatedBy    =         $_SESSION['user']['id'] ?? null;
+            $u_updatedBy    =         !empty($transactionData['updated_by']) ? (int)$transactionData['updated_by'] : ($_SESSION['user']['id'] ?? null);
             
             // Only update handover if it actually changed
             $u_handoverTo = null;
@@ -2936,10 +2947,11 @@ ORDER BY lb.booking_date DESC
             }
 
             $stmt->bind_param(
-                "sddsssssissssisii",
+                "sdddsssssissssisii",
                 $u_paymentType,
                 $u_amount,
                 $u_landShare,
+                $u_serviceFee,
                 $u_method,
                 $u_status,
                 $u_date,
@@ -3347,6 +3359,15 @@ ORDER BY lb.booking_date DESC
         // Sanitize project name to remove NBSP, tabs, and carriage returns
         $projectName = trim(str_replace(["\xC2\xA0", "\xA0", "\r", "\n", "\t"], ' ', $projectName));
 
+        // Auto-fix Excel date conversions like "Jan-36" to "1-36"
+        $months = ['Jan' => '1', 'Feb' => '2', 'Mar' => '3', 'Apr' => '4', 'May' => '5', 'Jun' => '6', 'Jul' => '7', 'Aug' => '8', 'Sep' => '9', 'Oct' => '10', 'Nov' => '11', 'Dec' => '12'];
+        if (preg_match('/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*[-–]\s*(\d+)$/i', $flatName, $m)) {
+            $month = ucfirst(strtolower($m[1]));
+            if (isset($months[$month])) {
+                $flatName = $months[$month] . '-' . $m[2];
+            }
+        }
+
         // Normalize flat name: strip floor suffix like " - FLOOR 6", " - Floor 6"
         $cleanFlatName = trim(str_replace(["\xC2\xA0", "\xA0", "\r", "\n", "\t"], ' ', $flatName));
         $flatNameBase = $cleanFlatName;
@@ -3384,8 +3405,9 @@ ORDER BY lb.booking_date DESC
                   AND l.deleted_at IS NULL
                   AND LOWER(REPLACE(p.name, ' ', '')) = LOWER(REPLACE(?, ' ', ''))
                   AND (
-                      LOWER(REPLACE(f.flat_name, ' ', '')) = LOWER(REPLACE(?, ' ', ''))
+                      LOWER(REPLACE(REPLACE(f.flat_name, ' ', ''), '''', '')) = LOWER(REPLACE(REPLACE(?, ' ', ''), '''', ''))
                       OR REPLACE(REPLACE(LOWER(REPLACE(f.flat_name, ' ', '')), ' ', ''), '-', '') = ?
+                      OR FIND_IN_SET(LOWER(REPLACE(REPLACE(?, ' ', ''), '''', '')), LOWER(REPLACE(REPLACE(f.flat_name, ' ', ''), '''', ''))) > 0
                   )
                   AND (
                       REGEXP_REPLACE(COALESCE(l.phone,''), '[^0-9]', '') LIKE ?
@@ -3400,7 +3422,7 @@ ORDER BY lb.booking_date DESC
                 return null;
             }
 
-            $stmt->bind_param("sssss", $projectName, $tryFlatName, $compactTryFlat, $phoneLike, $phoneLike);
+            $stmt->bind_param("ssssss", $projectName, $tryFlatName, $compactTryFlat, $tryFlatName, $phoneLike, $phoneLike);
             $stmt->execute();
             $result = $stmt->get_result();
             $row = $result ? $result->fetch_assoc() : null;
@@ -3434,6 +3456,15 @@ ORDER BY lb.booking_date DESC
         $phoneLike = '%' . $shortPhone;
         // Sanitize project name to remove NBSP, tabs, and carriage returns
         $projectName = trim(str_replace(["\xC2\xA0", "\xA0", "\r", "\n", "\t"], ' ', $projectName));
+
+        // Auto-fix Excel date conversions like "Jan-36" to "1-36"
+        $months = ['Jan' => '1', 'Feb' => '2', 'Mar' => '3', 'Apr' => '4', 'May' => '5', 'Jun' => '6', 'Jul' => '7', 'Aug' => '8', 'Sep' => '9', 'Oct' => '10', 'Nov' => '11', 'Dec' => '12'];
+        if (preg_match('/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*[-–]\s*(\d+)$/i', $flatName, $m)) {
+            $month = ucfirst(strtolower($m[1]));
+            if (isset($months[$month])) {
+                $flatName = $months[$month] . '-' . $m[2];
+            }
+        }
 
         // Normalize flat name
         $cleanFlatName = trim(str_replace(["\xC2\xA0", "\xA0", "\r", "\n", "\t"], ' ', $flatName));
@@ -3488,11 +3519,19 @@ ORDER BY lb.booking_date DESC
             FROM flats f
             INNER JOIN projects p ON p.id = f.project_id
             WHERE LOWER(REPLACE(p.name, ' ', '')) = LOWER(REPLACE(?, ' ', ''))
-              AND (LOWER(REPLACE(f.flat_name, ' ', '')) = LOWER(REPLACE(?, ' ', '')) OR LOWER(REPLACE(f.flat_name, ' ', '')) = LOWER(REPLACE(?, ' ', '')))
+              AND (
+                  LOWER(REPLACE(REPLACE(f.flat_name, ' ', ''), '''', '')) = LOWER(REPLACE(REPLACE(?, ' ', ''), '''', '')) 
+                  OR 
+                  LOWER(REPLACE(REPLACE(f.flat_name, ' ', ''), '''', '')) = LOWER(REPLACE(REPLACE(?, ' ', ''), '''', ''))
+                  OR
+                  FIND_IN_SET(LOWER(REPLACE(REPLACE(?, ' ', ''), '''', '')), LOWER(REPLACE(REPLACE(f.flat_name, ' ', ''), '''', ''))) > 0
+                  OR
+                  FIND_IN_SET(LOWER(REPLACE(REPLACE(?, ' ', ''), '''', '')), LOWER(REPLACE(REPLACE(f.flat_name, ' ', ''), '''', ''))) > 0
+              )
             LIMIT 1
         ");
         if ($stmt) {
-            $stmt->bind_param("sss", $projectName, $cleanFlatName, $flatNameBase);
+            $stmt->bind_param("sssss", $projectName, $cleanFlatName, $flatNameBase, $cleanFlatName, $flatNameBase);
             $stmt->execute();
             $flatResult = $stmt->get_result()->fetch_assoc();
             $stmt->close();

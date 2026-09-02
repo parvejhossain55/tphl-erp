@@ -143,6 +143,9 @@ class LeadController extends Controller
         $conversionRate = $leadCounts > 0 ? ($totalBookingCount / $leadCounts) * 100 : 0;
         $totalHotLeads = $this->leadModel->getTotalHotLeads();
         $totalContactedLeads = $this->leadModel->getTotalContactedLeads();
+        $totalNotContactedLeads = $this->leadModel->getTotalNotContactedLeads();
+        $totalAssignedLeads = $this->leadModel->getTotalAssignedLeads();
+        $totalNotAssignedLeads = $this->leadModel->getTotalNotAssignedLeads();
 
         // ── Filtered stats when a Sales Executive is selected ────────────────
         if (!empty($assigned_user)) {
@@ -227,22 +230,11 @@ class LeadController extends Controller
                 $totalHotLeads = 0;
             }
 
-            // 5. Contacted Leads for this user
-            $contactedSql = "
-                SELECT COUNT(*) AS total FROM leads
-                WHERE deleted_at IS NULL
-                AND assigned_id = ?
-                AND last_lead_action = 'contacted'
-            ";
-            $contactedStmt = $this->db->prepare($contactedSql);
-            if ($contactedStmt) {
-                $contactedStmt->bind_param('i', $assignedUserId);
-                $contactedStmt->execute();
-                $totalContactedLeads = $contactedStmt->get_result()->fetch_assoc()['total'] ?? 0;
-                $contactedStmt->close();
-            } else {
-                $totalContactedLeads = 0;
-            }
+            // 5. Contacted / Not Contacted / Assigned Leads for this user
+            $totalContactedLeads = $this->leadModel->getTotalContactedLeads($assignedUserId);
+            $totalNotContactedLeads = $this->leadModel->getTotalNotContactedLeads($assignedUserId);
+            $totalAssignedLeads = $this->leadModel->getTotalAssignedLeads($assignedUserId);
+            $totalNotAssignedLeads = $this->leadModel->getTotalNotAssignedLeads($assignedUserId);
 
             // 6. Recalculate Conversion Rate with filtered booking count
             $conversionRate = $leadCounts > 0 ? ($totalBookingCount / $leadCounts) * 100 : 0;
@@ -354,6 +346,9 @@ class LeadController extends Controller
             "conversionRate" => $conversionRate,
             "totalHotLeads" => $totalHotLeads,
             "totalContactedLeads" => $totalContactedLeads,
+            "totalNotContactedLeads" => $totalNotContactedLeads,
+            "totalAssignedLeads" => $totalAssignedLeads,
+            "totalNotAssignedLeads" => $totalNotAssignedLeads,
             "selectedAction" => $lastAction,
             "selectedAssigned" => $assigned,
             "selectedAssignedUser" => $assigned_user,

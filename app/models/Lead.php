@@ -347,7 +347,25 @@ class Lead extends Model
             } elseif ($filter_card === 'hot_leads') {
                 $sql .= " AND l.lead_type = 'Hot'";
             } elseif ($filter_card === 'contacted_leads') {
-                $sql .= " AND l.last_lead_action = 'contacted'";
+                $sql .= " AND (
+                    l.last_lead_action IN ('contacted', 'follow up', 'booked', 'visited')
+                    OR EXISTS (
+                        SELECT 1 FROM lead_follow_ups lf_sub
+                        WHERE lf_sub.lead_id = l.id
+                          AND lf_sub.deleted_at IS NULL
+                    )
+                )";
+            } elseif ($filter_card === 'not_contacted_leads') {
+                $sql .= " AND (l.last_lead_action IS NULL OR l.last_lead_action NOT IN ('contacted', 'follow up', 'booked', 'visited'))
+                          AND NOT EXISTS (
+                              SELECT 1 FROM lead_follow_ups lf_sub
+                              WHERE lf_sub.lead_id = l.id
+                                AND lf_sub.deleted_at IS NULL
+                          )";
+            } elseif ($filter_card === 'assigned_leads') {
+                $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0";
+            } elseif ($filter_card === 'not_assigned_leads') {
+                $sql .= " AND (l.assigned_id IS NULL OR l.assigned_id = 0)";
             }
         }
 
@@ -564,7 +582,25 @@ class Lead extends Model
             } elseif ($filter_card === 'hot_leads') {
                 $sql .= " AND l.lead_type = 'Hot'";
             } elseif ($filter_card === 'contacted_leads') {
-                $sql .= " AND l.last_lead_action = 'contacted'";
+                $sql .= " AND (
+                    l.last_lead_action IN ('contacted', 'follow up', 'booked', 'visited')
+                    OR EXISTS (
+                        SELECT 1 FROM lead_follow_ups lf_sub
+                        WHERE lf_sub.lead_id = l.id
+                          AND lf_sub.deleted_at IS NULL
+                    )
+                )";
+            } elseif ($filter_card === 'not_contacted_leads') {
+                $sql .= " AND (l.last_lead_action IS NULL OR l.last_lead_action NOT IN ('contacted', 'follow up', 'booked', 'visited'))
+                          AND NOT EXISTS (
+                              SELECT 1 FROM lead_follow_ups lf_sub
+                              WHERE lf_sub.lead_id = l.id
+                                AND lf_sub.deleted_at IS NULL
+                          )";
+            } elseif ($filter_card === 'assigned_leads') {
+                $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0";
+            } elseif ($filter_card === 'not_assigned_leads') {
+                $sql .= " AND (l.assigned_id IS NULL OR l.assigned_id = 0)";
             }
         }
 
@@ -690,12 +726,74 @@ class Lead extends Model
         $result = $sql->get_result()->fetch_assoc();
         return $result['total_hot'] ?? 0;
     }
-    public function getTotalContactedLeads()
+    public function getTotalContactedLeads($assignedUserId = null)
     {
-        $sql = $this->db->prepare("SELECT COUNT(*) AS total_contacted FROM leads where last_lead_action = 'contacted' And deleted_at IS NULL AND status = 'active'");
-        $sql->execute();
-        $result = $sql->get_result()->fetch_assoc();
-        return $result['total_contacted'] ?? 0;
+        $sql = "SELECT COUNT(DISTINCT l.id) AS total_contacted 
+                FROM leads l
+                LEFT JOIN employees emp ON emp.user_id = l.assigned_id
+                WHERE l.deleted_at IS NULL 
+                  AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND (
+                      l.last_lead_action IN ('contacted', 'follow up', 'booked', 'visited')
+                      OR EXISTS (
+                          SELECT 1 FROM lead_follow_ups lf 
+                          WHERE lf.lead_id = l.id AND lf.deleted_at IS NULL
+                      )
+                  )";
+        if (!empty($assignedUserId)) {
+            $sql .= " AND l.assigned_id = " . (int)$assignedUserId;
+        }
+        $res = $this->db->query($sql);
+        return $res ? (int)($res->fetch_assoc()['total_contacted'] ?? 0) : 0;
+    }
+
+    public function getTotalNotContactedLeads($assignedUserId = null)
+    {
+        $sql = "SELECT COUNT(DISTINCT l.id) AS total_not_contacted 
+                FROM leads l
+                LEFT JOIN employees emp ON emp.user_id = l.assigned_id
+                WHERE l.deleted_at IS NULL 
+                  AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND (l.last_lead_action IS NULL OR l.last_lead_action NOT IN ('contacted', 'follow up', 'booked', 'visited'))
+                  AND NOT EXISTS (
+                      SELECT 1 FROM lead_follow_ups lf 
+                      WHERE lf.lead_id = l.id AND lf.deleted_at IS NULL
+                  )";
+        if (!empty($assignedUserId)) {
+            $sql .= " AND l.assigned_id = " . (int)$assignedUserId;
+        }
+        $res = $this->db->query($sql);
+        return $res ? (int)($res->fetch_assoc()['total_not_contacted'] ?? 0) : 0;
+    }
+
+    public function getTotalAssignedLeads($assignedUserId = null)
+    {
+        $sql = "SELECT COUNT(DISTINCT l.id) AS total_assigned 
+                FROM leads l
+                LEFT JOIN employees emp ON emp.user_id = l.assigned_id
+                WHERE l.deleted_at IS NULL 
+                  AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND l.assigned_id IS NOT NULL AND l.assigned_id > 0";
+        if (!empty($assignedUserId)) {
+            $sql .= " AND l.assigned_id = " . (int)$assignedUserId;
+        }
+        $res = $this->db->query($sql);
+        return $res ? (int)($res->fetch_assoc()['total_assigned'] ?? 0) : 0;
+    }
+
+    public function getTotalNotAssignedLeads($assignedUserId = null)
+    {
+        if (!empty($assignedUserId)) {
+            return 0;
+        }
+        $sql = "SELECT COUNT(DISTINCT l.id) AS total_not_assigned 
+                FROM leads l
+                LEFT JOIN employees emp ON emp.user_id = l.assigned_id
+                WHERE l.deleted_at IS NULL 
+                  AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+                  AND (l.assigned_id IS NULL OR l.assigned_id = 0)";
+        $res = $this->db->query($sql);
+        return $res ? (int)($res->fetch_assoc()['total_not_assigned'] ?? 0) : 0;
     }
     public function getVisitedLeadCount($period = null)
     {

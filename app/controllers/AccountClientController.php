@@ -422,6 +422,9 @@ public function indexTwoView($bookingId = null)
 
     $virtualEmiSchedule = $this->clientModel->getVirtualEmiSchedule($bookingId);
 
+    $bRes = $this->db->query("SELECT id, bank_name, branch_name, account_number FROM banks WHERE status = 'active' ORDER BY bank_name");
+    $banks = $bRes ? $bRes->fetch_all(MYSQLI_ASSOC) : [];
+
     $this->view("ced/clients-cash-in-history-view", [
         "current_route" => "clients-cash-in-history-view",
         "page_title" => "Transaction History - " . $clientDetails['client_name'],
@@ -431,6 +434,7 @@ public function indexTwoView($bookingId = null)
         "paymentSummary" => $paymentSummary,
         "refundDetails"   => $refundDetails,
         "refundPaidAmount"=> $refundPaidAmount,
+        "banks"           => $banks,
         "accountModel"    => $this->clientModel
     ]);
 }
@@ -647,9 +651,8 @@ public function addCedTransaction()
     }
 
     // Route to correct model method
-    if ($transactionData['payment_type'] === 'emi_due_settlement' || $transactionData['payment_type'] === 'development_charge' || $transactionData['payment_type'] === 'shop_service_charge' || $transactionData['payment_type'] === 'land_share') {
+    if ($transactionData['payment_type'] === 'emi_due_settlement') {
         // Use addTransaction (not WithEMI) so settlement_type & parent_payment_id are handled
-        // and non-EMI payments skip the EMI scheduler
         $result = $this->clientModel->addTransaction($transactionData, null);
     } else {
         $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
@@ -1051,6 +1054,13 @@ public function updateTransaction()
             }
         }
 
+        $bankId = !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null;
+        $bankName = $_POST['bank_name'] ?? null;
+        if ($bankId && empty($bankName)) {
+            $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', branch_name) as label FROM banks WHERE id = {$bankId}");
+            if ($bRow) { $bData = $bRow->fetch_assoc(); $bankName = $bData['label'] ?? ''; }
+        }
+
         // Prepare transaction data
         $transactionData = [
             'payment_id'       => $paymentId,
@@ -1061,11 +1071,13 @@ public function updateTransaction()
             'payment_status'   => 'pending', // Always pending until verified
             'payment_date'     => $_POST['payment_date'] ?? date('Y-m-d'),
             'transaction_ref'  => $_POST['transaction_ref'] ?? null,
-            'bank_name'        => $_POST['bank_name'] ?? null,
+            'bank_id'          => $bankId,
+            'bank_name'        => $bankName,
             'bank_account_no'  => $_POST['bank_account_no'] ?? null,
             'cheque_no'        => $_POST['cheque_no'] ?? null,
             'online_type'      => $_POST['online_type'] ?? null,
             'attachment_paths' => !empty($mergedPaths) ? $mergedPaths : null,
+            'updated_by'       => $_SESSION['user']['id'] ?? 1,
         ];
 
         error_log("Transaction Data for update: " . print_r($transactionData, true));
@@ -1087,7 +1099,8 @@ public function updateTransaction()
             if ($transactionData['payment_status'] === 'partially_paid') {
                 if (empty($emiScheduleData['due_emi_amount']) || $emiScheduleData['due_emi_amount'] <= 0) {
                     setError("Partially Paid status requires a due amount greater than 0");
-                    header("Location: {$GLOBALS['base_url']}/edit-client-cash-in?payment_id={$paymentId}");
+                    $redirectFail = !empty($_POST['redirect_to']) ? "{$GLOBALS['base_url']}/" . ltrim($_POST['redirect_to'], '/') : "{$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}";
+                    header("Location: {$redirectFail}");
                     exit;
                 }
             }
@@ -1113,13 +1126,17 @@ public function updateTransaction()
 
         error_log("Update Result: " . print_r($result, true));
 
+        $redirectUrl = !empty($_POST['redirect_to']) 
+            ? "{$GLOBALS['base_url']}/" . ltrim($_POST['redirect_to'], '/')
+            : "{$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}";
+
         if ($result['success']) {
-            setSuccess($result['message']);
-            header("Location: {$GLOBALS['base_url']}/clients-cash-in-history?booking_id={$bookingId}");
+            setSuccess($result['message'] . " (Payment updated successfully)");
+            header("Location: {$redirectUrl}");
             exit;
         } else {
             setError($result['message']);
-            header("Location: {$GLOBALS['base_url']}/edit-client-cash-in?payment_id={$paymentId}");
+            header("Location: {$redirectUrl}");
             exit;
         }
     } else {

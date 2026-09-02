@@ -121,10 +121,8 @@ class AccountShopClientController extends AccountClientController
 
             if ($transactionData['payment_type'] === 'emi_due_settlement') {
                 $result = $this->clientModel->addTransaction($transactionData, null);
-            } elseif ($transactionData['payment_type'] === 'emi') {
-                $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
             } else {
-                $result = $this->clientModel->addTransaction($transactionData, $emiScheduleData);
+                $result = $this->clientModel->addTransactionWithEMI($transactionData, $emiScheduleData);
             }
 
             if ($result['success']) {
