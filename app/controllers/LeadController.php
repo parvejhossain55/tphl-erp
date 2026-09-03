@@ -75,10 +75,11 @@ class LeadController extends Controller
             $filterCountry = null;
         }
 
-        // Determine team restriction: roles 1, 3, 9 see all by default (unless filtered), others filter by team.
-        if (in_array($userRoleId, [1, 3, 9])) {
+        // Determine team restriction: roles 1, 3, 9, 32, 33 see all by default (unless filtered), others filter by team.
+        if (in_array($userRoleId, [1, 3, 9, 32, 33])) {
             $teamIdForQuery = $filterTeamId;
         } else {
+            // If they have no team_id, let them see everything (e.g. Sales Manager with no team)
             $teamIdForQuery = !empty($userTeamId) ? (int)$userTeamId : $filterTeamId;
         }
 
@@ -97,7 +98,7 @@ class LeadController extends Controller
 
         // Get total count for pagination
         // Co-leader gets team-scoped data same as role_id=5 (Sales Manager)
-        $effectiveRoleId = ($isCoLeader && !in_array($userRoleId, [1, 3, 5, 9])) ? 5 : $userRoleId;
+        $effectiveRoleId = ($isCoLeader && !in_array($userRoleId, [1, 3, 5, 9, 32, 33])) ? 5 : $userRoleId;
         $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
 
         // Fetch paginated records
@@ -480,15 +481,16 @@ class LeadController extends Controller
             $filterCountry = null;
         }
 
-        // Determine team restriction: role 9 sees all by default, but can filter.
-        if (in_array($userRoleId, [1, 3, 9])) {
+        // Determine team restriction: roles 1, 3, 9, 32, 33 see all by default, but can filter.
+        if (in_array($userRoleId, [1, 3, 9, 32, 33])) {
             $teamIdForQuery = $filterTeamId;
         } else {
-            $teamIdForQuery = $userTeamId;
+            // If they have no team_id, let them see everything (e.g. Sales Manager with no team)
+            $teamIdForQuery = !empty($userTeamId) ? (int)$userTeamId : $filterTeamId;
         }
 
         // Co-leader gets same team-scoped access as Sales Manager (role_id=5)
-        $effectiveRoleId = (isSalesCoLeader() && !in_array($userRoleId, [1, 3, 5, 9])) ? 5 : $userRoleId;
+        $effectiveRoleId = (isSalesCoLeader() && !in_array($userRoleId, [1, 3, 5, 9, 32, 33])) ? 5 : $userRoleId;
 
         $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
 
