@@ -513,146 +513,173 @@ class EmployeeDashboardController extends Controller
             ]);
             exit;
         }
-
         $selectedMonth = $_GET['month'] ?? date('Y-m'); // e.g. 2026-07
         $year = date('Y', strtotime($selectedMonth . '-01'));
 
         try {
-            $token = $this->externalApiService->getBearerToken();
-            if (!$token) {
+            $token = $this->externalApiService->getUserBearerToken(true);
+            $masterToken = $this->externalApiService->getBearerToken();
+            if (!$token && !$masterToken) {
                 echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
                 exit;
             }
 
-            // 1. Fetch all Tipsoi employees to find the internal ID
-            $empUrl = "https://app.tipsoi.ai/inovace-client/api/v1/employee?order=asc&pageNumber=0&perPage=2000&status=1";
-            $ch = curl_init($empUrl);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Bearer ' . $token,
-                'Accept: application/json'
-            ]);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-            $res = curl_exec($ch);
-            curl_close($ch);
-            
-            $empData = json_decode($res, true);
-            $externalEmployees = $empData['data'] ?? $empData['employees'] ?? $empData['content'] ?? $empData ?? [];
-
-            $matchedEmp = null;
             $normalizeIdPhp = function($id) {
                 $str = trim((string)$id);
                 return preg_match('/^\d+$/', $str) ? (string)intval($str) : $str;
             };
             $normOfficeId = $normalizeIdPhp($localOfficeId);
 
-            foreach ($externalEmployees as $emp) {
-                $empEmail = strtolower(trim($emp['email'] ?? ''));
-                $empOid = $normalizeIdPhp($emp['employeeOfficeId'] ?? $emp['employeeId'] ?? '');
+            $tipsoiId = $_SESSION['user']['tipsoi_id'] ?? null;
+            $tipsoiProfile = null;
+            $matchedEmp = null;
+            $externalEmployees = [];
 
-                if ($empEmail !== '' && $empEmail === $localEmail && $empOid === $normOfficeId) {
-                    $matchedEmp = $emp;
-                    break;
+            // 1. If we already have the tipsoi_id from session/JWT, fetch Basic Profile directly
+            if ($tipsoiId) {
+                $basicInfo = $this->externalApiService->getEmployeeBasicProfile($tipsoiId, $token ?: $masterToken);
+                if ($basicInfo) {
+                    $tipsoiProfile = [
+                        'id' => $basicInfo['id'] ?? $tipsoiId,
+                        'employeeName' => $basicInfo['name'] ?? '',
+                        'employeeOfficeId' => $basicInfo['employeeOfficeId'] ?? '',
+                        'personId3rdPartyDevice' => $basicInfo['personId3rdPartyDevice'] ?? '',
+                        'email' => $basicInfo['email'] ?? '',
+                        'departmentName' => $basicInfo['department']['name'] ?? '',
+                        'subDepartmentName' => $basicInfo['subDepartment']['name'] ?? '',
+                        'designationName' => $basicInfo['designation']['name'] ?? '',
+                        'employmentTypeName' => $basicInfo['employmentType']['name'] ?? '',
+                        'shiftGroupName' => $basicInfo['shiftGroupName'] ?? '',
+                        'gender' => (($basicInfo['gender'] ?? 1) == 1 ? 'Male' : (($basicInfo['gender'] ?? 1) == 2 ? 'Female' : 'Other')),
+                        'primaryDisplayText' => $basicInfo['primaryDisplayText'] ?? 'Check in',
+                        'secondaryDisplayText' => $basicInfo['secondaryDisplayText'] ?? 'Check out',
+                        'rfid' => $basicInfo['rfid'] ?? '',
+                        'reportPosition' => $basicInfo['employeeReportPosition'] ?? '',
+                        'leavePolicyName' => $basicInfo['leavePolicyName'] ?? '',
+                        'joiningDate' => $basicInfo['dateOfJoin'] ?? null,
+                        'endDate' => $basicInfo['dateOfResignation'] ?? null,
+                        'firstApproverName' => $basicInfo['firstApproverName'] ?? '',
+                        'secondApproverName' => $basicInfo['secondApproverName'] ?? '',
+                        'firstLateApproverName' => $basicInfo['firstLateApproverName'] ?? '',
+                        'secondLateApproverName' => $basicInfo['secondLateApproverName'] ?? '',
+                        'firstManualEntryApproverName' => $basicInfo['firstManualEntryApproverName'] ?? '',
+                        'secondManualEntryApproverName' => $basicInfo['secondManualEntryApproverName'] ?? '',
+                        'allowOvertime' => $basicInfo['allowOvertime'] ?? 0,
+                        'includeInAttendanceReport' => $basicInfo['includeInAttendanceReport'] ?? 1,
+                        'status' => $basicInfo['status'] ?? 1,
+                        'photo' => $basicInfo['employeePictureUrl'] ?? '',
+                    ];
+                    $normOfficeId = $normalizeIdPhp($basicInfo['employeeOfficeId'] ?? $localOfficeId);
                 }
             }
 
-            if (!$matchedEmp) {
-                echo json_encode([
-                    'success' => true,
-                    'isRegistered' => false,
-                    'message' => 'Employee email ' . $employee['email'] . ' or Office ID ' . $localOfficeId . ' is not registered in the Tipsoi attendance system.'
-                ]);
-                exit;
-            }
-
-            $normOfficeId = $normalizeIdPhp($matchedEmp['employeeOfficeId'] ?? $matchedEmp['employeeId'] ?? '');
-
-            $tipsoiId = $matchedEmp['id'] ?? $matchedEmp['employeeId'] ?? null;
-
-            // 2. Fetch Basic Profile if Tipsoi ID is found
-            $tipsoiProfile = null;
-            if ($tipsoiId) {
-                $profileUrl = "https://app.tipsoi.ai/inovace-client/api/v1/employee/basic-profile/" . $tipsoiId;
-                $ch = curl_init($profileUrl);
+            // Fallback: Fetch employees list from Tipsoi
+            if (!$tipsoiProfile) {
+                $empUrl = "https://app.tipsoi.ai/inovace-client/api/v1/employee?order=asc&pageNumber=0&perPage=2000&status=1";
+                $ch = curl_init($empUrl);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                    'Authorization: Bearer ' . $token,
+                    'Authorization: Bearer ' . ($masterToken ?: $token),
                     'Accept: application/json'
                 ]);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
                 curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-                $profileRes = curl_exec($ch);
+                $res = curl_exec($ch);
                 curl_close($ch);
-                $profileData = json_decode($profileRes, true);
                 
-                $empInfo = $profileData['employee'] ?? $profileData['data']['employee'] ?? null;
-                if ($empInfo) {
+                $empData = json_decode($res, true);
+                $externalEmployees = $empData['data'] ?? $empData['employees'] ?? $empData['content'] ?? $empData ?? [];
+
+                foreach ($externalEmployees as $emp) {
+                    $empEmail = strtolower(trim($emp['email'] ?? ''));
+                    $empOid = $normalizeIdPhp($emp['employeeOfficeId'] ?? $emp['employeeId'] ?? '');
+
+                    if (($empEmail !== '' && $empEmail === $localEmail) || ($empOid !== '' && $empOid === $normOfficeId)) {
+                        $matchedEmp = $emp;
+                        break;
+                    }
+                }
+
+                if (!$matchedEmp) {
+                    echo json_encode([
+                        'success' => true,
+                        'isRegistered' => false,
+                        'message' => 'Employee email ' . $employee['email'] . ' or Office ID ' . $localOfficeId . ' is not registered in the Tipsoi attendance system.'
+                    ]);
+                    exit;
+                }
+
+                $normOfficeId = $normalizeIdPhp($matchedEmp['employeeOfficeId'] ?? $matchedEmp['employeeId'] ?? '');
+                $tipsoiId = $matchedEmp['id'] ?? $matchedEmp['employeeId'] ?? null;
+
+                if ($tipsoiId) {
+                    $basicInfo = $this->externalApiService->getEmployeeBasicProfile($tipsoiId, $token ?: $masterToken);
+                    if ($basicInfo) {
+                        $tipsoiProfile = [
+                            'id' => $basicInfo['id'] ?? $tipsoiId,
+                            'employeeName' => $basicInfo['name'] ?? '',
+                            'employeeOfficeId' => $basicInfo['employeeOfficeId'] ?? '',
+                            'personId3rdPartyDevice' => $basicInfo['personId3rdPartyDevice'] ?? '',
+                            'email' => $basicInfo['email'] ?? '',
+                            'departmentName' => $basicInfo['department']['name'] ?? '',
+                            'subDepartmentName' => $basicInfo['subDepartment']['name'] ?? '',
+                            'designationName' => $basicInfo['designation']['name'] ?? '',
+                            'employmentTypeName' => $basicInfo['employmentType']['name'] ?? '',
+                            'shiftGroupName' => $basicInfo['shiftGroupName'] ?? '',
+                            'gender' => (($basicInfo['gender'] ?? 1) == 1 ? 'Male' : (($basicInfo['gender'] ?? 1) == 2 ? 'Female' : 'Other')),
+                            'primaryDisplayText' => $basicInfo['primaryDisplayText'] ?? 'Check in',
+                            'secondaryDisplayText' => $basicInfo['secondaryDisplayText'] ?? 'Check out',
+                            'rfid' => $basicInfo['rfid'] ?? '',
+                            'reportPosition' => $basicInfo['employeeReportPosition'] ?? '',
+                            'leavePolicyName' => $basicInfo['leavePolicyName'] ?? '',
+                            'joiningDate' => $basicInfo['dateOfJoin'] ?? null,
+                            'endDate' => $basicInfo['dateOfResignation'] ?? null,
+                            'firstApproverName' => $basicInfo['firstApproverName'] ?? '',
+                            'secondApproverName' => $basicInfo['secondApproverName'] ?? '',
+                            'firstLateApproverName' => $basicInfo['firstLateApproverName'] ?? '',
+                            'secondLateApproverName' => $basicInfo['secondLateApproverName'] ?? '',
+                            'firstManualEntryApproverName' => $basicInfo['firstManualEntryApproverName'] ?? '',
+                            'secondManualEntryApproverName' => $basicInfo['secondManualEntryApproverName'] ?? '',
+                            'allowOvertime' => $basicInfo['allowOvertime'] ?? 0,
+                            'includeInAttendanceReport' => $basicInfo['includeInAttendanceReport'] ?? 1,
+                            'status' => $basicInfo['status'] ?? 1,
+                            'photo' => $basicInfo['employeePictureUrl'] ?? '',
+                        ];
+                    }
+                }
+
+                if (!$tipsoiProfile) {
                     $tipsoiProfile = [
-                        'id' => $empInfo['id'] ?? $tipsoiId,
-                        'employeeName' => $empInfo['name'] ?? '',
-                        'employeeOfficeId' => $empInfo['employeeOfficeId'] ?? '',
-                        'personId3rdPartyDevice' => $empInfo['personId3rdPartyDevice'] ?? '',
-                        'email' => $empInfo['email'] ?? '',
-                        'departmentName' => $empInfo['department']['name'] ?? '',
-                        'subDepartmentName' => $empInfo['subDepartment']['name'] ?? '',
-                        'designationName' => $empInfo['designation']['name'] ?? '',
-                        'employmentTypeName' => $empInfo['employmentType']['name'] ?? '',
-                        'shiftGroupName' => $empInfo['shiftGroupName'] ?? '',
-                        'gender' => ($empInfo['gender'] == 1 ? 'Male' : ($empInfo['gender'] == 2 ? 'Female' : 'Other')),
-                        'primaryDisplayText' => $empInfo['primaryDisplayText'] ?? 'Check in',
-                        'secondaryDisplayText' => $empInfo['secondaryDisplayText'] ?? 'Check out',
-                        'rfid' => $empInfo['rfid'] ?? '',
-                        'reportPosition' => $empInfo['employeeReportPosition'] ?? '',
-                        'leavePolicyName' => $empInfo['leavePolicyName'] ?? '',
-                        'joiningDate' => $empInfo['dateOfJoin'] ?? null,
-                        'endDate' => $empInfo['dateOfResignation'] ?? null,
-                        'firstApproverName' => $empInfo['firstApproverName'] ?? '',
-                        'secondApproverName' => $empInfo['secondApproverName'] ?? '',
-                        'firstLateApproverName' => $empInfo['firstLateApproverName'] ?? '',
-                        'secondLateApproverName' => $empInfo['secondLateApproverName'] ?? '',
-                        'firstManualEntryApproverName' => $empInfo['firstManualEntryApproverName'] ?? '',
-                        'secondManualEntryApproverName' => $empInfo['secondManualEntryApproverName'] ?? '',
-                        'allowOvertime' => $empInfo['allowOvertime'] ?? 0,
-                        'includeInAttendanceReport' => $empInfo['includeInAttendanceReport'] ?? 1,
-                        'status' => $empInfo['status'] ?? 1,
-                        'photo' => $empInfo['employeePictureUrl'] ?? '',
+                        'id' => $tipsoiId,
+                        'employeeName' => $matchedEmp['employeeName'] ?? '',
+                        'employeeOfficeId' => $matchedEmp['employeeOfficeId'] ?? $matchedEmp['employeeId'] ?? '',
+                        'personId3rdPartyDevice' => '',
+                        'email' => $matchedEmp['email'] ?? '',
+                        'departmentName' => $matchedEmp['departmentName'] ?? '',
+                        'subDepartmentName' => '',
+                        'designationName' => $matchedEmp['designationName'] ?? $matchedEmp['designation'] ?? '',
+                        'employmentTypeName' => '',
+                        'shiftGroupName' => $matchedEmp['shiftGroupName'] ?? '',
+                        'gender' => 'Male',
+                        'primaryDisplayText' => 'Check in',
+                        'secondaryDisplayText' => 'Check out',
+                        'rfid' => $matchedEmp['cardNo'] ?? '',
+                        'reportPosition' => '',
+                        'leavePolicyName' => '',
+                        'joiningDate' => null,
+                        'endDate' => null,
+                        'firstApproverName' => '',
+                        'secondApproverName' => '',
+                        'firstLateApproverName' => '',
+                        'secondLateApproverName' => '',
+                        'firstManualEntryApproverName' => '',
+                        'secondManualEntryApproverName' => '',
+                        'allowOvertime' => 0,
+                        'includeInAttendanceReport' => 1,
+                        'status' => 1,
+                        'photo' => '',
                     ];
                 }
-            }
-
-            if (!$tipsoiProfile) {
-                // Fallback using matched external employee info
-                $tipsoiProfile = [
-                    'id' => $tipsoiId,
-                    'employeeName' => $matchedEmp['employeeName'] ?? '',
-                    'employeeOfficeId' => $matchedEmp['employeeOfficeId'] ?? $matchedEmp['employeeId'] ?? '',
-                    'personId3rdPartyDevice' => '',
-                    'email' => $matchedEmp['email'] ?? '',
-                    'departmentName' => $matchedEmp['departmentName'] ?? '',
-                    'subDepartmentName' => '',
-                    'designationName' => $matchedEmp['designationName'] ?? $matchedEmp['designation'] ?? '',
-                    'employmentTypeName' => '',
-                    'shiftGroupName' => $matchedEmp['shiftGroupName'] ?? '',
-                    'gender' => 'Male',
-                    'primaryDisplayText' => 'Check in',
-                    'secondaryDisplayText' => 'Check out',
-                    'rfid' => $matchedEmp['cardNo'] ?? '',
-                    'reportPosition' => '',
-                    'leavePolicyName' => '',
-                    'joiningDate' => $matchedEmp['dateOfJoin'] ?? null,
-                    'endDate' => null,
-                    'firstApproverName' => '',
-                    'secondApproverName' => '',
-                    'firstLateApproverName' => '',
-                    'secondLateApproverName' => '',
-                    'firstManualEntryApproverName' => '',
-                    'secondManualEntryApproverName' => '',
-                    'allowOvertime' => 0,
-                    'includeInAttendanceReport' => 1,
-                    'status' => $matchedEmp['status'] ?? 1,
-                    'photo' => '',
-                ];
             }
 
             // 3. Fetch Leave Balances (current year)
@@ -673,7 +700,7 @@ class EmployeeDashboardController extends Controller
             $ch = curl_init($balanceUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Bearer ' . $token,
+                'Authorization: Bearer ' . ($masterToken ?: $token),
                 'Accept: application/json'
             ]);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -686,7 +713,8 @@ class EmployeeDashboardController extends Controller
             if ($balanceData && isset($balanceData['responseForAllEmployees'])) {
                 foreach ($balanceData['responseForAllEmployees'] as $empBal) {
                     $empOid = $normalizeIdPhp($empBal['employeeOfficeId'] ?? $empBal['employeeId'] ?? '');
-                    if ($empOid === $normOfficeId) {
+                    $empTid = $empBal['employeeId'] ?? null;
+                    if ($empOid === $normOfficeId || ($tipsoiId && (string)$empTid === (string)$tipsoiId)) {
                         $myBalances = $empBal['leaveLeaveInfo']['leaveDataList'] ?? [];
                         break;
                     }
@@ -709,7 +737,7 @@ class EmployeeDashboardController extends Controller
             $ch = curl_init($historyUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Bearer ' . $token,
+                'Authorization: Bearer ' . ($masterToken ?: $token),
                 'Accept: application/json'
             ]);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -722,7 +750,8 @@ class EmployeeDashboardController extends Controller
             if ($historyData && isset($historyData['responseForAllEmployees'])) {
                 foreach ($historyData['responseForAllEmployees'] as $empHist) {
                     $empOid = $normalizeIdPhp($empHist['employeeOfficeId'] ?? $empHist['employeeId'] ?? '');
-                    if ($empOid === $normOfficeId) {
+                    $empTid = $empHist['employeeId'] ?? null;
+                    if ($empOid === $normOfficeId || ($tipsoiId && (string)$empTid === (string)$tipsoiId)) {
                         $rawList = $empHist['leaveLeaveInfo']['leaveDataList'] ?? [];
                         foreach ($rawList as $item) {
                             if (!empty($item['from'])) {
@@ -738,7 +767,6 @@ class EmployeeDashboardController extends Controller
                                 ];
                             }
                         }
-                        break;
                     }
                 }
             }
@@ -747,7 +775,6 @@ class EmployeeDashboardController extends Controller
             $firstDay = date('Y-m-01', strtotime($selectedMonth . '-01'));
             $lastDay = date('Y-m-t', strtotime($selectedMonth . '-01'));
 
-            // Store previous timezone to restore it later
             $oldTimezone = date_default_timezone_get();
             date_default_timezone_set('Asia/Dhaka');
             $fromTimeAtt = strtotime($firstDay . ' 00:00:00') * 1000;
@@ -769,7 +796,7 @@ class EmployeeDashboardController extends Controller
             $ch = curl_init($attUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Bearer ' . $token,
+                'Authorization: Bearer ' . ($masterToken ?: $token),
                 'Accept: application/json'
             ]);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -785,7 +812,8 @@ class EmployeeDashboardController extends Controller
             if ($attData && isset($attData['attendance'])) {
                 foreach ($attData['attendance'] as $empAtt) {
                     $empOid = $normalizeIdPhp($empAtt['employeeOfficeId'] ?? $empAtt['employeeId'] ?? '');
-                    if ($empOid === $normOfficeId) {
+                    $empTid = $empAtt['employeeId'] ?? null;
+                    if ($empOid === $normOfficeId || ($tipsoiId && (string)$empTid === (string)$tipsoiId)) {
                         $mySummary = $empAtt['summary'] ?? null;
                         
                         $shiftGroupName = $empAtt['shiftGroupName'] ?? 'Regular';
@@ -803,76 +831,147 @@ class EmployeeDashboardController extends Controller
                 }
             }
 
-            // 6. Fetch pending requests and filter for this employee
-            // Fetch Global Pending Corrections (Type 1)
-            $correctionUrl = "https://app.tipsoi.ai/inovace-client/api/v1/manual-entry?officeId=4699&order=asc&pageNumber=0&perPage=200&sortKey=reportPosition&manualEntryType=1&applicationStatus=0";
-            $ch = curl_init($correctionUrl);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token, 'Accept: application/json']);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-            $correctionRes = curl_exec($ch);
-            curl_close($ch);
-            $correctionData = json_decode($correctionRes, true);
-            $corrections = $correctionData['manualEntries'] ?? [];
+            // 6. Aggregate pending requests for this employee
+            $myPendingRequests = [];
 
-            // Fetch Global Pending Late Excuses (Type 2)
-            $lateUrl = "https://app.tipsoi.ai/inovace-client/api/v1/manual-entry?officeId=4699&order=asc&pageNumber=0&perPage=200&sortKey=reportPosition&manualEntryType=2&applicationStatus=0";
-            $ch = curl_init($lateUrl);
+            // A. Pending Leave Applications (with exact ID from leave-management/leave-history)
+            $kw = $normOfficeId ?: ($tipsoiProfile['employeeName'] ?? ($employee['full_name'] ?? ''));
+            $leaveHistUrl = "https://app.tipsoi.ai/inovace-client/api/v1/leave-management/leave-history?page=0&count=100&status=0" . ($kw ? "&keyword=" . urlencode($kw) : "");
+            $ch = curl_init($leaveHistUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token, 'Accept: application/json']);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . ($masterToken ?: $token), 'Accept: application/json']);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-            $lateRes = curl_exec($ch);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            $leaveRes = curl_exec($ch);
             curl_close($ch);
-            $lateData = json_decode($lateRes, true);
-            $lates = $lateData['manualEntries'] ?? [];
+            $leaveJson = json_decode($leaveRes, true);
+            $leaveLogs = $leaveJson['leaveLogList'] ?? [];
 
-            // Fetch Global Pending Field Visits (Type 3)
-            $fieldUrl = "https://app.tipsoi.ai/inovace-client/api/v1/manual-entry?officeId=4699&order=asc&pageNumber=0&perPage=200&sortKey=reportPosition&manualEntryType=3&applicationStatus=0";
-            $ch = curl_init($fieldUrl);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token, 'Accept: application/json']);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-            $fieldRes = curl_exec($ch);
-            curl_close($ch);
-            $fieldData = json_decode($fieldRes, true);
-            $fields = $fieldData['manualEntries'] ?? [];
-
-            // Map tipsoiId -> officeId mapping to correctly filter manual requests
-            $tipsoiIdToOfficeIdMap = [];
-            foreach ($externalEmployees as $emp) {
-                $tid = $emp['employeeId'] ?? $emp['id'] ?? null;
-                $oid = $emp['employeeOfficeId'] ?? $emp['officeId'] ?? null;
-                if ($tid !== null && $oid !== null) {
-                    $tipsoiIdToOfficeIdMap[$tid] = $oid;
+            $foundPendingLeaves = false;
+            if (is_array($leaveLogs) && count($leaveLogs) > 0) {
+                foreach ($leaveLogs as $aLeave) {
+                    $logEmpId = $aLeave['appliedBy'] ?? $aLeave['employeeId'] ?? null;
+                    $logOfficeId = $normalizeIdPhp($aLeave['employeeOfficeId'] ?? '');
+                    if (($tipsoiId && (string)$logEmpId === (string)$tipsoiId) || ($normOfficeId && $logOfficeId === $normOfficeId)) {
+                        $foundPendingLeaves = true;
+                        $sDate = !empty($aLeave['startDate']) ? date('Y-m-d', (int)($aLeave['startDate'] / 1000)) : '—';
+                        $eDate = !empty($aLeave['endDate']) ? date('Y-m-d', (int)($aLeave['endDate'] / 1000)) : $sDate;
+                        $dateStr = ($sDate === $eDate) ? $sDate : "$sDate to $eDate";
+                        $catName = $aLeave['categoryName'] ?? 'Leave';
+                        $myPendingRequests[] = [
+                            'id' => $aLeave['id'] ?? null,
+                            'rawType' => 'leave',
+                            'requestType' => 'Leave Request (' . $catName . ')',
+                            'startDate' => $dateStr,
+                            'reason' => $aLeave['reason'] ?? '—',
+                            'firstApprover' => $aLeave['firstApproverName'] ?? ($tipsoiProfile['firstApproverName'] ?? ''),
+                            'firstApprovalStatus' => $aLeave['firstApprovalStatus'] ?? 0,
+                            'secondApprover' => $aLeave['secondApproverName'] ?? ($tipsoiProfile['secondApproverName'] ?? ''),
+                            'secondApprovalStatus' => $aLeave['secondApprovalStatus'] ?? 0,
+                            'status' => 0
+                        ];
+                    }
                 }
             }
 
-            $myPendingRequests = [];
-            $allManual = array_merge($corrections, $lates, $fields);
-            foreach ($allManual as $entry) {
-                $entryOid = $normalizeIdPhp($entry['employeeOfficeId'] ?? '');
-                $tipsoiEmpId = $entry['employeeId'] ?? null;
-                if ($tipsoiEmpId && isset($tipsoiIdToOfficeIdMap[$tipsoiEmpId])) {
-                    $entryOid = $normalizeIdPhp($tipsoiIdToOfficeIdMap[$tipsoiEmpId]);
+            if (!$foundPendingLeaves) {
+                // Fallback to myHistory
+                foreach ($myHistory as $item) {
+                    if ((int)($item['approvalStatus'] ?? 0) === 0) {
+                        $myPendingRequests[] = [
+                            'id' => $item['id'] ?? null,
+                            'rawType' => 'leave',
+                            'requestType' => 'Leave Request (' . ($item['categoryName'] ?? 'Leave') . ')',
+                            'startDate' => $item['startDate'],
+                            'reason' => $item['reason'] ?? '—',
+                            'firstApprover' => $tipsoiProfile['firstApproverName'] ?? '',
+                            'firstApprovalStatus' => 0,
+                            'secondApprover' => $tipsoiProfile['secondApproverName'] ?? '',
+                            'secondApprovalStatus' => 0,
+                            'status' => 0
+                        ];
+                    }
                 }
+            }
 
-                if ($entryOid === $normOfficeId) {
-                    $typeVal = $entry['manualEntryType'] ?? 1;
-                    $reqType = ($typeVal == 1) ? 'Manual Entry' : (($typeVal == 2) ? 'Late Excuse' : 'Field Visit');
-                    $myPendingRequests[] = [
-                        'id' => $entry['manualEntryId'] ?? $entry['id'] ?? null,
-                        'requestType' => $reqType,
-                        'startDate' => isset($entry['startDate']) ? date('Y-m-d', (int)($entry['startDate'] / 1000)) : '—',
-                        'reason' => $entry['reason'] ?? '—',
-                        'firstApprover' => $entry['firstManualApproverName'] ?? '',
-                        'firstApprovalStatus' => $entry['firstManualEntryApprovalStatus'] ?? 0,
-                        'secondApprover' => $entry['secondManualApproverName'] ?? '',
-                        'secondApprovalStatus' => $entry['secondManualEntryApprovalStatus'] ?? 0,
-                        'status' => $entry['applicationStatus'] ?? 0
-                    ];
+            // B. Pending Late Applications
+            if ($tipsoiId) {
+                $lateUrl = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/approval-requests/" . urlencode($tipsoiId);
+                $ch = curl_init($lateUrl);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . ($token ?: $masterToken), 'Accept: application/json']);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+                $lateRes = curl_exec($ch);
+                curl_close($ch);
+                $lateJson = json_decode($lateRes, true);
+                $lateApps = $lateJson['lateApprovalApplications'] ?? $lateJson['data'] ?? [];
+                if (is_array($lateApps)) {
+                    foreach ($lateApps as $lateApp) {
+                        $appStatus = $lateApp['approvalStatus'] ?? $lateApp['status'] ?? 0;
+                        if ((int)$appStatus === 0) {
+                            $attDate = !empty($lateApp['attendanceDate']) ? date('Y-m-d', (int)($lateApp['attendanceDate'] / 1000)) : ($lateApp['date'] ?? '—');
+                            $myPendingRequests[] = [
+                                'id' => $lateApp['lateApprovalLogId'] ?? $lateApp['id'] ?? null,
+                                'rawType' => 'late',
+                                'requestType' => 'Late Excuse',
+                                'startDate' => $attDate,
+                                'reason' => $lateApp['reason'] ?? '—',
+                                'firstApprover' => $lateApp['firstApproverName'] ?? ($tipsoiProfile['firstLateApproverName'] ?? ''),
+                                'firstApprovalStatus' => $lateApp['firstApprovalStatus'] ?? 0,
+                                'secondApprover' => $lateApp['secondApproverName'] ?? ($tipsoiProfile['secondLateApproverName'] ?? ''),
+                                'secondApprovalStatus' => $lateApp['secondApprovalStatus'] ?? 0,
+                                'status' => 0
+                            ];
+                        }
+                    }
+                }
+            }
+
+            // C. Pending Manual Entry / Missing Punch / Field Visit
+            if ($tipsoiId) {
+                $manualUrl = "https://app.tipsoi.ai/inovace-client/api/v1/employee/profile/manual/" . urlencode($tipsoiId);
+                $ch = curl_init($manualUrl);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . ($token ?: $masterToken), 'Accept: application/json']);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+                $manRes = curl_exec($ch);
+                curl_close($ch);
+                $manJson = json_decode($manRes, true);
+                $manApps = $manJson['manualEntryResponseList'] ?? $manJson['manualEntryApplications'] ?? [];
+                if (is_array($manApps)) {
+                    foreach ($manApps as $manApp) {
+                        $appStatus = $manApp['applicationStatus'] ?? $manApp['status'] ?? 0;
+                        if ((int)$appStatus === 0) {
+                            $typeVal = $manApp['manualEntryType'] ?? $manApp['type'] ?? 1;
+                            $reqType = ($typeVal == 1) ? 'Manual Entry' : (($typeVal == 2) ? 'Missing Punch' : 'Field Visit');
+                            
+                            $rawStart = $manApp['startDate'] ?? $manApp['entryTime'] ?? null;
+                            $formattedDate = '—';
+                            if (!empty($rawStart)) {
+                                if (is_numeric($rawStart)) {
+                                    $formattedDate = ($rawStart > 10000000000) ? date('Y-m-d', (int)($rawStart / 1000)) : date('Y-m-d', (int)$rawStart);
+                                } else {
+                                    $t = strtotime($rawStart);
+                                    $formattedDate = ($t !== false && $t > 0) ? date('Y-m-d', $t) : '—';
+                                }
+                            }
+
+                            $myPendingRequests[] = [
+                                'id' => $manApp['manualEntryId'] ?? $manApp['id'] ?? null,
+                                'rawType' => 'manual',
+                                'requestType' => $reqType,
+                                'startDate' => $formattedDate,
+                                'reason' => $manApp['reason'] ?? '—',
+                                'firstApprover' => $manApp['firstManualEntryApproverName'] ?? ($tipsoiProfile['firstManualEntryApproverName'] ?? ''),
+                                'firstApprovalStatus' => (int)($manApp['firstManualEntryApprovalStatus'] ?? 0),
+                                'secondApprover' => $manApp['secondManualEntryApproverName'] ?? ($tipsoiProfile['secondManualEntryApproverName'] ?? ''),
+                                'secondApprovalStatus' => (int)($manApp['secondManualEntryApprovalStatus'] ?? 0),
+                                'status' => 0
+                            ];
+                        }
+                    }
                 }
             }
 
@@ -894,6 +993,552 @@ class EmployeeDashboardController extends Controller
                 'success' => false,
                 'message' => 'Internal Server Error: ' . $e->getMessage()
             ]);
+        }
+        exit;
+    }
+
+    /**
+     * GET /api/employee/tipsoi-history
+     * Unified History endpoint for Leave, Late, Manual Entry, and Mobile / Selfie punches
+     */
+    public function getTipsoiHistory()
+    {
+        header('Content-Type: application/json');
+
+        $data = $this->getSessionEmployee();
+        if (!$data) {
+            echo json_encode(['success' => false, 'message' => 'Employee session not found.']);
+            exit;
+        }
+
+        $employee = $data['employee'];
+        $localEmail = strtolower(trim($employee['email'] ?? ''));
+        $localOfficeId = trim($employee['employee_id'] ?? '');
+
+        $selectedMonth = $_GET['month'] ?? date('Y-m'); // e.g. 2026-08
+        $year = date('Y', strtotime($selectedMonth . '-01'));
+
+        try {
+            $token = $this->externalApiService->getUserBearerToken(true);
+            $masterToken = $this->externalApiService->getBearerToken();
+            if (!$token && !$masterToken) {
+                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                exit;
+            }
+
+            $normalizeIdPhp = function($id) {
+                $str = trim((string)$id);
+                return preg_match('/^\d+$/', $str) ? (string)intval($str) : $str;
+            };
+            $normOfficeId = $normalizeIdPhp($localOfficeId);
+            $tipsoiId = $_SESSION['user']['tipsoi_id'] ?? null;
+
+            // Resolve Tipsoi ID if missing in session
+            if (!$tipsoiId) {
+                $empUrl = "https://app.tipsoi.ai/inovace-client/api/v1/employee?order=asc&pageNumber=0&perPage=2000&status=1";
+                $ch = curl_init($empUrl);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . ($masterToken ?: $token), 'Accept: application/json']);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+                $res = curl_exec($ch);
+                curl_close($ch);
+                $empData = json_decode($res, true);
+                $extEmps = $empData['data'] ?? $empData['employees'] ?? [];
+                foreach ($extEmps as $emp) {
+                    $empEmail = strtolower(trim($emp['email'] ?? ''));
+                    $empOid = $normalizeIdPhp($emp['employeeOfficeId'] ?? $emp['employeeId'] ?? '');
+                    if (($empEmail !== '' && $empEmail === $localEmail) || ($empOid !== '' && $empOid === $normOfficeId)) {
+                        $tipsoiId = $emp['id'] ?? $emp['employeeId'] ?? null;
+                        $normOfficeId = $normalizeIdPhp($emp['employeeOfficeId'] ?? $normOfficeId);
+                        break;
+                    }
+                }
+            }
+
+            $firstDay = date('Y-m-01', strtotime($selectedMonth . '-01'));
+            $lastDay = date('Y-m-t', strtotime($selectedMonth . '-01'));
+            $fromMonthStart = strtotime($firstDay . ' 00:00:00') * 1000;
+            $toMonthEnd = strtotime($lastDay . ' 23:59:59') * 1000;
+
+            $fromYearStart = strtotime($year . '-01-01 00:00:00') * 1000;
+            $toYearEnd = strtotime($year . '-12-31 23:59:59') * 1000;
+
+            // 1. Fetch Leave History
+            $historyUrl = "https://app.tipsoi.ai/inovace-client/api/v1/attendance/leave-history?" . http_build_query([
+                'employeeBeforeEndTime' => 'true',
+                'officeId' => 4699,
+                'order' => 'desc',
+                'pageNumber' => 0,
+                'perPage' => 2000,
+                'sortKey' => 'reportPosition',
+                'status' => 1,
+                'from' => $fromYearStart,
+                'to' => $toYearEnd
+            ]);
+            $ch = curl_init($historyUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . ($masterToken ?: $token), 'Accept: application/json']);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            $historyRes = curl_exec($ch);
+            curl_close($ch);
+            $historyData = json_decode($historyRes, true);
+
+            // Fetch pending leave IDs map from leave-management/leave-history
+            $leaveIdMap = [];
+            $kwHist = $normOfficeId ?: ($employee['full_name'] ?? '');
+            if ($kwHist) {
+                $lHistUrl = "https://app.tipsoi.ai/inovace-client/api/v1/leave-management/leave-history?page=0&count=100&status=0&keyword=" . urlencode($kwHist);
+                $ch = curl_init($lHistUrl);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . ($masterToken ?: $token), 'Accept: application/json']);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+                $lRes = curl_exec($ch);
+                curl_close($ch);
+                $lJson = json_decode($lRes, true);
+                foreach ($lJson['leaveLogList'] ?? [] as $lLog) {
+                    $logId = $lLog['id'] ?? null;
+                    if ($logId) {
+                        $sD = !empty($lLog['startDate']) ? date('Y-m-d', (int)($lLog['startDate'] / 1000)) : '';
+                        $cName = strtolower(trim($lLog['categoryName'] ?? ''));
+                        $leaveIdMap[$cName . '_' . $sD] = $logId;
+                        $leaveIdMap[$sD] = $logId;
+                    }
+                }
+            }
+
+            $leavesList = [];
+            if ($historyData && isset($historyData['responseForAllEmployees'])) {
+                foreach ($historyData['responseForAllEmployees'] as $empHist) {
+                    $empOid = $normalizeIdPhp($empHist['employeeOfficeId'] ?? $empHist['employeeId'] ?? '');
+                    $empTid = $empHist['employeeId'] ?? null;
+                    if ($empOid === $normOfficeId || ($tipsoiId && (string)$empTid === (string)$tipsoiId)) {
+                        $rawList = $empHist['leaveLeaveInfo']['leaveDataList'] ?? [];
+                        foreach ($rawList as $item) {
+                            if (!empty($item['from'])) {
+                                $startDate = date('Y-m-d', strtotime($item['from']));
+                                $endDate = date('Y-m-d', strtotime($item['to'] ?? $item['from']));
+                                $catName = $item['leaveCategoryName'] ?? 'Leave';
+                                $catKey = strtolower(trim($catName)) . '_' . $startDate;
+                                $resolvedId = $leaveIdMap[$catKey] ?? ($leaveIdMap[$startDate] ?? null);
+
+                                $leavesList[] = [
+                                    'id' => $resolvedId,
+                                    'categoryName' => $catName,
+                                    'startDate' => $startDate,
+                                    'endDate' => $endDate,
+                                    'approvalStatus' => (int)($item['approvalStatus'] ?? 0),
+                                    'reason' => $item['reason'] ?? '—',
+                                    'duration' => !empty($item['days']) ? (float)$item['days'] : 1.0,
+                                    'appliedDate' => !empty($item['appliedDate']) ? date('Y-m-d', (int)($item['appliedDate'] / 1000)) : '—',
+                                    'firstApprover' => $item['firstApproverName'] ?? '',
+                                    'secondApprover' => $item['secondApproverName'] ?? ''
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Fetch Late Request History
+            $latesList = [];
+            if ($tipsoiId) {
+                $lateUrl = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/late-approvals/" . urlencode($tipsoiId);
+                $ch = curl_init($lateUrl);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . ($token ?: $masterToken), 'Accept: application/json']);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+                $lateRes = curl_exec($ch);
+                curl_close($ch);
+                $lateData = json_decode($lateRes, true);
+                $rawLates = $lateData['lateLogList'] ?? [];
+                foreach ($rawLates as $late) {
+                    $logDate = '—';
+                    if (isset($late['attendanceDate'])) {
+                        $logDate = date('Y-m-d', (int)($late['attendanceDate'] / 1000));
+                    } elseif (isset($late['date'])) {
+                        $logDate = is_numeric($late['date']) ? date('Y-m-d', (int)($late['date'] / 1000)) : $late['date'];
+                    }
+
+                    $inTimeStr = '—';
+                    if (isset($late['entryTime']) && is_numeric($late['entryTime'])) {
+                        $inTimeStr = date('h:i A', (int)($late['entryTime'] / 1000));
+                    } elseif (isset($late['inTime'])) {
+                        $inTimeStr = $late['inTime'];
+                    }
+
+                    $latesList[] = [
+                        'id' => $late['lateApprovalLogId'] ?? $late['id'] ?? null,
+                        'date' => $logDate,
+                        'inTime' => $inTimeStr,
+                        'lateBy' => $late['lateBy'] ?? '—',
+                        'reason' => $late['reason'] ?? '—',
+                        'approvalStatus' => (int)($late['approvalStatus'] ?? $late['status'] ?? 0),
+                        'approverComment' => $late['approverComment'] ?? '—',
+                        'firstApprover' => $late['firstApproverName'] ?? $late['firstLateApproverName'] ?? '',
+                        'secondApprover' => $late['secondApproverName'] ?? $late['secondLateApproverName'] ?? ''
+                    ];
+                }
+            }
+
+            // 3. Fetch Manual Entries & Field Visits History
+            $manualList = [];
+            $manUrl = "https://app.tipsoi.ai/inovace-client/api/v1/manual-entry?officeId=4699&order=desc&pageNumber=0&perPage=200";
+            $ch = curl_init($manUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . ($masterToken ?: $token), 'Accept: application/json']);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+            $manRes = curl_exec($ch);
+            curl_close($ch);
+            $manData = json_decode($manRes, true);
+            $rawManuals = $manData['manualEntries'] ?? [];
+            foreach ($rawManuals as $entry) {
+                $entryOid = $normalizeIdPhp($entry['employeeOfficeId'] ?? '');
+                $entryTid = $entry['employeeId'] ?? null;
+                if ($entryOid === $normOfficeId || ($tipsoiId && (string)$entryTid === (string)$tipsoiId)) {
+                    $typeVal = (int)($entry['manualEntryType'] ?? 1);
+                    $typeName = ($typeVal === 1) ? 'Manual Entry' : (($typeVal === 2) ? 'Late Excuse' : 'Field Visit');
+                    
+                    $startDate = !empty($entry['startDate']) ? date('Y-m-d', (int)($entry['startDate'] / 1000)) : '—';
+                    $endDate = !empty($entry['endDate']) ? date('Y-m-d', (int)($entry['endDate'] / 1000)) : $startDate;
+                    
+                    $entryTime = !empty($entry['entryTime']) && is_numeric($entry['entryTime']) ? date('h:i A', (int)($entry['entryTime'] / 1000)) : '—';
+                    $exitTime = !empty($entry['exitTime']) && is_numeric($entry['exitTime']) ? date('h:i A', (int)($entry['exitTime'] / 1000)) : '—';
+
+                    $manualList[] = [
+                        'id' => $entry['manualEntryId'] ?? $entry['id'] ?? null,
+                        'type' => $typeVal,
+                        'typeName' => $typeName,
+                        'startDate' => $startDate,
+                        'endDate' => $endDate,
+                        'entryTime' => $entryTime,
+                        'exitTime' => $exitTime,
+                        'area' => $entry['area'] ?? '',
+                        'reason' => $entry['reason'] ?? '—',
+                        'approvalStatus' => (int)($entry['applicationStatus'] ?? 0),
+                        'firstApprover' => $entry['firstManualApproverName'] ?? '',
+                        'secondApprover' => $entry['secondManualApproverName'] ?? ''
+                    ];
+                }
+            }
+
+            // 4. Fetch Mobile Punch & Selfie Attendance History
+            $mobilePunchesList = [];
+            $mobUrl = "https://app.tipsoi.ai/inovace-client/api/v1/mobile-punch?officeId=4699&order=desc&pageNumber=0&perPage=2000&status=1&from=$fromMonthStart&to=$toMonthEnd";
+            $ch = curl_init($mobUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . ($masterToken ?: $token), 'Accept: application/json']);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            $mobRes = curl_exec($ch);
+            curl_close($ch);
+            $mobData = json_decode($mobRes, true);
+            
+            $dateWisePunches = $mobData['dateWiseMobilePunchResponses'] ?? [];
+            foreach ($dateWisePunches as $dw) {
+                $punchDate = $dw['date'] ?? '—';
+                $pList = $dw['mobilePunchResponses'] ?? [];
+                foreach ($pList as $p) {
+                    $pOid = $normalizeIdPhp($p['employeeOfficeId'] ?? '');
+                    $pTid = $p['employeeId'] ?? null;
+                    if ($pOid === $normOfficeId || ($tipsoiId && (string)$pTid === (string)$tipsoiId)) {
+                        $mobilePunchesList[] = [
+                            'date' => $punchDate,
+                            'checkInTime' => $p['checkInTime'] ?? '—',
+                            'checkOutTime' => $p['checkOutTime'] ?? '—',
+                            'siteName' => $p['siteName'] ?? '—',
+                            'location' => $p['location'] ?? '—',
+                            'photoUrl' => $p['photoUrl'] ?? $p['pictureUrl'] ?? '',
+                            'voiceNoteUrl' => $p['voiceNoteUrl'] ?? '',
+                            'remarks' => $p['remarks'] ?? '—',
+                            'registeredSite' => !empty($p['registeredSite'])
+                        ];
+                    }
+                }
+            }
+
+            // Also supplement from Attendance Report for GPS / Selfies if any
+            $attUrl = "https://app.tipsoi.ai/inovace-client/api/v1/attendance?officeId=4699&order=desc&pageNumber=0&perPage=2000&reportType=department&status=1&from=$fromMonthStart&to=$toMonthEnd";
+            $ch = curl_init($attUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . ($masterToken ?: $token), 'Accept: application/json']);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            $attRes = curl_exec($ch);
+            curl_close($ch);
+            $attData = json_decode($attRes, true);
+            if (!empty($attData['attendance'])) {
+                foreach ($attData['attendance'] as $empAtt) {
+                    $attOid = $normalizeIdPhp($empAtt['employeeOfficeId'] ?? '');
+                    $attTid = $empAtt['employeeId'] ?? null;
+                    if ($attOid === $normOfficeId || ($tipsoiId && (string)$attTid === (string)$tipsoiId)) {
+                        $logs = $empAtt['attendance'] ?? $empAtt['attendanceLogList'] ?? [];
+                        foreach ($logs as $log) {
+                            if (!empty($log['siteInPictureUrl']) || !empty($log['siteOutPictureUrl']) || !empty($log['siteLatitude'])) {
+                                $mobilePunchesList[] = [
+                                    'date' => $log['date'] ?? '—',
+                                    'checkInTime' => $log['firstLoggedTime'] ?? '—',
+                                    'checkOutTime' => $log['lastLoggedTime'] ?? '—',
+                                    'siteName' => $log['siteName'] ?? 'Mobile Punch',
+                                    'location' => (!empty($log['siteLatitude']) && !empty($log['siteLongitude'])) ? ($log['siteLatitude'] . ', ' . $log['siteLongitude']) : '—',
+                                    'photoUrl' => $log['siteInPictureUrl'] ?? $log['siteOutPictureUrl'] ?? '',
+                                    'voiceNoteUrl' => '',
+                                    'remarks' => $log['remarks'] ?? 'Attendance Selfie',
+                                    'latitude' => $log['siteLatitude'] ?? null,
+                                    'longitude' => $log['siteLongitude'] ?? null,
+                                    'registeredSite' => false
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+
+            echo json_encode([
+                'success' => true,
+                'month' => $selectedMonth,
+                'leaves' => $leavesList,
+                'lates' => $latesList,
+                'manualEntries' => $manualList,
+                'mobilePunches' => $mobilePunchesList,
+                'counts' => [
+                    'leaves' => count($leavesList),
+                    'lates' => count($latesList),
+                    'manual' => count($manualList),
+                    'mobile' => count($mobilePunchesList)
+                ]
+            ]);
+
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Internal Server Error: ' . $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+
+    /**
+     * GET /api/hrm/devices
+     * Fetch list of biometric devices from Tipsoi
+     */
+    public function getDevices()
+    {
+        header('Content-Type: application/json');
+        try {
+            $token = $this->externalApiService->getUserBearerToken(true) ?: $this->externalApiService->getBearerToken();
+            if (!$token) {
+                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                exit;
+            }
+
+            $url = "https://app.tipsoi.ai/inovace-client/api/v1/devices";
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token, 'Accept: application/json']);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            $res = curl_exec($ch);
+            curl_close($ch);
+
+            $data = json_decode($res, true);
+            $devices = $data['devices'] ?? [];
+            $formatted = [];
+            foreach ($devices as $d) {
+                if (($d['status'] ?? 0) == 1) {
+                    $formatted[] = [
+                        'id' => $d['id'],
+                        'identifier' => $d['identifier'] ?? '',
+                        'location' => $d['location'] ?? 'Device ' . $d['id'],
+                        'isOnline' => !empty($d['isOnline'])
+                    ];
+                }
+            }
+
+            echo json_encode(['success' => true, 'devices' => $formatted]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    /**
+     * POST /api/employee/manual-entry/apply
+     * Apply Manual Entry, Missing Punch (Device/Mobile), or Field Visit to Tipsoi
+     */
+    public function applyManualEntry()
+    {
+        header('Content-Type: application/json');
+        try {
+            $data = $this->getSessionEmployee();
+            if (!$data) {
+                echo json_encode(['success' => false, 'message' => 'Employee session not found.']);
+                exit;
+            }
+
+            $token = $this->externalApiService->getUserBearerToken(true) ?: $this->externalApiService->getBearerToken();
+            if (!$token) {
+                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                exit;
+            }
+
+            $rawInput = file_get_contents('php://input');
+            $input = json_decode($rawInput, true) ?: $_POST;
+
+            $tipsoiId = $_SESSION['user']['tipsoi_id'] ?? null;
+            if (!$tipsoiId) {
+                $employee = $data['employee'];
+                $localOfficeId = trim($employee['employee_id'] ?? '');
+                $localEmail = strtolower(trim($employee['email'] ?? ''));
+                $empUrl = "https://app.tipsoi.ai/inovace-client/api/v1/employee?order=asc&pageNumber=0&perPage=2000&status=1";
+                $ch = curl_init($empUrl);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token, 'Accept: application/json']);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+                $res = curl_exec($ch);
+                curl_close($ch);
+                $empData = json_decode($res, true);
+                $extEmps = $empData['data'] ?? $empData['employees'] ?? [];
+                foreach ($extEmps as $emp) {
+                    $empEmail = strtolower(trim($emp['email'] ?? ''));
+                    $empOid = trim((string)($emp['employeeOfficeId'] ?? $emp['employeeId'] ?? ''));
+                    if (($empEmail !== '' && $empEmail === $localEmail) || ($empOid !== '' && $empOid === $localOfficeId)) {
+                        $tipsoiId = $emp['id'] ?? $emp['employeeId'] ?? null;
+                        break;
+                    }
+                }
+            }
+
+            if (!$tipsoiId) {
+                echo json_encode(['success' => false, 'message' => 'Tipsoi Employee ID could not be identified.']);
+                exit;
+            }
+
+            $type = (int)($input['type'] ?? 1); // 1: Manual Entry, 2: Missing Punch, 3: Field Visit
+            $date = !empty($input['date']) ? $input['date'] : date('Y-m-d');
+            $reason = trim($input['reason'] ?? '');
+
+            if (empty($reason)) {
+                echo json_encode(['success' => false, 'message' => 'Please provide a reason or comment for this application.']);
+                exit;
+            }
+
+            $payload = [
+                'employeeId' => (int)$tipsoiId,
+                'type' => $type,
+                'reason' => $reason,
+                'forceApproval' => false
+            ];
+
+            if ($type === 1) {
+                // 1. Manual Entry
+                $entryTimeStr = !empty($input['entryTime']) ? $input['entryTime'] : '09:30';
+                $exitTimeStr = !empty($input['exitTime']) ? $input['exitTime'] : '18:30';
+
+                $startDate = strtotime($date . ' 00:00:00') * 1000;
+                $endDate = strtotime($date . ' 23:59:59') * 1000;
+                $entryTimeMs = strtotime($date . ' ' . $entryTimeStr) * 1000;
+                $exitTimeMs = strtotime($date . ' ' . $exitTimeStr) * 1000;
+
+                $payload['startDate'] = $startDate;
+                $payload['endDate'] = $endDate;
+                $payload['entryTime'] = $entryTimeMs;
+                $payload['exitTime'] = $exitTimeMs;
+
+            } elseif ($type === 2) {
+                // 2. Missing Punch
+                $missingPunchType = ($input['missingPunchType'] ?? 'device') === 'mobile' ? 'mobile' : 'device';
+                $entryExitType = (int)($input['entryExitType'] ?? 1); // 1: Entry, 2: Exit
+                $punchTimeStr = !empty($input['punchTime']) ? $input['punchTime'] : '09:30';
+                $punchTimeMs = strtotime($date . ' ' . $punchTimeStr) * 1000;
+
+                $payload['missingPunchType'] = $missingPunchType;
+                $payload['entryExitType'] = $entryExitType;
+
+                if ($entryExitType === 1) {
+                    $payload['entryTime'] = $punchTimeMs;
+                } else {
+                    $payload['exitTime'] = $punchTimeMs;
+                }
+
+                if ($missingPunchType === 'device') {
+                    $deviceId = (int)($input['deviceId'] ?? 0);
+                    if ($deviceId <= 0) {
+                        echo json_encode(['success' => false, 'message' => 'Please select a valid device.']);
+                        exit;
+                    }
+                    $payload['deviceId'] = $deviceId;
+                } else {
+                    $area = trim($input['area'] ?? $input['location'] ?? '');
+                    if (empty($area)) {
+                        echo json_encode(['success' => false, 'message' => 'Please provide a location/area for mobile punch.']);
+                        exit;
+                    }
+                    $payload['area'] = $area;
+                }
+
+            } elseif ($type === 3) {
+                // 3. Field Visit
+                $entryTimeStr = !empty($input['entryTime']) ? $input['entryTime'] : '09:30';
+                $exitTimeStr = !empty($input['exitTime']) ? $input['exitTime'] : '18:30';
+                $area = trim($input['area'] ?? '');
+
+                if (empty($area)) {
+                    echo json_encode(['success' => false, 'message' => 'Please specify the visit destination or area.']);
+                    exit;
+                }
+
+                $startDate = strtotime($date . ' 00:00:00') * 1000;
+                $endDate = strtotime($date . ' 23:59:59') * 1000;
+                $entryTimeMs = strtotime($date . ' ' . $entryTimeStr) * 1000;
+                $exitTimeMs = strtotime($date . ' ' . $exitTimeStr) * 1000;
+
+                $payload['startDate'] = $startDate;
+                $payload['endDate'] = $endDate;
+                $payload['entryTime'] = $entryTimeMs;
+                $payload['exitTime'] = $exitTimeMs;
+                $payload['area'] = $area;
+            }
+
+            // Submit to Tipsoi API
+            $apiUrl = "https://app.tipsoi.ai/inovace-client/api/v1/attendance/manual-entry";
+            $ch = curl_init($apiUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Bearer ' . $token,
+                'Content-Type: application/json',
+                'Accept: application/json'
+            ]);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            $res = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            $resData = json_decode($res, true);
+            if ($httpCode >= 200 && $httpCode < 300) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Application submitted successfully!',
+                    'data' => $resData
+                ]);
+            } else {
+                echo json_encode([
+                    'success' => false,
+                    'message' => $resData['message'] ?? 'Failed to submit application to Tipsoi.',
+                    'details' => $resData
+                ]);
+            }
+
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Server Error: ' . $e->getMessage()]);
         }
         exit;
     }

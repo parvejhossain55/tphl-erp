@@ -258,4 +258,116 @@ class ExternalApiService
             'error_message' => $errorMessage
         ];
     }
+
+    /**
+     * Authenticate an individual user directly against Tipsoi API
+     * Returns JWT token on success or error info on mismatch
+     */
+    public function authenticateUser($email, $password)
+    {
+        $loginUrl = $this->baseUrl . 'auth/external-sync/sign-in';
+
+        $ch = curl_init($loginUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+            'email' => trim($email),
+            'password' => $password
+        ]));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            return ['success' => false, 'message' => 'Tipsoi Connection Error: ' . $curlError];
+        }
+
+        if ($httpCode !== 200 && $httpCode !== 201) {
+            return ['success' => false, 'message' => 'Tipsoi credentials mismatch (HTTP ' . $httpCode . ')'];
+        }
+
+        $data = json_decode($response, true);
+        $token = $data['token'] ?? $data['access_token'] ?? $data['data']['token'] ?? $data['data']['access_token'] ?? null;
+
+        if ($token) {
+            $tipsoiId = null;
+            $tokenParts = explode('.', $token);
+            if (isset($tokenParts[1])) {
+                $payloadJson = base64_decode(str_pad(strtr($tokenParts[1], '-_', '+/'), strlen($tokenParts[1]) % 4, '=', STR_PAD_RIGHT));
+                $jwtPayload = json_decode($payloadJson, true);
+                $tipsoiId = $jwtPayload['sub'] ?? null;
+            }
+
+            return [
+                'success' => true,
+                'token' => $token,
+                'tipsoi_id' => $tipsoiId,
+                'expires' => time() + 3300,
+                'profile' => $data['data'] ?? $data['user'] ?? null
+            ];
+        }
+
+        return ['success' => false, 'message' => 'Token extraction failed from Tipsoi response.'];
+    }
+
+    /**
+     * Get active Bearer Token for the logged-in user if available, otherwise fall back to Master token
+     */
+    public function getUserBearerToken($fallbackToMaster = true)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!empty($_SESSION['user']['tipsoi_token'])) {
+            $expires = $_SESSION['user']['tipsoi_token_expires'] ?? 0;
+            if ($expires > time()) {
+                return $_SESSION['user']['tipsoi_token'];
+            }
+        }
+
+        return $fallbackToMaster ? $this->getBearerToken() : null;
+    }
+
+    /**
+     * Get single employee basic profile directly from Tipsoi
+     * GET /employee/basic-profile/{employeeId}
+     */
+    public function getEmployeeBasicProfile($tipsoiId, $token = null)
+    {
+        if (!$token) {
+            $token = $this->getUserBearerToken(true);
+        }
+        if (!$token || !$tipsoiId) {
+            return null;
+        }
+
+        $url = $this->baseUrl . "employee/basic-profile/" . urlencode($tipsoiId);
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $token,
+            'Accept: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        $res = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode === 200) {
+            $data = json_decode($res, true);
+            return $data['employee'] ?? $data['data']['employee'] ?? $data['data'] ?? null;
+        }
+
+        return null;
+    }
 }

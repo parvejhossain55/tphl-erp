@@ -277,12 +277,19 @@
             statusDescription.textContent = 'Retrieving employee and local attendance records...';
 
             fetch(`${baseUrl}/api/payroll/department-attendance?project_id=${projectId}&department_id=${deptId}&month=${month}`)
-                .then(res => res.json())
+                .then(async res => {
+                    const text = await res.text();
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        throw new Error(text || res.statusText || 'Invalid server response');
+                    }
+                })
                 .then(res => {
                     loadEmployeesBtn.disabled = false;
                     loadEmployeesBtn.innerHTML = '<i class="fa-solid fa-users-gear me-2"></i>Load List';
 
-                    if (res.success) {
+                    if (res && res.success) {
                         payslipItems = res.payslip_items || [];
                         employeeDataList = res.employees || [];
 
@@ -307,15 +314,15 @@
                     } else {
                         tipsoiStatusCard.className = 'card__wrapper mb-25 p-20 border-start border-4 border-danger shadow-sm';
                         statusTitle.textContent = 'Data Fetch Failure';
-                        statusDescription.textContent = res.message || 'An error occurred while fetching employee records.';
+                        statusDescription.textContent = (res && res.message) ? res.message : 'An error occurred while fetching employee records.';
                     }
                 })
                 .catch(err => {
                     loadEmployeesBtn.disabled = false;
                     loadEmployeesBtn.innerHTML = '<i class="fa-solid fa-users-gear me-2"></i>Load List';
                     tipsoiStatusCard.className = 'card__wrapper mb-25 p-20 border-start border-4 border-danger shadow-sm';
-                    statusTitle.textContent = 'Network Error';
-                    statusDescription.textContent = 'Failed to make API request. Please verify connection.';
+                    statusTitle.textContent = 'Request Error';
+                    statusDescription.textContent = err.message || 'Failed to make API request. Please verify connection.';
                     console.error(err);
                 });
         });
@@ -548,18 +555,23 @@
                     const index = row.dataset.index;
                     const emp = employeeDataList[index];
 
-                    let rowAllowances = 0.0;
+                    let rowExtraEarnings = 0.0;
                     row.querySelectorAll('.in-earning').forEach(inp => {
-                        rowAllowances += parseFloat(inp.value || 0);
+                        if (inp.classList.contains('in-punctuality') || 
+                            inp.classList.contains('in-overtime') || 
+                            inp.classList.contains('in-arrear') || 
+                            inp.classList.contains('in-otherallow')) {
+                            rowExtraEarnings += parseFloat(inp.value || 0);
+                        }
                     });
 
                     let rowDeductions = 0.0;
-                    row.querySelectorAll('.in-deduct, .in-tax').forEach(inp => {
+                    row.querySelectorAll('.in-deduct').forEach(inp => {
                         rowDeductions += parseFloat(inp.value || 0);
                     });
 
-                    const basic = parseFloat(row.querySelector('.cell-basic').dataset.val) || 0;
-                    totalEarnings += (basic + rowAllowances);
+                    const gross = parseFloat(row.querySelector('.cell-gross').textContent.replace(/,/g, '')) || 0;
+                    totalEarnings += (gross + rowExtraEarnings);
                     totalDeductions += rowDeductions;
                     totalNetPayroll += parseFloat(row.querySelector('.cell-netpayable').textContent.replace(/,/g, '')) || 0;
                 }
@@ -575,9 +587,8 @@
         employeeSearch.addEventListener('input', function () {
             const query = this.value.toLowerCase().trim();
             employeeTableBody.querySelectorAll('tr').forEach(row => {
-                const name = row.querySelector('.fw-bold').textContent.toLowerCase();
-                const details = row.querySelector('.text-muted').textContent.toLowerCase();
-                if (name.includes(query) || details.includes(query)) {
+                const rowText = row.textContent.toLowerCase();
+                if (rowText.includes(query)) {
                     row.style.display = '';
                 } else {
                     row.style.display = 'none';
@@ -604,17 +615,22 @@
 
                     // Gather earnings
                     const earnings = {};
-                    let rowAllowances = 0.0;
+                    let extraAllowances = 0.0;
                     row.querySelectorAll('.in-earning').forEach(inp => {
                         const itemId = inp.dataset.itemId;
                         const val = parseFloat(inp.value || 0);
                         if (itemId && val > 0) {
                             earnings[itemId] = val;
                         }
-                        rowAllowances += val;
+                        if (inp.classList.contains('in-punctuality') || 
+                            inp.classList.contains('in-overtime') || 
+                            inp.classList.contains('in-arrear') || 
+                            inp.classList.contains('in-otherallow')) {
+                            extraAllowances += val;
+                        }
                     });
 
-                    // Gather deductions
+                    // Gather deductions (including advance, lunch, absent, tax, and others)
                     const deductions = {};
                     let rowDeductions = 0.0;
                     row.querySelectorAll('.in-deduct').forEach(inp => {
@@ -625,15 +641,10 @@
                         }
                         rowDeductions += val;
                     });
-                    
-                    const taxVal = parseFloat(row.querySelector('.in-tax').value || 0);
-                    if (itemMap.tax && taxVal > 0) {
-                        deductions[itemMap.tax] = taxVal;
-                        rowDeductions += taxVal;
-                    }
 
                     const basic = parseFloat(row.querySelector('.cell-basic').dataset.val) || 0;
-                    const totalEarning = parseFloat(row.querySelector('.cell-gross').textContent.replace(/,/g, '')) || (basic + rowAllowances);
+                    const gross = parseFloat(row.querySelector('.cell-gross').textContent.replace(/,/g, '')) || parseFloat(emp.gross_salary) || 0;
+                    const totalEarning = gross + extraAllowances;
                     const netSalary = parseFloat(row.querySelector('.cell-netpayable').textContent.replace(/,/g, '')) || (totalEarning - rowDeductions);
 
                     selectedEmployees.push({
