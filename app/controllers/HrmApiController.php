@@ -504,7 +504,9 @@ class HrmApiController extends Controller
             
             // Default params if none provided
             if (empty($queryString)) {
-                $queryString = "page=0&count=100&status=0&status=1&status=2";
+                $queryString = "page=0&count=100&status=0&status=1&status=2&keyword=%20";
+            } elseif (!str_contains($queryString, 'keyword=')) {
+                $queryString .= '&keyword=%20';
             }
             
             $url = "https://app.tipsoi.ai/inovace-client/api/v1/leave-management/leave-history?" . $queryString;
@@ -547,7 +549,7 @@ class HrmApiController extends Controller
     {
         header('Content-Type: application/json');
         try {
-            $token = $this->externalApiService->getBearerToken();
+            $token = $this->externalApiService->getUserBearerToken(true);
             if (!$token) {
                 echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
                 exit;
@@ -680,7 +682,7 @@ class HrmApiController extends Controller
     {
         header('Content-Type: application/json');
         try {
-            $token = $this->externalApiService->getBearerToken();
+            $token = $this->externalApiService->getUserBearerToken(true);
             if (!$token) {
                 echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
                 exit;
@@ -957,7 +959,7 @@ class HrmApiController extends Controller
             $pendingRequests = [];
 
             // 1. Fetch Global Pending Leaves
-            $ch = curl_init("https://app.tipsoi.ai/inovace-client/api/v1/leave-management/leave-history?page=0&count=2000&status=0");
+            $ch = curl_init("https://app.tipsoi.ai/inovace-client/api/v1/leave-management/leave-history?page=0&count=2000&status=0&keyword=%20");
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token, 'Accept: application/json']);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -1273,7 +1275,7 @@ class HrmApiController extends Controller
             };
 
             // 1. Leaves
-            $d = $fetchData("https://app.tipsoi.ai/inovace-client/api/v1/leave-management/leave-history?page=0&count=2000&status=0");
+            $d = $fetchData("https://app.tipsoi.ai/inovace-client/api/v1/leave-management/leave-history?page=0&count=2000&status=0&keyword=%20");
             $globalLeaves = $d['leaveLogList'] ?? [];
             $d = $fetchData("https://app.tipsoi.ai/inovace-client/api/v1/remaining-leave/approvers/$empId");
             $approverLeaves = $d['leaveApplications'] ?? [];
