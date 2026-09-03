@@ -37,43 +37,55 @@ class SalesDashboardController extends Controller
 
         $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int) $_GET['team_id'] : null;
 
-        if (in_array($roleId, [1, 3, 9])) {
+        // Admin, Super Admin, Sales Head, Management, Chief Officer see all by default
+        if (in_array($roleId, [1, 3, 9, 32, 33])) {
             $teamId = $filterTeamId;
         } else {
+            // If they have no team_id, let them see everything (e.g. Sales Manager with no team)
             $teamId = !empty($sessionTeamId) ? (int) $sessionTeamId : $filterTeamId;
         }
 
         $followUpTeamId = !empty($teamId) ? $teamId : null;
 
-        //  Total Leads
+        // Dashboard Date Filters
+        $dashboardStartDate = $_GET['dashboard_start_date'] ?? date('Y-m-d');
+        $dashboardEndDate = $_GET['dashboard_end_date'] ?? date('Y-m-d');
+
+        $leadDateCondition = " AND DATE(l.created_at) >= '$dashboardStartDate' AND DATE(l.created_at) <= '$dashboardEndDate' ";
+        $fuNextDateCondition = " AND DATE(fu.next_follow_up_date) >= '$dashboardStartDate' AND DATE(fu.next_follow_up_date) <= '$dashboardEndDate' ";
+        $fuCreatedCondition = " AND DATE(fu.created_at) >= '$dashboardStartDate' AND DATE(fu.created_at) <= '$dashboardEndDate' ";
+        $bookingDateCondition = " AND DATE(lb.booking_date) >= '$dashboardStartDate' AND DATE(lb.booking_date) <= '$dashboardEndDate' ";
+        $paymentDateCondition = " AND DATE(lp.payment_date) >= '$dashboardStartDate' AND DATE(lp.payment_date) <= '$dashboardEndDate' ";
+
+        //  Total Leads (All time)
         $totalLeadsCount = $this->leadModel->countAll(null, $teamId);
 
-        //  New Leads Today
-        $todayLeadsQuery = "SELECT COUNT(l.id) AS today_count FROM leads l LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE DATE(l.created_at) = CURDATE() AND l.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+        //  New Leads (Filtered)
+        $todayLeadsQuery = "SELECT COUNT(l.id) AS today_count FROM leads l LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE l.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) $leadDateCondition";
         if (!empty($teamId)) {
             $todayLeadsQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $todayLeadsResult = $this->db->query($todayLeadsQuery);
         $todayLeads = $todayLeadsResult->fetch_assoc()['today_count'] ?? 0;
 
-        //  Follow-ups Due
-        $followUpsQuery = "SELECT COUNT(*) AS due FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE fu.next_follow_up_date <= CURDATE() AND fu.status = 'pending' AND fu.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+        //  Follow-ups Due (Filtered)
+        $followUpsQuery = "SELECT COUNT(*) AS due FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE fu.status = 'pending' AND fu.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) $fuNextDateCondition";
         if (!empty($teamId)) {
             $followUpsQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $followUpsResult = $this->db->query($followUpsQuery);
         $followUpsDue = $followUpsResult->fetch_assoc()['due'] ?? 0;
 
-        //  Onboarded Clients
-        $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings lb JOIN leads l ON lb.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE lb.booking_status IN ('completed', 'booked') AND lb.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+        //  Onboarded Clients (Filtered)
+        $onboardedQuery = "SELECT COUNT(*) AS onboarded FROM lead_bookings lb JOIN leads l ON lb.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE lb.booking_status IN ('completed', 'booked') AND lb.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) $bookingDateCondition";
         if (!empty($teamId)) {
             $onboardedQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $onboardedResult = $this->db->query($onboardedQuery);
         $onboardedClients = $onboardedResult->fetch_assoc()['onboarded'] ?? 0;
 
-        //  Booking Money Collected
-        $bookingCollectedQuery = "SELECT SUM(lp.amount) AS total_collected FROM lead_payments lp JOIN lead_bookings lb ON lp.booking_id = lb.id JOIN leads l ON lb.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE lp.payment_type='booking_money' AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+        //  Booking Money Collected (Filtered)
+        $bookingCollectedQuery = "SELECT SUM(lp.amount) AS total_collected FROM lead_payments lp JOIN lead_bookings lb ON lp.booking_id = lb.id JOIN leads l ON lb.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE lp.payment_type='booking_money' AND lp.payment_status IN ('paid', 'partially_paid') AND lp.verification_status = 'verified' AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) $paymentDateCondition";
         if (!empty($teamId)) {
             $bookingCollectedQuery .= " AND l.team_id = " . (int) $teamId;
         }
@@ -83,76 +95,70 @@ class SalesDashboardController extends Controller
         //  Conversion Rate
         $conversionRate = $totalLeadsCount > 0 ? ($onboardedClients / $totalLeadsCount) * 100 : 0;
 
-        //  New Follow-ups Today (optional)
-        $newFollowUpsQuery = "SELECT COUNT(*) AS new_followups FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE DATE(fu.created_at) = CURDATE() AND fu.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+        //  New Follow-ups Created (optional, filtered)
+        $newFollowUpsQuery = "SELECT COUNT(*) AS new_followups FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE fu.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) $fuCreatedCondition";
         if (!empty($teamId)) {
             $newFollowUpsQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $newFollowUpsResult = $this->db->query($newFollowUpsQuery);
         $newFollowUpsToday = $newFollowUpsResult->fetch_assoc()['new_followups'] ?? 0;
 
-        // Today's Follow-up Count (Filtered by team)
-        $todayFollowUpSql = "SELECT COUNT(*) AS total FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE DATE(fu.next_follow_up_date) = CURDATE() AND fu.deleted_at IS NULL AND fu.status = 'pending' AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+        // Follow-up Count (Filtered by next_follow_up_date)
+        $todayFollowUpSql = "SELECT COUNT(*) AS total FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE fu.deleted_at IS NULL AND fu.status = 'pending' AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) $fuNextDateCondition";
         if (!empty($followUpTeamId)) {
             $todayFollowUpSql .= " AND l.team_id = " . (int) $followUpTeamId;
         }
         $totalTodayFollowUps = $this->db->query($todayFollowUpSql)->fetch_assoc()['total'] ?? 0;
 
-        // today's follow-ups table data
-        // We'll update the model method or use custom logic if needed, but for now let's keep the existing call if it's acceptable, or add a team filter to it.
+        // follow-ups table data
         $todayFollowUpData = $this->followUpModel->getTodaysFollowUps($followUpTeamId);
 
-        // WA Messaging','WA Conversion','Wa Call','Imo Massage','Imo Call','Phone Call','Phone Massage','Invalid Number','No Wa /No Imo','Number Off'
-
-        // 1. Contacted Count (leads.last_lead_action = 'contacted')
-        // Contacted Count (Advanced Condition)
-        // Contacted Count (Exact Conditions)
+        // Total Contacted (from leads created in the date range)
         $contactedQuery = "
-    SELECT COUNT(DISTINCT l.id) AS count 
-    FROM leads l 
-    LEFT JOIN employees emp ON emp.user_id = l.assigned_id 
-    LEFT JOIN lead_follow_ups fu ON fu.lead_id = l.id AND fu.deleted_at IS NULL
-    WHERE l.deleted_at IS NULL 
-      AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
-      AND (
-          l.call_status IN ('called', 'received')
-          OR fu.id IS NOT NULL
-          OR l.communication_type IN ('WA Messaging', 'WA Conversion', 'Wa Call', 'Imo Massage', 'Imo Call', 'Phone Call', 'Phone Massage')
-          OR l.last_lead_action IN ('booked', 'follow up', 'visited', 'contacted')
-          OR (l.lead_type IS NOT NULL AND l.lead_type != '')
-          OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
-      )
-";
+            SELECT COUNT(DISTINCT l.id) AS count 
+            FROM leads l 
+            LEFT JOIN employees emp ON emp.user_id = l.assigned_id 
+            WHERE l.deleted_at IS NULL 
+            AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+            $leadDateCondition
+            AND (
+                l.last_lead_action IN ('contacted', 'follow up', 'booked') 
+                OR EXISTS (
+                    SELECT 1 FROM lead_follow_ups fu 
+                    WHERE fu.lead_id = l.id AND fu.deleted_at IS NULL
+                )
+            )
+        ";
 
         if (!empty($teamId)) {
             $contactedQuery .= " AND l.team_id = " . (int) $teamId;
         }
-
         $contactedCount = $this->db->query($contactedQuery)->fetch_assoc()['count'] ?? 0;
+        $notContactedCount = max(0, $todayLeads - $contactedCount);
 
-        // 2. High Prospect Count (leads.lead_type = 'High Prospect')
-        $highProspectQuery = "SELECT COUNT(l.id) AS count FROM leads l LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE l.lead_type = 'High Prospect' AND l.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+        // High Prospect Count (leads.lead_type = 'High Prospect')
+        $highProspectQuery = "SELECT COUNT(l.id) AS count FROM leads l LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE l.lead_type = 'High Prospect' AND l.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) $leadDateCondition";
         if (!empty($teamId)) {
             $highProspectQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $highProspectCount = $this->db->query($highProspectQuery)->fetch_assoc()['count'] ?? 0;
 
-        // 3. Will Visit Count (lead_follow_ups.next_action = 'site visit' AND fu.status = 'pending')
-        $willVisitQuery = "SELECT COUNT(DISTINCT fu.lead_id) AS count FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE fu.next_action = 'site visit' AND fu.status = 'pending' AND fu.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+        // Will Visit Count (lead_follow_ups.next_action = 'site visit' AND fu.status = 'pending')
+        $willVisitQuery = "SELECT COUNT(DISTINCT fu.lead_id) AS count FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE fu.next_action = 'site visit' AND fu.status = 'pending' AND fu.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) $fuCreatedCondition";
         if (!empty($teamId)) {
             $willVisitQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $willVisitCount = $this->db->query($willVisitQuery)->fetch_assoc()['count'] ?? 0;
 
-        // 4. Visited Count (leads.last_lead_action = 'visited' OR leads.lead_type = 'Visited')
-        $visitedQuery = "SELECT COUNT(l.id) AS count FROM leads l LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE (l.last_lead_action = 'visited' OR l.lead_type = 'Visited') AND l.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+        // Visited Count (leads.last_lead_action = 'visited' OR leads.lead_type = 'Visited')
+        $visitedQuery = "SELECT COUNT(l.id) AS count FROM leads l LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE (l.last_lead_action = 'visited' OR l.lead_type = 'Visited') AND l.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) $leadDateCondition";
         if (!empty($teamId)) {
             $visitedQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $visitedCount = $this->db->query($visitedQuery)->fetch_assoc()['count'] ?? 0;
 
-        // 5. Booked Count (leads.last_lead_action = 'booked')
-        $bookedQuery = "SELECT COUNT(l.id) AS count FROM leads l LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE l.last_lead_action = 'booked' AND l.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+        // Booked Count (leads.last_lead_action = 'booked')
+        $bookedQuery = "SELECT COUNT(l.id) AS count FROM leads l LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE l.last_lead_action = 'booked' AND l.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) $leadDateCondition";
         if (!empty($teamId)) {
             $bookedQuery .= " AND l.team_id = " . (int) $teamId;
         }
@@ -416,6 +422,9 @@ class SalesDashboardController extends Controller
             "willVisitCount" => $willVisitCount,
             "visitedCount" => $visitedCount,
             "bookedCount" => $bookedCount,
+            "notContactedCount" => $notContactedCount,
+            "dashboardStartDate" => $dashboardStartDate,
+            "dashboardEndDate" => $dashboardEndDate,
         ]);
     }
 

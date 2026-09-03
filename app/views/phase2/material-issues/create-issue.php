@@ -48,7 +48,7 @@ $backUrl      = $backUrl      ?? '';
     <!-- STEP 1: Select Project Cards -->
     <div id="projectCardsSection" <?= $preProjectId ? 'style="display:none"' : '' ?>>
         <h5 class="mb-3 text-muted fw-bold"><i class="bi bi-building me-2"></i>Select a Project to Issue Material</h5>
-        <div class="row g-3">
+        <div class="row ">
             <?php if (!empty($projects)): ?>
                 <?php foreach ($projects as $p): ?>
                     <div class="col-md-4 col-sm-6">

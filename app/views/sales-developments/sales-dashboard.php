@@ -200,6 +200,56 @@
     <div>
         <h4 class="fw-bold mb-3">Full Summery</h4>
     </div>
+    
+    <!-- Dashboard Global Filter -->
+    <form method="GET" action="" class="mb-4">
+        <!-- Preserve other query parameters -->
+        <?php foreach ($_GET as $key => $value): ?>
+            <?php if (!in_array($key, ['dashboard_start_date', 'dashboard_end_date', 'date_filter_type'])): ?>
+                <input type="hidden" name="<?= htmlspecialchars($key) ?>" value="<?= htmlspecialchars($value) ?>">
+            <?php endif; ?>
+        <?php endforeach; ?>
+        
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-3">
+                <label class="form-label">Date Filter</label>
+                <select name="date_filter_type" id="dateFilterType" class="form-select" onchange="toggleCustomDate()">
+                    <option value="today" <?= (!isset($_GET['date_filter_type']) || $_GET['date_filter_type'] === 'today') ? 'selected' : '' ?>>Today</option>
+                    <option value="custom" <?= (isset($_GET['date_filter_type']) && $_GET['date_filter_type'] === 'custom') ? 'selected' : '' ?>>Custom Range</option>
+                </select>
+            </div>
+            
+            <div class="col-6 col-md-3 custom-date-field" style="<?= (isset($_GET['date_filter_type']) && $_GET['date_filter_type'] === 'custom') ? '' : 'display: none;' ?>">
+                <label for="dashStartDate" class="form-label">From Date</label>
+                <input type="date" class="form-control" name="dashboard_start_date" id="dashStartDate" value="<?= htmlspecialchars($dashboardStartDate ?? date('Y-m-d')) ?>">
+            </div>
+            <div class="col-6 col-md-3 custom-date-field" style="<?= (isset($_GET['date_filter_type']) && $_GET['date_filter_type'] === 'custom') ? '' : 'display: none;' ?>">
+                <label for="dashEndDate" class="form-label">To Date</label>
+                <input type="date" class="form-control" name="dashboard_end_date" id="dashEndDate" value="<?= htmlspecialchars($dashboardEndDate ?? date('Y-m-d')) ?>">
+            </div>
+            
+            <div class="col-12 col-md-3">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fa-solid fa-filter me-1"></i> Apply Filter
+                </button>
+            </div>
+        </div>
+    </form>
+    <script>
+        function toggleCustomDate() {
+            var filterType = document.getElementById('dateFilterType').value;
+            var customFields = document.querySelectorAll('.custom-date-field');
+            if (filterType === 'custom') {
+                customFields.forEach(el => el.style.display = 'block');
+            } else {
+                customFields.forEach(el => el.style.display = 'none');
+                // Automatically set inputs to today when switching back to 'today'
+                var today = new Date().toISOString().split('T')[0];
+                document.getElementById('dashStartDate').value = today;
+                document.getElementById('dashEndDate').value = today;
+            }
+        }
+    </script>
     <div class="row g-20 mb-4 align-items-stretch">
 
         <div class="col-12 col-sm-6 col-md-4 col-xxl-3 mb-2">
@@ -223,7 +273,7 @@
                         <span><i class="fa-regular fa-user-plus"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-primary mb-10">New Leads Today</h6>
+                        <h6 class="card__title text-break text-primary mb-10">New Leads (Filtered)</h6>
                         <h4 class="card__title"><?= $todayLeads ?? '' ?></h4>
                     </div>
                 </div>
@@ -251,7 +301,7 @@
                         <span><i class="fa-regular fa-circle-check"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-primary mb-10">Today Follow Up</h6>
+                        <h6 class="card__title text-break text-primary mb-10">Follow Ups (Filtered)</h6>
                         <h4 class="card__title"><?= $totalTodayFollowUps ?></h4>
                     </div>
                 </div>
@@ -287,16 +337,31 @@
             </div>
         </div>
 
-        <!-- TOTAL PROJECT -->
+        <!-- TOTAL CONTACTED -->
         <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
-                        <span><i class="fa-solid fa-building"></i></span>
+                        <span><i class="fa-solid fa-phone-volume"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-primary mb-10">Total Project</h6>
-                        <h4 class="card__title"><?= $totalProjects ?></h4>
+                        <h6 class="card__title text-break text-primary mb-10">Total Contacted</h6>
+                        <h4 class="card__title"><?= number_format($contactedCount) ?></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- NOT CONTACTED -->
+        <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-10">
+                    <div class="card__icon">
+                        <span><i class="fa-solid fa-phone-slash"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__title text-break text-danger mb-10">Not Contacted</h6>
+                        <h4 class="card__title text-danger"><?= number_format($notContactedCount) ?></h4>
                     </div>
                 </div>
             </div>
@@ -352,22 +417,7 @@
             </div>
         </div>
 
-        <!-- Contacted Card -->
-        <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
-            <div class="card__wrapper">
-                <div class="d-flex align-items-center gap-10">
-                    <div class="card__icon">
-                        <span><i class="fa-solid fa-phone-volume"></i></span>
-                    </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__title text-break text-primary mb-10">Contacted</h6>
-                        <h4 class="card__title">
-                            <?= number_format($contactedCount) ?>
-                        </h4>
-                    </div>
-                </div>
-            </div>
-        </div>
+
 
         <!-- High Prospect Card -->
         <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
