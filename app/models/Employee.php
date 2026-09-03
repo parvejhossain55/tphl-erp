@@ -605,7 +605,7 @@ WHERE e.id = ?
     //     $result = $this->db->query($sql);
     //     return $result->fetch_all(MYSQLI_ASSOC);
     // }
-    public function getAllForExport()
+    public function getAllForExport($search = '', $department_id = '', $team_id = '', $workplace = '')
     {
         $sql = "SELECT e.*, 
                    dept.name AS department_name, 
@@ -613,10 +613,56 @@ WHERE e.id = ?
             FROM employees AS e
             LEFT JOIN departments AS dept ON e.department_id = dept.id
             LEFT JOIN designations AS desg ON e.designation_id = desg.id
-            ORDER BY e.id DESC";
+            WHERE 1";
 
-        $result = $this->db->query($sql);
-        return $result->fetch_all(MYSQLI_ASSOC);
+        $params = [];
+        $types = "";
+
+        if ($search) {
+            $sql .= " AND (e.full_name LIKE ? 
+                    OR e.phone LIKE ? 
+                    OR e.email LIKE ? 
+                    OR e.username LIKE ?
+                    OR e.employee_id LIKE ?)";
+
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $types .= "sssss";
+        }
+
+        if ($department_id) {
+            $sql .= " AND e.department_id = ?";
+            $params[] = $department_id;
+            $types .= "i";
+        }
+
+        if ($team_id) {
+            $sql .= " AND e.team_id = ?";
+            $params[] = $team_id;
+            $types .= "i";
+        }
+
+        if ($workplace) {
+            $sql .= " AND e.workplace = ?";
+            $params[] = $workplace;
+            $types .= "s";
+        }
+
+        $sql .= " ORDER BY e.id DESC";
+
+        if (!empty($params)) {
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+        } else {
+            $result = $this->db->query($sql);
+            return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+        }
     }
 
     public function getSearchSuggestions($q)

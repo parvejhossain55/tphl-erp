@@ -1,1 +1,6 @@
-<?php require "app/config/config.php"; $db = new mysqli("127.0.0.1", "root", "", "tphl_db"); $sql = "SELECT cbr.*, oo.name AS operator_name, oo.phone AS operator_phone, oo.trade AS operator_trade, p.name AS project_name, u.full_name AS created_by_name, v.full_name AS verified_by_name, ab.full_name AS approved_by_name, ab_r.name AS approved_by_role, pwp.week_number AS target_week_number, pwp.week_start_date AS target_week_start_date, pwp.week_end_date AS target_week_end_date, pwp.overall_progress_pct AS target_overall_progress_pct, pp.phase_name AS target_phase_name, pmt.target_month_number, pmt.target_year FROM contractor_bill_requests cbr LEFT JOIN operations_operators oo ON oo.id = cbr.operator_id LEFT JOIN projects p ON p.id = cbr.project_id LEFT JOIN users u ON u.id = cbr.created_by LEFT JOIN users v ON v.id = cbr.verified_by LEFT JOIN users ab ON ab.id = cbr.approved_by LEFT JOIN roles ab_r ON ab_r.id = ab.role_id LEFT JOIN phase_weekly_progress pwp ON pwp.id = cbr.target_id LEFT JOIN project_phases pp ON pp.id = pwp.phase_id LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id WHERE cbr.id = 1"; $stmt = $db->prepare($sql); if (!$stmt) { echo $db->error; } else { echo "Success"; } ?>
+<?php
+$c = new mysqli('127.0.0.1','root','','tphl_db');
+$r = $c->query("SELECT id, role_id, full_name FROM users WHERE full_name LIKE '%Purchase Head%'");
+while($row = $r->fetch_assoc()) {
+    print_r($row);
+}

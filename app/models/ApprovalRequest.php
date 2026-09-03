@@ -22,7 +22,8 @@ class ApprovalRequest extends Model
         'contractor_bill_requests',
         'lead_payments',
         'project_incentive_claims',
-        'fund_requisitions'
+        'fund_requisitions',
+        'project_other_costs'
     ];
     public function create($data)
     {

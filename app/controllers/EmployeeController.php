@@ -509,7 +509,12 @@ class EmployeeController extends Controller
 
     public function exportExcel()
     {
-        $employees = $this->employeeModel->getAllForExport();
+        $searchTerm = $_GET['q'] ?? '';
+        $departmentFilter = $_GET['department_id'] ?? '';
+        $teamFilter = $_GET['team_id'] ?? '';
+        $workplaceFilter = $_GET['workplace'] ?? '';
+
+        $employees = $this->employeeModel->getAllForExport($searchTerm, $departmentFilter, $teamFilter, $workplaceFilter);
 
         header("Content-Type: application/vnd.ms-excel");
         header("Content-Disposition: attachment; filename=employees.xls");
@@ -537,14 +542,19 @@ class EmployeeController extends Controller
                 ($emp['joining_date'] ?? '') . "\t" .
                 ($emp['gross_salary'] ?? '') . "\t" .
                 ($emp['basic_salary'] ?? '') . "\t" .
-                ($emp['employee_status'] ?? '') . "\t";
+                ($emp['employee_status'] ?? '') . "\n";
         }
 
         exit;
     }
     public function exportPDF()
     {
-        $employees = $this->employeeModel->getAllForExport();
+        $searchTerm = $_GET['q'] ?? '';
+        $departmentFilter = $_GET['department_id'] ?? '';
+        $teamFilter = $_GET['team_id'] ?? '';
+        $workplaceFilter = $_GET['workplace'] ?? '';
+
+        $employees = $this->employeeModel->getAllForExport($searchTerm, $departmentFilter, $teamFilter, $workplaceFilter);
         $totalEmployees = count($employees);
 
         $pdf = new \TCPDF('L', 'mm', 'A4');

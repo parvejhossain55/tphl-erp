@@ -9,10 +9,10 @@ $show_breadcrumb = true;
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h5 class="mb-0 fw-bold text-dark"><i class="fa-solid fa-users text-primary me-2"></i>Employee Directory</h5>
         <div class="d-flex align-items-center gap-2 flex-wrap">
-            <a href="<?= $GLOBALS['base_url'] ?>/employees-pdf-download" class="btn btn-sm btn-outline-danger shadow-sm">
+            <a href="<?= $GLOBALS['base_url'] ?>/employees-pdf-download?<?= $_SERVER['QUERY_STRING'] ?? '' ?>" class="btn btn-sm btn-outline-danger shadow-sm">
                 <i class="fa-solid fa-file-pdf me-1"></i> PDF Download
             </a>
-            <a href="<?= $GLOBALS['base_url'] ?>/employees-excel-download" class="btn btn-sm btn-outline-success shadow-sm">
+            <a href="<?= $GLOBALS['base_url'] ?>/employees-excel-download?<?= $_SERVER['QUERY_STRING'] ?? '' ?>" class="btn btn-sm btn-outline-success shadow-sm">
                 <i class="fa-solid fa-file-excel me-1"></i> Excel Download
             </a>
             <a href="<?= $GLOBALS['base_url'] ?>/create-employee" class="btn btn-sm btn-primary shadow-sm">
