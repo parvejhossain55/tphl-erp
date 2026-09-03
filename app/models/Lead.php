@@ -244,36 +244,44 @@ class Lead extends Model
             $types .= "i";
         }
 
+        // Determine if we should apply created_at date filter
+        $applyCreatedDateFilter = true;
+        if (in_array($filter_card, ['total_booked', 'today_follow_up', 'pending_follow_ups'])) {
+            $applyCreatedDateFilter = false;
+        }
+
         // Date range filter
-        if (!empty($from_date) && !empty($to_date)) {
-            $sql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
-            $params[] = $from_date;
-            $params[] = $to_date;
-            $types .= "ss";
-        } elseif (!empty($from_date)) {
-            $sql .= " AND DATE(l.created_at) >= ?";
-            $params[] = $from_date;
-            $types .= "s";
-        } elseif (!empty($to_date)) {
-            $sql .= " AND DATE(l.created_at) <= ?";
-            $params[] = $to_date;
-            $types .= "s";
-        } elseif (!empty($date)) {
-            $sql .= " AND DATE(l.created_at) = ?";
-            $params[] = $date;
-            $types .= "s";
-        } else {
-            // Year filter
-            if (!empty($year)) {
-                $sql .= " AND YEAR(l.created_at) = ?";
-                $params[] = $year;
-                $types .= "i";
-            }
-            // Month filter
-            if (!empty($month)) {
-                $sql .= " AND MONTH(l.created_at) = ?";
-                $params[] = $month;
-                $types .= "i";
+        if ($applyCreatedDateFilter) {
+            if (!empty($from_date) && !empty($to_date)) {
+                $sql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+                $params[] = $from_date;
+                $params[] = $to_date;
+                $types .= "ss";
+            } elseif (!empty($from_date)) {
+                $sql .= " AND DATE(l.created_at) >= ?";
+                $params[] = $from_date;
+                $types .= "s";
+            } elseif (!empty($to_date)) {
+                $sql .= " AND DATE(l.created_at) <= ?";
+                $params[] = $to_date;
+                $types .= "s";
+            } elseif (!empty($date)) {
+                $sql .= " AND DATE(l.created_at) = ?";
+                $params[] = $date;
+                $types .= "s";
+            } else {
+                // Year filter
+                if (!empty($year)) {
+                    $sql .= " AND YEAR(l.created_at) = ?";
+                    $params[] = $year;
+                    $types .= "i";
+                }
+                // Month filter
+                if (!empty($month)) {
+                    $sql .= " AND MONTH(l.created_at) = ?";
+                    $params[] = $month;
+                    $types .= "i";
+                }
             }
         }
 
@@ -327,23 +335,54 @@ class Lead extends Model
         if (!empty($filter_card)) {
             if ($filter_card === 'total_booked') {
                 $sql .= " AND l.last_lead_action = 'booked'";
+                if (!empty($from_date) && !empty($to_date)) {
+                    $sql .= " AND EXISTS (SELECT 1 FROM lead_bookings lb_sub WHERE lb_sub.lead_id = l.id AND lb_sub.deleted_at IS NULL AND DATE(lb_sub.booking_date) BETWEEN ? AND ?)";
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $types .= "ss";
+                }
             } elseif ($filter_card === 'today_follow_up') {
-                $sql .= " AND EXISTS (
-                    SELECT 1 FROM lead_follow_ups lf_sub
-                    WHERE lf_sub.lead_id = l.id
-                      AND lf_sub.deleted_at IS NULL
-                      AND lf_sub.next_follow_up_date >= CURDATE()
-                      AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
-                )";
+                if (!empty($from_date) && !empty($to_date)) {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_follow_ups lf_sub
+                        WHERE lf_sub.lead_id = l.id
+                          AND lf_sub.deleted_at IS NULL
+                          AND DATE(lf_sub.next_follow_up_date) BETWEEN ? AND ?
+                    )";
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $types .= "ss";
+                } else {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_follow_ups lf_sub
+                        WHERE lf_sub.lead_id = l.id
+                          AND lf_sub.deleted_at IS NULL
+                          AND lf_sub.next_follow_up_date >= CURDATE()
+                          AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
+                    )";
+                }
             } elseif ($filter_card === 'pending_follow_ups') {
-                $sql .= " AND EXISTS (
-                    SELECT 1 FROM lead_follow_ups lf_sub
-                    WHERE lf_sub.lead_id = l.id
-                      AND lf_sub.deleted_at IS NULL
-                      AND lf_sub.next_follow_up_date >= CURDATE()
-                      AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
-                      AND lf_sub.status = 'pending'
-                )";
+                if (!empty($from_date) && !empty($to_date)) {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_follow_ups lf_sub
+                        WHERE lf_sub.lead_id = l.id
+                          AND lf_sub.deleted_at IS NULL
+                          AND lf_sub.status = 'pending'
+                          AND DATE(lf_sub.next_follow_up_date) BETWEEN ? AND ?
+                    )";
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $types .= "ss";
+                } else {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_follow_ups lf_sub
+                        WHERE lf_sub.lead_id = l.id
+                          AND lf_sub.deleted_at IS NULL
+                          AND lf_sub.next_follow_up_date >= CURDATE()
+                          AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
+                          AND lf_sub.status = 'pending'
+                    )";
+                }
             } elseif ($filter_card === 'hot_leads') {
                 $sql .= " AND l.lead_type = 'Hot'";
             } elseif ($filter_card === 'contacted_leads') {
@@ -366,6 +405,8 @@ class Lead extends Model
                 $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0";
             } elseif ($filter_card === 'not_assigned_leads') {
                 $sql .= " AND (l.assigned_id IS NULL OR l.assigned_id = 0)";
+            } elseif ($filter_card === 'has_follow_up') {
+                $sql .= " AND EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.deleted_at IS NULL)";
             }
         }
 
@@ -478,38 +519,44 @@ class Lead extends Model
             $types .= "i";
         }
 
+        // Determine if we should apply created_at date filter
+        $applyCreatedDateFilter = true;
+        if (in_array($filter_card, ['total_booked', 'today_follow_up', 'pending_follow_ups'])) {
+            $applyCreatedDateFilter = false;
+        }
+
         // Date range filter
-        if (!empty($from_date) && !empty($to_date)) {
-            $sql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
-            $params[] = $from_date;
-            $params[] = $to_date;
-            $types .= "ss";
-        } elseif (!empty($from_date)) {
-            $sql .= " AND DATE(l.created_at) >= ?";
-            $params[] = $from_date;
-            $types .= "s";
-        } elseif (!empty($to_date)) {
-            $sql .= " AND DATE(l.created_at) <= ?";
-            $params[] = $to_date;
-            $types .= "s";
-        } elseif (!empty($date)) {
-            $sql .= " AND DATE(l.created_at) = ?";
-            $params[] = $date;
-            $types .= "s";
-        } else {
-
-            // Year filter
-            if (!empty($year)) {
-                $sql .= " AND YEAR(l.created_at) = ?";
-                $params[] = $year;
-                $types .= "i";
-            }
-
-            // Month filter
-            if (!empty($month)) {
-                $sql .= " AND MONTH(l.created_at) = ?";
-                $params[] = $month;
-                $types .= "i";
+        if ($applyCreatedDateFilter) {
+            if (!empty($from_date) && !empty($to_date)) {
+                $sql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+                $params[] = $from_date;
+                $params[] = $to_date;
+                $types .= "ss";
+            } elseif (!empty($from_date)) {
+                $sql .= " AND DATE(l.created_at) >= ?";
+                $params[] = $from_date;
+                $types .= "s";
+            } elseif (!empty($to_date)) {
+                $sql .= " AND DATE(l.created_at) <= ?";
+                $params[] = $to_date;
+                $types .= "s";
+            } elseif (!empty($date)) {
+                $sql .= " AND DATE(l.created_at) = ?";
+                $params[] = $date;
+                $types .= "s";
+            } else {
+                // Year filter
+                if (!empty($year)) {
+                    $sql .= " AND YEAR(l.created_at) = ?";
+                    $params[] = $year;
+                    $types .= "i";
+                }
+                // Month filter
+                if (!empty($month)) {
+                    $sql .= " AND MONTH(l.created_at) = ?";
+                    $params[] = $month;
+                    $types .= "i";
+                }
             }
         }
 
@@ -562,23 +609,54 @@ class Lead extends Model
         if (!empty($filter_card)) {
             if ($filter_card === 'total_booked') {
                 $sql .= " AND l.last_lead_action = 'booked'";
+                if (!empty($from_date) && !empty($to_date)) {
+                    $sql .= " AND EXISTS (SELECT 1 FROM lead_bookings lb_sub WHERE lb_sub.lead_id = l.id AND lb_sub.deleted_at IS NULL AND DATE(lb_sub.booking_date) BETWEEN ? AND ?)";
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $types .= "ss";
+                }
             } elseif ($filter_card === 'today_follow_up') {
-                $sql .= " AND EXISTS (
-                    SELECT 1 FROM lead_follow_ups lf_sub
-                    WHERE lf_sub.lead_id = l.id
-                      AND lf_sub.deleted_at IS NULL
-                      AND lf_sub.next_follow_up_date >= CURDATE()
-                      AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
-                )";
+                if (!empty($from_date) && !empty($to_date)) {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_follow_ups lf_sub
+                        WHERE lf_sub.lead_id = l.id
+                          AND lf_sub.deleted_at IS NULL
+                          AND DATE(lf_sub.next_follow_up_date) BETWEEN ? AND ?
+                    )";
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $types .= "ss";
+                } else {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_follow_ups lf_sub
+                        WHERE lf_sub.lead_id = l.id
+                          AND lf_sub.deleted_at IS NULL
+                          AND lf_sub.next_follow_up_date >= CURDATE()
+                          AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
+                    )";
+                }
             } elseif ($filter_card === 'pending_follow_ups') {
-                $sql .= " AND EXISTS (
-                    SELECT 1 FROM lead_follow_ups lf_sub
-                    WHERE lf_sub.lead_id = l.id
-                      AND lf_sub.deleted_at IS NULL
-                      AND lf_sub.next_follow_up_date >= CURDATE()
-                      AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
-                      AND lf_sub.status = 'pending'
-                )";
+                if (!empty($from_date) && !empty($to_date)) {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_follow_ups lf_sub
+                        WHERE lf_sub.lead_id = l.id
+                          AND lf_sub.deleted_at IS NULL
+                          AND lf_sub.status = 'pending'
+                          AND DATE(lf_sub.next_follow_up_date) BETWEEN ? AND ?
+                    )";
+                    $params[] = $from_date;
+                    $params[] = $to_date;
+                    $types .= "ss";
+                } else {
+                    $sql .= " AND EXISTS (
+                        SELECT 1 FROM lead_follow_ups lf_sub
+                        WHERE lf_sub.lead_id = l.id
+                          AND lf_sub.deleted_at IS NULL
+                          AND lf_sub.next_follow_up_date >= CURDATE()
+                          AND lf_sub.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
+                          AND lf_sub.status = 'pending'
+                    )";
+                }
             } elseif ($filter_card === 'hot_leads') {
                 $sql .= " AND l.lead_type = 'Hot'";
             } elseif ($filter_card === 'contacted_leads') {
@@ -601,6 +679,8 @@ class Lead extends Model
                 $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0";
             } elseif ($filter_card === 'not_assigned_leads') {
                 $sql .= " AND (l.assigned_id IS NULL OR l.assigned_id = 0)";
+            } elseif ($filter_card === 'has_follow_up') {
+                $sql .= " AND EXISTS (SELECT 1 FROM lead_follow_ups lf_sub WHERE lf_sub.lead_id = l.id AND lf_sub.deleted_at IS NULL)";
             }
         }
 

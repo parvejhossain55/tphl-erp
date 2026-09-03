@@ -104,14 +104,14 @@
                     style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
-                            <div class="d-flex justify-content-between mb-2">
+                            <a href="<?= $GLOBALS['base_url'] ?>/lead-lists?filter_card=assigned_leads&from_date=<?= $dashboardStartDate ?>&to_date=<?= $dashboardEndDate ?><?= isset($_GET['team_id']) && $_GET['team_id'] !== '' ? '&team_id=' . (int)$_GET['team_id'] : '' ?>" class="d-flex justify-content-between mb-2 text-decoration-none">
                                 <span class="text-primary fw-semibold">Today Total Leads Assigned</span>
                                 <span class="fw-bold text-dark"><?= $singleData['today_leads_assigned'] ?? 0 ?></span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-2">
+                            </a>
+                            <a href="<?= $GLOBALS['base_url'] ?>/lead-lists?filter_card=contacted_leads&from_date=<?= $dashboardStartDate ?>&to_date=<?= $dashboardEndDate ?><?= isset($_GET['team_id']) && $_GET['team_id'] !== '' ? '&team_id=' . (int)$_GET['team_id'] : '' ?>" class="d-flex justify-content-between mb-2 text-decoration-none">
                                 <span class="text-primary fw-semibold">Today Total Contacted</span>
                                 <span class="fw-bold text-success"><?= $singleData['today_contacted'] ?? 0 ?></span>
-                            </div>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -122,14 +122,14 @@
                     style="border-right-width: 4px !important;">
                     <div class="d-flex align-items-center gap-3">
                         <div class="flex-grow-1">
-                            <div class="d-flex justify-content-between mb-2">
+                            <a href="<?= $GLOBALS['base_url'] ?>/lead-lists?filter_card=today_follow_up&from_date=<?= $dashboardStartDate ?>&to_date=<?= $dashboardEndDate ?><?= isset($_GET['team_id']) && $_GET['team_id'] !== '' ? '&team_id=' . (int)$_GET['team_id'] : '' ?>" class="d-flex justify-content-between mb-2 text-decoration-none">
                                 <span class="text-primary fw-semibold">Today Follow Up</span>
                                 <span class="fw-bold text-dark"><?= $singleData['today_follow_ups'] ?? 0 ?></span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-2">
+                            </a>
+                            <a href="<?= $GLOBALS['base_url'] ?>/lead-lists?filter_card=not_contacted_leads&from_date=<?= $dashboardStartDate ?>&to_date=<?= $dashboardEndDate ?><?= isset($_GET['team_id']) && $_GET['team_id'] !== '' ? '&team_id=' . (int)$_GET['team_id'] : '' ?>" class="d-flex justify-content-between mb-2 text-decoration-none">
                                 <span class="text-primary fw-semibold">Today Remaining Data</span>
                                 <span class="fw-bold text-warning"><?= $singleData['today_remaining'] ?? 0 ?></span>
-                            </div>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -214,24 +214,29 @@
             <div class="col-12 col-md-3">
                 <label class="form-label">Date Filter</label>
                 <select name="date_filter_type" id="dateFilterType" class="form-select" onchange="toggleCustomDate()">
-                    <option value="today" <?= (!isset($_GET['date_filter_type']) || $_GET['date_filter_type'] === 'today') ? 'selected' : '' ?>>Today</option>
-                    <option value="custom" <?= (isset($_GET['date_filter_type']) && $_GET['date_filter_type'] === 'custom') ? 'selected' : '' ?>>Custom Range</option>
+                    <option value="today" <?= (isset($_GET['date_filter_type']) && $_GET['date_filter_type'] === 'today') ? 'selected' : '' ?>>Today</option>
+                    <option value="custom" <?= (!isset($_GET['date_filter_type']) || $_GET['date_filter_type'] === 'custom') ? 'selected' : '' ?>>Custom Range</option>
                 </select>
             </div>
             
-            <div class="col-6 col-md-3 custom-date-field" style="<?= (isset($_GET['date_filter_type']) && $_GET['date_filter_type'] === 'custom') ? '' : 'display: none;' ?>">
+            <div class="col-6 col-md-3 custom-date-field" style="<?= (!isset($_GET['date_filter_type']) || $_GET['date_filter_type'] === 'custom') ? '' : 'display: none;' ?>">
                 <label for="dashStartDate" class="form-label">From Date</label>
-                <input type="date" class="form-control" name="dashboard_start_date" id="dashStartDate" value="<?= htmlspecialchars($dashboardStartDate ?? date('Y-m-d')) ?>">
+                <input type="date" class="form-control" name="dashboard_start_date" id="dashStartDate" value="<?= htmlspecialchars($dashboardStartDate ?? '') ?>">
             </div>
-            <div class="col-6 col-md-3 custom-date-field" style="<?= (isset($_GET['date_filter_type']) && $_GET['date_filter_type'] === 'custom') ? '' : 'display: none;' ?>">
+            <div class="col-6 col-md-3 custom-date-field" style="<?= (!isset($_GET['date_filter_type']) || $_GET['date_filter_type'] === 'custom') ? '' : 'display: none;' ?>">
                 <label for="dashEndDate" class="form-label">To Date</label>
-                <input type="date" class="form-control" name="dashboard_end_date" id="dashEndDate" value="<?= htmlspecialchars($dashboardEndDate ?? date('Y-m-d')) ?>">
+                <input type="date" class="form-control" name="dashboard_end_date" id="dashEndDate" value="<?= htmlspecialchars($dashboardEndDate ?? '') ?>">
             </div>
             
             <div class="col-12 col-md-3">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="fa-solid fa-filter me-1"></i> Apply Filter
-                </button>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fa-solid fa-filter me-1"></i> Apply Filter
+                    </button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/sales-dashboard" class="btn btn-secondary w-100 d-flex align-items-center justify-content-center">
+                        <i class="fa-solid fa-rotate-left me-1"></i> Reset
+                    </a>
+                </div>
             </div>
         </div>
     </form>
@@ -253,31 +258,31 @@
     <div class="row g-20 mb-4 align-items-stretch">
 
         <div class="col-12 col-sm-6 col-md-4 col-xxl-3 mb-2">
-            <div class="card__wrapper">
+            <a href="<?= $GLOBALS['base_url'] ?>/lead-lists?<?= isset($_GET['team_id']) && $_GET['team_id'] !== '' ? 'team_id=' . (int)$_GET['team_id'] : '' ?>" class="card__wrapper text-decoration-none d-block">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-regular fa-users"></i></span>
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__title text-break text-primary mb-5">Total Leads</h6>
-                        <h4 class="card__title"><?= $totalLeadsCount ?? '' ?></h4>
+                        <h4 class="card__title text-dark"><?= $totalLeadsCount ?? '' ?></h4>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <div class="col-12 col-sm-6 col-md-4 col-xxl-3 mb-2">
-            <div class="card__wrapper">
+            <a href="<?= $GLOBALS['base_url'] ?>/lead-lists?from_date=<?= $dashboardStartDate ?>&to_date=<?= $dashboardEndDate ?><?= isset($_GET['team_id']) && $_GET['team_id'] !== '' ? '&team_id=' . (int)$_GET['team_id'] : '' ?>" class="card__wrapper text-decoration-none d-block">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-regular fa-user-plus"></i></span>
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__title text-break text-primary mb-10">New Leads (Filtered)</h6>
-                        <h4 class="card__title"><?= $todayLeads ?? '' ?></h4>
+                        <h4 class="card__title text-dark"><?= $todayLeads ?? '' ?></h4>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <div class=" d-none col-xxl-4 col-xl-4 col-md-4 col-6 mb-2">
@@ -295,17 +300,17 @@
         </div>
 
         <div class="col-12 col-sm-6 col-md-4 col-xxl-3 mb-2">
-            <div class="card__wrapper">
+            <a href="<?= $GLOBALS['base_url'] ?>/lead-lists?filter_card=has_follow_up&from_date=<?= $dashboardStartDate ?>&to_date=<?= $dashboardEndDate ?><?= isset($_GET['team_id']) && $_GET['team_id'] !== '' ? '&team_id=' . (int)$_GET['team_id'] : '' ?>" class="card__wrapper text-decoration-none d-block">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-regular fa-circle-check"></i></span>
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__title text-break text-primary mb-10">Follow Ups (Filtered)</h6>
-                        <h4 class="card__title"><?= $totalTodayFollowUps ?></h4>
+                        <h4 class="card__title text-dark"><?= $totalTodayFollowUps ?></h4>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-12 col-sm-6 col-md-4 col-xxl-3 mb-2">
             <div class="card__wrapper">
@@ -324,37 +329,37 @@
 
         <!-- REVENUE + CONVERSION -->
         <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
-            <div class="card__wrapper">
+            <a href="<?= $GLOBALS['base_url'] ?>/lead-lists?filter_card=total_booked&from_date=<?= $dashboardStartDate ?>&to_date=<?= $dashboardEndDate ?><?= isset($_GET['team_id']) && $_GET['team_id'] !== '' ? '&team_id=' . (int)$_GET['team_id'] : '' ?>" class="card__wrapper text-decoration-none d-block">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-regular fa-circle-check"></i></span>
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__title text-break text-primary mb-10">Total Flat Booking</h6>
-                        <h4 class="card__title"><?= $onboardedClients ?></h4>
+                        <h4 class="card__title text-dark"><?= $onboardedClients ?></h4>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- TOTAL CONTACTED -->
         <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
-            <div class="card__wrapper">
+            <a href="<?= $GLOBALS['base_url'] ?>/lead-lists?filter_card=contacted_leads&from_date=<?= $dashboardStartDate ?>&to_date=<?= $dashboardEndDate ?><?= isset($_GET['team_id']) && $_GET['team_id'] !== '' ? '&team_id=' . (int)$_GET['team_id'] : '' ?>" class="card__wrapper text-decoration-none d-block">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-solid fa-phone-volume"></i></span>
                     </div>
                     <div class="card__title-wrap">
                         <h6 class="card__title text-break text-primary mb-10">Total Contacted</h6>
-                        <h4 class="card__title"><?= number_format($contactedCount) ?></h4>
+                        <h4 class="card__title text-dark"><?= number_format($contactedCount) ?></h4>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
         
         <!-- NOT CONTACTED -->
         <div class="col-12 col-sm-6 col-xl-4 col-xxl-3 mb-2">
-            <div class="card__wrapper">
+            <a href="<?= $GLOBALS['base_url'] ?>/lead-lists?filter_card=not_contacted_leads&from_date=<?= $dashboardStartDate ?>&to_date=<?= $dashboardEndDate ?><?= isset($_GET['team_id']) && $_GET['team_id'] !== '' ? '&team_id=' . (int)$_GET['team_id'] : '' ?>" class="card__wrapper text-decoration-none d-block">
                 <div class="d-flex align-items-center gap-10">
                     <div class="card__icon">
                         <span><i class="fa-solid fa-phone-slash"></i></span>
@@ -364,7 +369,7 @@
                         <h4 class="card__title text-danger"><?= number_format($notContactedCount) ?></h4>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- BOOKING MONEY COLLECTED -->

@@ -54,8 +54,11 @@ $disable_layout = true;
                     <?php 
                         $isVerified = ($payment['verification_status'] ?? 'pending') === 'verified';
                         if ($isVerified): 
+                            $bankName = !empty($payment['company_bank_name']) ? $payment['company_bank_name'] : 'SYSTEM';
                     ?>
-                        <span class="paid-stamp">VERIFIED AND PAID </span>
+                        <span class="paid-stamp">BANK VERIFIED: <?= htmlspecialchars($bankName) ?></span>
+                    <?php else: ?>
+                        <span class="pending-stamp">SUBJECT TO BANK VERIFY</span>
                     <?php endif; ?>
                 </div>
             </div>
@@ -212,6 +215,10 @@ $disable_layout = true;
                     <span>Total Amount Paid:</span>
                     <span class="amount-highlight">TK.<?= number_format($payment['amount'] ?? 0, 2) ?></span>
                 </div>
+                <div class="payment-row" style="margin-top: 15px;">
+                    <span>Payment Received/Created By:</span>
+                    <span style="font-weight: 600; color: #555;"><?= htmlspecialchars($payment['created_by_name'] ?? 'SYSTEM') ?></span>
+                </div>
             <?php endif; ?>
         </div>
 
@@ -276,7 +283,6 @@ $disable_layout = true;
                 </div>
             <?php endif; ?>
         </div>
-
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>

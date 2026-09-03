@@ -48,14 +48,40 @@ class SalesDashboardController extends Controller
         $followUpTeamId = !empty($teamId) ? $teamId : null;
 
         // Dashboard Date Filters
-        $dashboardStartDate = $_GET['dashboard_start_date'] ?? date('Y-m-d');
-        $dashboardEndDate = $_GET['dashboard_end_date'] ?? date('Y-m-d');
+        $dashboardStartDate = $_GET['dashboard_start_date'] ?? '';
+        $dashboardEndDate = $_GET['dashboard_end_date'] ?? '';
+        $dateFilterType = $_GET['date_filter_type'] ?? 'custom';
 
-        $leadDateCondition = " AND DATE(l.created_at) >= '$dashboardStartDate' AND DATE(l.created_at) <= '$dashboardEndDate' ";
-        $fuNextDateCondition = " AND DATE(fu.next_follow_up_date) >= '$dashboardStartDate' AND DATE(fu.next_follow_up_date) <= '$dashboardEndDate' ";
-        $fuCreatedCondition = " AND DATE(fu.created_at) >= '$dashboardStartDate' AND DATE(fu.created_at) <= '$dashboardEndDate' ";
-        $bookingDateCondition = " AND DATE(lb.booking_date) >= '$dashboardStartDate' AND DATE(lb.booking_date) <= '$dashboardEndDate' ";
-        $paymentDateCondition = " AND DATE(lp.payment_date) >= '$dashboardStartDate' AND DATE(lp.payment_date) <= '$dashboardEndDate' ";
+        if ($dateFilterType === 'today') {
+            $dashboardStartDate = date('Y-m-d');
+            $dashboardEndDate = date('Y-m-d');
+        }
+
+        $leadDateCondition = "";
+        $fuNextDateCondition = "";
+        $fuCreatedCondition = "";
+        $bookingDateCondition = "";
+        $paymentDateCondition = "";
+
+        if (!empty($dashboardStartDate) && !empty($dashboardEndDate)) {
+            $leadDateCondition = " AND DATE(l.created_at) >= '$dashboardStartDate' AND DATE(l.created_at) <= '$dashboardEndDate' ";
+            $fuNextDateCondition = " AND DATE(fu.next_follow_up_date) >= '$dashboardStartDate' AND DATE(fu.next_follow_up_date) <= '$dashboardEndDate' ";
+            $fuCreatedCondition = " AND DATE(fu.created_at) >= '$dashboardStartDate' AND DATE(fu.created_at) <= '$dashboardEndDate' ";
+            $bookingDateCondition = " AND DATE(lb.booking_date) >= '$dashboardStartDate' AND DATE(lb.booking_date) <= '$dashboardEndDate' ";
+            $paymentDateCondition = " AND DATE(lp.payment_date) >= '$dashboardStartDate' AND DATE(lp.payment_date) <= '$dashboardEndDate' ";
+        } elseif (!empty($dashboardStartDate)) {
+            $leadDateCondition = " AND DATE(l.created_at) >= '$dashboardStartDate' ";
+            $fuNextDateCondition = " AND DATE(fu.next_follow_up_date) >= '$dashboardStartDate' ";
+            $fuCreatedCondition = " AND DATE(fu.created_at) >= '$dashboardStartDate' ";
+            $bookingDateCondition = " AND DATE(lb.booking_date) >= '$dashboardStartDate' ";
+            $paymentDateCondition = " AND DATE(lp.payment_date) >= '$dashboardStartDate' ";
+        } elseif (!empty($dashboardEndDate)) {
+            $leadDateCondition = " AND DATE(l.created_at) <= '$dashboardEndDate' ";
+            $fuNextDateCondition = " AND DATE(fu.next_follow_up_date) <= '$dashboardEndDate' ";
+            $fuCreatedCondition = " AND DATE(fu.created_at) <= '$dashboardEndDate' ";
+            $bookingDateCondition = " AND DATE(lb.booking_date) <= '$dashboardEndDate' ";
+            $paymentDateCondition = " AND DATE(lp.payment_date) <= '$dashboardEndDate' ";
+        }
 
         //  Total Leads (All time)
         $totalLeadsCount = $this->leadModel->countAll(null, $teamId);
@@ -69,8 +95,16 @@ class SalesDashboardController extends Controller
         $todayLeads = $todayLeadsResult->fetch_assoc()['today_count'] ?? 0;
 
         //  Follow-ups Due (Filtered)
-        $followUpsQuery = "SELECT COUNT(*) AS due FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE fu.status = 'pending' AND fu.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) $fuNextDateCondition";
-        if (!empty($teamId)) {
+        $followUpsQuery = "
+            SELECT COUNT(DISTINCT l.id) AS due 
+            FROM leads l 
+            JOIN lead_follow_ups fu ON fu.lead_id = l.id 
+            LEFT JOIN employees emp ON emp.user_id = l.assigned_id 
+            WHERE fu.deleted_at IS NULL 
+            AND l.deleted_at IS NULL
+            AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) 
+            $leadDateCondition
+        ";        if (!empty($teamId)) {
             $followUpsQuery .= " AND l.team_id = " . (int) $teamId;
         }
         $followUpsResult = $this->db->query($followUpsQuery);
@@ -122,7 +156,7 @@ class SalesDashboardController extends Controller
             AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
             $leadDateCondition
             AND (
-                l.last_lead_action IN ('contacted', 'follow up', 'booked') 
+                l.last_lead_action IN ('contacted', 'follow up', 'booked', 'visited')
                 OR EXISTS (
                     SELECT 1 FROM lead_follow_ups fu 
                     WHERE fu.lead_id = l.id AND fu.deleted_at IS NULL
@@ -144,7 +178,7 @@ class SalesDashboardController extends Controller
         $highProspectCount = $this->db->query($highProspectQuery)->fetch_assoc()['count'] ?? 0;
 
         // Will Visit Count (lead_follow_ups.next_action = 'site visit' AND fu.status = 'pending')
-        $willVisitQuery = "SELECT COUNT(DISTINCT fu.lead_id) AS count FROM lead_follow_ups fu JOIN leads l ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE fu.next_action = 'site visit' AND fu.status = 'pending' AND fu.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) $fuCreatedCondition";
+        $willVisitQuery = "SELECT COUNT(DISTINCT l.id) AS count FROM leads l JOIN lead_follow_ups fu ON fu.lead_id = l.id LEFT JOIN employees emp ON emp.user_id = l.assigned_id WHERE fu.next_action = 'site visit' AND fu.status = 'pending' AND fu.deleted_at IS NULL AND l.deleted_at IS NULL AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated')) $leadDateCondition";
         if (!empty($teamId)) {
             $willVisitQuery .= " AND l.team_id = " . (int) $teamId;
         }

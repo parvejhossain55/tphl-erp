@@ -133,113 +133,18 @@ class LeadController extends Controller
         }
 
 
-        $totalBookingCount = $this->leadBookedModel->getTotalBookings();
-
-        $todayFollowUpCount = $this->followUpModel->getTodayFollowUpCountByLead();
-        $totalTodayFollowUps = array_sum($todayFollowUpCount);
-        $todayPendingFollowUpCount = $this->followUpModel->getTodayFollowUpPendingCount();
-        $totalTodayPendingFollowUps = array_sum($todayPendingFollowUpCount);
-
+        $totalBookingCount = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'total_booked', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        $totalTodayFollowUps = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'today_follow_up', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        $totalTodayPendingFollowUps = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'pending_follow_ups', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        
         //  Conversion Rate
         $conversionRate = $leadCounts > 0 ? ($totalBookingCount / $leadCounts) * 100 : 0;
-        $totalHotLeads = $this->leadModel->getTotalHotLeads(null, $teamIdForQuery);
-        $totalContactedLeads = $this->leadModel->getTotalContactedLeads(null, $teamIdForQuery);
-        $totalNotContactedLeads = $this->leadModel->getTotalNotContactedLeads(null, $teamIdForQuery);
-        $totalAssignedLeads = $this->leadModel->getTotalAssignedLeads(null, $teamIdForQuery);
-        $totalNotAssignedLeads = $this->leadModel->getTotalNotAssignedLeads(null, $teamIdForQuery);
-
-        // ── Filtered stats when a Sales Executive is selected ────────────────
-        if (!empty($assigned_user)) {
-            $assignedUserId = (int)$assigned_user;
-
-            // 1. Total Booked: lead_bookings where sales_by_id = user AND payment is 'paid'
-            $bookedSql = "
-                SELECT COUNT(DISTINCT lb.id) AS total
-                FROM lead_bookings lb
-                INNER JOIN lead_payments lp ON lp.booking_id = lb.id AND lp.payment_status = 'paid'
-                WHERE lb.sales_by_id = ?
-                AND lb.deleted_at IS NULL
-            ";
-            $bookedStmt = $this->db->prepare($bookedSql);
-            if ($bookedStmt) {
-                $bookedStmt->bind_param('i', $assignedUserId);
-                $bookedStmt->execute();
-                $totalBookingCount = $bookedStmt->get_result()->fetch_assoc()['total'] ?? 0;
-                $bookedStmt->close();
-            } else {
-                $totalBookingCount = 0;
-            }
-
-            // 2. Today Follow-Up: leads assigned to user where next_follow_up_date = today
-            $todayFUSql = "
-                SELECT COUNT(DISTINCT lf.lead_id) AS total
-                FROM lead_follow_ups lf
-                INNER JOIN leads l ON l.id = lf.lead_id AND l.assigned_id = ?
-                WHERE lf.deleted_at IS NULL
-                AND lf.next_follow_up_date >= CURDATE()
-                AND lf.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
-            ";
-            $todayFUStmt = $this->db->prepare($todayFUSql);
-            if ($todayFUStmt) {
-                $todayFUStmt->bind_param('i', $assignedUserId);
-                $todayFUStmt->execute();
-                $totalTodayFollowUps = $todayFUStmt->get_result()->fetch_assoc()['total'] ?? 0;
-                $todayFUStmt->close();
-            } else {
-                $totalTodayFollowUps = 0;
-            }
-
-            // 3. Pending Follow-Ups: next_follow_up_date is set but no follow-up created on that date for that lead
-            $pendingSql = "
-                SELECT COUNT(DISTINCT lf.lead_id) AS total
-                FROM lead_follow_ups lf
-                INNER JOIN leads l ON l.id = lf.lead_id AND l.assigned_id = ?
-                WHERE lf.deleted_at IS NULL
-                AND lf.next_follow_up_date >= CURDATE()
-                AND lf.next_follow_up_date < CURDATE() + INTERVAL 1 DAY
-                AND NOT EXISTS (
-                    SELECT 1 FROM lead_follow_ups lf2
-                    WHERE lf2.lead_id = lf.lead_id
-                    AND lf2.deleted_at IS NULL
-                    AND lf2.follow_up_date = lf.next_follow_up_date
-                )
-            ";
-            $pendingStmt = $this->db->prepare($pendingSql);
-            if ($pendingStmt) {
-                $pendingStmt->bind_param('i', $assignedUserId);
-                $pendingStmt->execute();
-                $totalTodayPendingFollowUps = $pendingStmt->get_result()->fetch_assoc()['total'] ?? 0;
-                $pendingStmt->close();
-            } else {
-                $totalTodayPendingFollowUps = 0;
-            }
-
-            // 4. Hot Leads for this user
-            $hotSql = "
-                SELECT COUNT(*) AS total FROM leads
-                WHERE deleted_at IS NULL
-                AND assigned_id = ?
-                AND lead_type = 'Hot'
-            ";
-            $hotStmt = $this->db->prepare($hotSql);
-            if ($hotStmt) {
-                $hotStmt->bind_param('i', $assignedUserId);
-                $hotStmt->execute();
-                $totalHotLeads = $hotStmt->get_result()->fetch_assoc()['total'] ?? 0;
-                $hotStmt->close();
-            } else {
-                $totalHotLeads = 0;
-            }
-
-            // 5. Contacted / Not Contacted / Assigned Leads for this user
-            $totalContactedLeads = $this->leadModel->getTotalContactedLeads($assignedUserId);
-            $totalNotContactedLeads = $this->leadModel->getTotalNotContactedLeads($assignedUserId);
-            $totalAssignedLeads = $this->leadModel->getTotalAssignedLeads($assignedUserId);
-            $totalNotAssignedLeads = $this->leadModel->getTotalNotAssignedLeads($assignedUserId);
-
-            // 6. Recalculate Conversion Rate with filtered booking count
-            $conversionRate = $leadCounts > 0 ? ($totalBookingCount / $leadCounts) * 100 : 0;
-        }
+        
+        $totalHotLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'hot_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        $totalContactedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'contacted_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        $totalNotContactedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'not_contacted_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        $totalAssignedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'assigned_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
+        $totalNotAssignedLeads = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, 'not_assigned_leads', $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
         // ── Duplicate Leads Detection ─────────────────────────────────────────
         // My team leads assigned to me whose phone/email also appears in OTHER assigned_ids
         $dupGroups  = [];

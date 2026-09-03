@@ -431,13 +431,20 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-12">
+                        <div class="col-md-6">
                             <label class="form-label mb-1">Item Category <span class="text-danger">*</span></label>
                             <select name="item_category_id" class="form-select" required>
                                 <option value="">-- Select Category --</option>
                                 <?php foreach ($categories ?? [] as $cat): ?>
                                     <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
                                 <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label mb-1">Request Type <span class="text-danger">*</span></label>
+                            <select name="request_type" class="form-select" required>
+                                <option value="Purchase">Purchase</option>
+                                <option value="Servicing">Servicing</option>
                             </select>
                         </div>
                         <div class="col-md-12">
@@ -449,8 +456,8 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                             <input type="number" name="quantity" id="qty" class="form-control" value="1" min="1" required onchange="calcTotal()">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Unit Price (BDT) <span class="text-danger">*</span></label>
-                            <input type="number" name="unit_price" id="unitPrice" class="form-control" step="0.01" min="0" required onchange="calcTotal()">
+                            <label class="form-label">Unit Price (BDT) </label>
+                            <input type="number" name="unit_price" id="unitPrice" class="form-control" step="0.01" min="0" onchange="calcTotal()">
                         </div>
                         <div class="col-12">
                             <div class="bg-light p-2 rounded text-end">

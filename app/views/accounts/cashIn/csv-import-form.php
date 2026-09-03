@@ -135,9 +135,11 @@ $base_url = $GLOBALS['base_url'];
                             </ul>
                         </div>
                         <div class="col-md-6">
-                            <p class="mb-2"><strong>Optional Columns (11):</strong></p>
+                            <p class="mb-2"><strong>Optional Columns (13):</strong></p>
                             <ul class="mb-0" style="font-size:0.85rem;">
                                 <li><code>verification_status</code> — <code>pending</code> (default), <code>verified</code>, <code>rejected</code></li>
+                                <li><code>company_bank_name</code> — Company bank name (auto-inserts if new)</li>
+                                <li><code>verify_by</code> — Email of the verifier</li>
                                 <li><code>transaction_ref</code> — Transaction reference ID</li>
                                 <li><code>bank_name</code> — Bank name (auto-resolved)</li>
                                 <li><code>bank_account_no</code> — Bank account number</li>
@@ -153,7 +155,7 @@ $base_url = $GLOBALS['base_url'];
                                 <p class="mb-1" style="font-size:0.82rem;"><strong><i class="fa-light fa-robot me-1"></i>Auto-handled by system:</strong></p>
                                 <ul class="mb-0" style="font-size:0.80rem;">
                                     <li><code>payment_status</code> — Auto: <code>paid</code> / <code>partially_paid</code></li>
-                                    <li><code>created_by</code> / <code>verified_by</code> — Auto from logged-in user</li>
+                                    <li><code>created_by</code> / <code>verified_by</code> — Auto from logged-in user (if empty)</li>
                                     <li><code>service_fee</code> — Auto-calculated if not provided</li>
                                     <li><code>due_emi_amount</code> — Auto-calculated from EMI schedule</li>
                                 </ul>
