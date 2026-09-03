@@ -878,7 +878,7 @@ class UserDashboardController extends Controller
                 $('.dataTables_filter input').unbind().bind('keyup', function(e) {
                     const val = this.value;
                     clearTimeout(searchTimeout);
-                    if(e.keyCode == 13) {
+                    searchTimeout = setTimeout(function() {
                         const url = new URL(window.location.href);
                         if (val) {
                             url.searchParams.set('search', val);
@@ -886,19 +886,46 @@ class UserDashboardController extends Controller
                             url.searchParams.delete('search');
                         }
                         url.searchParams.set('page', 1);
-                        window.location.href = url.toString();
-                    } else {
-                        searchTimeout = setTimeout(function() {
-                            const url = new URL(window.location.href);
-                            if (val) {
-                                url.searchParams.set('search', val);
-                            } else {
-                                url.searchParams.delete('search');
+                        
+                        // Visual cue for loading
+                        $('#assignedLeadsTable tbody, .mobile-only').css('opacity', '0.4');
+                        
+                        $.ajax({
+                            url: url.toString(),
+                            type: 'GET',
+                            success: function(response) {
+                                const parser = new DOMParser();
+                                const doc = parser.parseFromString(response, 'text/html');
+                                
+                                // 1. Update Table (Desktop)
+                                const table = $('#assignedLeadsTable').DataTable();
+                                const newRows = $(doc).find('#assignedLeadsTable tbody tr');
+                                table.clear();
+                                newRows.each(function() {
+                                    table.row.add(this);
+                                });
+                                table.draw(false);
+                                $('#assignedLeadsTable tbody').css('opacity', '1');
+                                
+                                // 2. Update Mobile View
+                                const newMobile = $(doc).find('.mobile-only').html();
+                                $('.mobile-only').html(newMobile).css('opacity', '1');
+                                
+                                // 3. Update Summary Cards
+                                const newSummary = $(doc).find('.stat-card').first().closest('.row').html();
+                                if (newSummary) {
+                                    $('.stat-card').first().closest('.row').html(newSummary);
+                                }
+                                
+                                // Update URL history silently
+                                window.history.pushState({path: url.toString()}, '', url.toString());
+                            },
+                            error: function() {
+                                // Fallback to full reload on error
+                                window.location.href = url.toString();
                             }
-                            url.searchParams.set('page', 1);
-                            window.location.href = url.toString();
-                        }, 800);
-                    }
+                        });
+                    }, 600);
                 });
             ",
         ]);

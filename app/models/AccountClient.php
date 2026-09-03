@@ -2222,8 +2222,12 @@ ORDER BY lb.booking_date DESC
                    es.service_fee as emi_service_fee,
                    es.emi_amount as emi_schedule_amount,
                    uv.full_name as verified_by_name,
-                   uu.full_name as updated_by_name
+                   uu.full_name as updated_by_name,
+                   cb.bank_name as company_bank_name,
+                   u.full_name as created_by_name
             FROM lead_payments lp
+            LEFT JOIN users u ON u.id = lp.created_by
+            LEFT JOIN company_bank_accounts cb ON cb.id = lp.bank_id
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
             LEFT JOIN projects p ON p.id = lb.project_id

@@ -591,6 +591,7 @@ class AssetManagement
         
         // 3. Ensure required extra columns exist
         $colsToAdd = [
+            'request_type'      => "ENUM('Purchase', 'Servicing') DEFAULT 'Purchase' AFTER `item_category_id`",
             'department_id'     => "INT NULL DEFAULT NULL AFTER `project_id`",
             'asset_location'    => "VARCHAR(255) NULL DEFAULT 'Head Office' AFTER `department_id`",
             'assigned_to'       => "INT NULL DEFAULT NULL AFTER `asset_location`",
@@ -797,10 +798,12 @@ class AssetManagement
         $attachment = $data['attachment'] ?? null;
         $requestedBy = (int)($data['requested_by'] ?? 1);
 
+        $requestType = $data['request_type'] ?? 'Purchase';
+
         $stmt = $this->db->prepare(
             "INSERT INTO project_extra_assets 
-            (project_id, department_id, asset_location, assigned_to, item_category_id, item_name, quantity, unit_price, total_price, justification, attachment, requested_by, operations_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')"
+            (project_id, department_id, asset_location, assigned_to, item_category_id, request_type, item_name, quantity, unit_price, total_price, justification, attachment, requested_by, operations_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')"
         );
 
         if (!$stmt) {
@@ -809,12 +812,13 @@ class AssetManagement
         }
 
         $stmt->bind_param(
-            'iisiisiddssi',
+            'iisissiddssi',
             $projectId,
             $departmentId,
             $assetLocation,
             $assignedTo,
             $itemCategoryId,
+            $requestType,
             $itemName,
             $quantity,
             $unitPrice,

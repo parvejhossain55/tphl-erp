@@ -6,7 +6,7 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
     <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
         <div class="d-flex align-items-center gap-2">
             <h4 class="page-title fw-semibold fs-18 mb-0"><?= $page_title ?></h4>
-            <?php if (hasPermission('Contractor Bill') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
+            <?php if (hasPermission('Contractor Bill') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 17, 23, 31, 20, 32, 12])): ?>
                 <a href="<?= $base_url ?>/con-contractor-bill-create" class="btn btn-primary btn-sm">
                     <i class="bi bi-plus-circle me-1"></i> New Bill
                 </a>
@@ -118,7 +118,7 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
                             <tr>
                                 <td colspan="11" class="text-center text-muted py-4">
                                     No contractor bills found.
-                                    <?php if (hasPermission('Contractor Bill') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): ?>
+                                    <?php if (hasPermission('Contractor Bill') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 17, 23, 31, 20, 32, 12])): ?>
                                         <a href="<?= $base_url ?>/con-contractor-bill-create">Create one</a>
                                     <?php endif; ?>
                                 </td>

@@ -615,7 +615,9 @@ class PaymentBookingController extends Controller
                     'payment_type' => $paymentType,
                     'amount' => $rawAmount,
                     'payment_method' => $rawMethod,
-                    'payment_date' => $data['payment_date'] ?? ''
+                    'payment_date' => $data['payment_date'] ?? '',
+                    'company_bank_name' => $data['company_bank_name'] ?? '',
+                    'verify_by' => $data['verify_by'] ?? ''
                 ]
             ];
         }
@@ -894,6 +896,46 @@ class PaymentBookingController extends Controller
                     $rawAmount = trim($data['amount'] ?? '0');
                     $cleanAmount = floatval(str_replace(',', '', $rawAmount));
 
+                    // Resolve Company Bank
+                    $companyBankId = null;
+                    $csvCompanyBankName = trim($data['company_bank_name'] ?? '');
+                    if (!empty($csvCompanyBankName)) {
+                        $cleanBankName = preg_replace('/\s+/', '', strtolower($csvCompanyBankName));
+                        $stmtBank = $this->db->prepare("SELECT id FROM company_bank_accounts WHERE REPLACE(LOWER(bank_name), ' ', '') = ? LIMIT 1");
+                        $stmtBank->bind_param("s", $cleanBankName);
+                        $stmtBank->execute();
+                        $resBank = $stmtBank->get_result()->fetch_assoc();
+                        if ($resBank) {
+                            $companyBankId = $resBank['id'];
+                        } else {
+                            // Insert new bank
+                            $stmtInsBank = $this->db->prepare("INSERT INTO company_bank_accounts (bank_name, status, created_by) VALUES (?, 'active', ?)");
+                            $createdBy = $_SESSION['user']['id'] ?? 1;
+                            $stmtInsBank->bind_param("si", $csvCompanyBankName, $createdBy);
+                            $stmtInsBank->execute();
+                            $companyBankId = $stmtInsBank->insert_id;
+                        }
+                    }
+
+                    // Resolve verified_by (user email)
+                    $verifiedBy = $_SESSION['user']['id'] ?? null;
+                    $csvVerifyEmail = trim($data['verify_by'] ?? '');
+                    if (!empty($csvVerifyEmail)) {
+                        $stmtUsr = $this->db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+                        $stmtUsr->bind_param("s", $csvVerifyEmail);
+                        $stmtUsr->execute();
+                        $resUsr = $stmtUsr->get_result()->fetch_assoc();
+                        if ($resUsr) {
+                            $verifiedBy = $resUsr['id'];
+                        }
+                    }
+                    
+                    // Support custom verification status if provided
+                    $verificationStatus = trim($data['verification_status'] ?? 'verified');
+                    if (empty($verificationStatus) || !in_array(strtolower($verificationStatus), ['pending', 'unverified', 'verified'])) {
+                        $verificationStatus = 'verified';
+                    }
+
                     $paymentData = [
                         'booking_id' => $bookingId,
                         'payment_type' => $paymentType,
@@ -904,12 +946,13 @@ class PaymentBookingController extends Controller
                         'total_emi_no' => $data['total_emi_no'] ?? null,
                         'transaction_ref' => $data['transaction_ref'] ?? null,
                         'bank_name' => $data['bank_name'] ?? null,
+                        'bank_id' => $companyBankId,
                         'bank_account_no' => null, // or from CSV if added
                         'cheque_no' => $data['cheque_no'] ?? null,
                         'online_type' => $data['online_type'] ?? null,
                         'created_by' => $_SESSION['user']['id'] ?? null,
-                        'verification_status' => 'verified',
-                        'verified_by' => $_SESSION['user']['id'] ?? null,
+                        'verification_status' => $verificationStatus,
+                        'verified_by' => $verifiedBy,
                         'attachment_image' => $data['attachment_image'] ?? null
                     ];
 
