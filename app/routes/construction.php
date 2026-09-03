@@ -627,4 +627,16 @@ return [
     'con-budget-extend-store' => ['controller' => 'Phase2\Con_BudgetExtendController', 'method' => 'store'],
     'con-budget-extend-approve/(\d+)' => ['controller' => 'Phase2\Con_BudgetExtendController', 'method' => 'approve'],
     'con-budget-extend-reject/(\d+)' => ['controller' => 'Phase2\Con_BudgetExtendController', 'method' => 'reject'],
+
+    // =========================================================================
+    // Controller: ProjectOtherCostController
+    // =========================================================================
+    'project-other-costs' => ['controller' => 'ProjectOtherCostController', 'method' => 'index'],
+    'project-other-costs/create' => ['controller' => 'ProjectOtherCostController', 'method' => 'create'],
+    'project-other-costs/store' => ['controller' => 'ProjectOtherCostController', 'method' => 'store'],
+    'project-other-costs/approve-qc/(\d+)' => ['controller' => 'ProjectOtherCostController', 'method' => 'approve_qc'],
+    'project-other-costs/approve-management/(\d+)' => ['controller' => 'ProjectOtherCostController', 'method' => 'approve_management'],
+    'project-other-costs/pay/(\d+)' => ['controller' => 'ProjectOtherCostController', 'method' => 'pay'],
+    'project-other-costs/delete/(\d+)' => ['controller' => 'ProjectOtherCostController', 'method' => 'destroy'],
+    'project-other-costs/review/(\d+)' => ['controller' => 'ProjectOtherCostController', 'method' => 'review'],
 ];

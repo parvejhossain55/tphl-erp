@@ -142,11 +142,24 @@
     // Calculate pending Purchase Requests & Purchase Orders count for sidebar red badges
     $sidebarPendingPRCount = 0;
     $sidebarPendingPOCount = 0;
+    $sidebarPendingPOCostsCount = 0;
     if (isset($db) && isset($_SESSION['user']['id'])) {
         $sidebarUserId = (int) $_SESSION['user']['id'];
         $sidebarRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
 
         try {
+            // Pending Project Other Costs awaiting action
+            $pocStatus = null;
+            if (in_array($sidebarRoleId, [13, 24, 25, 1])) $pocStatus = 'pending';
+            elseif (in_array($sidebarRoleId, [3, 15, 20, 22, 32, 33, 1])) $pocStatus = 'qc_approved';
+            elseif (in_array($sidebarRoleId, [6, 30, 1])) $pocStatus = 'management_approved';
+            
+            if ($pocStatus) {
+                $pocRes = $db->prepare("SELECT COUNT(*) AS c FROM project_other_costs WHERE status = ?");
+                $pocRes->bind_param("s", $pocStatus);
+                $pocRes->execute();
+                $sidebarPendingPOCostsCount += $pocRes->get_result()->fetch_assoc()['c'] ?? 0;
+            }
             // 1. Pending Purchase Requests awaiting role-specific action
             if (in_array($sidebarRoleId, [1, 3])) {
                 // Admin / Super Admin: Submitted PRs awaiting approval OR Approved PRs awaiting executive assignment
@@ -1923,6 +1936,8 @@
                         </ul>
                     </li>
 
+
+
                     <!-- Client Refunds -->
                     <li class="slide <?= isActive('client-refunds', $current_route) ?>">
                         <a href="<?= $base_url ?>/client-refunds"
@@ -3254,6 +3269,20 @@
 
                 <?php endif; ?>
                 <!-- ==================== END PHASE 2 ==================== -->
+
+                <!-- Project Other Costs -->
+                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 9, 11, 12, 13, 15, 17, 20, 22, 23, 24, 25, 30, 31, 32])): ?>
+                <li class="slide <?= isActive('project-other-costs', $current_route) ?>">
+                    <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs"
+                        class="sidebar__menu-item <?= isActive('project-other-costs', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+                        <span class="sidebar__menu-label">Project Other Costs</span>
+                        <?php if ($sidebarPendingPOCostsCount > 0): ?>
+                            <span class="badge bg-danger rounded-pill ms-2 me-1" style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPOCostsCount ?></span>
+                        <?php endif; ?>
+                    </a>
+                </li>
+                <?php endif; ?>
 
                 <!-- Fund Requisitions -->
                 <li class="slide <?= isActive('fund-requisitions', $current_route) ?>">
