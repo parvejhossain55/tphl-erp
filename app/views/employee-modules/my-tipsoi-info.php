@@ -680,11 +680,12 @@
                                             <th style="width: 180px;">First Approver</th>
                                             <th style="width: 180px;">Second Approver</th>
                                             <th style="width: 95px;">Status</th>
+                                            <th style="width: 140px;" class="text-center">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="approvalsTableBody">
                                         <tr>
-                                            <td colspan="11" class="text-center py-4 text-muted">
+                                            <td colspan="12" class="text-center py-4 text-muted">
                                                 <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                                                 Loading pending approvals...
                                             </td>
@@ -1227,14 +1228,20 @@ document.addEventListener("DOMContentLoaded", function() {
         fetchTipsoiDashboard(this.value);
     });
 
-    function fetchTipsoiDashboard(month) {
+    function fetchTipsoiDashboard(month, isBackground = false) {
         const banner = document.getElementById("tipsoiStatusBanner");
         const warning = document.getElementById("notRegisteredAlert");
         const content = document.getElementById("dashboardContent");
         
-        banner.classList.remove("d-none");
-        warning.classList.add("d-none");
-        content.classList.add("d-none");
+        // Remember currently active tab so we don't reset to profile tab
+        const activeTabLink = document.querySelector("#tipsoiTabs .nav-link.active");
+        const activeTabId = activeTabLink ? activeTabLink.id : null;
+
+        if (!isBackground) {
+            banner.classList.remove("d-none");
+            warning.classList.add("d-none");
+            content.classList.add("d-none");
+        }
 
         fetch(`<?= $GLOBALS['base_url'] ?>/api/employee/tipsoi-data?month=${month}`)
             .then(async res => {
@@ -1664,6 +1671,15 @@ document.addEventListener("DOMContentLoaded", function() {
                         `;
                     });
                 }
+
+                // Restore active tab so user stays on Pending Requests or whichever tab they were viewing
+                if (activeTabId) {
+                    const el = document.getElementById(activeTabId);
+                    if (el && typeof bootstrap !== 'undefined') {
+                        const bTab = bootstrap.Tab.getInstance(el) || new bootstrap.Tab(el);
+                        bTab.show();
+                    }
+                }
             })
             .catch(err => {
                 banner.classList.add("d-none");
@@ -1682,7 +1698,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         tbody.innerHTML = `
             <tr>
-                <td colspan="11" class="text-center py-4 text-muted">
+                <td colspan="12" class="text-center py-4 text-muted">
                     <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                     Fetching pending approval requests from Tipsoi API...
                 </td>
@@ -1699,11 +1715,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 console.log("Logged User Approver Info:", loggedUserApproverInfo);
                 renderApprovalsTable();
             } else {
-                tbody.innerHTML = `<tr><td colspan="11" class="text-center text-danger py-4">${res.message || 'Failed to load requests'}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="12" class="text-center text-danger py-4">${res.message || 'Failed to load requests'}</td></tr>`;
             }
         })
         .catch(err => {
-            tbody.innerHTML = `<tr><td colspan="11" class="text-center text-danger py-4">${err.message || 'Network error'}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="12" class="text-center text-danger py-4">${err.message || 'Network error'}</td></tr>`;
         });
     }
 
@@ -1778,15 +1794,14 @@ document.addEventListener("DOMContentLoaded", function() {
                 (normUser && normSecond && (normUser.includes(normSecond) || normSecond.includes(normUser))) ||
                 (userOfficeId && secondAppName && secondAppName.includes(userOfficeId));
 
+            // Do NOT show user's own requests in this "Requests Pending My Approval" tab
             const isMyOwnRequest = (userOfficeId && String(rec.employeeOfficeId || '') === userOfficeId) || 
                                    (normUser && normUser === normalizeName(rec.employeeName));
+            if (isMyOwnRequest) {
+                return false;
+            }
 
             let isForMe = false;
-            
-            // If the user sent the request themselves
-            if (isMyOwnRequest) {
-                isForMe = true;
-            }
             
             // If the user is the first approver (and it's pending)
             if (isFirstApprover && firstStatus == 0) {
@@ -1795,6 +1810,11 @@ document.addEventListener("DOMContentLoaded", function() {
             
             // If the user is the second approver (and it's pending)
             if (isSecondApprover && secondStatus == 0) {
+                isForMe = true;
+            }
+
+            // If the user is HR/Admin, they oversee all requests waiting for approval
+            if (isHr) {
                 isForMe = true;
             }
 
@@ -1831,6 +1851,32 @@ document.addEventListener("DOMContentLoaded", function() {
             const firstAppBadge = getApproverBadge(rec.firstApprovalStatus, rec.firstApproverName);
             const secondAppBadge = getApproverBadge(rec.secondApprovalStatus, rec.secondApproverName);
 
+            // Determine approval & rejection endpoints
+            let approveEndpoint = '';
+            let rejectEndpoint = '';
+            if (rec.requestType === 'Leave Request') {
+                approveEndpoint = `/leave-management/approve/${rec.id}`;
+                rejectEndpoint = `/leave-management/reject/${rec.id}`;
+            } else if (rec.requestType === 'Late Excuse') {
+                approveEndpoint = `/late-approval-management/approve/${rec.id}`;
+                rejectEndpoint = `/late-approval-management/reject/${rec.id}`;
+            } else {
+                // Manual Entry, Missing Punch, Field Visit
+                approveEndpoint = `/employee/profile/manual/approver/approve/${rec.id}`;
+                rejectEndpoint = `/employee/profile/manual/approver/reject/${rec.id}`;
+            }
+
+            const actionButtonsHtml = `
+                <div class="d-flex gap-1 justify-content-center">
+                    <button type="button" class="btn btn-sm btn-success px-2 py-1 fs-11 fw-semibold btn-tipsoi-approve" data-id="${rec.id}" data-type="${rec.subType || rec.requestType}" data-endpoint="${approveEndpoint}" title="Approve Request">
+                        <i class="fa-solid fa-check me-1"></i>Approve
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger px-2 py-1 fs-11 fw-semibold btn-tipsoi-reject" data-id="${rec.id}" data-type="${rec.subType || rec.requestType}" data-endpoint="${rejectEndpoint}" title="Reject Request">
+                        <i class="fa-solid fa-xmark me-1"></i>Reject
+                    </button>
+                </div>
+            `;
+
             return `
                 <tr>
                     <td class="text-muted fw-semibold text-center">${sn++}</td>
@@ -1844,6 +1890,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     <td>${firstAppBadge}</td>
                     <td>${secondAppBadge}</td>
                     <td><span class="badge bg-warning text-dark px-2 py-1"><i class="fa-solid fa-hourglass-half me-1"></i>Pending</span></td>
+                    <td class="text-center">${actionButtonsHtml}</td>
                 </tr>
             `;
         }).join('');
@@ -1858,6 +1905,194 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("approvalReqTypeFilter")?.addEventListener("change", renderApprovalsTable);
     document.getElementById("approvalStageFilter")?.addEventListener("change", renderApprovalsTable);
     document.getElementById("approvalSearchInput")?.addEventListener("input", renderApprovalsTable);
+
+    // Approve and Reject event delegation for Approvals Table
+    document.getElementById("approvalsTableBody")?.addEventListener("click", function(e) {
+        const approveBtn = e.target.closest(".btn-tipsoi-approve");
+        const rejectBtn = e.target.closest(".btn-tipsoi-reject");
+
+        if (approveBtn) {
+            e.stopPropagation();
+            const reqId = approveBtn.getAttribute("data-id");
+            const reqType = approveBtn.getAttribute("data-type") || "Request";
+            const endpoint = approveBtn.getAttribute("data-endpoint");
+            const approverName = loggedUserApproverInfo ? (loggedUserApproverInfo.full_name || 'Approver') : 'Approver';
+
+            const doApprove = () => {
+                approveBtn.disabled = true;
+                const origHtml = approveBtn.innerHTML;
+                approveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+                fetch(`${baseUrl}/api/hrm/tipsoi-action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: endpoint,
+                        method: 'POST',
+                        payload: {
+                            approverComment: `Approved by ${approverName}`
+                        }
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        if (window.Swal) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Approved!',
+                                text: `${reqType} has been approved successfully.`
+                            });
+                        } else {
+                            alert(`${reqType} has been approved successfully.`);
+                        }
+                        loadApprovalsData();
+                        const m = monthFilter ? monthFilter.value : '<?= date('Y-m') ?>';
+                        if (typeof fetchTipsoiDashboard === 'function') {
+                            fetchTipsoiDashboard(m);
+                        }
+                    } else {
+                        if (window.Swal) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Failed',
+                                text: data.message || 'Failed to approve request.'
+                            });
+                        } else {
+                            alert(data.message || 'Failed to approve request.');
+                        }
+                        approveBtn.disabled = false;
+                        approveBtn.innerHTML = origHtml;
+                    }
+                })
+                .catch(err => {
+                    console.error('Approve error:', err);
+                    if (window.Swal) {
+                        Swal.fire({ icon: 'error', title: 'Error', text: 'Network error occurred.' });
+                    } else {
+                        alert('Network error occurred.');
+                    }
+                    approveBtn.disabled = false;
+                    approveBtn.innerHTML = origHtml;
+                });
+            };
+
+            if (window.Swal) {
+                Swal.fire({
+                    title: 'Approve Request?',
+                    text: `Are you sure you want to approve this ${reqType}?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Approve!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        doApprove();
+                    }
+                });
+            } else if (confirm(`Are you sure you want to approve this ${reqType}?`)) {
+                doApprove();
+            }
+        }
+
+        if (rejectBtn) {
+            e.stopPropagation();
+            const reqId = rejectBtn.getAttribute("data-id");
+            const reqType = rejectBtn.getAttribute("data-type") || "Request";
+            const endpoint = rejectBtn.getAttribute("data-endpoint");
+            const approverName = loggedUserApproverInfo ? (loggedUserApproverInfo.full_name || 'Approver') : 'Approver';
+
+            const doReject = (reason) => {
+                rejectBtn.disabled = true;
+                const origHtml = rejectBtn.innerHTML;
+                rejectBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+                fetch(`${baseUrl}/api/hrm/tipsoi-action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: endpoint,
+                        method: 'POST',
+                        payload: {
+                            approverComment: reason || `Rejected by ${approverName}`,
+                            rejectionReason: reason || `Rejected by ${approverName}`
+                        }
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        if (window.Swal) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Rejected!',
+                                text: `${reqType} has been rejected.`
+                            });
+                        } else {
+                            alert(`${reqType} has been rejected.`);
+                        }
+                        loadApprovalsData();
+                        const m = monthFilter ? monthFilter.value : '<?= date('Y-m') ?>';
+                        if (typeof fetchTipsoiDashboard === 'function') {
+                            fetchTipsoiDashboard(m);
+                        }
+                    } else {
+                        if (window.Swal) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Failed',
+                                text: data.message || 'Failed to reject request.'
+                            });
+                        } else {
+                            alert(data.message || 'Failed to reject request.');
+                        }
+                        rejectBtn.disabled = false;
+                        rejectBtn.innerHTML = origHtml;
+                    }
+                })
+                .catch(err => {
+                    console.error('Reject error:', err);
+                    if (window.Swal) {
+                        Swal.fire({ icon: 'error', title: 'Error', text: 'Network error occurred.' });
+                    } else {
+                        alert('Network error occurred.');
+                    }
+                    rejectBtn.disabled = false;
+                    rejectBtn.innerHTML = origHtml;
+                });
+            };
+
+            if (window.Swal) {
+                Swal.fire({
+                    title: 'Reject Request?',
+                    text: `Please enter the reason for rejecting this ${reqType}:`,
+                    input: 'textarea',
+                    inputPlaceholder: 'State the reason for rejection...',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Reject',
+                    preConfirm: (value) => {
+                        if (!value || !value.trim()) {
+                            Swal.showValidationMessage('Rejection reason is required.');
+                        }
+                        return value;
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        doReject(result.value);
+                    }
+                });
+            } else {
+                const reason = prompt(`Enter reason for rejecting this ${reqType}:`);
+                if (reason) {
+                    doReject(reason);
+                }
+            }
+        }
+    });
 
     // Helper Utility Formatters
     function isNumeric(n) {
@@ -2493,7 +2728,7 @@ document.addEventListener("DOMContentLoaded", function() {
     // ==========================================
     // 8. Cancel Request Handler (For Pending Requests)
     // ==========================================
-    document.addEventListener('click', function(e) {
+    function handleCancelRequestClick(e) {
         const btn = e.target.closest('.btn-cancel-request');
         if (!btn) return;
         e.preventDefault();
@@ -2542,6 +2777,21 @@ document.addEventListener("DOMContentLoaded", function() {
             .then(res => res.json())
             .then(data => {
                 if (data.success || data.message === 'Success' || (data.code && data.code === 200)) {
+                    // Instantly fade out and remove the row from the table
+                    const tr = btn.closest('tr');
+                    if (tr) {
+                        tr.style.transition = 'all 0.3s ease';
+                        tr.style.opacity = '0';
+                        setTimeout(() => {
+                            tr.remove();
+                            const pendingTbody = document.getElementById("pendingRequestsTableBody");
+                            if (pendingTbody && pendingTbody.querySelectorAll('tr').length === 0) {
+                                const noMsg = document.getElementById("noPendingRequestsMsg");
+                                if (noMsg) noMsg.classList.remove("d-none");
+                            }
+                        }, 300);
+                    }
+
                     if (window.Swal) {
                         Swal.fire({
                             icon: 'success',
@@ -2551,9 +2801,9 @@ document.addEventListener("DOMContentLoaded", function() {
                     } else {
                         alert(`${reqTypeName} has been cancelled successfully.`);
                     }
-                    // Refresh dashboard & history
+                    // Refresh dashboard & history in the background without jumping away from the tab
                     const currentMonth = monthFilter ? monthFilter.value : '<?= date('Y-m') ?>';
-                    fetchTipsoiDashboard(currentMonth);
+                    fetchTipsoiDashboard(currentMonth, true);
                     if (typeof fetchHistoryData === 'function') {
                         const m = historyMonthFilter ? historyMonthFilter.value : '<?= date('Y-m') ?>';
                         fetchHistoryData(m);
@@ -2601,12 +2851,14 @@ document.addEventListener("DOMContentLoaded", function() {
                     confirmAction();
                 }
             });
-        } else {
-            if (confirm(`Are you sure you want to cancel this ${reqTypeName}?`)) {
-                confirmAction();
-            }
         }
-    });
+    }
+
+    document.addEventListener('click', handleCancelRequestClick);
+    const pendingTbodyEl = document.getElementById("pendingRequestsTableBody");
+    if (pendingTbodyEl) {
+        pendingTbodyEl.addEventListener("click", handleCancelRequestClick);
+    }
 
     // -------------------------------------------------------------------------
     // UNIFIED HISTORY TAB LOGIC (Leave, Late, Manual, Mobile & Selfie)
