@@ -102,11 +102,11 @@ class Con_FinancialTransaction extends Model
                     cbr.due_amount,
                     'Full'            AS payment_type,
                     cbr.status        AS source_status,
-                    NULL              AS vpr_status,
+                    cbr.status        AS vpr_status,
                     cbr.created_at
                 FROM contractor_bill_requests cbr
                 LEFT JOIN projects p ON p.id = cbr.project_id
-                WHERE cbr.status IN ('approved', 'partially_paid')
+                WHERE cbr.status IN ('submitted', 'verified', 'qc_approved', 'approved', 'partially_paid')
 
                 UNION ALL
 

@@ -19,12 +19,14 @@ class ProjectOtherCost extends Model
                 poc.*,
                 p.name AS project_name,
                 cb.full_name AS created_by_name,
+                dh.full_name AS dh_name,
                 qc.full_name AS qc_name,
                 mb.full_name AS management_name,
                 pb.full_name AS payment_by_name
             FROM project_other_costs poc
             LEFT JOIN projects p ON poc.project_id = p.id
             LEFT JOIN users cb ON poc.created_by_id = cb.id
+            LEFT JOIN users dh ON poc.dept_head_approved_by = dh.id
             LEFT JOIN users qc ON poc.qc_audit_approved_id = qc.id
             LEFT JOIN users mb ON poc.management_apporved_by_id = mb.id
             LEFT JOIN users pb ON poc.payment_by_id = pb.id
@@ -57,12 +59,14 @@ class ProjectOtherCost extends Model
                 poc.*,
                 p.name AS project_name,
                 cb.full_name AS created_by_name,
+                dh.full_name AS dh_name,
                 qc.full_name AS qc_name,
                 mb.full_name AS management_name,
                 pb.full_name AS payment_by_name
             FROM project_other_costs poc
             LEFT JOIN projects p ON poc.project_id = p.id
             LEFT JOIN users cb ON poc.created_by_id = cb.id
+            LEFT JOIN users dh ON poc.dept_head_approved_by = dh.id
             LEFT JOIN users qc ON poc.qc_audit_approved_id = qc.id
             LEFT JOIN users mb ON poc.management_apporved_by_id = mb.id
             LEFT JOIN users pb ON poc.payment_by_id = pb.id
@@ -84,10 +88,18 @@ class ProjectOtherCost extends Model
             SELECT 
                 poc.*,
                 p.name AS project_name,
-                cb.full_name AS created_by_name
+                cb.full_name AS creator_name,
+                dh.full_name AS dh_name,
+                qc.full_name AS qc_name,
+                mb.full_name AS mgmt_name,
+                pb.full_name AS pay_name
             FROM project_other_costs poc
             LEFT JOIN projects p ON poc.project_id = p.id
             LEFT JOIN users cb ON poc.created_by_id = cb.id
+            LEFT JOIN users dh ON poc.dept_head_approved_by = dh.id
+            LEFT JOIN users qc ON poc.qc_audit_approved_id = qc.id
+            LEFT JOIN users mb ON poc.management_apporved_by_id = mb.id
+            LEFT JOIN users pb ON poc.payment_by_id = pb.id
             WHERE poc.id = ?
         ");
         $sql->bind_param("i", $id);

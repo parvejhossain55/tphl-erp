@@ -38,6 +38,19 @@ class UserDashboardController extends Controller
         $todayFollowUp = (new FollowUp($this->db))->getTodayFollowUpCountByLead();
 
         $loggedUserId = (int) $_SESSION['user']['id'];
+        $userRoleId = $_SESSION['user']['role_id'] ?? null;
+        $userTeamId = $_SESSION['user']['team_id'] ?? null;
+        
+        $assignedUsers = [];
+        if (in_array($userRoleId, [5, 33, 8, 3])) {
+            if ($userTeamId) {
+                $assignedUsers = $this->userModel->getUsersByTeamAndRole($userTeamId);
+            } else {
+                $assignedUsers = $this->userModel->getAllRoleUser();
+            }
+        } else {
+            $assignedUsers = $this->userModel->getAllRoleUser();
+        }
 
         $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
         $filterCategoryId = isset($_GET['project_category_id']) && $_GET['project_category_id'] !== '' ? (int)$_GET['project_category_id'] : null;
@@ -150,6 +163,7 @@ class UserDashboardController extends Controller
             "projectCategories" => $projectCategories,
             "countries"       => $countries,
             "selectedCountry" => $filterCountry,
+            "assignedUsers"   => $assignedUsers,
         ]);
     }
 

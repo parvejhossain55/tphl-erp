@@ -122,13 +122,36 @@ class ProjectOtherCostController extends Controller
     public function store()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $userId = $_SESSION['user']['id'];
+            
+            $empStmt = $this->db->prepare("SELECT reporting_user_id FROM employees WHERE user_id = ? AND is_deleted = 0");
+            $empStmt->bind_param('i', $userId);
+            $empStmt->execute();
+            $empResult = $empStmt->get_result()->fetch_assoc();
+            $reporting_user_id = !empty($empResult['reporting_user_id']) ? $empResult['reporting_user_id'] : null;
+            $dept_head_status = $reporting_user_id ? 'pending' : 'not_required';
+
             $data = [
                 'project_id' => $_POST['project_id'],
                 'rcost_type' => $_POST['rcost_type'],
                 'purpose' => $_POST['purpose'],
                 'request_amount' => $_POST['request_amount'],
-                'created_by_id' => $_SESSION['user']['id'],
+                'created_by_id' => $userId,
+                'dept_head_status' => $dept_head_status
             ];
+
+            if (isset($_FILES['creator_attachment']) && $_FILES['creator_attachment']['error'] == UPLOAD_ERR_OK) {
+                $uploadDir = __DIR__ . '/../../public/uploads/project_other_costs/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $fileName = time() . '_creator_' . basename($_FILES['creator_attachment']['name']);
+                $targetFilePath = $uploadDir . $fileName;
+
+                if (move_uploaded_file($_FILES['creator_attachment']['tmp_name'], $targetFilePath)) {
+                    $data['creator_attachment'] = $fileName;
+                }
+            }
 
             $newId = $this->otherCostModel->create($data);
             if ($newId) {
@@ -144,6 +167,32 @@ class ProjectOtherCostController extends Controller
         }
     }
 
+    public function approve_dept_head($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $status = $_POST['dept_head_status'] ?? 'approved';
+            $data = [
+                'dept_head_status' => $status,
+                'dept_head_approval_note' => $_POST['dept_head_approval_note'] ?? null,
+                'dept_head_approved_by' => $_SESSION['user']['id'],
+                'dept_head_approved_at' => date('Y-m-d H:i:s'),
+            ];
+
+            if ($status === 'rejected') {
+                $data['status'] = 'rejected';
+            }
+
+            if ($this->otherCostModel->update($id, $data)) {
+                $this->syncToApprovalRequests($id);
+                setSuccess("Request Dept Head " . ucfirst($status) . " successfully.");
+            } else {
+                setError("Failed to process request.");
+            }
+            header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
+            exit();
+        }
+    }
+
     public function approve_qc($id)
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -151,6 +200,7 @@ class ProjectOtherCostController extends Controller
                 'approved_amount' => $_POST['approved_amount'],
                 'qc_audit_note' => $_POST['qc_audit_note'],
                 'qc_audit_approved_id' => $_SESSION['user']['id'],
+                'qc_audit_approved_at' => date('Y-m-d H:i:s'),
                 'status' => 'qc_approved'
             ];
 
@@ -172,6 +222,7 @@ class ProjectOtherCostController extends Controller
                 'approved_amount' => $_POST['approved_amount'],
                 'management_apporved_note' => $_POST['management_apporved_note'],
                 'management_apporved_by_id' => $_SESSION['user']['id'],
+                'management_apporved_at' => date('Y-m-d H:i:s'),
                 'pc_approved_id' => $_SESSION['user']['id'],
                 'status' => 'management_approved'
             ];
@@ -190,11 +241,28 @@ class ProjectOtherCostController extends Controller
     public function pay($id)
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $paymentAmount = $_POST['payment_amount'] ?? 0;
+            $paymentAt = $_POST['payment_at'] ?? date('Y-m-d H:i:s');
+            
             $data = [
                 'payment_by_id' => $_SESSION['user']['id'],
-                'payment_at' => date('Y-m-d H:i:s'),
+                'payment_at' => $paymentAt,
+                'payment_amount' => $paymentAmount,
                 'status' => 'paid'
             ];
+
+            if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] == UPLOAD_ERR_OK) {
+                $uploadDir = __DIR__ . '/../../public/uploads/project_other_costs/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $fileName = time() . '_' . basename($_FILES['attachment']['name']);
+                $targetFilePath = $uploadDir . $fileName;
+
+                if (move_uploaded_file($_FILES['attachment']['tmp_name'], $targetFilePath)) {
+                    $data['attachment'] = $fileName;
+                }
+            }
 
             if ($this->otherCostModel->update($id, $data)) {
                 $this->syncToApprovalRequests($id);
@@ -262,27 +330,50 @@ class ProjectOtherCostController extends Controller
         
         $approvedAmount = !empty($row['approved_amount']) ? (float)$row['approved_amount'] : null;
         $requestedBy = (int)$row['created_by_id'];
-        $status = $row['status']; // pending, qc_approved, management_approved, paid
-        
+        $status = 'pending'; // Default for approval_requests
+        $approveRole = 'qc';
         $approvedBy = null;
         $approvedAt = null;
         $approvalNote = null;
-        $approveRole = 'qc';
 
-        if ($status == 'qc_approved') {
+        if ($row['status'] == 'pending') {
+            if ($row['dept_head_status'] === 'pending') {
+                $status = 'pending';
+                // Lookup dept head
+                $checkDept = $this->db->query("SELECT reporting_user_id FROM employees WHERE user_id = " . (int)$row['created_by_id'] . " AND is_deleted = 0");
+                $deptHeadId = null;
+                if ($checkDept && $checkDept->num_rows > 0) {
+                    $dhRow = $checkDept->fetch_assoc();
+                    $deptHeadId = $dhRow['reporting_user_id'];
+                }
+                $approveRole = 'dept_head_' . $deptHeadId;
+            } else {
+                $status = 'pending';
+                $approveRole = 'qc';
+                if ($row['dept_head_status'] === 'approved') {
+                    $approvedBy = $row['dept_head_approved_by'];
+                    $approvedAt = $row['dept_head_approved_at'];
+                    $approvalNote = $row['dept_head_approval_note'];
+                }
+            }
+        } elseif ($row['status'] == 'qc_approved') {
+            $status = 'pending';
             $approveRole = 'management';
             $approvedBy = $row['qc_audit_approved_id'];
-            $approvedAt = $row['qc_audit_approved_at'];
+            $approvedAt = $row['updated_at'];
             $approvalNote = $row['qc_audit_note'];
-        } elseif ($status == 'management_approved') {
+        } elseif ($row['status'] == 'management_approved') {
+            $status = 'approved';
             $approveRole = 'accounts';
             $approvedBy = $row['management_apporved_by_id'];
-            $approvedAt = $row['management_apporved_at'];
+            $approvedAt = $row['updated_at'];
             $approvalNote = $row['management_apporved_note'];
-        } elseif ($status == 'paid') {
+        } elseif ($row['status'] == 'paid') {
+            $status = 'approved';
             $approveRole = 'completed';
-            $approvedBy = $row['payment_by_id'];
-            $approvedAt = $row['payment_at'];
+            $approvedBy = $row['management_apporved_by_id'];
+            $approvedAt = $row['updated_at'];
+            $approvalNote = $row['management_apporved_note'];
         }
 
         $metaData = json_encode(['purpose' => $row['purpose'], 'project_id' => $row['project_id'], 'project_name' => $row['project_name']]);
@@ -320,16 +411,17 @@ class ProjectOtherCostController extends Controller
 
         $res = $this->db->query("
             SELECT r.*, p.name as project_name, u.full_name as creator_name,
+                   dh.full_name as dh_name,
                    qc.full_name as qc_name, m.full_name as mgmt_name, pa.full_name as pay_name
             FROM project_other_costs r
             LEFT JOIN projects p ON r.project_id = p.id
             LEFT JOIN users u ON r.created_by_id = u.id
+            LEFT JOIN users dh ON r.dept_head_approved_by = dh.id
             LEFT JOIN users qc ON r.qc_audit_approved_id = qc.id
             LEFT JOIN users m ON r.management_apporved_by_id = m.id
             LEFT JOIN users pa ON r.payment_by_id = pa.id
             WHERE r.id = $id
         ");
-
         if (!$res || $res->num_rows == 0) {
             setError("Request not found.");
             header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");

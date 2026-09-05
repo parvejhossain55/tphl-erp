@@ -137,6 +137,5 @@ if ($current_server == 3) {
 // -- ধাপ ২: মূল পেমেন্ট হিস্ট্রি ডিলিট করা
 // DELETE lp FROM lead_payments lp
 
-
 // INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
 // WHERE lb.project_id = 45 AND lp.payment_type IN ('emi', 'emi_due_settlement', 'development_charge');

@@ -205,10 +205,10 @@ $page = "View Lead";
                             <i class="fa-solid fa-calendar-check me-1"></i> Follow Ups:
                             <span class="badge bg-white text-dark rounded-pill ms-1"><?= $followUpCounts[$leadData['id']] ?? 0 ?></span>
                         </span>
-                        <span class="custom-badge badge-booking">
+                        <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $leadData['id'] ?>" class="custom-badge badge-booking text-decoration-none">
                             <i class="fa-solid fa-building me-1"></i> Bookings:
                             <span class="badge bg-white text-dark rounded-pill ms-1"><?= $bookingCount[$leadData['id']] ?? 0 ?></span>
-                        </span>
+                        </a>
                     </div>
                 </div>
 
@@ -469,11 +469,54 @@ $page = "View Lead";
                 </div>
             </div>
 
-            <!-- 7. Description & Additional Notes Card -->
+            <!-- 7. 2nd Nominee Information Card -->
+            <div class="col-lg-6">
+                <div class="info-card">
+                    <div class="info-card-header header-nomi bg-primary text-white">
+                        <i class="fa-solid fa-user-plus me-2"></i> 7. 2nd Nominee Information (২য় নমিনি সংক্রান্ত তথ্য)
+                    </div>
+                    <div class="info-card-body">
+                        <div class="info-row">
+                            <div class="info-label">2nd Nominee Name</div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['2nd_nominee_name'] ?: '-') ?></div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Relation with Applicant</div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['2nd_relation_with_lead'] ?: '-') ?></div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">2nd Nominee Father & Mother</div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['2nd_nomi_father_name'] ?: '-') ?> / <?= htmlspecialchars($leadData['2nd_nomi_mother_name'] ?: '-') ?></div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Profession & DOB</div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['2nd_nomi_profession'] ?: '-') ?> | DOB: <?= htmlspecialchars($leadData['2nd_nomi_dob'] ?: '-') ?></div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Phone & Email</div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['2nd_nomi_phone'] ?: '-') ?> | <?= htmlspecialchars($leadData['2nd_nomi_email'] ?: '-') ?></div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">NID / Passport</div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['2nd_nomi_nid_passport'] ?: '-') ?></div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">2nd Nominee Present Address</div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['2nd_nomi_present_add'] ?: '-') ?></div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">2nd Nominee Permanent Address</div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['2nd_nomi_permanent_address'] ?: '-') ?></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 8. Description & Additional Notes Card -->
             <div class="col-12">
                 <div class="info-card">
                     <div class="info-card-header bg-dark text-white">
-                        <i class="fa-solid fa-file-lines me-2"></i> 7. Description & Additional Notes (বিবরণী)
+                        <i class="fa-solid fa-file-lines me-2"></i> 8. Description & Additional Notes (বিবরণী)
                     </div>
                     <div class="info-card-body">
                         <div style="line-height: 1.8; color: #2c3e50;" class="fs-6">

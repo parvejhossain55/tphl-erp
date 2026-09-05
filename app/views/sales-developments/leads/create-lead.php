@@ -246,6 +246,7 @@ $page = "create Lead"
                 <div class="col-md-6">
                     <label>Lead Quality</label>
                     <select name="lead_quality" class="form-select">
+                        <option value="">-- Select Quality --</option>
                         <option value="Not Interested">Not Interested</option>
                         <option value="Prospect">Prospect</option>
                         <option value="Pending">Pending follow Up</option>

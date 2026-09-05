@@ -729,10 +729,32 @@ class ApprovalRequest extends Model
                     $vStmt->close();
                     if ($vRow) {
                         $row['vpr_payment_type'] = $vRow['payment_type'] ?? null;
-                        if (in_array(strtolower($vRow['status']), ['approved', 'paid', 'completed'])) {
+                        if (in_array(strtolower($vRow['status']), ['approved', 'paid', 'completed', 'fully_paid'])) {
                             $payoutStatus = 'Paid & Settled';
                             $payoutAmount = (float) $vRow['app_amt'];
                             $payoutDate = $vRow['updated_at'];
+                        } else if (strtolower($vRow['status']) === 'partially_paid') {
+                            $payoutStatus = 'Partially Paid';
+                            $payoutAmount = (float) $vRow['app_amt'];
+                            $payoutDate = $vRow['updated_at'];
+                        } else if ($row['status'] === 'approved') {
+                            $payoutStatus = 'Pending Accounts Payout';
+                        }
+                    }
+                }
+            } else if ($sourceTable === 'project_other_costs') {
+                $pocSql = "SELECT status, payment_at, payment_amount, approved_amount FROM project_other_costs WHERE id = ? LIMIT 1";
+                $pocStmt = $this->db->prepare($pocSql);
+                if ($pocStmt) {
+                    $pocStmt->bind_param("i", $sourceId);
+                    $pocStmt->execute();
+                    $pocRow = $pocStmt->get_result()->fetch_assoc();
+                    $pocStmt->close();
+                    if ($pocRow) {
+                        if ($pocRow['status'] === 'paid') {
+                            $payoutStatus = 'Paid & Settled';
+                            $payoutAmount = (float) (!empty($pocRow['payment_amount']) ? $pocRow['payment_amount'] : $pocRow['approved_amount']);
+                            $payoutDate = $pocRow['payment_at'];
                         } else if ($row['status'] === 'approved') {
                             $payoutStatus = 'Pending Accounts Payout';
                         }
@@ -784,6 +806,40 @@ class ApprovalRequest extends Model
 
         if (isset($stmt) && $stmt) {
             $stmt->close();
+        }
+
+        // --- Role-based Custom Sorting ---
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $sessionRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        
+        $isManagement = in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management']);
+        $isAccounts = ($sessionRoleName === 'accounts' || $sessionRoleName === 'accounts head' || $userRoleId === 4);
+        
+        if ($isManagement || $isAccounts) {
+            usort($list, function($a, $b) use ($isManagement, $isAccounts) {
+                $aPriority = 0;
+                $bPriority = 0;
+                
+                if ($isManagement) {
+                    if ($a['status'] === 'pending') $aPriority = 1;
+                    if ($b['status'] === 'pending') $bPriority = 1;
+                }
+                if ($isAccounts) {
+                    if ($a['payout_status'] === 'Pending Accounts Payout') $aPriority = 1;
+                    if ($b['payout_status'] === 'Pending Accounts Payout') $bPriority = 1;
+                }
+                
+                // Sort by priority DESC (1 first)
+                if ($aPriority !== $bPriority) {
+                    return $bPriority <=> $aPriority;
+                }
+                
+                // Fallback to original order (id DESC)
+                return $b['id'] <=> $a['id'];
+            });
         }
 
         return $list;

@@ -39,6 +39,7 @@ class MailService
             // SMTP config
 
             $mail->isSMTP();
+            $mail->CharSet = 'UTF-8';
             $mail->SMTPDebug = 0; // set to 0 to prevent raw debug output from breaking HTTP redirects
 
             $mail->Host       = $this->host;
@@ -127,6 +128,7 @@ class MailService
         $mail = new PHPMailer(true);
         try {
             $mail->isSMTP();
+            $mail->CharSet = 'UTF-8';
             $mail->SMTPDebug = 0; // set to 0 to avoid breaking JSON responses with debug output
             $mail->Host       = $this->host;
             $mail->SMTPAuth   = true;

@@ -82,63 +82,14 @@
                                             <td><?= date('d M Y h:i A', strtotime($row['created_at'])) ?></td>
                                             <td>
                                                 <div class="d-flex gap-2">
-                                                    <button type="button" class="btn btn-sm btn-info shadow-sm" data-bs-toggle="modal" data-bs-target="#viewModal_my_<?= $row['id'] ?>" title="View Status">
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs/review/<?= $row['id'] ?>" class="btn btn-sm btn-info shadow-sm" title="View Status">
                                                         <i class="bi bi-eye"></i>
-                                                    </button>
+                                                    </a>
                                                     <?php if (in_array($row['status'], ['pending', 'qc_approved'])): ?>
                                                         <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs/delete/<?= $row['id'] ?>" class="btn btn-sm btn-danger shadow-sm" onclick="return confirm('Are you sure you want to delete this request?');" title="Delete">
                                                             <i class="bi bi-trash"></i>
                                                         </a>
                                                     <?php endif; ?>
-                                                </div>
-
-                                                <!-- View Modal -->
-                                                <div class="modal fade" id="viewModal_my_<?= $row['id'] ?>" tabindex="-1">
-                                                    <div class="modal-dialog">
-                                                        <div class="modal-content text-start">
-                                                            <div class="modal-header">
-                                                                <h5 class="modal-title">Request Timeline</h5>
-                                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                            </div>
-                                                            <div class="modal-body">
-                                                                <ul class="list-group list-group-flush">
-                                                                    <li class="list-group-item">
-                                                                        <strong>Created By:</strong> <?= htmlspecialchars($row['created_by_name'] ?? 'N/A') ?><br>
-                                                                        <small class="text-muted"><?= date('d M Y h:i A', strtotime($row['created_at'])) ?></small>
-                                                                    </li>
-                                                                    <li class="list-group-item">
-                                                                        <strong>QC Approval:</strong> 
-                                                                        <?php if($row['qc_audit_approved_id']): ?>
-                                                                            <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($row['qc_name'] ?? 'N/A') ?><br>
-                                                                            <small class="text-muted"><?= date('d M Y h:i A', strtotime($row['qc_audit_approved_at'])) ?></small>
-                                                                            <?php if($row['qc_audit_note']): ?><br><small>Note: <?= htmlspecialchars($row['qc_audit_note']) ?></small><?php endif; ?>
-                                                                        <?php else: ?>
-                                                                            <span class="text-warning"><i class="bi bi-clock"></i> Pending</span>
-                                                                        <?php endif; ?>
-                                                                    </li>
-                                                                    <li class="list-group-item">
-                                                                        <strong>Management Approval:</strong>
-                                                                        <?php if($row['management_apporved_by_id']): ?>
-                                                                            <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($row['management_name'] ?? 'N/A') ?><br>
-                                                                            <small class="text-muted"><?= date('d M Y h:i A', strtotime($row['management_apporved_at'])) ?></small>
-                                                                            <?php if($row['management_apporved_note']): ?><br><small>Note: <?= htmlspecialchars($row['management_apporved_note']) ?></small><?php endif; ?>
-                                                                        <?php else: ?>
-                                                                            <span class="text-warning"><i class="bi bi-clock"></i> Pending</span>
-                                                                        <?php endif; ?>
-                                                                    </li>
-                                                                    <li class="list-group-item">
-                                                                        <strong>Payment Status:</strong>
-                                                                        <?php if($row['payment_by_id']): ?>
-                                                                            <span class="text-success"><i class="bi bi-check-circle"></i> Paid</span> by <?= htmlspecialchars($row['payment_by_name'] ?? 'N/A') ?><br>
-                                                                            <small class="text-muted"><?= date('d M Y h:i A', strtotime($row['payment_at'])) ?></small>
-                                                                        <?php else: ?>
-                                                                            <span class="text-warning"><i class="bi bi-clock"></i> Pending</span>
-                                                                        <?php endif; ?>
-                                                                    </li>
-                                                                </ul>
-                                                            </div>
-                                                        </div>
-                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>
@@ -185,7 +136,18 @@
                                                 <div class="d-flex gap-2">
                                                     <?php
                                                     $canApprove = false;
-                                                    if ($row['status'] == 'pending' && in_array($roleId, [13, 24, 25, 1])) $canApprove = true;
+                                                    
+                                                    $isDeptHead = false;
+                                                    if ($row['dept_head_status'] === 'pending') {
+                                                        $c = new mysqli('127.0.0.1','root','','tphl_db');
+                                                        $r = $c->query("SELECT reporting_user_id FROM employees WHERE user_id = " . (int)$row['created_by_id'] . " AND is_deleted = 0");
+                                                        if($r && $r->num_rows > 0 && $r->fetch_assoc()['reporting_user_id'] == $userId) {
+                                                            $isDeptHead = true;
+                                                        }
+                                                    }
+                                                    
+                                                    if ($isDeptHead) $canApprove = true;
+                                                    if ($row['status'] == 'pending' && $row['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25, 1])) $canApprove = true;
                                                     if ($row['status'] == 'qc_approved' && in_array($roleId, [3, 15, 20, 22, 32, 33, 1])) $canApprove = true;
                                                     if ($row['status'] == 'management_approved' && in_array($roleId, [6, 30, 1])) $canApprove = true;
                                                     ?>

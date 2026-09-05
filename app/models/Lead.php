@@ -239,9 +239,17 @@ class Lead extends Model
 
         // TEAM BASED FILTER
         if (!empty($teamId)) {
-            $sql .= " AND l.team_id = ?";
-            $params[] = $teamId;
-            $types .= "i";
+            if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33])) {
+                $loggedInUserId = $_SESSION['user']['id'] ?? 0;
+                $sql .= " AND (l.team_id = ? OR l.assigned_id = ?)";
+                $params[] = $teamId;
+                $params[] = $loggedInUserId;
+                $types .= "ii";
+            } else {
+                $sql .= " AND l.team_id = ?";
+                $params[] = $teamId;
+                $types .= "i";
+            }
         }
 
         // Determine if we should apply created_at date filter
@@ -514,9 +522,17 @@ class Lead extends Model
 
         // TEAM BASED FILTER
         if (!empty($teamId)) {
-            $sql .= " AND l.team_id = ?";
-            $params[] = $teamId;
-            $types .= "i";
+            if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33])) {
+                $loggedInUserId = $_SESSION['user']['id'] ?? 0;
+                $sql .= " AND (l.team_id = ? OR l.assigned_id = ?)";
+                $params[] = $teamId;
+                $params[] = $loggedInUserId;
+                $types .= "ii";
+            } else {
+                $sql .= " AND l.team_id = ?";
+                $params[] = $teamId;
+                $types .= "i";
+            }
         }
 
         // Determine if we should apply created_at date filter
@@ -2129,6 +2145,19 @@ class Lead extends Model
         $nomi_present_add     = $nn('nomi_present_add');
         $nomi_permanent_address = $nn('nomi_permanent_address');
 
+        // 2nd Nominee Info
+        $nominee_name_2         = $nn('2nd_nominee_name');
+        $relation_with_lead_2   = $nn('2nd_relation_with_lead');
+        $nomi_father_name_2     = $nn('2nd_nomi_father_name');
+        $nomi_mother_name_2     = $nn('2nd_nomi_mother_name');
+        $nomi_profession_2      = $nn('2nd_nomi_profession');
+        $nomi_dob_2             = $nn('2nd_nomi_dob');
+        $nomi_phone_2           = $nn('2nd_nomi_phone');
+        $nomi_email_2           = $nn('2nd_nomi_email');
+        $nomi_nid_passport_2    = $nn('2nd_nomi_nid_passport');
+        $nomi_present_add_2     = $nn('2nd_nomi_present_add');
+        $nomi_permanent_address_2 = $nn('2nd_nomi_permanent_address');
+
         // Image Upload (fallback old)
         $lead_image = !empty($_FILES['lead_image']['name'])
             ? uploadImage('lead_image', 'leads', 'fixed')
@@ -2137,6 +2166,10 @@ class Lead extends Model
         $nomi_image = !empty($_FILES['nomi_image']['name'])
             ? uploadImage('nomi_image', 'leads', 'fixed')
             : $old['nomi_image'];
+
+        $nomi_image_2 = !empty($_FILES['2nd_nomi_image']['name'])
+            ? uploadImage('2nd_nomi_image', 'leads', 'fixed')
+            : $old['2nd_nomi_image'];
 
         // Build dynamic UPDATE query for exact robustness
         $fields = [
@@ -2208,6 +2241,18 @@ class Lead extends Model
             'nomi_present_add' => $nomi_present_add,
             'nomi_permanent_address' => $nomi_permanent_address,
             'nomi_image' => $nomi_image,
+            '2nd_nominee_name' => $nominee_name_2,
+            '2nd_relation_with_lead' => $relation_with_lead_2,
+            '2nd_nomi_father_name' => $nomi_father_name_2,
+            '2nd_nomi_mother_name' => $nomi_mother_name_2,
+            '2nd_nomi_profession' => $nomi_profession_2,
+            '2nd_nomi_dob' => $nomi_dob_2,
+            '2nd_nomi_phone' => $nomi_phone_2,
+            '2nd_nomi_email' => $nomi_email_2,
+            '2nd_nomi_nid_passport' => $nomi_nid_passport_2,
+            '2nd_nomi_present_add' => $nomi_present_add_2,
+            '2nd_nomi_permanent_address' => $nomi_permanent_address_2,
+            '2nd_nomi_image' => $nomi_image_2,
             'updated_at' => date('Y-m-d H:i:s')
         ];
 

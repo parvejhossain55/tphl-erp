@@ -575,98 +575,41 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
     public function getBookingCountByLead()
     {
-        $sql = "SELECT COALESCE(NULLIF(l.phone_number, ''), l.phone) AS phone, COUNT(DISTINCT lb.id) AS booking_count
-                FROM lead_bookings lb
-                INNER JOIN lead_payments lp ON lp.booking_id = lb.id
-                INNER JOIN leads l ON lb.lead_id = l.id
-                WHERE lb.deleted_at IS NULL 
-                  AND lb.booking_status NOT IN ('refunded', 'cancelled')
-                  AND (l.phone_number IS NOT NULL AND l.phone_number != '' OR l.phone IS NOT NULL AND l.phone != '')
-                GROUP BY COALESCE(NULLIF(l.phone_number, ''), l.phone)";
+        $sql = "SELECT lead_id, COUNT(id) AS booking_count
+                FROM lead_bookings
+                WHERE deleted_at IS NULL 
+                  AND booking_status NOT IN ('refunded', 'cancelled')
+                GROUP BY lead_id";
         
         $result = $this->db->query($sql);
-        $phoneCounts = [];
+        $data = [];
         if ($result) {
             while ($row = $result->fetch_assoc()) {
-                $phoneCounts[trim($row['phone'])] = (int)$row['booking_count'];
-            }
-        }
-
-        $leadsResult = $this->db->query("SELECT id, phone, phone_number FROM leads WHERE deleted_at IS NULL");
-        $data = [];
-        if ($leadsResult) {
-            while ($lead = $leadsResult->fetch_assoc()) {
-                $p1 = trim($lead['phone'] ?? '');
-                $p2 = trim($lead['phone_number'] ?? '');
-                $count = 0;
-                if ($p2 !== '' && isset($phoneCounts[$p2])) {
-                    $count = $phoneCounts[$p2];
-                } elseif ($p1 !== '' && isset($phoneCounts[$p1])) {
-                    $count = $phoneCounts[$p1];
-                }
-                if ($count > 0) {
-                    $data[$lead['id']] = $count;
-                }
+                $data[$row['lead_id']] = (int)$row['booking_count'];
             }
         }
         return $data;
     }
 
-    // ✅ Optimized: শুধু current page এর lead IDs এর জন্য count করে
+    //  Optimized: শুধু current page এর lead IDs এর জন্য count করে
     public function getBookingCountByLeadIds(array $leadIds)
     {
         if (empty($leadIds)) return [];
 
         $ids = implode(',', array_map('intval', $leadIds));
         
-        $targetLeadsResult = $this->db->query("SELECT id, phone, phone_number FROM leads WHERE id IN ($ids)");
-        if (!$targetLeadsResult) return [];
-        
-        $targetPhones = [];
-        $leadPhoneMap = [];
-        while ($lead = $targetLeadsResult->fetch_assoc()) {
-            $p1 = trim($lead['phone'] ?? '');
-            $p2 = trim($lead['phone_number'] ?? '');
-            $leadPhoneMap[$lead['id']] = [$p1, $p2];
-            if ($p1 !== '') $targetPhones[] = $p1;
-            if ($p2 !== '') $targetPhones[] = $p2;
-        }
-        
-        if (empty($targetPhones)) return [];
-        
-        $escapedPhones = array_map(function($p) {
-            return "'" . $this->db->real_escape_string($p) . "'";
-        }, array_unique($targetPhones));
-        
-        $phoneCond = implode(',', $escapedPhones);
-        
-        $sql = "SELECT COALESCE(NULLIF(l.phone_number, ''), l.phone) AS phone, COUNT(DISTINCT lb.id) AS booking_count
-                FROM lead_bookings lb
-                INNER JOIN lead_payments lp ON lp.booking_id = lb.id
-                INNER JOIN leads l ON lb.lead_id = l.id
-                WHERE lb.deleted_at IS NULL 
-                  AND lb.booking_status NOT IN ('refunded', 'cancelled')
-                  AND (l.phone_number IN ($phoneCond) OR l.phone IN ($phoneCond))
-                GROUP BY COALESCE(NULLIF(l.phone_number, ''), l.phone)";
+        $sql = "SELECT lead_id, COUNT(id) AS booking_count
+                FROM lead_bookings 
+                WHERE deleted_at IS NULL 
+                  AND booking_status NOT IN ('refunded', 'cancelled')
+                  AND lead_id IN ($ids)
+                GROUP BY lead_id";
                 
         $result = $this->db->query($sql);
-        $phoneCounts = [];
+        $data = [];
         if ($result) {
             while ($row = $result->fetch_assoc()) {
-                $phoneCounts[trim($row['phone'])] = (int)$row['booking_count'];
-            }
-        }
-        
-        $data = [];
-        foreach ($leadPhoneMap as $leadId => $phones) {
-            $count = 0;
-            if (!empty($phones[1]) && isset($phoneCounts[$phones[1]])) {
-                $count = $phoneCounts[$phones[1]];
-            } elseif (!empty($phones[0]) && isset($phoneCounts[$phones[0]])) {
-                $count = $phoneCounts[$phones[0]];
-            }
-            if ($count > 0) {
-                $data[$leadId] = $count;
+                $data[$row['lead_id']] = (int)$row['booking_count'];
             }
         }
         
