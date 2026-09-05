@@ -44,6 +44,19 @@
                                     <th class="bg-light">Request Amount</th>
                                     <td class="text-primary fw-bold">৳ <?= number_format($request['request_amount'], 2) ?></td>
                                 </tr>
+                                <?php if($request['approved_amount']): ?>
+                                <tr>
+                                    <th class="bg-light text-success">Approved Amount</th>
+                                    <td class="text-success fw-bold">
+                                        ৳ <?= number_format($request['approved_amount'], 2) ?>
+                                        <div class="mt-1">
+                                            <small class="text-muted fw-normal" style="font-size: 0.75rem;">
+                                                <i class="bi bi-person me-1"></i>Updated by <?= htmlspecialchars($request['management_apporved_by_id'] ? ($request['mgmt_name'] ?? 'N/A') : ($request['qc_name'] ?? 'N/A')) ?>
+                                            </small>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endif; ?>
                                 <tr>
                                     <th class="bg-light">Status</th>
                                     <td>
@@ -67,13 +80,41 @@
                             <li class="list-group-item">
                                 <strong>Created By:</strong> <?= htmlspecialchars($request['creator_name'] ?? 'N/A') ?><br>
                                 <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['created_at'])) ?></small>
+                                <?php if (!empty($request['creator_attachment'])): ?>
+                                    <br>
+                                    <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= htmlspecialchars($request['creator_attachment']) ?>" target="_blank" class="badge bg-secondary text-white mt-1 text-decoration-none">
+                                        <i class="bi bi-paperclip me-1"></i> View Attached File
+                                    </a>
+                                <?php endif; ?>
+                            </li>
+                            <li class="list-group-item">
+                                <strong>Dept Head Approval:</strong> 
+                                <?php if($request['dept_head_status'] === 'not_required'): ?>
+                                    <span class="text-muted"><i class="bi bi-dash-circle"></i> Not Required (No Dept Head Added)</span>
+                                <?php elseif($request['dept_head_status'] === 'approved'): ?>
+                                    <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['dh_name'] ?? 'N/A') ?><br>
+                                    <?php if(!empty($request['dept_head_approved_at'])): ?>
+                                        <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['dept_head_approved_at'])) ?></small><br>
+                                    <?php endif; ?>
+                                    <?php if($request['dept_head_approval_note']): ?><small>Note: <?= htmlspecialchars($request['dept_head_approval_note']) ?></small><?php endif; ?>
+                                <?php elseif($request['dept_head_status'] === 'rejected'): ?>
+                                    <span class="text-danger"><i class="bi bi-x-circle"></i> Rejected</span> by <?= htmlspecialchars($request['dh_name'] ?? 'N/A') ?><br>
+                                    <?php if(!empty($request['dept_head_approved_at'])): ?>
+                                        <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['dept_head_approved_at'])) ?></small><br>
+                                    <?php endif; ?>
+                                    <?php if($request['dept_head_approval_note']): ?><small>Note: <?= htmlspecialchars($request['dept_head_approval_note']) ?></small><?php endif; ?>
+                                <?php else: ?>
+                                    <span class="text-warning"><i class="bi bi-clock"></i> Pending</span>
+                                <?php endif; ?>
                             </li>
                             <li class="list-group-item">
                                 <strong>QC Approval:</strong> 
                                 <?php if($request['qc_audit_approved_id']): ?>
                                     <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['qc_name'] ?? 'N/A') ?><br>
-                                    <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['qc_audit_approved_at'])) ?></small>
-                                    <?php if($request['qc_audit_note']): ?><br><small>Note: <?= htmlspecialchars($request['qc_audit_note']) ?></small><?php endif; ?>
+                                    <?php if(!empty($request['qc_audit_approved_at'])): ?>
+                                        <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['qc_audit_approved_at'])) ?></small><br>
+                                    <?php endif; ?>
+                                    <?php if($request['qc_audit_note']): ?><small>Note: <?= htmlspecialchars($request['qc_audit_note']) ?></small><?php endif; ?>
                                 <?php else: ?>
                                     <span class="text-warning"><i class="bi bi-clock"></i> Pending</span>
                                 <?php endif; ?>
@@ -82,8 +123,10 @@
                                 <strong>Management Approval:</strong>
                                 <?php if($request['management_apporved_by_id']): ?>
                                     <span class="text-success"><i class="bi bi-check-circle"></i> Approved</span> by <?= htmlspecialchars($request['mgmt_name'] ?? 'N/A') ?><br>
-                                    <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['management_apporved_at'])) ?></small>
-                                    <?php if($request['management_apporved_note']): ?><br><small>Note: <?= htmlspecialchars($request['management_apporved_note']) ?></small><?php endif; ?>
+                                    <?php if(!empty($request['management_apporved_at'])): ?>
+                                        <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['management_apporved_at'])) ?></small><br>
+                                    <?php endif; ?>
+                                    <?php if($request['management_apporved_note']): ?><small>Note: <?= htmlspecialchars($request['management_apporved_note']) ?></small><?php endif; ?>
                                 <?php else: ?>
                                     <span class="text-warning"><i class="bi bi-clock"></i> Pending</span>
                                 <?php endif; ?>
@@ -91,10 +134,17 @@
                             <li class="list-group-item">
                                 <strong>Payment Status:</strong>
                                 <?php if($request['payment_by_id']): ?>
-                                    <span class="text-success"><i class="bi bi-check-circle"></i> Paid</span> by <?= htmlspecialchars($request['pay_name'] ?? 'N/A') ?><br>
-                                    <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['payment_at'])) ?></small>
+                                    <span class="text-success"><i class="bi bi-check-circle"></i> Paid & Settled</span> by <?= htmlspecialchars($request['pay_name'] ?? 'N/A') ?><br>
+                                    <small class="text-muted"><i class="bi bi-cash me-1"></i> Amount: ৳<?= number_format($request['payment_amount'] ?? $request['approved_amount'], 2) ?></small><br>
+                                    <small class="text-muted"><i class="bi bi-calendar me-1"></i> Date: <?= date('d M Y h:i A', strtotime($request['payment_at'])) ?></small>
+                                    <?php if(!empty($request['attachment'])): ?>
+                                        <br>
+                                        <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= htmlspecialchars($request['attachment']) ?>" target="_blank" class="badge bg-primary text-white mt-1 text-decoration-none">
+                                            <i class="bi bi-paperclip me-1"></i> View Attachment
+                                        </a>
+                                    <?php endif; ?>
                                 <?php else: ?>
-                                    <span class="text-warning"><i class="bi bi-clock"></i> Pending</span>
+                                    <span class="text-warning"><i class="bi bi-clock"></i> Pending Accounts Payout</span>
                                 <?php endif; ?>
                             </li>
                         </ul>
@@ -105,18 +155,41 @@
             <!-- Action / Processing Card -->
             <div class="col-lg-4">
                 <?php
-                $canQCApprove = ($request['status'] == 'pending' && in_array($roleId, [13, 24, 25, 1]));
-                $canMgmtApprove = ($request['status'] == 'qc_approved' && in_array($roleId, [3, 15, 22, 32, 33, 1]));
+                $canDeptHeadApprove = ($request['dept_head_status'] === 'pending' && $userId == (function() use ($request) {
+                    $c = new mysqli('127.0.0.1','root','','tphl_db');
+                    $r = $c->query("SELECT reporting_user_id FROM employees WHERE user_id = " . (int)$request['created_by_id'] . " AND is_deleted = 0");
+                    if($r && $r->num_rows > 0) return $r->fetch_assoc()['reporting_user_id'];
+                    return null;
+                })());
+                $canQCApprove = ($request['status'] == 'pending' && $request['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25, 1]));
+                $canMgmtApprove = ($request['status'] == 'qc_approved' && in_array($roleId, [3, 15, 20, 22, 32, 33, 1]));
                 $canPay = ($request['status'] == 'management_approved' && in_array($roleId, [6, 30, 1]));
                 ?>
 
-                <?php if ($canQCApprove || $canMgmtApprove || $canPay): ?>
+                <?php if ($canDeptHeadApprove || $canQCApprove || $canMgmtApprove || $canPay): ?>
                     <div class="card shadow-sm border-0 border-top border-3 border-primary">
                         <div class="card-header bg-white pb-0 border-bottom-0">
                             <h5 class="card-title text-primary mb-0"><i class="bi bi-pencil-square me-2"></i>Process Request</h5>
                         </div>
                         <div class="card-body mt-3">
                             
+                            <?php if ($canDeptHeadApprove): ?>
+                                <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/approve-dept-head/<?= $request['id'] ?>">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Department Head Note (Optional)</label>
+                                        <textarea class="form-control" name="dept_head_approval_note" rows="3" placeholder="Enter remarks..."></textarea>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" name="dept_head_status" value="approved" class="btn btn-success flex-grow-1" onclick="return confirm('Are you sure you want to approve this request?');">
+                                            <i class="bi bi-check-circle me-1"></i> Approve
+                                        </button>
+                                        <button type="submit" name="dept_head_status" value="rejected" class="btn btn-danger flex-grow-1" onclick="return confirm('Are you sure you want to reject this request?');">
+                                            <i class="bi bi-x-circle me-1"></i> Reject
+                                        </button>
+                                    </div>
+                                </form>
+                            <?php endif; ?>
+
                             <?php if ($canQCApprove): ?>
                                 <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/approve-qc/<?= $request['id'] ?>">
                                     <div class="mb-3">
@@ -150,11 +223,21 @@
                             <?php endif; ?>
 
                             <?php if ($canPay): ?>
-                                <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/pay/<?= $request['id'] ?>">
-                                    <div class="alert alert-info">
-                                        <i class="bi bi-info-circle me-2"></i> Amount to Pay: <strong>৳ <?= number_format($request['approved_amount'], 2) ?></strong>
+                                <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/pay/<?= $request['id'] ?>" enctype="multipart/form-data">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Amount to Pay (৳)</label>
+                                        <input type="number" step="0.01" class="form-control form-control-lg" name="payment_amount" value="<?= $request['approved_amount'] ?? 0 ?>" required>
                                     </div>
-                                    <button type="submit" class="btn btn-primary btn-lg w-100" onclick="return confirm('Are you sure you want to mark this as paid?');">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">Payment Date</label>
+                                        <input type="date" class="form-control" name="payment_at" value="<?= date('Y-m-d') ?>" required>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="form-label fw-bold">Attachment (Optional)</label>
+                                        <input type="file" class="form-control" name="attachment" accept="image/*,.pdf,.doc,.docx">
+                                        <small class="text-muted">Upload receipt or payment proof.</small>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-lg w-100" onclick="return confirm('Are you sure you want to disburse this payment?');">
                                         <i class="bi bi-cash me-1"></i> Disburse Payment
                                     </button>
                                 </form>

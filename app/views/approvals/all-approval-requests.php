@@ -238,27 +238,29 @@
                                 } elseif ($sourceTable === 'project_incentive_claims') {
                                     $targetUrl = $base_url . '/incentive-management';
                                 } elseif ($sourceTable === 'vendor_payment_requests') {
-                                    $targetUrl = $base_url . '/con-vendor-payment-requests';
+                                    $targetUrl = $base_url . '/con-vendor-payment-show/' . $req['source_id'];
                                 } elseif ($sourceTable === 'contractor_bill_requests') {
-                                    $targetUrl = $base_url . '/con-contractor-bills';
+                                    $targetUrl = $base_url . '/con-contractor-bill/' . $req['source_id'];
                                 } elseif ($sourceTable === 'con_land_requisitions') {
                                     $targetUrl = $base_url . '/con-land-requisitions';
                                 } elseif ($sourceTable === 'con_work_orders') {
-                                    $targetUrl = $base_url . '/con-work-orders';
+                                    $targetUrl = $base_url . '/con-work-order/' . $req['source_id'];
                                 } elseif ($sourceTable === 'fund_requisitions' || $sourceTable === 'operational_fund_requests') {
-                                    $targetUrl = $base_url . '/fund-requisitions';
+                                    $targetUrl = $base_url . '/fund-requisitions/view/' . $req['source_id'];
                                 } elseif ($sourceTable === 'cashout_requests') {
-                                    $targetUrl = $base_url . '/admin-cashout-requests';
+                                    $targetUrl = $base_url . '/admin-view-cashout-request?id=' . $req['source_id'];
                                 } elseif ($sourceTable === 'payslips' || $sourceTable === 'salary_requests' || $requestType === 'salary') {
-                                    $targetUrl = $base_url . '/payslip-lists';
+                                    $targetUrl = $base_url . '/show-payslip/' . $req['source_id'];
                                 } elseif ($sourceTable === 'client_refund_requests') {
-                                    $targetUrl = $base_url . '/client-refunds';
+                                    $targetUrl = $base_url . '/client-refund/' . $req['source_id'];
                                 } elseif ($sourceTable === 'employee_leaves' || $sourceTable === 'leave') {
                                     $targetUrl = $base_url . '/hrm-leave-history';
                                 } elseif ($sourceTable === 'manpower_requisitions') {
                                     $targetUrl = $base_url . '/manpower-requisitions';
                                 } elseif ($sourceTable === 'advance_salaries') {
                                     $targetUrl = $base_url . '/advance-salary';
+                                } elseif ($sourceTable === 'project_other_costs') {
+                                    $targetUrl = $base_url . '/project-other-costs/review/' . $req['source_id'];
                                 }
                                 $reqApproveRole = strtolower($req['approve_role'] ?? 'management');
                                 $isMgmtRequest = ($reqApproveRole === 'management');
@@ -359,12 +361,10 @@
 
                                     <!-- Approved Amount -->
                                     <td>
-                                        <?php if (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid']) && $req['approved_amount'] > 0): ?>
+                                        <?php if ($req['approved_amount'] > 0): ?>
                                             <span class="fw-bold text-success">৳
                                                 <?= number_format($req['approved_amount'], 2) ?>
                                             </span>
-                                        <?php elseif (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'])): ?>
-                                            <span class="fw-semibold text-success">Approved</span>
                                         <?php else: ?>
                                             <span class="text-muted extra-small">--</span>
                                         <?php endif; ?>
@@ -442,7 +442,7 @@
                                                     <?= date('d M, Y', strtotime($req['payout_date'])) ?>
                                                 </div>
                                             <?php endif; ?>
-                                        <?php elseif ($req['payout_status'] === 'Pending Accounts Payout' || $req['status'] === 'partially_approved' || $req['status'] === 'partially_paid'): ?>
+                                        <?php elseif ($req['payout_status'] === 'Pending Accounts Payout' || $req['status'] === 'partially_approved'): ?>
                                             <span
                                                 class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 extra-small">
                                                 <i class="fa-solid fa-wallet me-1"></i>Pending Accounts Payout

@@ -721,6 +721,9 @@ class LeadController extends Controller
         }
         $queryString  = $queryParts ? '?' . implode('&', $queryParts) : '';
         $redirectUrl  = $GLOBALS['base_url'] . '/lead-lists' . $queryString;
+        if (!empty($_POST['return_url'])) {
+            $redirectUrl = $_POST['return_url'];
+        }
 
         if (!$userId || !$leadIds) {
             setError("Please select user and leads!");

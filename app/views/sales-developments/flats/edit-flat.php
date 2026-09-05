@@ -12,6 +12,7 @@ $isShop            = (int)($flat['is_shop'] ?? 0);
 <div class="row">
     <div class="card__wrapper">
         <form action="<?= $GLOBALS['base_url'] ?>/update-flat/<?= $flat['id'] ?>" method="POST">
+            <input type="hidden" name="return_url" value="<?= htmlspecialchars($_SERVER['HTTP_REFERER'] ?? $GLOBALS['base_url'] . '/flat-lists') ?>">
             <div class="row gy-20">
 
                 <!-- Project -->

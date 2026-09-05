@@ -31,7 +31,7 @@
                             </div>
                         <?php endif; ?>
 
-                        <form action="<?= $GLOBALS['base_url'] ?>/project-other-costs/store" method="POST">
+                        <form action="<?= $GLOBALS['base_url'] ?>/project-other-costs/store" method="POST" enctype="multipart/form-data">
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label">Project <span class="text-danger">*</span></label>
@@ -59,6 +59,11 @@
                             <div class="mb-3">
                                 <label class="form-label">Request Amount <span class="text-danger">*</span></label>
                                 <input type="number" step="0.01" name="request_amount" class="form-control" required placeholder="0.00">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Attachment (Optional)</label>
+                                <input type="file" name="creator_attachment" class="form-control" accept="image/*,.pdf,.doc,.docx">
                             </div>
 
                             <div class="mb-3">

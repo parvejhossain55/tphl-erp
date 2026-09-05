@@ -1,3 +1,0 @@
-Get-Content c:\xampp\htdocs\TPHL-ERP\app\views\payrolls\payslips\workspace.php | Select-Object -Index (130..140)
-Write-Host "---"
-Get-Content c:\xampp\htdocs\TPHL-ERP\app\views\payrolls\payslips\workspace.php | Select-Object -Index (266..275)

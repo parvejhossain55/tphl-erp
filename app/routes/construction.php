@@ -634,6 +634,7 @@ return [
     'project-other-costs' => ['controller' => 'ProjectOtherCostController', 'method' => 'index'],
     'project-other-costs/create' => ['controller' => 'ProjectOtherCostController', 'method' => 'create'],
     'project-other-costs/store' => ['controller' => 'ProjectOtherCostController', 'method' => 'store'],
+    'project-other-costs/approve-dept-head/(\d+)' => ['controller' => 'ProjectOtherCostController', 'method' => 'approve_dept_head'],
     'project-other-costs/approve-qc/(\d+)' => ['controller' => 'ProjectOtherCostController', 'method' => 'approve_qc'],
     'project-other-costs/approve-management/(\d+)' => ['controller' => 'ProjectOtherCostController', 'method' => 'approve_management'],
     'project-other-costs/pay/(\d+)' => ['controller' => 'ProjectOtherCostController', 'method' => 'pay'],

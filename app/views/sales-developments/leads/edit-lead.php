@@ -281,6 +281,7 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Lead Quality</label>
                         <select name="lead_quality" class="form-select">
+                            <option value="">-- Select Quality --</option>
                             <option value="Pending" <?= ($leadData['lead_quality'] ?? '') === 'Pending' ? 'selected' : '' ?>>Pending</option>
                             <option value="High Quality" <?= ($leadData['lead_quality'] ?? '') === 'High Quality' ? 'selected' : '' ?>>High Quality</option>
                             <option value="Medium Quality" <?= ($leadData['lead_quality'] ?? '') === 'Medium Quality' ? 'selected' : '' ?>>Medium Quality</option>
@@ -507,11 +508,87 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
 
 
                     <!-- ========================================================================= -->
-                    <!-- SECTION 7: DESCRIPTION & NOTES -->
+                    <!-- SECTION 7: 2ND NOMINEE INFORMATION -->
+                    <!-- ========================================================================= -->
+                    <div class="col-12 mt-4">
+                        <div class="p-2 bg-light rounded text-dark fw-bold border-start border-4 border-primary fs-6">
+                            <i class="fa-solid fa-user-plus me-2 text-primary"></i>7. 2nd Nominee Information (২য় নমিনি সংক্রান্ত তথ্য)
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">2nd Nominee Name</label>
+                        <input type="text" class="form-control" name="2nd_nominee_name" value="<?= htmlspecialchars($leadData['2nd_nominee_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Relation with Applicant</label>
+                        <input type="text" class="form-control" name="2nd_relation_with_lead" value="<?= htmlspecialchars($leadData['2nd_relation_with_lead'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">2nd Nominee Father's Name</label>
+                        <input type="text" class="form-control" name="2nd_nomi_father_name" value="<?= htmlspecialchars($leadData['2nd_nomi_father_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">2nd Nominee Mother's Name</label>
+                        <input type="text" class="form-control" name="2nd_nomi_mother_name" value="<?= htmlspecialchars($leadData['2nd_nomi_mother_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">2nd Nominee Profession</label>
+                        <input type="text" class="form-control" name="2nd_nomi_profession" value="<?= htmlspecialchars($leadData['2nd_nomi_profession'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">2nd Nominee Date of Birth</label>
+                        <input type="date" class="form-control" name="2nd_nomi_dob" value="<?= htmlspecialchars($leadData['2nd_nomi_dob'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">2nd Nominee NID / Passport</label>
+                        <input type="text" class="form-control" name="2nd_nomi_nid_passport" value="<?= htmlspecialchars($leadData['2nd_nomi_nid_passport'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">2nd Nominee Phone</label>
+                        <input type="text" class="form-control" name="2nd_nomi_phone" value="<?= htmlspecialchars($leadData['2nd_nomi_phone'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">2nd Nominee Email</label>
+                        <input type="email" class="form-control" name="2nd_nomi_email" value="<?= htmlspecialchars($leadData['2nd_nomi_email'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">2nd Nominee Present Address</label>
+                        <textarea class="form-control" name="2nd_nomi_present_add" rows="2"><?= htmlspecialchars($leadData['2nd_nomi_present_add'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">2nd Nominee Permanent Address</label>
+                        <textarea class="form-control" name="2nd_nomi_permanent_address" rows="2"><?= htmlspecialchars($leadData['2nd_nomi_permanent_address'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">2nd Nominee Photo</label>
+                        <input type="file" class="form-control" name="2nd_nomi_image" accept="image/*">
+                        <?php if (!empty($leadData['2nd_nomi_image'])): ?>
+                            <div class="mt-2">
+                                <img src="<?= getImage('leads', $leadData['2nd_nomi_image']) ?>" class="rounded img-thumbnail" style="height: 60px;">
+                                <small class="text-muted ms-2">Current Photo</small>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+
+                    <!-- ========================================================================= -->
+                    <!-- SECTION 8: DESCRIPTION & NOTES -->
                     <!-- ========================================================================= -->
                     <div class="col-12 mt-4">
                         <div class="p-2 bg-light rounded text-dark fw-bold border-start border-4 border-dark fs-6">
-                            <i class="fa-solid fa-file-lines me-2 text-dark"></i>7. Description & Additional Notes (বিবরণী)
+                            <i class="fa-solid fa-file-lines me-2 text-dark"></i>8. Description & Additional Notes (বিবরণী)
                         </div>
                     </div>
 

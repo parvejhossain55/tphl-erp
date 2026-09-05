@@ -3271,7 +3271,6 @@
                 <!-- ==================== END PHASE 2 ==================== -->
 
                 <!-- Project Other Costs -->
-                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 9, 11, 12, 13, 15, 17, 20, 22, 23, 24, 25, 30, 31, 32])): ?>
                 <li class="slide <?= isActive('project-other-costs', $current_route) ?>">
                     <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs"
                         class="sidebar__menu-item <?= isActive('project-other-costs', $current_route) ?>">
@@ -3282,7 +3281,6 @@
                         <?php endif; ?>
                     </a>
                 </li>
-                <?php endif; ?>
 
                 <!-- Fund Requisitions -->
                 <li class="slide <?= isActive('fund-requisitions', $current_route) ?>">

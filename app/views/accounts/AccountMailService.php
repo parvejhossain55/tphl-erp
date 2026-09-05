@@ -97,6 +97,7 @@ class AccountMailService
 
         // Inform PHPMailer to use SMTP
         $mail->isSMTP();
+        $mail->CharSet = 'UTF-8';
         $mail->Host = $this->smtpHost;
         $mail->Port = $this->smtpPort;
         $mail->SMTPAuth = true;
@@ -411,7 +412,7 @@ HTML;
             $projectName = htmlspecialchars($requestData['project_name'] ?? 'N/A');
             $amount = number_format((float)($requestData['net_payable'] ?? 0), 2);
 
-            $subject = "Action Required: Vendor Payment Request #{$requestId} — {$stageLabel}";
+            $subject = "Action Required: Vendor Payment Request #{$requestId} - {$stageLabel}";
             $detailsHtml = "
                 <h4 style='margin-top:0;color:#000;'>Approval Required</h4>
                 <div style='color:#333;font-size:15px;line-height:1.6;'>
@@ -461,7 +462,7 @@ HTML;
             $quantity = (int)($requestData['quantity'] ?? 0);
             $totalPrice = number_format((float)($requestData['total_price'] ?? 0), 2);
 
-            $subject = "Action Required: Office Procurement #{$requestId} — {$stageLabel}";
+            $subject = "Action Required: Office Procurement #{$requestId} - {$stageLabel}";
             $detailsHtml = "
                 <h4 style='margin-top:0;color:#000;'>Approval Required</h4>
                 <div style='color:#333;font-size:15px;line-height:1.6;'>

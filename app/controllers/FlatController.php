@@ -136,12 +136,18 @@ class FlatController extends Controller
             }
             $actions .= '</div>';
 
+            $uploadFromText = htmlspecialchars($flat['upload_from'] ?? 'N/A');
+            $creator = trim($flat['creator_name'] ?? '');
+            if (!empty($creator)) {
+                $uploadFromText .= ' by ' . htmlspecialchars($creator);
+            }
+
             $data[] = [
                 $serial,
                 htmlspecialchars($flat['project_name'] ?? ''),
                 htmlspecialchars($flat['flat_name'] ?? 'N/A'),
                 $typeBadge,
-                htmlspecialchars($flat['upload_from'] ?? 'N/A'),
+                $uploadFromText,
                 htmlspecialchars($flat['facing_site'] ?? 'N/A'),
                 htmlspecialchars($flat['sqft'] ?? 'N/A'),
                 format_bdt($flat['land_share_value'] ?? 0),
@@ -293,7 +299,8 @@ class FlatController extends Controller
         try {
             $this->flatModel->update($id, $data);
             setSuccess("Flat updated successfully!");
-            header("Location: {$GLOBALS['base_url']}/flat-lists");
+            $redirectUrl = $_POST['return_url'] ?? "{$GLOBALS['base_url']}/flat-lists";
+            header("Location: {$redirectUrl}");
             exit;
         } catch (Exception $e) {
             setError($e->getMessage());

@@ -9,13 +9,49 @@ $userRole   = $userRole ?? null;
 $awaitingApproval = [];
 $readyToPay       = [];
 
+$roleNameLower = strtolower($_SESSION['user']['role_name'] ?? '');
+$isQc = in_array($userRole, [1, 24, 25]) || strpos($roleNameLower, 'qc') !== false || strpos($roleNameLower, 'audit') !== false;
+$isMgmt = in_array($userRole, [1, 3, 33, 22, 20, 32]) || strpos($roleNameLower, 'operation') !== false || strpos($roleNameLower, 'management') !== false || strpos($roleNameLower, 'admin') !== false;
+
 foreach ($pending ?? [] as $p) {
-    if ($p['ref_type'] === 'vendor_payment' && ($p['vpr_status'] ?? '') === 'Submitted') {
+    $refType = $p['ref_type'];
+    $status = strtolower($p['vpr_status'] ?? '');
+    
+    $isAwaiting = false;
+    $needsMyApproval = false;
+
+    if ($refType === 'vendor_payment') {
+        if (in_array($status, ['submitted', 'qc approved'])) {
+            $isAwaiting = true;
+            if ($isQc && $status === 'submitted' && !$isMgmt) {
+                $needsMyApproval = true;
+            } elseif ($isMgmt) {
+                $needsMyApproval = true;
+            }
+        }
+    } elseif ($refType === 'contractor_bill') {
+        if (in_array($status, ['submitted', 'verified', 'qc_approved'])) {
+            $isAwaiting = true;
+            if ($isQc && in_array($status, ['submitted', 'verified'])) {
+                $needsMyApproval = true;
+            } elseif ($isMgmt && in_array($status, ['submitted', 'verified', 'qc_approved'])) {
+                $needsMyApproval = true;
+            }
+        }
+    }
+
+    if ($isAwaiting) {
+        $p['needs_my_approval'] = $needsMyApproval;
         $awaitingApproval[] = $p;
     } else {
         $readyToPay[] = $p;
     }
 }
+
+// Sort awaiting approval: items needing my approval first
+usort($awaitingApproval, function($a, $b) {
+    return ($b['needs_my_approval'] ? 1 : 0) - ($a['needs_my_approval'] ? 1 : 0);
+});
 ?>
 
 <div class="pagetitle d-flex justify-content-between align-items-center">
@@ -29,9 +65,24 @@ foreach ($pending ?? [] as $p) {
             </ol>
         </nav>
     </div>
-    <span class="badge bg-warning fs-6 px-3 py-2">
-        <i class="bi bi-clock me-1"></i> <?= count($pending ?? []) ?> Pending
-    </span>
+    <div class="d-flex align-items-center gap-3">
+        <!-- Date Filters -->
+        <input type="date" id="fromDate" class="form-control form-control-sm shadow-sm" style="width: auto;" title="From Date">
+        <span class="text-muted fw-bold">-</span>
+        <input type="date" id="toDate" class="form-control form-control-sm shadow-sm" style="width: auto;" title="To Date">
+
+        <!-- Type Filter -->
+        <select id="typeFilter" class="form-select form-select-sm shadow-sm" style="width: auto;">
+            <option value="">All Types</option>
+            <option value="Vendor Payment">Vendor Payment</option>
+            <option value="Contractor Bill">Contractor Bill</option>
+            <option value="Fund Request">Fund Request</option>
+        </select>
+        
+        <span class="badge bg-warning fs-6 px-3 py-2 shadow-sm ms-auto">
+            <i class="bi bi-clock me-1"></i> <?= count($pending ?? []) ?> Pending
+        </span>
+    </div>
 </div>
 
 <section class="section">
@@ -56,17 +107,17 @@ foreach ($pending ?? [] as $p) {
         <div class="mb-2 card__header d-flex justify-content-between align-items-center">
             <h6 class="card__title mb-0 text-warning">
                 <i class="bi bi-hourglass-split me-2"></i>
-                Vendor Payments — Awaiting Approval
+                Requests — Awaiting Approval
                 <span class="badge bg-warning text-dark ms-2"><?= count($awaitingApproval) ?></span>
             </h6>
         </div>
         <div class="card__body p-0">
             <div class="alert alert-warning border-0 rounded-0 py-2 mb-0 small">
-                <i class="bi bi-info-circle me-1"></i>
+
                 এই requests গুলো এখনো approve হয়নি। Approve করতে নিচের <strong>View</strong> button থেকে detail page এ যান।
             </div>
             <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle mb-0">
+                <table id="awaitingApprovalTable" class="table table-bordered table-hover align-middle mb-0">
                     <thead class="table-warning">
                         <tr>
                             <th>#</th>
@@ -81,15 +132,27 @@ foreach ($pending ?? [] as $p) {
                     <tbody>
                         <?php foreach ($awaitingApproval as $i => $p): ?>
                         <?php
+                            $refType = $p['ref_type'];
                             $ptClass = ($p['payment_type'] ?? '') === 'Advance'
                                 ? 'bg-primary'
                                 : (($p['payment_type'] ?? '') === 'Partial' ? 'bg-orange text-dark' : 'bg-success');
+                            $badgeColor = $refType === 'contractor_bill' ? 'primary' : 'info';
+                            $refLabel = $refType === 'contractor_bill' ? 'Contractor Bill' : 'Vendor Payment';
+                            $viewUrl = $refType === 'contractor_bill' ? $base_url . '/con-contractor-bill/' . $p['ref_id'] : $base_url . '/con-vendor-payment-show/' . $p['ref_id'];
                         ?>
-                        <tr>
-                            <td><?= $i + 1 ?></td>
-                            <td>
-                                <span class="badge bg-secondary">Vendor Payment</span><br>
+                        <tr class="<?= $p['needs_my_approval'] ? 'table-warning shadow-sm position-relative' : '' ?>">
+                            <td><?= $i + 1 ?>
+                                <?php if ($p['needs_my_approval']): ?>
+                                    <span class="position-absolute top-0 start-0 translate-middle p-1 bg-danger border border-light rounded-circle" title="Needs Your Action">
+                                        <span class="visually-hidden">New alerts</span>
+                                    </span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="type-cell">
+                                <span class="badge bg-<?= $badgeColor ?>"><?= $refLabel ?></span><br>
+                                <?php if ($refType === 'vendor_payment'): ?>
                                 <span class="badge <?= $ptClass ?> mt-1"><?= htmlspecialchars($p['payment_type'] ?? '') ?></span>
+                                <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars($p['project_name'] ?? '—') ?></td>
                             <td><?= htmlspecialchars(mb_strimwidth($p['description'] ?? '', 0, 55, '...')) ?></td>
@@ -97,14 +160,14 @@ foreach ($pending ?? [] as $p) {
                             <td><small><?= !empty($p['created_at']) ? date('d M Y', strtotime($p['created_at'])) : '—' ?></small></td>
                             <td class="text-center">
                                 <div class="d-flex gap-1 justify-content-center">
-                                    <a href="<?= $base_url ?>/con-vendor-payment-show/<?= $p['ref_id'] ?>"
+                                    <a href="<?= $viewUrl ?>"
                                        class="btn btn-outline-info btn-sm" title="View Details">
                                         <i class="bi bi-eye"></i> View
                                     </a>
-                                    <?php if ($canApproveVendor): ?>
-                                    <a href="<?= $base_url ?>/con-vendor-payment-show/<?= $p['ref_id'] ?>"
+                                    <?php if ($p['needs_my_approval']): ?>
+                                    <a href="<?= $viewUrl ?>"
                                        class="btn btn-warning btn-sm fw-bold">
-                                        <i class="bi bi-check-circle me-1"></i> Approve
+                                        <i class="bi bi-check-circle me-1"></i> Action
                                     </a>
                                     <?php endif; ?>
                                 </div>
@@ -184,7 +247,7 @@ foreach ($pending ?? [] as $p) {
                         ?>
                         <tr>
                             <td><?= $i + 1 ?></td>
-                            <td>
+                            <td class="type-cell">
                                 <span class="badge bg-<?= $badgeColor ?>"><?= $refLabel ?></span>
                                 <?php if (!empty($p['payment_type']) && $refType === 'vendor_payment'): ?>
                                 <br><span class="badge bg-secondary mt-1"><?= htmlspecialchars($p['payment_type']) ?></span>
@@ -252,8 +315,59 @@ foreach ($pending ?? [] as $p) {
 
 <script>
 $(document).ready(function () {
+    let dtPending = null;
+    let dtAwaiting = null;
+
     if ($('#pendingTable').length) {
-        $('#pendingTable').DataTable({ responsive: true, pageLength: 25 });
+        if ($.fn.dataTable.isDataTable('#pendingTable')) {
+            dtPending = $('#pendingTable').DataTable();
+        } else {
+            dtPending = $('#pendingTable').DataTable({ responsive: true, pageLength: 25 });
+        }
     }
+    
+    if ($('#awaitingApprovalTable').length) {
+        if ($.fn.dataTable.isDataTable('#awaitingApprovalTable')) {
+            dtAwaiting = $('#awaitingApprovalTable').DataTable();
+        } else {
+            dtAwaiting = $('#awaitingApprovalTable').DataTable({ responsive: true, pageLength: 25 });
+        }
+    }
+
+    // Custom Date Range Search function for DataTables
+    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+        let fromDateStr = $('#fromDate').val();
+        let toDateStr = $('#toDate').val();
+        
+        let dateIndex = (settings.nTable.id === 'awaitingApprovalTable') ? 5 : 8;
+        let rowDateStr = data[dateIndex] ? data[dateIndex].replace(/<[^>]+>/g, '').trim() : '';
+        
+        if (!rowDateStr || rowDateStr === '—') return true;
+
+        let rowDate = new Date(rowDateStr);
+        let fromDate = fromDateStr ? new Date(fromDateStr) : null;
+        let toDate = toDateStr ? new Date(toDateStr) : null;
+        
+        if (fromDate) fromDate.setHours(0,0,0,0);
+        if (toDate) toDate.setHours(23,59,59,999);
+        
+        if (fromDate && rowDate < fromDate) return false;
+        if (toDate && rowDate > toDate) return false;
+        
+        return true;
+    });
+    
+    // Trigger redraw on filters change
+    $('#typeFilter, #fromDate, #toDate').on('change', function() {
+        let filterValue = $('#typeFilter').val();
+        
+        if (dtAwaiting) {
+            dtAwaiting.column(1).search(filterValue).draw();
+        }
+        
+        if (dtPending) {
+            dtPending.column(1).search(filterValue).draw();
+        }
+    });
 });
 </script>

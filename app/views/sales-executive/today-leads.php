@@ -558,6 +558,37 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
         </form>
     </div>
 
+        <?php if ((isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 33])) || (function_exists('isSalesCoLeader') && isSalesCoLeader())): ?>
+            <div class="col-md-6 mb-2">
+                <div id="assignCard"
+                    class="card__wrapper shadow-sm p-3 my-2"
+                    style="display:none; border-radius:12px;">
+
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+
+                        <label class="fw-bold mb-0">Assign Selected Leads to: <span id="selectedCount" class="badge bg-primary ms-2">0</span></label>
+
+                        <select id="assignUserSelect"
+                            class="form-select form-select-sm select2"
+                            style="min-width:200px; width:100%;">
+
+                            <option value=""></option> <!-- important for placeholder -->
+
+                            <?php if(!empty($assignedUsers)): foreach ($assignedUsers as $user): ?>
+                                <option value="<?= $user['id'] ?>">
+                                    <?= htmlspecialchars($user['full_name']) ?> - <?= htmlspecialchars($user['role_name'] ?? '') ?>
+                                </option>
+                            <?php endforeach; endif; ?>
+                        </select>
+
+                        <button type="button" id="assignUserBtn" class="btn btn-primary btn-sm px-4">
+                            <i class="bi bi-person-check-fill me-1"></i> Assign
+                        </button>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <!-- Table -->
         <div class="col-xxl-12">
             <div class="card__wrapper">
@@ -1206,6 +1237,12 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
             inputLeads.value = selectedLeads.join(',');
             form.appendChild(inputLeads);
 
+            const inputReturn = document.createElement('input');
+            inputReturn.type = 'hidden';
+            inputReturn.name = 'return_url';
+            inputReturn.value = '<?= $base_url ?>/today-leads';
+            form.appendChild(inputReturn);
+
             document.body.appendChild(form);
             form.submit();
         });
@@ -1216,6 +1253,12 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 <script>
     const selectAll = document.getElementById('selectAllLeads');
     const assignCard = document.getElementById('assignCard');
+    const countBadge = document.getElementById('selectedCount');
+
+    function updateSelectedCount() {
+        const count = document.querySelectorAll('.selectedId:checked').length;
+        if (countBadge) countBadge.textContent = count;
+    }
 
     if (selectAll) {
         selectAll.addEventListener('change', function() {
@@ -1228,6 +1271,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                 const anyChecked = Array.from(document.querySelectorAll('.selectedId')).some(c => c.checked);
                 if (assignCard) assignCard.style.display = anyChecked ? 'flex' : 'none';
             }
+            updateSelectedCount();
         });
     }
 
@@ -1240,6 +1284,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                 const allChecked = Array.from(document.querySelectorAll('.selectedId')).every(c => c.checked);
                 selectAll.checked = allChecked;
             }
+            updateSelectedCount();
         });
     });
 

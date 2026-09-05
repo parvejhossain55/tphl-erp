@@ -16,9 +16,11 @@ class FlatModel extends Model
         $sql = "
         SELECT 
             f.*,
-            p.name AS project_name
+            p.name AS project_name,
+            u.full_name AS creator_name
         FROM flats AS f
         LEFT JOIN projects AS p ON f.project_id = p.id
+        LEFT JOIN users AS u ON f.created_by = u.id
         WHERE f.deleted_at IS NULL
     ";
 
@@ -90,9 +92,11 @@ class FlatModel extends Model
         $sql = "
         SELECT 
             f.*,
-            p.name AS project_name
+            p.name AS project_name,
+            u.full_name AS creator_name
         FROM flats AS f
         LEFT JOIN projects AS p ON f.project_id = p.id
+        LEFT JOIN users AS u ON f.created_by = u.id
         WHERE f.deleted_at IS NULL
         ";
 
@@ -237,7 +241,7 @@ class FlatModel extends Model
             return false;
         }
         $stmt->bind_param(
-            "isiiiiiiiisisdisddisi",
+            "isiiiiiiissississsisi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -412,7 +416,7 @@ class FlatModel extends Model
         }
 
         $stmt->bind_param(
-            "isiiiiiiiisisdisiddi",
+            "isiiiiiiississisissi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
