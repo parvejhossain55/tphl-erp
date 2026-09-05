@@ -31,22 +31,28 @@ class Payslip extends Model
         return $data;
     }
 
-    // Get Paid Count for specific month/year
-    public function getPaidCount($year = null, $month = null)
+    // Get Paid Count for specific month/year and optional project
+    public function getPaidCount($year = null, $month = null, $projectId = null)
     {
-        $sql = "SELECT COUNT(*) AS paid_count FROM payslips WHERE status = 'paid'";
+        $sql = "SELECT COUNT(*) AS paid_count FROM payslips WHERE status = 'paid' AND (is_excluded = 0 OR is_excluded IS NULL)";
         $params = [];
         $types = "";
 
+        if (!empty($projectId)) {
+            $sql .= " AND payroll_project_id = ?";
+            $params[] = (int) $projectId;
+            $types .= "i";
+        }
+
         if (!empty($year)) {
             $sql .= " AND YEAR(payslip_month) = ?";
-            $params[] = $year;
+            $params[] = (int) $year;
             $types .= "i";
         }
 
         if (!empty($month)) {
             $sql .= " AND MONTH(payslip_month) = ?";
-            $params[] = $month;
+            $params[] = (int) $month;
             $types .= "i";
         }
 
@@ -64,22 +70,28 @@ class Payslip extends Model
         return $data['paid_count'] ?? 0;
     }
 
-    // Get Pending Count for specific month/year
-    public function getPendingCount($year = null, $month = null)
+    // Get Pending Count for specific month/year and optional project
+    public function getPendingCount($year = null, $month = null, $projectId = null)
     {
-        $sql = "SELECT COUNT(*) AS pending_count FROM payslips WHERE status = 'pending'";
+        $sql = "SELECT COUNT(*) AS pending_count FROM payslips WHERE status = 'pending' AND (is_excluded = 0 OR is_excluded IS NULL)";
         $params = [];
         $types = "";
 
+        if (!empty($projectId)) {
+            $sql .= " AND payroll_project_id = ?";
+            $params[] = (int) $projectId;
+            $types .= "i";
+        }
+
         if (!empty($year)) {
             $sql .= " AND YEAR(payslip_month) = ?";
-            $params[] = $year;
+            $params[] = (int) $year;
             $types .= "i";
         }
 
         if (!empty($month)) {
             $sql .= " AND MONTH(payslip_month) = ?";
-            $params[] = $month;
+            $params[] = (int) $month;
             $types .= "i";
         }
 
@@ -219,6 +231,14 @@ class Payslip extends Model
         if (!$payslip)
             return null;
 
+        // Ensure basic_salary is populated
+        $basicSalary = (float) ($payslip['basic_salary'] ?? 0);
+        $totalEarning = (float) ($payslip['total_earning'] ?? 0);
+        if ($basicSalary <= 0 && $totalEarning > 0) {
+            $basicSalary = round($totalEarning * 0.50, 2);
+            $payslip['basic_salary'] = $basicSalary;
+        }
+
         // 2 Get item details for this payslip
         $stmt2 = $this->db->prepare("
         SELECT pd.*, pi.name AS item_name, pi.type AS item_type
@@ -232,26 +252,116 @@ class Payslip extends Model
         $items = $itemsResult->fetch_all(MYSQLI_ASSOC);
         $stmt2->close();
 
-        // 3 Attach items to payslip array
+        // 3 If items are empty or missing standard allowances, synthesize from payslips columns & rules
+        $hasEarningItems = false;
+        $hasDeductionItems = false;
+        foreach ($items as $it) {
+            if (($it['item_type'] ?? '') === 'earning') $hasEarningItems = true;
+            if (($it['item_type'] ?? '') === 'deduction') $hasDeductionItems = true;
+        }
+
+        if (!$hasEarningItems) {
+            $hr = (float) ($payslip['house_rent_allowance'] ?? 0);
+            $med = (float) ($payslip['medical_allowance'] ?? 0);
+            $conv = (float) ($payslip['conveyance_allowance'] ?? 0);
+            $rec = (float) ($payslip['recreation_allowance'] ?? 0);
+            $punc = (float) ($payslip['punctuality_bonus'] ?? 0);
+            $ot = (float) ($payslip['overtime'] ?? 0);
+            $arr = (float) ($payslip['arrears_earning'] ?? 0);
+            $duty = (float) ($payslip['duty_allowance'] ?? 0);
+
+            $sumColAllowances = $hr + $med + $conv + $rec + $punc + $ot + $arr + $duty;
+
+            // If columns had no allowances, use 50% basic and 50/30/10/10 of basic
+            if ($sumColAllowances <= 0 && $totalEarning > 0) {
+                $basicSalary = round($totalEarning * 0.50, 2);
+                $hr = round($basicSalary * 0.50, 2);
+                $med = round($basicSalary * 0.30, 2);
+                $conv = round($basicSalary * 0.10, 2);
+                $rec = round($basicSalary * 0.10, 2);
+            } elseif ($sumColAllowances > 0 && $totalEarning > $sumColAllowances) {
+                // Ensure basic_salary harmonizes with actual total_earning
+                $basicSalary = round($totalEarning - $sumColAllowances, 2);
+            }
+            $payslip['basic_salary'] = $basicSalary;
+
+            if ($hr > 0) $items[] = ['item_name' => 'House Rent Allowance', 'item_type' => 'earning', 'amount' => $hr];
+            if ($med > 0) $items[] = ['item_name' => 'Medical Allowance', 'item_type' => 'earning', 'amount' => $med];
+            if ($conv > 0) $items[] = ['item_name' => 'Conveyance Allowance', 'item_type' => 'earning', 'amount' => $conv];
+            if ($rec > 0) $items[] = ['item_name' => 'Recreation Allowance', 'item_type' => 'earning', 'amount' => $rec];
+            if ($punc > 0) $items[] = ['item_name' => 'Punctuality Bonus', 'item_type' => 'earning', 'amount' => $punc];
+            if ($ot > 0) $items[] = ['item_name' => 'Overtime', 'item_type' => 'earning', 'amount' => $ot];
+            if ($arr > 0) $items[] = ['item_name' => 'Arrears', 'item_type' => 'earning', 'amount' => $arr];
+            if ($duty > 0) $items[] = ['item_name' => 'Duty Allowance', 'item_type' => 'earning', 'amount' => $duty];
+        } else {
+            // If items exist, verify basic salary
+            $itemEarningsSum = 0;
+            foreach ($items as $it) {
+                if (($it['item_type'] ?? '') === 'earning') {
+                    $itemEarningsSum += (float)($it['amount'] ?? 0);
+                }
+            }
+            if ($totalEarning > $itemEarningsSum) {
+                $payslip['basic_salary'] = round($totalEarning - $itemEarningsSum, 2);
+            }
+        }
+
+        if (!$hasDeductionItems) {
+            if ((float)($payslip['advance_salary'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Advance Salary', 'item_type' => 'deduction', 'amount' => (float)$payslip['advance_salary']];
+            }
+            if ((float)($payslip['subsidized_lunch'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Subsidized Lunch', 'item_type' => 'deduction', 'amount' => (float)$payslip['subsidized_lunch']];
+            }
+            if ((float)($payslip['unpaid_absent_amount'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Unpaid Absent', 'item_type' => 'deduction', 'amount' => (float)$payslip['unpaid_absent_amount']];
+            }
+            if ((float)($payslip['arrears_deduction'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Arrears Deduction', 'item_type' => 'deduction', 'amount' => (float)$payslip['arrears_deduction']];
+            }
+            if ((float)($payslip['others_deduction'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Others Deduction', 'item_type' => 'deduction', 'amount' => (float)$payslip['others_deduction']];
+            }
+            if ((float)($payslip['tax'] ?? 0) > 0) {
+                $items[] = ['item_name' => 'Tax', 'item_type' => 'deduction', 'amount' => (float)$payslip['tax']];
+            }
+        }
+
+        // 4 Attach items to payslip array
         $payslip['items'] = $items;
 
         return $payslip;
     }
 
 
-    public function getPaidSalarySum($year, $month)
+    public function getPaidSalarySum($year = null, $month = null, $projectId = null)
     {
-        $query = "
-        SELECT SUM(net_salary) AS total_paid
-        FROM payslips
-        WHERE status = ?
-          AND YEAR(payslip_month) = ?
-          AND MONTH(payslip_month) = ?
-    ";
+        $query = "SELECT SUM(net_salary) AS total_paid FROM payslips WHERE status = ? AND (is_excluded = 0 OR is_excluded IS NULL)";
+        $params = ['paid'];
+        $types = "s";
+
+        if (!empty($projectId)) {
+            $query .= " AND payroll_project_id = ?";
+            $params[] = (int) $projectId;
+            $types .= "i";
+        }
+
+        if (!empty($year)) {
+            $query .= " AND YEAR(payslip_month) = ?";
+            $params[] = (int) $year;
+            $types .= "i";
+        }
+
+        if (!empty($month)) {
+            $query .= " AND MONTH(payslip_month) = ?";
+            $params[] = (int) $month;
+            $types .= "i";
+        }
 
         $stmt = $this->db->prepare($query);
-        $status = 'paid';
-        $stmt->bind_param("sii", $status, $year, $month);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
         $stmt->execute();
 
         $row = $stmt->get_result()->fetch_assoc();
@@ -261,18 +371,34 @@ class Payslip extends Model
     }
 
 
-    public function getUnpaidSalarySum($year, $month)
+    public function getUnpaidSalarySum($year = null, $month = null, $projectId = null)
     {
-        $query = "
-        SELECT SUM(net_salary) AS total_unpaid
-        FROM payslips
-        WHERE status IN ('pending', 'approved')
-          AND YEAR(payslip_month) = ?
-          AND MONTH(payslip_month) = ?
-    ";
+        $query = "SELECT SUM(net_salary) AS total_unpaid FROM payslips WHERE status IN ('pending', 'approved') AND (is_excluded = 0 OR is_excluded IS NULL)";
+        $params = [];
+        $types = "";
+
+        if (!empty($projectId)) {
+            $query .= " AND payroll_project_id = ?";
+            $params[] = (int) $projectId;
+            $types .= "i";
+        }
+
+        if (!empty($year)) {
+            $query .= " AND YEAR(payslip_month) = ?";
+            $params[] = (int) $year;
+            $types .= "i";
+        }
+
+        if (!empty($month)) {
+            $query .= " AND MONTH(payslip_month) = ?";
+            $params[] = (int) $month;
+            $types .= "i";
+        }
 
         $stmt = $this->db->prepare($query);
-        $stmt->bind_param("ii", $year, $month);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
         $stmt->execute();
 
         $row = $stmt->get_result()->fetch_assoc();
@@ -293,6 +419,76 @@ class Payslip extends Model
 
         $projectId = ($projectId && (int)$projectId > 0) ? (int)$projectId : null;
 
+        if ($projectId) {
+            // Project-Centric Query
+            $sql = "
+                SELECT 
+                    p.id AS id,
+                    e.id AS employee_id,
+                    e.employee_id AS employee_office_id,
+                    e.full_name AS employee_name,
+                    e.photo AS photo,
+                    e.email AS email,
+                    e.joining_date AS joining_date,
+                    d.name AS desgination_name,
+                    dept.name AS department_name,
+                    p.total_earning,
+                    p.total_deduction,
+                    COALESCE(p.net_salary, e.gross_salary) AS net_salary,
+                    p.status,
+                    p.payment_method,
+                    p.company_bank_id,
+                    p.upload_by,
+                    ar.approved_at AS approval_time,
+                    ar.status AS approval_status,
+                    pd.amount AS lwp_amount,
+                    e.gross_salary AS emp_gross_salary
+                FROM payslips AS p
+                LEFT JOIN employees AS e ON p.employee_id = e.id
+                LEFT JOIN designations AS d ON e.designation_id = d.id
+                LEFT JOIN departments AS dept ON e.department_id = dept.id
+                LEFT JOIN payslip_details AS pd ON pd.payslip_id = p.id AND pd.payslip_item_id = 4
+                LEFT JOIN (
+                    SELECT *
+                    FROM (
+                        SELECT *,
+                                ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY approved_at DESC) AS rn
+                        FROM approval_requests
+                        WHERE source_table = 'payslips' AND status IN ('approved','partially_approved')
+                    ) AS t
+                    WHERE rn = 1
+                ) AS ar ON ar.source_id = p.id
+                WHERE p.payroll_project_id = ?
+            ";
+
+            $params = [$projectId];
+            $types = "i";
+
+            if ($status === 'paid') {
+                $sql .= " AND p.status = 'paid' AND (p.is_excluded = 0 OR p.is_excluded IS NULL)";
+            } elseif ($status === 'draft') {
+                $sql .= " AND p.status = 'draft'";
+            } elseif ($status === 'unpaid') {
+                $sql .= " AND p.status NOT IN ('paid', 'draft') AND (p.is_excluded = 0 OR p.is_excluded IS NULL)";
+            } else {
+                $sql .= " AND p.status != 'draft' AND (p.is_excluded = 0 OR p.is_excluded IS NULL)";
+            }
+
+            $sql .= " ORDER BY p.id DESC";
+
+            $stmt = $this->db->prepare($sql);
+            if (!$stmt) {
+                die("Prepare failed: " . $this->db->error);
+            }
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $data = $result->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+            return $data;
+        }
+
+        // Legacy / Month-Year Query (when no specific project is selected)
         if ($status === 'unpaid') {
             $sql = "
                 SELECT 
@@ -325,18 +521,16 @@ class Payslip extends Model
                     SELECT *
                     FROM (
                         SELECT *,
-                               ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY approved_at DESC) AS rn
+                                ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY approved_at DESC) AS rn
                         FROM approval_requests
                         WHERE source_table = 'payslips' AND status IN ('approved','partially_approved')
                     ) AS t
                     WHERE rn = 1
                 ) AS ar ON ar.source_id = p.id
-                WHERE (p.id IS NOT NULL AND p.status NOT IN ('paid', 'draft')) OR (p.id IS NULL)
+                WHERE ((p.id IS NOT NULL AND p.status NOT IN ('paid', 'draft')) OR (p.id IS NULL))
+                  AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
+                ORDER BY p.id DESC, e.full_name ASC
             ";
-            if ($projectId) {
-                $sql .= " AND p.payroll_project_id = $projectId";
-            }
-            $sql .= " ORDER BY CASE WHEN p.status = 'draft' THEN 1 ELSE 0 END ASC, p.id DESC, e.full_name ASC";
         } else {
             $sql = "
                 SELECT 
@@ -369,26 +563,25 @@ class Payslip extends Model
                     SELECT *
                     FROM (
                         SELECT *,
-                               ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY approved_at DESC) AS rn
+                                ROW_NUMBER() OVER (PARTITION BY source_id ORDER BY approved_at DESC) AS rn
                         FROM approval_requests
                         WHERE source_table = 'payslips' AND status IN ('approved','partially_approved')
                     ) AS t
                     WHERE rn = 1
                 ) AS ar ON ar.source_id = p.id
                 WHERE YEAR(p.payslip_month) = ? AND MONTH(p.payslip_month) = ?
+                  AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
             ";
 
             if ($status === 'paid') {
                 $sql .= " AND p.status = 'paid'";
             } elseif ($status === 'draft') {
                 $sql .= " AND p.status = 'draft'";
+            } else {
+                $sql .= " AND p.status != 'draft'";
             }
 
-            if ($projectId) {
-                $sql .= " AND p.payroll_project_id = $projectId";
-            }
-
-            $sql .= " ORDER BY CASE WHEN p.status = 'draft' THEN 1 ELSE 0 END ASC, p.id DESC";
+            $sql .= " ORDER BY p.id DESC";
         }
 
         $stmt = $this->db->prepare($sql);
