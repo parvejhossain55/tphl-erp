@@ -72,8 +72,7 @@ if (!function_exists('formatGrowthNode')) {
                         onclick="$('#summaryReportTable').DataTable().button('.buttons-csv').trigger();">
                         <i class="fa-solid fa-file-csv me-1"></i> Export CSV
                     </button>
-                    <button type="button" class="btn btn-danger fw-semibold shadow-sm"
-                        onclick="$('#summaryReportTable').DataTable().button('.buttons-pdf').trigger();">
+                    <button type="button" class="btn btn-danger fw-semibold shadow-sm" onclick="exportSummaryPdf()">
                         <i class="fa-solid fa-file-pdf me-1"></i> Export PDF
                     </button>
                 </div>
@@ -163,30 +162,33 @@ dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"
                         title: 'Payroll_Summary_Report_<?= time() ?>'
                         },
                         {
-                        text: 'PDF', className: 'buttons-pdf',
-                        action: function (e, dt, node, config) {
-                        var fpid = $('#fromProject').val();
-                        var tpid = $('#toProject').val();
-                        if (!fpid || !tpid) {
-                        Swal.fire('Error', 'Please generate the report first by selecting From/To projects.', 'error');
-                        return;
+                            text: 'PDF', className: 'buttons-pdf',
+                            action: function (e, dt, node, config) {
+                                exportSummaryPdf();
+                            }
                         }
-                        document.getElementById('pdfFromProjectId').value = fpid;
-                        document.getElementById('pdfToProjectId').value = tpid;
-                        document.getElementById('exportPdfForm').submit();
-                        }
-                        }
-                        ],
-                        language: {
+                    ],
+                    language: {
                         search: "_INPUT_",
                         searchPlaceholder: "Search report..."
-                        },
-                        paging: false,
-                        ordering: false,
-                        info: false
-                        });
+                    },
+                    paging: false,
+                    ordering: false,
+                    info: false
+                });
 
-                        });
+                window.exportSummaryPdf = function () {
+                    var fpid = $('#fromProject').val();
+                    var tpid = $('#toProject').val();
+                    if (!fpid || !tpid) {
+                        Swal.fire('Error', 'Please select both From and To projects first.', 'error');
+                        return;
+                    }
+                    document.getElementById('pdfFromProjectId').value = fpid;
+                    document.getElementById('pdfToProjectId').value = tpid;
+                    document.getElementById('exportPdfForm').submit();
+                };
+            });
                         <?php
                         $page_script = ob_get_clean();
                         ?>

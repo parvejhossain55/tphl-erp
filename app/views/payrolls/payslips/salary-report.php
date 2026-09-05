@@ -60,13 +60,27 @@ $show_breadcrumb = true;
                         class="btn btn-success fw-semibold shadow-sm me-2 <?= !$payroll_project_id ? 'disabled' : '' ?>">
                         <i class="fa-solid fa-file-csv me-1"></i> Export CSV
                     </a>
-                    <a href="<?= $base_url ?>/payroll-salary-report-pdf?report_type=<?= $reportType ?>&payroll_project_id=<?= $payroll_project_id ?>"
+                    <a href="<?= $base_url ?>/payroll-salary-report-pdf?report_type=<?= $reportType ?>&payroll_project_id=<?= $payroll_project_id ?>" target="_blank"
                         class="btn btn-danger fw-semibold shadow-sm <?= !$payroll_project_id ? 'disabled' : '' ?>">
                         <i class="fa-solid fa-file-pdf me-1"></i> Export PDF
                     </a>
                 </div>
             </div>
 
+            <?php
+            $totalEmpCount = 0;
+            $grandTotalAmount = 0;
+            $grandTotalBank = 0;
+            $grandTotalCash = 0;
+            if (!empty($data)) {
+                foreach ($data as $r) {
+                    $totalEmpCount += (int)($r['no_of_emp'] ?? 0);
+                    $grandTotalAmount += (float)($r['total_amount'] ?? 0);
+                    $grandTotalBank += (float)($r['bank_amount'] ?? 0);
+                    $grandTotalCash += (float)($r['cash_amount'] ?? 0);
+                }
+            }
+            ?>
             <div class="table-responsive">
                 <table class="table table-hover table-bordered table-striped align-middle" id="salaryReportTable">
                     <?php if ($reportType === 'department'): ?>
@@ -96,6 +110,17 @@ $show_breadcrumb = true;
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </tbody>
+                        <?php if (!empty($data)): ?>
+                        <tfoot class="table-light fw-bold">
+                            <tr class="align-middle">
+                                <td colspan="2" class="text-end text-dark fs-14">Grand Total:</td>
+                                <td class="text-center">
+                                    <span class="badge bg-primary text-white rounded-pill px-3 fs-13"><?= $totalEmpCount ?></span>
+                                </td>
+                                <td class="text-end fw-bold text-dark pe-4 fs-14">৳ <?= number_format($grandTotalAmount, 2) ?></td>
+                            </tr>
+                        </tfoot>
+                        <?php endif; ?>
                     <?php else: ?>
                         <thead class="bg-light text-muted text-uppercase fs-12">
                             <tr>
@@ -131,6 +156,19 @@ $show_breadcrumb = true;
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </tbody>
+                        <?php if (!empty($data)): ?>
+                        <tfoot class="table-light fw-bold">
+                            <tr class="align-middle">
+                                <td class="text-end text-dark fs-14">Grand Total:</td>
+                                <td class="text-center">
+                                    <span class="badge bg-primary text-white rounded-pill px-3 fs-13"><?= $totalEmpCount ?></span>
+                                </td>
+                                <td class="text-end fw-bold text-dark fs-14">৳ <?= number_format($grandTotalAmount, 2) ?></td>
+                                <td class="text-end text-success fw-bold fs-14">৳ <?= number_format($grandTotalBank, 2) ?></td>
+                                <td class="text-end text-warning fw-bold pe-4 fs-14">৳ <?= number_format($grandTotalCash, 2) ?></td>
+                            </tr>
+                        </tfoot>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </table>
             </div>

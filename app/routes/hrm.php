@@ -209,6 +209,8 @@ return [
     'execute-import-payslips' => ['controller' => 'PayrollController', 'method' => 'importCSV'],
     'download-sample-payslips-csv' => ['controller' => 'PayrollController', 'method' => 'downloadSampleCSV'],
     'bulk-delete-payslips' => ['controller' => 'PayrollController', 'method' => 'bulkDelete'],
+    'send-payslip-email' => ['controller' => 'PayrollController', 'method' => 'sendSinglePayslipEmail'],
+    'send-bulk-payslip-email' => ['controller' => 'PayrollController', 'method' => 'sendBulkPayslipEmail'],
 
     // =========================================================================
     // Controller: AdvanceSalaryController
@@ -299,10 +301,6 @@ return [
     'save-workspace-payslips' => ['controller' => 'PayrollController', 'method' => 'saveWorkspacePayslips'],
     'payroll-workspace-pdf' => ['controller' => 'PayrollController', 'method' => 'exportWorkspacePDF'],
 
-    // Salary Hold
-    'payroll-salary-hold' => ['controller' => 'PayrollController', 'method' => 'salaryHold'],
-    'payroll-salary-hold-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSalaryHoldPDF'],
-
     // Payroll Attendance Report
     'payroll-attendance-report' => ['controller' => 'PayrollController', 'method' => 'attendanceReport'],
     'save-attendance-modifications' => ['controller' => 'PayrollController', 'method' => 'saveAttendanceModifications'],
@@ -332,5 +330,6 @@ return [
     // Salary Hold
     'payroll-salary-hold' => ['controller' => 'PayrollController', 'method' => 'salaryHoldPage'],
     'payroll-salary-hold-save' => ['controller' => 'PayrollController', 'method' => 'salaryHoldSave'],
-    'payroll-salary-hold-remove' => ['controller' => 'PayrollController', 'method' => 'salaryHoldRemove']
+    'payroll-salary-hold-remove' => ['controller' => 'PayrollController', 'method' => 'salaryHoldRemove'],
+    'payroll-salary-hold-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSalaryHoldPDF']
 ];

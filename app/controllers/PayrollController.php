@@ -23,18 +23,53 @@ class PayrollController extends Controller
         $currentMonth = date('m');
 
         // GET param use, fallback to current month/year
-        $selectedYear = isset($_GET['year']) ? $_GET['year'] : $currentYear;
-        $selectedMonth = isset($_GET['month']) ? $_GET['month'] : $currentMonth;
+        $selectedYear = isset($_GET['year']) && $_GET['year'] !== '' ? $_GET['year'] : $currentYear;
+        $selectedMonth = isset($_GET['month']) && $_GET['month'] !== '' ? $_GET['month'] : $currentMonth;
         $selectedStatus = isset($_GET['status']) ? $_GET['status'] : '';
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
 
-        // Fetch payslips with status filter
-        $payslips = $this->paymentModel->getAllWithEmployeeFiltered($selectedYear, $selectedMonth, $selectedStatus);
+        // Fetch payroll projects
+        $projectRes = $this->db->query("SELECT * FROM payroll_projects ORDER BY id DESC");
+        $payroll_projects = [];
+        if ($projectRes) {
+            while ($pRow = $projectRes->fetch_assoc()) {
+                $payroll_projects[] = $pRow;
+            }
+        }
+
+        // If project selected, auto-sync year and month if not explicitly overridden
+        if ($selectedProjectId) {
+            $projQuery = $this->db->query("SELECT * FROM payroll_projects WHERE id = " . $selectedProjectId);
+            if ($projQuery && $projData = $projQuery->fetch_assoc()) {
+                if (empty($_GET['year']) || empty($_GET['month'])) {
+                    if (!empty($projData['is_custom_date']) && !empty($projData['start_date'])) {
+                        $selectedYear = date('Y', strtotime($projData['start_date']));
+                        $selectedMonth = date('m', strtotime($projData['start_date']));
+                    } elseif (!empty($projData['date'])) {
+                        $parts = explode('-', $projData['date']);
+                        if (count($parts) >= 2) {
+                            $selectedYear = $parts[0];
+                            $selectedMonth = $parts[1];
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fetch payslips with status and project filter
+        $payslips = $this->paymentModel->getAllWithEmployeeFiltered($selectedYear, $selectedMonth, $selectedStatus, $selectedProjectId);
 
         $totalEmployees = $this->employeeModel->getTotalCount();
-        $paidCount = $this->paymentModel->getPaidCount($selectedYear, $selectedMonth);
-        $pendingCount = $totalEmployees - $paidCount;
-        $paidSalarySum = $this->paymentModel->getPaidSalarySum($selectedYear, $selectedMonth);
-        $unpaidSalarySum = $this->paymentModel->getUnpaidSalarySum($selectedYear, $selectedMonth);
+        $paidCount = $this->paymentModel->getPaidCount($selectedYear, $selectedMonth, $selectedProjectId);
+        $paidSalarySum = $this->paymentModel->getPaidSalarySum($selectedYear, $selectedMonth, $selectedProjectId);
+        $unpaidSalarySum = $this->paymentModel->getUnpaidSalarySum($selectedYear, $selectedMonth, $selectedProjectId);
+
+        if ($selectedProjectId) {
+            $pendingCount = $this->paymentModel->getPendingCount($selectedYear, $selectedMonth, $selectedProjectId);
+        } else {
+            $pendingCount = $totalEmployees - $paidCount;
+        }
+
         $companyBanks = $this->bankModel->getAll();
 
         // Fetch all local employee IDs, names, departments, and designations for Tipsoi matching
@@ -69,6 +104,8 @@ class PayrollController extends Controller
             "selectedYear" => $selectedYear,
             "selectedMonth" => $selectedMonth,
             "selectedStatus" => $selectedStatus,
+            "payroll_projects" => $payroll_projects,
+            "selectedProjectId" => $selectedProjectId,
             "allLocalEmployees" => $allLocalEmployees,
         ]);
     }
@@ -583,12 +620,14 @@ class PayrollController extends Controller
         }
 
         $items = $this->payslipItemModel->getAll();
+        $selected_project_id = isset($_GET['project_id']) ? (int) $_GET['project_id'] : 0;
 
         $this->view("payrolls/payslips/auto-create-payslip", [
             "current_route" => "auto-generate-payslip",
             "page_title" => "Auto Generate Payslips",
             "departments" => $departments,
             "payroll_projects" => $payroll_projects,
+            "selected_project_id" => $selected_project_id,
             "items" => $items
         ]);
     }
@@ -601,120 +640,119 @@ class PayrollController extends Controller
         $projectId = isset($_GET['project_id']) ? (int) $_GET['project_id'] : 0;
         $monthStr = isset($_GET['month']) ? trim($_GET['month']) : ''; // e.g. "2026-07"
 
+        if (!$projectId) {
+            echo json_encode(['success' => false, 'message' => 'Payroll Project is required.']);
+            exit;
+        }
+
         if (!$monthStr) {
             echo json_encode(['success' => false, 'message' => 'Invalid parameters. Monthly parameter is required.']);
             exit;
         }
 
-        // 1. Fetch active employees
+        // Check if Payroll Workplace data has been saved for this project
+        $hasSavedWorkspace = false;
+        $psCheck = $this->db->query("SELECT COUNT(*) as cnt FROM payslips WHERE payroll_project_id = $projectId");
+        if ($psCheck && ($row = $psCheck->fetch_assoc()) && $row['cnt'] > 0) {
+            $hasSavedWorkspace = true;
+        }
+
+        if (!$hasSavedWorkspace) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'No saved workspace data found for this Payroll Project. Please review and click "Save Changes" in Payroll Workplace first before generating payslips.'
+            ]);
+            exit;
+        }
+
+        // 1. Fetch only employees that were saved in the workspace and NOT deselected (is_excluded = 0)
         $sql = "
             SELECT e.id, e.full_name, e.employee_id, e.email, e.gross_salary, e.basic_salary, e.designation_id,
                    e.workplace, e.joining_date, e.per_meal_amount, e.account_number, e.bank_name, e.account_holder_name,
                    IF(e.account_number IS NOT NULL AND TRIM(e.account_number) != '', 'bank', 'cash') AS payment_method,
                    desg.name AS designation_name,
-                   dept.name AS department_name
-            FROM employees e
+                   dept.name AS department_name,
+                   p.id AS saved_payslip_id,
+                   p.status AS saved_status,
+                   p.is_excluded,
+                   p.recreation_allowance,
+                   p.conveyance_allowance,
+                   p.medical_allowance,
+                   p.house_rent_allowance,
+                   p.advance_salary,
+                   p.meal_count,
+                   p.subsidized_lunch,
+                   p.late_unpaid_absent_days,
+                   p.unpaid_absent_amount,
+                   p.arrears_deduction,
+                   p.others_deduction,
+                   p.punctuality_bonus,
+                   p.overtime,
+                   p.arrears_earning,
+                   p.duty_allowance,
+                   p.tax,
+                   p.bank_amount,
+                   p.cash_amount,
+                   p.salary_hold,
+                   p.net_salary,
+                   p.total_earning,
+                   p.total_deduction
+            FROM payslips p
+            JOIN employees e ON p.employee_id = e.id
             LEFT JOIN designations desg ON e.designation_id = desg.id
             LEFT JOIN departments dept ON e.department_id = dept.id
-            WHERE e.employee_status = 'active'
+            WHERE p.payroll_project_id = $projectId
+              AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
         ";
         if ($departmentId > 0) {
             $sql .= " AND e.department_id = $departmentId";
         }
+        $sql .= " ORDER BY e.employee_id ASC";
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute();
-        $employees = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        // Show all active employees (requested to not filter by project anymore)
-
-        // 2. Fetch all configured salary items for these employees
-        $configuredSalaryItems = [];
-        if (!empty($employees)) {
-            $employeeIds = array_column($employees, 'id');
-            $placeholders = implode(',', array_fill(0, count($employeeIds), '?'));
-            $stmt = $this->db->prepare("
-                SELECT * FROM employee_salary_items WHERE employee_id IN ($placeholders)
-            ");
-            $types = str_repeat('i', count($employeeIds));
-            $stmt->bind_param($types, ...$employeeIds);
-            $stmt->execute();
-            $salaryItemsRaw = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-            $stmt->close();
-
-            foreach ($salaryItemsRaw as $sir) {
-                $configuredSalaryItems[$sir['employee_id']][$sir['payslip_item_id']] = $sir['amount'];
+        $res = $this->db->query($sql);
+        $employees = [];
+        if ($res) {
+            while ($emp = $res->fetch_assoc()) {
+                $employees[] = $emp;
             }
         }
 
-        // 3. Fetch local attendance from attendance_monthly_update specific to this project
-        $localAttMap = [];
-        if ($projectId > 0) {
-            $stmt = $this->db->prepare("SELECT employee_id, present, absent, leave_days, late, late_unpaid_absent_days FROM attendance_monthly_update WHERE payroll_project_id = ?");
-            $stmt->bind_param("i", $projectId);
-            $stmt->execute();
-            $attRes = $stmt->get_result();
-            while ($ar = $attRes->fetch_assoc()) {
-                $localAttMap[$ar['employee_id']] = $ar;
-            }
-            $stmt->close();
+        if (empty($employees)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'All employees in this project were either deselected in the workspace or belong to other departments.'
+            ]);
+            exit;
         }
 
-        // 4. Calculate attendance and absent days for each employee
-        foreach ($employees as &$emp) {
-            $empId = $emp['id'];
-
-            $emp['matched_in_tipsoi'] = false;
-            $emp['absent_days'] = isset($localAttMap[$empId]) ? (float) ($localAttMap[$empId]['absent'] ?? 0) : 0;
-            $emp['late_unpaid_absent_days'] = isset($localAttMap[$empId]) ? (float) ($localAttMap[$empId]['late_unpaid_absent_days'] ?? 0) : 0;
-            $emp['tipsoi_present'] = isset($localAttMap[$empId]) ? (float) ($localAttMap[$empId]['present'] ?? 0) : 0;
-            $emp['absent_deduction'] = 0;
-
-            // Pre-fill configured allowances/deductions
-            $emp['configured_items'] = $configuredSalaryItems[$emp['id']] ?? [];
-        }
-
-        // Advance Salary Integration
-        if (!class_exists('AdvanceSalary')) {
-            require_once __DIR__ . '/../models/AdvanceSalary.php';
-        }
-        $advanceSalaryModel = new AdvanceSalary($this->db);
         $allPayslipItems = $this->payslipItemModel->getAll();
 
-        $advanceSalaryItemId = null;
-        foreach ($allPayslipItems as $item) {
-            if (strtolower(trim($item['name'])) === 'advance salary' && strtolower($item['type']) === 'deduction') {
-                $advanceSalaryItemId = $item['id'];
-                break;
-            }
-        }
-
-        if (!$advanceSalaryItemId) {
-            $this->payslipItemModel->create(['name' => 'Advance Salary', 'type' => 'deduction']);
-            $allPayslipItems = $this->payslipItemModel->getAll();
-            foreach ($allPayslipItems as $item) {
-                if (strtolower(trim($item['name'])) === 'advance salary' && strtolower($item['type']) === 'deduction') {
-                    $advanceSalaryItemId = $item['id'];
-                    break;
+        // 2. Fetch saved itemized payslip_details for each employee
+        foreach ($employees as &$emp) {
+            $emp['configured_items'] = [];
+            $payslipId = (int) ($emp['saved_payslip_id'] ?? 0);
+            if ($payslipId > 0) {
+                $detRes = $this->db->query("SELECT payslip_item_id, amount FROM payslip_details WHERE payslip_id = $payslipId");
+                if ($detRes) {
+                    while ($dRow = $detRes->fetch_assoc()) {
+                        $emp['configured_items'][$dRow['payslip_item_id']] = (float) $dRow['amount'];
+                    }
                 }
             }
-        }
 
-        foreach ($employees as &$emp) {
-            $unadjustedAdvance = $advanceSalaryModel->getMonthlyDeductionAmount($emp['id'], $monthStr);
-            if ($unadjustedAdvance > 0 && $advanceSalaryItemId) {
-                $emp['configured_items'][$advanceSalaryItemId] = $unadjustedAdvance;
-            }
+            // Sync attendance and meal fields from workspace saved data
+            $emp['matched_in_tipsoi'] = true;
+            $emp['absent_days'] = (float) ($emp['late_unpaid_absent_days'] ?? 0);
+            $emp['late_unpaid_absent_days'] = (float) ($emp['late_unpaid_absent_days'] ?? 0);
+            $emp['tipsoi_present'] = (float) ($emp['meal_count'] ?? 0);
+            $emp['absent_deduction'] = (float) ($emp['unpaid_absent_amount'] ?? 0);
         }
-
-        // 5. Load active payslip items to display as table headers
-        $payslipItems = $allPayslipItems;
+        unset($emp);
 
         echo json_encode([
             'success' => true,
             'employees' => $employees,
-            'payslip_items' => $payslipItems
+            'payslip_items' => $allPayslipItems
         ]);
         exit;
     }
@@ -740,7 +778,6 @@ class PayrollController extends Controller
         $payrollProjectId = (int) $payload['payroll_project_id'];
         $generatedBy = $_SESSION['user']['id'] ?? 1;
 
-        $payslipModel = new Payslip($this->db);
         $detailsModel = new PayslipDetail($this->db);
         $approvalModel = new ApprovalRequest($this->db);
 
@@ -753,9 +790,9 @@ class PayrollController extends Controller
 
         try {
             foreach ($payload['employees'] as $empData) {
-                // Double check if employee has already generated payslip for this month and project
+                // Check if employee has a payslip for this month and project
                 $stmtCheck = $this->db->prepare("
-                    SELECT id FROM payslips WHERE employee_id = ? AND DATE_FORMAT(payslip_month, '%Y-%m') = ? AND payroll_project_id = ? LIMIT 1
+                    SELECT id, status FROM payslips WHERE employee_id = ? AND DATE_FORMAT(payslip_month, '%Y-%m') = ? AND payroll_project_id = ? LIMIT 1
                 ");
                 $monthStr = date('Y-m', strtotime($payslipMonth));
                 $stmtCheck->bind_param("isi", $empData['employee_id'], $monthStr, $payrollProjectId);
@@ -763,96 +800,246 @@ class PayrollController extends Controller
                 $exists = $stmtCheck->get_result()->fetch_assoc();
                 $stmtCheck->close();
 
-                if ($exists) {
+                // If already marked as paid, skip it so we don't accidentally overwrite a disbursed payslip
+                if ($exists && $exists['status'] === 'paid') {
                     $skippedCount++;
-                    $skippedNames[] = $empData['employee_name'];
+                    $skippedNames[] = $empData['employee_name'] . " (Already Paid)";
                     continue;
                 }
 
-                // 1. Create Payslip
-                $payslipId = $payslipModel->create([
-                    'employee_id' => $empData['employee_id'],
-                    'payroll_project_id' => $payrollProjectId,
-                    'designation_id' => $empData['designation_id'],
-                    'payslip_month' => $payslipMonth,
-                    'total_earning' => $empData['total_earning'],
-                    'total_deduction' => $empData['total_deduction'],
-                    'net_salary' => $empData['net_salary'],
-                    'status' => 'pending',
-                    'upload_by' => 'manual',
-                    'created_by' => $generatedBy,
-                ]);
+                $employeeId = (int) $empData['employee_id'];
+                $designationId = (int) ($empData['designation_id'] ?? 0);
+                $totalEarning = (float) ($empData['total_earning'] ?? 0);
+                $totalDeduction = (float) ($empData['total_deduction'] ?? 0);
+                $netSalary = (float) ($empData['net_salary'] ?? 0);
+                $salaryHoldString = trim((string) ($empData['salary_hold'] ?? ''));
+                $bankAmount = (float) ($empData['bank_amount'] ?? 0);
+                $cashAmount = (float) ($empData['cash_amount'] ?? 0);
+                $lateUnpaidAbsentDays = (float) ($empData['late_unpaid_absent_days'] ?? $empData['absent_days'] ?? 0);
+                $unpaidAbsentAmount = (float) ($empData['unpaid_absent_amount'] ?? 0);
+                $recreationAllowance = (float) ($empData['recreation_allowance'] ?? 0);
+                $conveyanceAllowance = (float) ($empData['conveyance_allowance'] ?? 0);
+                $medicalAllowance = (float) ($empData['medical_allowance'] ?? 0);
+                $houseRentAllowance = (float) ($empData['house_rent_allowance'] ?? 0);
+                $advanceSalary = (float) ($empData['advance_salary'] ?? 0);
+                $mealCount = (float) ($empData['meal_count'] ?? 0);
+                $subsidizedLunch = (float) ($empData['subsidized_lunch'] ?? 0);
+                $arrearsDeduction = (float) ($empData['arrears_deduction'] ?? 0);
+                $othersDeduction = (float) ($empData['others_deduction'] ?? 0);
+                $punctualityBonus = (float) ($empData['punctuality_bonus'] ?? 0);
+                $overtime = (float) ($empData['overtime'] ?? 0);
+                $arrearsEarning = (float) ($empData['arrears_earning'] ?? 0);
+                $dutyAllowance = (float) ($empData['duty_allowance'] ?? 0);
+                $tax = (float) ($empData['tax'] ?? 0);
 
-                if (!$payslipId) {
-                    throw new Exception("Failed to create payslip for " . $empData['employee_name'] . ". DB Error: " . $this->db->error);
+                if ($exists) {
+                    $payslipId = (int) $exists['id'];
+                    $stmtUp = $this->db->prepare("
+                        UPDATE payslips SET
+                            status = 'pending',
+                            is_excluded = 0,
+                            designation_id = ?,
+                            payslip_month = ?,
+                            total_earning = ?,
+                            total_deduction = ?,
+                            net_salary = ?,
+                            salary_hold = ?,
+                            bank_amount = ?,
+                            cash_amount = ?,
+                            late_unpaid_absent_days = ?,
+                            recreation_allowance = ?,
+                            conveyance_allowance = ?,
+                            medical_allowance = ?,
+                            house_rent_allowance = ?,
+                            advance_salary = ?,
+                            meal_count = ?,
+                            subsidized_lunch = ?,
+                            unpaid_absent_amount = ?,
+                            arrears_deduction = ?,
+                            others_deduction = ?,
+                            punctuality_bonus = ?,
+                            overtime = ?,
+                            arrears_earning = ?,
+                            duty_allowance = ?,
+                            tax = ?,
+                            created_by = ?
+                        WHERE id = ?
+                    ");
+                    if (!$stmtUp) {
+                        throw new Exception("Prepare update failed: " . $this->db->error);
+                    }
+                    $stmtUp->bind_param(
+                        "isdddsddddddddddddddddddii",
+                        $designationId,
+                        $payslipMonth,
+                        $totalEarning,
+                        $totalDeduction,
+                        $netSalary,
+                        $salaryHoldString,
+                        $bankAmount,
+                        $cashAmount,
+                        $lateUnpaidAbsentDays,
+                        $recreationAllowance,
+                        $conveyanceAllowance,
+                        $medicalAllowance,
+                        $houseRentAllowance,
+                        $advanceSalary,
+                        $mealCount,
+                        $subsidizedLunch,
+                        $unpaidAbsentAmount,
+                        $arrearsDeduction,
+                        $othersDeduction,
+                        $punctualityBonus,
+                        $overtime,
+                        $arrearsEarning,
+                        $dutyAllowance,
+                        $tax,
+                        $generatedBy,
+                        $payslipId
+                    );
+                    $stmtUp->execute();
+                    $stmtUp->close();
+                } else {
+                    $stmtIns = $this->db->prepare("
+                        INSERT INTO payslips (
+                            employee_id, payroll_project_id, designation_id, payslip_month,
+                            status, is_excluded, upload_by, created_by,
+                            total_earning, total_deduction, net_salary,
+                            salary_hold, bank_amount, cash_amount, late_unpaid_absent_days,
+                            recreation_allowance, conveyance_allowance, medical_allowance, house_rent_allowance,
+                            advance_salary, meal_count, subsidized_lunch, unpaid_absent_amount,
+                            arrears_deduction, others_deduction,
+                            punctuality_bonus, overtime, arrears_earning, duty_allowance,
+                            tax
+                        ) VALUES (
+                            ?, ?, ?, ?,
+                            'pending', 0, 'manual', ?,
+                            ?, ?, ?,
+                            ?, ?, ?, ?,
+                            ?, ?, ?, ?,
+                            ?, ?, ?, ?,
+                            ?, ?,
+                            ?, ?, ?, ?,
+                            ?
+                        )
+                    ");
+                    if (!$stmtIns) {
+                        throw new Exception("Prepare insert failed: " . $this->db->error);
+                    }
+                    $stmtIns->bind_param(
+                        "iiisidddsdddddddddddddddddd",
+                        $employeeId,
+                        $payrollProjectId,
+                        $designationId,
+                        $payslipMonth,
+                        $generatedBy,
+                        $totalEarning,
+                        $totalDeduction,
+                        $netSalary,
+                        $salaryHoldString,
+                        $bankAmount,
+                        $cashAmount,
+                        $lateUnpaidAbsentDays,
+                        $recreationAllowance,
+                        $conveyanceAllowance,
+                        $medicalAllowance,
+                        $houseRentAllowance,
+                        $advanceSalary,
+                        $mealCount,
+                        $subsidizedLunch,
+                        $unpaidAbsentAmount,
+                        $arrearsDeduction,
+                        $othersDeduction,
+                        $punctualityBonus,
+                        $overtime,
+                        $arrearsEarning,
+                        $dutyAllowance,
+                        $tax
+                    );
+                    $stmtIns->execute();
+                    $payslipId = $stmtIns->insert_id;
+                    $stmtIns->close();
                 }
 
-                // 2. Insert Earning Details
+                if (!$payslipId) {
+                    throw new Exception("Failed to persist payslip for " . $empData['employee_name'] . ". DB Error: " . $this->db->error);
+                }
+
+                // 2. Refresh payslip_details
+                $this->db->query("DELETE FROM payslip_details WHERE payslip_id = $payslipId");
                 if (!empty($empData['earnings'])) {
                     foreach ($empData['earnings'] as $itemId => $amount) {
                         $amt = (float) $amount;
                         if ($amt > 0) {
-                            $detailsModel->create($payslipId, $itemId, $amt);
+                            $detailsModel->create($payslipId, (int) $itemId, $amt);
                         }
                     }
                 }
-
-                // 3. Insert Deduction Details
                 if (!empty($empData['deductions'])) {
                     foreach ($empData['deductions'] as $itemId => $amount) {
                         $amt = (float) $amount;
                         if ($amt > 0) {
-                            $detailsModel->create($payslipId, $itemId, $amt);
+                            $detailsModel->create($payslipId, (int) $itemId, $amt);
+                        }
+                    }
+                }
 
-                            // Mark Advance Salary as deducted
-                            $stmtItem = $this->db->prepare("SELECT name FROM payslip_items WHERE id = ?");
-                            $stmtItem->bind_param("i", $itemId);
-                            $stmtItem->execute();
-                            $itemRow = $stmtItem->get_result()->fetch_assoc();
-                            $stmtItem->close();
+                // 3. Handle Advance Salary deduction
+                if ($advanceSalary > 0) {
+                    if (!class_exists('AdvanceSalary')) {
+                        require_once __DIR__ . '/../models/AdvanceSalary.php';
+                    }
+                    $advanceSalaryModel = new AdvanceSalary($this->db);
+                    $chkAdv = $this->db->query("SELECT id FROM advance_salaries WHERE deducted_payslip_id = $payslipId");
+                    if (!$chkAdv || $chkAdv->num_rows == 0) {
+                        $advanceRequests = $advanceSalaryModel->getPaidAdvancesByEmployee($employeeId);
+                        $remainingDeduction = $advanceSalary;
+                        foreach ($advanceRequests as $advReq) {
+                            if ($remainingDeduction <= 0) break;
+                            $advAmount = (float) $advReq['amount'];
+                            $paidBack = (float) ($advReq['paid_back_amount'] ?? 0);
+                            $canDeduct = $advAmount - $paidBack;
 
-                            if ($itemRow && strtolower(trim($itemRow['name'])) === 'advance salary') {
-                                if (!class_exists('AdvanceSalary')) {
-                                    require_once __DIR__ . '/../models/AdvanceSalary.php';
-                                }
-                                $advanceSalaryModel = new AdvanceSalary($this->db);
-                                $advanceRequests = $advanceSalaryModel->getPaidAdvancesByEmployee($empData['employee_id']);
-                                $remainingDeduction = (float) $amt;
-                                foreach ($advanceRequests as $advReq) {
-                                    if ($remainingDeduction <= 0)
-                                        break;
-                                    $advAmount = (float) $advReq['amount'];
-                                    $paidBack = (float) ($advReq['paid_back_amount'] ?? 0);
-                                    $canDeduct = $advAmount - $paidBack;
-
-                                    if ($canDeduct > 0) {
-                                        $toDeduct = min($remainingDeduction, $canDeduct);
-                                        $advanceSalaryModel->addDeduction($advReq['id'], $toDeduct, $payslipId);
-                                        $remainingDeduction -= $toDeduct;
-                                    }
-                                }
+                            if ($canDeduct > 0) {
+                                $toDeduct = min($remainingDeduction, $canDeduct);
+                                $advanceSalaryModel->addDeduction($advReq['id'], $toDeduct, $payslipId);
+                                $remainingDeduction -= $toDeduct;
                             }
                         }
                     }
                 }
 
-                // 4. Create Approval Request
-                $approvalModel->create([
-                    'department' => 'HR',
-                    'request_type' => 'salary',
-                    'title' => 'Salary Approval',
-                    'source_table' => 'payslips',
-                    'source_id' => $payslipId,
-                    'requested_days' => 0,
-                    'requested_by' => $generatedBy,
-                    'approve_role' => 'management',
-                    'meta_data' => json_encode([
+                // 4. Create or Update Approval Request
+                $chkAppr = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'payslips' AND source_id = $payslipId LIMIT 1");
+                if ($chkAppr && $rowAppr = $chkAppr->fetch_assoc()) {
+                    $apprId = (int) $rowAppr['id'];
+                    $stmtApprUp = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, meta_data = ? WHERE id = ?");
+                    $metaData = json_encode([
                         'employee_name' => $empData['employee_name'],
-                        'net_salary' => $empData['net_salary'],
+                        'net_salary' => $netSalary,
                         'month' => $payslipMonth
-                    ]),
-                    'request_amount' => $empData['net_salary']
-                ]);
+                    ]);
+                    $stmtApprUp->bind_param("dsi", $netSalary, $metaData, $apprId);
+                    $stmtApprUp->execute();
+                    $stmtApprUp->close();
+                } else {
+                    $approvalModel->create([
+                        'department' => 'HR',
+                        'request_type' => 'salary',
+                        'title' => 'Salary Approval',
+                        'source_table' => 'payslips',
+                        'source_id' => $payslipId,
+                        'requested_days' => 0,
+                        'requested_by' => $generatedBy,
+                        'approve_role' => 'management',
+                        'meta_data' => json_encode([
+                            'employee_name' => $empData['employee_name'],
+                            'net_salary' => $netSalary,
+                            'month' => $payslipMonth
+                        ]),
+                        'request_amount' => $netSalary
+                    ]);
+                }
 
                 $generatedCount++;
             }
@@ -863,12 +1050,12 @@ class PayrollController extends Controller
             if ($generatedCount === 0 && $skippedCount > 0) {
                 echo json_encode([
                     'success' => false,
-                    'message' => 'No payslips were generated. All selected employees already have payslips generated for this month: ' . implode(', ', $skippedNames)
+                    'message' => 'No payslips were generated. Selected employees already have finalized/paid payslips: ' . implode(', ', $skippedNames)
                 ]);
             } else {
                 $msg = "Generated $generatedCount payslips successfully and submitted for approval.";
                 if ($skippedCount > 0) {
-                    $msg .= " Skipped $skippedCount employees who already had payslips for this month: " . implode(', ', $skippedNames);
+                    $msg .= " Skipped $skippedCount employees who were already paid: " . implode(', ', $skippedNames);
                 }
                 echo json_encode(['success' => true, 'message' => $msg]);
             }
@@ -1037,6 +1224,154 @@ class PayrollController extends Controller
         } catch (Exception $e) {
             $this->db->rollback();
             echo json_encode(['success' => false, 'message' => 'Disbursement failed: ' . $e->getMessage()]);
+            exit;
+        }
+    }
+
+    /**
+     * Send payslip email to an individual employee
+     */
+    public function sendSinglePayslipEmail()
+    {
+        header('Content-Type: application/json');
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $input = file_get_contents('php://input');
+        $payload = json_decode($input, true);
+        $payslipId = (int) ($payload['payslip_id'] ?? ($_POST['payslip_id'] ?? 0));
+
+        if ($payslipId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid payslip ID provided.']);
+            exit;
+        }
+
+        $userId = (int) ($_SESSION['user']['id'] ?? 1);
+        require_once __DIR__ . '/../services/PayrollMailService.php';
+        $mailService = new PayrollMailService($this->db);
+        $result = $mailService->sendPayslipEmail($payslipId, $userId);
+
+        echo json_encode($result);
+        exit;
+    }
+
+    /**
+     * Send payslip emails in bulk to selected employees
+     */
+    public function sendBulkPayslipEmail()
+    {
+        header('Content-Type: application/json');
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $input = file_get_contents('php://input');
+        $payload = json_decode($input, true);
+        $payslipIds = $payload['payslip_ids'] ?? [];
+
+        if (empty($payslipIds) || !is_array($payslipIds)) {
+            echo json_encode(['success' => false, 'message' => 'No payslips selected for sending email.']);
+            exit;
+        }
+
+        $payslipIds = array_filter(array_map('intval', $payslipIds));
+        if (empty($payslipIds)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid payslip IDs selected.']);
+            exit;
+        }
+
+        $userId = (int) ($_SESSION['user']['id'] ?? 1);
+        require_once __DIR__ . '/../services/PayrollMailService.php';
+        $mailService = new PayrollMailService($this->db);
+
+        $sentCount = 0;
+        $skippedCount = 0;
+        $failedCount = 0;
+        $details = [];
+
+        foreach ($payslipIds as $id) {
+            $res = $mailService->sendPayslipEmail($id, $userId);
+            if ($res['success']) {
+                $sentCount++;
+            } else {
+                if (stripos($res['message'], 'no valid email') !== false) {
+                    $skippedCount++;
+                } else {
+                    $failedCount++;
+                }
+                $details[] = $res['message'];
+            }
+        }
+
+        $summaryMsg = "Successfully emailed {$sentCount} payslip(s).";
+        if ($skippedCount > 0) {
+            $summaryMsg .= " {$skippedCount} skipped due to missing email.";
+        }
+        if ($failedCount > 0) {
+            $summaryMsg .= " {$failedCount} failed to deliver.";
+        }
+
+        echo json_encode([
+            'success' => $sentCount > 0,
+            'message' => $summaryMsg,
+            'sent_count' => $sentCount,
+            'skipped_count' => $skippedCount,
+            'failed_count' => $failedCount,
+            'errors' => $details
+        ]);
+        exit;
+    }
+
+    /**
+     * Bulk delete payslips
+     */
+    public function bulkDelete()
+    {
+        header('Content-Type: application/json');
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $input = file_get_contents('php://input');
+        $payload = json_decode($input, true);
+        $payslipIds = $payload['payslip_ids'] ?? [];
+
+        if (empty($payslipIds) || !is_array($payslipIds)) {
+            echo json_encode(['success' => false, 'message' => 'No payslips selected for deletion.']);
+            exit;
+        }
+
+        $payslipIds = array_filter(array_map('intval', $payslipIds));
+        if (empty($payslipIds)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid payslip selection.']);
+            exit;
+        }
+
+        $deletedCount = 0;
+        $this->db->begin_transaction();
+        try {
+            foreach ($payslipIds as $id) {
+                // Do not delete paid payslips
+                $chk = $this->db->query("SELECT status FROM payslips WHERE id = $id LIMIT 1");
+                if ($chk && $row = $chk->fetch_assoc()) {
+                    if ($row['status'] === 'paid') {
+                        continue;
+                    }
+                }
+                $this->paymentModel->delete($id);
+                $deletedCount++;
+            }
+            $this->db->commit();
+
+            echo json_encode([
+                'success' => true,
+                'message' => "Successfully deleted {$deletedCount} payslip(s)."
+            ]);
+            exit;
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            echo json_encode(['success' => false, 'message' => 'Bulk deletion failed: ' . $e->getMessage()]);
             exit;
         }
     }
@@ -1258,39 +1593,7 @@ class PayrollController extends Controller
 
     public function salaryHold()
     {
-        $currentYear = date('Y');
-        $currentMonth = date('m');
-
-        $selectedYear = (!empty($_GET['year'])) ? $_GET['year'] : $currentYear;
-        $selectedMonth = (!empty($_GET['month'])) ? $_GET['month'] : $currentMonth;
-
-        $query = "
-            SELECT p.id, p.payslip_month, p.net_salary, p.status,
-                   e.full_name, e.employee_id as emp_id
-            FROM payslips p
-            LEFT JOIN employees e ON p.employee_id = e.id
-            WHERE e.employee_status = 'active' 
-              AND YEAR(p.payslip_month) = '$selectedYear' 
-              AND MONTH(p.payslip_month) = '$selectedMonth'
-              AND p.status = 'on_hold'
-            ORDER BY e.employee_id ASC
-        ";
-
-        $res = $this->db->query($query);
-        $holds = [];
-        if ($res) {
-            while ($row = $res->fetch_assoc()) {
-                $holds[] = $row;
-            }
-        }
-
-        $this->view("payrolls/payslips/salary-hold", [
-            "current_route" => "payroll-salary-hold",
-            "page_title" => "Salary Hold",
-            "holds" => $holds,
-            "selectedYear" => $selectedYear,
-            "selectedMonth" => $selectedMonth
-        ]);
+        return $this->salaryHoldPage();
     }
 
     public function exportSalaryHoldPDF()
@@ -1298,71 +1601,134 @@ class PayrollController extends Controller
         $currentYear = date('Y');
         $currentMonth = date('m');
 
-        $selectedYear = (!empty($_GET['year'])) ? $_GET['year'] : $currentYear;
-        $selectedMonth = (!empty($_GET['month'])) ? $_GET['month'] : $currentMonth;
+        $selectedProject = !empty($_GET['payroll_project_id']) ? (int)$_GET['payroll_project_id'] : (!empty($_GET['project_id']) ? (int)$_GET['project_id'] : 0);
+        $selectedYear = (!empty($_GET['year'])) ? (int)$_GET['year'] : (int)$currentYear;
+        $selectedMonth = (!empty($_GET['month'])) ? (int)$_GET['month'] : (int)$currentMonth;
 
-        $query = "
-            SELECT p.id, p.payslip_month, p.net_salary, p.status,
-                   e.full_name, e.employee_id as emp_id
-            FROM payslips p
-            LEFT JOIN employees e ON p.employee_id = e.id
-            WHERE e.employee_status = 'active'
-              AND YEAR(p.payslip_month) = '$selectedYear' 
-              AND MONTH(p.payslip_month) = '$selectedMonth'
-              AND p.status = 'on_hold'
-            ORDER BY e.employee_id ASC
-        ";
+        $projectName = '';
+        if ($selectedProject > 0) {
+            $pStmt = $this->db->prepare("SELECT name, date FROM payroll_projects WHERE id = ?");
+            $pStmt->bind_param("i", $selectedProject);
+            $pStmt->execute();
+            $pRes = $pStmt->get_result();
+            if ($pRow = $pRes->fetch_assoc()) {
+                $projectName = $pRow['name'];
+                if (empty($_GET['year']) || empty($_GET['month'])) {
+                    if (!empty($pRow['date'])) {
+                        $pDateParts = explode('-', $pRow['date']);
+                        if (count($pDateParts) >= 2) {
+                            $selectedYear = (int)$pDateParts[0];
+                            $selectedMonth = (int)$pDateParts[1];
+                        }
+                    }
+                }
+            }
+            $pStmt->close();
+        }
 
-        $res = $this->db->query($query);
+        if ($selectedProject > 0) {
+            $stmt = $this->db->prepare("
+                SELECT p.id, p.payslip_month, p.net_salary, p.total_earning, p.salary_hold, p.remarks,
+                       e.full_name, e.employee_id as emp_id, e.gross_salary,
+                       dept.name as department_name, desg.name as designation_name
+                FROM payslips p
+                JOIN employees e ON p.employee_id = e.id
+                LEFT JOIN departments dept ON e.department_id = dept.id
+                LEFT JOIN designations desg ON e.designation_id = desg.id
+                WHERE p.payroll_project_id = ?
+                  AND YEAR(p.payslip_month) = ?
+                  AND MONTH(p.payslip_month) = ?
+                  AND LOWER(TRIM(p.salary_hold)) = 'hold'
+                ORDER BY e.employee_id ASC
+            ");
+            $stmt->bind_param("iii", $selectedProject, $selectedYear, $selectedMonth);
+        } else {
+            $stmt = $this->db->prepare("
+                SELECT p.id, p.payslip_month, p.net_salary, p.total_earning, p.salary_hold, p.remarks,
+                       e.full_name, e.employee_id as emp_id, e.gross_salary,
+                       dept.name as department_name, desg.name as designation_name
+                FROM payslips p
+                JOIN employees e ON p.employee_id = e.id
+                LEFT JOIN departments dept ON e.department_id = dept.id
+                LEFT JOIN designations desg ON e.designation_id = desg.id
+                WHERE YEAR(p.payslip_month) = ?
+                  AND MONTH(p.payslip_month) = ?
+                  AND LOWER(TRIM(p.salary_hold)) = 'hold'
+                ORDER BY e.employee_id ASC
+            ");
+            $stmt->bind_param("ii", $selectedYear, $selectedMonth);
+        }
+
+        $stmt->execute();
+        $res = $stmt->get_result();
         $holds = [];
+        $totalHeldAmount = 0.0;
         if ($res) {
             while ($row = $res->fetch_assoc()) {
+                $heldAmt = floatval($row['net_salary'] > 0 ? $row['net_salary'] : ($row['gross_salary'] ?? 0));
+                $row['effective_amount'] = $heldAmt;
+                $totalHeldAmount += $heldAmt;
                 $holds[] = $row;
             }
         }
+        $stmt->close();
 
         $pdf = new \TCPDF('L', 'mm', 'A4');
         $pdf->SetCreator('TPHL ERP');
-        $pdf->SetAuthor('Admin');
+        $pdf->SetAuthor('HR Department');
         $pdf->SetTitle('Salary Hold Report');
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
         $pdf->SetMargins(15, 15, 15);
         $pdf->SetAutoPageBreak(TRUE, 15);
         $pdf->AddPage();
 
-        $pdf->SetFont('helvetica', '', 10);
+        $pdf->SetFont('helvetica', '', 9);
 
         $monthName = date('F', mktime(0, 0, 0, $selectedMonth, 1));
+        $projectLabel = !empty($projectName) ? 'Project: ' . htmlspecialchars($projectName) . ' | ' : '';
 
         $html = '
         <div style="text-align:center;">
-            <h1 style="color:#078134;">The Premium Homes Ltd</h1>
-            <h3 style="color:#28B463;">Salary Hold Report (' . $monthName . ' ' . $selectedYear . ')</h3>
-            <p><b>Total Held: </b> ' . count($holds) . '</p>
+            <h1 style="color:#078134; margin:0; font-size:22px;">The Premium Homes Ltd</h1>
+            <h3 style="color:#28B463; margin:3px 0; font-size:15px;">Salary Hold Report</h3>
+            <p style="font-size:11px; color:#555; margin:2px 0;">' . $projectLabel . 'Period: ' . $monthName . ' ' . $selectedYear . '</p>
+            <p style="font-size:11px; margin:2px 0;"><b>Total Employees on Hold:</b> ' . count($holds) . ' &nbsp;&nbsp;|&nbsp;&nbsp; <b>Total Held Amount:</b> ৳ ' . number_format($totalHeldAmount, 2) . '</p>
         </div>
-        <br>
-        <table border="1" cellpadding="5" width="100%">
+        <br><br>
+        <table border="1" cellpadding="6" cellspacing="0" width="100%">
             <thead>
-                <tr style="background-color:#078134; color:#ffffff; text-align:center; font-weight:bold;">
-                    <th>Serial</th>
-                    <th>Name</th>
-                    <th>Employee ID</th>
-                    <th>Amount</th>
-                    <th>Remark</th>
+                <tr style="background-color:#078134; color:#ffffff; text-align:center; font-weight:bold; font-size:10px;">
+                    <th width="6%">SL</th>
+                    <th width="12%">Employee ID</th>
+                    <th width="24%">Name</th>
+                    <th width="18%">Department</th>
+                    <th width="18%">Designation</th>
+                    <th width="12%">Held Amount (৳)</th>
+                    <th width="10%">Remarks</th>
                 </tr>
             </thead>
             <tbody>';
 
         $sl = 1;
         if (empty($holds)) {
-            $html .= '<tr><td colspan="5" style="text-align:center;"><b>No salary holds found for this period.</b></td></tr>';
-        }
-        foreach ($holds as $hold) {
-            $html .= '<tr style="text-align:center;">
-                <td>' . $sl++ . '</td>
-                <td>' . htmlspecialchars($hold['full_name'] ?? '') . '</td>
-                <td>' . htmlspecialchars($hold['emp_id'] ?? '') . '</td>
-                <td>' . number_format($hold['net_salary'] ?? 0, 2) . '</td>
-                <td>' . htmlspecialchars($hold['remarks'] ?? '') . '</td>
+            $html .= '<tr><td colspan="7" style="text-align:center; padding:15px;"><b>No salary holds found for this period.</b></td></tr>';
+        } else {
+            foreach ($holds as $hold) {
+                $html .= '<tr style="font-size:9px;">
+                    <td width="6%" style="text-align:center;">' . $sl++ . '</td>
+                    <td width="12%" style="text-align:center;">' . htmlspecialchars($hold['emp_id'] ?? '') . '</td>
+                    <td width="24%"><b>' . htmlspecialchars($hold['full_name'] ?? '') . '</b></td>
+                    <td width="18%">' . htmlspecialchars($hold['department_name'] ?? '-') . '</td>
+                    <td width="18%">' . htmlspecialchars($hold['designation_name'] ?? '-') . '</td>
+                    <td width="12%" style="text-align:right; color:#c0392b; font-weight:bold;">৳ ' . number_format($hold['effective_amount'] ?? 0, 2) . '</td>
+                    <td width="10%" style="text-align:center;">' . htmlspecialchars($hold['remarks'] ?? '-') . '</td>
+                </tr>';
+            }
+            $html .= '<tr style="background-color:#f2f4f4; font-weight:bold; font-size:10px;">
+                <td colspan="5" style="text-align:right;">Total Held Amount:</td>
+                <td style="text-align:right; color:#c0392b;">৳ ' . number_format($totalHeldAmount, 2) . '</td>
+                <td></td>
             </tr>';
         }
 
@@ -1370,8 +1736,11 @@ class PayrollController extends Controller
 
         $pdf->writeHTML($html, true, false, true, false, '');
 
-        ob_end_clean();
-        $pdf->Output('Salary_Hold_Report_' . $monthName . '_' . $selectedYear . '.pdf', 'D');
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+        $filename = 'Salary_Hold_Report_' . (!empty($projectName) ? preg_replace('/[^a-zA-Z0-9_-]/', '_', $projectName) . '_' : '') . $monthName . '_' . $selectedYear . '.pdf';
+        $pdf->Output($filename, 'D');
         exit;
     }
 
@@ -1758,30 +2127,35 @@ class PayrollController extends Controller
                 $duty_allowance = (float)($row['duty_allowance'] ?? 0);
                 $tax = (float)($row['tax'] ?? 0);
 
-                $checkStmt = $this->db->prepare("SELECT id FROM payslips WHERE employee_id=? AND payroll_project_id=? AND payslip_month=?");
+                $existingStatus = 'draft';
+                $checkStmt = $this->db->prepare("SELECT id, status FROM payslips WHERE employee_id=? AND payroll_project_id=? AND payslip_month=?");
                 if ($checkStmt) {
                     $checkStmt->bind_param("iis", $employeeId, $projectId, $payslipMonth);
                     $checkStmt->execute();
                     $checkRes = $checkStmt->get_result();
                     if ($checkRow = $checkRes->fetch_assoc()) {
                         $payslipId = (int)$checkRow['id'];
+                        $existingStatus = $checkRow['status'] ?? 'draft';
                     }
                     $checkStmt->close();
                 }
 
+                // If already paid, retain 'paid', otherwise preserve or set as 'draft' until officially generated
+                $saveStatus = ($existingStatus === 'paid') ? 'paid' : 'draft';
+
                 if ($payslipId > 0) {
-                    $stmt = $this->db->prepare("UPDATE payslips SET total_earning=?, total_deduction=?, net_salary=?, salary_hold=?, bank_amount=?, cash_amount=?, late_unpaid_absent_days=?, remarks=?, attendance_remarks=?, is_excluded=?, recreation_allowance=?, conveyance_allowance=?, medical_allowance=?, house_rent_allowance=?, advance_salary=?, meal_count=?, subsidized_lunch=?, unpaid_absent_amount=?, arrears_deduction=?, others_deduction=?, punctuality_bonus=?, overtime=?, arrears_earning=?, duty_allowance=?, tax=? WHERE id=?");
+                    $stmt = $this->db->prepare("UPDATE payslips SET status=?, total_earning=?, total_deduction=?, net_salary=?, salary_hold=?, bank_amount=?, cash_amount=?, late_unpaid_absent_days=?, remarks=?, attendance_remarks=?, is_excluded=?, recreation_allowance=?, conveyance_allowance=?, medical_allowance=?, house_rent_allowance=?, advance_salary=?, meal_count=?, subsidized_lunch=?, unpaid_absent_amount=?, arrears_deduction=?, others_deduction=?, punctuality_bonus=?, overtime=?, arrears_earning=?, duty_allowance=?, tax=? WHERE id=?");
                     if ($stmt) {
-                        $stmt->bind_param("dddsdddssidddddddddddddddi", $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $recreation_allowance, $conveyance_allowance, $medical_allowance, $house_rent_allowance, $advance_salary, $meal_count, $subsidized_lunch, $unpaid_absent_amount, $arrears_deduction, $others_deduction, $punctuality_bonus, $overtime, $arrears_earning, $duty_allowance, $tax, $payslipId);
+                        $stmt->bind_param("sdddsdddssidddddddddddddddi", $saveStatus, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $recreation_allowance, $conveyance_allowance, $medical_allowance, $house_rent_allowance, $advance_salary, $meal_count, $subsidized_lunch, $unpaid_absent_amount, $arrears_deduction, $others_deduction, $punctuality_bonus, $overtime, $arrears_earning, $duty_allowance, $tax, $payslipId);
                         $stmt->execute();
                         $stmt->close();
                     } else {
                         throw new Exception("Payslips update failed: " . $this->db->error);
                     }
                 } else {
-                    $stmt = $this->db->prepare("INSERT INTO payslips (employee_id, payroll_project_id, payslip_month, total_earning, total_deduction, net_salary, salary_hold, bank_amount, cash_amount, late_unpaid_absent_days, remarks, attendance_remarks, is_excluded, recreation_allowance, conveyance_allowance, medical_allowance, house_rent_allowance, advance_salary, meal_count, subsidized_lunch, unpaid_absent_amount, arrears_deduction, others_deduction, punctuality_bonus, overtime, arrears_earning, duty_allowance, tax) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt = $this->db->prepare("INSERT INTO payslips (employee_id, payroll_project_id, payslip_month, status, total_earning, total_deduction, net_salary, salary_hold, bank_amount, cash_amount, late_unpaid_absent_days, remarks, attendance_remarks, is_excluded, recreation_allowance, conveyance_allowance, medical_allowance, house_rent_allowance, advance_salary, meal_count, subsidized_lunch, unpaid_absent_amount, arrears_deduction, others_deduction, punctuality_bonus, overtime, arrears_earning, duty_allowance, tax) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     if ($stmt) {
-                        $stmt->bind_param("iisdddsdddssiddddddddddddddd", $employeeId, $projectId, $payslipMonth, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $recreation_allowance, $conveyance_allowance, $medical_allowance, $house_rent_allowance, $advance_salary, $meal_count, $subsidized_lunch, $unpaid_absent_amount, $arrears_deduction, $others_deduction, $punctuality_bonus, $overtime, $arrears_earning, $duty_allowance, $tax);
+                        $stmt->bind_param("iissdddsdddssiddddddddddddddd", $employeeId, $projectId, $payslipMonth, $saveStatus, $totalEarning, $totalDeduction, $netSalary, $salaryHoldString, $bankAmount, $cashAmount, $lateUnpaidAbsentDays, $remarks, $attRemarks, $isExcluded, $recreation_allowance, $conveyance_allowance, $medical_allowance, $house_rent_allowance, $advance_salary, $meal_count, $subsidized_lunch, $unpaid_absent_amount, $arrears_deduction, $others_deduction, $punctuality_bonus, $overtime, $arrears_earning, $duty_allowance, $tax);
                         $stmt->execute();
                         $payslipId = $stmt->insert_id;
                         $stmt->close();
@@ -1792,9 +2166,51 @@ class PayrollController extends Controller
 
                 if ($payslipId > 0) {
                     $this->db->query("DELETE FROM payslip_details WHERE payslip_id = $payslipId");
+                    
+                    // Build full item map if $details was empty
+                    $resolvedDetails = !empty($details) ? $details : [];
+                    if (empty($resolvedDetails)) {
+                        if (!isset($itemLookupMap)) {
+                            $itemLookupMap = [];
+                            $itemRes = $this->db->query("SELECT id, name, type FROM payslip_items");
+                            if ($itemRes) {
+                                while ($it = $itemRes->fetch_assoc()) {
+                                    $lname = strtolower(trim($it['name']));
+                                    if (strpos($lname, 'house rent') !== false) $itemLookupMap['house_rent'] = (int)$it['id'];
+                                    elseif (strpos($lname, 'medical') !== false) $itemLookupMap['medical'] = (int)$it['id'];
+                                    elseif (strpos($lname, 'conveyance') !== false) $itemLookupMap['conveyance'] = (int)$it['id'];
+                                    elseif (strpos($lname, 'recreation') !== false) $itemLookupMap['recreation'] = (int)$it['id'];
+                                    elseif (strpos($lname, 'advance') !== false) $itemLookupMap['advance'] = (int)$it['id'];
+                                    elseif (strpos($lname, 'lunch') !== false || strpos($lname, 'meal') !== false) $itemLookupMap['lunch'] = (int)$it['id'];
+                                    elseif (strpos($lname, 'punctuality') !== false) $itemLookupMap['punctuality'] = (int)$it['id'];
+                                    elseif (strpos($lname, 'overtime') !== false) $itemLookupMap['overtime'] = (int)$it['id'];
+                                    elseif (strpos($lname, 'arrear') !== false && $it['type'] === 'earning') $itemLookupMap['arrear_earning'] = (int)$it['id'];
+                                    elseif (strpos($lname, 'arrear') !== false && $it['type'] === 'deduction') $itemLookupMap['arrear_deduction'] = (int)$it['id'];
+                                    elseif (strpos($lname, 'duty') !== false || strpos($lname, 'food') !== false || strpos($lname, 'car') !== false) $itemLookupMap['duty'] = (int)$it['id'];
+                                    elseif (strpos($lname, 'other') !== false && $it['type'] === 'deduction') $itemLookupMap['other_deduct'] = (int)$it['id'];
+                                    elseif (strpos($lname, 'tax') !== false) $itemLookupMap['tax'] = (int)$it['id'];
+                                }
+                            }
+                        }
+
+                        if ($house_rent_allowance > 0 && isset($itemLookupMap['house_rent'])) $resolvedDetails[$itemLookupMap['house_rent']] = $house_rent_allowance;
+                        if ($medical_allowance > 0 && isset($itemLookupMap['medical'])) $resolvedDetails[$itemLookupMap['medical']] = $medical_allowance;
+                        if ($conveyance_allowance > 0 && isset($itemLookupMap['conveyance'])) $resolvedDetails[$itemLookupMap['conveyance']] = $conveyance_allowance;
+                        if ($recreation_allowance > 0 && isset($itemLookupMap['recreation'])) $resolvedDetails[$itemLookupMap['recreation']] = $recreation_allowance;
+                        if ($advance_salary > 0 && isset($itemLookupMap['advance'])) $resolvedDetails[$itemLookupMap['advance']] = $advance_salary;
+                        if ($subsidized_lunch > 0 && isset($itemLookupMap['lunch'])) $resolvedDetails[$itemLookupMap['lunch']] = $subsidized_lunch;
+                        if ($punctuality_bonus > 0 && isset($itemLookupMap['punctuality'])) $resolvedDetails[$itemLookupMap['punctuality']] = $punctuality_bonus;
+                        if ($overtime > 0 && isset($itemLookupMap['overtime'])) $resolvedDetails[$itemLookupMap['overtime']] = $overtime;
+                        if ($arrears_earning > 0 && isset($itemLookupMap['arrear_earning'])) $resolvedDetails[$itemLookupMap['arrear_earning']] = $arrears_earning;
+                        if ($arrears_deduction > 0 && isset($itemLookupMap['arrear_deduction'])) $resolvedDetails[$itemLookupMap['arrear_deduction']] = $arrears_deduction;
+                        if ($duty_allowance > 0 && isset($itemLookupMap['duty'])) $resolvedDetails[$itemLookupMap['duty']] = $duty_allowance;
+                        if ($others_deduction > 0 && isset($itemLookupMap['other_deduct'])) $resolvedDetails[$itemLookupMap['other_deduct']] = $others_deduction;
+                        if ($tax > 0 && isset($itemLookupMap['tax'])) $resolvedDetails[$itemLookupMap['tax']] = $tax;
+                    }
+
                     $detStmt = $this->db->prepare("INSERT INTO payslip_details (payslip_id, payslip_item_id, amount) VALUES (?, ?, ?)");
                     if ($detStmt) {
-                        foreach ($details as $itemId => $amt) {
+                        foreach ($resolvedDetails as $itemId => $amt) {
                             $amt = (float) $amt;
                             if ($amt > 0) {
                                 $iId = (int) $itemId;
@@ -1827,10 +2243,13 @@ class PayrollController extends Controller
             }
         }
 
+        $selectedProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int)$_GET['payroll_project_id'] : (isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null);
+
         $this->view("payrolls/payslips/attendance-report", [
             "current_route" => "payroll-attendance-report",
             "page_title" => "Payroll Attendance Report",
-            "payroll_projects" => $payroll_projects
+            "payroll_projects" => $payroll_projects,
+            "selected_project_id" => $selectedProjectId
         ]);
     }
 
@@ -1957,7 +2376,46 @@ class PayrollController extends Controller
         $fromDateStr = $_GET['from_date'] ?? date('Y-m-d');
         $toDateStr = $_GET['to_date'] ?? date('Y-m-d');
 
-        // Force UTC or Dhaka boundaries
+        $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int)$_GET['payroll_project_id'] : (isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null);
+
+        $projectName = '';
+        if ($payrollProjectId) {
+            $pStmt = $this->db->prepare("SELECT name, date, is_custom_date, start_date, end_date FROM payroll_projects WHERE id = ?");
+            $pStmt->bind_param("i", $payrollProjectId);
+            $pStmt->execute();
+            $pRes = $pStmt->get_result();
+            if ($pRow = $pRes->fetch_assoc()) {
+                $projectName = $pRow['name'];
+                if (empty($_GET['from_date']) || empty($_GET['to_date'])) {
+                    if (!empty($pRow['is_custom_date']) && !empty($pRow['start_date']) && !empty($pRow['end_date'])) {
+                        $fromDateStr = $pRow['start_date'];
+                        $toDateStr = $pRow['end_date'];
+                    } elseif (!empty($pRow['date'])) {
+                        $parts = explode('-', $pRow['date']);
+                        if (count($parts) >= 2) {
+                            $y = (int)$parts[0];
+                            $m = (int)$parts[1];
+                            $fromDateStr = sprintf('%04d-%02d-01', $y, $m);
+                            $toDateStr = date('Y-m-t', strtotime($fromDateStr));
+                        }
+                    }
+                }
+            }
+            $pStmt->close();
+        }
+
+        // Fetch DB Overrides from attendance_monthly_update if project is selected
+        $dbOverrides = [];
+        if ($payrollProjectId) {
+            $oRes = $this->db->query("SELECT * FROM attendance_monthly_update WHERE payroll_project_id = $payrollProjectId");
+            if ($oRes) {
+                while ($oRow = $oRes->fetch_assoc()) {
+                    $dbOverrides[$oRow['employee_id']] = $oRow;
+                }
+            }
+        }
+
+        // Force UTC or Dhaka boundaries for Tipsoi API
         $oldTimezone = date_default_timezone_get();
         date_default_timezone_set('Asia/Dhaka');
 
@@ -1966,67 +2424,105 @@ class PayrollController extends Controller
 
         date_default_timezone_set($oldTimezone);
 
-        $token = $apiService->getBearerToken();
-        if (!$token) {
-            die("Failed to authenticate with Tipsoi API.");
+        // Attempt to fetch Tipsoi attendance logs safely
+        $tipsoiAttendance = null;
+        $tipsoiSuccess = false;
+        try {
+            $token = $apiService->getBearerToken();
+            if ($token) {
+                $url = "https://app.tipsoi.ai/inovace-client/api/v1/attendance?" . http_build_query([
+                    'officeId' => 4699,
+                    'order' => 'asc',
+                    'pageNumber' => 0,
+                    'perPage' => 2000,
+                    'reportType' => 'department',
+                    'sortKey' => 'reportPosition',
+                    'status' => 1,
+                    'from' => $fromTime,
+                    'to' => $toTime
+                ]);
+
+                $ch = curl_init($url);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'Authorization: Bearer ' . $token,
+                    'Accept: application/json'
+                ]);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+                $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+
+                if ($httpCode === 200 && $response) {
+                    $data = json_decode($response, true);
+                    if (isset($data['attendance']) && is_array($data['attendance'])) {
+                        $tipsoiAttendance = $data['attendance'];
+                        $tipsoiSuccess = true;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            $tipsoiSuccess = false;
         }
 
-        $url = "https://app.tipsoi.ai/inovace-client/api/v1/attendance?" . http_build_query([
-            'officeId' => 4699,
-            'order' => 'asc',
-            'pageNumber' => 0,
-            'perPage' => 2000,
-            'reportType' => 'department',
-            'sortKey' => 'reportPosition',
-            'status' => 1,
-            'from' => $fromTime,
-            'to' => $toTime
-        ]);
+        // Fetch local ERP employees
+        $escapedToDate = $this->db->real_escape_string($toDateStr);
+        $escapedFromDate = $this->db->real_escape_string($fromDateStr);
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $token,
-            'Accept: application/json'
-        ]);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        $data = json_decode($response, true);
-        if ($httpCode !== 200 || !isset($data['attendance'])) {
-            die("Failed to retrieve attendance logs from Tipsoi API.");
-        }
-
-        // Fetch local employees for name/ID checks
-        $localQuery = $this->db->query("SELECT employee_id, email, full_name FROM employees");
+        $localSql = "SELECT e.id, e.employee_id, e.email, e.full_name, e.joining_date, e.resign_date, e.workplace,
+                            d.name as department, des.name as designation 
+                     FROM employees e 
+                     LEFT JOIN departments d ON e.department_id = d.id 
+                     LEFT JOIN designations des ON e.designation_id = des.id 
+                     WHERE (e.employee_status = 'active' OR e.resign_date >= '$escapedFromDate')
+                       AND (e.joining_date IS NULL OR e.joining_date <= '$escapedToDate')
+                     ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC";
+        $localQuery = $this->db->query($localSql);
         $localEmployees = [];
         if ($localQuery) {
             while ($row = $localQuery->fetch_assoc()) {
-                $localEmployees[] = [
-                    'employee_id' => trim($row['employee_id'] ?? ''),
-                    'email' => strtolower(trim($row['email'] ?? '')),
-                    'full_name' => strtolower(trim($row['full_name'] ?? ''))
-                ];
+                $localEmployees[] = $row;
             }
         }
+
+        // Helpers
+        $normalizeId = function ($id) {
+            $str = trim((string) ($id ?? ''));
+            return preg_match('/^\d+$/', $str) ? (string) (int) $str : $str;
+        };
+
+        $parseTimeToMinutes = function ($timeStr) {
+            if (empty($timeStr) || trim($timeStr) === '' || trim($timeStr) === '-') return null;
+            if (preg_match('/^(\d+):(\d+)\s*(AM|PM)$/i', trim($timeStr), $m)) {
+                $h = (int) $m[1];
+                $min = (int) $m[2];
+                $ampm = strtoupper($m[3]);
+                if ($ampm === 'PM' && $h !== 12) $h += 12;
+                elseif ($ampm === 'AM' && $h === 12) $h = 0;
+                return $h * 60 + $min;
+            }
+            return null;
+        };
 
         // Aggregate Data
         $aggregatedData = [];
         $index = 1;
-        foreach ($data['attendance'] as $emp) {
-            $officeId = trim($emp['employeeOfficeId'] ?? $emp['employeeId']);
-            $officeIdNorm = preg_match('/^\d+$/', $officeId) ? (string) (int) $officeId : $officeId;
-            $nameNorm = strtolower(trim($emp['employeeName'] ?? ''));
 
-            $isLocal = false;
-            foreach ($localEmployees as $le) {
-                $leIdNorm = preg_match('/^\d+$/', $le['employee_id']) ? (string) (int) $le['employee_id'] : $le['employee_id'];
-                if (($officeIdNorm !== '' && $leIdNorm === $officeIdNorm) || ($nameNorm !== '' && $le['full_name'] === $nameNorm)) {
-                    $isLocal = true;
-                    break;
+        foreach ($localEmployees as $localMatch) {
+            $leIdNorm = $normalizeId($localMatch['employee_id']);
+            $leNameNorm = strtolower(trim($localMatch['full_name'] ?? ''));
+
+            // Match Tipsoi record
+            $emp = null;
+            if ($tipsoiSuccess && !empty($tipsoiAttendance)) {
+                foreach ($tipsoiAttendance as $tEmp) {
+                    $tOfficeId = $normalizeId($tEmp['employeeOfficeId'] ?? $tEmp['employeeId'] ?? '');
+                    $tName = strtolower(trim($tEmp['employeeName'] ?? ''));
+                    if (($tOfficeId !== '' && $tOfficeId === $leIdNorm) || ($tName !== '' && $tName === $leNameNorm)) {
+                        $emp = $tEmp;
+                        break;
+                    }
                 }
             }
 
@@ -2037,63 +2533,70 @@ class PayrollController extends Controller
             $dayOff = 0;
             $late = 0;
 
-            $shiftStartStr = $emp['shiftStartTime'] ?? '';
-            $shiftStartMin = null;
-            if (preg_match('/^(\d+):(\d+)\s*(AM|PM)$/i', trim($shiftStartStr), $m)) {
-                $h = (int) $m[1];
-                $min = (int) $m[2];
-                $ampm = strtoupper($m[3]);
-                if ($ampm === 'PM' && $h !== 12)
-                    $h += 12;
-                elseif ($ampm === 'AM' && $h === 12)
-                    $h = 0;
-                $shiftStartMin = $h * 60 + $min;
-            } else {
-                $shiftStartMin = 570; // 09:30 AM default
-            }
-            $lateThreshold = $shiftStartMin + 10;
+            if ($emp) {
+                $shiftStartStr = $emp['shiftStartTime'] ?? '';
+                $shiftStartMin = $parseTimeToMinutes($shiftStartStr) ?? 570; // 09:30 AM default
+                $lateThreshold = $shiftStartMin + 10;
 
-            $attMap = $emp['attendance'] ?? [];
-            foreach ($attMap as $ts => $dayAtt) {
-                $workingDays++;
+                $attMap = $emp['attendance'] ?? [];
+                foreach ($attMap as $ts => $dayAtt) {
+                    $workingDays++;
 
-                $isLateOverride = false;
-                if (!empty($dayAtt['isPresent']) && !empty($dayAtt['firstLoggedTime']) && $dayAtt['firstLoggedTime'] !== '-' && $dayAtt['firstLoggedTime'] !== ' ') {
-                    if (preg_match('/^(\d+):(\d+)\s*(AM|PM)$/i', trim($dayAtt['firstLoggedTime']), $zm)) {
-                        $zh = (int) $zm[1];
-                        $zmin = (int) $zm[2];
-                        $zampm = strtoupper($zm[3]);
-                        if ($zampm === 'PM' && $zh !== 12)
-                            $zh += 12;
-                        elseif ($zampm === 'AM' && $zh === 12)
-                            $zh = 0;
-                        $checkInMin = $zh * 60 + $zmin;
-                        if ($checkInMin > $lateThreshold)
+                    $isLateOverride = false;
+                    if (!empty($dayAtt['isPresent']) && !empty($dayAtt['firstLoggedTime']) && trim($dayAtt['firstLoggedTime']) !== '-' && trim($dayAtt['firstLoggedTime']) !== '') {
+                        $logMin = $parseTimeToMinutes($dayAtt['firstLoggedTime']);
+                        if ($logMin !== null && $logMin > $lateThreshold) {
                             $isLateOverride = true;
+                        }
+                    }
+
+                    if (!empty($dayAtt['isLeave'])) {
+                        $leave++;
+                    } elseif (!empty($dayAtt['isPresent'])) {
+                        $present++;
+                        if ($isLateOverride) {
+                            $late++;
+                        }
+                    } elseif (!empty($dayAtt['isOffday']) || !empty($dayAtt['isHoliday'])) {
+                        $dayOff++;
+                        $workingDays--;
+                    } else {
+                        $absent++;
                     }
                 }
-
-                if (!empty($dayAtt['isLeave'])) {
-                    $leave++;
-                } else if (!empty($dayAtt['isPresent'])) {
-                    $present++;
-                    if ($isLateOverride)
-                        $late++;
-                } else if (!empty($dayAtt['isOffday']) || !empty($dayAtt['isHoliday'])) {
-                    $dayOff++;
-                    $workingDays--;
-                } else {
-                    $absent++;
-                }
             }
+
+            $approvedLates = 0;
+            $finalLate = $late;
+            $deduction = 0.00;
+            $lateUnpaidAbsentDays = $absent;
+
+            // Apply DB Overrides from attendance_monthly_update if present
+            $empPk = (int) $localMatch['id'];
+            if (isset($dbOverrides[$empPk])) {
+                $ov = $dbOverrides[$empPk];
+                $workingDays = isset($ov['working_days']) ? (float) $ov['working_days'] : $workingDays;
+                $present = isset($ov['present']) ? (float) $ov['present'] : $present;
+                $absent = isset($ov['absent']) ? (float) $ov['absent'] : $absent;
+                $leave = isset($ov['leave_days']) ? (float) $ov['leave_days'] : $leave;
+                $dayOff = isset($ov['dayoff']) ? (float) $ov['dayoff'] : $dayOff;
+                $late = isset($ov['late']) ? (float) $ov['late'] : $late;
+                $approvedLates = isset($ov['approved_lates']) ? (float) $ov['approved_lates'] : $approvedLates;
+                $finalLate = isset($ov['final_late']) ? (float) $ov['final_late'] : $finalLate;
+                $deduction = isset($ov['deduction']) ? (float) $ov['deduction'] : $deduction;
+                $lateUnpaidAbsentDays = isset($ov['late_unpaid_absent_days']) ? (float) $ov['late_unpaid_absent_days'] : $lateUnpaidAbsentDays;
+            }
+
+            $idCheck = $emp ? 'OK' : ($tipsoiSuccess ? 'Tipsoi Missing' : 'Offline');
+            $nameCheck = $emp ? 'OK' : ($tipsoiSuccess ? 'Tipsoi Missing' : 'Offline');
 
             $aggregatedData[] = [
                 'sl' => $index++,
-                'name' => $emp['employeeName'] ?? '-',
-                'id' => $emp['employeeOfficeId'] ?? '-',
-                'designation' => $emp['designationName'] ?? '-',
-                'department' => $emp['departmentName'] ?? '-',
-                'workplace' => $emp['workplaceName'] ?? '-',
+                'name' => $localMatch['full_name'] ?? ($emp['employeeName'] ?? '-'),
+                'id' => $localMatch['employee_id'] ?? ($emp['employeeOfficeId'] ?? '-'),
+                'designation' => $localMatch['designation'] ?? ($emp['designationName'] ?? '-'),
+                'department' => $localMatch['department'] ?? ($emp['departmentName'] ?? '-'),
+                'workplace' => $localMatch['workplace'] ?? ($emp['workplaceName'] ?? '-'),
                 'empType' => 'Regular',
                 'workingDays' => $workingDays,
                 'present' => $present,
@@ -2101,18 +2604,19 @@ class PayrollController extends Controller
                 'leave' => $leave,
                 'dayOff' => $dayOff,
                 'late' => $late,
-                'approvedLates' => 0,
-                'finalLate' => $late,
-                'deduction' => 0,
-                'lateUnpaidAbsentDays' => $absent,
-                'idCheck' => $isLocal ? 'OK' : 'Mismatch',
-                'nameCheck' => $isLocal ? 'OK' : 'Mismatch'
+                'approvedLates' => $approvedLates,
+                'finalLate' => $finalLate,
+                'deduction' => $deduction,
+                'lateUnpaidAbsentDays' => $lateUnpaidAbsentDays,
+                'joiningDate' => !empty($localMatch['joining_date']) ? $localMatch['joining_date'] : '-',
+                'resignDate' => !empty($localMatch['resign_date']) ? $localMatch['resign_date'] : '-',
+                'idCheck' => $idCheck,
+                'nameCheck' => $nameCheck
             ];
         }
 
         // Generate TCPDF (Landscape A2 for 23 columns)
-        // Adjust column sizes precisely so they do not overlap
-        $pdf = new TCPDF('L', PDF_UNIT, 'A2', true, 'UTF-8', false);
+        $pdf = new \TCPDF('L', PDF_UNIT, 'A2', true, 'UTF-8', false);
         $pdf->SetCreator('HRM System');
         $pdf->SetTitle("Payroll Attendance Report - $fromDateStr to $toDateStr");
 
@@ -2130,7 +2634,8 @@ class PayrollController extends Controller
         $pdf->SetFont('helvetica', 'B', 14);
         $pdf->SetFillColor(255, 255, 255); // Reset
         $pdf->SetTextColor(0, 0, 0);
-        $pdf->Cell(0, 10, "Payroll Attendance Report: " . date('F d, Y', strtotime($fromDateStr)) . " to " . date('F d, Y', strtotime($toDateStr)), 0, 1, 'C', true);
+        $projectTitleStr = !empty($projectName) ? "Project: " . htmlspecialchars($projectName) . " | " : "";
+        $pdf->Cell(0, 10, "Payroll Attendance Report: " . $projectTitleStr . date('F d, Y', strtotime($fromDateStr)) . " to " . date('F d, Y', strtotime($toDateStr)), 0, 1, 'C', true);
         $pdf->Ln(); // no space before headings
 
         $pdf->SetFont('helvetica', 'B', 9);
@@ -2156,9 +2661,9 @@ class PayrollController extends Controller
             20, // Final Late
             20, // Deduct
             22, // Unpaid
-            20, // Join
-            22, // Resign
-            22, // Effect
+            22, // Join Date
+            22, // Resign Date
+            20, // Effect Date
             35, // Remarks
             20, // ID Check
             25  // Name Check
@@ -2205,7 +2710,6 @@ class PayrollController extends Controller
                 $pdf->SetFillColor(255, 255, 255);
 
             $pdf->Cell($widths[0], 8, $row['sl'], 1, 0, 'C', $fill);
-            // Limit characters to avoid breaking row height
             $pdf->Cell($widths[1], 8, mb_substr($row['name'], 0, 23), 1, 0, 'L', $fill);
             $pdf->Cell($widths[2], 8, $row['id'], 1, 0, 'C', $fill);
             $pdf->Cell($widths[3], 8, mb_substr($row['designation'], 0, 23), 1, 0, 'L', $fill);
@@ -2229,15 +2733,15 @@ class PayrollController extends Controller
             $pdf->Cell($widths[12], 8, $row['late'], 1, 0, 'C', $fill);
             $pdf->SetTextColor(0, 0, 0);
 
-            $pdf->Cell($widths[13], 8, '-', 1, 0, 'C', $fill);
-            $pdf->Cell($widths[14], 8, $row['finalLate'], 1, 0, 'C', $fill);
-            $pdf->Cell($widths[15], 8, '-', 1, 0, 'C', $fill);
-            $pdf->Cell($widths[16], 8, $row['lateUnpaidAbsentDays'], 1, 0, 'C', $fill);
+            $pdf->Cell($widths[13], 8, (string)$row['approvedLates'], 1, 0, 'C', $fill);
+            $pdf->Cell($widths[14], 8, (string)$row['finalLate'], 1, 0, 'C', $fill);
+            $pdf->Cell($widths[15], 8, number_format((float)$row['deduction'], 2), 1, 0, 'R', $fill);
+            $pdf->Cell($widths[16], 8, (string)$row['lateUnpaidAbsentDays'], 1, 0, 'C', $fill);
 
-            $pdf->Cell($widths[17], 8, '-', 1, 0, 'C', $fill); // Join
-            $pdf->Cell($widths[18], 8, '-', 1, 0, 'C', $fill); // Resign
-            $pdf->Cell($widths[19], 8, '-', 1, 0, 'C', $fill); // Effect
-            $pdf->Cell($widths[20], 8, '-', 1, 0, 'C', $fill); // Remarks
+            $pdf->Cell($widths[17], 8, $row['joiningDate'], 1, 0, 'C', $fill); // Join Date
+            $pdf->Cell($widths[18], 8, $row['resignDate'], 1, 0, 'C', $fill);  // Resign Date
+            $pdf->Cell($widths[19], 8, '-', 1, 0, 'C', $fill);                  // Effect Date
+            $pdf->Cell($widths[20], 8, '-', 1, 0, 'C', $fill);                  // Remarks
 
             if ($row['idCheck'] === 'OK')
                 $pdf->SetTextColor(0, 128, 0);
@@ -2257,7 +2761,8 @@ class PayrollController extends Controller
             $fill = !$fill;
         }
 
-        $pdf->Output("payroll_attendance_{$fromDateStr}_to_{$toDateStr}.pdf", 'D');
+        $cleanProjectName = !empty($projectName) ? preg_replace('/[^a-zA-Z0-9_-]/', '_', strtolower($projectName)) . '_' : '';
+        $pdf->Output("payroll_attendance_{$cleanProjectName}{$fromDateStr}_to_{$toDateStr}.pdf", 'I');
     }
 
     public function joiningList()
@@ -2271,16 +2776,7 @@ class PayrollController extends Controller
         $fromDate = $defaultFrom;
         $toDate = $defaultTo;
 
-        if ($filterType === 'monthly') {
-            $m = $_GET['month'] ?? $currentMonth;
-            $y = $_GET['year'] ?? $currentYear;
-            $fromDate = date('Y-m-d', mktime(0, 0, 0, $m, 1, $y));
-            $toDate = date('Y-m-t', mktime(0, 0, 0, $m, 1, $y));
-        } elseif ($filterType === 'custom') {
-            $fromDate = $_GET['from_date'] ?? $defaultFrom;
-            $toDate = $_GET['to_date'] ?? $defaultTo;
-        }
-
+        // Fetch payroll projects
         $projectRes = $this->db->query("SELECT * FROM payroll_projects ORDER BY id DESC");
         $payroll_projects = [];
         if ($projectRes) {
@@ -2289,10 +2785,39 @@ class PayrollController extends Controller
             }
         }
 
-        $page_title = "Payroll Joining List";
-        $current_route = "payroll-joining-list";
-
         $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : null;
+
+        // Auto-synchronize dates from selected project if not explicitly customized
+        if ($payrollProjectId) {
+            foreach ($payroll_projects as $prj) {
+                if ($prj['id'] == $payrollProjectId) {
+                    if (empty($_GET['from_date']) && empty($_GET['month'])) {
+                        if (!empty($prj['is_custom_date']) && !empty($prj['start_date']) && !empty($prj['end_date'])) {
+                            $filterType = 'custom';
+                            $fromDate = $prj['start_date'];
+                            $toDate = $prj['end_date'];
+                        } elseif (!empty($prj['date'])) {
+                            $parts = explode('-', $prj['date']);
+                            if (count($parts) >= 2) {
+                                $_GET['year'] = $parts[0];
+                                $_GET['month'] = $parts[1];
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        if ($filterType === 'monthly') {
+            $m = $_GET['month'] ?? $currentMonth;
+            $y = $_GET['year'] ?? $currentYear;
+            $fromDate = date('Y-m-d', mktime(0, 0, 0, $m, 1, $y));
+            $toDate = date('Y-m-t', mktime(0, 0, 0, $m, 1, $y));
+        } elseif ($filterType === 'custom') {
+            $fromDate = $_GET['from_date'] ?? $fromDate;
+            $toDate = $_GET['to_date'] ?? $toDate;
+        }
 
         $localSql = "SELECT e.id as real_emp_id_fk, e.employee_id, e.full_name, desg.name AS designation, dept.name AS department,
                             e.workplace, e.joining_date, e.gross_salary, e.basic_salary
@@ -2313,11 +2838,14 @@ class PayrollController extends Controller
                 $localEmployees[] = $row;
             }
         }
+        $stmt->close();
 
         $projectEmployeeIds = [];
+        $hasProjectRecords = false;
         if ($payrollProjectId) {
             $projQ = $this->db->query("SELECT employee_id FROM payslips WHERE payroll_project_id = $payrollProjectId UNION SELECT employee_id FROM attendance_monthly_update WHERE payroll_project_id = $payrollProjectId");
-            if ($projQ) {
+            if ($projQ && $projQ->num_rows > 0) {
+                $hasProjectRecords = true;
                 while ($pr = $projQ->fetch_assoc()) {
                     $projectEmployeeIds[$pr['employee_id']] = true;
                 }
@@ -2326,7 +2854,7 @@ class PayrollController extends Controller
 
         $employees = [];
         foreach ($localEmployees as $localMatch) {
-            if ($payrollProjectId && !isset($projectEmployeeIds[$localMatch['real_emp_id_fk']])) {
+            if ($payrollProjectId && $hasProjectRecords && !isset($projectEmployeeIds[$localMatch['real_emp_id_fk']])) {
                 continue;
             }
 
@@ -2341,6 +2869,9 @@ class PayrollController extends Controller
                 'basic_salary' => $localMatch['basic_salary'] ?? 0,
             ];
         }
+
+        $page_title = "Payroll Joining List";
+        $current_route = "payroll-joining-list";
 
         $this->view('payrolls/payslips/joining-list', [
             'page_title' => $page_title,
@@ -2360,12 +2891,39 @@ class PayrollController extends Controller
     {
         $currentYear = date('Y');
         $currentMonth = date('m');
-        $defaultFrom = date('Y-m-d');
-        $defaultTo = date('Y-m-d');
+        $defaultFrom = date('Y-m-01');
+        $defaultTo = date('Y-m-t');
 
         $filterType = $_GET['filter_type'] ?? 'monthly';
         $fromDate = $defaultFrom;
         $toDate = $defaultTo;
+
+        $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : null;
+
+        $projectName = '';
+        if ($payrollProjectId) {
+            $pStmt = $this->db->prepare("SELECT name, date, is_custom_date, start_date, end_date FROM payroll_projects WHERE id = ?");
+            $pStmt->bind_param("i", $payrollProjectId);
+            $pStmt->execute();
+            $pRes = $pStmt->get_result();
+            if ($pRow = $pRes->fetch_assoc()) {
+                $projectName = $pRow['name'];
+                if (empty($_GET['from_date']) && empty($_GET['month'])) {
+                    if (!empty($pRow['is_custom_date']) && !empty($pRow['start_date']) && !empty($pRow['end_date'])) {
+                        $filterType = 'custom';
+                        $fromDate = $pRow['start_date'];
+                        $toDate = $pRow['end_date'];
+                    } elseif (!empty($pRow['date'])) {
+                        $parts = explode('-', $pRow['date']);
+                        if (count($parts) >= 2) {
+                            $_GET['year'] = $parts[0];
+                            $_GET['month'] = $parts[1];
+                        }
+                    }
+                }
+            }
+            $pStmt->close();
+        }
 
         if ($filterType === 'monthly') {
             $m = $_GET['month'] ?? $currentMonth;
@@ -2373,14 +2931,10 @@ class PayrollController extends Controller
             $fromDate = date('Y-m-d', mktime(0, 0, 0, $m, 1, $y));
             $toDate = date('Y-m-t', mktime(0, 0, 0, $m, 1, $y));
         } elseif ($filterType === 'custom') {
-            $fromDate = $_GET['from_date'] ?? $defaultFrom;
-            $toDate = $_GET['to_date'] ?? $defaultTo;
+            $fromDate = $_GET['from_date'] ?? $fromDate;
+            $toDate = $_GET['to_date'] ?? $toDate;
         }
 
-        $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : null;
-
-        $employees = [];
-        // Fetch Local Employees matching the date range
         $localSql = "SELECT e.id as real_emp_id_fk, e.employee_id, e.full_name, desg.name AS designation, dept.name AS department,
                             e.workplace, e.joining_date, e.gross_salary, e.basic_salary
                      FROM employees e
@@ -2400,19 +2954,23 @@ class PayrollController extends Controller
                 $localEmployees[] = $row;
             }
         }
+        $stmt->close();
 
         $projectEmployeeIds = [];
+        $hasProjectRecords = false;
         if ($payrollProjectId) {
             $projQ = $this->db->query("SELECT employee_id FROM payslips WHERE payroll_project_id = $payrollProjectId UNION SELECT employee_id FROM attendance_monthly_update WHERE payroll_project_id = $payrollProjectId");
-            if ($projQ) {
+            if ($projQ && $projQ->num_rows > 0) {
+                $hasProjectRecords = true;
                 while ($pr = $projQ->fetch_assoc()) {
                     $projectEmployeeIds[$pr['employee_id']] = true;
                 }
             }
         }
 
+        $employees = [];
         foreach ($localEmployees as $localMatch) {
-            if ($payrollProjectId && !isset($projectEmployeeIds[$localMatch['real_emp_id_fk']])) {
+            if ($payrollProjectId && $hasProjectRecords && !isset($projectEmployeeIds[$localMatch['real_emp_id_fk']])) {
                 continue;
             }
 
@@ -2432,54 +2990,67 @@ class PayrollController extends Controller
         $pdf->SetCreator('TPHL ERP');
         $pdf->SetAuthor('Admin');
         $pdf->SetTitle('Joining List Report');
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
         $pdf->SetMargins(15, 15, 15);
         $pdf->SetAutoPageBreak(TRUE, 15);
         $pdf->AddPage();
 
         $pdf->SetFont('helvetica', '', 9);
 
+        $projectHeader = !empty($projectName) ? 'Project: ' . htmlspecialchars($projectName) . ' | ' : '';
+
         $html = '
         <div style="text-align:center;">
-            <h1 style="color:#078134;">The Premium Homes Ltd</h1>
-            <h3 style="color:#28B463;">Joining List Report </h3>
-            <p>Date Range: ' . date('F d, Y', strtotime($fromDate)) . ' to ' . date('F d, Y', strtotime($toDate)) . '</p>
-            <p><b>Total Records: </b> ' . count($employees) . '</p>
+            <h1 style="color:#078134; margin:0; font-size:22px;">The Premium Homes Ltd</h1>
+            <h3 style="color:#28B463; margin:3px 0; font-size:15px;">Joining List Report</h3>
+            <p style="font-size:11px; color:#555; margin:2px 0;">' . $projectHeader . 'Date Range: ' . date('F d, Y', strtotime($fromDate)) . ' to ' . date('F d, Y', strtotime($toDate)) . '</p>
+            <p style="font-size:11px; margin:2px 0;"><b>Total Records: </b> ' . count($employees) . '</p>
         </div>
-        <br>
-        <table border="1" cellpadding="5" width="100%">
+        <br><br>
+        <table border="1" cellpadding="5" cellspacing="0" width="100%">
             <thead>
-                <tr style="background-color:#078134; color:#ffffff; text-align:center; font-weight:bold;">
-                    <th width="5%">SL</th>
-                    <th width="10%">ID</th>
-                    <th width="18%">Name</th>
-                    <th width="22%">Department - Designation</th>
-                    <th width="15%">Workplace</th>
-                    <th width="10%">Joining Date</th>
-                    <th width="10%">Gross Salary</th>
-                    <th width="10%">Basic Salary</th>
+                <tr style="background-color:#078134; color:#ffffff; font-weight:bold; font-size:10px;">
+                    <th width="5%" style="text-align:center;">SL</th>
+                    <th width="10%" style="text-align:center;">ID</th>
+                    <th width="18%" style="text-align:left;">Name</th>
+                    <th width="22%" style="text-align:left;">Department - Designation</th>
+                    <th width="15%" style="text-align:center;">Workplace</th>
+                    <th width="10%" style="text-align:center;">Joining Date</th>
+                    <th width="10%" style="text-align:right;">Gross Salary</th>
+                    <th width="10%" style="text-align:right;">Basic Salary</th>
                 </tr>
             </thead>
             <tbody>';
 
         $sl = 1;
-        foreach ($employees as $row) {
-            $deptDesig = ($row['department'] ?? '-') . ' - ' . ($row['designation'] ?? '-');
-            $html .= '<tr style="text-align:center;">
-                        <td width="5%">' . $sl++ . '</td>
-                        <td width="10%">' . htmlspecialchars($row['employee_id']) . '</td>
-                        <td width="18%" style="text-align:left;">' . htmlspecialchars($row['full_name']) . '</td>
-                        <td width="22%" style="text-align:left;">' . htmlspecialchars($deptDesig) . '</td>
-                        <td width="15%">' . htmlspecialchars($row['workplace'] ?? '-') . '</td>
-                        <td width="10%">' . htmlspecialchars($row['joining_date']) . '</td>
-                        <td width="10%">' . htmlspecialchars(number_format($row['gross_salary'] ?? 0, 2)) . '</td>
-                        <td width="10%">' . htmlspecialchars(number_format($row['basic_salary'] ?? 0, 2)) . '</td>
-                      </tr>';
+        if (empty($employees)) {
+            $html .= '<tr><td colspan="8" style="text-align:center; padding:15px;"><b>No joined employees found for this period.</b></td></tr>';
+        } else {
+            foreach ($employees as $row) {
+                $deptDesig = ($row['department'] ?? '-') . ' - ' . ($row['designation'] ?? '-');
+                $html .= '<tr style="font-size:9px;">
+                            <td width="5%" style="text-align:center;">' . $sl++ . '</td>
+                            <td width="10%" style="text-align:center;">' . htmlspecialchars($row['employee_id']) . '</td>
+                            <td width="18%" style="text-align:left;"><b>' . htmlspecialchars($row['full_name']) . '</b></td>
+                            <td width="22%" style="text-align:left;">' . htmlspecialchars($deptDesig) . '</td>
+                            <td width="15%" style="text-align:center;">' . htmlspecialchars($row['workplace'] ?? '-') . '</td>
+                            <td width="10%" style="text-align:center;">' . htmlspecialchars($row['joining_date']) . '</td>
+                            <td width="10%" style="text-align:right;">৳ ' . htmlspecialchars(number_format($row['gross_salary'] ?? 0, 2)) . '</td>
+                            <td width="10%" style="text-align:right;">৳ ' . htmlspecialchars(number_format($row['basic_salary'] ?? 0, 2)) . '</td>
+                          </tr>';
+            }
         }
 
         $html .= '</tbody></table>';
 
         $pdf->writeHTML($html, true, false, true, false, '');
-        $pdf->Output('Joining_List_Report_' . $fromDate . '_to_' . $toDate . '.pdf', 'D');
+
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+        $filename = 'Joining_List_Report_' . (!empty($projectName) ? preg_replace('/[^a-zA-Z0-9_-]/', '_', $projectName) . '_' : '') . $fromDate . '_to_' . $toDate . '.pdf';
+        $pdf->Output($filename, 'D');
         exit;
     }
 
@@ -2487,12 +3058,41 @@ class PayrollController extends Controller
     {
         $currentYear = date('Y');
         $currentMonth = date('m');
-        $defaultFrom = date('Y-m-d');
-        $defaultTo = date('Y-m-d');
+        $defaultFrom = date('Y-m-01');
+        $defaultTo = date('Y-m-t');
 
         $filterType = $_GET['filter_type'] ?? 'monthly';
         $fromDate = $defaultFrom;
         $toDate = $defaultTo;
+
+        // Fetch payroll projects
+        $projectRes = $this->db->query("SELECT * FROM payroll_projects ORDER BY id DESC");
+        $payroll_projects = [];
+        if ($projectRes) {
+            while ($pRow = $projectRes->fetch_assoc()) {
+                $payroll_projects[] = $pRow;
+            }
+        }
+
+        $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : null;
+
+        // Auto-synchronize dates from selected project if not explicitly customized
+        if ($payrollProjectId) {
+            foreach ($payroll_projects as $prj) {
+                if ($prj['id'] == $payrollProjectId) {
+                    if (empty($_GET['month']) && empty($_GET['from_date'])) {
+                        if (!empty($prj['date'])) {
+                            $parts = explode('-', $prj['date']);
+                            if (count($parts) >= 2) {
+                                $_GET['year'] = $parts[0];
+                                $_GET['month'] = $parts[1];
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
 
         if ($filterType === 'monthly') {
             $m = $_GET['month'] ?? $currentMonth;
@@ -2504,7 +3104,7 @@ class PayrollController extends Controller
             $toDate = $_GET['to_date'] ?? $defaultTo;
         }
 
-        $sql = "SELECT e.employee_id, e.full_name, desg.name AS designation, dept.name AS department,
+        $sql = "SELECT e.id as real_emp_id_fk, e.employee_id, e.full_name, desg.name AS designation, dept.name AS department,
                        e.workplace, e.resign_date, e.employee_status, e.gross_salary
                 FROM employees e 
                 LEFT JOIN designations desg ON e.designation_id = desg.id
@@ -2517,11 +3117,33 @@ class PayrollController extends Controller
         $stmt->execute();
         $res = $stmt->get_result();
 
-        $employees = [];
+        $localEmployees = [];
         if ($res) {
             while ($row = $res->fetch_assoc()) {
-                $employees[] = $row;
+                $localEmployees[] = $row;
             }
+        }
+        $stmt->close();
+
+        // Project filter logic
+        $projectEmployeeIds = [];
+        $hasProjectRecords = false;
+        if ($payrollProjectId) {
+            $projQ = $this->db->query("SELECT employee_id FROM payslips WHERE payroll_project_id = $payrollProjectId UNION SELECT employee_id FROM attendance_monthly_update WHERE payroll_project_id = $payrollProjectId");
+            if ($projQ && $projQ->num_rows > 0) {
+                $hasProjectRecords = true;
+                while ($pr = $projQ->fetch_assoc()) {
+                    $projectEmployeeIds[$pr['employee_id']] = true;
+                }
+            }
+        }
+
+        $employees = [];
+        foreach ($localEmployees as $row) {
+            if ($payrollProjectId && $hasProjectRecords && !isset($projectEmployeeIds[$row['real_emp_id_fk']])) {
+                continue;
+            }
+            $employees[] = $row;
         }
 
         $page_title = "Resign List";
@@ -2530,12 +3152,14 @@ class PayrollController extends Controller
         $this->view('payrolls/payslips/resign-list', [
             'page_title' => $page_title,
             'current_route' => $current_route,
+            'payroll_projects' => $payroll_projects,
             'employees' => $employees,
             'filter_type' => $filterType,
             'from_date' => $fromDate,
             'to_date' => $toDate,
             'selected_month' => $_GET['month'] ?? $currentMonth,
-            'selected_year' => $_GET['year'] ?? $currentYear
+            'selected_year' => $_GET['year'] ?? $currentYear,
+            'payroll_project_id' => $payrollProjectId
         ]);
     }
 
@@ -2543,12 +3167,35 @@ class PayrollController extends Controller
     {
         $currentYear = date('Y');
         $currentMonth = date('m');
-        $defaultFrom = date('Y-m-d');
-        $defaultTo = date('Y-m-d');
+        $defaultFrom = date('Y-m-01');
+        $defaultTo = date('Y-m-t');
 
         $filterType = $_GET['filter_type'] ?? 'monthly';
         $fromDate = $defaultFrom;
         $toDate = $defaultTo;
+
+        $payrollProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== '' ? (int) $_GET['payroll_project_id'] : null;
+
+        $projectName = '';
+        if ($payrollProjectId) {
+            $pStmt = $this->db->prepare("SELECT name, date FROM payroll_projects WHERE id = ?");
+            $pStmt->bind_param("i", $payrollProjectId);
+            $pStmt->execute();
+            $pRes = $pStmt->get_result();
+            if ($pRow = $pRes->fetch_assoc()) {
+                $projectName = $pRow['name'];
+                if (empty($_GET['month']) && empty($_GET['from_date'])) {
+                    if (!empty($pRow['date'])) {
+                        $parts = explode('-', $pRow['date']);
+                        if (count($parts) >= 2) {
+                            $_GET['year'] = $parts[0];
+                            $_GET['month'] = $parts[1];
+                        }
+                    }
+                }
+            }
+            $pStmt->close();
+        }
 
         if ($filterType === 'monthly') {
             $m = $_GET['month'] ?? $currentMonth;
@@ -2560,7 +3207,7 @@ class PayrollController extends Controller
             $toDate = $_GET['to_date'] ?? $defaultTo;
         }
 
-        $sql = "SELECT e.employee_id, e.full_name, desg.name AS designation, dept.name AS department,
+        $sql = "SELECT e.id as real_emp_id_fk, e.employee_id, e.full_name, desg.name AS designation, dept.name AS department,
                        e.workplace, e.resign_date, e.employee_status, e.gross_salary
                 FROM employees e 
                 LEFT JOIN designations desg ON e.designation_id = desg.id
@@ -2573,35 +3220,59 @@ class PayrollController extends Controller
         $stmt->execute();
         $res = $stmt->get_result();
 
-        $employees = [];
+        $localEmployees = [];
         if ($res) {
             while ($row = $res->fetch_assoc()) {
-                $employees[] = $row;
+                $localEmployees[] = $row;
             }
+        }
+        $stmt->close();
+
+        $projectEmployeeIds = [];
+        $hasProjectRecords = false;
+        if ($payrollProjectId) {
+            $projQ = $this->db->query("SELECT employee_id FROM payslips WHERE payroll_project_id = $payrollProjectId UNION SELECT employee_id FROM attendance_monthly_update WHERE payroll_project_id = $payrollProjectId");
+            if ($projQ && $projQ->num_rows > 0) {
+                $hasProjectRecords = true;
+                while ($pr = $projQ->fetch_assoc()) {
+                    $projectEmployeeIds[$pr['employee_id']] = true;
+                }
+            }
+        }
+
+        $employees = [];
+        foreach ($localEmployees as $row) {
+            if ($payrollProjectId && $hasProjectRecords && !isset($projectEmployeeIds[$row['real_emp_id_fk']])) {
+                continue;
+            }
+            $employees[] = $row;
         }
 
         $pdf = new \TCPDF('L', 'mm', 'A4');
         $pdf->SetCreator('TPHL ERP');
         $pdf->SetAuthor('Admin');
         $pdf->SetTitle('Resign List Report');
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
         $pdf->SetMargins(15, 15, 15);
         $pdf->SetAutoPageBreak(TRUE, 15);
         $pdf->AddPage();
 
         $pdf->SetFont('helvetica', '', 9);
 
-        // Alignment properly matched with standard column counts
+        $projectHeader = !empty($projectName) ? 'Project: ' . htmlspecialchars($projectName) . ' | ' : '';
+
         $html = '
         <div style="text-align:center;">
-            <h1 style="color:#078134;">The Premium Homes Ltd</h1>
-            <h3 style="color:#28B463;">Resign List Report </h3>
-            <p>Date Range: ' . date('F d, Y', strtotime($fromDate)) . ' to ' . date('F d, Y', strtotime($toDate)) . '</p>
-            <p><b>Total Records: </b> ' . count($employees) . '</p>
+            <h1 style="color:#078134; margin:0; font-size:22px;">The Premium Homes Ltd</h1>
+            <h3 style="color:#28B463; margin:3px 0; font-size:15px;">Resign List Report</h3>
+            <p style="font-size:11px; color:#555; margin:2px 0;">' . $projectHeader . 'Date Range: ' . date('F d, Y', strtotime($fromDate)) . ' to ' . date('F d, Y', strtotime($toDate)) . '</p>
+            <p style="font-size:11px; margin:2px 0;"><b>Total Records: </b> ' . count($employees) . '</p>
         </div>
-        <br>
-        <table border="1" cellpadding="5" width="100%">
+        <br><br>
+        <table border="1" cellpadding="5" cellspacing="0" width="100%">
             <thead>
-                <tr style="background-color:#078134; color:#ffffff; font-weight:bold;">
+                <tr style="background-color:#078134; color:#ffffff; font-weight:bold; font-size:10px;">
                     <th width="5%" style="text-align:center;">SL</th>
                     <th width="10%" style="text-align:center;">ID</th>
                     <th width="18%" style="text-align:left;">Name</th>
@@ -2615,28 +3286,37 @@ class PayrollController extends Controller
             <tbody>';
 
         $sl = 1;
-        foreach ($employees as $row) {
-            $deptDesig = ($row['department'] ?? '-') . ' - ' . ($row['designation'] ?? '-');
-            $statusText = ucfirst($row['employee_status'] ?? '-');
-            if (strtolower($row['employee_status'] ?? '') === 'resigned') {
-                $statusText = 'Resigned';
+        if (empty($employees)) {
+            $html .= '<tr><td colspan="8" style="text-align:center; padding:15px;"><b>No resigned employees found for this period.</b></td></tr>';
+        } else {
+            foreach ($employees as $row) {
+                $deptDesig = ($row['department'] ?? '-') . ' - ' . ($row['designation'] ?? '-');
+                $statusText = ucfirst($row['employee_status'] ?? '-');
+                if (strtolower($row['employee_status'] ?? '') === 'resigned') {
+                    $statusText = 'Resigned';
+                }
+                $html .= '<tr style="font-size:9px;">
+                            <td width="5%" style="text-align:center;">' . $sl++ . '</td>
+                            <td width="10%" style="text-align:center;">' . htmlspecialchars($row['employee_id']) . '</td>
+                            <td width="18%" style="text-align:left;"><b>' . htmlspecialchars($row['full_name']) . '</b></td>
+                            <td width="25%" style="text-align:left;">' . htmlspecialchars($deptDesig) . '</td>
+                            <td width="12%" style="text-align:center;">' . htmlspecialchars($row['workplace'] ?? '-') . '</td>
+                            <td width="12%" style="text-align:center;">' . htmlspecialchars($row['resign_date'] ?? '-') . '</td>
+                            <td width="8%" style="text-align:center;">' . htmlspecialchars($statusText) . '</td>
+                            <td width="10%" style="text-align:right;">৳ ' . htmlspecialchars(number_format($row['gross_salary'] ?? 0, 2)) . '</td>
+                          </tr>';
             }
-            $html .= '<tr>
-                        <td width="5%" style="text-align:center;">' . $sl++ . '</td>
-                        <td width="10%" style="text-align:center;">' . htmlspecialchars($row['employee_id']) . '</td>
-                        <td width="18%" style="text-align:left;">' . htmlspecialchars($row['full_name']) . '</td>
-                        <td width="25%" style="text-align:left;">' . htmlspecialchars($deptDesig) . '</td>
-                        <td width="12%" style="text-align:center;">' . htmlspecialchars($row['workplace'] ?? '-') . '</td>
-                        <td width="12%" style="text-align:center;">' . htmlspecialchars($row['resign_date'] ?? '-') . '</td>
-                        <td width="8%" style="text-align:center;">' . htmlspecialchars($statusText) . '</td>
-                        <td width="10%" style="text-align:center;">' . htmlspecialchars(number_format($row['gross_salary'] ?? 0, 2)) . '</td>
-                      </tr>';
         }
 
         $html .= '</tbody></table>';
 
         $pdf->writeHTML($html, true, false, true, false, '');
-        $pdf->Output('Resign_List_Report_' . $fromDate . '_to_' . $toDate . '.pdf', 'D');
+
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+        $filename = 'Resign_List_Report_' . (!empty($projectName) ? preg_replace('/[^a-zA-Z0-9_-]/', '_', $projectName) . '_' : '') . $fromDate . '_to_' . $toDate . '.pdf';
+        $pdf->Output($filename, 'D');
         exit;
     }
 
@@ -2664,7 +3344,9 @@ class PayrollController extends Controller
                 LEFT JOIN employees e ON p.employee_id = e.id
                 LEFT JOIN departments dept ON e.department_id = dept.id
                 LEFT JOIN designations desg ON e.designation_id = desg.id
-                WHERE p.payroll_project_id = ? AND e.employee_status = 'active'
+                WHERE p.payroll_project_id = ? 
+                  AND p.status != 'draft' 
+                  AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
                 ORDER BY dept.name ASC, e.employee_id ASC
             ";
 
@@ -2710,9 +3392,11 @@ class PayrollController extends Controller
         }
 
         $projName = '';
+        $projDate = '';
         $q = $this->db->query("SELECT name, date FROM payroll_projects WHERE id = $payrollProjectId");
         if ($q && $r = $q->fetch_assoc()) {
             $projName = $r['name'];
+            $projDate = $r['date'] ?? '';
         }
 
         $sql = "
@@ -2724,7 +3408,9 @@ class PayrollController extends Controller
             LEFT JOIN employees e ON p.employee_id = e.id
             LEFT JOIN departments dept ON e.department_id = dept.id
             LEFT JOIN designations desg ON e.designation_id = desg.id
-            WHERE p.payroll_project_id = ? AND e.employee_status = 'active'
+            WHERE p.payroll_project_id = ? 
+              AND p.status != 'draft' 
+              AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
             ORDER BY dept.name ASC, e.employee_id ASC
         ";
 
@@ -2764,7 +3450,7 @@ class PayrollController extends Controller
         <div style="text-align:center;">
             <h1 style="color:#078134;">The Premium Homes Ltd</h1>
             <h3 style="color:#28B463;">Detailed Summary Report </h3>
-            <p>Project: ' . htmlspecialchars($projName) . '</p>
+            <p>Project: ' . htmlspecialchars($projName) . ($projDate ? ' (' . htmlspecialchars($projDate) . ')' : '') . '</p>
             <p><b>Total Employees: </b> ' . $totalEmp . '</p>
         </div>
         <br>
@@ -2811,13 +3497,13 @@ class PayrollController extends Controller
         $html .= '</tbody></table>';
 
         $pdf->writeHTML($html, true, false, true, false, '');
-        $pdf->Output('Detailed_Summary_Report_' . preg_replace('/[^a-zA-Z0-9]/', '_', $projName) . '.pdf', 'D');
+        $pdf->Output('Detailed_Summary_Report_' . preg_replace('/[^a-zA-Z0-9]/', '_', $projName) . '.pdf', 'I');
         exit;
     }
 
     public function summaryReport()
     {
-        $projectRes = $this->db->query("SELECT * FROM payroll_projects ORDER BY id ASC");
+        $projectRes = $this->db->query("SELECT * FROM payroll_projects ORDER BY COALESCE(NULLIF(date, ''), start_date, '1970-01-01') ASC, id ASC");
         $payroll_projects = [];
         if ($projectRes) {
             while ($pRow = $projectRes->fetch_assoc()) {
@@ -2830,12 +3516,14 @@ class PayrollController extends Controller
 
         $targetProjects = [];
         if ($fromProjectId && $toProjectId) {
-            $minId = min($fromProjectId, $toProjectId);
-            $maxId = max($fromProjectId, $toProjectId);
-            foreach ($payroll_projects as $proj) {
-                if ($proj['id'] >= $minId && $proj['id'] <= $maxId) {
-                    $targetProjects[] = $proj;
-                }
+            $projectIds = array_map('intval', array_column($payroll_projects, 'id'));
+            $fromIndex = array_search($fromProjectId, $projectIds);
+            $toIndex = array_search($toProjectId, $projectIds);
+
+            if ($fromIndex !== false && $toIndex !== false) {
+                $startIndex = min($fromIndex, $toIndex);
+                $endIndex = max($fromIndex, $toIndex);
+                $targetProjects = array_slice($payroll_projects, $startIndex, $endIndex - $startIndex + 1);
             }
         }
 
@@ -2857,41 +3545,49 @@ class PayrollController extends Controller
         }
 
         if (!empty($targetProjects)) {
-            $minId = min($fromProjectId, $toProjectId);
-            $maxId = max($fromProjectId, $toProjectId);
+            $targetProjectIds = array_map('intval', array_column($targetProjects, 'id'));
+            $inClause = implode(',', $targetProjectIds);
 
             $sql = "
                 SELECT p.id, p.payroll_project_id, p.net_salary, p.payment_method, p.employee_id,
-                       (SELECT SUM(pd.amount) 
-                        FROM payslip_details pd 
-                        JOIN payslip_items pi ON pd.payslip_item_id = pi.id 
-                        WHERE pd.payslip_id = p.id AND pi.type = 'deduction' AND LOWER(pi.name) LIKE '%tax%') as tax_deducted
+                       COALESCE(p.tax, 0) as tax_deducted,
+                       COALESCE(p.bank_amount, 0) as bank_amount,
+                       COALESCE(p.cash_amount, 0) as cash_amount
                 FROM payslips p
-                WHERE p.payroll_project_id >= ? AND p.payroll_project_id <= ?
+                WHERE p.payroll_project_id IN ($inClause)
+                  AND p.status != 'draft'
+                  AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
             ";
 
-            $stmt = $this->db->prepare($sql);
-            $stmt->bind_param("ii", $minId, $maxId);
-            $stmt->execute();
-            $res = $stmt->get_result();
+            $res = $this->db->query($sql);
 
             if ($res) {
                 while ($row = $res->fetch_assoc()) {
-                    $pid = $row['payroll_project_id'];
+                    $pid = (int) $row['payroll_project_id'];
 
                     if (!isset($data['No of employees'][$pid]))
                         continue;
 
-                    $data['No of employees'][$pid] += 1;
-                    $data['Net Salary (BDT)'][$pid] += (float) $row['net_salary'];
-                    $data['Tax Deducted(BDT)'][$pid] += (float) $row['tax_deducted'];
-                    $data['Net Payable(BDT)'][$pid] += (float) $row['net_salary'];
+                    $netSalary = (float) $row['net_salary'];
+                    $taxDeducted = (float) $row['tax_deducted'];
+                    $bankAmount = (float) $row['bank_amount'];
+                    $cashAmount = (float) $row['cash_amount'];
 
-                    $method = strtolower($row['payment_method'] ?? '');
-                    if ($method === 'bank' || $method === 'bank transfer') {
-                        $data['Salary via Bank(BDT)'][$pid] += (float) $row['net_salary'];
-                    } elseif ($method === 'cash') {
-                        $data['Salary via Cash(BDT)'][$pid] += (float) $row['net_salary'];
+                    $data['No of employees'][$pid] += 1;
+                    $data['Net Salary (BDT)'][$pid] += $netSalary;
+                    $data['Tax Deducted(BDT)'][$pid] += $taxDeducted;
+                    $data['Net Payable(BDT)'][$pid] += $netSalary;
+
+                    if ($bankAmount > 0 || $cashAmount > 0) {
+                        $data['Salary via Bank(BDT)'][$pid] += $bankAmount;
+                        $data['Salary via Cash(BDT)'][$pid] += $cashAmount;
+                    } else {
+                        $method = strtolower($row['payment_method'] ?? '');
+                        if ($method === 'bank' || $method === 'bank transfer') {
+                            $data['Salary via Bank(BDT)'][$pid] += $netSalary;
+                        } elseif ($method === 'cash') {
+                            $data['Salary via Cash(BDT)'][$pid] += $netSalary;
+                        }
                     }
                 }
             }
@@ -2921,7 +3617,7 @@ class PayrollController extends Controller
             exit;
         }
 
-        $projectRes = $this->db->query("SELECT * FROM payroll_projects ORDER BY id ASC");
+        $projectRes = $this->db->query("SELECT * FROM payroll_projects ORDER BY COALESCE(NULLIF(date, ''), start_date, '1970-01-01') ASC, id ASC");
         $payroll_projects = [];
         if ($projectRes) {
             while ($pRow = $projectRes->fetch_assoc()) {
@@ -2930,12 +3626,14 @@ class PayrollController extends Controller
         }
 
         $targetProjects = [];
-        $minId = min($fromProjectId, $toProjectId);
-        $maxId = max($fromProjectId, $toProjectId);
-        foreach ($payroll_projects as $proj) {
-            if ($proj['id'] >= $minId && $proj['id'] <= $maxId) {
-                $targetProjects[] = $proj;
-            }
+        $projectIds = array_map('intval', array_column($payroll_projects, 'id'));
+        $fromIndex = array_search($fromProjectId, $projectIds);
+        $toIndex = array_search($toProjectId, $projectIds);
+
+        if ($fromIndex !== false && $toIndex !== false) {
+            $startIndex = min($fromIndex, $toIndex);
+            $endIndex = max($fromIndex, $toIndex);
+            $targetProjects = array_slice($payroll_projects, $startIndex, $endIndex - $startIndex + 1);
         }
 
         $data = [
@@ -2956,38 +3654,49 @@ class PayrollController extends Controller
         }
 
         if (!empty($targetProjects)) {
+            $targetProjectIds = array_map('intval', array_column($targetProjects, 'id'));
+            $inClause = implode(',', $targetProjectIds);
+
             $sql = "
                 SELECT p.id, p.payroll_project_id, p.net_salary, p.payment_method, p.employee_id,
-                       (SELECT SUM(pd.amount) 
-                        FROM payslip_details pd 
-                        JOIN payslip_items pi ON pd.payslip_item_id = pi.id 
-                        WHERE pd.payslip_id = p.id AND pi.type = 'deduction' AND LOWER(pi.name) LIKE '%tax%') as tax_deducted
+                       COALESCE(p.tax, 0) as tax_deducted,
+                       COALESCE(p.bank_amount, 0) as bank_amount,
+                       COALESCE(p.cash_amount, 0) as cash_amount
                 FROM payslips p
-                WHERE p.payroll_project_id >= ? AND p.payroll_project_id <= ?
+                WHERE p.payroll_project_id IN ($inClause)
+                  AND p.status != 'draft'
+                  AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
             ";
 
-            $stmt = $this->db->prepare($sql);
-            $stmt->bind_param("ii", $minId, $maxId);
-            $stmt->execute();
-            $res = $stmt->get_result();
+            $res = $this->db->query($sql);
 
             if ($res) {
                 while ($row = $res->fetch_assoc()) {
-                    $pid = $row['payroll_project_id'];
+                    $pid = (int) $row['payroll_project_id'];
 
                     if (!isset($data['No of employees'][$pid]))
                         continue;
 
-                    $data['No of employees'][$pid] += 1;
-                    $data['Net Salary (BDT)'][$pid] += (float) $row['net_salary'];
-                    $data['Tax Deducted(BDT)'][$pid] += (float) $row['tax_deducted'];
-                    $data['Net Payable(BDT)'][$pid] += (float) $row['net_salary'];
+                    $netSalary = (float) $row['net_salary'];
+                    $taxDeducted = (float) $row['tax_deducted'];
+                    $bankAmount = (float) $row['bank_amount'];
+                    $cashAmount = (float) $row['cash_amount'];
 
-                    $method = strtolower($row['payment_method'] ?? '');
-                    if ($method === 'bank' || $method === 'bank transfer') {
-                        $data['Salary via Bank(BDT)'][$pid] += (float) $row['net_salary'];
-                    } elseif ($method === 'cash') {
-                        $data['Salary via Cash(BDT)'][$pid] += (float) $row['net_salary'];
+                    $data['No of employees'][$pid] += 1;
+                    $data['Net Salary (BDT)'][$pid] += $netSalary;
+                    $data['Tax Deducted(BDT)'][$pid] += $taxDeducted;
+                    $data['Net Payable(BDT)'][$pid] += $netSalary;
+
+                    if ($bankAmount > 0 || $cashAmount > 0) {
+                        $data['Salary via Bank(BDT)'][$pid] += $bankAmount;
+                        $data['Salary via Cash(BDT)'][$pid] += $cashAmount;
+                    } else {
+                        $method = strtolower($row['payment_method'] ?? '');
+                        if ($method === 'bank' || $method === 'bank transfer') {
+                            $data['Salary via Bank(BDT)'][$pid] += $netSalary;
+                        } elseif ($method === 'cash') {
+                            $data['Salary via Cash(BDT)'][$pid] += $netSalary;
+                        }
                     }
                 }
             }
@@ -3003,10 +3712,18 @@ class PayrollController extends Controller
 
         $pdf->SetFont('helvetica', '', 9);
 
+        $rangeSubtitle = '';
+        if (!empty($targetProjects)) {
+            $firstProj = $targetProjects[0];
+            $lastProj = end($targetProjects);
+            $rangeSubtitle = '<p style="font-size:11px; color:#555; margin:2px 0;">Range: ' . htmlspecialchars($firstProj['name']) . ' (' . htmlspecialchars($firstProj['date'] ?? '') . ') to ' . htmlspecialchars($lastProj['name']) . ' (' . htmlspecialchars($lastProj['date'] ?? '') . ')</p>';
+        }
+
         $html = '
         <div style="text-align:center;">
-            <h1 style="color:#078134;">The Premium Homes Ltd</h1>
-            <h3 style="color:#28B463;">Payroll Summary Report </h3>
+            <h1 style="color:#078134; margin:0; font-size:22px;">The Premium Homes Ltd</h1>
+            <h3 style="color:#28B463; margin:3px 0; font-size:15px;">Payroll Summary Report</h3>
+            ' . $rangeSubtitle . '
         </div>
         <br>
         <table border="1" cellpadding="5" width="100%">
@@ -3015,8 +3732,8 @@ class PayrollController extends Controller
                     <th width="30%">Particulars</th>';
 
         foreach ($targetProjects as $proj) {
-            $title = $proj['name'] . ' (' . ($proj['date'] ?? '') . ')';
-            $html .= '<th width="15%">' . htmlspecialchars($title) . '</th>';
+            $title = $proj['name'] . '<br><small>(' . ($proj['date'] ?? '') . ')</small>';
+            $html .= '<th width="15%">' . $title . '</th>';
         }
 
         $html .= '  <th width="12%">Growth in (%)<br>Before Last</th>
@@ -3074,7 +3791,7 @@ class PayrollController extends Controller
         $html .= '</tbody></table>';
 
         $pdf->writeHTML($html, true, false, true, false, '');
-        $pdf->Output('Payroll_Summary_Report_' . time() . '.pdf', 'D');
+        $pdf->Output('Payroll_Summary_Report_' . time() . '.pdf', 'I');
         exit;
     }
 
@@ -3101,8 +3818,9 @@ class PayrollController extends Controller
                         FROM payslips p
                         JOIN employees e ON p.employee_id = e.id
                         JOIN departments d ON e.department_id = d.id
-                        WHERE p.payroll_project_id = ? AND e.employee_status = 'active'
-                          AND p.status != 'cancelled'
+                        WHERE p.payroll_project_id = ? 
+                          AND p.status != 'draft' 
+                          AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
                         GROUP BY d.id
                         ORDER BY d.name ASC";
                 $stmt = $this->db->prepare($sql);
@@ -3122,13 +3840,22 @@ class PayrollController extends Controller
                             IFNULL(ob.name, 'Unassigned') AS office_name, 
                             COUNT(p.id) AS no_of_emp,
                             SUM(p.net_salary) AS total_amount,
-                            SUM(CASE WHEN LOWER(p.payment_method) LIKE '%bank%' THEN p.net_salary ELSE 0 END) AS bank_amount,
-                            SUM(CASE WHEN LOWER(p.payment_method) LIKE '%cash%' THEN p.net_salary ELSE 0 END) AS cash_amount
+                            SUM(CASE 
+                                WHEN (p.bank_amount > 0 OR p.cash_amount > 0) THEN COALESCE(p.bank_amount, 0)
+                                WHEN LOWER(COALESCE(p.payment_method, '')) LIKE '%bank%' THEN p.net_salary
+                                ELSE 0 
+                            END) AS bank_amount,
+                            SUM(CASE 
+                                WHEN (p.bank_amount > 0 OR p.cash_amount > 0) THEN COALESCE(p.cash_amount, 0)
+                                WHEN LOWER(COALESCE(p.payment_method, '')) LIKE '%cash%' THEN p.net_salary
+                                ELSE 0 
+                            END) AS cash_amount
                         FROM payslips p
                         JOIN employees e ON p.employee_id = e.id
                         LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
-                        WHERE p.payroll_project_id = ? AND e.employee_status = 'active'
-                          AND p.status != 'cancelled'
+                        WHERE p.payroll_project_id = ? 
+                          AND p.status != 'draft' 
+                          AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
                         GROUP BY ob.id
                         ORDER BY office_name ASC";
                 $stmt = $this->db->prepare($sql);
@@ -3181,8 +3908,9 @@ class PayrollController extends Controller
                     FROM payslips p
                     JOIN employees e ON p.employee_id = e.id
                     JOIN departments d ON e.department_id = d.id
-                    WHERE p.payroll_project_id = ? AND e.employee_status = 'active' 
-                      AND p.status != 'cancelled'
+                    WHERE p.payroll_project_id = ? 
+                      AND p.status != 'draft' 
+                      AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
                     GROUP BY d.id
                     ORDER BY d.name ASC";
             $stmt = $this->db->prepare($sql);
@@ -3202,13 +3930,22 @@ class PayrollController extends Controller
                         IFNULL(ob.name, 'Unassigned') AS office_name, 
                         COUNT(p.id) AS no_of_emp,
                         SUM(p.net_salary) AS total_amount,
-                        SUM(CASE WHEN LOWER(p.payment_method) LIKE '%bank%' THEN p.net_salary ELSE 0 END) AS bank_amount,
-                        SUM(CASE WHEN LOWER(p.payment_method) LIKE '%cash%' THEN p.net_salary ELSE 0 END) AS cash_amount
+                        SUM(CASE 
+                            WHEN (p.bank_amount > 0 OR p.cash_amount > 0) THEN COALESCE(p.bank_amount, 0)
+                            WHEN LOWER(COALESCE(p.payment_method, '')) LIKE '%bank%' THEN p.net_salary
+                            ELSE 0 
+                        END) AS bank_amount,
+                        SUM(CASE 
+                            WHEN (p.bank_amount > 0 OR p.cash_amount > 0) THEN COALESCE(p.cash_amount, 0)
+                            WHEN LOWER(COALESCE(p.payment_method, '')) LIKE '%cash%' THEN p.net_salary
+                            ELSE 0 
+                        END) AS cash_amount
                     FROM payslips p
                     JOIN employees e ON p.employee_id = e.id
                     LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
-                    WHERE p.payroll_project_id = ? AND e.employee_status = 'active' 
-                      AND p.status != 'cancelled'
+                    WHERE p.payroll_project_id = ? 
+                      AND p.status != 'draft' 
+                      AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
                     GROUP BY ob.id
                     ORDER BY office_name ASC";
             $stmt = $this->db->prepare($sql);
@@ -3281,7 +4018,7 @@ class PayrollController extends Controller
         $html .= '</tbody></table>';
 
         $pdf->writeHTML($html, true, false, true, false, '');
-        $pdf->Output('Salary_Report_' . ucfirst($reportType) . '_' . preg_replace('/[^a-zA-Z0-9]/', '_', $projName) . '.pdf', 'D');
+        $pdf->Output('Salary_Report_' . ucfirst($reportType) . '_' . preg_replace('/[^a-zA-Z0-9]/', '_', $projName) . '.pdf', 'I');
         exit;
     }
 
@@ -3310,8 +4047,9 @@ class PayrollController extends Controller
                     FROM payslips p
                     JOIN employees e ON p.employee_id = e.id
                     JOIN departments d ON e.department_id = d.id
-                    WHERE p.payroll_project_id = ? AND e.employee_status = 'active' 
-                      AND p.status != 'cancelled'
+                    WHERE p.payroll_project_id = ? 
+                      AND p.status != 'draft' 
+                      AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
                     GROUP BY d.id
                     ORDER BY d.name ASC";
             $stmt = $this->db->prepare($sql);
@@ -3331,13 +4069,22 @@ class PayrollController extends Controller
                         IFNULL(ob.name, 'Unassigned') AS office_name, 
                         COUNT(p.id) AS no_of_emp,
                         SUM(p.net_salary) AS total_amount,
-                        SUM(CASE WHEN LOWER(p.payment_method) LIKE '%bank%' THEN p.net_salary ELSE 0 END) AS bank_amount,
-                        SUM(CASE WHEN LOWER(p.payment_method) LIKE '%cash%' THEN p.net_salary ELSE 0 END) AS cash_amount
+                        SUM(CASE 
+                            WHEN (p.bank_amount > 0 OR p.cash_amount > 0) THEN COALESCE(p.bank_amount, 0)
+                            WHEN LOWER(COALESCE(p.payment_method, '')) LIKE '%bank%' THEN p.net_salary
+                            ELSE 0 
+                        END) AS bank_amount,
+                        SUM(CASE 
+                            WHEN (p.bank_amount > 0 OR p.cash_amount > 0) THEN COALESCE(p.cash_amount, 0)
+                            WHEN LOWER(COALESCE(p.payment_method, '')) LIKE '%cash%' THEN p.net_salary
+                            ELSE 0 
+                        END) AS cash_amount
                     FROM payslips p
                     JOIN employees e ON p.employee_id = e.id
                     LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
-                    WHERE p.payroll_project_id = ? AND e.employee_status = 'active' 
-                      AND p.status != 'cancelled'
+                    WHERE p.payroll_project_id = ? 
+                      AND p.status != 'draft' 
+                      AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
                     GROUP BY ob.id
                     ORDER BY office_name ASC";
             $stmt = $this->db->prepare($sql);
@@ -3393,7 +4140,7 @@ class PayrollController extends Controller
 
         $selectedYear = isset($_GET['year']) ? $_GET['year'] : $currentYear;
         $selectedMonth = isset($_GET['month']) ? $_GET['month'] : $currentMonth;
-        $selectedProject = isset($_GET['payroll_project_id']) ? $_GET['payroll_project_id'] : '';
+        $selectedProject = isset($_GET['payroll_project_id']) ? $_GET['payroll_project_id'] : (isset($_GET['project_id']) ? $_GET['project_id'] : '');
 
         // Fetch payroll projects
         $projectRes = $this->db->query("SELECT * FROM payroll_projects ORDER BY id DESC");
@@ -3401,6 +4148,29 @@ class PayrollController extends Controller
         if ($projectRes) {
             while ($pRow = $projectRes->fetch_assoc()) {
                 $payroll_projects[] = $pRow;
+            }
+        }
+
+        // Default to first project if not specified
+        if (empty($selectedProject) && !empty($payroll_projects)) {
+            $selectedProject = $payroll_projects[0]['id'];
+        }
+
+        // Auto-sync year & month from selected project if not explicitly set in $_GET
+        if (!empty($selectedProject)) {
+            foreach ($payroll_projects as $prj) {
+                if ($prj['id'] == $selectedProject) {
+                    if (empty($_GET['year']) || empty($_GET['month'])) {
+                        if (!empty($prj['date'])) {
+                            $dateParts = explode('-', $prj['date']);
+                            if (count($dateParts) >= 2) {
+                                $selectedYear = $dateParts[0];
+                                $selectedMonth = $dateParts[1];
+                            }
+                        }
+                    }
+                    break;
+                }
             }
         }
 
@@ -3415,24 +4185,32 @@ class PayrollController extends Controller
 
         $holds = [];
         if ($selectedProject && $selectedYear && $selectedMonth) {
-            $monthStr = $selectedYear . '-' . str_pad($selectedMonth, 2, "0", STR_PAD_LEFT);
-            $query = "
-                SELECT p.id as payslip_id, e.employee_id, e.full_name, dept.name as department_name, desg.name as designation_name
+            $stmt = $this->db->prepare("
+                SELECT p.id as payslip_id, p.net_salary, p.total_earning, p.salary_hold, p.remarks,
+                       e.employee_id, e.full_name, e.gross_salary, dept.name as department_name, desg.name as designation_name
                 FROM payslips p
                 JOIN employees e ON p.employee_id = e.id
                 LEFT JOIN departments dept ON e.department_id = dept.id
                 LEFT JOIN designations desg ON e.designation_id = desg.id
-                WHERE p.payroll_project_id = " . (int) $selectedProject . " 
-                  AND YEAR(p.payslip_month) = '$selectedYear' 
-                  AND MONTH(p.payslip_month) = '$selectedMonth'
-                  AND LOWER(p.salary_hold) = 'hold'
-            ";
-            $res = $this->db->query($query);
+                WHERE p.payroll_project_id = ? 
+                  AND YEAR(p.payslip_month) = ? 
+                  AND MONTH(p.payslip_month) = ?
+                  AND LOWER(TRIM(p.salary_hold)) = 'hold'
+                ORDER BY e.employee_id ASC
+            ");
+            $projIdInt = (int) $selectedProject;
+            $yearInt = (int) $selectedYear;
+            $monthInt = (int) $selectedMonth;
+            $stmt->bind_param("iii", $projIdInt, $yearInt, $monthInt);
+            $stmt->execute();
+            $res = $stmt->get_result();
             if ($res) {
                 while ($h = $res->fetch_assoc()) {
+                    $h['effective_amount'] = floatval($h['net_salary'] > 0 ? $h['net_salary'] : ($h['gross_salary'] ?? 0));
                     $holds[] = $h;
                 }
             }
+            $stmt->close();
         }
 
         $this->view("payrolls/payslips/salary_hold", [
@@ -3475,8 +4253,19 @@ class PayrollController extends Controller
             $updateStmt->execute();
             $updateStmt->close();
         } else {
-            $insertStmt = $this->db->prepare("INSERT INTO payslips (employee_id, payroll_project_id, payslip_month, salary_hold) VALUES (?, ?, ?, 'Hold')");
-            $insertStmt->bind_param("iis", $employeeId, $projectId, $payslipMonth);
+            $grossSalary = 0.0;
+            $eStmt = $this->db->prepare("SELECT gross_salary FROM employees WHERE id = ?");
+            $eStmt->bind_param("i", $employeeId);
+            $eStmt->execute();
+            $eRes = $eStmt->get_result();
+            if ($eRow = $eRes->fetch_assoc()) {
+                $grossSalary = floatval($eRow['gross_salary'] ?? 0);
+            }
+            $eStmt->close();
+
+            $draftStatus = 'draft';
+            $insertStmt = $this->db->prepare("INSERT INTO payslips (employee_id, payroll_project_id, payslip_month, salary_hold, net_salary, total_earning, status) VALUES (?, ?, ?, 'Hold', ?, ?, ?)");
+            $insertStmt->bind_param("iisdds", $employeeId, $projectId, $payslipMonth, $grossSalary, $grossSalary, $draftStatus);
             $insertStmt->execute();
             $insertStmt->close();
         }

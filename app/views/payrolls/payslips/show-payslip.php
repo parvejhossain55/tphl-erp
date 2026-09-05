@@ -588,13 +588,13 @@
 
                     <div class="breakdown-item">
                         <span>Basic Salary</span>
-                        <span>৳ <?= number_format($payslip['basic_salary'], 2) ?></span>
+                        <span>৳ <?= number_format((float)$payslip['basic_salary'], 2) ?></span>
                     </div>
 
-                    <?php $earningTotal = $payslip['basic_salary']; ?>
+                    <?php $earningTotal = (float)$payslip['basic_salary']; ?>
                     <?php foreach ($payslip['items'] as $item): ?>
-                        <?php if ($item['item_type'] === 'earning'): ?>
-                            <?php $earningTotal += $item['amount']; ?>
+                        <?php if ($item['item_type'] === 'earning' && stripos($item['item_name'], 'basic') === false): ?>
+                            <?php $earningTotal += (float)$item['amount']; ?>
                             <div class="breakdown-item">
                                 <span><?= htmlspecialchars($item['item_name']) ?></span>
                                 <span>৳ <?= number_format($item['amount'], 2) ?></span>
@@ -604,7 +604,7 @@
 
                     <div class="breakdown-total">
                         <span>Total Earnings</span>
-                        <span>৳ <?= number_format($earningTotal, 2) ?></span>
+                        <span>৳ <?= number_format((float)($payslip['total_earning'] ?? $earningTotal), 2) ?></span>
                     </div>
                 </div>
 
@@ -616,16 +616,16 @@
                     $deductionTotal = 0;
                     $hasDeduction = false;
                     foreach ($payslip['items'] as $item) {
-                        if ($item['item_type'] === 'deduction') {
+                        if ($item['item_type'] === 'deduction' && (float)$item['amount'] > 0) {
                             $hasDeduction = true;
-                            $deductionTotal += $item['amount'];
+                            $deductionTotal += (float)$item['amount'];
                         }
                     }
                     ?>
 
                     <?php if ($hasDeduction): ?>
                         <?php foreach ($payslip['items'] as $item): ?>
-                            <?php if ($item['item_type'] === 'deduction'): ?>
+                            <?php if ($item['item_type'] === 'deduction' && (float)$item['amount'] > 0): ?>
                                 <div class="breakdown-item">
                                     <span><?= htmlspecialchars($item['item_name']) ?></span>
                                     <span>৳ <?= number_format($item['amount'], 2) ?></span>
@@ -641,7 +641,7 @@
 
                     <div class="breakdown-total">
                         <span>Total Deductions</span>
-                        <span>৳ <?= number_format($deductionTotal, 2) ?></span>
+                        <span>৳ <?= number_format((float)($payslip['total_deduction'] ?? $deductionTotal), 2) ?></span>
                     </div>
                 </div>
 
@@ -681,7 +681,14 @@
                         <span><?= ucfirst($payslip['payment_method']) ?></span>
                     </div>
 
-                    <?php if ($payslip['payment_method'] === 'bank'): ?>
+                    <?php if ((float)($payslip['bank_amount'] ?? 0) > 0): ?>
+                        <div class="payment-item"><span class="payment-label">Bank Transfer</span>৳ <?= number_format($payslip['bank_amount'], 2) ?></div>
+                    <?php endif; ?>
+                    <?php if ((float)($payslip['cash_amount'] ?? 0) > 0): ?>
+                        <div class="payment-item"><span class="payment-label">Cash Payment</span>৳ <?= number_format($payslip['cash_amount'], 2) ?></div>
+                    <?php endif; ?>
+
+                    <?php if ($payslip['payment_method'] === 'bank' && !empty($payslip['bank_name'])): ?>
                         <div class="payment-item"><span class="payment-label">Bank Name</span><?= htmlspecialchars($payslip['bank_name'] ?? '-') ?></div>
                         <div class="payment-item"><span class="payment-label">Account Number</span><?= htmlspecialchars($payslip['account_number'] ?? '-') ?></div>
                     <?php endif; ?>

@@ -14,7 +14,7 @@ $defaultMonth = date('m');
             <form method="GET" action="<?= $base_url ?>/payroll-resign-list" id="filterForm"
                 class="row gx-3 gy-2 align-items-end">
                 <!-- Filter Type -->
-                <div class="col-lg-3 col-md-4 col-sm-6">
+                <div class="col-lg-2 col-md-4 col-sm-6">
                     <label for="filterType" class="form-label fw-semibold text-muted mb-2">Select Filter Type</label>
                     <select class="form-select custom-select2" name="filter_type" id="filterType">
                         <option value="monthly" <?= $filter_type == 'monthly' ? 'selected' : '' ?>>Monthly</option>
@@ -23,7 +23,7 @@ $defaultMonth = date('m');
                 </div>
 
                 <!-- Monthly Filter Container -->
-                <div class="col-lg-6 col-md-6 col-sm-12" id="monthlyContainer"
+                <div class="col-lg-3 col-md-4 col-sm-6" id="monthlyContainer"
                     style="<?= $filter_type == 'monthly' ? '' : 'display: none;' ?>">
                     <div class="row gx-2">
                         <div class="col-6">
@@ -56,7 +56,7 @@ $defaultMonth = date('m');
                 </div>
 
                 <!-- Custom Range Filter Container -->
-                <div class="col-lg-6 col-md-6 col-sm-12" id="customContainer"
+                <div class="col-lg-4 col-md-4 col-sm-6" id="customContainer"
                     style="<?= $filter_type == 'custom' ? '' : 'display: none;' ?>">
                     <div class="row gx-2">
                         <div class="col-6">
@@ -69,6 +69,23 @@ $defaultMonth = date('m');
                             <input type="date" class="form-control" name="to_date" id="toDate" value="<?= $to_date ?>">
                         </div>
                     </div>
+                </div>
+
+                <!-- Payroll Project Filter -->
+                <div class="col-lg-3 col-md-4 col-sm-6">
+                    <label for="payrollProject" class="form-label fw-semibold text-muted mb-2">Project (Optional)</label>
+                    <select class="form-select custom-select2" name="payroll_project_id" id="payrollProject">
+                        <option value="">All Projects</option>
+                        <?php if (!empty($payroll_projects)): ?>
+                            <?php foreach ($payroll_projects as $proj): ?>
+                                <option value="<?= htmlspecialchars($proj['id']) ?>"
+                                    data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>"
+                                    <?= (isset($payroll_project_id) && $payroll_project_id == $proj['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($proj['name']) ?> (<?= htmlspecialchars($proj['date'] ?? '') ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
                 </div>
 
                 <div class="col-auto">
@@ -168,54 +185,73 @@ $defaultMonth = date('m');
     <input type="hidden" name="year" id="pdfYear">
     <input type="hidden" name="from_date" id="pdfFromDate">
     <input type="hidden" name="to_date" id="pdfToDate">
+    <input type="hidden" name="payroll_project_id" id="pdfPayrollProject">
 </form>
 
 <?php ob_start(); ?>
 document.addEventListener("DOMContentLoaded", function () {
-$('body').on('change', '#filterType', function() {
-if ($(this).val() === 'monthly') {
-document.getElementById('monthlyContainer').style.display = 'block';
-document.getElementById('customContainer').style.display = 'none';
-} else {
-document.getElementById('monthlyContainer').style.display = 'none';
-document.getElementById('customContainer').style.display = 'block';
-}
-});
+    $('body').on('change', '#filterType', function() {
+        if ($(this).val() === 'monthly') {
+            document.getElementById('monthlyContainer').style.display = 'block';
+            document.getElementById('customContainer').style.display = 'none';
+        } else {
+            document.getElementById('monthlyContainer').style.display = 'none';
+            document.getElementById('customContainer').style.display = 'block';
+        }
+    });
 
-if ($.fn.DataTable.isDataTable('#resignListTable')) {
-$('#resignListTable').DataTable().destroy();
-}
+    // Auto-sync Month & Year when Project is selected
+    $('#payrollProject').on('change', function() {
+        var selectedOpt = this.options[this.selectedIndex];
+        if (selectedOpt && selectedOpt.value) {
+            var dateVal = selectedOpt.getAttribute('data-date');
+            if (dateVal) {
+                var parts = dateVal.split('-');
+                if (parts.length >= 2) {
+                    $('#filterYear').val(parts[0]).trigger('change');
+                    $('#filterMonth').val(parts[1]).trigger('change');
+                    $('#filterType').val('monthly').trigger('change');
+                }
+            }
+        }
+        $('#filterForm').submit();
+    });
 
-$('#resignListTable').DataTable({
-dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"f><"d-none"B>>' +
-        '<"row"<"col-sm-12"tr>>' +
-            '<"row align-items-center mt-3"<"col-sm-6 text-start"i><"col-sm-6 text-end"p>>',
-                    buttons: [
-                    {
-                    extend: 'csvHtml5', text: 'CSV', className: 'buttons-csv',
-                    title: 'Resign_List_<?= $filter_type ?>_report'
-                    },
-                    {
-                    text: 'PDF', className: 'buttons-pdf',
-                    action: function (e, dt, node, config) {
+    if ($.fn.DataTable.isDataTable('#resignListTable')) {
+        $('#resignListTable').DataTable().destroy();
+    }
+
+    $('#resignListTable').DataTable({
+        dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"f><"d-none"B>>' +
+             '<"row"<"col-sm-12"tr>>' +
+             '<"row align-items-center mt-3"<"col-sm-6 text-start"i><"col-sm-6 text-end"p>>',
+        buttons: [
+            {
+                extend: 'csvHtml5', text: 'CSV', className: 'buttons-csv',
+                title: 'Resign_List_Report'
+            },
+            {
+                text: 'PDF', className: 'buttons-pdf',
+                action: function (e, dt, node, config) {
                     document.getElementById('pdfFilterType').value = $('#filterType').val();
                     document.getElementById('pdfMonth').value = $('#filterMonth').val();
                     document.getElementById('pdfYear').value = $('#filterYear').val();
                     document.getElementById('pdfFromDate').value = $('#fromDate').val();
                     document.getElementById('pdfToDate').value = $('#toDate').val();
+                    document.getElementById('pdfPayrollProject').value = $('#payrollProject').val();
                     document.getElementById('exportPdfForm').submit();
-                    }
-                    }
-                    ],
-                    language: {
-                    search: "_INPUT_",
-                    searchPlaceholder: "Search list..."
-                    },
-                    pagingType: "simple_numbers",
-                    pageLength: 50,
-                    ordering: true
-                    });
-                    });
-                    <?php
-                    $page_script = ob_get_clean();
-                    ?>
+                }
+            }
+        ],
+        language: {
+            search: "_INPUT_",
+            searchPlaceholder: "Search list..."
+        },
+        pagingType: "simple_numbers",
+        pageLength: 50,
+        ordering: true
+    });
+});
+<?php
+$page_script = ob_get_clean();
+?>
