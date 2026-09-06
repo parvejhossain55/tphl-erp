@@ -44,6 +44,14 @@
                                     <th class="bg-light">Request Amount</th>
                                     <td class="text-primary fw-bold">৳ <?= number_format($request['request_amount'], 2) ?></td>
                                 </tr>
+                                <?php if(!empty($request['creator_attachment'])): ?>
+                                <tr>
+                                    <th class="bg-light">Attachment</th>
+                                    <td>
+                                        <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= htmlspecialchars($request['creator_attachment']) ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View File</a>
+                                    </td>
+                                </tr>
+                                <?php endif; ?>
                                 <?php if($request['approved_amount']): ?>
                                 <tr>
                                     <th class="bg-light text-success">Approved Amount</th>
