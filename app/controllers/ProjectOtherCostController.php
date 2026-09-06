@@ -149,7 +149,7 @@ class ProjectOtherCostController extends Controller
                 $targetFilePath = $uploadDir . $fileName;
 
                 if (move_uploaded_file($_FILES['creator_attachment']['tmp_name'], $targetFilePath)) {
-                    $data['creator_attachment'] = $fileName;
+                    $data['attachment'] = $fileName;
                 }
             }
 
