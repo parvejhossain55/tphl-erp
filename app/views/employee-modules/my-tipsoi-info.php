@@ -81,7 +81,7 @@
         <div id="notRegisteredAlert" class="alert alert-danger d-flex align-items-center gap-2 mb-4 animate__animated animate__shakeX d-none" role="alert">
             <i class="fa-solid fa-triangle-exclamation fs-4"></i>
             <div>
-                <h6 class="alert-heading fw-bold mb-1">Not Registered in Tipsoi</h6>
+                <h6 class="alert-heading fw-bold mb-1" id="notRegisteredHeading">Not Registered in Tipsoi</h6>
                 <span id="notRegisteredMsg">This employee email is not registered in the Tipsoi attendance system.</span>
             </div>
         </div>
@@ -1256,12 +1256,20 @@ document.addEventListener("DOMContentLoaded", function() {
                 banner.classList.add("d-none");
                 if (!response.success) {
                     warning.classList.remove("d-none");
-                    document.getElementById("notRegisteredMsg").textContent = response.message || "Failed to fetch Tipsoi records.";
+                    const headingEl = document.getElementById("notRegisteredHeading");
+                    if (headingEl) {
+                        headingEl.textContent = response.credentialsMismatch ? "Tipsoi Credentials Mismatch (ক্রেডেনশিয়াল মিলছে না)" : "Tipsoi Connection Error";
+                    }
+                    document.getElementById("notRegisteredMsg").textContent = response.message || "ERP এবং Tipsoi ক্রেডেনশিয়াল মিলছে না।";
                     return;
                 }
 
                 if (!response.isRegistered) {
                     warning.classList.remove("d-none");
+                    const headingEl = document.getElementById("notRegisteredHeading");
+                    if (headingEl) {
+                        headingEl.textContent = "Not Registered in Tipsoi";
+                    }
                     document.getElementById("notRegisteredMsg").textContent = response.message;
                     return;
                 }
@@ -1856,7 +1864,7 @@ document.addEventListener("DOMContentLoaded", function() {
             let rejectEndpoint = '';
             if (rec.requestType === 'Leave Request') {
                 approveEndpoint = `/leave-management/approve/${rec.id}`;
-                rejectEndpoint = `/leave-management/reject/${rec.id}`;
+                rejectEndpoint = `/leave-management/cancel/${rec.id}`;
             } else if (rec.requestType === 'Late Excuse') {
                 approveEndpoint = `/late-approval-management/approve/${rec.id}`;
                 rejectEndpoint = `/late-approval-management/reject/${rec.id}`;
@@ -1930,7 +1938,8 @@ document.addEventListener("DOMContentLoaded", function() {
                         endpoint: endpoint,
                         method: 'POST',
                         payload: {
-                            approverComment: `Approved by ${approverName}`
+                            approverComment: `Approved by ${approverName}`,
+                            comment: `Approved by ${approverName}`
                         }
                     })
                 })
@@ -1968,9 +1977,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 .catch(err => {
                     console.error('Approve error:', err);
                     if (window.Swal) {
-                        Swal.fire({ icon: 'error', title: 'Error', text: 'Network error occurred.' });
+                        Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Request failed.' });
                     } else {
-                        alert('Network error occurred.');
+                        alert(err.message || 'Request failed.');
                     }
                     approveBtn.disabled = false;
                     approveBtn.innerHTML = origHtml;
@@ -2016,7 +2025,9 @@ document.addEventListener("DOMContentLoaded", function() {
                         method: 'POST',
                         payload: {
                             approverComment: reason || `Rejected by ${approverName}`,
-                            rejectionReason: reason || `Rejected by ${approverName}`
+                            rejectionReason: reason || `Rejected by ${approverName}`,
+                            cancellationReason: reason || `Rejected by ${approverName}`,
+                            comment: reason || `Rejected by ${approverName}`
                         }
                     })
                 })
@@ -2054,9 +2065,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 .catch(err => {
                     console.error('Reject error:', err);
                     if (window.Swal) {
-                        Swal.fire({ icon: 'error', title: 'Error', text: 'Network error occurred.' });
+                        Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Request failed.' });
                     } else {
-                        alert('Network error occurred.');
+                        alert(err.message || 'Request failed.');
                     }
                     rejectBtn.disabled = false;
                     rejectBtn.innerHTML = origHtml;

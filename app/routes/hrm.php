@@ -281,6 +281,7 @@ return [
     'hrm-tipsoi-requests' => ['controller' => 'LeaveController', 'method' => 'tipsoiRequestsDashboardView'],
     'api/hrm/tipsoi-requests' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiRequests'],
     'api/hrm/tipsoi-action' => ['controller' => 'HrmApiController', 'method' => 'handleTipsoiAction'],
+    'api/hrm/tipsoi-connect' => ['controller' => 'HrmApiController', 'method' => 'connectTipsoiAccount'],
     'tipsoi-email-logs' => ['controller' => 'LeaveController', 'method' => 'tipsoiEmailLogsView'],
     'api/hrm/tipsoi-email-logs' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiEmailLogs'],
     'api/hrm/send-tipsoi-reminders' => ['controller' => 'HrmApiController', 'method' => 'sendTipsoiReminders'],

@@ -508,18 +508,41 @@ document.addEventListener("DOMContentLoaded", function() {
             
             let actionBtnHtml = '—';
             let actionEndpoint = '';
+            let rejectEndpoint = '';
             
             if (rec.requestType === 'Leave Request') {
                 actionEndpoint = `/leave-management/approve/${rec.id}`;
+                rejectEndpoint = `/leave-management/cancel/${rec.id}`;
             } else if (rec.requestType === 'Late Excuse') {
                 actionEndpoint = `/late-approval-management/approve/${rec.id}`;
+                rejectEndpoint = `/late-approval-management/reject/${rec.id}`;
             } else if (rec.requestType === 'Manual Entry' || rec.requestType === 'Field Visit') {
-                // Tipsoi treats manual entry, missing punch, field visit as manual approver endpoint
                 actionEndpoint = `/employee/profile/manual/approver/approve/${rec.id}`;
+                rejectEndpoint = `/employee/profile/manual/approver/reject/${rec.id}`;
             }
 
-            if ((isFirstApprover && firstStatus == 0) || (isSecondApprover && secondStatus == 0) || isHr) {
-                actionBtnHtml = `<button class="btn btn-sm btn-success fw-bold approve-btn" data-endpoint="${actionEndpoint}" data-id="${rec.id}">Approve</button>`;
+            if (isFirstApprover && firstStatus == 0) {
+                actionBtnHtml = `
+                    <div class="d-flex gap-1 justify-content-center">
+                        <button class="btn btn-sm btn-success fw-bold approve-btn px-2 py-1 fs-11" data-endpoint="${actionEndpoint}" data-id="${rec.id}" title="Approve as 1st Approver"><i class="bi bi-check-lg me-1"></i>Approve (1st)</button>
+                        <button class="btn btn-sm btn-outline-danger fw-bold reject-btn px-2 py-1 fs-11" data-endpoint="${rejectEndpoint}" data-id="${rec.id}" title="Reject Request"><i class="bi bi-x-lg me-1"></i>Reject</button>
+                    </div>`;
+            } else if (isSecondApprover && secondStatus == 0) {
+                actionBtnHtml = `
+                    <div class="d-flex gap-1 justify-content-center">
+                        <button class="btn btn-sm btn-success fw-bold approve-btn px-2 py-1 fs-11" data-endpoint="${actionEndpoint}" data-id="${rec.id}" title="Approve as 2nd Approver"><i class="bi bi-check-lg me-1"></i>Approve (2nd)</button>
+                        <button class="btn btn-sm btn-outline-danger fw-bold reject-btn px-2 py-1 fs-11" data-endpoint="${rejectEndpoint}" data-id="${rec.id}" title="Reject Request"><i class="bi bi-x-lg me-1"></i>Reject</button>
+                    </div>`;
+            } else if (isHr && (firstStatus == 0 || secondStatus == 0)) {
+                const pendingApprover = (firstStatus == 0) ? (rec.firstApproverName || '1st Approver') : (rec.secondApproverName || '2nd Approver');
+                actionBtnHtml = `
+                    <div class="d-flex flex-column align-items-center gap-1">
+                        <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 0.65rem;" title="Assigned to ${pendingApprover}">Assigned: ${pendingApprover}</span>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-success fw-bold approve-btn px-2 py-0 fs-11" data-endpoint="${actionEndpoint}" data-id="${rec.id}" title="Approve as Admin"><i class="bi bi-shield-check me-1"></i>Approve</button>
+                            <button class="btn btn-sm btn-outline-danger fw-bold reject-btn px-2 py-0 fs-11" data-endpoint="${rejectEndpoint}" data-id="${rec.id}" title="Reject as Admin"><i class="bi bi-x me-1"></i>Reject</button>
+                        </div>
+                    </div>`;
             }
 
             if (reqType === 'pending_leaves') {
@@ -850,14 +873,17 @@ document.addEventListener("DOMContentLoaded", function() {
     btnExportPDF.addEventListener("click", exportToPDF);
 
     tableBody.addEventListener('click', function(e) {
-        if (e.target.classList.contains('approve-btn')) {
-            const btn = e.target;
-            const endpoint = btn.getAttribute('data-endpoint');
-            const userName = loggedUserApproverInfo ? loggedUserApproverInfo.full_name : 'User';
+        const approveBtn = e.target.closest('.approve-btn');
+        const rejectBtn = e.target.closest('.reject-btn');
+        const userName = loggedUserApproverInfo ? loggedUserApproverInfo.full_name : 'User';
+
+        if (approveBtn) {
+            const endpoint = approveBtn.getAttribute('data-endpoint');
+            const origHtml = approveBtn.innerHTML;
             
             if (confirm('Are you sure you want to approve this request?')) {
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                approveBtn.disabled = true;
+                approveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
                 
                 fetch(`${baseUrl}/api/hrm/tipsoi-action`, {
                     method: 'POST',
@@ -868,7 +894,8 @@ document.addEventListener("DOMContentLoaded", function() {
                         endpoint: endpoint,
                         method: 'POST',
                         payload: {
-                            approverComment: `Approved by ${userName}`
+                            approverComment: `Approved by ${userName}`,
+                            comment: `Approved by ${userName}`
                         }
                     })
                 })
@@ -879,15 +906,60 @@ document.addEventListener("DOMContentLoaded", function() {
                         fetchRequestsData(); // Refresh data
                     } else {
                         alert('Failed to approve: ' + (res.message || 'Unknown error'));
-                        btn.disabled = false;
-                        btn.textContent = 'Approve';
+                        approveBtn.disabled = false;
+                        approveBtn.innerHTML = origHtml;
                     }
                 })
                 .catch(err => {
                     console.error(err);
-                    alert('An error occurred while approving.');
-                    btn.disabled = false;
-                    btn.textContent = 'Approve';
+                    alert('An error occurred while approving: ' + (err.message || 'Request failed'));
+                    approveBtn.disabled = false;
+                    approveBtn.innerHTML = origHtml;
+                });
+            }
+        }
+
+        if (rejectBtn) {
+            const endpoint = rejectBtn.getAttribute('data-endpoint');
+            const origHtml = rejectBtn.innerHTML;
+            const reason = prompt('Please enter reason for rejection (optional):', 'Not approved');
+            
+            if (reason !== null) { // Not cancelled by user
+                rejectBtn.disabled = true;
+                rejectBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                
+                fetch(`${baseUrl}/api/hrm/tipsoi-action`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        endpoint: endpoint,
+                        method: 'POST',
+                        payload: {
+                            approverComment: reason || `Rejected by ${userName}`,
+                            cancellationReason: reason || `Rejected by ${userName}`,
+                            rejectionReason: reason || `Rejected by ${userName}`,
+                            comment: reason || `Rejected by ${userName}`
+                        }
+                    })
+                })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.success) {
+                        alert('Successfully rejected!');
+                        fetchRequestsData(); // Refresh data
+                    } else {
+                        alert('Failed to reject: ' + (res.message || 'Unknown error'));
+                        rejectBtn.disabled = false;
+                        rejectBtn.innerHTML = origHtml;
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('An error occurred while rejecting: ' + (err.message || 'Request failed'));
+                    rejectBtn.disabled = false;
+                    rejectBtn.innerHTML = origHtml;
                 });
             }
         }

@@ -517,12 +517,17 @@ class EmployeeDashboardController extends Controller
         $year = date('Y', strtotime($selectedMonth . '-01'));
 
         try {
-            $token = $this->externalApiService->getUserBearerToken(true);
-            $masterToken = $this->externalApiService->getBearerToken();
-            if (!$token && !$masterToken) {
-                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+            $token = $this->externalApiService->getUserBearerToken(false);
+            if (!$token) {
+                echo json_encode([
+                    'success' => false,
+                    'credentialsMismatch' => true,
+                    'isRegistered' => false,
+                    'message' => 'ERP এবং Tipsoi ক্রেডেনশিয়াল মিলছে না। অনুগ্রহ করে পাসওয়ার্ড যাচাই করুন অথবা পুনরায় লগইন করুন।'
+                ]);
                 exit;
             }
+            $masterToken = $this->externalApiService->getBearerToken();
 
             $normalizeIdPhp = function($id) {
                 $str = trim((string)$id);
@@ -1019,12 +1024,16 @@ class EmployeeDashboardController extends Controller
         $year = date('Y', strtotime($selectedMonth . '-01'));
 
         try {
-            $token = $this->externalApiService->getUserBearerToken(true);
-            $masterToken = $this->externalApiService->getBearerToken();
-            if (!$token && !$masterToken) {
-                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+            $token = $this->externalApiService->getUserBearerToken(false);
+            if (!$token) {
+                echo json_encode([
+                    'success' => false,
+                    'credentialsMismatch' => true,
+                    'message' => 'ERP এবং Tipsoi ক্রেডেনশিয়াল মিলছে না। অনুগ্রহ করে পাসওয়ার্ড যাচাই করুন অথবা পুনরায় লগইন করুন।'
+                ]);
                 exit;
             }
+            $masterToken = $this->externalApiService->getBearerToken();
 
             $normalizeIdPhp = function($id) {
                 $str = trim((string)$id);
@@ -1380,9 +1389,9 @@ class EmployeeDashboardController extends Controller
                 exit;
             }
 
-            $token = $this->externalApiService->getUserBearerToken(true) ?: $this->externalApiService->getBearerToken();
+            $token = $this->externalApiService->getUserBearerToken(false);
             if (!$token) {
-                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                echo json_encode(['success' => false, 'message' => 'Tipsoi user login token not found. Please log in to ERP with your Tipsoi credentials.']);
                 exit;
             }
 
