@@ -264,8 +264,15 @@
                                 }
                                 $reqApproveRole = strtolower($req['approve_role'] ?? 'management');
                                 $isMgmtRequest = ($reqApproveRole === 'management');
-                                $isManagementUser = in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3], true);
+                                $userRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+                                $userRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
+                                $isManagementUser = in_array($userRoleId, [1, 3], true);
+                                $isSiteOperator = strpos($userRoleName, 'site operator') !== false;
+                                
                                 $canUserApprove = $isManagementUser || !$isMgmtRequest;
+                                if ($isSiteOperator && !$isManagementUser && ($req['request_amount'] ?? 0) <= 100000) {
+                                    $canUserApprove = true;
+                                }
                                 ?>
                                 <tr>
                                     <td class="ps-3">
@@ -274,9 +281,15 @@
                                     </td>
                                     <!-- Req # & Date -->
                                     <td>
-                                        <span class="fw-bold text-dark d-block">#REQ-
-                                            <?= str_pad($req['id'], 5, '0', STR_PAD_LEFT) ?>
-                                        </span>
+                                        <?php if ($sourceTable === 'vendor_payment_requests' && !empty($req['po_number'])): ?>
+                                            <span class="fw-bold text-success d-block">PO-
+                                                <?= htmlspecialchars($req['po_number']) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="fw-bold text-dark d-block">#REQ-
+                                                <?= str_pad($req['id'], 5, '0', STR_PAD_LEFT) ?>
+                                            </span>
+                                        <?php endif; ?>
                                         <span class="text-muted extra-small">
                                             <?= date('d M, Y', strtotime($req['requested_at'])) ?>
                                         </span>

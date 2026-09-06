@@ -284,9 +284,10 @@ class ProjectOtherCostController extends Controller
             exit();
         }
 
-        // Only allow deletion if the request belongs to the user and is not fully approved (not paid, not management_approved)
+        // Only allow deletion if the request belongs to the user or user is admin
         $userId = $_SESSION['user']['id'];
-        if ($request['created_by_id'] != $userId) {
+        $roleId = (int)$_SESSION['user']['role_id'];
+        if ($request['created_by_id'] != $userId && $roleId !== 1) {
             setError("You don't have permission to delete this request.");
             header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
             exit();
@@ -340,7 +341,7 @@ class ProjectOtherCostController extends Controller
             if ($row['dept_head_status'] === 'pending') {
                 $status = 'pending';
                 // Lookup dept head
-                $checkDept = $this->db->query("SELECT reporting_user_id FROM employees WHERE user_id = " . (int)$row['created_by_id'] . " AND is_deleted = 0");
+                $checkDept = $this->db->query("SELECT reporting_user_id FROM employees WHERE user_id = " . (int)$row['created_by_id'] . " AND deleted_at IS NULL");
                 $deptHeadId = null;
                 if ($checkDept && $checkDept->num_rows > 0) {
                     $dhRow = $checkDept->fetch_assoc();

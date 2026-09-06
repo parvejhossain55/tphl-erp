@@ -319,7 +319,7 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [6])): ?>
+                <?php if ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [6]) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'site operator') !== false): ?>
                     <!-- All Approval Requests for Management & Accounts -->
                     <li class="slide <?= isActive('all-approval-requests', $current_route) ?>">
                         <a href="<?= $base_url ?>/all-approval-requests"
@@ -560,7 +560,16 @@
                         </ul>
                     </li>
 
-                    <?php if ((hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [5, 9, 15, 33]))): ?>
+                    <?php if ((hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 9, 15, 33]))): ?>
+
+                        <!-- Sales Activity Report -->
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/sales-activity-report"
+                                class="sidebar__menu-item <?= isActive('sales-activity-report', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-chart-pie"></i></div>
+                                <span class="sidebar__menu-label">Sales Activity Report</span>
+                            </a>
+                        </li>
 
                         <!-- Incentives Module -->
                         <li

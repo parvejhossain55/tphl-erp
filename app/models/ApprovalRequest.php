@@ -719,7 +719,7 @@ class ApprovalRequest extends Model
                     }
                 }
             } else if ($sourceTable === 'vendor_payment_requests') {
-                $vSql = "SELECT status, IFNULL(approved_amount, 0.00) AS app_amt, updated_at, payment_type 
+                $vSql = "SELECT status, IFNULL(approved_amount, 0.00) AS app_amt, updated_at, payment_type, purchase_order_id 
                          FROM vendor_payment_requests WHERE id = ? LIMIT 1";
                 $vStmt = $this->db->prepare($vSql);
                 if ($vStmt) {
@@ -729,6 +729,7 @@ class ApprovalRequest extends Model
                     $vStmt->close();
                     if ($vRow) {
                         $row['vpr_payment_type'] = $vRow['payment_type'] ?? null;
+                        $row['po_number'] = $vRow['purchase_order_id'] ?? null;
                         if (in_array(strtolower($vRow['status']), ['approved', 'paid', 'completed', 'fully_paid'])) {
                             $payoutStatus = 'Paid & Settled';
                             $payoutAmount = (float) $vRow['app_amt'];
