@@ -115,11 +115,11 @@ class ProjectOtherCost extends Model
     {
         $sql = $this->db->prepare("
             INSERT INTO project_other_costs 
-            (project_id, rcost_type, purpose, request_amount, created_by_id, creator_attachment, dept_head_status, status) 
+            (project_id, rcost_type, purpose, request_amount, created_by_id, attachment, dept_head_status, status) 
             VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
         ");
 
-        $creator_attachment = $data['creator_attachment'] ?? null;
+        $attachment = $data['attachment'] ?? null;
         $dept_head_status = $data['dept_head_status'] ?? 'pending';
 
         $sql->bind_param(
@@ -129,7 +129,7 @@ class ProjectOtherCost extends Model
             $data['purpose'],
             $data['request_amount'],
             $data['created_by_id'],
-            $creator_attachment,
+            $attachment,
             $dept_head_status
         );
 

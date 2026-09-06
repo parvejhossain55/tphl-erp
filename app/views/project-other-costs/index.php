@@ -76,8 +76,8 @@
                                             <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $row['rcost_type']))) ?></td>
                                             <td><?= number_format($row['request_amount'], 2) ?></td>
                                             <td>
-                                                <?php if (!empty($row['creator_attachment'])): ?>
-                                                    <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= $row['creator_attachment'] ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View</a>
+                                                <?php if (!empty($row['attachment'])): ?>
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= $row['attachment'] ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View</a>
                                                 <?php else: ?>
                                                     -
                                                 <?php endif; ?>
@@ -137,8 +137,8 @@
                                             <td><?= number_format($row['request_amount'], 2) ?></td>
                                             <td><?= $row['approved_amount'] ? number_format($row['approved_amount'], 2) : '-' ?></td>
                                             <td>
-                                                <?php if (!empty($row['creator_attachment'])): ?>
-                                                    <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= $row['creator_attachment'] ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View</a>
+                                                <?php if (!empty($row['attachment'])): ?>
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= $row['attachment'] ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View</a>
                                                 <?php else: ?>
                                                     -
                                                 <?php endif; ?>

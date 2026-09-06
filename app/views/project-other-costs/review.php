@@ -44,11 +44,11 @@
                                     <th class="bg-light">Request Amount</th>
                                     <td class="text-primary fw-bold">৳ <?= number_format($request['request_amount'], 2) ?></td>
                                 </tr>
-                                <?php if(!empty($request['creator_attachment'])): ?>
+                                <?php if(!empty($request['attachment'])): ?>
                                 <tr>
                                     <th class="bg-light">Attachment</th>
                                     <td>
-                                        <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= htmlspecialchars($request['creator_attachment']) ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View File</a>
+                                        <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= htmlspecialchars($request['attachment']) ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View File</a>
                                     </td>
                                 </tr>
                                 <?php endif; ?>
@@ -88,9 +88,9 @@
                             <li class="list-group-item">
                                 <strong>Created By:</strong> <?= htmlspecialchars($request['creator_name'] ?? 'N/A') ?><br>
                                 <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['created_at'])) ?></small>
-                                <?php if (!empty($request['creator_attachment'])): ?>
+                                <?php if (!empty($request['attachment'])): ?>
                                     <br>
-                                    <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= htmlspecialchars($request['creator_attachment']) ?>" target="_blank" class="badge bg-secondary text-white mt-1 text-decoration-none">
+                                    <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= htmlspecialchars($request['attachment']) ?>" target="_blank" class="badge bg-secondary text-white mt-1 text-decoration-none">
                                         <i class="bi bi-paperclip me-1"></i> View Attached File
                                     </a>
                                 <?php endif; ?>
