@@ -103,7 +103,8 @@ class Con_FinancialTransaction extends Model
                     'Full'            AS payment_type,
                     cbr.status        AS source_status,
                     cbr.status        AS vpr_status,
-                    cbr.created_at
+                    cbr.created_at,
+                    NULL              AS po_number
                 FROM contractor_bill_requests cbr
                 LEFT JOIN projects p ON p.id = cbr.project_id
                 WHERE cbr.status IN ('submitted', 'verified', 'qc_approved', 'approved', 'partially_paid')
@@ -121,7 +122,8 @@ class Con_FinancialTransaction extends Model
                     'Full'             AS payment_type,
                     ofr.status         AS source_status,
                     NULL               AS vpr_status,
-                    ofr.created_at
+                    ofr.created_at,
+                    NULL               AS po_number
                 FROM operational_fund_requests ofr
                 LEFT JOIN projects p ON p.id = ofr.project_id
                 WHERE ofr.status IN ('approved', 'partially_paid')
@@ -139,7 +141,8 @@ class Con_FinancialTransaction extends Model
                     vpr.payment_type  AS payment_type,
                     vpr.status        AS source_status,
                     vpr.status        AS vpr_status,
-                    vpr.created_at
+                    vpr.created_at,
+                    vpr.purchase_order_id AS po_number
                 FROM vendor_payment_requests vpr
                 LEFT JOIN projects p ON p.id  = vpr.project_id
                 LEFT JOIN vendors  v ON v.id  = vpr.vendor_id

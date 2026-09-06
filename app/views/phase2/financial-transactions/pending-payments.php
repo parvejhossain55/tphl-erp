@@ -123,6 +123,7 @@ usort($awaitingApproval, function($a, $b) {
                             <th>#</th>
                             <th>Type</th>
                             <th>Project</th>
+                            <th>PO #</th>
                             <th>Description</th>
                             <th class="text-end">Amount (৳)</th>
                             <th>Submitted On</th>
@@ -155,6 +156,7 @@ usort($awaitingApproval, function($a, $b) {
                                 <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars($p['project_name'] ?? '—') ?></td>
+                            <td><?= $refType === 'vendor_payment' && !empty($p['po_number']) ? '<span class="fw-bold text-success">PO-' . htmlspecialchars($p['po_number']) . '</span>' : '—' ?></td>
                             <td><?= htmlspecialchars(mb_strimwidth($p['description'] ?? '', 0, 55, '...')) ?></td>
                             <td class="text-end fw-bold text-warning">৳ <?= number_format((float)($p['amount'] ?? 0), 2) ?></td>
                             <td><small><?= !empty($p['created_at']) ? date('d M Y', strtotime($p['created_at'])) : '—' ?></small></td>
@@ -205,6 +207,7 @@ usort($awaitingApproval, function($a, $b) {
                             <th>#</th>
                             <th>Type</th>
                             <th>Project</th>
+                            <th>PO #</th>
                             <th>Description</th>
                             <th class="text-end">Payable (৳)</th>
                             <th class="text-end">Paid (৳)</th>
@@ -254,6 +257,7 @@ usort($awaitingApproval, function($a, $b) {
                                 <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars($p['project_name'] ?? '—') ?></td>
+                            <td><?= $refType === 'vendor_payment' && !empty($p['po_number']) ? '<span class="fw-bold text-success">PO-' . htmlspecialchars($p['po_number']) . '</span>' : '—' ?></td>
                             <td><?= htmlspecialchars(mb_strimwidth($p['description'] ?? '', 0, 50, '...')) ?></td>
                             <td class="text-end fw-semibold">৳ <?= number_format($payable, 2) ?></td>
                             <td class="text-end fw-semibold <?= $alreadyPaid > 0 ? 'text-info' : 'text-muted' ?>">
@@ -339,7 +343,7 @@ $(document).ready(function () {
         let fromDateStr = $('#fromDate').val();
         let toDateStr = $('#toDate').val();
         
-        let dateIndex = (settings.nTable.id === 'awaitingApprovalTable') ? 5 : 8;
+        let dateIndex = (settings.nTable.id === 'awaitingApprovalTable') ? 6 : 9;
         let rowDateStr = data[dateIndex] ? data[dateIndex].replace(/<[^>]+>/g, '').trim() : '';
         
         if (!rowDateStr || rowDateStr === '—') return true;
