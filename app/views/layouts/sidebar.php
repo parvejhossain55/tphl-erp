@@ -319,7 +319,7 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [6]) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'site operator') !== false): ?>
+                <?php if ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [6, 20])): ?>
                     <!-- All Approval Requests for Management & Accounts -->
                     <li class="slide <?= isActive('all-approval-requests', $current_route) ?>">
                         <a href="<?= $base_url ?>/all-approval-requests"
@@ -1962,7 +1962,8 @@
                             class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
                                 class="sidebar__menu-item <?= isActive(['con-labor-requisitions', 'con-labor-requisition'], $current_route) ? 'menu-open active' : '' ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
+                                <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i
+                                ></div>
                                 <span class="sidebar__menu-label">Labor Pay Approval</span>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             </a>
@@ -2940,7 +2941,7 @@
                                         <i class="bi bi-list-ul me-1"></i> All Requisitions
                                     </a>
                                 </li>
-                                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 12, 22])): ?>
+                                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 22])): ?>
                                     <li class="slide">
                                         <a href="<?= $base_url ?>/con-labor-requisition-create"
                                             class="sidebar__menu-item <?= isActive('con-labor-requisition-create', $current_route) ?>">

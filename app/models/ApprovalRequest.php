@@ -18,12 +18,14 @@ class ApprovalRequest extends Model
         'client_refund_requests',
         'operational_fund_requests',
         'con_work_orders',
+        'purchase_requests',
         'vendor_payment_requests',
         'contractor_bill_requests',
         'lead_payments',
         'project_incentive_claims',
         'fund_requisitions',
-        'project_other_costs'
+        'project_other_costs',
+        'project_extra_assets'
     ];
     public function create($data)
     {
@@ -268,6 +270,48 @@ class ApprovalRequest extends Model
                 ->fetch_assoc();
         }
 
+        /* =====================
+       OFFICE PROCUREMENT → PROJECT EXTRA ASSETS
+       ===================== */
+        if (($approval['source_table'] ?? '') === 'project_extra_assets') {
+            $peaRes = $this->db->query("
+                SELECT pea.*, 
+                       p.name AS project_name,
+                       d.name AS department_name,
+                       cat.name AS category_name,
+                       u_req.full_name AS requested_by_name,
+                       u_op.full_name AS operations_by_name,
+                       u_ph.full_name AS purchase_head_by_name,
+                       u_qc.full_name AS qc_audit_by_name,
+                       u_mg.full_name AS mgmt_by_name
+                FROM project_extra_assets pea
+                LEFT JOIN projects p ON p.id = pea.project_id
+                LEFT JOIN departments d ON d.id = pea.department_id
+                LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
+                LEFT JOIN users u_req ON u_req.id = pea.requested_by
+                LEFT JOIN users u_op ON u_op.id = pea.operations_by
+                LEFT JOIN users u_ph ON u_ph.id = pea.purchase_head_by
+                LEFT JOIN users u_qc ON u_qc.id = pea.qc_audit_by
+                LEFT JOIN users u_mg ON u_mg.id = pea.mgmt_by
+                WHERE pea.id = " . (int) $approval['source_id'] . "
+                LIMIT 1
+            ");
+            if ($peaRes && $details['procurement'] = $peaRes->fetch_assoc()) {
+                $details['meta'] = [
+                    'item' => $details['procurement']['item_name'],
+                    'quantity' => $details['procurement']['quantity'],
+                    'unit_price' => number_format((float)$details['procurement']['unit_price'], 2),
+                    'total_price' => number_format((float)$details['procurement']['total_price'], 2),
+                    'location' => $details['procurement']['asset_location'],
+                    'justification' => $details['procurement']['justification'],
+                    'operations_status' => ucfirst($details['procurement']['operations_status']),
+                    'purchase_head' => ucfirst($details['procurement']['purchase_head_status']),
+                    'qc_audit' => ucfirst($details['procurement']['qc_audit_status']),
+                    'management_status' => ucfirst($details['procurement']['mgmt_status']),
+                ];
+            }
+        }
+
         // Fetch requester info
         if (!empty($approval['requested_by'])) {
             $details['requester'] = $this->getUserById((int) $approval['requested_by']);
@@ -472,6 +516,66 @@ class ApprovalRequest extends Model
                 'rejected' => 'rejected',
                 default => 'pending_hr',
             };
+        } elseif ($sourceTable === 'purchase_requests') {
+            $sourceStatus = match ($status) {
+                'approved' => 'Approved',
+                'rejected' => 'Rejected',
+                default => 'Submitted',
+            };
+        }
+
+        if ($sourceTable === 'project_extra_assets') {
+            $mgmtStatus = ($status === 'approved') ? 'approved' : 'rejected';
+            $overallStatus = ($status === 'approved') ? 'approved' : 'rejected';
+            $qcStatus = ($status === 'approved') ? 'approved' : 'rejected';
+
+            $stmtPea = $this->db->prepare(
+                "UPDATE project_extra_assets 
+                 SET qc_audit_status = CASE WHEN qc_audit_status = 'pending' THEN ? ELSE qc_audit_status END,
+                     mgmt_status = ?,
+                     mgmt_by = ?,
+                     mgmt_at = NOW(),
+                     mgmt_note = ?,
+                     overall_status = ?
+                 WHERE id = ?"
+            );
+            if ($stmtPea) {
+                $stmtPea->bind_param('ssissi', $qcStatus, $mgmtStatus, $approvedBy, $approvalNote, $overallStatus, $sourceId);
+                $stmtPea->execute();
+                $stmtPea->close();
+            }
+
+            if ($status === 'approved') {
+                try {
+                    require_once dirname(__DIR__) . '/services/AutoPostingService.php';
+                    $autoPosting = new \AutoPostingService($this->db);
+                    $assetExpenseAccId = $autoPosting->getAccountIdByCode('5220');
+                    $vendorPayableAccId = $autoPosting->getAccountIdByCode('2110');
+                    
+                    $reqRes = $this->db->query("SELECT * FROM project_extra_assets WHERE id = {$sourceId} LIMIT 1");
+                    if ($reqRes && $req = $reqRes->fetch_assoc()) {
+                        if ((float)$req['total_price'] > 0) {
+                            $procurementOffice = !empty($req['asset_location']) ? $req['asset_location'] : null;
+                            $autoPosting->postAccrualEntry(
+                                'asset_procurement',
+                                $sourceId,
+                                $assetExpenseAccId,
+                                $vendorPayableAccId,
+                                $req['total_price'],
+                                "Office Asset Procurement (PR-{$sourceId}): " . $req['item_name'] . " (Qty: {$req['quantity']})",
+                                $req['project_id'],
+                                'employee',
+                                $req['assigned_to'] ?? $req['requested_by'],
+                                $approvedBy,
+                                $procurementOffice
+                            );
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    error_log("AutoPosting Exception (Procurement Approval via Central): " . $e->getMessage());
+                }
+            }
+            return true;
         }
 
         $updateFields = [];
@@ -540,6 +644,22 @@ class ApprovalRequest extends Model
                 $params[] = $approvedBy;
             }
 
+            if ($sourceTable === 'purchase_requests') {
+                if (in_array('mgmt_approved_by_id', $columns) && $approvedBy !== null) {
+                    $updateFields[] = "mgmt_approved_by_id = ?";
+                    $types .= 'i';
+                    $params[] = $approvedBy;
+                }
+                if (in_array('mgmt_approved_at', $columns) && $status === 'approved') {
+                    $updateFields[] = "mgmt_approved_at = NOW()";
+                }
+                if (in_array('management_note', $columns) && $approvalNote !== null) {
+                    $updateFields[] = "management_note = ?";
+                    $types .= 's';
+                    $params[] = $approvalNote;
+                }
+            }
+
             if ($sourceTable === 'lead_payments' && $status === 'rejected' && in_array('handover_rejection_reason', $columns)) {
                 $updateFields[] = "handover_rejection_reason = ?";
                 $types .= 's';
@@ -592,6 +712,7 @@ class ApprovalRequest extends Model
     public function getApprovalDashboardMetrics()
     {
         $this->syncMissingFundRequisitions();
+        $this->syncMissingOfficeProcurements();
 
         $sql = "SELECT 
                     COUNT(*) AS total_requests,
@@ -605,11 +726,12 @@ class ApprovalRequest extends Model
         $res = $this->db->query($sql);
         $row = $res ? $res->fetch_assoc() : [];
 
-        // Check Accounts total disbursed across incentive payments, vendor payment requests & fund requisitions
+        // Check Accounts total disbursed across incentive payments, vendor payment requests, fund requisitions & office procurement
         $sqlDisbursed = "SELECT 
                             (SELECT IFNULL(SUM(payment_amount), 0) FROM project_incentive_payments) + 
                             (SELECT IFNULL(SUM(approved_amount), 0) FROM vendor_payment_requests WHERE status = 'Approved') +
-                            (SELECT IFNULL(SUM(amount), 0) FROM fund_requisitions WHERE status = 'paid') AS total_disbursed";
+                            (SELECT IFNULL(SUM(amount), 0) FROM fund_requisitions WHERE status = 'paid') +
+                            (SELECT IFNULL(SUM(paid_amount), 0) FROM project_extra_assets WHERE payment_status = 'paid') AS total_disbursed";
         $resD = $this->db->query($sqlDisbursed);
         $totalDisbursed = $resD ? (float) ($resD->fetch_assoc()['total_disbursed'] ?? 0) : 0.00;
 
@@ -627,6 +749,7 @@ class ApprovalRequest extends Model
     public function getAllApprovalHistory($filters = [])
     {
         $this->syncMissingFundRequisitions();
+        $this->syncMissingOfficeProcurements();
 
         $where = ["1=1"];
         $params = [];
@@ -647,9 +770,13 @@ class ApprovalRequest extends Model
         }
 
         if (!empty($filters['source_table'])) {
-            $where[] = "ar.source_table = ?";
-            $params[] = $filters['source_table'];
-            $types .= "s";
+            if ($filters['source_table'] === 'purchase_requests' || $filters['source_table'] === 'project_extra_assets') {
+                $where[] = "ar.source_table IN ('purchase_requests', 'project_extra_assets')";
+            } else {
+                $where[] = "ar.source_table = ?";
+                $params[] = $filters['source_table'];
+                $types .= "s";
+            }
         }
 
         $whereClause = implode(" AND ", $where);
@@ -794,6 +921,24 @@ class ApprovalRequest extends Model
                 if ($row['status'] === 'approved') {
                     $payoutStatus = 'Approved';
                 }
+            } else if ($sourceTable === 'project_extra_assets') {
+                $peaSql = "SELECT payment_status, paid_amount, paid_at, mgmt_status FROM project_extra_assets WHERE id = ? LIMIT 1";
+                $peaStmt = $this->db->prepare($peaSql);
+                if ($peaStmt) {
+                    $peaStmt->bind_param("i", $sourceId);
+                    $peaStmt->execute();
+                    $peaRow = $peaStmt->get_result()->fetch_assoc();
+                    $peaStmt->close();
+                    if ($peaRow) {
+                        if ($peaRow['payment_status'] === 'paid') {
+                            $payoutStatus = 'Paid & Settled';
+                            $payoutAmount = (float) (!empty($peaRow['paid_amount']) ? $peaRow['paid_amount'] : $row['request_amount']);
+                            $payoutDate = $peaRow['paid_at'];
+                        } else if ($row['status'] === 'approved' || $peaRow['mgmt_status'] === 'approved') {
+                            $payoutStatus = 'Pending Accounts Payout';
+                        }
+                    }
+                }
             } else if ($row['status'] === 'approved') {
                 $payoutStatus = 'Approved';
             }
@@ -897,6 +1042,89 @@ class ApprovalRequest extends Model
                 ar.approved_amount = fr.amount
             WHERE ar.status != CASE WHEN fr.status = 'pending_dept' THEN 'pending' ELSE fr.status END
                OR (ar.approved_by IS NULL AND fr.approved_by IS NOT NULL)
+        ";
+        @$this->db->query($syncSql);
+    }
+
+    public function syncMissingOfficeProcurements()
+    {
+        // 1. Insert missing office procurement requests into approval_requests
+        $sql = "
+            SELECT pea.*, d.name AS dept_name
+            FROM project_extra_assets pea
+            LEFT JOIN departments d ON pea.department_id = d.id
+            LEFT JOIN approval_requests ar ON (ar.source_table = 'project_extra_assets' AND ar.source_id = pea.id)
+            WHERE ar.id IS NULL
+        ";
+        $res = $this->db->query($sql);
+        if ($res && $res->num_rows > 0) {
+            while ($row = $res->fetch_assoc()) {
+                $sourceId = (int) $row['id'];
+                $deptName = !empty($row['dept_name']) ? $row['dept_name'] : 'Procurement';
+                $requestType = 'Office Procurement';
+                $title = "Office Procurement: " . $row['item_name'] . " (Qty: " . $row['quantity'] . ")";
+                $amount = (float) $row['total_price'];
+                $requestedBy = (int) $row['requested_by'];
+                
+                if ($row['mgmt_status'] === 'approved') {
+                    $status = 'approved';
+                    $approvedAmount = $amount;
+                    $approvedBy = !empty($row['mgmt_by']) ? (int)$row['mgmt_by'] : null;
+                    $approvedAt = !empty($row['mgmt_at']) ? $row['mgmt_at'] : null;
+                } elseif ($row['mgmt_status'] === 'rejected' || $row['overall_status'] === 'rejected') {
+                    $status = 'rejected';
+                    $approvedAmount = null;
+                    $approvedBy = !empty($row['mgmt_by']) ? (int)$row['mgmt_by'] : null;
+                    $approvedAt = !empty($row['mgmt_at']) ? $row['mgmt_at'] : null;
+                } else {
+                    $status = 'pending';
+                    $approvedAmount = null;
+                    $approvedBy = null;
+                    $approvedAt = null;
+                }
+
+                $approvalNote = !empty($row['mgmt_note']) ? $row['mgmt_note'] : null;
+                $metaData = json_encode([
+                    'item_name' => $row['item_name'],
+                    'quantity' => $row['quantity'],
+                    'unit_price' => $row['unit_price'],
+                    'justification' => $row['justification']
+                ]);
+                $createdAt = !empty($row['created_at']) ? $row['created_at'] : date('Y-m-d H:i:s');
+
+                $stmt = $this->db->prepare("
+                    INSERT INTO approval_requests 
+                    (department, request_type, title, source_table, source_id, request_amount, approved_amount, requested_by, approve_role, status, approved_by, approved_at, approval_note, meta_data, created_at)
+                    VALUES (?, ?, ?, 'project_extra_assets', ?, ?, ?, ?, 'management', ?, ?, ?, ?, ?, ?)
+                ");
+                if ($stmt) {
+                    $stmt->bind_param("sssiddisissss", $deptName, $requestType, $title, $sourceId, $amount, $approvedAmount, $requestedBy, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+            }
+        }
+
+        // 2. Sync status for existing project_extra_assets
+        $syncSql = "
+            UPDATE approval_requests ar
+            INNER JOIN project_extra_assets pea ON (ar.source_table = 'project_extra_assets' AND ar.source_id = pea.id)
+            SET ar.status = CASE 
+                    WHEN pea.mgmt_status = 'approved' THEN 'approved' 
+                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' THEN 'rejected' 
+                    ELSE 'pending' 
+                END,
+                ar.approved_by = pea.mgmt_by,
+                ar.approved_at = pea.mgmt_at,
+                ar.approval_note = pea.mgmt_note,
+                ar.request_amount = pea.total_price,
+                ar.approved_amount = CASE WHEN pea.mgmt_status = 'approved' THEN pea.total_price ELSE ar.approved_amount END
+            WHERE ar.status != CASE 
+                    WHEN pea.mgmt_status = 'approved' THEN 'approved' 
+                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' THEN 'rejected' 
+                    ELSE 'pending' 
+                END
+               OR (ar.approved_by IS NULL AND pea.mgmt_by IS NOT NULL)
         ";
         @$this->db->query($syncSql);
     }

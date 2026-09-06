@@ -146,6 +146,7 @@
                         <option value="cashout_requests" <?= ($filters['source_table'] ?? '') === 'cashout_requests' ? 'selected' : '' ?>>Cashout Requests (Accounts)</option>
                         <option value="payslips" <?= ($filters['source_table'] ?? '') === 'payslips' ? 'selected' : '' ?>>
                             Payslips & Salary (HR)</option>
+                        <option value="project_extra_assets" <?= in_array($filters['source_table'] ?? '', ['project_extra_assets', 'purchase_requests']) ? 'selected' : '' ?>>Office Procurement Requests</option>
                     </select>
                 </div>
 
@@ -261,13 +262,14 @@
                                     $targetUrl = $base_url . '/advance-salary';
                                 } elseif ($sourceTable === 'project_other_costs') {
                                     $targetUrl = $base_url . '/project-other-costs/review/' . $req['source_id'];
+                                } elseif ($sourceTable === 'project_extra_assets' || $sourceTable === 'purchase_requests') {
+                                    $targetUrl = $base_url . '/asset-extra-purchases?view=' . $req['source_id'];
                                 }
                                 $reqApproveRole = strtolower($req['approve_role'] ?? 'management');
                                 $isMgmtRequest = ($reqApproveRole === 'management');
                                 $userRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
-                                $userRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
                                 $isManagementUser = in_array($userRoleId, [1, 3], true);
-                                $isSiteOperator = strpos($userRoleName, 'site operator') !== false;
+                                $isSiteOperator = ($userRoleId === 20);
                                 
                                 $canUserApprove = $isManagementUser || !$isMgmtRequest;
                                 if ($isSiteOperator && !$isManagementUser && ($req['request_amount'] ?? 0) <= 100000) {
