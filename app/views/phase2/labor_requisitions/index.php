@@ -1,10 +1,10 @@
 <?php
 $base      = $GLOBALS['base_url'];
-$isSE      = in_array($userRole, [12, 22, 1]);
-$isPM      = in_array($userRole, [15, 22, 1]);
-$isQC      = in_array($userRole, [13, 24, 25, 1]);
-$isMgmt    = in_array($userRole, [3, 1]);
-$isAccts   = in_array($userRole, [6, 1]);
+$isSE      = in_array($userRole, [12, 1]);
+$isPM      = in_array($userRole, [15, 22, 1, 3, 33]);
+$isQC      = in_array($userRole, [13, 24, 25, 1, 3, 33]);
+$isMgmt    = in_array($userRole, [3, 1, 33]);
+$isAccts   = in_array($userRole, [6, 30, 1, 3, 33]);
 $filterStatus = $_GET['status'] ?? '';
 $isPayView = $isAccts && $filterStatus === 'management_approved';
 
@@ -44,7 +44,7 @@ $statusLabel = [
                 <li class="breadcrumb-item active">Labor Requisitions</li>
             </ol></nav>
         </div>
-        <?php if ($isSE): ?>
+        <?php if ($isSE || $isPM): ?>
         <a href="<?php echo $base; ?>/con-labor-requisition-create" class="btn btn-primary btn-sm">
             <i class="fa-solid fa-plus me-1"></i> New Requisition
         </a>
@@ -176,9 +176,14 @@ $statusLabel = [
                                         <i class="fa-solid fa-money-bill-wave me-1"></i> Pay Now
                                     </a>
                                 <?php else: ?>
-                                    <a href="<?php echo $base; ?>/con-labor-requisition/<?php echo $lr['id']; ?>" class="btn btn-icon btn-sm btn-light border">
+                                    <a href="<?php echo $base; ?>/con-labor-requisition/<?php echo $lr['id']; ?>" class="btn btn-icon btn-sm btn-light border" title="View Requisition">
                                         <i class="fa-solid fa-eye fs-11"></i>
                                     </a>
+                                    <?php if ($isPM && ($lr['status'] === 'pending' || $lr['status'] === 'qc_approved')): ?>
+                                        <a href="<?php echo $base; ?>/con-labor-requisition/<?php echo $lr['id']; ?>" class="btn btn-sm btn-outline-success ms-1 py-1 px-2 fs-11" title="Review & Approve">
+                                            <i class="fa-solid fa-check me-1"></i> <?= ($lr['status'] === 'pending') ? 'Approve' : 'Verify' ?>
+                                        </a>
+                                    <?php endif; ?>
                                     <?php 
                                     $isOwner = ($lr['requested_by'] == ($_SESSION['user']['id'] ?? 0));
                                     $isAdmin = (($_SESSION['user']['role_id'] ?? 0) == 1);

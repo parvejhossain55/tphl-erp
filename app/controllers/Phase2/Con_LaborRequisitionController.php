@@ -21,22 +21,24 @@ class Con_LaborRequisitionController extends Controller
     }
 
     // Role helpers
-    // 12/22 = Site Engineer, 15 = Project Manager
-    // 13/24/25 = QC, 3 = Management, 6 = Accounts, 1 = Admin
-    private function isSiteEngineer() { return in_array($this->userRole, [12, 22, 1]); }
-    private function isPM()           { return in_array($this->userRole, [15, 1]); }
-    private function isQC()           { return in_array($this->userRole, [13, 24, 25, 1]); }
-    private function isManagement()   { return in_array($this->userRole, [3, 1]);  }
-    private function isAccounts()     { return in_array($this->userRole, [6, 1]);  }
+    // 12 = Site Engineer, 15 = Project Manager, 22 = Project Manager Head
+    // 13/24/25 = QC, 3 = Management, 6/30 = Accounts, 1 = Admin, 33 = Chief Officer
+    private function isSiteEngineer() { return in_array($this->userRole, [12, 1]); }
+    private function isPM()           { return in_array($this->userRole, [15, 22, 1, 3, 33]); }
+    private function isQC()           { return in_array($this->userRole, [13, 24, 25, 1, 3, 33]); }
+    private function isManagement()   { return in_array($this->userRole, [3, 1, 33]);  }
+    private function isAccounts()     { return in_array($this->userRole, [6, 30, 1, 3, 33]);  }
 
     // =========================================================================
     // INDEX
     // =========================================================================
     public function index()
     {
-        // SE only sees their own requisitions; PM/QC/Mgmt/Accounts see all
+        // Site Engineer (role 12) only sees their own requisitions; PM / PM Head / QC / Mgmt / Accounts see all
         $requestedBy = null;
-        if ($this->isSiteEngineer() && $this->userRole !== 1) $requestedBy = $this->userId;
+        if ($this->userRole === 12) {
+            $requestedBy = $this->userId;
+        }
 
         $status    = $_GET['status']     ?? null;
         $projectId = $_GET['project_id'] ?? null;
@@ -44,7 +46,7 @@ class Con_LaborRequisitionController extends Controller
         $requisitions = $this->model->getAll($projectId ?: null, $status ?: null, $requestedBy);
 
         // SE sees only their assigned projects in filter dropdown; others see all
-        if ($this->isSiteEngineer() && $this->userRole !== 1) {
+        if ($this->userRole === 12) {
             $rPrj = $this->db->query(
                 "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 AND site_engineer_id = {$this->userId} ORDER BY name"
             );
@@ -68,14 +70,14 @@ class Con_LaborRequisitionController extends Controller
     // =========================================================================
     public function create()
     {
-        if (!$this->isSiteEngineer()) {
+        if (!$this->isSiteEngineer() && !$this->isPM()) {
             $_SESSION['error'] = 'Access denied.';
             header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisitions');
             exit;
         }
 
-        // SE sees only their assigned projects; PM/Mgmt/Admin see all
-        if ($this->isSiteEngineer() && $this->userRole !== 1) {
+        // SE sees only their assigned projects; PM/PM Head/Mgmt/Admin see all
+        if ($this->userRole === 12) {
             $rProjects = $this->db->query(
                 "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 AND site_engineer_id = {$this->userId} ORDER BY name"
             );
@@ -103,7 +105,7 @@ class Con_LaborRequisitionController extends Controller
     // =========================================================================
     public function store()
     {
-        if (!$this->isSiteEngineer()) { http_response_code(403); exit; }
+        if (!$this->isSiteEngineer() && !$this->isPM()) { http_response_code(403); exit; }
 
         $attachment = null;
         if (!empty($_FILES['attachment']['name'])) {

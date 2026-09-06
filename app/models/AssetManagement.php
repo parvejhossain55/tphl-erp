@@ -705,7 +705,11 @@ class AssetManagement
                         $conds[] = "(pea.purchase_head_status = 'approved' AND pea.qc_audit_status = 'pending')";
                     }
                     if (!empty($filters['is_management'])) {
-                        $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending')";
+                        $conds[] = "(pea.purchase_head_status = 'approved' AND (pea.qc_audit_status = 'pending' OR pea.mgmt_status = 'pending'))";
+                    }
+                    $roleId = (int)($filters['role_id'] ?? 0);
+                    if ($roleId === 20) {
+                        $conds[] = "(pea.total_price <= 100000 AND pea.purchase_head_status = 'approved' AND (pea.qc_audit_status = 'pending' OR pea.mgmt_status = 'pending'))";
                     }
                     if (!empty($filters['is_accounts'])) {
                         $conds[] = "(pea.mgmt_status = 'approved' AND pea.payment_status = 'unpaid')";
@@ -757,9 +761,15 @@ class AssetManagement
         $stmt = $this->db->prepare(
             "SELECT pea.*, 
                     p.name AS project_name,
+                    d.name AS department_name,
+                    COALESCE(NULLIF(e_req.workplace, ''), pea.asset_location) AS workplace_name,
                     e_req.reporting_user_id AS requester_reporting_boss_id,
-                    u_req.full_name AS requested_by_name,
+                    COALESCE(NULLIF(u_req.full_name, ''), u_req.email, 'System Admin') AS requested_by_name,
                     u_op.full_name AS operations_by_name,
+                    u_ph.full_name AS purchase_head_by_name,
+                    u_qc.full_name AS qc_audit_by_name,
+                    u_mgmt.full_name AS mgmt_by_name,
+                    u_paid.full_name AS paid_by_name,
                     u_purchased.full_name AS purchased_by_name,
                     u_assign.full_name AS assigned_to_name,
                     cat.name AS category_name
@@ -768,7 +778,12 @@ class AssetManagement
              LEFT JOIN projects p ON p.id = pea.project_id
              LEFT JOIN users u_req ON u_req.id = pea.requested_by
              LEFT JOIN employees e_req ON e_req.user_id = u_req.id
+             LEFT JOIN departments d ON d.id = e_req.department_id
              LEFT JOIN users u_op ON u_op.id = pea.operations_by
+             LEFT JOIN users u_ph ON u_ph.id = pea.purchase_head_by
+             LEFT JOIN users u_qc ON u_qc.id = pea.qc_audit_by
+             LEFT JOIN users u_mgmt ON u_mgmt.id = pea.mgmt_by
+             LEFT JOIN users u_paid ON u_paid.id = pea.paid_by
              LEFT JOIN users u_purchased ON u_purchased.id = pea.purchase_confirmed_by
              LEFT JOIN users u_assign ON u_assign.id = pea.assigned_to
              WHERE pea.id = ?"

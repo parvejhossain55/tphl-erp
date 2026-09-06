@@ -253,11 +253,11 @@ $steps = [
             </div>
             <?php endif; ?>
 
-            <!-- STEP 1: PM Approve (status=pending) -->
+            <!-- STEP 1: PM / PM Head Approve (status=pending) -->
             <?php if ($st === 'pending' && $isPM): ?>
             <div class="card custom-card mb-3 border border-info border-opacity-50">
                 <div class="card-header bg-info-transparent">
-                    <div class="card-title fs-13 text-info"><i class="fa-solid fa-stamp me-2"></i> Project Manager Action</div>
+                    <div class="card-title fs-13 text-info"><i class="fa-solid fa-stamp me-2"></i> Project Manager / PM Head Action</div>
                 </div>
                 <div class="card-body">
                     <p class="fs-13 text-muted mb-3">Review and approve or reject this labor requisition.</p>
@@ -331,7 +331,7 @@ $steps = [
             <?php if ($st === 'qc_approved' && $isPM): ?>
             <div class="card custom-card mb-3" style="border:1.5px solid #12b958!important">
                 <div class="card-header" style="background:rgba(102,16,242,.08)">
-                    <div class="card-title fs-13" style="color:#12b958"><i class="fa-solid fa-user-check me-2"></i> PM Payment Verification</div>
+                    <div class="card-title fs-13" style="color:#12b958"><i class="fa-solid fa-user-check me-2"></i> PM / PM Head Payment Verification</div>
                 </div>
                 <div class="card-body">
                     <p class="fs-13 text-muted mb-3">Verify and forward to Management for final payment approval.</p>
@@ -687,7 +687,7 @@ $steps = [
 <div class="modal fade" id="pmApproveModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-pm-approve/<?php echo $req['id']; ?>" method="POST">
         <div class="modal-content">
-            <div class="modal-header bg-success bg-opacity-10"><h5 class="modal-title text-success"><i class="fa-solid fa-thumbs-up me-2"></i>PM Approve</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-success bg-opacity-10"><h5 class="modal-title text-success"><i class="fa-solid fa-thumbs-up me-2"></i>PM / PM Head Approve</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="alert alert-info py-2 fs-12 mb-3">
                     Approving: <strong><?php echo $req['labor_count']; ?> laborers</strong> × ৳<?php echo number_format($req['per_labor_rate'],0); ?> × <?php echo $req['working_days']; ?> days = <strong>৳ <?php echo number_format($req['total_amount'],2); ?></strong>
@@ -703,7 +703,7 @@ $steps = [
 <div class="modal fade" id="pmRejectModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-pm-reject/<?php echo $req['id']; ?>" method="POST">
         <div class="modal-content">
-            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger"><i class="fa-solid fa-thumbs-down me-2"></i>Reject Requisition</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger"><i class="fa-solid fa-thumbs-down me-2"></i>Reject Requisition (PM / PM Head)</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label">Rejection Reason <span class="text-danger">*</span></label><textarea name="rejection_reason" class="form-control" rows="3" required></textarea></div>
             </div>
@@ -744,7 +744,7 @@ $steps = [
 <div class="modal fade" id="pmPayApproveModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-pm-pay-approve/<?php echo $req['id']; ?>" method="POST">
         <div class="modal-content">
-            <div class="modal-header" style="background:rgba(18,185,88,.1)"><h5 class="modal-title" style="color:#12b958">PM Payment Verification</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header" style="background:rgba(18,185,88,.1)"><h5 class="modal-title" style="color:#12b958">PM / PM Head Payment Verification</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label">Note (Optional)</label><textarea name="pm_payment_note" class="form-control" rows="2"></textarea></div>
             </div>
@@ -755,7 +755,7 @@ $steps = [
 <div class="modal fade" id="pmPayRejectModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-pm-pay-reject/<?php echo $req['id']; ?>" method="POST">
         <div class="modal-content">
-            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger">PM Reject Payment</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger">PM / PM Head Reject Payment</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label">Reason <span class="text-danger">*</span></label><textarea name="rejection_reason" class="form-control" rows="3" required></textarea></div>
             </div>

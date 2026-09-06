@@ -479,18 +479,49 @@ class AssetManagementController extends Controller
             $bankAccounts = $bRes->fetch_all(MYSQLI_ASSOC);
         }
 
+        $autoOpenRequest = null;
+        $viewId = (int)($_GET['view'] ?? $_GET['id'] ?? 0);
+        if ($viewId > 0) {
+            $autoOpenRequest = $this->model->findExtraPurchase($viewId);
+            if ($autoOpenRequest) {
+                $reqTotal = (float)($autoOpenRequest['total_price'] ?? 0);
+                $isRole20Eligible = ($roleId === 20 && $reqTotal <= 100000);
+                $isCreator = (int)$autoOpenRequest['requested_by'] === $userId;
+                $isReporterBoss = !empty($autoOpenRequest['requester_reporting_boss_id']) && (int)$autoOpenRequest['requester_reporting_boss_id'] === $userId;
+
+                $canApprove = false;
+                $step = '';
+                if (!$isCreator) {
+                    if (($isOperations || $isReporterBoss) && $autoOpenRequest['operations_status'] === 'pending') {
+                        $canApprove = true; $step = 'operations';
+                    } elseif ($isPurchaseHead && $autoOpenRequest['operations_status'] === 'approved' && $autoOpenRequest['purchase_head_status'] === 'pending') {
+                        $canApprove = true; $step = 'purchase_head';
+                    } elseif (($isQcAudit || $isRole20Eligible) && $autoOpenRequest['purchase_head_status'] === 'approved' && $autoOpenRequest['qc_audit_status'] === 'pending') {
+                        $canApprove = true; $step = 'qc_audit';
+                    } elseif (($isManagement || $isRole20Eligible) && $autoOpenRequest['qc_audit_status'] === 'approved' && $autoOpenRequest['mgmt_status'] === 'pending') {
+                        $canApprove = true; $step = 'mgmt';
+                    } elseif (($isManagement || $isRole20Eligible) && $autoOpenRequest['purchase_head_status'] === 'approved' && ($autoOpenRequest['qc_audit_status'] === 'pending' || $autoOpenRequest['mgmt_status'] === 'pending')) {
+                        $canApprove = true; $step = ($autoOpenRequest['qc_audit_status'] === 'pending') ? 'qc_audit' : 'mgmt';
+                    }
+                }
+                $autoOpenRequest['can_approve'] = $canApprove;
+                $autoOpenRequest['approval_step'] = $step;
+            }
+        }
+
         $data = [
-            'page_title'   => 'Asset Procurement & Extra Purchases',
-            'requests'     => $requests,
-            'categories'   => $categories,
-            'departments'  => $departments,
-            'workplaces'   => $workplaces,
-            'projects'     => $projects,
-            'users'        => $users,
-            'bankAccounts' => $bankAccounts,
-            'isApprover'   => $isApprover,
-            'activeTab'    => $activeTab,
-            'pendingCount' => $pendingCount
+            'page_title'       => 'Asset Procurement & Extra Purchases',
+            'requests'         => $requests,
+            'categories'       => $categories,
+            'departments'      => $departments,
+            'workplaces'       => $workplaces,
+            'projects'         => $projects,
+            'users'            => $users,
+            'bankAccounts'     => $bankAccounts,
+            'isApprover'       => $isApprover,
+            'activeTab'        => $activeTab,
+            'pendingCount'     => $pendingCount,
+            'autoOpenRequest'  => $autoOpenRequest
         ];
         $this->view('phase2/asset-management/extra-purchases', $data);
     }
@@ -513,6 +544,15 @@ class AssetManagementController extends Controller
             }
 
             if ($requestId = $this->model->createExtraPurchase($data)) {
+                // Sync to central approval_requests
+                try {
+                    require_once dirname(dirname(__DIR__)) . '/models/ApprovalRequest.php';
+                    $appModel = new \ApprovalRequest($this->db);
+                    $appModel->syncMissingOfficeProcurements();
+                } catch (\Throwable $e) {
+                    error_log('Sync office procurement to approval_requests failed: ' . $e->getMessage());
+                }
+
                 try {
                     $request = $this->model->findExtraPurchase($requestId);
                     if ($request) {
@@ -554,6 +594,9 @@ class AssetManagementController extends Controller
 
             // Role permission validation for step approval
             $canApproveStep = false;
+            $reqTotal = (float)($req['total_price'] ?? 0);
+            $isRole20Eligible = ($roleId === 20 && $reqTotal <= 100000);
+
             if (in_array($roleId, [1, 3, 33])) {
                 $canApproveStep = true;
             } else {
@@ -568,11 +611,11 @@ class AssetManagementController extends Controller
                         $canApproveStep = true;
                     }
                 } elseif ($step === 'qc_audit') {
-                    if (in_array($roleId, [24, 25])) {
+                    if (in_array($roleId, [24, 25]) || $isRole20Eligible) {
                         $canApproveStep = true;
                     }
                 } elseif ($step === 'mgmt') {
-                    if (in_array($roleId, [1, 3, 33])) {
+                    if (in_array($roleId, [1, 3, 33]) || $isRole20Eligible) {
                         $canApproveStep = true;
                     }
                 }
@@ -599,6 +642,10 @@ class AssetManagementController extends Controller
             }
 
             if ($this->model->approveStep($id, $step, $status, $userId, $note, $document)) {
+                if ($status === 'approved' && in_array($roleId, [1, 3, 20]) && $step === 'qc_audit') {
+                    $this->model->approveStep($id, 'mgmt', 'approved', $userId, $note ? "Management: " . $note : "Approved");
+                    $step = 'mgmt';
+                }
                 if ($status === 'approved') {
                     try {
                         $updatedRequest = $this->model->findExtraPurchase($id);
@@ -650,6 +697,20 @@ class AssetManagementController extends Controller
                     }
                 }
                 // ======================================================
+
+                // Sync with central approval_requests
+                try {
+                    $idInt = (int)$id;
+                    $userIdInt = (int)$userId;
+                    if ($status === 'approved') {
+                        $amt = !empty($req['total_price']) ? (float)$req['total_price'] : 0.00;
+                        $this->db->query("UPDATE approval_requests SET status = 'approved', approved_amount = {$amt}, approved_by = {$userIdInt}, approved_at = NOW() WHERE source_table = 'project_extra_assets' AND source_id = {$idInt}");
+                    } elseif ($status === 'rejected') {
+                        $this->db->query("UPDATE approval_requests SET status = 'rejected', approved_by = {$userIdInt}, approved_at = NOW() WHERE source_table = 'project_extra_assets' AND source_id = {$idInt}");
+                    }
+                } catch (\Throwable $e) {
+                    error_log("Failed syncing approval_requests on extra purchase approval: " . $e->getMessage());
+                }
 
                 setSuccess("Purchase request status updated successfully to: " . ucfirst($status));
             } else {

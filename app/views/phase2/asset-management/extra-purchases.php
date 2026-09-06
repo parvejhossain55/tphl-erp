@@ -173,7 +173,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                             </tr>
                         <?php else: ?>
                             <?php foreach ($requests as $r): ?>
-                                <tr>
+                                <tr data-request-id="<?= $r['id'] ?>" class="<?= (!empty($autoOpenRequest) && $autoOpenRequest['id'] == $r['id']) ? 'table-primary' : '' ?>">
                                     <td class="fw-semibold">#<?= $r['id'] ?></td>
                                     <td class="fs-12"><?= date('d M Y', strtotime($r['created_at'])) ?></td>
                                     <td class="fs-12">
@@ -316,16 +316,20 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         // Strict self-approval prevention: Creator can NEVER approve/reject their own request
                                         $canApprove = false;
                                         $step = '';
+                                        $reqTotal = (float)($r['total_price'] ?? 0);
+                                        $isRole20Eligible = ($roleId === 20 && $reqTotal <= 100000);
                                         
                                         if (!$isCreator) {
                                             if (($isOperations || $isReporterBoss) && $r['operations_status'] === 'pending') {
                                                 $canApprove = true; $step = 'operations';
                                             } elseif ($isPurchaseHead && $r['operations_status'] === 'approved' && $r['purchase_head_status'] === 'pending') {
                                                 $canApprove = true; $step = 'purchase_head';
-                                            } elseif ($isQcAudit && $r['purchase_head_status'] === 'approved' && $r['qc_audit_status'] === 'pending') {
+                                            } elseif (($isQcAudit || $isRole20Eligible) && $r['purchase_head_status'] === 'approved' && $r['qc_audit_status'] === 'pending') {
                                                 $canApprove = true; $step = 'qc_audit';
-                                            } elseif ($isManagement && $r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending') {
+                                            } elseif (($isManagement || $isRole20Eligible) && $r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending') {
                                                 $canApprove = true; $step = 'mgmt';
+                                            } elseif (($isManagement || $isRole20Eligible) && $r['purchase_head_status'] === 'approved' && ($r['qc_audit_status'] === 'pending' || $r['mgmt_status'] === 'pending')) {
+                                                $canApprove = true; $step = ($r['qc_audit_status'] === 'pending') ? 'qc_audit' : 'mgmt';
                                             }
                                         }
                                         
@@ -335,10 +339,15 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         // Creator or Admin can delete BEFORE any approval step has passed
                                         $isInitialPending = ($r['operations_status'] === 'pending' && $r['purchase_head_status'] === 'pending' && $r['qc_audit_status'] === 'pending' && $r['mgmt_status'] === 'pending');
                                         $canDelete = ($isCreator || $isAdminOrMgmt) && $isInitialPending;
+                                        $r['can_approve'] = $canApprove;
+                                        $r['approval_step'] = $step;
+                                        $r['can_pay'] = $canPay;
+                                        $r['can_confirm_purchase'] = $canConfirmPurchase;
                                         ?>
 
                                         <!-- Always show View button -->
                                         <button type="button" class="btn btn-sm btn-outline-secondary btn-icon" title="View"
+                                            data-id="<?= $r['id'] ?>"
                                             data-info='<?= htmlspecialchars(json_encode($r), ENT_QUOTES, "UTF-8") ?>'
                                             onclick="openDetailModal(this)">
                                             <i class="fa-solid fa-eye"></i>
@@ -844,8 +853,22 @@ function getNextStep(data) {
     return { text: 'Processing...', color: 'secondary', icon: 'fa-spinner' };
 }
 
+function getStepTitle(step) {
+    var titles = {
+        'operations': 'Operations Approval (Step 1)',
+        'purchase_head': 'Purchase Head Approval (Step 2)',
+        'qc_audit': 'QC & Internal Audit Review (Step 3)',
+        'mgmt': 'Management Approval (Step 4)'
+    };
+    return titles[step] || 'Step Approval';
+}
+
 function openDetailModal(btn) {
     var data = JSON.parse(btn.getAttribute('data-info'));
+    renderDetailModal(data);
+}
+
+function renderDetailModal(data) {
     document.getElementById('detailTitle').textContent = 'Purchase Request #' + data.id;
     document.getElementById('detailDate').textContent = 'Submitted on ' + formatDate(data.created_at);
 
@@ -910,16 +933,16 @@ function openDetailModal(btn) {
                 </div>
                 <div class="col-md-3 mt-2">
                     <div class="detail-label">Total Amount</div>
-                    <div class="detail-value text-success">৳ ${parseFloat(data.total_price).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                    <div class="detail-value text-success">৳ ${parseFloat(data.total_price || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
                 </div>
-                ${data.return_amount > 0 ? `
+                ${parseFloat(data.return_amount || 0) > 0 ? `
                 <div class="col-md-3 mt-2">
                     <div class="detail-label text-danger">Returned Bal.</div>
-                    <div class="detail-value text-danger">৳ ${parseFloat(data.return_amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                    <div class="detail-value text-danger">৳ ${parseFloat(data.return_amount || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
                 </div>
                 <div class="col-md-3 mt-2">
                     <div class="detail-label text-primary">Spent Amount</div>
-                    <div class="detail-value text-primary">৳ ${(parseFloat(data.paid_amount) - parseFloat(data.return_amount)).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                    <div class="detail-value text-primary">৳ ${(parseFloat(data.paid_amount || 0) - parseFloat(data.return_amount || 0)).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
                 </div>
                 ` : ''}
                 <div class="col-12 mt-2">
@@ -1003,9 +1026,81 @@ function openDetailModal(btn) {
             </div>
         </div>
         ` : ''}
+
+        <!-- Action / Approval Section if User Can Approve -->
+        ${data.can_approve ? `
+        <div class="mt-4 p-3 border border-success rounded-3 bg-light shadow-sm">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="fw-bold fs-13 text-success">
+                    <i class="fa-solid fa-shield-check me-1"></i> Ready for Approval: ${getStepTitle(data.approval_step)}
+                </span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle">Authorized Approver</span>
+            </div>
+            <form id="detailInlineApprovalForm" action="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/approve/${data.id}" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="step" value="${data.approval_step}">
+                <input type="hidden" name="approval_status" id="detailApprovalStatus_${data.id}" value="approved">
+
+                ${data.approval_step === 'purchase_head' ? `
+                <div class="mb-2">
+                    <label class="form-label fs-11 fw-semibold mb-1">Upload Quotation / Document (Optional)</label>
+                    <input type="file" name="purchase_head_document" class="form-control form-control-sm">
+                </div>
+                ` : ''}
+
+                <div class="mb-3">
+                    <label class="form-label fs-11 fw-semibold mb-1">Approval / Rejection Note (Optional)</label>
+                    <input type="text" name="approval_note" class="form-control form-control-sm" placeholder="Add approval or rejection note (optional)...">
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 pt-1">
+                    <button type="submit" class="btn btn-sm btn-outline-danger px-3" onclick="document.getElementById('detailApprovalStatus_${data.id}').value='rejected'; return confirm('Are you sure you want to REJECT this purchase request?');">
+                        <i class="fa-solid fa-xmark me-1"></i> Reject Request
+                    </button>
+                    <button type="submit" class="btn btn-sm btn-success px-4 fw-semibold" onclick="document.getElementById('detailApprovalStatus_${data.id}').value='approved';">
+                        <i class="fa-solid fa-check me-1"></i> Approve Request
+                    </button>
+                </div>
+            </form>
+        </div>
+        ` : ''}
     `;
-    new bootstrap.Modal(document.getElementById('detailModal')).show();
+    var modalEl = document.getElementById('detailModal');
+    if (modalEl) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        } else if (typeof $ !== 'undefined' && $.fn.modal) {
+            $(modalEl).modal('show');
+        }
+    }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    function triggerAutoOpen() {
+        <?php if (!empty($autoOpenRequest)): ?>
+            renderDetailModal(<?= json_encode($autoOpenRequest) ?>);
+            var targetRow = document.querySelector(`tr[data-request-id="<?= $autoOpenRequest['id'] ?>"]`);
+            if (targetRow) {
+                targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                targetRow.classList.add('table-primary');
+            }
+        <?php else: ?>
+            const urlParams = new URLSearchParams(window.location.search);
+            const viewId = urlParams.get('view') || urlParams.get('id');
+            if (viewId) {
+                const btn = document.querySelector(`button[data-id="${viewId}"]`);
+                if (btn) {
+                    openDetailModal(btn);
+                    btn.closest('tr')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    btn.closest('tr')?.classList.add('table-primary');
+                }
+            }
+        <?php endif; ?>
+    }
+
+    // Small delay ensures bootstrap bundle from footer has initialized
+    setTimeout(triggerAutoOpen, 150);
+});
 
 function openConfirmPurchaseModal(btn) {
     var data = JSON.parse(btn.getAttribute('data-info'));
