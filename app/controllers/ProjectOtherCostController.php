@@ -340,7 +340,7 @@ class ProjectOtherCostController extends Controller
             if ($row['dept_head_status'] === 'pending') {
                 $status = 'pending';
                 // Lookup dept head
-                $checkDept = $this->db->query("SELECT reporting_user_id FROM employees WHERE user_id = " . (int)$row['created_by_id'] . " AND is_deleted = 0");
+                $checkDept = $this->db->query("SELECT reporting_user_id FROM employees WHERE user_id = " . (int)$row['created_by_id'] . " AND deleted_at IS NULL");
                 $deptHeadId = null;
                 if ($checkDept && $checkDept->num_rows > 0) {
                     $dhRow = $checkDept->fetch_assoc();

@@ -164,8 +164,8 @@
             <div class="col-lg-4">
                 <?php
                 $canDeptHeadApprove = ($request['dept_head_status'] === 'pending' && $userId == (function() use ($request) {
-                    $c = new mysqli('127.0.0.1','root','','tphl_db');
-                    $r = $c->query("SELECT reporting_user_id FROM employees WHERE user_id = " . (int)$request['created_by_id'] . " AND is_deleted = 0");
+                    $c = db();
+                    $r = $c->query("SELECT reporting_user_id FROM employees WHERE user_id = " . (int)$request['created_by_id'] . " AND deleted_at IS NULL");
                     if($r && $r->num_rows > 0) return $r->fetch_assoc()['reporting_user_id'];
                     return null;
                 })());

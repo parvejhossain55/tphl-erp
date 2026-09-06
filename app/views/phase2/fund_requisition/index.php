@@ -81,7 +81,7 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
                             <option value="pending" <?= ($statusFilter ?? '') === 'pending' ? 'selected' : '' ?>>Pending Review / Dept Approval</option>
                             <option value="approved" <?= ($statusFilter ?? '') === 'approved' ? 'selected' : '' ?>> Management Approved (Pending Payout)</option>
                             <option value="paid" <?= ($statusFilter ?? '') === 'paid' ? 'selected' : '' ?>> Paid & Settled</option>
-                            <option value="rejected" <?= ($statusFilter ?? '') === 'rejected' ? 'selected' : '' ?>>❌ Rejected</option>
+                            <option value="rejected" <?= ($statusFilter ?? '') === 'rejected' ? 'selected' : '' ?>> Rejected</option>
                         </select>
                     </div>
                     <!-- Start Date -->

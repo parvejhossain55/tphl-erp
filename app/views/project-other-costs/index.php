@@ -1,6 +1,4 @@
 
-
-<main id="main" class="main">
     <div class="pagetitle d-flex justify-content-between align-items-center">
         <div>
             <h3>Project Other Costs</h3>
@@ -155,8 +153,8 @@
                                                     
                                                     $isDeptHead = false;
                                                     if ($row['dept_head_status'] === 'pending') {
-                                                        $c = new mysqli('127.0.0.1','root','','tphl_db');
-                                                        $r = $c->query("SELECT reporting_user_id FROM employees WHERE user_id = " . (int)$row['created_by_id'] . " AND is_deleted = 0");
+                                                        $c = db();
+                                                        $r = $c->query("SELECT reporting_user_id FROM employees WHERE user_id = " . (int)$row['created_by_id'] . " AND deleted_at IS NULL");
                                                         if($r && $r->num_rows > 0 && $r->fetch_assoc()['reporting_user_id'] == $userId) {
                                                             $isDeptHead = true;
                                                         }
@@ -255,7 +253,7 @@
             </form>
         </div>
     </div>
-</main>
+
 
 <!-- DataTables setup (assuming DataTables is loaded in footer/header) -->
 <script>
