@@ -173,12 +173,12 @@ function redirectByRole()
         session_start();
     }
 
-    if (empty($_SESSION['user']['role_id'])) {
+    if (!isset($_SESSION['user']['id'])) {
         header("Location: {$GLOBALS['base_url']}/admin-login");
         exit;
     }
 
-    $role = (int) $_SESSION['user']['role_id'];
+    $role = isset($_SESSION['user']['role_id']) ? (int) $_SESSION['user']['role_id'] : 0;
     $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
     switch ($role) {
@@ -188,6 +188,7 @@ function redirectByRole()
             $url = "{$GLOBALS['base_url']}/home";
             break;
 
+        case 0: // General User / Employee
         case 2: // Employee
             $url = "{$GLOBALS['base_url']}/employee-dashboard";
             break;
@@ -276,7 +277,7 @@ function redirectByRole()
             break;
 
         default:
-            $url = "{$GLOBALS['base_url']}/admin-login";
+            $url = "{$GLOBALS['base_url']}/employee-dashboard";
     }
 
     header("Location: $url");

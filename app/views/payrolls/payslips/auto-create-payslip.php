@@ -18,7 +18,7 @@
                             <select id="projectSelect" class="form-select select2">
                                 <option value="">-- Select Project --</option>
                                 <?php foreach ($payroll_projects as $proj): ?>
-                                    <option value="<?= $proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
+                                    <option value="<?= $proj['id'] ?>" data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>" <?= (isset($selected_project_id) && $selected_project_id == $proj['id']) ? 'selected' : '' ?>><?= htmlspecialchars($proj['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -249,6 +249,20 @@
         let payslipItems = [];
         let employeeDataList = [];
 
+        function syncMonthFromProject() {
+            const selectedOpt = projectSelect.options[projectSelect.selectedIndex];
+            if (selectedOpt && selectedOpt.dataset.date) {
+                const pDate = selectedOpt.dataset.date;
+                if (pDate && pDate.length >= 7) {
+                    monthSelect.value = pDate.substring(0, 7);
+                }
+            }
+        }
+        projectSelect.addEventListener('change', syncMonthFromProject);
+        if (projectSelect.value) {
+            syncMonthFromProject();
+        }
+
         // Load Employee List Click
         loadEmployeesBtn.addEventListener('click', function () {
             const projectId = projectSelect.value;
@@ -277,12 +291,19 @@
             statusDescription.textContent = 'Retrieving employee and local attendance records...';
 
             fetch(`${baseUrl}/api/payroll/department-attendance?project_id=${projectId}&department_id=${deptId}&month=${month}`)
-                .then(res => res.json())
+                .then(async res => {
+                    const text = await res.text();
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        throw new Error(text || res.statusText || 'Invalid server response');
+                    }
+                })
                 .then(res => {
                     loadEmployeesBtn.disabled = false;
                     loadEmployeesBtn.innerHTML = '<i class="fa-solid fa-users-gear me-2"></i>Load List';
 
-                    if (res.success) {
+                    if (res && res.success) {
                         payslipItems = res.payslip_items || [];
                         employeeDataList = res.employees || [];
 
@@ -307,15 +328,15 @@
                     } else {
                         tipsoiStatusCard.className = 'card__wrapper mb-25 p-20 border-start border-4 border-danger shadow-sm';
                         statusTitle.textContent = 'Data Fetch Failure';
-                        statusDescription.textContent = res.message || 'An error occurred while fetching employee records.';
+                        statusDescription.textContent = (res && res.message) ? res.message : 'An error occurred while fetching employee records.';
                     }
                 })
                 .catch(err => {
                     loadEmployeesBtn.disabled = false;
                     loadEmployeesBtn.innerHTML = '<i class="fa-solid fa-users-gear me-2"></i>Load List';
                     tipsoiStatusCard.className = 'card__wrapper mb-25 p-20 border-start border-4 border-danger shadow-sm';
-                    statusTitle.textContent = 'Network Error';
-                    statusDescription.textContent = 'Failed to make API request. Please verify connection.';
+                    statusTitle.textContent = 'Request Error';
+                    statusDescription.textContent = err.message || 'Failed to make API request. Please verify connection.';
                     console.error(err);
                 });
         });
@@ -367,29 +388,32 @@
                         let val = parseFloat(emp.configured_items[item.id] || 0);
                         const nameStr = (item.name || '').toLowerCase();
                         if (nameStr.includes('recreation')) {
-                            val = basic * 0.10;
+                            val = (emp.recreation_allowance !== null && emp.recreation_allowance !== undefined && emp.recreation_allowance !== '') ? parseFloat(emp.recreation_allowance) : (basic * 0.10);
                         } else if (nameStr.includes('conveyance')) {
-                            val = basic * 0.10;
+                            val = (emp.conveyance_allowance !== null && emp.conveyance_allowance !== undefined && emp.conveyance_allowance !== '') ? parseFloat(emp.conveyance_allowance) : (basic * 0.10);
                         } else if (nameStr.includes('medical')) {
-                            val = basic * 0.30;
+                            val = (emp.medical_allowance !== null && emp.medical_allowance !== undefined && emp.medical_allowance !== '') ? parseFloat(emp.medical_allowance) : (basic * 0.30);
                         } else if (nameStr.includes('house rent')) {
-                            val = basic * 0.50;
+                            val = (emp.house_rent_allowance !== null && emp.house_rent_allowance !== undefined && emp.house_rent_allowance !== '') ? parseFloat(emp.house_rent_allowance) : (basic * 0.50);
                         }
                         html += `<td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning" data-item-id="${item.id}" value="${val.toFixed(2)}" style="min-width: 80px;"></td>`;
                     }
                 });
 
-                const mealCount = parseFloat(emp.tipsoi_present || 0);
-                const unpaidAbsentsDays = parseFloat(emp.late_unpaid_absent_days !== undefined ? emp.late_unpaid_absent_days : emp.absent_days || 0);
+                const mealCount = parseFloat(emp.meal_count !== undefined && emp.meal_count !== null ? emp.meal_count : (emp.tipsoi_present || 0));
+                const unpaidAbsentsDays = parseFloat(emp.late_unpaid_absent_days !== undefined && emp.late_unpaid_absent_days !== null ? emp.late_unpaid_absent_days : (emp.absent_days || 0));
+                const advanceSalary = parseFloat(emp.advance_salary || 0);
+                const subsidizedLunch = parseFloat(emp.subsidized_lunch || 0);
+                const unpaidAbsentAmount = parseFloat(emp.unpaid_absent_amount || 0);
 
                 html += `
                 <td class="cell-gross fw-bold text-nowrap">${gross.toFixed(2)}</td>
                 <td class="cell-daily text-nowrap" data-val="${daily.toFixed(2)}">${daily.toFixed(2)}</td>
-                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-advance" ${itemMap.advance ? `data-item-id="${itemMap.advance}"` : ''} value="0" style="min-width: 80px;"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-advance" ${itemMap.advance ? `data-item-id="${itemMap.advance}"` : ''} value="${advanceSalary.toFixed(2)}" style="min-width: 80px;"></td>
                 <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-mealcount" data-permeal="${emp.per_meal_amount || 0}" value="${mealCount}" style="width: 60px;"></td>
-                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-sublunch" ${itemMap.lunch ? `data-item-id="${itemMap.lunch}"` : ''} value="0" style="min-width: 80px;"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-sublunch" ${itemMap.lunch ? `data-item-id="${itemMap.lunch}"` : ''} value="${subsidizedLunch.toFixed(2)}" style="min-width: 80px;"></td>
                 <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-absent-days" value="${unpaidAbsentsDays}" style="width: 60px;"></td>
-                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-unpaid" ${itemMap.absent ? `data-item-id="${itemMap.absent}"` : ''} value="0" style="min-width: 80px;"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-unpaid" ${itemMap.absent ? `data-item-id="${itemMap.absent}"` : ''} value="${unpaidAbsentAmount.toFixed(2)}" style="min-width: 80px;"></td>
                 `;
 
                 // General Deductions
@@ -403,33 +427,42 @@
                     }
                 });
 
+                const punctuality = parseFloat(emp.punctuality_bonus || 0);
+                const overtime = parseFloat(emp.overtime || 0);
+                const arrearEarning = parseFloat(emp.arrears_earning || 0);
+                const dutyAllowance = parseFloat(emp.duty_allowance || 0);
+                const tax = parseFloat(emp.tax || 0);
+                const bank = parseFloat(emp.bank_amount || 0);
+                const cash = parseFloat(emp.cash_amount || 0);
+                const savedNetSalary = parseFloat(emp.net_salary || 0);
+
                 html += `
-                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-punctuality" ${itemMap.punctuality ? `data-item-id="${itemMap.punctuality}"` : ''} value="0" style="min-width: 80px;"></td>
-                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-overtime" ${itemMap.overtime ? `data-item-id="${itemMap.overtime}"` : ''} value="0" style="min-width: 80px;"></td>
-                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-arrear" ${itemMap.arrear ? `data-item-id="${itemMap.arrear}"` : ''} value="0" style="min-width: 80px;"></td>
-                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-otherallow" ${itemMap.other ? `data-item-id="${itemMap.other}"` : ''} value="0" style="min-width: 80px;"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-punctuality" ${itemMap.punctuality ? `data-item-id="${itemMap.punctuality}"` : ''} value="${punctuality.toFixed(2)}" style="min-width: 80px;"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-overtime" ${itemMap.overtime ? `data-item-id="${itemMap.overtime}"` : ''} value="${overtime.toFixed(2)}" style="min-width: 80px;"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-arrear" ${itemMap.arrear ? `data-item-id="${itemMap.arrear}"` : ''} value="${arrearEarning.toFixed(2)}" style="min-width: 80px;"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-earning in-otherallow" ${itemMap.other ? `data-item-id="${itemMap.other}"` : ''} value="${dutyAllowance.toFixed(2)}" style="min-width: 80px;"></td>
                 <td class="text-nowrap">${emp.joining_date ? (new Date(emp.joining_date)).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : '&nbsp;'}</td>
                 <td class="text-nowrap">&nbsp;</td>
                 <td>30</td>
-                <td class="cell-net fw-bold text-primary text-nowrap" data-payment-method="${emp.payment_method || 'bank'}">0.00</td>
-                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-tax" ${itemMap.tax ? `data-item-id="${itemMap.tax}"` : ''} value="0.00" style="min-width: 80px;"></td>
-                <td class="cell-netpayable fw-bold text-success text-nowrap">0.00</td>
-                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-bank" value="0.00" style="min-width: 80px;"></td>
-                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-cash" value="0.00" style="min-width: 80px;"></td>
+                <td class="cell-net fw-bold text-primary text-nowrap" data-payment-method="${emp.payment_method || 'bank'}">${savedNetSalary > 0 ? savedNetSalary.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-tax" ${itemMap.tax ? `data-item-id="${itemMap.tax}"` : ''} value="${tax.toFixed(2)}" style="min-width: 80px;"></td>
+                <td class="cell-netpayable fw-bold text-success text-nowrap">${savedNetSalary > 0 ? savedNetSalary.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-bank" value="${bank.toFixed(2)}" style="min-width: 80px;"></td>
+                <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-cash" value="${cash.toFixed(2)}" style="min-width: 80px;"></td>
                 `;
 
                 tr.innerHTML = html;
                 employeeTableBody.appendChild(tr);
 
                 // Initial run of our calculations for this row
-                calculateRowNetSalary(tr);
+                calculateRowNetSalary(tr, true);
             });
 
             bindTableEvents();
         }
 
         // Calculate Row Net Salary (Workspace Logic)
-        function calculateRowNetSalary(row) {
+        function calculateRowNetSalary(row, isInitial = false) {
             const basic = parseFloat(row.querySelector('.cell-basic').dataset.val) || 0;
             const daily = parseFloat(row.querySelector('.cell-daily').dataset.val) || 0;
             const perMeal = parseFloat(row.querySelector('.in-mealcount').dataset.permeal) || 0;
@@ -437,15 +470,22 @@
             const mealCount = parseFloat(row.querySelector('.in-mealcount').value) || 0;
             const currentSubLunch = row.querySelector('.in-sublunch');
             
-            // Re-calc sub lunch if missing? It's input driven mostly, but on initial we can set it.
-            if (!currentSubLunch.value || currentSubLunch.value === "0.00" || currentSubLunch.value === "0") {
-                 currentSubLunch.value = (mealCount * perMeal).toFixed(2);
+            if (!isInitial) {
+                // User interacted
+            } else if (!currentSubLunch.value || currentSubLunch.value === "0.00" || currentSubLunch.value === "0") {
+                if (mealCount > 0 && perMeal > 0) {
+                    currentSubLunch.value = (mealCount * perMeal).toFixed(2);
+                }
             }
 
             const absentDays = parseFloat(row.querySelector('.in-absent-days').value) || 0;
             const currentUnpaid = row.querySelector('.in-unpaid');
-            if (!currentUnpaid.value || currentUnpaid.value === "0.00" || currentUnpaid.value === "0") {
-                 currentUnpaid.value = (absentDays * daily).toFixed(2);
+            if (!isInitial) {
+                // User interacted
+            } else if (!currentUnpaid.value || currentUnpaid.value === "0.00" || currentUnpaid.value === "0") {
+                if (absentDays > 0 && daily > 0) {
+                    currentUnpaid.value = (absentDays * daily).toFixed(2);
+                }
             }
 
             let gross = parseFloat(row.querySelector('.cell-gross').textContent.replace(/,/g, '')) || 0;
@@ -478,12 +518,15 @@
             let bankInput = row.querySelector('.in-bank');
             let cashInput = row.querySelector('.in-cash');
 
-            if (payMethod.includes('bank')) {
-                let cashVal = parseFloat(cashInput.value) || 0;
-                bankInput.value = (netPayable - cashVal).toFixed(2);
-            } else {
-                let bankVal = parseFloat(bankInput.value) || 0;
-                cashInput.value = (netPayable - bankVal).toFixed(2);
+            let bankVal = parseFloat(bankInput.value) || 0;
+            let cashVal = parseFloat(cashInput.value) || 0;
+
+            if (!isInitial || (bankVal === 0 && cashVal === 0)) {
+                if (payMethod.includes('bank')) {
+                    bankInput.value = Math.max(0, netPayable - cashVal).toFixed(2);
+                } else {
+                    cashInput.value = Math.max(0, netPayable - bankVal).toFixed(2);
+                }
             }
         }
 
@@ -548,18 +591,23 @@
                     const index = row.dataset.index;
                     const emp = employeeDataList[index];
 
-                    let rowAllowances = 0.0;
+                    let rowExtraEarnings = 0.0;
                     row.querySelectorAll('.in-earning').forEach(inp => {
-                        rowAllowances += parseFloat(inp.value || 0);
+                        if (inp.classList.contains('in-punctuality') || 
+                            inp.classList.contains('in-overtime') || 
+                            inp.classList.contains('in-arrear') || 
+                            inp.classList.contains('in-otherallow')) {
+                            rowExtraEarnings += parseFloat(inp.value || 0);
+                        }
                     });
 
                     let rowDeductions = 0.0;
-                    row.querySelectorAll('.in-deduct, .in-tax').forEach(inp => {
+                    row.querySelectorAll('.in-deduct').forEach(inp => {
                         rowDeductions += parseFloat(inp.value || 0);
                     });
 
-                    const basic = parseFloat(row.querySelector('.cell-basic').dataset.val) || 0;
-                    totalEarnings += (basic + rowAllowances);
+                    const gross = parseFloat(row.querySelector('.cell-gross').textContent.replace(/,/g, '')) || 0;
+                    totalEarnings += (gross + rowExtraEarnings);
                     totalDeductions += rowDeductions;
                     totalNetPayroll += parseFloat(row.querySelector('.cell-netpayable').textContent.replace(/,/g, '')) || 0;
                 }
@@ -575,9 +623,8 @@
         employeeSearch.addEventListener('input', function () {
             const query = this.value.toLowerCase().trim();
             employeeTableBody.querySelectorAll('tr').forEach(row => {
-                const name = row.querySelector('.fw-bold').textContent.toLowerCase();
-                const details = row.querySelector('.text-muted').textContent.toLowerCase();
-                if (name.includes(query) || details.includes(query)) {
+                const rowText = row.textContent.toLowerCase();
+                if (rowText.includes(query)) {
                     row.style.display = '';
                 } else {
                     row.style.display = 'none';
@@ -604,17 +651,37 @@
 
                     // Gather earnings
                     const earnings = {};
-                    let rowAllowances = 0.0;
+                    let extraAllowances = 0.0;
+                    let recreationVal = 0, conveyanceVal = 0, medicalVal = 0, houseRentVal = 0;
+
                     row.querySelectorAll('.in-earning').forEach(inp => {
                         const itemId = inp.dataset.itemId;
                         const val = parseFloat(inp.value || 0);
                         if (itemId && val > 0) {
                             earnings[itemId] = val;
                         }
-                        rowAllowances += val;
+                        if (inp.classList.contains('in-punctuality') || 
+                            inp.classList.contains('in-overtime') || 
+                            inp.classList.contains('in-arrear') || 
+                            inp.classList.contains('in-otherallow')) {
+                            extraAllowances += val;
+                        }
                     });
 
-                    // Gather deductions
+                    // Gather itemized recreation, conveyance, medical, house rent if present
+                    payslipItems.forEach(item => {
+                        const lname = (item.name || '').toLowerCase();
+                        const inp = row.querySelector(`.in-earning[data-item-id="${item.id}"]`);
+                        if (inp) {
+                            const val = parseFloat(inp.value || 0);
+                            if (lname.includes('recreation')) recreationVal = val;
+                            else if (lname.includes('conveyance')) conveyanceVal = val;
+                            else if (lname.includes('medical')) medicalVal = val;
+                            else if (lname.includes('house rent')) houseRentVal = val;
+                        }
+                    });
+
+                    // Gather deductions (including advance, lunch, absent, tax, and others)
                     const deductions = {};
                     let rowDeductions = 0.0;
                     row.querySelectorAll('.in-deduct').forEach(inp => {
@@ -625,27 +692,59 @@
                         }
                         rowDeductions += val;
                     });
-                    
-                    const taxVal = parseFloat(row.querySelector('.in-tax').value || 0);
-                    if (itemMap.tax && taxVal > 0) {
-                        deductions[itemMap.tax] = taxVal;
-                        rowDeductions += taxVal;
-                    }
 
                     const basic = parseFloat(row.querySelector('.cell-basic').dataset.val) || 0;
-                    const totalEarning = parseFloat(row.querySelector('.cell-gross').textContent.replace(/,/g, '')) || (basic + rowAllowances);
+                    const gross = parseFloat(row.querySelector('.cell-gross').textContent.replace(/,/g, '')) || parseFloat(emp.gross_salary) || 0;
+                    const totalEarning = gross + extraAllowances;
                     const netSalary = parseFloat(row.querySelector('.cell-netpayable').textContent.replace(/,/g, '')) || (totalEarning - rowDeductions);
 
+                    // Breakdown columns
+                    const advanceSalary = parseFloat(row.querySelector('.in-advance')?.value || 0);
+                    const mealCount = parseFloat(row.querySelector('.in-mealcount')?.value || 0);
+                    const subsidizedLunch = parseFloat(row.querySelector('.in-sublunch')?.value || 0);
+                    const absentDays = parseFloat(row.querySelector('.in-absent-days')?.value || 0);
+                    const unpaidAbsentAmount = parseFloat(row.querySelector('.in-unpaid')?.value || 0);
+                    const punctualityBonus = parseFloat(row.querySelector('.in-punctuality')?.value || 0);
+                    const overtime = parseFloat(row.querySelector('.in-overtime')?.value || 0);
+                    const arrearsEarning = parseFloat(row.querySelector('.in-arrear')?.value || 0);
+                    const dutyAllowance = parseFloat(row.querySelector('.in-otherallow')?.value || 0);
+                    const tax = parseFloat(row.querySelector('.in-tax')?.value || 0);
+                    const bankAmount = parseFloat(row.querySelector('.in-bank')?.value || 0);
+                    const cashAmount = parseFloat(row.querySelector('.in-cash')?.value || 0);
+                    const salaryHold = emp.salary_hold || '';
+                    const arrearsDeduction = parseFloat(emp.arrears_deduction || 0);
+                    const othersDeduction = parseFloat(emp.others_deduction || 0);
+
                     selectedEmployees.push({
+                        payslip_id: emp.saved_payslip_id || 0,
                         employee_id: emp.id,
                         employee_name: emp.full_name,
                         designation_id: emp.designation_id,
                         basic_salary: basic,
-                        gross_salary: parseFloat(emp.gross_salary),
-                        absent_days: parseFloat(row.querySelector('.in-absent-days').value || 0),
+                        gross_salary: gross,
+                        absent_days: absentDays,
+                        late_unpaid_absent_days: absentDays,
+                        unpaid_absent_amount: unpaidAbsentAmount,
                         total_earning: totalEarning,
                         total_deduction: rowDeductions,
                         net_salary: netSalary,
+                        recreation_allowance: recreationVal,
+                        conveyance_allowance: conveyanceVal,
+                        medical_allowance: medicalVal,
+                        house_rent_allowance: houseRentVal,
+                        advance_salary: advanceSalary,
+                        meal_count: mealCount,
+                        subsidized_lunch: subsidizedLunch,
+                        arrears_deduction: arrearsDeduction,
+                        others_deduction: othersDeduction,
+                        punctuality_bonus: punctualityBonus,
+                        overtime: overtime,
+                        arrears_earning: arrearsEarning,
+                        duty_allowance: dutyAllowance,
+                        tax: tax,
+                        bank_amount: bankAmount,
+                        cash_amount: cashAmount,
+                        salary_hold: salaryHold,
                         earnings: earnings,
                         deductions: deductions
                     });

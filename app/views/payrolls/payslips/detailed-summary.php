@@ -22,7 +22,7 @@ $defaultMonth = date('m');
                         <?php if (!empty($payroll_projects)): ?>
                             <?php foreach ($payroll_projects as $proj): ?>
                                 <option value="<?= htmlspecialchars($proj['id']) ?>" <?= (isset($payroll_project_id) && $payroll_project_id == $proj['id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($proj['name']) ?>
+                                    <?= htmlspecialchars($proj['name']) ?><?= !empty($proj['date']) ? ' (' . htmlspecialchars($proj['date']) . ')' : '' ?>
                                 </option>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -114,6 +114,22 @@ $defaultMonth = date('m');
 
                         <?php endif; ?>
                     </tbody>
+                    <?php if (!empty($departmentsData)): 
+                        $grandTotalEmployees = 0;
+                        $grandTotalPayable = 0;
+                        foreach ($departmentsData as $deptInfo) {
+                            $grandTotalEmployees += count($deptInfo['employees']);
+                            $grandTotalPayable += (float)$deptInfo['total_payable'];
+                        }
+                    ?>
+                    <tfoot class="table-light fw-bold">
+                        <tr class="align-middle">
+                            <td colspan="5" class="text-end text-dark fs-14">Grand Total (<?= $grandTotalEmployees ?> Employees):</td>
+                            <td class="text-end text-success fs-14">৳ <?= number_format($grandTotalPayable, 2) ?></td>
+                            <td class="text-end text-success fs-14">৳ <?= number_format($grandTotalPayable, 2) ?></td>
+                        </tr>
+                    </tfoot>
+                    <?php endif; ?>
                 </table>
             </div>
         </div>

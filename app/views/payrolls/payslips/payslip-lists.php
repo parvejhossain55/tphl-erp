@@ -51,7 +51,7 @@ $show_breadcrumb = true;
         <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-12 animate__animated animate__fadeIn">
             <div class="card__wrapper h-100">
                 <div class="from__input-box">
-                    <select name="year" class="form-control">
+                    <select name="year" id="filterYear" class="form-control">
                         <option value="">Year Select</option>
                         <?php for ($year = $currentYear; $year >= $startYear; $year--): ?>
                             <option value="<?= $year ?>" <?= ($selectedYear == $year) ? 'selected' : '' ?>>
@@ -67,7 +67,7 @@ $show_breadcrumb = true;
         <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-12 animate__animated animate__fadeIn">
             <div class="card__wrapper h-100">
                 <div class="from__input-box">
-                    <select name="month" class="form-control">
+                    <select name="month" id="filterMonth" class="form-control">
                         <option value="">Month Select</option>
                         <?php foreach ($months as $id => $name): ?>
                             <option value="<?= $id ?>" <?= ($selectedMonth == $id) ? 'selected' : '' ?>>
@@ -97,11 +97,15 @@ $show_breadcrumb = true;
         <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6 col-12 animate__animated animate__fadeIn">
             <div class="card__wrapper h-100">
                 <div class="from__input-box">
-                    <select name="project_id" class="form-control">
+                    <select name="project_id" id="filterProject" class="form-control">
                         <option value="">All Projects</option>
                         <?php if (!empty($payroll_projects)): ?>
                             <?php foreach ($payroll_projects as $proj): ?>
                                 <option value="<?= htmlspecialchars($proj['id']) ?>"
+                                    data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>"
+                                    data-iscustom="<?= htmlspecialchars($proj['is_custom_date'] ?? '0') ?>"
+                                    data-start="<?= htmlspecialchars($proj['start_date'] ?? '') ?>"
+                                    data-end="<?= htmlspecialchars($proj['end_date'] ?? '') ?>"
                                     <?= (isset($selectedProjectId) && $selectedProjectId == $proj['id']) ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($proj['name']) ?>
                                     <?= !empty($proj['date']) ? '(' . date('M Y', strtotime($proj['date'])) . ')' : '' ?>
@@ -144,7 +148,7 @@ $show_breadcrumb = true;
 <div class="row gy-4 mb-4 animate__animated animate__fadeIn">
     <!-- Card 1: Total ERP Employees -->
     <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
-        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=" class="text-decoration-none card-hover-effect">
+        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=<?= !empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : '' ?>" class="text-decoration-none card-hover-effect">
             <div class="card__wrapper h-100 border-start border-4 border-secondary shadow-sm">
                 <div class="d-flex align-items-center gap-sm p-2">
                     <div class="card__icon" style="background: rgba(108, 117, 125, 0.1); color: #6c757d; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
@@ -202,7 +206,7 @@ $show_breadcrumb = true;
 
     <!-- Card 4: Total Paid -->
     <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
-        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=paid" class="text-decoration-none card-hover-effect">
+        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=paid<?= !empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : '' ?>" class="text-decoration-none card-hover-effect">
             <div class="card__wrapper h-100 border-start border-4 border-success shadow-sm">
                 <div class="d-flex align-items-center gap-sm p-2">
                     <div class="card__icon" style="background: rgba(40, 167, 69, 0.1); color: #28a745; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
@@ -222,7 +226,7 @@ $show_breadcrumb = true;
 
     <!-- Card 5: Total Unpaid -->
     <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
-        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=unpaid" class="text-decoration-none card-hover-effect">
+        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=unpaid<?= !empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : '' ?>" class="text-decoration-none card-hover-effect">
             <div class="card__wrapper h-100 border-start border-4 border-warning shadow-sm">
                 <div class="d-flex align-items-center gap-sm p-2">
                     <div class="card__icon" style="background: rgba(255, 193, 7, 0.1); color: #ffc107; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
@@ -242,7 +246,7 @@ $show_breadcrumb = true;
 
     <!-- Card 6: Total Paid Amount -->
     <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-6 col-12">
-        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=paid" class="text-decoration-none card-hover-effect">
+        <a href="<?= $GLOBALS['base_url'] ?>/payslip-lists?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&status=paid<?= !empty($selectedProjectId) ? '&project_id=' . $selectedProjectId : '' ?>" class="text-decoration-none card-hover-effect">
             <div class="card__wrapper h-100 border-start border-4 border-primary shadow-sm">
                 <div class="d-flex align-items-center gap-sm p-2">
                     <div class="card__icon" style="background: rgba(0, 123, 255, 0.1); color: #007bff; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
@@ -299,6 +303,9 @@ $show_breadcrumb = true;
                             <button type="button" class="btn btn-danger btn-sm px-3 fw-bold" onclick="bulkDeleteSelected()">
                                 <i class="fa-light fa-trash-can me-1"></i> Bulk Delete
                             </button>
+                            <button type="button" class="btn btn-primary btn-sm px-3 fw-bold" onclick="sendBulkPayslipEmail()">
+                                <i class="fa-light fa-envelope me-1"></i> Email Selected
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -324,9 +331,9 @@ $show_breadcrumb = true;
                     <tbody class="table__body">
                         <?php $sl = 1; ?>
                         <?php foreach ($payslips as $payslip): ?>
-                            <?php if ($payslip['status'] == 'draft') continue; ?>
+                            <?php if ($payslip['status'] == 'draft' && (empty($selectedStatus) || $selectedStatus !== 'draft')) continue; ?>
                             <tr>
-                                <td><input type="checkbox" class="payslip-checkbox" value="<?= $payslip['id'] ?>" <?= $payslip['status'] == 'paid' ? 'disabled' : '' ?>></td>
+                                <td><input type="checkbox" class="payslip-checkbox" value="<?= $payslip['id'] ?>" <?= empty($payslip['id']) ? 'disabled' : '' ?> data-status="<?= htmlspecialchars($payslip['status']) ?>"></td>
                                 <td><?= $sl++ ?></td>
                                 <td class="td_1">
                                     <span class="table-avatar">
@@ -336,6 +343,11 @@ $show_breadcrumb = true;
                                                  alt="User Image"><strong class="ps-2"><?= htmlspecialchars($payslip['employee_office_id'] ?? '') ?></strong></a>
                                          <a href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $payslip['employee_id'] ?>"><?= $payslip['employee_name'] ?></a>
                                     </span>
+                                    <?php if (!empty($payslip['email_sent_at'])): ?>
+                                        <br><span class="badge bg-success-subtle text-success border border-success-subtle px-1 py-0 mt-1" style="font-size: 10px;" title="Emailed on <?= date('d M Y H:i', strtotime($payslip['email_sent_at'])) ?>">
+                                            <i class="fa-solid fa-circle-check me-1"></i>Emailed
+                                        </span>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="table__employee-position"><?= $payslip['desgination_name'] ?></td>
                                 <td class="table__employee-department"><?= htmlspecialchars($payslip['department_name'] ?? 'N/A') ?></td>
@@ -417,6 +429,9 @@ $show_breadcrumb = true;
                                              <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>?print=1" class="table__icon download" title="Print Payslip">
                                                  <i class="fas fa-print"></i>
                                              </a>
+                                             <button type="button" class="table__icon text-primary border-0 bg-transparent p-0" title="Email Payslip" onclick="sendSinglePayslipEmail(<?= $payslip['id'] ?>, '<?= htmlspecialchars(addslashes($payslip['employee_name'])) ?>', '<?= htmlspecialchars(addslashes($payslip['email'] ?? '')) ?>')">
+                                                 <i class="fa-regular fa-envelope"></i>
+                                             </button>
                                              <a href="<?= $GLOBALS['base_url'] ?>/delete-payslip/<?= $payslip['id'] ?>" onclick="return confirm('Are you sure you want to delete this payslip?')" class="table__icon text-danger" title="Delete Payslip">
                                                  <i class="fa-regular fa-trash-can"></i>
                                              </a>
@@ -1013,12 +1028,23 @@ $show_breadcrumb = true;
 
     function bulkDeleteSelected() {
         const selectedIds = [];
+        let paidSkipped = 0;
         document.querySelectorAll('.payslip-checkbox:checked').forEach(cb => {
-            selectedIds.push(cb.value);
+            if (cb.value) {
+                if (cb.dataset.status === 'paid') {
+                    paidSkipped++;
+                } else {
+                    selectedIds.push(cb.value);
+                }
+            }
         });
 
         if (selectedIds.length === 0) {
-            Swal.fire('Warning', 'Please select at least one payslip to delete.', 'warning');
+            if (paidSkipped > 0) {
+                Swal.fire('Info', 'Paid payslips cannot be deleted.', 'info');
+            } else {
+                Swal.fire('Warning', 'Please select at least one unpaid payslip to delete.', 'warning');
+            }
             return;
         }
 
@@ -1077,12 +1103,23 @@ $show_breadcrumb = true;
 
     function disburseSelectedPayroll() {
         const selectedIds = [];
+        let alreadyPaidCount = 0;
         document.querySelectorAll('#payslipListTable .payslip-checkbox:checked').forEach(cb => {
-            selectedIds.push(cb.value);
+            if (cb.value) {
+                if (cb.dataset.status === 'paid') {
+                    alreadyPaidCount++;
+                } else {
+                    selectedIds.push(cb.value);
+                }
+            }
         });
 
         if (selectedIds.length === 0) {
-            Swal.fire('Warning', 'Please select at least one payslip to disburse.', 'warning');
+            if (alreadyPaidCount > 0) {
+                Swal.fire('Info', 'All selected payslips are already paid/disbursed.', 'info');
+            } else {
+                Swal.fire('Warning', 'Please select at least one unpaid payslip to disburse.', 'warning');
+            }
             return;
         }
 
@@ -1141,6 +1178,174 @@ $show_breadcrumb = true;
             }
         });
     }
+
+    function sendSinglePayslipEmail(payslipId, empName, empEmail) {
+        if (!empEmail || empEmail.trim() === '') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Email Configured',
+                text: `Employee "${empName}" does not have an email address in their profile. Please update their email first.`,
+                confirmButtonColor: '#0f766e'
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: 'Send Payslip via Email?',
+            html: `Send the official payslip and PDF attachment to:<br><br><b>${empName}</b><br><span class="text-primary font-monospace">&lt;${empEmail}&gt;</span>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fa-regular fa-paper-plane me-1"></i> Yes, Send Email',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#0f766e',
+            showLoaderOnConfirm: true,
+            preConfirm: () => {
+                return fetch('<?= $GLOBALS['base_url'] ?>/send-payslip-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payslip_id: payslipId })
+                })
+                .then(res => {
+                    const contentType = res.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        return res.json().then(data => {
+                            if (!res.ok || !data.success) {
+                                throw new Error(data.message || 'Failed to send email.');
+                            }
+                            return data;
+                        });
+                    } else {
+                        return res.text().then(text => {
+                            console.error("Non-JSON:", text);
+                            throw new Error('Server returned an invalid format. Check console.');
+                        });
+                    }
+                })
+                .catch(err => {
+                    Swal.showValidationMessage(`${err.message}`);
+                });
+            },
+            allowOutsideClick: () => !Swal.isLoading()
+        }).then(result => {
+            if (result.isConfirmed && result.value) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Email Sent!',
+                    text: result.value.message || 'Payslip has been successfully emailed.',
+                    confirmButtonColor: '#0f766e'
+                }).then(() => {
+                    window.location.reload();
+                });
+            }
+        });
+    }
+
+    function sendBulkPayslipEmail() {
+        const selectedIds = [];
+        document.querySelectorAll('#payslipListTable .payslip-checkbox:checked').forEach(cb => {
+            if (cb.value) {
+                selectedIds.push(cb.value);
+            }
+        });
+
+        if (selectedIds.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Payslips Selected',
+                text: 'Please select at least one employee payslip using the checkboxes.',
+                confirmButtonColor: '#0f766e'
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: 'Send Payslips in Bulk?',
+            html: `Are you sure you want to send payslips via email to <b>${selectedIds.length}</b> selected employee(s)?<br><br><small class="text-muted">Each employee will receive their personalized email summary with the official PDF payslip attached.</small>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fa-regular fa-paper-plane me-1"></i> Yes, Send to All',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#0f766e',
+            showLoaderOnConfirm: true,
+            preConfirm: () => {
+                return fetch('<?= $GLOBALS['base_url'] ?>/send-bulk-payslip-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payslip_ids: selectedIds })
+                })
+                .then(res => {
+                    const contentType = res.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        return res.json().then(data => {
+                            if (!res.ok || !data.success) {
+                                throw new Error(data.message || 'Bulk email delivery encountered an issue.');
+                            }
+                            return data;
+                        });
+                    } else {
+                        return res.text().then(text => {
+                            console.error("Non-JSON:", text);
+                            throw new Error('Server returned an invalid format. Check console.');
+                        });
+                    }
+                })
+                .catch(err => {
+                    Swal.showValidationMessage(`${err.message}`);
+                });
+            },
+            allowOutsideClick: () => !Swal.isLoading()
+        }).then(result => {
+            if (result.isConfirmed && result.value) {
+                const data = result.value;
+                let reportHtml = `<p class="fs-14">${data.message}</p>`;
+                if (data.errors && data.errors.length > 0) {
+                    reportHtml += `<hr><div class="text-start fs-12 text-muted" style="max-height:160px; overflow-y:auto;"><ul class="ps-3 mb-0">`;
+                    data.errors.forEach(err => {
+                        reportHtml += `<li>${err}</li>`;
+                    });
+                    reportHtml += `</ul></div>`;
+                }
+
+                Swal.fire({
+                    icon: data.sent_count > 0 ? 'success' : 'warning',
+                    title: 'Email Delivery Complete',
+                    html: reportHtml,
+                    confirmButtonColor: '#0f766e'
+                }).then(() => {
+                    window.location.reload();
+                });
+            }
+        });
+    }
+
+    // Auto-sync Project Date with Year and Month Selects
+    document.addEventListener('DOMContentLoaded', function () {
+        const projectSelect = document.getElementById('filterProject');
+        const yearSelect = document.getElementById('filterYear');
+        const monthSelect = document.getElementById('filterMonth');
+
+        if (projectSelect) {
+            projectSelect.addEventListener('change', function () {
+                const opt = this.options[this.selectedIndex];
+                if (opt && opt.value) {
+                    const isCustom = opt.getAttribute('data-iscustom') === '1';
+                    let targetDate = '';
+                    if (isCustom) {
+                        targetDate = opt.getAttribute('data-start') || '';
+                    } else {
+                        targetDate = opt.getAttribute('data-date') || '';
+                    }
+                    if (targetDate) {
+                        const parts = targetDate.split('-');
+                        if (parts.length >= 2) {
+                            if (yearSelect) yearSelect.value = parts[0];
+                            if (monthSelect) monthSelect.value = parseInt(parts[1], 10);
+                        }
+                    }
+                }
+            });
+        }
+    });
 </script>
 
 <style>

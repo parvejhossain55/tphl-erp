@@ -44,6 +44,9 @@ return [
     'my-profile' => ['controller' => 'EmployeeDashboardController', 'method' => 'myProfile'],
     'my-tipsoi-info' => ['controller' => 'EmployeeDashboardController', 'method' => 'myTipsoiInfo'],
     'api/employee/tipsoi-data' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiData'],
+    'api/employee/tipsoi-history' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiHistory'],
+    'api/hrm/devices' => ['controller' => 'EmployeeDashboardController', 'method' => 'getDevices'],
+    'api/employee/manual-entry/apply' => ['controller' => 'EmployeeDashboardController', 'method' => 'applyManualEntry'],
     'tipsoi-monthly-report' => ['controller' => 'EmployeeDashboardController', 'method' => 'tipsoiMonthlyReport'],
     'tipsoi-daily-report' => ['controller' => 'EmployeeDashboardController', 'method' => 'tipsoiDailyReport'],
     'tipsoi-department-report' => ['controller' => 'EmployeeDashboardController', 'method' => 'tipsoiDepartmentReport'],
@@ -206,6 +209,8 @@ return [
     'execute-import-payslips' => ['controller' => 'PayrollController', 'method' => 'importCSV'],
     'download-sample-payslips-csv' => ['controller' => 'PayrollController', 'method' => 'downloadSampleCSV'],
     'bulk-delete-payslips' => ['controller' => 'PayrollController', 'method' => 'bulkDelete'],
+    'send-payslip-email' => ['controller' => 'PayrollController', 'method' => 'sendSinglePayslipEmail'],
+    'send-bulk-payslip-email' => ['controller' => 'PayrollController', 'method' => 'sendBulkPayslipEmail'],
 
     // =========================================================================
     // Controller: AdvanceSalaryController
@@ -249,6 +254,7 @@ return [
     'api/hrm/leave-category' => ['controller' => 'HrmApiController', 'method' => 'getLeaveCategories'],
     'api/hrm/applied-leave-list' => ['controller' => 'HrmApiController', 'method' => 'getAppliedLeaveList'],
     'api/hrm/leave-management/approve/(.*)' => ['controller' => 'HrmApiController', 'method' => 'approveTipsoiLeave'],
+    'api/hrm/leave-management/cancel/(.*)' => ['controller' => 'HrmApiController', 'method' => 'cancelTipsoiLeave'],
     'api/hrm/leave-management/apply/employee/(.*)' => ['controller' => 'HrmApiController', 'method' => 'applyTipsoiLeave'],
     
     // Late Request APIs
@@ -258,6 +264,10 @@ return [
     'api/hrm/late-approval-management/reject/(.*)' => ['controller' => 'HrmApiController', 'method' => 'rejectTipsoiLateRequest'],
     'api/hrm/late-approval-management/cancel/(.*)' => ['controller' => 'HrmApiController', 'method' => 'cancelTipsoiLateRequest'],
     'api/hrm/late-approval-management/late-approvals/(.*)' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiLateHistory'],
+    'api/hrm/late-approval-management/late-entries/(.*)' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiLateEntries'],
+
+    // Manual Entry Cancel
+    'api/hrm/manual-entry/cancel/(.*)' => ['controller' => 'HrmApiController', 'method' => 'cancelTipsoiManualEntry'],
 
     // =========================================================================
     // Batch 4: Leave Balances & Analytics Views & API Routes
@@ -271,6 +281,7 @@ return [
     'hrm-tipsoi-requests' => ['controller' => 'LeaveController', 'method' => 'tipsoiRequestsDashboardView'],
     'api/hrm/tipsoi-requests' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiRequests'],
     'api/hrm/tipsoi-action' => ['controller' => 'HrmApiController', 'method' => 'handleTipsoiAction'],
+    'api/hrm/tipsoi-connect' => ['controller' => 'HrmApiController', 'method' => 'connectTipsoiAccount'],
     'tipsoi-email-logs' => ['controller' => 'LeaveController', 'method' => 'tipsoiEmailLogsView'],
     'api/hrm/tipsoi-email-logs' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiEmailLogs'],
     'api/hrm/send-tipsoi-reminders' => ['controller' => 'HrmApiController', 'method' => 'sendTipsoiReminders'],
@@ -290,10 +301,6 @@ return [
     'payroll-project-store' => ['controller' => 'PayrollController', 'method' => 'storePayrollProject'],
     'save-workspace-payslips' => ['controller' => 'PayrollController', 'method' => 'saveWorkspacePayslips'],
     'payroll-workspace-pdf' => ['controller' => 'PayrollController', 'method' => 'exportWorkspacePDF'],
-
-    // Salary Hold
-    'payroll-salary-hold' => ['controller' => 'PayrollController', 'method' => 'salaryHold'],
-    'payroll-salary-hold-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSalaryHoldPDF'],
 
     // Payroll Attendance Report
     'payroll-attendance-report' => ['controller' => 'PayrollController', 'method' => 'attendanceReport'],
@@ -324,5 +331,6 @@ return [
     // Salary Hold
     'payroll-salary-hold' => ['controller' => 'PayrollController', 'method' => 'salaryHoldPage'],
     'payroll-salary-hold-save' => ['controller' => 'PayrollController', 'method' => 'salaryHoldSave'],
-    'payroll-salary-hold-remove' => ['controller' => 'PayrollController', 'method' => 'salaryHoldRemove']
+    'payroll-salary-hold-remove' => ['controller' => 'PayrollController', 'method' => 'salaryHoldRemove'],
+    'payroll-salary-hold-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSalaryHoldPDF']
 ];

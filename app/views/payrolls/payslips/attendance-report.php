@@ -52,8 +52,9 @@ $default_to = date('Y-m-d');
                                     data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>"
                                     data-iscustom="<?= htmlspecialchars($proj['is_custom_date'] ?? '0') ?>"
                                     data-start="<?= htmlspecialchars($proj['start_date'] ?? '') ?>"
-                                    data-end="<?= htmlspecialchars($proj['end_date'] ?? '') ?>">
-                                    <?= htmlspecialchars($proj['name']) ?>
+                                    data-end="<?= htmlspecialchars($proj['end_date'] ?? '') ?>"
+                                    <?= (isset($selected_project_id) && $selected_project_id == $proj['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($proj['name']) ?> (<?= htmlspecialchars($proj['date'] ?? '') ?>)
                                 </option>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -136,8 +137,7 @@ $default_to = date('Y-m-d');
                         onclick="$('#payrollAttendanceTable').DataTable().button('.buttons-csv').trigger();">
                         <i class="fa-solid fa-file-csv me-1"></i> Export CSV
                     </button>
-                    <button type="button" class="btn btn-danger fw-semibold shadow-sm"
-                        onclick="$('#payrollAttendanceTable').DataTable().button('.buttons-pdf').trigger();">
+                    <button type="button" class="btn btn-danger fw-semibold shadow-sm" onclick="exportPdf()">
                         <i class="fa-solid fa-file-pdf me-1"></i> Export PDF
                     </button>
                 </div>
@@ -189,6 +189,7 @@ $default_to = date('Y-m-d');
     style="display:none;">
     <input type="hidden" name="from_date" id="pdfFromDate">
     <input type="hidden" name="to_date" id="pdfToDate">
+    <input type="hidden" name="payroll_project_id" id="pdfPayrollProject">
 </form>
 
 <?php ob_start(); ?>
@@ -301,9 +302,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     {
                         text: 'PDF', className: 'buttons-pdf',
                         action: function (e, dt, node, config) {
-                            document.getElementById('pdfFromDate').value = activeFromDate;
-                            document.getElementById('pdfToDate').value = activeToDate;
-                            document.getElementById('exportPdfForm').submit();
+                            window.exportPdf();
                         }
                     }
                 ],
@@ -680,8 +679,21 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    // Global PDF export trigger
+    window.exportPdf = function() {
+        const projId = document.getElementById("payrollProject") ? document.getElementById("payrollProject").value : '';
+        document.getElementById('pdfFromDate').value = activeFromDate || fromDateInput.value;
+        document.getElementById('pdfToDate').value = activeToDate || toDateInput.value;
+        document.getElementById('pdfPayrollProject').value = projId;
+        document.getElementById('exportPdfForm').submit();
+    };
+
     // Initial load
-    fetchAttendanceData();
+    if (projectSelect && projectSelect.value) {
+        $(projectSelect).trigger('change');
+    } else {
+        fetchAttendanceData();
+    }
 });
 <?php
 $page_script = ob_get_clean();

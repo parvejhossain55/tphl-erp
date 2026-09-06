@@ -504,7 +504,9 @@ class HrmApiController extends Controller
             
             // Default params if none provided
             if (empty($queryString)) {
-                $queryString = "page=0&count=100&status=0&status=1&status=2";
+                $queryString = "page=0&count=100&status=0&status=1&status=2&keyword=%20";
+            } elseif (!str_contains($queryString, 'keyword=')) {
+                $queryString .= '&keyword=%20';
             }
             
             $url = "https://app.tipsoi.ai/inovace-client/api/v1/leave-management/leave-history?" . $queryString;
@@ -547,9 +549,9 @@ class HrmApiController extends Controller
     {
         header('Content-Type: application/json');
         try {
-            $token = $this->externalApiService->getBearerToken();
+            $token = $this->externalApiService->getUserBearerToken(false);
             if (!$token) {
-                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                echo json_encode(['success' => false, 'message' => 'Tipsoi user login token not found. Please log in to ERP with your Tipsoi credentials.']);
                 exit;
             }
             
@@ -597,13 +599,22 @@ class HrmApiController extends Controller
      * POST /api/hrm/leave-management/apply/employee/{employeeId}
      * Apply for leave via Tipsoi API
      */
-    public function applyTipsoiLeave($employeeId)
+    public function applyTipsoiLeave($employeeId = null)
     {
         header('Content-Type: application/json');
         try {
-            $token = $this->externalApiService->getBearerToken();
+            $token = $this->externalApiService->getUserBearerToken(false);
             if (!$token) {
-                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                echo json_encode(['success' => false, 'message' => 'Tipsoi user login token not found. Please log in to ERP with your Tipsoi credentials.']);
+                exit;
+            }
+
+            if (empty($employeeId) || $employeeId === 'null' || $employeeId === 'undefined') {
+                $employeeId = $_SESSION['user']['tipsoi_id'] ?? null;
+            }
+
+            if (!$employeeId) {
+                echo json_encode(['success' => false, 'message' => 'Tipsoi Employee ID not found.']);
                 exit;
             }
             
@@ -612,11 +623,7 @@ class HrmApiController extends Controller
             $postData = [];
             
             if (isset($_POST['postBody'])) {
-                if (class_exists('CURLStringFile')) {
-                    $postData['postBody'] = new CURLStringFile($_POST['postBody'], 'postBody', 'application/json');
-                } else {
-                    $postData['postBody'] = $_POST['postBody'];
-                }
+                $postData['postBody'] = is_string($_POST['postBody']) ? $_POST['postBody'] : json_encode($_POST['postBody']);
             }
             
             // If there's an attachment, add it using CURLFile
@@ -628,7 +635,7 @@ class HrmApiController extends Controller
                 );
             }
             
-            // Tipsoi strictly requires multipart/form-data for this endpoint, even without a file
+            // Tipsoi strictly requires multipart/form-data for this endpoint
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POST, true);
@@ -637,17 +644,28 @@ class HrmApiController extends Controller
                 'Authorization: Bearer ' . $token,
                 'Accept: application/json'
             ]);
-            
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
             
             $res = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
             
-            if ($httpCode >= 400) {
-                http_response_code($httpCode);
+            $resData = json_decode($res, true);
+            if ($httpCode >= 200 && $httpCode < 300) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Leave application submitted successfully!',
+                    'data' => $resData
+                ]);
+            } else {
+                http_response_code($httpCode >= 400 ? $httpCode : 400);
+                echo json_encode([
+                    'success' => false,
+                    'message' => $resData['message'] ?? 'Failed to submit leave application to Tipsoi.',
+                    'details' => $resData
+                ]);
             }
-            echo $res;
             
         } catch (Exception $e) {
             http_response_code(500);
@@ -664,36 +682,52 @@ class HrmApiController extends Controller
     {
         header('Content-Type: application/json');
         try {
-            $token = $this->externalApiService->getBearerToken();
+            $token = $this->externalApiService->getUserBearerToken(false);
             if (!$token) {
-                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Tipsoi user login token not found. Please log out and log back in to ERP to synchronize your Tipsoi session.'
+                ]);
                 exit;
             }
 
             $input = json_decode(file_get_contents('php://input'), true);
-            $endpoint = $input['endpoint'] ?? '';
+            $endpoint = trim($input['endpoint'] ?? '');
             $payload = $input['payload'] ?? [];
-            $method = $input['method'] ?? 'POST';
+            $method = strtoupper($input['method'] ?? 'POST');
 
             if (empty($endpoint)) {
                 echo json_encode(['success' => false, 'message' => 'Endpoint is required.']);
                 exit;
             }
 
+            // Normalize endpoint: Tipsoi does NOT have /leave-management/reject/{id}, it is /leave-management/cancel/{id}
+            if (strpos($endpoint, '/leave-management/reject/') === 0) {
+                $endpoint = str_replace('/leave-management/reject/', '/leave-management/cancel/', $endpoint);
+            }
+
+            // Normalize comment payloads:
+            // - Leave & Late approve expect "approverComment"
+            // - Manual Entry approve/reject expects "comment"
+            // - Leave cancel/reject expects "cancellationReason"
+            // Setting all three ensures the correct key is always accepted by Tipsoi
+            $commentText = $payload['approverComment'] ?? $payload['comment'] ?? $payload['cancellationReason'] ?? $payload['rejectionReason'] ?? 'Approved';
+            $normalizedPayload = is_array($payload) ? $payload : [];
+            $normalizedPayload['approverComment'] = $commentText;
+            $normalizedPayload['comment'] = $commentText;
+            $normalizedPayload['cancellationReason'] = $commentText;
+            $normalizedPayload['rejectionReason'] = $commentText;
+
             $url = "https://app.tipsoi.ai/inovace-client/api/v1" . $endpoint;
 
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            if (strtoupper($method) === 'POST') {
+            if ($method === 'POST') {
                 curl_setopt($ch, CURLOPT_POST, true);
-                if (!empty($payload)) {
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-                }
-            } elseif (strtoupper($method) === 'PUT') {
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($normalizedPayload));
+            } elseif ($method === 'PUT') {
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
-                if (!empty($payload)) {
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-                }
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($normalizedPayload));
             }
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Authorization: Bearer ' . $token,
@@ -715,10 +749,73 @@ class HrmApiController extends Controller
                     'data' => $tipsoiData
                 ]);
             } else {
+                $hasUserToken = $this->externalApiService->hasActiveUserBearerToken();
+                $errorMsg = $tipsoiData['message'] ?? 'Action failed.';
+
+                if ($httpCode === 401) {
+                    if (!$hasUserToken) {
+                        $errorMsg = 'Unauthorized (401): You are not logged in with your personal Tipsoi account (ERP password does not match Tipsoi password). Only the assigned approver can approve this step.';
+                    } else {
+                        $errorMsg = 'Unauthorized (401): You are not the assigned approver for this request on Tipsoi. Only the designated approver can perform this action.';
+                    }
+                }
+
                 echo json_encode([
                     'success' => false,
-                    'message' => $tipsoiData['message'] ?? 'Action failed.',
+                    'message' => $errorMsg,
+                    'http_code' => $httpCode,
                     'data' => $tipsoiData
+                ]);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    /**
+     * POST /api/hrm/tipsoi-connect
+     * Allow logged in user to connect their personal Tipsoi account by providing Tipsoi password
+     */
+    public function connectTipsoiAccount()
+    {
+        header('Content-Type: application/json');
+        try {
+            if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+                session_start();
+            }
+            if (empty($_SESSION['user']['id'])) {
+                echo json_encode(['success' => false, 'message' => 'Please log in to ERP first.']);
+                exit;
+            }
+
+            $input = json_decode(file_get_contents('php://input'), true);
+            $password = trim($input['password'] ?? '');
+            $email = trim($_SESSION['user']['email'] ?? '');
+
+            if (empty($password)) {
+                echo json_encode(['success' => false, 'message' => 'Tipsoi password is required.']);
+                exit;
+            }
+
+            $authResult = $this->externalApiService->authenticateUser($email, $password);
+            if (!empty($authResult['success'])) {
+                $_SESSION['user']['tipsoi_authenticated'] = true;
+                $_SESSION['user']['tipsoi_token'] = $authResult['token'];
+                $_SESSION['user']['tipsoi_token_expires'] = $authResult['expires'];
+                if (!empty($authResult['tipsoi_id'])) {
+                    $_SESSION['user']['tipsoi_id'] = $authResult['tipsoi_id'];
+                }
+
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Tipsoi account connected successfully!'
+                ]);
+            } else {
+                echo json_encode([
+                    'success' => false,
+                    'message' => $authResult['message'] ?? 'Tipsoi authentication failed. Please check your password.'
                 ]);
             }
         } catch (Exception $e) {
@@ -921,15 +1018,36 @@ class HrmApiController extends Controller
                     $stmt->execute();
                     $uRes = $stmt->get_result()->fetch_assoc();
                     if ($uRes) {
+                        $normEmpOfficeId = trim($uRes['employee_id'] ?? '');
+                        $normEmpEmail = strtolower(trim($uRes['email'] ?? ''));
+
+                        // Auto-detect tipsoi_id from externalEmployees if missing in session
+                        $detectedTipsoiId = $_SESSION['user']['tipsoi_id'] ?? null;
+                        $detectedOfficeId = $_SESSION['user']['tipsoi_office_id'] ?? null;
+                        if (!$detectedTipsoiId && is_array($externalEmployees)) {
+                            foreach ($externalEmployees as $ext) {
+                                $extOid = trim((string)($ext['employeeOfficeId'] ?? $ext['officeId'] ?? ''));
+                                $extEmail = strtolower(trim($ext['email'] ?? ''));
+                                if (($normEmpOfficeId !== '' && $extOid === $normEmpOfficeId) || ($normEmpEmail !== '' && $extEmail === $normEmpEmail)) {
+                                    $detectedTipsoiId = $ext['employeeId'] ?? $ext['id'] ?? null;
+                                    $detectedOfficeId = $extOid;
+                                    $_SESSION['user']['tipsoi_id'] = $detectedTipsoiId;
+                                    $_SESSION['user']['tipsoi_office_id'] = $detectedOfficeId;
+                                    break;
+                                }
+                            }
+                        }
+
                         $loggedUser = [
                             'id' => $uRes['id'],
-                            'email' => strtolower(trim($uRes['email'] ?? '')),
-                            'employee_id' => trim($uRes['employee_id'] ?? ''),
+                            'email' => $normEmpEmail,
+                            'employee_id' => $normEmpOfficeId,
                             'full_name' => trim($uRes['full_name'] ?? ''),
-                            'tipsoi_id' => $_SESSION['user']['tipsoi_id'] ?? null,
-                            'tipsoi_office_id' => $_SESSION['user']['tipsoi_office_id'] ?? null,
+                            'tipsoi_id' => $detectedTipsoiId,
+                            'tipsoi_office_id' => $detectedOfficeId,
                             'role_id' => (int) ($uRes['role_id'] ?? 0),
-                            'is_hr' => hasPermission("HRM Management") || in_array((int) ($uRes['role_id'] ?? 0), [1, 3, 4])
+                            'is_hr' => hasPermission("HRM Management") || in_array((int) ($uRes['role_id'] ?? 0), [1, 3, 4]),
+                            'tipsoi_authenticated' => $this->externalApiService->hasActiveUserBearerToken()
                         ];
                     }
                 }
@@ -941,7 +1059,7 @@ class HrmApiController extends Controller
             $pendingRequests = [];
 
             // 1. Fetch Global Pending Leaves
-            $ch = curl_init("https://app.tipsoi.ai/inovace-client/api/v1/leave-management/leave-history?page=0&count=2000&status=0");
+            $ch = curl_init("https://app.tipsoi.ai/inovace-client/api/v1/leave-management/leave-history?page=0&count=2000&status=0&keyword=%20");
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token, 'Accept: application/json']);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -1006,7 +1124,7 @@ class HrmApiController extends Controller
             }
 
             // 3. Fetch Approver's Pending Late Excuses
-            $ch = curl_init("https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/late-approvals/$empId");
+            $ch = curl_init("https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/approval-requests/$empId");
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $token, 'Accept: application/json']);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -1014,7 +1132,7 @@ class HrmApiController extends Controller
             $res = curl_exec($ch);
             curl_close($ch);
             $d = json_decode($res, true);
-            $lateApprovals = $d['lateLogList'] ?? [];
+            $lateApprovals = $d['lateApprovalApplications'] ?? $d['lateLogList'] ?? [];
             foreach ($lateApprovals as $log) {
                 $id = $log['lateApprovalLogId'] ?? $log['id'] ?? null;
                 if (!$id)
@@ -1257,7 +1375,7 @@ class HrmApiController extends Controller
             };
 
             // 1. Leaves
-            $d = $fetchData("https://app.tipsoi.ai/inovace-client/api/v1/leave-management/leave-history?page=0&count=2000&status=0");
+            $d = $fetchData("https://app.tipsoi.ai/inovace-client/api/v1/leave-management/leave-history?page=0&count=2000&status=0&keyword=%20");
             $globalLeaves = $d['leaveLogList'] ?? [];
             $d = $fetchData("https://app.tipsoi.ai/inovace-client/api/v1/remaining-leave/approvers/$empId");
             $approverLeaves = $d['leaveApplications'] ?? [];
@@ -1875,9 +1993,9 @@ class HrmApiController extends Controller
     private function proxyTipsoiRequest($url, $method, $postData = null) {
         header('Content-Type: application/json');
         try {
-            $token = $this->externalApiService->getBearerToken();
+            $token = $this->externalApiService->getUserBearerToken(false);
             if (!$token) {
-                echo json_encode(['success' => false, 'message' => 'Failed to authenticate with Tipsoi API.']);
+                echo json_encode(['success' => false, 'message' => 'Tipsoi user login token not found. Please log in to ERP with your Tipsoi credentials.']);
                 exit;
             }
             
@@ -1958,8 +2076,27 @@ class HrmApiController extends Controller
         $this->proxyTipsoiRequest($url, 'POST', $input);
     }
 
+    public function cancelTipsoiLeave($leaveLogId) {
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/leave-management/cancel/" . urlencode($leaveLogId);
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!$input) {
+            $input = ['cancellationReason' => 'User cancelled leave request'];
+        }
+        $this->proxyTipsoiRequest($url, 'POST', $input);
+    }
+
+    public function cancelTipsoiManualEntry($applicationId) {
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/employee/cancel-manual-entry/" . urlencode($applicationId);
+        $this->proxyTipsoiRequest($url, 'POST');
+    }
+
     public function getTipsoiLateHistory($employeeId) {
         $url = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/late-approvals/" . urlencode($employeeId);
+        $this->proxyTipsoiRequest($url, 'GET');
+    }
+
+    public function getTipsoiLateEntries($employeeId) {
+        $url = "https://app.tipsoi.ai/inovace-client/api/v1/late-approval-management/late-entries/" . urlencode($employeeId);
         $this->proxyTipsoiRequest($url, 'GET');
     }
 }

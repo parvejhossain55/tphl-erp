@@ -74,15 +74,18 @@ $defaultMonth = date('m');
 
                 <!-- Payroll Project Filter -->
                 <div class="col-lg-3 col-md-4 col-sm-6">
-                    <label for="payrollProject" class="form-label fw-semibold text-muted mb-2">Project
-                        (Optional)</label>
+                    <label for="payrollProject" class="form-label fw-semibold text-muted mb-2">Project (Optional)</label>
                     <select class="form-select custom-select2" name="payroll_project_id" id="payrollProject">
                         <option value="">All Projects</option>
                         <?php if (!empty($payroll_projects)): ?>
                             <?php foreach ($payroll_projects as $proj): ?>
                                 <option value="<?= htmlspecialchars($proj['id']) ?>"
-                                    data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>" <?= (isset($payroll_project_id) && $payroll_project_id == $proj['id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($proj['name']) ?>
+                                    data-date="<?= htmlspecialchars($proj['date'] ?? '') ?>"
+                                    data-is-custom="<?= htmlspecialchars($proj['is_custom_date'] ?? '0') ?>"
+                                    data-start-date="<?= htmlspecialchars($proj['start_date'] ?? '') ?>"
+                                    data-end-date="<?= htmlspecialchars($proj['end_date'] ?? '') ?>"
+                                    <?= (isset($payroll_project_id) && $payroll_project_id == $proj['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($proj['name']) ?> (<?= htmlspecialchars($proj['date'] ?? '') ?>)
                                 </option>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -150,8 +153,8 @@ $defaultMonth = date('m');
                                     <td><?= htmlspecialchars($deptDesig) ?></td>
                                     <td class="text-center"><?= htmlspecialchars($row['workplace'] ?? '-') ?></td>
                                     <td class="text-center"><?= htmlspecialchars($row['joining_date']) ?></td>
-                                    <td class="text-end"><?= $gross ?></td>
-                                    <td class="text-end"><?= $basic ?></td>
+                                    <td class="text-end">৳ <?= $gross ?></td>
+                                    <td class="text-end">৳ <?= $basic ?></td>
                                     <td class="text-center">
                                         <span class="badge bg-success p-1"><i class="fa-solid fa-check"></i></span>
                                     </td>
@@ -178,72 +181,83 @@ $defaultMonth = date('m');
 
 <?php ob_start(); ?>
 document.addEventListener("DOMContentLoaded", function () {
-// UI logic for toggling filter modes
-$('body').on('change', '#filterType', function() {
-if ($(this).val() === 'monthly') {
-document.getElementById('monthlyContainer').style.display = 'block';
-document.getElementById('customContainer').style.display = 'none';
-} else {
-document.getElementById('monthlyContainer').style.display = 'none';
-document.getElementById('customContainer').style.display = 'block';
-}
+    // UI logic for toggling filter modes
+    $('body').on('change', '#filterType', function() {
+        if ($(this).val() === 'monthly') {
+            document.getElementById('monthlyContainer').style.display = 'block';
+            document.getElementById('customContainer').style.display = 'none';
+        } else {
+            document.getElementById('monthlyContainer').style.display = 'none';
+            document.getElementById('customContainer').style.display = 'block';
+        }
+    });
+
+    // Handle project select auto-fill month/year or custom range
+    $('#payrollProject').on('change', function() {
+        var selectedOpt = this.options[this.selectedIndex];
+        if (selectedOpt && selectedOpt.value) {
+            var isCustom = selectedOpt.getAttribute('data-is-custom');
+            var startDate = selectedOpt.getAttribute('data-start-date');
+            var endDate = selectedOpt.getAttribute('data-end-date');
+            var dateVal = selectedOpt.getAttribute('data-date');
+
+            if (isCustom === '1' && startDate && endDate) {
+                $('#filterType').val('custom');
+                $('#fromDate').val(startDate);
+                $('#toDate').val(endDate);
+                document.getElementById('monthlyContainer').style.display = 'none';
+                document.getElementById('customContainer').style.display = 'block';
+            } else if (dateVal) {
+                var parts = dateVal.split('-');
+                if (parts.length >= 2) {
+                    $('#filterYear').val(parts[0]);
+                    $('#filterMonth').val(parts[1]);
+                    $('#filterType').val('monthly');
+                    document.getElementById('monthlyContainer').style.display = 'block';
+                    document.getElementById('customContainer').style.display = 'none';
+                }
+            }
+        }
+        $('#filterForm').submit();
+    });
+
+    // Initialize DataTable
+    var dataTable = $('#joiningListTable').DataTable({
+        dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"f><"d-none"B>>' +
+             '<"row"<"col-sm-12"tr>>' +
+             '<"row align-items-center mt-3"<"col-sm-6 text-start"i><"col-sm-6 text-end"p>>',
+        buttons: [
+            {
+                extend: 'csvHtml5', text: 'CSV', className: 'buttons-csv',
+                title: 'Joining_List_Report'
+            }
+        ],
+        language: {
+            search: "_INPUT_",
+            searchPlaceholder: "Search list...",
+            emptyTable: "No data available in table"
+        },
+        pagingType: "simple_numbers",
+        pageLength: 50,
+        ordering: true
+    });
+
+    // Handle manual filter change
+    $('#filterType, #filterMonth, #filterYear, #fromDate, #toDate').on('change', function(e) {
+        $('#filterForm').submit();
+    });
+
+    // Bind PDF export to use the correct data
+    window.exportPdf = function() {
+        document.getElementById('pdfFilterType').value = $('#filterType').val();
+        document.getElementById('pdfMonth').value = $('#filterMonth').val();
+        document.getElementById('pdfYear').value = $('#filterYear').val();
+        document.getElementById('pdfFromDate').value = $('#fromDate').val();
+        document.getElementById('pdfToDate').value = $('#toDate').val();
+        document.getElementById('pdfPayrollProject').value = $('#payrollProject').val();
+        document.getElementById('exportPdfForm').submit();
+    };
 });
-
-// Handle project select auto-fill month/year
-$('#payrollProject').on('change', function() {
-var selectedOpt = this.options[this.selectedIndex];
-if (selectedOpt && selectedOpt.value) {
-var dateVal = selectedOpt.getAttribute('data-date');
-if (dateVal) {
-var parts = dateVal.split('-');
-if (parts.length >= 2) {
-$('#filterYear').val(parts[0]).trigger('change');
-$('#filterMonth').val(parts[1]).trigger('change');
-$('#filterType').val('monthly').trigger('change'); // Auto-switch to monthly
-}
-}
-}
-});
-
-// Initialize DataTable
-var dataTable = $('#joiningListTable').DataTable({
-dom: '<"row align-items-center mb-3"<"col-sm-6 text-start"l><"col-sm-6 text-end"f><"d-none"B>>' +
-            '<"row"<"col-sm-12"tr>>' +
-                '<"row align-items-center mt-3"<"col-sm-6 text-start"i><"col-sm-6 text-end"p>>',
-                        buttons: [
-                        {
-                        extend: 'csvHtml5', text: 'CSV', className: 'buttons-csv',
-                        title: 'Joining_List_Report'
-                        }
-                        ],
-                        language: {
-                        search: "_INPUT_",
-                        searchPlaceholder: "Search list...",
-                        emptyTable: "No data available in table"
-                        },
-                        pagingType: "simple_numbers",
-                        pageLength: 50,
-                        ordering: true
-                        });
-
-                        // Handle Filter Change (Submit Form automatically)
-                        $('#filterType, #filterMonth, #filterYear, #fromDate, #toDate, #payrollProject').on('change',
-                        function(e) {
-                        $('#filterForm').submit();
-                        });
-
-                        // Bind PDF export to use the correct data
-                        window.exportPdf = function() {
-                        document.getElementById('pdfFilterType').value = $('#filterType').val();
-                        document.getElementById('pdfMonth').value = $('#filterMonth').val();
-                        document.getElementById('pdfYear').value = $('#filterYear').val();
-                        document.getElementById('pdfFromDate').value = $('#fromDate').val();
-                        document.getElementById('pdfToDate').value = $('#toDate').val();
-                        document.getElementById('pdfPayrollProject').value = $('#payrollProject').val();
-                        document.getElementById('exportPdfForm').submit();
-                        };
-
-                        });
-                        <?php
-                        $page_script = ob_get_clean();
-                        ?>
+<?php
+$page_script = ob_get_clean();
+?>

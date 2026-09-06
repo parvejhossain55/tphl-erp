@@ -81,7 +81,7 @@
         <div id="notRegisteredAlert" class="alert alert-danger d-flex align-items-center gap-2 mb-4 animate__animated animate__shakeX d-none" role="alert">
             <i class="fa-solid fa-triangle-exclamation fs-4"></i>
             <div>
-                <h6 class="alert-heading fw-bold mb-1">Not Registered in Tipsoi</h6>
+                <h6 class="alert-heading fw-bold mb-1" id="notRegisteredHeading">Not Registered in Tipsoi</h6>
                 <span id="notRegisteredMsg">This employee email is not registered in the Tipsoi attendance system.</span>
             </div>
         </div>
@@ -122,13 +122,18 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" id="applied-leave-list" data-bs-toggle="tab" href="#appliedLeaveListTabContent" role="tab" aria-controls="appliedLeaveListTabContent" aria-selected="false">
-                                <i class="fa-solid fa-list-check text-secondary me-2"></i>Applied Leave List
+                            <a class="nav-link text-dark" id="late-request-tab" data-bs-toggle="tab" href="#lateRequestTabContent" role="tab" aria-controls="lateRequestTabContent" aria-selected="false">
+                                <i class="fa-solid fa-clock text-danger me-2"></i>Late Request
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" id="late-request-tab" data-bs-toggle="tab" href="#lateRequestTabContent" role="tab" aria-controls="lateRequestTabContent" aria-selected="false">
-                                <i class="fa-solid fa-clock text-danger me-2"></i>Late Request
+                            <a class="nav-link text-dark" id="history-tab" data-bs-toggle="tab" href="#historyTabContent" role="tab" aria-controls="historyTabContent" aria-selected="false">
+                                <i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>History
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" id="manual-entry-tab" data-bs-toggle="tab" href="#manualEntryTabContent" role="tab" aria-controls="manualEntryTabContent" aria-selected="false">
+                                <i class="fa-solid fa-file-pen text-warning me-2"></i>Manual Entry
                             </a>
                         </li>
                     </ul>
@@ -593,13 +598,14 @@
                         </div>
                         <div class="card-body p-4">
                             <div class="table-responsive">
-                                <table class="table table-striped table-bordered text-start fs-12 mb-0">
+                                <table class="table table-hover table-striped table-bordered text-start fs-12 mb-0 align-middle">
                                     <thead style="background-color: #f8fafc; color: #475569;">
                                         <tr>
                                             <th>Request Type</th>
-                                            <th>Requested Date</th>
+                                            <th>Requested Period / Date</th>
                                             <th>Reason</th>
-                                            <th>Approval status</th>
+                                            <th>Approval Status</th>
+                                            <th style="width: 110px;" class="text-center">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="pendingRequestsTableBody">
@@ -674,11 +680,12 @@
                                             <th style="width: 180px;">First Approver</th>
                                             <th style="width: 180px;">Second Approver</th>
                                             <th style="width: 95px;">Status</th>
+                                            <th style="width: 140px;" class="text-center">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="approvalsTableBody">
                                         <tr>
-                                            <td colspan="11" class="text-center py-4 text-muted">
+                                            <td colspan="12" class="text-center py-4 text-muted">
                                                 <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                                                 Loading pending approvals...
                                             </td>
@@ -698,175 +705,447 @@
 
                 <!-- 6. Apply Leave Tab -->
                 <div class="tab-pane fade" id="applyLeaveTabContent" role="tabpanel" aria-labelledby="apply-leave-tab">
-                    <div class="card custom-card border-top border-4 border-success shadow-sm">
-                        <div class="card-header py-3 bg-white border-bottom">
-                            <h5 class="card-title fw-bold mb-0 text-dark">
-                                <i class="fa-solid fa-calendar-plus text-success me-2"></i>Apply for Leave
-                            </h5>
-                        </div>
-                        <div class="card-body p-4">
-                            <form id="applyLeaveForm" enctype="multipart/form-data">
-                                <div class="row ">
-                                    <!-- Leave Category -->
-                                    <div class="col-md-6 col-12">
-                                        <label class="form-label fw-bold text-secondary mb-1">Leave Category <span class="text-danger">*</span></label>
-                                        <select class="form-select form-select-sm" id="leaveCategoryId" name="leaveCategoryId" required>
-                                            <option value="" disabled selected>Select Leave Category...</option>
-                                            <!-- Dynamic Categories -->
-                                        </select>
-                                    </div>
-                                    <!-- Half Day -->
-                                    <div class="col-md-6 col-12 d-flex align-items-end">
-                                        <div class="form-check form-switch mb-1">
-                                            <input class="form-check-input" type="checkbox" id="isHalfDay" name="isHalfDay" value="true">
-                                            <label class="form-check-label fw-bold text-secondary" for="isHalfDay">Half Day Leave</label>
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8 col-md-10">
+                            <div class="card custom-card border-top border-4 border-success shadow-sm">
+                                <div class="card-header py-3 bg-white border-bottom">
+                                    <h5 class="card-title fw-bold mb-1 text-dark">
+                                        <i class="fa-solid fa-calendar-plus text-success me-2"></i>Apply for Leave
+                                    </h5>
+                                    <small class="text-muted">Submit a formal leave application to your line managers and HR</small>
+                                </div>
+                                <div class="card-body p-4">
+                                    <!-- Approvers Preview Banner -->
+                                    <div class="row g-2 mb-4 p-3 bg-light rounded-3 border" id="leaveApproversRow">
+                                        <div class="col-md-6">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="avatar avatar-sm bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                                    <i class="fa-solid fa-user-check fs-13"></i>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted d-block fs-11 fw-semibold text-uppercase">1st Approver</small>
+                                                    <span class="fw-bold text-dark fs-12" id="formFirstApproverName">Loading...</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="avatar avatar-sm bg-info-subtle text-info rounded-circle d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                                    <i class="fa-solid fa-user-shield fs-13"></i>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted d-block fs-11 fw-semibold text-uppercase">2nd Approver</small>
+                                                    <span class="fw-bold text-dark fs-12" id="formSecondApproverName">Loading...</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <!-- Start Date -->
-                                    <div class="col-md-6 col-12">
-                                        <label class="form-label fw-bold text-secondary mb-1">Start Date <span class="text-danger">*</span></label>
-                                        <input type="date" class="form-control form-control-sm" id="leaveStartDate" name="startDate" required>
-                                    </div>
-                                    <!-- End Date -->
-                                    <div class="col-md-6 col-12">
-                                        <label class="form-label fw-bold text-secondary mb-1">End Date <span class="text-danger">*</span></label>
-                                        <input type="date" class="form-control form-control-sm" id="leaveEndDate" name="endDate" required>
-                                    </div>
-                                    <!-- Reason -->
-                                    <div class="col-12">
-                                        <label class="form-label fw-bold text-secondary mb-1">Reason <span class="text-danger">*</span></label>
-                                        <textarea class="form-control form-control-sm" id="leaveReason" name="reason" rows="3" required placeholder="State your reason for leave..."></textarea>
-                                    </div>
-                                    <!-- Attachment -->
-                                    <div class="col-md-6 col-12">
-                                        <label class="form-label fw-bold text-secondary mb-1">Attachment <span class="text-muted">(Optional)</span></label>
-                                        <input type="file" class="form-control form-control-sm" id="leaveAttachment" name="attachment">
-                                    </div>
+
+                                    <form id="applyLeaveForm" enctype="multipart/form-data">
+                                        <div class="row g-3">
+                                            <!-- 1. Leave Category -->
+                                            <div class="col-12">
+                                                <label class="form-label fw-bold text-dark mb-1">
+                                                    Leave Category <span class="text-danger">*</span>
+                                                </label>
+                                                <select class="form-select fw-semibold" id="leaveCategoryId" name="leaveCategoryId" required>
+                                                    <option value="" disabled selected>Select Leave Category...</option>
+                                                    <!-- Dynamic Categories with Remaining Balances -->
+                                                </select>
+                                            </div>
+
+                                            <!-- 2. Leave Duration Mode (Segmented Button Group) -->
+                                            <div class="col-12">
+                                                <label class="form-label fw-bold text-dark mb-1">Leave Duration Mode <span class="text-danger">*</span></label>
+                                                <div class="btn-group w-100" role="group" aria-label="Leave Mode">
+                                                    <input type="radio" class="btn-check" name="leaveModeRadio" id="leaveModeFull" value="full" checked autocomplete="off">
+                                                    <label class="btn btn-outline-success fw-semibold py-2" for="leaveModeFull">
+                                                        <i class="fa-solid fa-sun me-1"></i> Full Day Leave
+                                                    </label>
+
+                                                    <input type="radio" class="btn-check" name="leaveModeRadio" id="leaveModeHalf" value="half" autocomplete="off">
+                                                    <label class="btn btn-outline-success fw-semibold py-2" for="leaveModeHalf">
+                                                        <i class="fa-solid fa-cloud-sun me-1"></i> Half Day (0.5 Day)
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            <!-- 3A. Full Day Dates (Start & End Date) -->
+                                            <div class="col-12" id="blockFullDayDates">
+                                                <div class="row g-3">
+                                                    <div class="col-md-6 col-12">
+                                                        <label class="form-label fw-bold text-dark mb-1">Start Date <span class="text-danger">*</span></label>
+                                                        <input type="date" class="form-control" id="leaveStartDate" name="startDate" value="<?= date('Y-m-d') ?>" required>
+                                                    </div>
+                                                    <div class="col-md-6 col-12">
+                                                        <label class="form-label fw-bold text-dark mb-1">End Date <span class="text-danger">*</span></label>
+                                                        <input type="date" class="form-control" id="leaveEndDate" name="endDate" value="<?= date('Y-m-d') ?>" required>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- 3B. Half Day Date (Single Date) -->
+                                            <div class="col-12 d-none" id="blockHalfDayDate">
+                                                <label class="form-label fw-bold text-dark mb-1">Leave Date <span class="text-danger">*</span></label>
+                                                <input type="date" class="form-control" id="leaveSingleDate" value="<?= date('Y-m-d') ?>">
+                                                <div class="form-text text-muted">Half day leave applies for 0.5 day on the selected date.</div>
+                                            </div>
+
+                                            <!-- 4. Summary & Balance Info Card -->
+                                            <div class="col-12">
+                                                <div class="p-3 bg-light rounded-3 border d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                                    <div class="d-flex align-items-center gap-2 text-primary fw-bold fs-13">
+                                                        <i class="fa-solid fa-calculator fs-15"></i>
+                                                        <span>Calculated Duration: <strong id="leaveDurationDisplay" class="text-dark">1 Day</strong></span>
+                                                    </div>
+                                                    <div id="leaveCategoryBalanceBadge" class="d-none">
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-12" id="leaveBalanceText"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- 5. Reason -->
+                                            <div class="col-12">
+                                                <label class="form-label fw-bold text-dark mb-1">Reason / Purpose <span class="text-danger">*</span></label>
+                                                <textarea class="form-control" id="leaveReason" name="reason" rows="3" required placeholder="State your reason for leave..."></textarea>
+                                            </div>
+
+                                            <!-- 6. Attachment -->
+                                            <div class="col-12">
+                                                <label class="form-label fw-semibold text-muted mb-1">Supporting Document / Prescription <span class="text-muted fs-11">(Optional)</span></label>
+                                                <input type="file" class="form-control" id="leaveAttachment" name="attachment">
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
+                                            <button type="reset" class="btn btn-outline-secondary fw-semibold px-4" id="btnResetApplyLeave">Reset</button>
+                                            <button type="submit" class="btn btn-primary fw-semibold px-4 d-flex align-items-center" id="btnApplyLeave">
+                                                <i class="fa-solid fa-paper-plane me-2"></i> Submit Application
+                                            </button>
+                                        </div>
+                                        <div id="applyLeaveError" class="alert alert-danger mt-3 d-none fs-12 py-2" role="alert"></div>
+                                        <div id="applyLeaveSuccess" class="alert alert-success mt-3 d-none fs-12 py-2" role="alert"></div>
+                                    </form>
                                 </div>
-                                <div class="mt-4 pt-3 border-top d-flex gap-2">
-                                    <button type="submit" class="btn btn-sm btn-primary fw-semibold px-4 d-flex align-items-center" id="btnApplyLeave">
-                                        <i class="fa-solid fa-paper-plane me-2"></i> Submit Application
-                                    </button>
-                                    <button type="reset" class="btn btn-sm btn-outline-secondary fw-semibold px-4">Reset</button>
-                                </div>
-                                <div id="applyLeaveError" class="alert alert-danger mt-3 d-none fs-12 py-2" role="alert"></div>
-                                <div id="applyLeaveSuccess" class="alert alert-success mt-3 d-none fs-12 py-2" role="alert"></div>
-                            </form>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Applied Leave List Tab -->
-                <div class="tab-pane fade" id="appliedLeaveListTabContent" role="tabpanel" aria-labelledby="applied-leave-list">
-                    <div class="card custom-card border-top border-4 border-secondary shadow-sm">
-                        <div class="card-header py-3 bg-white border-bottom d-flex justify-content-between align-items-center">
-                            <h5 class="card-title fw-bold mb-0 text-dark">
-                                <i class="fa-solid fa-list-check text-secondary me-2"></i>Applied Leave List
-                            </h5>
-                            <button type="button" class="btn btn-sm btn-primary" id="btnRefreshAppliedLeaves">
-                                <i class="fa-solid fa-arrow-rotate-right me-1"></i> Refresh Data
-                            </button>
+                <!-- 7. Late Request Tab -->
+                <div class="tab-pane fade" id="lateRequestTabContent" role="tabpanel" aria-labelledby="late-request-tab">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8 col-md-10">
+                            <div class="card custom-card border-top border-4 border-danger shadow-sm">
+                                <div class="card-header py-3 bg-white border-bottom">
+                                    <h5 class="card-title fw-bold mb-1 text-dark">
+                                        <i class="fa-solid fa-clock text-danger me-2"></i>Apply for Late Arrival Excuse
+                                    </h5>
+                                    <small class="text-muted">Submit an explanation for biometric attendance lateness to your approvers</small>
+                                </div>
+                                <div class="card-body p-4">
+                                    <!-- Approvers Preview Banner -->
+                                    <div class="row g-2 mb-4 p-3 bg-light rounded-3 border" id="lateApproversRow">
+                                        <div class="col-md-6">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="avatar avatar-sm bg-danger-subtle text-danger rounded-circle d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                                    <i class="fa-solid fa-user-check fs-13"></i>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted d-block fs-11 fw-semibold text-uppercase">1st Late Approver</small>
+                                                    <span class="fw-bold text-dark fs-12" id="formFirstLateApproverName">Loading...</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="avatar avatar-sm bg-warning-subtle text-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                                    <i class="fa-solid fa-user-shield fs-13"></i>
+                                                </div>
+                                                <div>
+                                                    <small class="text-muted d-block fs-11 fw-semibold text-uppercase">2nd Late Approver</small>
+                                                    <span class="fw-bold text-dark fs-12" id="formSecondLateApproverName">Loading...</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <form id="formLateArrivalApp">
+                                        <div class="row g-3">
+                                            <!-- 1. Late Date Selection (Smart Dropdown of Actual Late Entries) -->
+                                            <div class="col-12">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <label class="form-label fw-bold text-dark mb-0">
+                                                        Select Late Date <span class="text-danger">*</span>
+                                                    </label>
+                                                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none fs-12 text-secondary" id="btnToggleCustomDate">
+                                                        <i class="fa-solid fa-calendar-day me-1"></i>Switch to Custom Date Picker
+                                                    </button>
+                                                </div>
+
+                                                <!-- Smart Dropdown of Late Entries -->
+                                                <div id="containerSmartLateSelect">
+                                                    <select class="form-select fw-semibold" id="lateEntrySelect" required>
+                                                        <option value="" disabled selected>Loading actual late records...</option>
+                                                    </select>
+                                                    <div class="form-text text-muted" id="lateEntriesHelp">
+                                                        Automatically loaded from your biometric punch records (last 90 days).
+                                                    </div>
+                                                </div>
+
+                                                <!-- Manual Custom Date Picker (Hidden by default) -->
+                                                <div id="containerCustomLateDate" class="d-none mt-2">
+                                                    <input type="date" class="form-control" id="customLateDate" value="<?= date('Y-m-d') ?>">
+                                                    <div class="form-text text-muted">Select specific date if not listed above.</div>
+                                                </div>
+                                            </div>
+
+                                            <!-- 2. Late Details Info Card -->
+                                            <div class="col-12" id="lateDetailsInfoCard">
+                                                <div class="p-3 bg-light rounded-3 border d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                                    <div class="d-flex align-items-center gap-3">
+                                                        <div>
+                                                            <small class="text-muted d-block fs-11">Shift Start</small>
+                                                            <span class="fw-bold text-dark fs-12" id="lateShiftStartTime">—</span>
+                                                        </div>
+                                                        <div class="border-start ps-3">
+                                                            <small class="text-muted d-block fs-11">Actual Punch</small>
+                                                            <span class="fw-bold text-danger fs-12" id="lateActualPunchTime">—</span>
+                                                        </div>
+                                                    </div>
+                                                    <div id="lateDurationBadge">
+                                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 fs-12" id="lateDurationText">
+                                                            <i class="fa-solid fa-clock me-1"></i>Late Duration: —
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- 3. Reason for Late Arrival -->
+                                            <div class="col-12">
+                                                <label class="form-label fw-bold text-dark mb-1">
+                                                    Reason for Late Arrival <span class="text-danger">*</span>
+                                                </label>
+                                                <textarea class="form-control" id="lateReasonText" rows="3" required placeholder="Explain why you were late (e.g., severe traffic delay, urgent medical appointment, vehicle breakdown)..."></textarea>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
+                                            <button type="reset" class="btn btn-outline-secondary fw-semibold px-4" id="btnResetLateApp">Reset</button>
+                                            <button type="submit" class="btn btn-danger fw-semibold px-4 d-flex align-items-center" id="btnSubmitLateApp">
+                                                <i class="fa-solid fa-paper-plane me-2"></i> Submit Late Request
+                                            </button>
+                                        </div>
+                                        <div id="lateAppAlertError" class="alert alert-danger mt-3 d-none fs-12 py-2" role="alert"></div>
+                                        <div id="lateAppAlertSuccess" class="alert alert-success mt-3 d-none fs-12 py-2" role="alert"></div>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
-                        <div class="card-body p-0">
-                            <!-- Filters -->
-                            <div class="bg-light p-3 border-bottom d-flex gap-2 align-items-center flex-wrap">
-                                <div style="width: 200px;">
-                                    <label class="form-label small fw-semibold text-muted mb-1">Search Employee</label>
-                                    <input type="text" id="filterKeyword" class="form-control form-control-sm" placeholder="Name or ID...">
+                    </div>
+                </div>
+
+                <!-- 9. History Tab (Leave, Late, Manual, Mobile & Selfie) -->
+                <div class="tab-pane fade" id="historyTabContent" role="tabpanel" aria-labelledby="history-tab">
+                    <div class="card custom-card shadow-sm">
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom py-3">
+                            <div>
+                                <h6 class="card-title fw-bold text-dark mb-0">
+                                    <i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>Activity & Request History
+                                </h6>
+                                <small class="text-muted">Comprehensive history of your Leaves, Late Requests, Manual Punches & Mobile/Selfie attendances</small>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <div class="input-group input-group-sm" style="width: 170px;">
+                                    <span class="input-group-text bg-light"><i class="fa-solid fa-calendar"></i></span>
+                                    <input type="month" class="form-control" id="historyMonthFilter" value="<?= date('Y-m') ?>">
                                 </div>
-                                <div style="width: 150px;">
-                                    <label class="form-label small fw-semibold text-muted mb-1">Status</label>
-                                    <select id="filterStatus" class="form-select form-select-sm">
-                                        <option value="" selected>All Statuses</option>
-                                        <option value="0">Pending</option>
-                                        <option value="1">Approved</option>
-                                        <option value="2">Rejected</option>
-                                    </select>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnRefreshHistory">
+                                    <i class="fa-solid fa-arrows-rotate me-1"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="card-body">
+                            <!-- Filter Pills -->
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 pb-2 border-bottom">
+                                <div class="btn-group btn-group-sm flex-wrap" role="group" id="historyCategoryFilters">
+                                    <button type="button" class="btn btn-outline-primary active btn-hist-filter" data-filter="all">
+                                        <i class="fa-solid fa-list me-1"></i> All Records <span class="badge bg-primary ms-1" id="badgeAllHistory">0</span>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-hist-filter" data-filter="mobile">
+                                        <i class="fa-solid fa-mobile-screen-button text-info me-1"></i> Mobile Punch <span class="badge bg-info ms-1" id="badgeMobileHistory">0</span>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-hist-filter" data-filter="leave">
+                                        <i class="fa-solid fa-umbrella-beach text-success me-1"></i> Leave <span class="badge bg-success ms-1" id="badgeLeaveHistory">0</span>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-hist-filter" data-filter="late">
+                                        <i class="fa-solid fa-clock text-danger me-1"></i> Late Excuse <span class="badge bg-danger ms-1" id="badgeLateHistory">0</span>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-hist-filter" data-filter="manual">
+                                        <i class="fa-solid fa-location-dot text-warning me-1"></i> Manual & Field Visit <span class="badge bg-warning ms-1" id="badgeManualHistory">0</span>
+                                    </button>
                                 </div>
-                                <div class="ms-auto mt-4">
-                                    <button class="btn btn-sm btn-dark" id="btnApplyFilters">Apply Filters</button>
+
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="input-group input-group-sm" style="width: 220px;">
+                                        <span class="input-group-text bg-light"><i class="fa-solid fa-magnifying-glass"></i></span>
+                                        <input type="text" class="form-control" id="historySearchInput" placeholder="Search history...">
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Table -->
+                            <!-- History Table -->
                             <div class="table-responsive">
-                                <table class="table table-hover align-middle mb-0" style="min-width: 1000px;">
+                                <table class="table table-hover table-bordered align-middle text-start fs-12 mb-0" id="historyDataTable">
                                     <thead class="table-light text-secondary">
                                         <tr>
-                                            <th>SN</th>
-                                            <th>Emp ID</th>
-                                            <th>Employee Name</th>
-                                            <th>Category</th>
-                                            <th>Start Date</th>
-                                            <th>End Date</th>
-                                            <th>Days</th>
-                                            <th>Reason</th>
-                                            <th>Status</th>
-                                            <th>Action</th>
+                                            <th style="width: 45px;" class="text-center">SN</th>
+                                            <th style="width: 110px;">Date</th>
+                                            <th style="width: 150px;">Type / Category</th>
+                                            <th style="width: 140px;">Time / Duration</th>
+                                            <th style="width: 180px;">Location / Site</th>
+                                            <th>Reason / Remarks</th>
+                                            <th style="width: 120px;" class="text-center">Status</th>
+                                            <th style="width: 180px;">Approver Info</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="appliedLeaveTableBody">
-                                        <tr>
-                                            <td colspan="10" class="text-center py-4 text-muted">
-                                                <span class="spinner-border spinner-border-sm me-2" role="status"></span> Loading data...
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <!-- Pagination Info -->
-                            <div class="p-3 border-top bg-light d-flex justify-content-between align-items-center">
-                                <span class="text-muted small fw-semibold" id="paginationInfo"></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Late Request Tab -->
-                <div class="tab-pane fade" id="lateRequestTabContent" role="tabpanel" aria-labelledby="late-request-tab">
-                    <div class="card custom-card border-top border-4 border-danger shadow-sm">
-                        <div class="card-header py-3 bg-white border-bottom d-flex justify-content-between align-items-center">
-                            <h5 class="card-title fw-bold mb-0 text-dark">
-                                <i class="fa-solid fa-clock text-danger me-2"></i>Late Request
-                            </h5>
-                            <button type="button" class="btn btn-sm btn-primary" id="btnCreateLateRequest" data-bs-toggle="modal" data-bs-target="#createLateRequestModal">
-                                <i class="fa-solid fa-plus me-1"></i> Create Late Request
-                            </button>
-                        </div>
-                        <div class="card-body p-0">
-                            <!-- Filters -->
-                            <div class="bg-light p-3 border-bottom d-flex gap-2 align-items-center justify-content-between">
-                                <div class="d-flex gap-2 align-items-center">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRefreshLateRequests">
-                                        <i class="fa-solid fa-arrow-rotate-right me-1"></i> Refresh
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <!-- Table -->
-                            <div class="table-responsive">
-                                <table class="table table-hover table-striped align-middle fs-12 mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Employee</th>
-                                            <th>Attendance Time</th>
-                                            <th>Late By</th>
-                                            <th>Reason</th>
-                                            <th>Status</th>
-                                            <th>Approval Progress</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="lateRequestTableBody">
+                                    <tbody id="historyTableBody">
                                         <tr>
                                             <td colspan="8" class="text-center py-4 text-muted">
-                                                <span class="spinner-border spinner-border-sm me-2" role="status"></span> Loading data...
+                                                <span class="spinner-border spinner-border-sm me-2" role="status"></span> Loading history records...
                                             </td>
                                         </tr>
                                     </tbody>
                                 </table>
+                            </div>
+                            
+                            <div id="noHistoryMsg" class="alert alert-info text-center d-none mt-3 mb-0">
+                                <i class="fa-solid fa-circle-info me-2"></i> No records found for the selected month and filter.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 10. Manual Entry / Missing Punch / Field Visit Tab -->
+                <div class="tab-pane fade" id="manualEntryTabContent" role="tabpanel" aria-labelledby="manual-entry-tab">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8 col-md-10">
+                            <div class="card custom-card shadow-sm border-0">
+                                <div class="card-header border-bottom py-3 bg-light">
+                                    <h6 class="card-title fw-bold text-dark mb-0">
+                                        <i class="fa-solid fa-file-pen text-warning me-2"></i>Apply Manual Entry / Missing Punch / Field Visit
+                                    </h6>
+                                    <small class="text-muted">Submit attendance correction, missing punch request, or official field visit log</small>
+                                </div>
+                                <div class="card-body p-4">
+                                    <div class="alert alert-danger d-none" id="manualAppAlertError"></div>
+                                    <div class="alert alert-success d-none" id="manualAppAlertSuccess"></div>
+
+                                    <form id="formManualEntryApp">
+                                        <!-- 1. Main Type Dropdown -->
+                                        <div class="mb-3">
+                                            <label for="manualAppType" class="form-label fw-bold text-dark">
+                                                Application Type <span class="text-danger">*</span>
+                                            </label>
+                                            <select class="form-select form-select-lg fw-semibold" id="manualAppType" required>
+                                                <option value="1" selected>Manual Entry</option>
+                                                <option value="2">Missing Punch</option>
+                                                <option value="3">Field Visit</option>
+                                            </select>
+                                            <div class="form-text text-muted" id="manualAppTypeHelp">
+                                                Full day / customized manual in-time and out-time correction.
+                                            </div>
+                                        </div>
+
+                                        <!-- 2. Missing Punch Sub-Options (Shown only when Type = 2) -->
+                                        <div id="sectionMissingPunch" class="d-none border rounded p-3 mb-3 bg-light-subtle">
+                                            <div class="row g-3">
+                                                <div class="col-md-6">
+                                                    <label for="missingPunchSubtype" class="form-label fw-semibold">Punch Source <span class="text-danger">*</span></label>
+                                                    <select class="form-select" id="missingPunchSubtype">
+                                                        <option value="device" selected>Manual Device Punch</option>
+                                                        <option value="mobile">Manual Mobile Punch</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="missingPunchEntryExit" class="form-label fw-semibold">Punch Type <span class="text-danger">*</span></label>
+                                                    <select class="form-select" id="missingPunchEntryExit">
+                                                        <option value="1" selected>Entry Punch (In Time)</option>
+                                                        <option value="2">Exit Punch (Out Time)</option>
+                                                    </select>
+                                                </div>
+                                                <!-- Device Select (For Device Punch) -->
+                                                <div class="col-12" id="sectionDeviceSelect">
+                                                    <label for="deviceSelect" class="form-label fw-semibold">Select Biometric Device <span class="text-danger">*</span></label>
+                                                    <select class="form-select" id="deviceSelect">
+                                                        <option value="" selected disabled>Loading devices...</option>
+                                                    </select>
+                                                </div>
+                                                <!-- Location Input (For Mobile Punch) -->
+                                                <div class="col-12 d-none" id="sectionMobileLocation">
+                                                    <label for="manualMobileLocation" class="form-label fw-semibold">Location / Address <span class="text-danger">*</span></label>
+                                                    <input type="text" class="form-control" id="manualMobileLocation" placeholder="Enter location name, e.g. Corporate Head Office, Dhaka">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- 3. Field Visit Area (Shown only when Type = 3) -->
+                                        <div id="sectionFieldVisit" class="d-none border rounded p-3 mb-3 bg-light-subtle">
+                                            <label for="fieldVisitAreaInput" class="form-label fw-semibold">Visit Area / Destination <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="fieldVisitAreaInput" placeholder="e.g. Savar Project Site, Gulshan Client Office">
+                                            <div class="form-text text-muted">Mention the official site or client destination visited.</div>
+                                        </div>
+
+                                        <!-- 4. Date Field -->
+                                        <div class="mb-3">
+                                            <label for="manualAppDate" class="form-label fw-bold text-dark">
+                                                Date <span class="text-danger">*</span>
+                                            </label>
+                                            <input type="date" class="form-control" id="manualAppDate" value="<?= date('Y-m-d') ?>" required>
+                                        </div>
+
+                                        <!-- 5A. Entry and Exit Times (For Manual Entry & Field Visit) -->
+                                        <div id="sectionEntryExitTimes" class="row g-3 mb-3">
+                                            <div class="col-md-6">
+                                                <label for="manualEntryTime" class="form-label fw-bold text-dark">
+                                                    Entry Time <span class="text-danger">*</span>
+                                                </label>
+                                                <input type="time" class="form-control" id="manualEntryTime" value="09:30" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="manualExitTime" class="form-label fw-bold text-dark">
+                                                    Exit Time <span class="text-danger">*</span>
+                                                </label>
+                                                <input type="time" class="form-control" id="manualExitTime" value="18:30" required>
+                                            </div>
+                                        </div>
+
+                                        <!-- 5B. Single Punch Time (For Missing Punch) -->
+                                        <div id="sectionSinglePunchTime" class="mb-3 d-none">
+                                            <label for="manualSinglePunchTime" class="form-label fw-bold text-dark">
+                                                Punch Time <span class="text-danger">*</span>
+                                            </label>
+                                            <input type="time" class="form-control" id="manualSinglePunchTime" value="09:30">
+                                        </div>
+
+                                        <!-- 6. Reason / Comment -->
+                                        <div class="mb-4">
+                                            <label for="manualAppReason" class="form-label fw-bold text-dark">
+                                                Reason / Comment <span class="text-danger">*</span>
+                                            </label>
+                                            <textarea class="form-control" id="manualAppReason" rows="3" required placeholder="Explain the reason for manual attendance application..."></textarea>
+                                        </div>
+
+                                        <!-- Submit Button -->
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <button type="reset" class="btn btn-outline-secondary" id="btnResetManualApp">Reset</button>
+                                            <button type="submit" class="btn btn-primary px-4" id="btnSubmitManualApp">
+                                                <i class="fa-solid fa-paper-plane me-2"></i> Submit Application
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -875,59 +1154,22 @@
             </div>
         </div>
 
-        <!-- Create Late Request Modal -->
-        <div class="modal fade" id="createLateRequestModal" tabindex="-1" aria-labelledby="createLateRequestModalLabel" aria-hidden="true">
+        <!-- Selfie Photo Viewer Modal -->
+        <div class="modal fade" id="selfiePhotoModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="createLateRequestModalLabel">Create Late Request</h5>
+                <div class="modal-content shadow-lg border-0">
+                    <div class="modal-header border-0 pb-0">
+                        <h6 class="modal-title fw-bold" id="selfieModalTitle"><i class="fa-solid fa-camera me-2 text-primary"></i>Attendance Selfie</h6>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body">
-                        <form id="createLateRequestForm">
-                            <div class="mb-3">
-                                <label for="lateRequestDate" class="form-label fw-semibold">Date <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" id="lateRequestDate" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="lateRequestReason" class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
-                                <textarea class="form-control" id="lateRequestReason" rows="3" required placeholder="Reason for being late..."></textarea>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary" id="btnSubmitLateRequest">Submit Request</button>
+                    <div class="modal-body text-center p-3">
+                        <img id="selfieModalImg" src="" alt="Selfie Photo" class="img-fluid rounded shadow-sm border" style="max-height: 480px; width: auto; object-fit: contain;">
+                        <div class="mt-2 text-muted fs-12" id="selfieModalMeta"></div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Action Late Request Modal -->
-        <div class="modal fade" id="actionLateRequestModal" tabindex="-1" aria-labelledby="actionLateRequestModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="actionLateRequestModalLabel">Late Request Action</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="actionLateRequestForm">
-                            <input type="hidden" id="actionLateRequestId">
-                            <input type="hidden" id="actionLateRequestType">
-                            <div class="mb-3">
-                                <label for="actionLateRequestComment" class="form-label fw-semibold">Comment</label>
-                                <textarea class="form-control" id="actionLateRequestComment" rows="3" placeholder="Optional comment..."></textarea>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" id="btnSubmitActionLateRequest">Submit Action</button>
-                    </div>
-                </div>
-            </div>
-        </div>
 
 
 <script>
@@ -986,27 +1228,48 @@ document.addEventListener("DOMContentLoaded", function() {
         fetchTipsoiDashboard(this.value);
     });
 
-    function fetchTipsoiDashboard(month) {
+    function fetchTipsoiDashboard(month, isBackground = false) {
         const banner = document.getElementById("tipsoiStatusBanner");
         const warning = document.getElementById("notRegisteredAlert");
         const content = document.getElementById("dashboardContent");
         
-        banner.classList.remove("d-none");
-        warning.classList.add("d-none");
-        content.classList.add("d-none");
+        // Remember currently active tab so we don't reset to profile tab
+        const activeTabLink = document.querySelector("#tipsoiTabs .nav-link.active");
+        const activeTabId = activeTabLink ? activeTabLink.id : null;
+
+        if (!isBackground) {
+            banner.classList.remove("d-none");
+            warning.classList.add("d-none");
+            content.classList.add("d-none");
+        }
 
         fetch(`<?= $GLOBALS['base_url'] ?>/api/employee/tipsoi-data?month=${month}`)
-            .then(res => res.json())
+            .then(async res => {
+                const text = await res.text();
+                try {
+                    return JSON.parse(text);
+                } catch(e) {
+                    throw new Error('API connection failure: ' + text);
+                }
+            })
             .then(response => {
                 banner.classList.add("d-none");
                 if (!response.success) {
                     warning.classList.remove("d-none");
-                    document.getElementById("notRegisteredMsg").textContent = response.message || "Failed to fetch Tipsoi records.";
+                    const headingEl = document.getElementById("notRegisteredHeading");
+                    if (headingEl) {
+                        headingEl.textContent = response.credentialsMismatch ? "Tipsoi Credentials Mismatch (ক্রেডেনশিয়াল মিলছে না)" : "Tipsoi Connection Error";
+                    }
+                    document.getElementById("notRegisteredMsg").textContent = response.message || "ERP এবং Tipsoi ক্রেডেনশিয়াল মিলছে না।";
                     return;
                 }
 
                 if (!response.isRegistered) {
                     warning.classList.remove("d-none");
+                    const headingEl = document.getElementById("notRegisteredHeading");
+                    if (headingEl) {
+                        headingEl.textContent = "Not Registered in Tipsoi";
+                    }
                     document.getElementById("notRegisteredMsg").textContent = response.message;
                     return;
                 }
@@ -1044,6 +1307,26 @@ document.addEventListener("DOMContentLoaded", function() {
                 document.getElementById("p2ndLateApprover").textContent = profile.secondLateApproverName || '—';
                 document.getElementById("p1stManualApprover").textContent = profile.firstManualEntryApproverName || '—';
                 document.getElementById("p2ndManualApprover").textContent = profile.secondManualEntryApproverName || '—';
+
+                // Update Approvers on Apply Leave Form
+                const firstAppEl = document.getElementById("formFirstApproverName");
+                const secondAppEl = document.getElementById("formSecondApproverName");
+                if (firstAppEl) firstAppEl.textContent = profile.firstApproverName || '—';
+                if (secondAppEl) secondAppEl.textContent = profile.secondApproverName || '—';
+
+                // Update Approvers on Late Request Form
+                const firstLateAppEl = document.getElementById("formFirstLateApproverName");
+                const secondLateAppEl = document.getElementById("formSecondLateApproverName");
+                if (firstLateAppEl) firstLateAppEl.textContent = profile.firstLateApproverName || profile.firstApproverName || '—';
+                if (secondLateAppEl) secondLateAppEl.textContent = profile.secondLateApproverName || profile.secondApproverName || '—';
+
+                window.cachedLeaveBalances = response.leaveBalances || [];
+                if (typeof loadLeaveCategories === 'function') {
+                    loadLeaveCategories();
+                }
+                if (typeof loadTipsoiLateEntries === 'function') {
+                    loadTipsoiLateEntries();
+                }
 
                 // Personal & Contact Info
                 document.getElementById("pFatherName").textContent = erp.father_name || '—';
@@ -1132,6 +1415,38 @@ document.addEventListener("DOMContentLoaded", function() {
                             </div>
                         `;
                     });
+                }
+
+                // 2.1 Populate Leave History Log Table
+                const leaveHistoryTableBody = document.getElementById("leaveHistoryTableBody");
+                const noLeaveHistoryMsg = document.getElementById("noLeaveHistoryMsg");
+                if (leaveHistoryTableBody) {
+                    leaveHistoryTableBody.innerHTML = "";
+                    const leaveHistory = response.leaveHistory || [];
+                    if (leaveHistory.length === 0) {
+                        if (noLeaveHistoryMsg) noLeaveHistoryMsg.classList.remove("d-none");
+                    } else {
+                        if (noLeaveHistoryMsg) noLeaveHistoryMsg.classList.add("d-none");
+                        leaveHistory.forEach(h => {
+                            let statusBadge = '<span class="badge bg-warning">Pending</span>';
+                            if (h.approvalStatus === 1) {
+                                statusBadge = '<span class="badge bg-success">Approved</span>';
+                            } else if (h.approvalStatus === 2) {
+                                statusBadge = '<span class="badge bg-danger">Rejected</span>';
+                            }
+                            
+                            const datesStr = (h.startDate === h.endDate) ? h.startDate : `${h.startDate} to ${h.endDate}`;
+                            
+                            leaveHistoryTableBody.innerHTML += `
+                                <tr>
+                                    <td><strong>${h.categoryName || 'Leave'}</strong><br><small class="text-muted">${h.reason || '—'}</small></td>
+                                    <td>${datesStr}</td>
+                                    <td>${h.duration || 1} Day(s)</td>
+                                    <td>${statusBadge}</td>
+                                </tr>
+                            `;
+                        });
+                    }
                 }
 
                 // 3. Populate Attendance Logs & Stats
@@ -1310,6 +1625,13 @@ document.addEventListener("DOMContentLoaded", function() {
                             approverStr += `<div>2nd: ${p.secondApprover} <span class="badge ${p.secondApprovalStatus == 1 ? 'bg-success' : 'bg-warning'}">${p.secondApprovalStatus == 1 ? 'Appr.' : 'Pend.'}</span></div>`;
                         }
 
+                        let actionBtn = '<span class="text-muted fs-11">N/A</span>';
+                        if (p.id && (p.status === 0 || p.status === '0')) {
+                            actionBtn = `<button type="button" class="btn btn-sm btn-outline-danger py-1 px-2 btn-cancel-request" data-id="${p.id}" data-type="${p.rawType || 'leave'}" data-req-type="${p.requestType}">
+                                <i class="fa-solid fa-ban me-1"></i>Cancel
+                            </button>`;
+                        }
+
                         pendingTbody.innerHTML += `
                             <tr>
                                 <td class="fw-bold text-dark">${p.requestType}</td>
@@ -1317,6 +1639,9 @@ document.addEventListener("DOMContentLoaded", function() {
                                 <td>${p.reason}</td>
                                 <td>
                                     ${approverStr || `<span class="badge ${statusBadge}">${statusText}</span>`}
+                                </td>
+                                <td class="text-center">
+                                    ${actionBtn}
                                 </td>
                             </tr>
                         `;
@@ -1354,6 +1679,15 @@ document.addEventListener("DOMContentLoaded", function() {
                         `;
                     });
                 }
+
+                // Restore active tab so user stays on Pending Requests or whichever tab they were viewing
+                if (activeTabId) {
+                    const el = document.getElementById(activeTabId);
+                    if (el && typeof bootstrap !== 'undefined') {
+                        const bTab = bootstrap.Tab.getInstance(el) || new bootstrap.Tab(el);
+                        bTab.show();
+                    }
+                }
             })
             .catch(err => {
                 banner.classList.add("d-none");
@@ -1372,7 +1706,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         tbody.innerHTML = `
             <tr>
-                <td colspan="11" class="text-center py-4 text-muted">
+                <td colspan="12" class="text-center py-4 text-muted">
                     <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                     Fetching pending approval requests from Tipsoi API...
                 </td>
@@ -1389,11 +1723,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 console.log("Logged User Approver Info:", loggedUserApproverInfo);
                 renderApprovalsTable();
             } else {
-                tbody.innerHTML = `<tr><td colspan="11" class="text-center text-danger py-4">${res.message || 'Failed to load requests'}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="12" class="text-center text-danger py-4">${res.message || 'Failed to load requests'}</td></tr>`;
             }
         })
         .catch(err => {
-            tbody.innerHTML = `<tr><td colspan="11" class="text-center text-danger py-4">${err.message || 'Network error'}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="12" class="text-center text-danger py-4">${err.message || 'Network error'}</td></tr>`;
         });
     }
 
@@ -1468,15 +1802,14 @@ document.addEventListener("DOMContentLoaded", function() {
                 (normUser && normSecond && (normUser.includes(normSecond) || normSecond.includes(normUser))) ||
                 (userOfficeId && secondAppName && secondAppName.includes(userOfficeId));
 
+            // Do NOT show user's own requests in this "Requests Pending My Approval" tab
             const isMyOwnRequest = (userOfficeId && String(rec.employeeOfficeId || '') === userOfficeId) || 
                                    (normUser && normUser === normalizeName(rec.employeeName));
+            if (isMyOwnRequest) {
+                return false;
+            }
 
             let isForMe = false;
-            
-            // If the user sent the request themselves
-            if (isMyOwnRequest) {
-                isForMe = true;
-            }
             
             // If the user is the first approver (and it's pending)
             if (isFirstApprover && firstStatus == 0) {
@@ -1485,6 +1818,11 @@ document.addEventListener("DOMContentLoaded", function() {
             
             // If the user is the second approver (and it's pending)
             if (isSecondApprover && secondStatus == 0) {
+                isForMe = true;
+            }
+
+            // If the user is HR/Admin, they oversee all requests waiting for approval
+            if (isHr) {
                 isForMe = true;
             }
 
@@ -1521,6 +1859,32 @@ document.addEventListener("DOMContentLoaded", function() {
             const firstAppBadge = getApproverBadge(rec.firstApprovalStatus, rec.firstApproverName);
             const secondAppBadge = getApproverBadge(rec.secondApprovalStatus, rec.secondApproverName);
 
+            // Determine approval & rejection endpoints
+            let approveEndpoint = '';
+            let rejectEndpoint = '';
+            if (rec.requestType === 'Leave Request') {
+                approveEndpoint = `/leave-management/approve/${rec.id}`;
+                rejectEndpoint = `/leave-management/cancel/${rec.id}`;
+            } else if (rec.requestType === 'Late Excuse') {
+                approveEndpoint = `/late-approval-management/approve/${rec.id}`;
+                rejectEndpoint = `/late-approval-management/reject/${rec.id}`;
+            } else {
+                // Manual Entry, Missing Punch, Field Visit
+                approveEndpoint = `/employee/profile/manual/approver/approve/${rec.id}`;
+                rejectEndpoint = `/employee/profile/manual/approver/reject/${rec.id}`;
+            }
+
+            const actionButtonsHtml = `
+                <div class="d-flex gap-1 justify-content-center">
+                    <button type="button" class="btn btn-sm btn-success px-2 py-1 fs-11 fw-semibold btn-tipsoi-approve" data-id="${rec.id}" data-type="${rec.subType || rec.requestType}" data-endpoint="${approveEndpoint}" title="Approve Request">
+                        <i class="fa-solid fa-check me-1"></i>Approve
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger px-2 py-1 fs-11 fw-semibold btn-tipsoi-reject" data-id="${rec.id}" data-type="${rec.subType || rec.requestType}" data-endpoint="${rejectEndpoint}" title="Reject Request">
+                        <i class="fa-solid fa-xmark me-1"></i>Reject
+                    </button>
+                </div>
+            `;
+
             return `
                 <tr>
                     <td class="text-muted fw-semibold text-center">${sn++}</td>
@@ -1534,6 +1898,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     <td>${firstAppBadge}</td>
                     <td>${secondAppBadge}</td>
                     <td><span class="badge bg-warning text-dark px-2 py-1"><i class="fa-solid fa-hourglass-half me-1"></i>Pending</span></td>
+                    <td class="text-center">${actionButtonsHtml}</td>
                 </tr>
             `;
         }).join('');
@@ -1548,6 +1913,197 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("approvalReqTypeFilter")?.addEventListener("change", renderApprovalsTable);
     document.getElementById("approvalStageFilter")?.addEventListener("change", renderApprovalsTable);
     document.getElementById("approvalSearchInput")?.addEventListener("input", renderApprovalsTable);
+
+    // Approve and Reject event delegation for Approvals Table
+    document.getElementById("approvalsTableBody")?.addEventListener("click", function(e) {
+        const approveBtn = e.target.closest(".btn-tipsoi-approve");
+        const rejectBtn = e.target.closest(".btn-tipsoi-reject");
+
+        if (approveBtn) {
+            e.stopPropagation();
+            const reqId = approveBtn.getAttribute("data-id");
+            const reqType = approveBtn.getAttribute("data-type") || "Request";
+            const endpoint = approveBtn.getAttribute("data-endpoint");
+            const approverName = loggedUserApproverInfo ? (loggedUserApproverInfo.full_name || 'Approver') : 'Approver';
+
+            const doApprove = () => {
+                approveBtn.disabled = true;
+                const origHtml = approveBtn.innerHTML;
+                approveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+                fetch(`${baseUrl}/api/hrm/tipsoi-action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: endpoint,
+                        method: 'POST',
+                        payload: {
+                            approverComment: `Approved by ${approverName}`,
+                            comment: `Approved by ${approverName}`
+                        }
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        if (window.Swal) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Approved!',
+                                text: `${reqType} has been approved successfully.`
+                            });
+                        } else {
+                            alert(`${reqType} has been approved successfully.`);
+                        }
+                        loadApprovalsData();
+                        const m = monthFilter ? monthFilter.value : '<?= date('Y-m') ?>';
+                        if (typeof fetchTipsoiDashboard === 'function') {
+                            fetchTipsoiDashboard(m);
+                        }
+                    } else {
+                        if (window.Swal) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Failed',
+                                text: data.message || 'Failed to approve request.'
+                            });
+                        } else {
+                            alert(data.message || 'Failed to approve request.');
+                        }
+                        approveBtn.disabled = false;
+                        approveBtn.innerHTML = origHtml;
+                    }
+                })
+                .catch(err => {
+                    console.error('Approve error:', err);
+                    if (window.Swal) {
+                        Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Request failed.' });
+                    } else {
+                        alert(err.message || 'Request failed.');
+                    }
+                    approveBtn.disabled = false;
+                    approveBtn.innerHTML = origHtml;
+                });
+            };
+
+            if (window.Swal) {
+                Swal.fire({
+                    title: 'Approve Request?',
+                    text: `Are you sure you want to approve this ${reqType}?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Approve!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        doApprove();
+                    }
+                });
+            } else if (confirm(`Are you sure you want to approve this ${reqType}?`)) {
+                doApprove();
+            }
+        }
+
+        if (rejectBtn) {
+            e.stopPropagation();
+            const reqId = rejectBtn.getAttribute("data-id");
+            const reqType = rejectBtn.getAttribute("data-type") || "Request";
+            const endpoint = rejectBtn.getAttribute("data-endpoint");
+            const approverName = loggedUserApproverInfo ? (loggedUserApproverInfo.full_name || 'Approver') : 'Approver';
+
+            const doReject = (reason) => {
+                rejectBtn.disabled = true;
+                const origHtml = rejectBtn.innerHTML;
+                rejectBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+                fetch(`${baseUrl}/api/hrm/tipsoi-action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: endpoint,
+                        method: 'POST',
+                        payload: {
+                            approverComment: reason || `Rejected by ${approverName}`,
+                            rejectionReason: reason || `Rejected by ${approverName}`,
+                            cancellationReason: reason || `Rejected by ${approverName}`,
+                            comment: reason || `Rejected by ${approverName}`
+                        }
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        if (window.Swal) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Rejected!',
+                                text: `${reqType} has been rejected.`
+                            });
+                        } else {
+                            alert(`${reqType} has been rejected.`);
+                        }
+                        loadApprovalsData();
+                        const m = monthFilter ? monthFilter.value : '<?= date('Y-m') ?>';
+                        if (typeof fetchTipsoiDashboard === 'function') {
+                            fetchTipsoiDashboard(m);
+                        }
+                    } else {
+                        if (window.Swal) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Failed',
+                                text: data.message || 'Failed to reject request.'
+                            });
+                        } else {
+                            alert(data.message || 'Failed to reject request.');
+                        }
+                        rejectBtn.disabled = false;
+                        rejectBtn.innerHTML = origHtml;
+                    }
+                })
+                .catch(err => {
+                    console.error('Reject error:', err);
+                    if (window.Swal) {
+                        Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'Request failed.' });
+                    } else {
+                        alert(err.message || 'Request failed.');
+                    }
+                    rejectBtn.disabled = false;
+                    rejectBtn.innerHTML = origHtml;
+                });
+            };
+
+            if (window.Swal) {
+                Swal.fire({
+                    title: 'Reject Request?',
+                    text: `Please enter the reason for rejecting this ${reqType}:`,
+                    input: 'textarea',
+                    inputPlaceholder: 'State the reason for rejection...',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Reject',
+                    preConfirm: (value) => {
+                        if (!value || !value.trim()) {
+                            Swal.showValidationMessage('Rejection reason is required.');
+                        }
+                        return value;
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        doReject(result.value);
+                    }
+                });
+            } else {
+                const reason = prompt(`Enter reason for rejecting this ${reqType}:`);
+                if (reason) {
+                    doReject(reason);
+                }
+            }
+        }
+    });
 
     // Helper Utility Formatters
     function isNumeric(n) {
@@ -1587,107 +2143,186 @@ document.addEventListener("DOMContentLoaded", function() {
         return `${hrs}h ${mins}m`;
     }
 
-    // Export Event Listeners
-    document.getElementById("btnMyAttendanceExcel").addEventListener("click", function() {
-        let csv = [];
-        let headers = ["Date", "Shift", "Status", "Entry Time", "Exit Time", "Late By", "Early Exit", "Working Hours", "OT Hours"];
-        csv.push(headers.join(","));
+    // Export Event Listeners (Safely guarded)
+    const btnAttendanceExcel = document.getElementById("btnMyAttendanceExcel");
+    if (btnAttendanceExcel) {
+        btnAttendanceExcel.addEventListener("click", function() {
+            let csv = [];
+            let headers = ["Date", "Shift", "Status", "Entry Time", "Exit Time", "Late By", "Early Exit", "Working Hours", "OT Hours"];
+            csv.push(headers.join(","));
 
-        let rows = document.querySelectorAll("#attendanceTableBody tr");
-        rows.forEach(row => {
-            let cols = row.querySelectorAll("td");
-            if (cols.length >= 9) {
-                let rowData = [];
-                cols.forEach(col => {
-                    let text = col.innerHTML
-                        .replace(/<br\s*\/?>/gi, ' ')
-                        .replace(/<[^>]*>/g, '')
-                        .trim()
-                        .replace(/"/g, '""');
-                    rowData.push(`"${text}"`);
-                });
-                csv.push(rowData.join(","));
-            }
+            let rows = document.querySelectorAll("#attendanceTableBody tr");
+            rows.forEach(row => {
+                let cols = row.querySelectorAll("td");
+                if (cols.length >= 9) {
+                    let rowData = [];
+                    cols.forEach(col => {
+                        let text = col.innerHTML
+                            .replace(/<br\s*\/?>/gi, ' ')
+                            .replace(/<[^>]*>/g, '')
+                            .trim()
+                            .replace(/"/g, '""');
+                        rowData.push(`"${text}"`);
+                    });
+                    csv.push(rowData.join(","));
+                }
+            });
+
+            let csvContent = "data:text/csv;charset=utf-8,\ufeff" + csv.join("\n");
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "My_Attendance_Report.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         });
+    }
 
-        let csvContent = "data:text/csv;charset=utf-8,\ufeff" + csv.join("\n");
-        let encodedUri = encodeURI(csvContent);
-        let link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "My_Attendance_Report.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    });
+    const btnAttendancePdf = document.getElementById("btnMyAttendancePdf");
+    if (btnAttendancePdf) {
+        btnAttendancePdf.addEventListener("click", function() {
+            let title = document.getElementById("attendanceHeaderTitle").textContent || "Attendance Report";
+            let table = document.querySelector("#attendanceTableBody").closest("table");
+            if (!table) return;
 
-    document.getElementById("btnMyAttendancePdf").addEventListener("click", function() {
-        let title = document.getElementById("attendanceHeaderTitle").textContent || "Attendance Report";
-        let table = document.querySelector("#attendanceTableBody").closest("table");
-        if (!table) return;
-
-        let win = window.open("", "_blank");
-        win.document.write(`
-            <html>
-            <head>
-                <title>${title}</title>
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-                <style>
-                    body { font-family: 'Inter', sans-serif; padding: 20px; }
-                    h2 { color: #198754; font-weight: bold; margin-bottom: 20px; text-transform: uppercase; font-size: 16px; }
-                    table { font-size: 11px !important; }
-                    th { background-color: #198754 !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                    @page { size: landscape; margin: 10mm; }
-                </style>
-            </head>
-            <body>
-                <h2>${title}</h2>
-                <div class="table-responsive">
-                    ${table.outerHTML}
-                </div>
-                <script>
-                    window.onload = function() {
-                        window.print();
-                        setTimeout(function() { window.close(); }, 500);
-                    };
-                <\/script>
-            </body>
-            </html>
-        `);
-        win.document.close();
-    });
+            let win = window.open("", "_blank");
+            win.document.write(`
+                <html>
+                <head>
+                    <title>${title}</title>
+                    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                    <style>
+                        body { font-family: 'Inter', sans-serif; padding: 20px; }
+                        h2 { color: #198754; font-weight: bold; margin-bottom: 20px; text-transform: uppercase; font-size: 16px; }
+                        table { font-size: 11px !important; }
+                        th { background-color: #198754 !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        @page { size: landscape; margin: 10mm; }
+                    </style>
+                </head>
+                <body>
+                    <h2>${title}</h2>
+                    <div class="table-responsive">
+                        ${table.outerHTML}
+                    </div>
+                    <script>
+                        window.onload = function() {
+                            window.print();
+                            setTimeout(function() { window.close(); }, 500);
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `);
+            win.document.close();
+        });
+    }
     
     // ==========================================
     // 6. Apply Leave Functionality
     // ==========================================
     const applyLeaveForm = document.getElementById("applyLeaveForm");
     const leaveCategoryId = document.getElementById("leaveCategoryId");
-    
-    // Fetch Leave Categories
-    // Fetch Leave Categories immediately
+    const leaveStartDate = document.getElementById("leaveStartDate");
+    const leaveEndDate = document.getElementById("leaveEndDate");
+    const leaveSingleDate = document.getElementById("leaveSingleDate");
+    const blockFullDayDates = document.getElementById("blockFullDayDates");
+    const blockHalfDayDate = document.getElementById("blockHalfDayDate");
+    const leaveModeFull = document.getElementById("leaveModeFull");
+    const leaveModeHalf = document.getElementById("leaveModeHalf");
+    const leaveDurationDisplay = document.getElementById("leaveDurationDisplay");
+    const leaveCategoryBalanceBadge = document.getElementById("leaveCategoryBalanceBadge");
+    const leaveBalanceText = document.getElementById("leaveBalanceText");
+
+    let leaveCategoriesList = [];
+
+    // Calculate live leave duration
+    function updateLeaveDuration() {
+        if (!leaveDurationDisplay) return;
+
+        const isHalf = leaveModeHalf && leaveModeHalf.checked;
+
+        if (isHalf) {
+            if (blockFullDayDates) blockFullDayDates.classList.add("d-none");
+            if (blockHalfDayDate) blockHalfDayDate.classList.remove("d-none");
+            leaveDurationDisplay.textContent = "0.5 Day (Half Day Leave)";
+            return;
+        }
+
+        if (blockFullDayDates) blockFullDayDates.classList.remove("d-none");
+        if (blockHalfDayDate) blockHalfDayDate.classList.add("d-none");
+
+        if (!leaveStartDate || !leaveEndDate) return;
+
+        const sVal = leaveStartDate.value;
+        const eVal = leaveEndDate.value;
+
+        if (!sVal || !eVal) {
+            leaveDurationDisplay.textContent = "Please select dates";
+            return;
+        }
+
+        const sDate = new Date(sVal + 'T00:00:00');
+        const eDate = new Date(eVal + 'T00:00:00');
+
+        if (eDate < sDate) {
+            leaveDurationDisplay.innerHTML = '<span class="text-danger">End date cannot be earlier than start date</span>';
+            return;
+        }
+
+        const diffTime = eDate.getTime() - sDate.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        leaveDurationDisplay.textContent = `${diffDays} Day${diffDays > 1 ? 's' : ''}`;
+    }
+
+    // Leave mode radio toggle
+    document.querySelectorAll('input[name="leaveModeRadio"]').forEach(radio => {
+        radio.addEventListener("change", function() {
+            updateLeaveDuration();
+        });
+    });
+
+    if (leaveStartDate) leaveStartDate.addEventListener("change", updateLeaveDuration);
+    if (leaveEndDate) leaveEndDate.addEventListener("change", updateLeaveDuration);
+    if (leaveSingleDate) leaveSingleDate.addEventListener("change", function() {
+        if (leaveStartDate) leaveStartDate.value = this.value;
+        if (leaveEndDate) leaveEndDate.value = this.value;
+        updateLeaveDuration();
+    });
+
+    // Fetch and populate leave categories with balance tags
     function loadLeaveCategories() {
+        if (!leaveCategoryId) return;
+
         fetch(`${baseUrl}/api/hrm/leave-category`)
-            .then(async res => {
-                if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error("HTTP " + res.status + ": " + text);
-                }
-                return res.json();
-            })
+            .then(res => res.json())
             .then(data => {
-                console.log("Leave Categories Data:", data);
-                // Also check if data is in a different format
                 const list = data.leaveCategoryList || data.data || data;
                 if (Array.isArray(list)) {
+                    leaveCategoriesList = list;
+                    const balances = window.cachedLeaveBalances || [];
+
                     let html = '<option value="" disabled selected>Select Leave Category...</option>';
                     list.forEach(cat => {
-                        // Accept status 1, or string "1", or no status field at all
-                        if (cat.status === undefined || cat.status == 1 || cat.status === true) { 
-                            html += `<option value="${cat.id}">${cat.name}</option>`;
+                        if (cat.status === undefined || cat.status == 1 || cat.status === true) {
+                            let balText = '';
+                            const matchedBal = balances.find(b => 
+                                (b.leaveCategoryId && b.leaveCategoryId == cat.id) || 
+                                (b.leaveCategoryName && b.leaveCategoryName.toLowerCase().trim() === cat.name.toLowerCase().trim())
+                            );
+
+                            if (matchedBal) {
+                                const total = parseInt(matchedBal.entitled !== undefined ? matchedBal.entitled : (matchedBal.allocation || matchedBal.totalDays || 0));
+                                const remaining = parseInt(matchedBal.balance !== null ? matchedBal.balance : total);
+                                balText = ` (Remaining: ${remaining} days)`;
+                            }
+
+                            html += `<option value="${cat.id}" data-category-name="${cat.name}">${cat.name}${balText}</option>`;
                         }
                     });
-                    if (leaveCategoryId) leaveCategoryId.innerHTML = html;
+                    leaveCategoryId.innerHTML = html;
                 } else {
-                    console.error("Leave categories list not found in response:", data);
+                    leaveCategoryId.innerHTML = '<option value="" disabled selected>No categories available</option>';
                 }
             })
             .catch(err => {
@@ -1697,85 +2332,150 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             });
     }
-    
-    // Load immediately to avoid click event issues
-    loadLeaveCategories();
 
+    // Category change handler to show balance badge
+    if (leaveCategoryId) {
+        leaveCategoryId.addEventListener("change", function() {
+            const selectedOpt = this.options[this.selectedIndex];
+            const catName = selectedOpt.getAttribute("data-category-name") || selectedOpt.textContent;
+            const balances = window.cachedLeaveBalances || [];
+
+            const matchedBal = balances.find(b => 
+                (b.leaveCategoryId && b.leaveCategoryId == this.value) || 
+                (b.leaveCategoryName && b.leaveCategoryName.toLowerCase().trim() === catName.toLowerCase().trim())
+            );
+
+            if (matchedBal && leaveCategoryBalanceBadge && leaveBalanceText) {
+                const total = parseInt(matchedBal.entitled !== undefined ? matchedBal.entitled : (matchedBal.allocation || matchedBal.totalDays || 0));
+                const remaining = parseInt(matchedBal.balance !== null ? matchedBal.balance : total);
+                const used = parseInt(matchedBal.used !== undefined ? matchedBal.used : Math.max(0, total - remaining));
+                leaveBalanceText.innerHTML = `<i class="fa-solid fa-circle-info me-1"></i><strong>${catName}:</strong> ${remaining} Days Remaining (${used}/${total} Used)`;
+                leaveCategoryBalanceBadge.classList.remove("d-none");
+            } else if (leaveCategoryBalanceBadge) {
+                leaveCategoryBalanceBadge.classList.add("d-none");
+            }
+        });
+    }
+
+    // Initialize
+    loadLeaveCategories();
+    updateLeaveDuration();
+
+    // Form Reset Handler
+    const btnResetApplyLeave = document.getElementById("btnResetApplyLeave");
+    if (btnResetApplyLeave) {
+        btnResetApplyLeave.addEventListener("click", function() {
+            setTimeout(() => {
+                if (leaveModeFull) leaveModeFull.checked = true;
+                if (leaveStartDate) leaveStartDate.value = '<?= date('Y-m-d') ?>';
+                if (leaveEndDate) leaveEndDate.value = '<?= date('Y-m-d') ?>';
+                if (leaveSingleDate) leaveSingleDate.value = '<?= date('Y-m-d') ?>';
+                updateLeaveDuration();
+                if (leaveCategoryBalanceBadge) leaveCategoryBalanceBadge.classList.add("d-none");
+            }, 50);
+        });
+    }
+
+    // Form Submit
     if (applyLeaveForm) {
         applyLeaveForm.addEventListener("submit", function(e) {
             e.preventDefault();
             
             const btnSubmit = document.getElementById("btnApplyLeave");
+            const originalBtnHtml = btnSubmit.innerHTML;
             const errorAlert = document.getElementById("applyLeaveError");
             const successAlert = document.getElementById("applyLeaveSuccess");
             
             errorAlert.classList.add("d-none");
             successAlert.classList.add("d-none");
+
+            const isHalf = leaveModeHalf && leaveModeHalf.checked;
+            let startDateVal = leaveStartDate.value;
+            let endDateVal = leaveEndDate.value;
+
+            if (isHalf) {
+                startDateVal = leaveSingleDate.value;
+                endDateVal = leaveSingleDate.value;
+            }
             
-            const startDateEl = document.getElementById("leaveStartDate");
-            const endDateEl = document.getElementById("leaveEndDate");
-            
-            const startDateVal = startDateEl.value;
-            const endDateVal = endDateEl.value;
-            
-            if (new Date(endDateVal) < new Date(startDateVal)) {
+            if (!startDateVal || !endDateVal) {
+                errorAlert.textContent = "Please choose a valid date.";
+                errorAlert.classList.remove("d-none");
+                return;
+            }
+
+            if (!isHalf && (new Date(endDateVal) < new Date(startDateVal))) {
                 errorAlert.textContent = "End date cannot be earlier than start date.";
                 errorAlert.classList.remove("d-none");
                 return;
             }
             
-            // Get Tipsoi Employee ID from the already fetched profile
-            const tipsoiEmpId = document.getElementById("pOfficeId") ? document.getElementById("pOfficeId").getAttribute("data-tipsoi-id") : null;
-            
-            if (!tipsoiEmpId) {
-                errorAlert.textContent = "Could not find your Tipsoi Profile ID. Please make sure you are registered.";
-                errorAlert.classList.remove("d-none");
-                return;
-            }
+            // Get Tipsoi Employee ID (safely with session fallback)
+            const tipsoiEmpId = document.getElementById("pOfficeId") ? document.getElementById("pOfficeId").getAttribute("data-tipsoi-id") : '';
 
             btnSubmit.disabled = true;
             btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Submitting...';
 
             const startYear = new Date(startDateVal).getFullYear();
-            const fiscalYearStartDate = new Date(startYear, 0, 1, 0, 0, 0).getTime(); // Jan 1st 00:00:00
-            const fiscalYearEndDate = new Date(startYear, 11, 31, 23, 59, 59).getTime(); // Dec 31st 23:59:59
+            const fiscalYearStartDate = new Date(startYear, 0, 1, 0, 0, 0).getTime();
+            const fiscalYearEndDate = new Date(startYear, 11, 31, 23, 59, 59).getTime();
 
             const startDateMs = new Date(startDateVal + 'T00:00:00').getTime();
             const endDateMs = new Date(endDateVal + 'T23:59:59').getTime();
 
             const postBodyData = {
-                leaveCategoryId: parseInt(document.getElementById("leaveCategoryId").value),
-                reason: document.getElementById("leaveReason").value,
+                leaveCategoryId: parseInt(leaveCategoryId.value),
+                reason: document.getElementById("leaveReason").value.trim(),
                 forceApproval: false,
                 fiscalYearStartDate: fiscalYearStartDate,
                 fiscalYearEndDate: fiscalYearEndDate,
                 startDate: startDateMs,
                 endDate: endDateMs,
-                isHalfDay: document.getElementById("isHalfDay").checked
+                isHalfDay: isHalf
             };
 
             const formData = new FormData();
             formData.append('postBody', JSON.stringify(postBodyData));
             
             const fileInput = document.getElementById("leaveAttachment");
-            if (fileInput.files.length > 0) {
-                formData.append('file', fileInput.files[0]); // sending as 'file' to match backend expectation if we just pass through
+            if (fileInput && fileInput.files.length > 0) {
+                formData.append('file', fileInput.files[0]);
             }
 
-            fetch(`${baseUrl}/api/hrm/leave-management/apply/employee/${tipsoiEmpId}`, {
+            const targetUrl = tipsoiEmpId ? `${baseUrl}/api/hrm/leave-management/apply/employee/${tipsoiEmpId}` : `${baseUrl}/api/hrm/leave-management/apply/employee/0`;
+
+            fetch(targetUrl, {
                 method: 'POST',
                 body: formData
             })
             .then(res => res.json())
             .then(data => {
                 if (data.success || data.message === "Success" || (data.code && data.code === 200)) {
-                    successAlert.textContent = "Leave application submitted successfully!";
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Submitted!',
+                            text: data.message || 'Leave application submitted successfully!'
+                        });
+                    }
+                    successAlert.textContent = data.message || "Leave application submitted successfully!";
                     successAlert.classList.remove("d-none");
                     applyLeaveForm.reset();
-                    // Optionally refresh dashboard after a short delay
-                    setTimeout(() => {
-                        document.getElementById("btnRefreshApprovals")?.click();
-                    }, 2000);
+                    if (leaveModeFull) leaveModeFull.checked = true;
+                    leaveStartDate.value = '<?= date('Y-m-d') ?>';
+                    leaveEndDate.value = '<?= date('Y-m-d') ?>';
+                    leaveSingleDate.value = '<?= date('Y-m-d') ?>';
+                    updateLeaveDuration();
+                    if (leaveCategoryBalanceBadge) leaveCategoryBalanceBadge.classList.add("d-none");
+                    
+                    // Auto-refresh Dashboard, Pending, and History tabs
+                    const currentMonth = document.getElementById("selectedMonth") ? document.getElementById("selectedMonth").value : '<?= date('Y-m') ?>';
+                    fetchTipsoiDashboardData(currentMonth);
+                    if (typeof fetchHistoryData === 'function') {
+                        const m = historyMonthFilter ? historyMonthFilter.value : '<?= date('Y-m') ?>';
+                        fetchHistoryData(m);
+                    }
+                    document.getElementById("btnRefreshApprovals")?.click();
                 } else {
                     errorAlert.textContent = data.message || "Failed to submit leave application.";
                     errorAlert.classList.remove("d-none");
@@ -1788,347 +2488,192 @@ document.addEventListener("DOMContentLoaded", function() {
             })
             .finally(() => {
                 btnSubmit.disabled = false;
-                btnSubmit.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Submit Application';
+                btnSubmit.innerHTML = originalBtnHtml;
             });
         });
     }
     // ==========================================
-    // 7. Applied Leave List Functionality
+    // 7. Late Request (Late Arrival Excuse) Logic
     // ==========================================
-    const appliedLeaveTableBody = document.getElementById("appliedLeaveTableBody");
-    const btnRefreshAppliedLeaves = document.getElementById("btnRefreshAppliedLeaves");
-    const btnApplyFilters = document.getElementById("btnApplyFilters");
-    const filterStatus = document.getElementById("filterStatus");
-    const filterKeyword = document.getElementById("filterKeyword");
-    const paginationInfo = document.getElementById("paginationInfo");
+    const formLateArrivalApp = document.getElementById("formLateArrivalApp");
+    const lateEntrySelect = document.getElementById("lateEntrySelect");
+    const btnToggleCustomDate = document.getElementById("btnToggleCustomDate");
+    const containerSmartLateSelect = document.getElementById("containerSmartLateSelect");
+    const containerCustomLateDate = document.getElementById("containerCustomLateDate");
+    const customLateDate = document.getElementById("customLateDate");
+    const lateDetailsInfoCard = document.getElementById("lateDetailsInfoCard");
+    const lateShiftStartTime = document.getElementById("lateShiftStartTime");
+    const lateActualPunchTime = document.getElementById("lateActualPunchTime");
+    const lateDurationText = document.getElementById("lateDurationText");
+    const lateReasonText = document.getElementById("lateReasonText");
+    const lateAppAlertError = document.getElementById("lateAppAlertError");
+    const lateAppAlertSuccess = document.getElementById("lateAppAlertSuccess");
+    const btnResetLateApp = document.getElementById("btnResetLateApp");
+    const btnSubmitLateApp = document.getElementById("btnSubmitLateApp");
 
-    function fetchAppliedLeaves() {
-        if (!appliedLeaveTableBody) return;
-        
-        appliedLeaveTableBody.innerHTML = `
-            <tr>
-                <td colspan="9" class="text-center py-4 text-muted">
-                    <span class="spinner-border spinner-border-sm me-2" role="status"></span> Loading data...
-                </td>
-            </tr>
-        `;
-        
-        const params = new URLSearchParams();
-        params.append('page', '0');
-        params.append('count', '2000'); // Increased count to get enough records for client-side filtering
-        
-        if (filterStatus.value !== "") {
-            params.append('status', filterStatus.value);
-        } else {
-            params.append('status', '0');
-            params.append('status', '1');
-            params.append('status', '2');
-            params.append('status', '3');
-            params.append('status', '4');
-            params.append('status', '5');
-        }
+    let lateEntriesList = [];
+    let isCustomDateMode = false;
 
-        if (filterKeyword.value.trim() !== "") {
-            params.append('keyword', filterKeyword.value.trim());
-        }
-
-        fetch(`${baseUrl}/api/hrm/applied-leave-list?${params.toString()}`)
-            .then(res => res.json())
-            .then(res => {
-                if (res.success) {
-                    let finalData = res.data || [];
-
-                    console.log("Fetched Applied Leaves Data:", finalData);
-                    
-
-
-                    renderAppliedLeavesTable(finalData);
-                } else {
-                    appliedLeaveTableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">${res.message || 'Failed to load'}</td></tr>`;
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                appliedLeaveTableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">Network error occurred</td></tr>`;
-            });
-    }
-
-    function renderAppliedLeavesTable(data) {
-        console.log("Rendering Applied Leaves Table with data:", data);
-        if (data.length === 0) {
-            appliedLeaveTableBody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4">No leave history found.</td></tr>`;
-            if(paginationInfo) paginationInfo.textContent = "Showing 0 records";
-            return;
-        }
-
-        const userOfficeIdEl = document.getElementById("pOfficeId");
-        const userTipsoiId = userOfficeIdEl ? userOfficeIdEl.getAttribute("data-tipsoi-id") : '';
-
-        let html = '';
-        let sn = 1;
-        data.forEach(item => {
-            const startDate = item.startDate ? new Date(item.startDate).toLocaleDateString() : 'N/A';
-            const endDate = item.endDate ? new Date(item.endDate).toLocaleDateString() : 'N/A';
-            
-            let statusBadge = '';
-            const statusInt = parseInt(item.approvalStatus || item.status);
-            if (statusInt === 1) statusBadge = '<span class="badge bg-success">Approved</span>';
-            else if (statusInt === 2) statusBadge = '<span class="badge bg-danger">Rejected</span>';
-            else statusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
-
-            let actionBtn = '-';
-            const firstAppId = String(item.firstApproverId || '');
-            const secondAppId = String(item.secondApproverId || '');
-            const firstStatus = parseInt(item.firstApprovalStatus || 0);
-            const secondStatus = parseInt(item.secondApprovalStatus || 0);
-            
-            if (userTipsoiId && statusInt !== 1 && statusInt !== 2) {
-                if (firstAppId === userTipsoiId && firstStatus === 0) {
-                    actionBtn = `<button class="btn btn-sm btn-success btn-approve-leave" data-id="${item.id}">Approve</button>`;
-                } else if (secondAppId === userTipsoiId && secondStatus === 0 && firstStatus === 1) {
-                    actionBtn = `<button class="btn btn-sm btn-success btn-approve-leave" data-id="${item.id}">Approve</button>`;
-                }
-            }
-
-            html += `
-                <tr>
-                    <td class="text-muted">${sn++}</td>
-                    <td class="fw-semibold">${item.employeeOfficeId || item.employeeId || 'N/A'}</td>
-                    <td class="fw-bold">${item.employeeName || 'Unknown'}</td>
-                    <td><span class="badge bg-light text-primary border border-primary-subtle">${item.categoryName || 'Leave'}</span></td>
-                    <td>${startDate}</td>
-                    <td>${endDate}</td>
-                    <td class="fw-semibold">${item.days || item.duration || '-'}</td>
-                    <td class="text-muted" style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${item.reason || ''}">${item.reason || ''}</td>
-                    <td>${statusBadge}</td>
-                    <td>${actionBtn}</td>
-                </tr>
-            `;
-        });
-        
-        appliedLeaveTableBody.innerHTML = html;
-        if(paginationInfo) paginationInfo.textContent = `Showing ${data.length} records`;
-
-        // Attach click listeners to approve buttons
-        document.querySelectorAll('.btn-approve-leave').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const leaveId = this.getAttribute('data-id');
-                approveLeaveRequest(leaveId, this);
-            });
-        });
-    }
-
-    function approveLeaveRequest(leaveId, btnEl) {
-        if (!confirm("Are you sure you want to approve this leave request?")) return;
-        
-        const originalText = btnEl.innerHTML;
-        btnEl.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
-        btnEl.disabled = true;
-
-        fetch(`${baseUrl}/api/hrm/leave-management/approve/${leaveId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(res => res.json())
-        .then(res => {
-            if (res.success) {
-                alert("Leave request approved successfully!");
-                fetchAppliedLeaves(); // Refresh the table
+    // Toggle custom date picker vs smart entries dropdown
+    if (btnToggleCustomDate) {
+        btnToggleCustomDate.addEventListener("click", function() {
+            isCustomDateMode = !isCustomDateMode;
+            if (isCustomDateMode) {
+                containerSmartLateSelect.classList.add("d-none");
+                containerCustomLateDate.classList.remove("d-none");
+                lateEntrySelect.removeAttribute("required");
+                customLateDate.setAttribute("required", "required");
+                this.innerHTML = '<i class="fa-solid fa-list-check me-1"></i>Switch to Smart Late Records List';
+                if (lateDetailsInfoCard) lateDetailsInfoCard.classList.add("d-none");
             } else {
-                alert("Failed to approve leave: " + (res.message || "Unknown error"));
-                btnEl.innerHTML = originalText;
-                btnEl.disabled = false;
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Network error occurred.");
-            btnEl.innerHTML = originalText;
-            btnEl.disabled = false;
-        });
-    }
-
-    if (btnRefreshAppliedLeaves) btnRefreshAppliedLeaves.addEventListener("click", fetchAppliedLeaves);
-    if (btnApplyFilters) btnApplyFilters.addEventListener("click", fetchAppliedLeaves);
-
-    // Initial load when tab is clicked for the first time
-    const appliedLeaveListTab = document.getElementById("applied-leave-list");
-    if (appliedLeaveListTab) {
-        let appliedLeaveLoaded = false;
-        appliedLeaveListTab.addEventListener("shown.bs.tab", function () {
-            if (!appliedLeaveLoaded) {
-                fetchAppliedLeaves();
-                appliedLeaveLoaded = true;
+                containerSmartLateSelect.classList.remove("d-none");
+                containerCustomLateDate.classList.add("d-none");
+                customLateDate.removeAttribute("required");
+                lateEntrySelect.setAttribute("required", "required");
+                this.innerHTML = '<i class="fa-solid fa-calendar-day me-1"></i>Switch to Custom Date Picker';
+                if (lateDetailsInfoCard) lateDetailsInfoCard.classList.remove("d-none");
+                updateLateEntryDetails();
             }
         });
     }
 
-    // Also check on initial load in case hash is already #applied-leave-list
-    if (window.location.hash === '#applied-leave-list') {
-        fetchAppliedLeaves();
-    }
+    // Load actual late records from Tipsoi
+    function loadTipsoiLateEntries() {
+        if (!lateEntrySelect) return;
 
-    // -------------------------------------------------------------------------
-    // LATE REQUEST LOGIC
-    // -------------------------------------------------------------------------
-    
-    const lateRequestTableBody = document.getElementById("lateRequestTableBody");
-    const btnRefreshLateRequests = document.getElementById("btnRefreshLateRequests");
-    const btnSubmitLateRequest = document.getElementById("btnSubmitLateRequest");
-    const btnSubmitActionLateRequest = document.getElementById("btnSubmitActionLateRequest");
-
-    function fetchLateRequests() {
-        if (!lateRequestTableBody) return;
-        
         const tipsoiEmpId = document.getElementById("pOfficeId") ? document.getElementById("pOfficeId").getAttribute("data-tipsoi-id") : null;
         if (!tipsoiEmpId) {
-            lateRequestTableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-danger">Employee ID not found.</td></tr>`;
+            lateEntrySelect.innerHTML = '<option value="" disabled selected>Employee ID not found</option>';
             return;
         }
 
-        lateRequestTableBody.innerHTML = `
-            <tr>
-                <td colspan="8" class="text-center py-4 text-muted">
-                    <span class="spinner-border spinner-border-sm me-2" role="status"></span> Fetching data...
-                </td>
-            </tr>
-        `;
-        
-        // Use the history endpoint as it provides comprehensive state
-        fetch(`${baseUrl}/api/hrm/late-approval-management/late-approvals/${tipsoiEmpId}`)
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
-                }
-                return res.text();
-            })
-            .then(text => {
-                let res;
-                try {
-                    res = JSON.parse(text);
-                } catch (e) {
-                    console.error("Failed to parse JSON: ", text);
-                    throw new Error("Invalid JSON response from server.");
-                }
+        lateEntrySelect.innerHTML = '<option value="" disabled selected>Loading actual late records...</option>';
 
-                if (res.success && res.lateLogList) {
-                    const data = res.lateLogList;
-                    if (!Array.isArray(data) || data.length === 0) {
-                        lateRequestTableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted">No late requests found.</td></tr>`;
-                        return;
-                    }
+        fetch(`${baseUrl}/api/hrm/late-approval-management/late-entries/${tipsoiEmpId}`)
+            .then(res => res.json())
+            .then(data => {
+                const list = data.lateAttendanceRecords || data.data || [];
+                if (Array.isArray(list) && list.length > 0) {
+                    lateEntriesList = list;
+                    let html = '<option value="" disabled selected>Select an unexcused late date (' + list.length + ' found)...</option>';
+                    list.forEach((rec, idx) => {
+                        const dObj = new Date(rec.attDateInMilliseconds || rec.attendanceDate);
+                        const dateStr = dObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', weekday: 'short' });
+                        const inTime = rec.entryTimeInMillis ? new Date(rec.entryTimeInMillis).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : (rec.shiftStartTime || 'N/A');
+                        const lateDuration = rec.lateBy || 'Late';
 
-                    let html = '';
-                    data.forEach(item => {
-                        let attendanceDate = item.attendanceTime ? new Date(item.attendanceTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
-                        let attendanceTime = item.attendanceTime ? new Date(item.attendanceTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '-';
-
-                        // Status Badge
-                        let statusBadge = '';
-                        if (item.status === 0) statusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
-                        else if (item.status === 1) statusBadge = '<span class="badge bg-success">Approved</span>';
-                        else if (item.status === 2) statusBadge = '<span class="badge bg-danger">Rejected</span>';
-                        else if (item.status === 3) statusBadge = '<span class="badge bg-secondary">Cancelled</span>';
-                        else statusBadge = `<span class="badge bg-secondary">Unknown (${item.status})</span>`;
-
-                        // Approval Progress
-                        let approvalProgress = `
-                            <div class="fs-11 text-muted text-start">
-                                <div>1st: ${getApprovalStatusText(item.firstApprovalStatus)}</div>
-                                <div>2nd: ${getApprovalStatusText(item.secondApprovalStatus)}</div>
-                            </div>
-                        `;
-
-                        // Actions
-                        let actionsHtml = '';
-                        if (item.status === 0) {
-                            actionsHtml = `
-                                <button class="btn btn-sm btn-outline-success action-late-btn" data-id="${item.id}" data-type="approve" title="Approve"><i class="fa-solid fa-check"></i></button>
-                                <button class="btn btn-sm btn-outline-danger action-late-btn" data-id="${item.id}" data-type="reject" title="Reject"><i class="fa-solid fa-xmark"></i></button>
-                                <button class="btn btn-sm btn-outline-secondary action-late-btn" data-id="${item.id}" data-type="cancel" title="Cancel"><i class="fa-solid fa-ban"></i></button>
-                            `;
-                        }
-
-                        html += `
-                            <tr>
-                                <td>${attendanceDate}</td>
-                                <td>${item.employeeName || '-'}</td>
-                                <td>${attendanceTime}</td>
-                                <td>${item.lateByStr || '-'}</td>
-                                <td>${item.reason || '-'}</td>
-                                <td>${statusBadge}</td>
-                                <td>${approvalProgress}</td>
-                                <td>${actionsHtml}</td>
-                            </tr>
-                        `;
+                        html += `<option value="${rec.attDateInMilliseconds}" data-index="${idx}">${dateStr} — Late by ${lateDuration} (In: ${inTime})</option>`;
                     });
-                    
-                    lateRequestTableBody.innerHTML = html;
-                    
-                    // Add event listeners to dynamic action buttons
-                    document.querySelectorAll('.action-late-btn').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const id = this.getAttribute('data-id');
-                            const type = this.getAttribute('data-type');
-                            
-                            document.getElementById('actionLateRequestId').value = id;
-                            document.getElementById('actionLateRequestType').value = type;
-                            
-                            const modalLabel = document.getElementById('actionLateRequestModalLabel');
-                            if (type === 'approve') modalLabel.textContent = 'Approve Late Request';
-                            if (type === 'reject') modalLabel.textContent = 'Reject Late Request';
-                            if (type === 'cancel') modalLabel.textContent = 'Cancel Late Request';
-                            
-                            const myModal = new bootstrap.Modal(document.getElementById('actionLateRequestModal'));
-                            myModal.show();
-                        });
-                    });
-
+                    lateEntrySelect.innerHTML = html;
                 } else {
-                    lateRequestTableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-danger">Failed to load: ${res.message || 'Unknown error'}</td></tr>`;
+                    lateEntrySelect.innerHTML = '<option value="" disabled selected>No unexcused late records found in the last 90 days</option>';
                 }
             })
             .catch(err => {
-                console.error("Fetch Late Requests Error:", err);
-                lateRequestTableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-danger">Error: ${err.message || 'Network error occurred.'}</td></tr>`;
+                console.error("Failed to load late entries:", err);
+                lateEntrySelect.innerHTML = '<option value="" disabled selected>Error loading late records (use custom date)</option>';
             });
     }
 
-    function getApprovalStatusText(status) {
-        if (status === 0) return '<span class="text-warning"><i class="fa-solid fa-hourglass-half me-1"></i>Pending</span>';
-        if (status === 1) return '<span class="text-success"><i class="fa-solid fa-check me-1"></i>Approved</span>';
-        if (status === 2) return '<span class="text-danger"><i class="fa-solid fa-xmark me-1"></i>Rejected</span>';
-        return '<span class="text-muted">N/A</span>';
+    // Update details card when selecting a late record
+    function updateLateEntryDetails() {
+        if (!lateEntrySelect || isCustomDateMode) return;
+        const selectedOpt = lateEntrySelect.options[lateEntrySelect.selectedIndex];
+        if (!selectedOpt || selectedOpt.disabled) {
+            if (lateShiftStartTime) lateShiftStartTime.textContent = '—';
+            if (lateActualPunchTime) lateActualPunchTime.textContent = '—';
+            if (lateDurationText) lateDurationText.innerHTML = '<i class="fa-solid fa-clock me-1"></i>Late Duration: —';
+            return;
+        }
+
+        const idx = selectedOpt.getAttribute("data-index");
+        const rec = lateEntriesList[idx];
+        if (rec) {
+            if (lateShiftStartTime) lateShiftStartTime.textContent = rec.shiftStartTime || '—';
+            if (lateActualPunchTime) {
+                lateActualPunchTime.textContent = rec.entryTimeInMillis ? new Date(rec.entryTimeInMillis).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—';
+            }
+            if (lateDurationText) {
+                lateDurationText.innerHTML = `<i class="fa-solid fa-clock me-1"></i>Late By: <strong>${rec.lateBy || '—'}</strong>`;
+            }
+        }
     }
 
-    if (btnRefreshLateRequests) btnRefreshLateRequests.addEventListener("click", fetchLateRequests);
+    if (lateEntrySelect) {
+        lateEntrySelect.addEventListener("change", updateLateEntryDetails);
+    }
 
-    // Create Late Request
-    if (btnSubmitLateRequest) {
-        btnSubmitLateRequest.addEventListener("click", function() {
+    // Form Reset
+    if (btnResetLateApp) {
+        btnResetLateApp.addEventListener("click", function() {
+            setTimeout(() => {
+                if (isCustomDateMode && btnToggleCustomDate) {
+                    btnToggleCustomDate.click();
+                }
+                updateLateEntryDetails();
+                if (lateAppAlertError) lateAppAlertError.classList.add("d-none");
+                if (lateAppAlertSuccess) lateAppAlertSuccess.classList.add("d-none");
+            }, 50);
+        });
+    }
+
+    // Submit Late Request
+    if (formLateArrivalApp) {
+        formLateArrivalApp.addEventListener("submit", function(e) {
+            e.preventDefault();
+
             const tipsoiEmpId = document.getElementById("pOfficeId") ? document.getElementById("pOfficeId").getAttribute("data-tipsoi-id") : null;
             if (!tipsoiEmpId) {
-                alert("Employee ID not found.");
+                if (lateAppAlertError) {
+                    lateAppAlertError.textContent = "Employee ID not found in session.";
+                    lateAppAlertError.classList.remove("d-none");
+                }
                 return;
             }
 
-            const dateInput = document.getElementById("lateRequestDate");
-            const reasonInput = document.getElementById("lateRequestReason");
-            
-            if (!dateInput.value || !reasonInput.value) {
-                alert("Please fill in all required fields.");
+            let attendanceDateMs = null;
+
+            if (isCustomDateMode) {
+                const cVal = customLateDate.value;
+                if (!cVal) {
+                    if (lateAppAlertError) {
+                        lateAppAlertError.textContent = "Please pick a date.";
+                        lateAppAlertError.classList.remove("d-none");
+                    }
+                    return;
+                }
+                attendanceDateMs = new Date(cVal + 'T00:00:00').getTime();
+            } else {
+                const sVal = lateEntrySelect.value;
+                if (!sVal) {
+                    if (lateAppAlertError) {
+                        lateAppAlertError.textContent = "Please select a late date from the list.";
+                        lateAppAlertError.classList.remove("d-none");
+                    }
+                    return;
+                }
+                attendanceDateMs = parseInt(sVal);
+            }
+
+            const reason = lateReasonText.value.trim();
+            if (!reason) {
+                if (lateAppAlertError) {
+                    lateAppAlertError.textContent = "Please provide a valid reason.";
+                    lateAppAlertError.classList.remove("d-none");
+                }
                 return;
             }
 
-            const originalText = this.innerHTML;
-            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-            this.disabled = true;
+            if (lateAppAlertError) lateAppAlertError.classList.add("d-none");
+            if (lateAppAlertSuccess) lateAppAlertSuccess.classList.add("d-none");
 
-            const postData = {
-                attendanceDate: new Date(dateInput.value).getTime(),
-                reason: reasonInput.value
+            const originalBtnHtml = btnSubmitLateApp.innerHTML;
+            btnSubmitLateApp.disabled = true;
+            btnSubmitLateApp.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Submitting...';
+
+            const payload = {
+                attendanceDate: attendanceDateMs,
+                reason: reason
             };
 
             fetch(`${baseUrl}/api/hrm/late-approval-management/apply/employee/${tipsoiEmpId}`, {
@@ -2136,78 +2681,601 @@ document.addEventListener("DOMContentLoaded", function() {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(postData)
+                body: JSON.stringify(payload)
             })
             .then(res => res.json())
-            .then(res => {
-                if (res.success) {
+            .then(data => {
+                if (data.success || data.message === "Success" || (data.code && data.code === 200)) {
                     if (window.Swal) {
                         Swal.fire({
                             icon: 'success',
-                            title: 'Success',
-                            text: 'Late request submitted successfully.'
+                            title: 'Submitted!',
+                            text: data.message || 'Late arrival excuse submitted successfully!'
                         });
-                    } else {
-                        alert('Late request submitted successfully.');
                     }
-                    const modalEl = document.getElementById('createLateRequestModal');
-                    const modal = bootstrap.Modal.getInstance(modalEl);
-                    if (modal) modal.hide();
-                    
-                    dateInput.value = '';
-                    reasonInput.value = '';
-                    
-                    fetchLateRequests();
+                    if (lateAppAlertSuccess) {
+                        lateAppAlertSuccess.textContent = data.message || "Late arrival excuse submitted successfully!";
+                        lateAppAlertSuccess.classList.remove("d-none");
+                    }
+                    formLateArrivalApp.reset();
+                    loadTipsoiLateEntries();
+                    updateLateEntryDetails();
+
+                    // Auto refresh History and Pending tabs
+                    if (typeof fetchHistoryData === 'function') {
+                        const m = historyMonthFilter ? historyMonthFilter.value : '<?= date('Y-m') ?>';
+                        fetchHistoryData(m);
+                    }
+                    document.getElementById("btnRefreshApprovals")?.click();
                 } else {
-                    if (window.Swal) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: res.message || 'Failed to submit request.'
-                        });
-                    } else {
-                        alert(res.message || 'Failed to submit request.');
+                    if (lateAppAlertError) {
+                        lateAppAlertError.textContent = data.message || "Failed to submit late request.";
+                        lateAppAlertError.classList.remove("d-none");
                     }
                 }
             })
             .catch(err => {
-                console.error(err);
-                if (window.Swal) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Network error occurred.'
-                    });
-                } else {
-                    alert('Network error occurred.');
+                console.error("Error submitting late request:", err);
+                if (lateAppAlertError) {
+                    lateAppAlertError.textContent = "A network error occurred while submitting.";
+                    lateAppAlertError.classList.remove("d-none");
                 }
             })
             .finally(() => {
-                this.innerHTML = originalText;
-                this.disabled = false;
+                btnSubmitLateApp.disabled = false;
+                btnSubmitLateApp.innerHTML = originalBtnHtml;
             });
         });
     }
 
-    // Submit Action (Approve/Reject/Cancel)
-    if (btnSubmitActionLateRequest) {
-        btnSubmitActionLateRequest.addEventListener("click", function() {
-            const logId = document.getElementById("actionLateRequestId").value;
-            const type = document.getElementById("actionLateRequestType").value;
-            const comment = document.getElementById("actionLateRequestComment").value;
-            
-            const originalText = this.innerHTML;
-            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-            this.disabled = true;
+    // Initial tab click listener
+    const lateRequestTab = document.getElementById("late-request-tab");
+    if (lateRequestTab) {
+        lateRequestTab.addEventListener("shown.bs.tab", function () {
+            loadTipsoiLateEntries();
+        });
+    }
+
+    // ==========================================
+    // 8. Cancel Request Handler (For Pending Requests)
+    // ==========================================
+    function handleCancelRequestClick(e) {
+        const btn = e.target.closest('.btn-cancel-request');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const reqId = btn.getAttribute('data-id');
+        const rawType = btn.getAttribute('data-type'); // 'leave', 'late', or 'manual'
+        const reqTypeName = btn.getAttribute('data-req-type') || 'Request';
+
+        if (!reqId) {
+            if (window.Swal) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Request ID not found.' });
+            } else {
+                alert('Request ID not found.');
+            }
+            return;
+        }
+
+        const confirmAction = () => {
+            let cancelUrl = '';
+            let payload = null;
+
+            if (rawType === 'leave') {
+                cancelUrl = `${baseUrl}/api/hrm/leave-management/cancel/${reqId}`;
+                payload = { cancellationReason: 'User cancelled leave request' };
+            } else if (rawType === 'late') {
+                cancelUrl = `${baseUrl}/api/hrm/late-approval-management/cancel/${reqId}`;
+                payload = { approverComment: 'User cancelled late excuse request' };
+            } else if (rawType === 'manual') {
+                cancelUrl = `${baseUrl}/api/hrm/manual-entry/cancel/${reqId}`;
+                payload = {};
+            } else {
+                cancelUrl = `${baseUrl}/api/hrm/leave-management/cancel/${reqId}`;
+                payload = { cancellationReason: 'User cancelled request' };
+            }
+
+            btn.disabled = true;
+            const origHtml = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+            fetch(cancelUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: payload ? JSON.stringify(payload) : undefined
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success || data.message === 'Success' || (data.code && data.code === 200)) {
+                    // Instantly fade out and remove the row from the table
+                    const tr = btn.closest('tr');
+                    if (tr) {
+                        tr.style.transition = 'all 0.3s ease';
+                        tr.style.opacity = '0';
+                        setTimeout(() => {
+                            tr.remove();
+                            const pendingTbody = document.getElementById("pendingRequestsTableBody");
+                            if (pendingTbody && pendingTbody.querySelectorAll('tr').length === 0) {
+                                const noMsg = document.getElementById("noPendingRequestsMsg");
+                                if (noMsg) noMsg.classList.remove("d-none");
+                            }
+                        }, 300);
+                    }
+
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Cancelled!',
+                            text: `${reqTypeName} has been cancelled successfully.`
+                        });
+                    } else {
+                        alert(`${reqTypeName} has been cancelled successfully.`);
+                    }
+                    // Refresh dashboard & history in the background without jumping away from the tab
+                    const currentMonth = monthFilter ? monthFilter.value : '<?= date('Y-m') ?>';
+                    fetchTipsoiDashboard(currentMonth, true);
+                    if (typeof fetchHistoryData === 'function') {
+                        const m = historyMonthFilter ? historyMonthFilter.value : '<?= date('Y-m') ?>';
+                        fetchHistoryData(m);
+                    }
+                    if (typeof loadTipsoiLateEntries === 'function') {
+                        loadTipsoiLateEntries();
+                    }
+                } else {
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Failed',
+                            text: data.message || 'Failed to cancel request.'
+                        });
+                    } else {
+                        alert(data.message || 'Failed to cancel request.');
+                    }
+                    btn.disabled = false;
+                    btn.innerHTML = origHtml;
+                }
+            })
+            .catch(err => {
+                console.error('Cancel request error:', err);
+                if (window.Swal) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Network error occurred while cancelling.' });
+                } else {
+                    alert('Network error occurred while cancelling.');
+                }
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            });
+        };
+
+        if (window.Swal) {
+            Swal.fire({
+                title: 'Cancel Request?',
+                text: `Are you sure you want to cancel this ${reqTypeName}? This action cannot be undone.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, Cancel it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    confirmAction();
+                }
+            });
+        }
+    }
+
+    document.addEventListener('click', handleCancelRequestClick);
+    const pendingTbodyEl = document.getElementById("pendingRequestsTableBody");
+    if (pendingTbodyEl) {
+        pendingTbodyEl.addEventListener("click", handleCancelRequestClick);
+    }
+
+    // -------------------------------------------------------------------------
+    // UNIFIED HISTORY TAB LOGIC (Leave, Late, Manual, Mobile & Selfie)
+    // -------------------------------------------------------------------------
+    let currentHistoryData = null;
+    let currentHistFilter = 'all';
+
+    const historyTab = document.getElementById("history-tab");
+    const historyMonthFilter = document.getElementById("historyMonthFilter");
+    const btnRefreshHistory = document.getElementById("btnRefreshHistory");
+    const historySearchInput = document.getElementById("historySearchInput");
+
+    function fetchHistoryData(month) {
+        const tbody = document.getElementById("historyTableBody");
+        const noMsg = document.getElementById("noHistoryMsg");
+        if (!tbody) return;
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-4 text-muted">
+                    <span class="spinner-border spinner-border-sm me-2 text-primary" role="status"></span> Fetching history records for ${month}...
+                </td>
+            </tr>
+        `;
+        if (noMsg) noMsg.classList.add("d-none");
+
+        fetch(`${baseUrl}/api/employee/tipsoi-history?month=${month}`)
+            .then(res => res.json())
+            .then(res => {
+                if (res.success) {
+                    currentHistoryData = res;
+
+                    // Update count badges
+                    const counts = res.counts || {};
+                    const totalAll = (counts.leaves || 0) + (counts.lates || 0) + (counts.manual || 0) + (counts.mobile || 0);
+                    
+                    document.getElementById("badgeAllHistory").textContent = totalAll;
+                    document.getElementById("badgeMobileHistory").textContent = counts.mobile || 0;
+                    document.getElementById("badgeLeaveHistory").textContent = counts.leaves || 0;
+                    document.getElementById("badgeLateHistory").textContent = counts.lates || 0;
+                    document.getElementById("badgeManualHistory").textContent = counts.manual || 0;
+
+                    renderHistoryTable();
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-danger">${res.message || 'Failed to load history.'}</td></tr>`;
+                }
+            })
+            .catch(err => {
+                console.error("History fetch error:", err);
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-danger">Network error loading history.</td></tr>`;
+            });
+    }
+
+    function renderHistoryTable() {
+        const tbody = document.getElementById("historyTableBody");
+        const noMsg = document.getElementById("noHistoryMsg");
+        if (!tbody || !currentHistoryData) return;
+
+        const searchVal = historySearchInput ? historySearchInput.value.toLowerCase().trim() : '';
+        let items = [];
+
+        // 1. Mobile Punches & Selfies
+        if (currentHistFilter === 'all' || currentHistFilter === 'mobile') {
+            (currentHistoryData.mobilePunches || []).forEach(m => {
+                items.push({
+                    type: 'mobile',
+                    categoryName: 'Mobile Punch',
+                    date: m.date,
+                    timeDuration: (m.checkInTime && m.checkInTime !== '—' ? `In: ${m.checkInTime}` : '') + (m.checkOutTime && m.checkOutTime !== '—' ? `<br>Out: ${m.checkOutTime}` : ''),
+                    locationSite: (m.siteName && m.siteName !== '—' ? `<span class="fw-semibold text-dark">${m.siteName}</span>` : '') + 
+                                  (m.location && m.location !== '—' ? `<br><small class="text-muted"><i class="fa-solid fa-location-dot me-1 text-danger"></i>${m.location}</small>` : ''),
+                    photoUrl: m.photoUrl,
+                    remarks: m.remarks && m.remarks !== '—' ? m.remarks : '<span class="text-muted">—</span>',
+                    status: '<span class="badge bg-info-subtle text-info fw-semibold"><i class="fa-solid fa-circle-check me-1"></i>Recorded</span>',
+                    approverInfo: '<span class="text-muted">—</span>',
+                    rawDate: m.date
+                });
+            });
+        }
+
+        // 2. Leave History
+        if (currentHistFilter === 'all' || currentHistFilter === 'leave') {
+            (currentHistoryData.leaves || []).forEach(l => {
+                let statusBadge = '<span class="badge bg-warning text-dark"><i class="fa-solid fa-hourglass-half me-1"></i>Pending</span>';
+                if (l.approvalStatus === 1) statusBadge = '<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Approved</span>';
+                else if (l.approvalStatus === 2) statusBadge = '<span class="badge bg-danger"><i class="fa-solid fa-circle-xmark me-1"></i>Rejected</span>';
+                else if (l.approvalStatus === 3) statusBadge = '<span class="badge bg-secondary"><i class="fa-solid fa-ban me-1"></i>Cancelled</span>';
+
+                if (l.id && (l.approvalStatus === 0 || l.approvalStatus === '0')) {
+                    statusBadge += `<br><button type="button" class="btn btn-outline-danger btn-xs py-0 px-2 mt-1 btn-cancel-request" style="font-size: 11px;" data-id="${l.id}" data-type="leave" data-req-type="Leave Application"><i class="fa-solid fa-ban me-1"></i>Cancel</button>`;
+                }
+
+                const datePeriod = (l.startDate === l.endDate) ? l.startDate : `${l.startDate} to ${l.endDate}`;
+                const approverText = (l.firstApprover || l.secondApprover) ? `1st: ${l.firstApprover || '—'}<br>2nd: ${l.secondApprover || '—'}` : '<span class="text-muted">—</span>';
+
+                items.push({
+                    type: 'leave',
+                    categoryName: `Leave (${l.categoryName})`,
+                    date: datePeriod,
+                    timeDuration: `${l.duration} Day(s)`,
+                    locationSite: '<span class="text-muted">—</span>',
+                    photoUrl: null,
+                    remarks: l.reason || '<span class="text-muted">—</span>',
+                    status: statusBadge,
+                    approverInfo: approverText,
+                    rawDate: l.startDate
+                });
+            });
+        }
+
+        // 3. Late Requests
+        if (currentHistFilter === 'all' || currentHistFilter === 'late') {
+            (currentHistoryData.lates || []).forEach(lt => {
+                let statusBadge = '<span class="badge bg-warning text-dark"><i class="fa-solid fa-hourglass-half me-1"></i>Pending</span>';
+                if (lt.approvalStatus === 1) statusBadge = '<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Approved</span>';
+                else if (lt.approvalStatus === 2) statusBadge = '<span class="badge bg-danger"><i class="fa-solid fa-circle-xmark me-1"></i>Rejected</span>';
+                else if (lt.approvalStatus === 3) statusBadge = '<span class="badge bg-secondary"><i class="fa-solid fa-ban me-1"></i>Cancelled</span>';
+
+                if (lt.id && (lt.approvalStatus === 0 || lt.approvalStatus === '0')) {
+                    statusBadge += `<br><button type="button" class="btn btn-outline-danger btn-xs py-0 px-2 mt-1 btn-cancel-request" style="font-size: 11px;" data-id="${lt.id}" data-type="late" data-req-type="Late Request"><i class="fa-solid fa-ban me-1"></i>Cancel</button>`;
+                }
+
+                const approverText = (lt.firstApprover || lt.secondApprover) ? `1st: ${lt.firstApprover || '—'}<br>2nd: ${lt.secondApprover || '—'}` : '<span class="text-muted">—</span>';
+
+                items.push({
+                    type: 'late',
+                    categoryName: 'Late Excuse',
+                    date: lt.date,
+                    timeDuration: `In: ${lt.inTime}<br><small class="text-danger">Late by ${lt.lateBy}</small>`,
+                    locationSite: '<span class="text-muted">—</span>',
+                    photoUrl: null,
+                    remarks: (lt.reason || '—') + (lt.approverComment && lt.approverComment !== '—' ? `<br><small class="text-primary">Comment: ${lt.approverComment}</small>` : ''),
+                    status: statusBadge,
+                    approverInfo: approverText,
+                    rawDate: lt.date
+                });
+            });
+        }
+
+        // 4. Manual Entries & Field Visits
+        if (currentHistFilter === 'all' || currentHistFilter === 'manual') {
+            (currentHistoryData.manualEntries || []).forEach(mn => {
+                let statusBadge = '<span class="badge bg-warning text-dark"><i class="fa-solid fa-hourglass-half me-1"></i>Pending</span>';
+                if (mn.approvalStatus === 1) statusBadge = '<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>Approved</span>';
+                else if (mn.approvalStatus === 2) statusBadge = '<span class="badge bg-danger"><i class="fa-solid fa-circle-xmark me-1"></i>Rejected</span>';
+                else if (mn.approvalStatus === 3) statusBadge = '<span class="badge bg-secondary"><i class="fa-solid fa-ban me-1"></i>Cancelled</span>';
+
+                if (mn.id && (mn.approvalStatus === 0 || mn.approvalStatus === '0')) {
+                    statusBadge += `<br><button type="button" class="btn btn-outline-danger btn-xs py-0 px-2 mt-1 btn-cancel-request" style="font-size: 11px;" data-id="${mn.id}" data-type="manual" data-req-type="Manual Entry"><i class="fa-solid fa-ban me-1"></i>Cancel</button>`;
+                }
+
+                const datePeriod = (mn.startDate === mn.endDate) ? mn.startDate : `${mn.startDate} to ${mn.endDate}`;
+                const approverText = (mn.firstApprover || mn.secondApprover) ? `1st: ${mn.firstApprover || '—'}<br>2nd: ${mn.secondApprover || '—'}` : '<span class="text-muted">—</span>';
+
+                items.push({
+                    type: 'manual',
+                    categoryName: mn.typeName,
+                    date: datePeriod,
+                    timeDuration: `In: ${mn.entryTime}<br>Out: ${mn.exitTime}`,
+                    locationSite: mn.area ? `<span class="fw-semibold text-dark">${mn.area}</span>` : '<span class="text-muted">—</span>',
+                    photoUrl: null,
+                    remarks: mn.reason || '<span class="text-muted">—</span>',
+                    status: statusBadge,
+                    approverInfo: approverText,
+                    rawDate: mn.startDate
+                });
+            });
+        }
+
+        // Filter by Search Input
+        if (searchVal) {
+            items = items.filter(it => {
+                const combined = (it.categoryName + ' ' + it.date + ' ' + it.remarks + ' ' + it.locationSite).toLowerCase();
+                return combined.includes(searchVal);
+            });
+        }
+
+        if (items.length === 0) {
+            tbody.innerHTML = '';
+            if (noMsg) noMsg.classList.remove("d-none");
+            return;
+        }
+
+        if (noMsg) noMsg.classList.add("d-none");
+
+        let sn = 1;
+        tbody.innerHTML = items.map(it => {
+            let typeBadge = '<span class="badge bg-secondary">Other</span>';
+            if (it.type === 'mobile') typeBadge = '<span class="badge bg-info-subtle text-info fw-semibold border border-info-subtle"><i class="fa-solid fa-mobile-screen-button me-1"></i>Mobile Punch</span>';
+            else if (it.type === 'leave') typeBadge = '<span class="badge bg-success-subtle text-success fw-semibold border border-success-subtle"><i class="fa-solid fa-umbrella-beach me-1"></i>' + it.categoryName + '</span>';
+            else if (it.type === 'late') typeBadge = '<span class="badge bg-danger-subtle text-danger fw-semibold border border-danger-subtle"><i class="fa-solid fa-clock me-1"></i>Late Excuse</span>';
+            else if (it.type === 'manual') typeBadge = '<span class="badge bg-warning-subtle text-warning fw-semibold border border-warning-subtle"><i class="fa-solid fa-location-dot me-1"></i>' + it.categoryName + '</span>';
+
+            return `
+                <tr>
+                    <td class="text-muted fw-semibold text-center">${sn++}</td>
+                    <td class="fw-semibold text-dark">${it.date}</td>
+                    <td>${typeBadge}</td>
+                    <td>${it.timeDuration}</td>
+                    <td>${it.locationSite}</td>
+                    <td class="text-muted" style="max-width: 260px; word-wrap: break-word;">${it.remarks}</td>
+                    <td class="text-center">${it.status}</td>
+                    <td class="fs-11 text-muted">${it.approverInfo}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Category Filter Pills Click Handler
+    document.querySelectorAll('#historyCategoryFilters .btn-hist-filter').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('#historyCategoryFilters .btn-hist-filter').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentHistFilter = this.getAttribute('data-filter');
+            renderHistoryTable();
+        });
+    });
+
+    if (historySearchInput) {
+        historySearchInput.addEventListener('input', renderHistoryTable);
+    }
+
+    if (btnRefreshHistory) {
+        btnRefreshHistory.addEventListener('click', function() {
+            const m = historyMonthFilter ? historyMonthFilter.value : '<?= date('Y-m') ?>';
+            fetchHistoryData(m);
+        });
+    }
+
+    if (historyMonthFilter) {
+        historyMonthFilter.addEventListener('change', function() {
+            fetchHistoryData(this.value);
+        });
+    }
+
+    if (historyTab) {
+        let historyLoaded = false;
+        historyTab.addEventListener('shown.bs.tab', function() {
+            if (!historyLoaded) {
+                const m = historyMonthFilter ? historyMonthFilter.value : '<?= date('Y-m') ?>';
+                fetchHistoryData(m);
+                historyLoaded = true;
+            }
+        });
+    }
+
+    if (window.location.hash === '#history') {
+        if (historyTab) {
+            new bootstrap.Tab(historyTab).show();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // MANUAL ENTRY / MISSING PUNCH / FIELD VISIT LOGIC
+    // -------------------------------------------------------------------------
+    const manualEntryTab = document.getElementById("manual-entry-tab");
+    const manualAppType = document.getElementById("manualAppType");
+    const manualAppTypeHelp = document.getElementById("manualAppTypeHelp");
+    const sectionMissingPunch = document.getElementById("sectionMissingPunch");
+    const sectionFieldVisit = document.getElementById("sectionFieldVisit");
+    const sectionEntryExitTimes = document.getElementById("sectionEntryExitTimes");
+    const sectionSinglePunchTime = document.getElementById("sectionSinglePunchTime");
+    const missingPunchSubtype = document.getElementById("missingPunchSubtype");
+    const sectionDeviceSelect = document.getElementById("sectionDeviceSelect");
+    const sectionMobileLocation = document.getElementById("sectionMobileLocation");
+    const deviceSelect = document.getElementById("deviceSelect");
+    const formManualEntryApp = document.getElementById("formManualEntryApp");
+    const manualAppAlertError = document.getElementById("manualAppAlertError");
+    const manualAppAlertSuccess = document.getElementById("manualAppAlertSuccess");
+
+    let biometricDevicesLoaded = false;
+
+    function loadBiometricDevices() {
+        if (!deviceSelect || biometricDevicesLoaded) return;
+        
+        fetch(`${baseUrl}/api/hrm/devices`)
+            .then(res => res.json())
+            .then(res => {
+                if (res.success && Array.isArray(res.devices) && res.devices.length > 0) {
+                    biometricDevicesLoaded = true;
+                    deviceSelect.innerHTML = res.devices.map(d => 
+                        `<option value="${d.id}">${d.location || 'Device'} (${d.identifier || d.id})</option>`
+                    ).join('');
+                } else {
+                    deviceSelect.innerHTML = `<option value="0">Default Device</option>`;
+                }
+            })
+            .catch(err => {
+                console.error("Failed to load devices:", err);
+                deviceSelect.innerHTML = `<option value="0">Default Device</option>`;
+            });
+    }
+
+    // Toggle fields based on main dropdown (Type 1, 2, 3)
+    if (manualAppType) {
+        manualAppType.addEventListener("change", function() {
+            const val = this.value;
+            manualAppAlertError.classList.add("d-none");
+            manualAppAlertSuccess.classList.add("d-none");
+
+            if (val === "1") {
+                // Manual Entry (Default)
+                sectionMissingPunch.classList.add("d-none");
+                sectionFieldVisit.classList.add("d-none");
+                sectionEntryExitTimes.classList.remove("d-none");
+                sectionSinglePunchTime.classList.add("d-none");
+                manualAppTypeHelp.textContent = "Full day / customized manual in-time and out-time correction.";
+            } else if (val === "2") {
+                // Missing Punch
+                sectionMissingPunch.classList.remove("d-none");
+                sectionFieldVisit.classList.add("d-none");
+                sectionEntryExitTimes.classList.add("d-none");
+                sectionSinglePunchTime.classList.remove("d-none");
+                manualAppTypeHelp.textContent = "Log a single missing in-punch or out-punch for a device or mobile.";
+                loadBiometricDevices();
+            } else if (val === "3") {
+                // Field Visit
+                sectionMissingPunch.classList.add("d-none");
+                sectionFieldVisit.classList.remove("d-none");
+                sectionEntryExitTimes.classList.remove("d-none");
+                sectionSinglePunchTime.classList.add("d-none");
+                manualAppTypeHelp.textContent = "Log an official outstation or local client / project site visit.";
+            }
+        });
+    }
+
+    // Toggle device vs mobile sub-fields in Missing Punch
+    if (missingPunchSubtype) {
+        missingPunchSubtype.addEventListener("change", function() {
+            if (this.value === "device") {
+                sectionDeviceSelect.classList.remove("d-none");
+                sectionMobileLocation.classList.add("d-none");
+                loadBiometricDevices();
+            } else {
+                sectionDeviceSelect.classList.add("d-none");
+                sectionMobileLocation.classList.remove("d-none");
+            }
+        });
+    }
+
+    // Handle Form Submit
+    if (formManualEntryApp) {
+        formManualEntryApp.addEventListener("submit", function(e) {
+            e.preventDefault();
+
+            manualAppAlertError.classList.add("d-none");
+            manualAppAlertSuccess.classList.add("d-none");
+
+            const btnSubmit = document.getElementById("btnSubmitManualApp");
+            const originalBtnHtml = btnSubmit.innerHTML;
+
+            const type = parseInt(manualAppType.value);
+            const dateVal = document.getElementById("manualAppDate").value;
+            const reasonVal = document.getElementById("manualAppReason").value.trim();
+
+            if (!reasonVal) {
+                manualAppAlertError.textContent = "Please provide a reason or comment.";
+                manualAppAlertError.classList.remove("d-none");
+                return;
+            }
 
             const postData = {
-                approverComment: comment
+                type: type,
+                date: dateVal,
+                reason: reasonVal
             };
 
-            fetch(`${baseUrl}/api/hrm/late-approval-management/${type}/${logId}`, {
+            if (type === 1) {
+                postData.entryTime = document.getElementById("manualEntryTime").value;
+                postData.exitTime = document.getElementById("manualExitTime").value;
+            } else if (type === 2) {
+                postData.missingPunchType = missingPunchSubtype.value;
+                postData.entryExitType = parseInt(document.getElementById("missingPunchEntryExit").value);
+                postData.punchTime = document.getElementById("manualSinglePunchTime").value;
+
+                if (postData.missingPunchType === 'device') {
+                    postData.deviceId = parseInt(deviceSelect.value || 0);
+                } else {
+                    const loc = document.getElementById("manualMobileLocation").value.trim();
+                    if (!loc) {
+                        manualAppAlertError.textContent = "Please enter a location or address for mobile punch.";
+                        manualAppAlertError.classList.remove("d-none");
+                        return;
+                    }
+                    postData.area = loc;
+                }
+            } else if (type === 3) {
+                postData.entryTime = document.getElementById("manualEntryTime").value;
+                postData.exitTime = document.getElementById("manualExitTime").value;
+                const areaVal = document.getElementById("fieldVisitAreaInput").value.trim();
+                if (!areaVal) {
+                    manualAppAlertError.textContent = "Please specify the visit destination or area.";
+                    manualAppAlertError.classList.remove("d-none");
+                    return;
+                }
+                postData.area = areaVal;
+            }
+
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Submitting...';
+
+            fetch(`${baseUrl}/api/employee/manual-entry/apply`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify(postData)
             })
@@ -2218,59 +3286,48 @@ document.addEventListener("DOMContentLoaded", function() {
                         Swal.fire({
                             icon: 'success',
                             title: 'Success',
-                            text: `Late request ${type}d successfully.`
+                            text: res.message || 'Application submitted successfully!'
                         });
-                    } else {
-                        alert(`Late request ${type}d successfully.`);
                     }
-                    const modalEl = document.getElementById('actionLateRequestModal');
-                    const modal = bootstrap.Modal.getInstance(modalEl);
-                    if (modal) modal.hide();
+                    manualAppAlertSuccess.textContent = res.message || 'Application submitted successfully!';
+                    manualAppAlertSuccess.classList.remove("d-none");
                     
-                    fetchLateRequests();
-                } else {
-                    if (window.Swal) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: res.message || `Failed to ${type} request.`
-                        });
-                    } else {
-                        alert(res.message || `Failed to ${type} request.`);
+                    formManualEntryApp.reset();
+                    document.getElementById("manualAppDate").value = '<?= date('Y-m-d') ?>';
+                    manualAppType.dispatchEvent(new Event('change'));
+
+                    // Refresh history & pending tabs if loaded
+                    if (typeof fetchHistoryData === 'function') {
+                        const m = historyMonthFilter ? historyMonthFilter.value : '<?= date('Y-m') ?>';
+                        fetchHistoryData(m);
                     }
+                    document.getElementById("btnRefreshApprovals")?.click();
+                } else {
+                    manualAppAlertError.textContent = res.message || 'Failed to submit application.';
+                    manualAppAlertError.classList.remove("d-none");
                 }
             })
             .catch(err => {
-                console.error(err);
-                if (window.Swal) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Network error occurred.'
-                    });
-                } else {
-                    alert('Network error occurred.');
-                }
+                console.error("Manual entry submission error:", err);
+                manualAppAlertError.textContent = 'Network error occurred while submitting.';
+                manualAppAlertError.classList.remove("d-none");
             })
             .finally(() => {
-                this.innerHTML = originalText;
-                this.disabled = false;
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = originalBtnHtml;
             });
         });
     }
 
-    // Initial load when tab is clicked for the first time
-    const lateRequestTab = document.getElementById("late-request-tab");
-    if (lateRequestTab) {
-        lateRequestTab.addEventListener("shown.bs.tab", function () {
-            fetchLateRequests();
+    if (manualEntryTab) {
+        manualEntryTab.addEventListener("shown.bs.tab", function() {
+            loadBiometricDevices();
         });
     }
 
-    if (window.location.hash === '#late-request') {
-        // Find the tab element and click it
-        if (lateRequestTab) {
-            new bootstrap.Tab(lateRequestTab).show();
+    if (window.location.hash === '#manual-entry') {
+        if (manualEntryTab) {
+            new bootstrap.Tab(manualEntryTab).show();
         }
     }
 });
