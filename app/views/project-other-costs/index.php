@@ -61,7 +61,7 @@
                                     <th>Amount</th>
                                     <th>Attachment</th>
                                     <th>Status</th>
-                                    <th>Created At</th>
+                                    <th>Created By & Date</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
@@ -85,7 +85,10 @@
                                                     <?= ucfirst(str_replace('_', ' ', $row['status'])) ?>
                                                 </span>
                                             </td>
-                                            <td><?= date('d M Y h:i A', strtotime($row['created_at'])) ?></td>
+                                            <td>
+                                                <div class="fw-bold"><?= htmlspecialchars($row['created_by_name'] ?? 'N/A') ?></div>
+                                                <div class="text-muted" style="font-size: 0.85rem;"><?= date('d M Y h:i A', strtotime($row['created_at'])) ?></div>
+                                            </td>
                                             <td>
                                                 <div class="d-flex gap-2">
                                                     <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs/review/<?= $row['id'] ?>" class="btn btn-sm btn-info shadow-sm" title="View Status">
@@ -122,6 +125,7 @@
                                     <th>Approved Amount</th>
                                     <th>Attachment</th>
                                     <th>Status</th>
+                                    <th>Created By & Date</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -145,6 +149,10 @@
                                                 <span class="badge bg-<?= $row['status'] == 'pending' ? 'warning' : ($row['status'] == 'paid' ? 'success' : 'info') ?>">
                                                     <?= ucfirst(str_replace('_', ' ', $row['status'])) ?>
                                                 </span>
+                                            </td>
+                                            <td>
+                                                <div class="fw-bold"><?= htmlspecialchars($row['created_by_name'] ?? 'N/A') ?></div>
+                                                <div class="text-muted" style="font-size: 0.85rem;"><?= date('d M Y h:i A', strtotime($row['created_at'])) ?></div>
                                             </td>
                                             <td>
                                                 <div class="d-flex gap-2">
