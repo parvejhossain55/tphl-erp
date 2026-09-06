@@ -61,6 +61,7 @@
                                     <th>Project</th>
                                     <th>Cost Type</th>
                                     <th>Amount</th>
+                                    <th>Attachment</th>
                                     <th>Status</th>
                                     <th>Created At</th>
                                     <th>Action</th>
@@ -74,6 +75,13 @@
                                             <td><?= htmlspecialchars($row['project_name']) ?></td>
                                             <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $row['rcost_type']))) ?></td>
                                             <td><?= number_format($row['request_amount'], 2) ?></td>
+                                            <td>
+                                                <?php if (!empty($row['creator_attachment'])): ?>
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= $row['creator_attachment'] ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View</a>
+                                                <?php else: ?>
+                                                    -
+                                                <?php endif; ?>
+                                            </td>
                                             <td>
                                                 <span class="badge bg-<?= $row['status'] == 'pending' ? 'warning' : ($row['status'] == 'paid' ? 'success' : 'info') ?>">
                                                     <?= ucfirst(str_replace('_', ' ', $row['status'])) ?>
@@ -114,6 +122,7 @@
                                     <th>Cost Type</th>
                                     <th>Request Amount</th>
                                     <th>Approved Amount</th>
+                                    <th>Attachment</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
@@ -127,6 +136,13 @@
                                             <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $row['rcost_type']))) ?></td>
                                             <td><?= number_format($row['request_amount'], 2) ?></td>
                                             <td><?= $row['approved_amount'] ? number_format($row['approved_amount'], 2) : '-' ?></td>
+                                            <td>
+                                                <?php if (!empty($row['creator_attachment'])): ?>
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= $row['creator_attachment'] ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View</a>
+                                                <?php else: ?>
+                                                    -
+                                                <?php endif; ?>
+                                            </td>
                                             <td>
                                                 <span class="badge bg-<?= $row['status'] == 'pending' ? 'warning' : ($row['status'] == 'paid' ? 'success' : 'info') ?>">
                                                     <?= ucfirst(str_replace('_', ' ', $row['status'])) ?>
@@ -181,7 +197,7 @@
     <!-- Create Request Modal -->
     <div class="modal fade" id="createRequestModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
-            <form action="<?= $GLOBALS['base_url'] ?>/project-other-costs/store" method="POST">
+            <form action="<?= $GLOBALS['base_url'] ?>/project-other-costs/store" method="POST" enctype="multipart/form-data">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Create Other Cost Request</h5>
@@ -219,6 +235,11 @@
                         <div class="mb-3">
                             <label class="form-label">Request Amount <span class="text-danger">*</span></label>
                             <input type="number" step="0.01" name="request_amount" class="form-control" required placeholder="0.00">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Attachment (Optional)</label>
+                            <input type="file" name="creator_attachment" class="form-control" accept="image/*,.pdf,.doc,.docx">
                         </div>
 
                         <div class="mb-3">

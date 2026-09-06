@@ -115,17 +115,22 @@ class ProjectOtherCost extends Model
     {
         $sql = $this->db->prepare("
             INSERT INTO project_other_costs 
-            (project_id, rcost_type, purpose, request_amount, created_by_id, status) 
-            VALUES (?, ?, ?, ?, ?, 'pending')
+            (project_id, rcost_type, purpose, request_amount, created_by_id, creator_attachment, dept_head_status, status) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
         ");
 
+        $creator_attachment = $data['creator_attachment'] ?? null;
+        $dept_head_status = $data['dept_head_status'] ?? 'pending';
+
         $sql->bind_param(
-            "issdi",
+            "issdiss",
             $data['project_id'],
             $data['rcost_type'],
             $data['purpose'],
             $data['request_amount'],
-            $data['created_by_id']
+            $data['created_by_id'],
+            $creator_attachment,
+            $dept_head_status
         );
 
         return $sql->execute() ? $this->db->insert_id : false;

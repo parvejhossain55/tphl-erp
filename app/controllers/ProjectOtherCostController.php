@@ -124,7 +124,7 @@ class ProjectOtherCostController extends Controller
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = $_SESSION['user']['id'];
             
-            $empStmt = $this->db->prepare("SELECT reporting_user_id FROM employees WHERE user_id = ? AND is_deleted = 0");
+            $empStmt = $this->db->prepare("SELECT reporting_user_id FROM employees WHERE user_id = ? AND deleted_at IS NULL");
             $empStmt->bind_param('i', $userId);
             $empStmt->execute();
             $empResult = $empStmt->get_result()->fetch_assoc();
