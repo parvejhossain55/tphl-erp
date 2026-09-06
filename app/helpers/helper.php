@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/ImageUploader.php';
 function uploadImage($input, $module = 'general', $mode = 'original', $width = 300, $height = 300)
 {
     return ImageUploader::upload($input, $module, $mode, $width, $height);
