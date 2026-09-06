@@ -319,11 +319,12 @@ class ExternalApiService
     }
 
     /**
-     * Get active Bearer Token for the logged-in user if available, otherwise fall back to Master token
+     * Get active Bearer Token for the logged-in user if available.
+     * Default does NOT fall back to Master token to protect user identity on Tipsoi.
      */
-    public function getUserBearerToken($fallbackToMaster = true)
+    public function getUserBearerToken($fallbackToMaster = false)
     {
-        if (session_status() === PHP_SESSION_NONE) {
+        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
             session_start();
         }
 
@@ -335,6 +336,19 @@ class ExternalApiService
         }
 
         return $fallbackToMaster ? $this->getBearerToken() : null;
+    }
+
+    /**
+     * Check if currently logged in user has their own valid active Tipsoi token
+     */
+    public function hasActiveUserBearerToken(): bool
+    {
+        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+            session_start();
+        }
+
+        return !empty($_SESSION['user']['tipsoi_token']) &&
+               (($_SESSION['user']['tipsoi_token_expires'] ?? 0) > time());
     }
 
     /**
