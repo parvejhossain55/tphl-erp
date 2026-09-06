@@ -284,9 +284,10 @@ class ProjectOtherCostController extends Controller
             exit();
         }
 
-        // Only allow deletion if the request belongs to the user and is not fully approved (not paid, not management_approved)
+        // Only allow deletion if the request belongs to the user or user is admin
         $userId = $_SESSION['user']['id'];
-        if ($request['created_by_id'] != $userId) {
+        $roleId = (int)$_SESSION['user']['role_id'];
+        if ($request['created_by_id'] != $userId && $roleId !== 1) {
             setError("You don't have permission to delete this request.");
             header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
             exit();

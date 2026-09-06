@@ -175,6 +175,12 @@
                                                             <i class="bi bi-eye me-1"></i>View Module Page
                                                         </a>
                                                     <?php endif; ?>
+
+                                                    <?php if (in_array($row['status'], ['pending', 'qc_approved']) && ($row['created_by_id'] == $userId || $roleId == 1)): ?>
+                                                        <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs/delete/<?= $row['id'] ?>" class="btn btn-sm btn-danger rounded-2 px-3 shadow-sm" onclick="return confirm('Are you sure you want to delete this request?');" title="Delete">
+                                                            <i class="bi bi-trash"></i>
+                                                        </a>
+                                                    <?php endif; ?>
                                                     
                                                 </div>
                                             </td>
