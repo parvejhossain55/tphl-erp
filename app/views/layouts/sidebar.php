@@ -41,9 +41,60 @@
     // Calculate pending system approval requests count for Management & Accounts badge
     $pendingApprovalCount = 0;
     if (isset($db)) {
-        $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending'");
-        if ($resApp) {
+        $loggedUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        if ($loggedUserRoleId === 1) {
+            // Super Admin sees all pending
+            $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending'");
+        } elseif (in_array($loggedUserRoleId, [3, 33])) {
+            // Top Management: all pending management approvals
+            $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role = 'management'");
+        } elseif ($loggedUserRoleId === 20) {
+            // Role 20 (Site Operator / Operation Head): management approvals with amount <= 100,000
+            $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role = 'management' AND (request_amount <= 100000 OR request_amount IS NULL OR request_amount = 0)");
+        } elseif (in_array($loggedUserRoleId, [6, 30])) {
+            // Accounts
+            $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role = 'accounts'");
+        } else {
+            $sessionRole = strtolower($_SESSION['user']['role_name'] ?? '');
+            $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role = '{$sessionRole}'");
+        }
+        if (isset($resApp) && $resApp) {
             $pendingApprovalCount = (int) ($resApp->fetch_assoc()['total'] ?? 0);
+        }
+    }
+
+    // Calculate pending labor requisitions count for current user's approval role ("jar jar kache tar approval count")
+    $pendingLaborReqCount = 0;
+    $pendingLaborAccountsCount = 0;
+    if (isset($db)) {
+        $lrRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        if ($lrRoleId === 1) {
+            // Super Admin sees all stages awaiting approval
+            $rLR = $db->query("SELECT COUNT(*) AS total FROM con_labor_requisitions WHERE status IN ('pending', 'payment_requested', 'qc_approved', 'pm_payment_approved')");
+        } elseif (in_array($lrRoleId, [15, 22])) {
+            // Project Manager / PM Head: initial approval (pending) - PM verification after QC is removed
+            $rLR = $db->query("SELECT COUNT(*) AS total FROM con_labor_requisitions WHERE status = 'pending'");
+        } elseif ($lrRoleId === 24) {
+            // QC & Internal Audit Head (Role 24): payment requested
+            $rLR = $db->query("SELECT COUNT(*) AS total FROM con_labor_requisitions WHERE status = 'payment_requested'");
+        } elseif (in_array($lrRoleId, [3, 33])) {
+            // Top Management: awaiting management (qc_approved, payment_requested, pm_payment_approved)
+            $rLR = $db->query("SELECT COUNT(*) AS total FROM con_labor_requisitions WHERE status IN ('qc_approved', 'payment_requested', 'pm_payment_approved')");
+        } elseif ($lrRoleId === 20) {
+            // Role 20 (Site Operator / Operation Head): awaiting management and amount <= 100,000
+            $rLR = $db->query("SELECT COUNT(*) AS total FROM con_labor_requisitions WHERE status IN ('qc_approved', 'payment_requested', 'pm_payment_approved') AND (COALESCE(qc_approved_amount, total_amount) <= 100000 OR total_amount IS NULL)");
+        } elseif (in_array($lrRoleId, [6, 30])) {
+            // Accounts: management approved or partially paid awaiting payout
+            $rLR = $db->query("SELECT COUNT(*) AS total FROM con_labor_requisitions WHERE status IN ('management_approved', 'partially_paid')");
+        }
+        if (isset($rLR) && $rLR) {
+            $pendingLaborReqCount = (int)($rLR->fetch_assoc()['total'] ?? 0);
+        }
+
+        // Accounts payout badge count
+        $rLRAcc = $db->query("SELECT COUNT(*) AS total FROM con_labor_requisitions WHERE status IN ('management_approved', 'partially_paid')");
+        if ($rLRAcc) {
+            $pendingLaborAccountsCount = (int)($rLRAcc->fetch_assoc()['total'] ?? 0);
         }
     }
 
@@ -1350,7 +1401,7 @@
 
                 <?php if (hasPermission("Sales team Performance")): ?>
                     <!-- Sales Team Performance-->
-                    <li class="slide ">
+                    <li class="slide <?= isActive('sales-team-performance', $current_route) ?>">
                         <a href="<?= $base_url ?>/sales-team-performance"
                             class="sidebar__menu-item <?= isActive('sales-team-performance', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
@@ -1360,7 +1411,7 @@
                 <?php endif; ?>
 
                 <!--Payroll CATEGORY -->
-                <?php if (hasPermission("Payroll Manage") && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
+                <?php if (hasPermission("Payroll Manage") && !in_array($_SESSION['user']['role_id'] ?? 0, [9, 33])): ?>
                     <li class="sidebar__menu-category ">
                         <span class="category-name">Payroll Manage</span>
                     </li>
@@ -1971,14 +2022,19 @@
                     </li>
 
                     <!-- ====== Labor Payment Approvals ====== -->
-                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 6])): ?>
+                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 6, 30])): ?>
                         <li
                             class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
                                 class="sidebar__menu-item <?= isActive(['con-labor-requisitions', 'con-labor-requisition'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i
                                 ></div>
-                                <span class="sidebar__menu-label">Labor Pay Approval</span>
+                                <span class="sidebar__menu-label">
+                                    Labor Pay Approval
+                                    <?php if (isset($pendingLaborAccountsCount) && $pendingLaborAccountsCount > 0): ?>
+                                        <span class="badge bg-danger rounded-pill ms-2"><?= $pendingLaborAccountsCount ?></span>
+                                    <?php endif; ?>
+                                </span>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             </a>
                             <ul class="sidebar-menu child2" style="display:block;">
@@ -1986,6 +2042,9 @@
                                     <a href="<?= $base_url ?>/con-labor-requisitions?status=management_approved"
                                         class="sidebar__menu-item <?= (isActive('con-labor-requisitions', $current_route) && ($_GET['status'] ?? '') === 'management_approved') ? 'active' : '' ?>">
                                         <i class="bi bi-clock-history me-1"></i> Pending Payments
+                                        <?php if (isset($pendingLaborAccountsCount) && $pendingLaborAccountsCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill ms-2"><?= $pendingLaborAccountsCount ?></span>
+                                        <?php endif; ?>
                                     </a>
                                 </li>
                                 <li class="slide">
@@ -2121,8 +2180,10 @@
                                 <span class="sidebar__menu-label">Site Manage</span>
                             </a>
 
+                            
                             <!-- always open -->
                             <ul class="sidebar-menu child1" style="display:block;">
+                                
                                 <li class="slide <?= isActive('site-settings', $current_route) ?>">
                                     <a class="sidebar__menu-item <?= isActive('site-settings', $current_route) ?>"
                                         href="<?= $GLOBALS['base_url'] ?>/site-settings">
@@ -2150,6 +2211,7 @@
 
                 <!-- ==================== PHASE 2: CONSTRUCTION MANAGEMENT ==================== -->
                 <?php if (($_SESSION['user']['role_id'] ?? 0) != 9): ?>
+                    <?php if (($_SESSION['user']['role_id'] ?? 0) != 33): // Hide Construction module for role 33 ?>
                     <?php
                     $hasConPerms = hasPermission('Construction Management') || hasPermission('site engineer dashboard') || in_array($_SESSION['user']['role_id'] ?? 0, [20, 32]) || hasPermission('Purchase order') || ($_SESSION['user']['role_id'] ?? 0) == 23 || hasPermission('Project Draft Design') || hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Estimator dashboard') || hasPermission('Project structure design') || hasPermission('QC Dashboard') || hasPermission('Project Manage') || hasPermission('Estimate Budget') || hasPermission('Work Order') || hasPermission('Working Plan') || hasPermission('Project Target Set') || hasPermission('Budget Extend') || hasPermission('Material Manage') || hasPermission('Operators & Bills') || hasPermission('Project Report') || hasPermission('Bill & Payments') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3]);
                     if ($hasConPerms):
@@ -2915,11 +2977,14 @@
                                 </li>
 
                                 <!-- Labor Requisition shortcut inside Bills menu -->
-                                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 22])): ?>
+                                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 20, 22, 24, 33])): ?>
                                     <li class="slide">
                                         <a href="<?= $base_url ?>/con-labor-requisitions"
                                             class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
                                             <i class="fa-solid fa-hard-hat me-1"></i> Labor Requisitions
+                                            <?php if (isset($pendingLaborReqCount) && $pendingLaborReqCount > 0): ?>
+                                                <span class="badge bg-danger rounded-pill ms-2"><?= $pendingLaborReqCount ?></span>
+                                            <?php endif; ?>
                                         </a>
                                     </li>
                                 <?php endif; ?>
@@ -2939,13 +3004,18 @@
                     <?php endif; ?>
 
                     <!-- ====== Labor Requisitions ====== -->
-                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 22])): ?>
+                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 20, 22, 24, 33])): ?>
                         <li
                             class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
                                 class="sidebar__menu-item <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
-                                <span class="sidebar__menu-label">Labor Requisition</span>
+                                <span class="sidebar__menu-label">
+                                    Labor Requisition
+                                    <?php if (isset($pendingLaborReqCount) && $pendingLaborReqCount > 0): ?>
+                                        <span class="badge bg-danger rounded-pill ms-2"><?= $pendingLaborReqCount ?></span>
+                                    <?php endif; ?>
+                                </span>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             </a>
                             <ul class="sidebar-menu child2" style="display:block;">
@@ -2953,9 +3023,12 @@
                                     <a href="<?= $base_url ?>/con-labor-requisitions"
                                         class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
                                         <i class="bi bi-list-ul me-1"></i> All Requisitions
+                                        <?php if (isset($pendingLaborReqCount) && $pendingLaborReqCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill ms-2"><?= $pendingLaborReqCount ?></span>
+                                        <?php endif; ?>
                                     </a>
                                 </li>
-                                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 22])): ?>
+                                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 20, 22])): ?>
                                     <li class="slide">
                                         <a href="<?= $base_url ?>/con-labor-requisition-create"
                                             class="sidebar__menu-item <?= isActive('con-labor-requisition-create', $current_route) ?>">
@@ -3022,6 +3095,7 @@
                         </li>
                     <?php endif; ?>
                     <!-- ====== END Finance & Accounts ====== -->
+                    <?php endif; // End Construction module for role 33 ?>
 
                     <!-- ====== Land Department (NEW) ====== -->
                     <?php if (isset($_SESSION['user']['role_id']) && $_SESSION['user']['role_id'] == 14): ?>
@@ -3139,6 +3213,18 @@
                                         <?php endif; ?>
                                     </a>
                                 </li>
+                                <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 24])): ?>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/con-labor-requisitions?status=payment_requested"
+                                        class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        <span><i class="fa-solid fa-hard-hat me-1"></i> Labor Bills Review</span>
+                                        <?php if (isset($pendingLaborReqCount) && $pendingLaborReqCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill me-1"
+                                                style="font-size:10px; padding: 2px 6px;"><?= $pendingLaborReqCount ?></span>
+                                        <?php endif; ?>
+                                    </a>
+                                </li>
+                                <?php endif; ?>
                             </ul>
                         </li>
                     <?php endif; ?>

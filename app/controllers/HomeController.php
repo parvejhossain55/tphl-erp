@@ -345,9 +345,14 @@ class HomeController extends Controller
         try {
             $request = $this->approvalModel->find($id);
             $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-            $isManagement = in_array($userRoleId, [1, 3], true);
+            $isManagement = in_array($userRoleId, [1, 3, 33], true);
+            $isSiteOperator = ($userRoleId === 20);
 
-            if (($request['approve_role'] ?? 'management') === 'management' && !$isManagement) {
+            if ($isSiteOperator && !$isManagement) {
+                if (($request['request_amount'] ?? 0) > 100000) {
+                    throw new Exception("Unauthorized action: Site Operator cannot approve amounts greater than 100,000.");
+                }
+            } elseif (($request['approve_role'] ?? 'management') === 'management' && !$isManagement) {
                 throw new Exception("Unauthorized action: Only Management users can approve this request.");
             }
 
@@ -390,9 +395,14 @@ class HomeController extends Controller
         try {
             $request = $this->approvalModel->find($id);
             $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-            $isManagement = in_array($userRoleId, [1, 3], true);
+            $isManagement = in_array($userRoleId, [1, 3, 33], true);
+            $isSiteOperator = ($userRoleId === 20);
 
-            if (($request['approve_role'] ?? 'management') === 'management' && !$isManagement) {
+            if ($isSiteOperator && !$isManagement) {
+                if (($request['request_amount'] ?? 0) > 100000) {
+                    throw new Exception("Unauthorized action: Site Operator cannot approve amounts greater than 100,000.");
+                }
+            } elseif (($request['approve_role'] ?? 'management') === 'management' && !$isManagement) {
                 throw new Exception("Unauthorized action: Only Management users can approve this request.");
             }
 
@@ -426,6 +436,10 @@ class HomeController extends Controller
                 //  amount based partial approval
                 if ($approved_amount === null || $approved_amount <= 0) {
                     throw new Exception('Approved amount required');
+                }
+
+                if ($isSiteOperator && !$isManagement && (float)$approved_amount > 100000) {
+                    throw new Exception("Unauthorized action: Site Operator cannot approve amounts greater than 100,000.");
                 }
 
                 $approved_days = null; // important
@@ -511,9 +525,14 @@ class HomeController extends Controller
     {
         $request = $this->approvalModel->find($id);
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $isManagement = in_array($userRoleId, [1, 3], true);
+        $isManagement = in_array($userRoleId, [1, 3, 33], true);
+        $isSiteOperator = ($userRoleId === 20);
 
-        if ($request && ($request['approve_role'] ?? 'management') === 'management' && !$isManagement) {
+        if ($isSiteOperator && !$isManagement) {
+            if (($request['request_amount'] ?? 0) > 100000) {
+                die("Unauthorized action: Site Operator cannot reject requests with amount greater than 100,000.");
+            }
+        } elseif ($request && ($request['approve_role'] ?? 'management') === 'management' && !$isManagement) {
             die("Unauthorized action: Only Management users can reject this request.");
         }
 

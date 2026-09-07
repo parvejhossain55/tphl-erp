@@ -577,7 +577,15 @@ $hasTransactions = !empty($recentTransactions);
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <div>
                                             <h6 class="mb-1"><?= htmlspecialchars($req['department']) ?> Department</h6>
-                                            <small class="text-muted d-block"><?= htmlspecialchars($req['title']) ?></small>
+                                            <?php if ($req['source_table'] === 'con_labor_requisitions' && !empty($req['source_id'])): ?>
+                                                <small class="text-muted d-block">
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/con-labor-requisition/<?= $req['source_id'] ?>" class="text-decoration-none fw-semibold text-primary">
+                                                        <?= htmlspecialchars($req['title']) ?> <i class="fa-regular fa-arrow-up-right-from-square fs-10 ms-1"></i>
+                                                    </a>
+                                                </small>
+                                            <?php else: ?>
+                                                <small class="text-muted d-block"><?= htmlspecialchars($req['title']) ?></small>
+                                            <?php endif; ?>
                                             <small class="text-muted">Requested: <?= date('d M Y', strtotime($req['created_at'])) ?></small>
                                         </div>
                                         <span class="badge bg-warning "><?= ucfirst($req['status']) ?></span>
@@ -617,6 +625,10 @@ $hasTransactions = !empty($recentTransactions);
                                         <?php if ($req['request_type'] === 'manpower_requisition' && !empty($req['source_id'])): ?>
                                             <a href="<?= $GLOBALS['base_url'] ?>/view-requisition/<?= $req['source_id'] ?>" class="btn btn-sm btn-outline-info">
                                                 <i class="fa-light fa-eye me-1"></i> View Requisition
+                                            </a>
+                                        <?php elseif ($req['source_table'] === 'con_labor_requisitions' && !empty($req['source_id'])): ?>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/con-labor-requisition/<?= $req['source_id'] ?>" class="btn btn-sm btn-outline-info">
+                                                <i class="fa-light fa-eye me-1"></i> View Labor Bill
                                             </a>
                                         <?php endif; ?>
 

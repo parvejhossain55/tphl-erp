@@ -755,7 +755,9 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
                 <div class="brand-tagline">Real Estate &amp; Property Management</div>
                 <div class="brand-address">
                     <?= $companyAddress ?><br>
-                    <?= htmlspecialchars($companyPhone) ?> &bull; <?= htmlspecialchars($companyEmail) ?>
+                    <?= htmlspecialchars($companyPhone) ?> &bull;
+                     <!-- < htmlspecialchars($companyEmail) ?> -->
+                      accounts@dpremiumhomes.com
                 </div>
             </div>
 

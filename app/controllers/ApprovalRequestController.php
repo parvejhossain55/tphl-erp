@@ -36,8 +36,8 @@ class ApprovalRequestController extends Controller
         // Also add the role name as it is for other roles like "QC & Internal Audit"
         $roles = $roleMap[strtolower($sessionRole)] ?? [strtolower($sessionRole)];
         
-        // Let's add management for Admins and Site Operators / Operation Heads
-        if(in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20])) {
+        // Let's add management for Admins, Chief Officer and Site Operators / Operation Heads
+        if(in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 33])) {
             $roles[] = 'management';
         }
 
@@ -115,7 +115,7 @@ class ApprovalRequestController extends Controller
         $failedCount = 0;
 
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $isManagement = in_array($userRoleId, [1, 3], true);
+        $isManagement = in_array($userRoleId, [1, 3, 33], true);
         $isSiteOperator = ($userRoleId === 20);
 
         foreach ($requestIds as $id) {

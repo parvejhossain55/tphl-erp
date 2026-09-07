@@ -25,7 +25,8 @@ class ApprovalRequest extends Model
         'project_incentive_claims',
         'fund_requisitions',
         'project_other_costs',
-        'project_extra_assets'
+        'project_extra_assets',
+        'con_labor_requisitions'
     ];
     public function create($data)
     {
@@ -312,6 +313,29 @@ class ApprovalRequest extends Model
             }
         }
 
+        /* =====================
+       CONSTRUCTION → LABOR REQUISITIONS
+       ===================== */
+        if (($approval['source_table'] ?? '') === 'con_labor_requisitions') {
+            $lrRes = $this->db->query("
+                SELECT lr.*, p.name AS project_name, u.full_name AS requested_by_name
+                FROM con_labor_requisitions lr
+                LEFT JOIN projects p ON p.id = lr.project_id
+                LEFT JOIN users u ON u.id = lr.requested_by
+                WHERE lr.id = " . (int) $approval['source_id'] . "
+                LIMIT 1
+            ");
+            if ($lrRes && $details['labor_req'] = $lrRes->fetch_assoc()) {
+                $details['meta'] = [
+                    'project'     => $details['labor_req']['project_name'],
+                    'labor_count' => $details['labor_req']['labor_count'] . ' ' . $details['labor_req']['labor_type'],
+                    'rate'        => '৳' . number_format((float)$details['labor_req']['per_labor_rate'], 2),
+                    'days'        => $details['labor_req']['working_days'] . ' Days',
+                    'purpose'     => $details['labor_req']['purpose'],
+                ];
+            }
+        }
+
         // Fetch requester info
         if (!empty($approval['requested_by'])) {
             $details['requester'] = $this->getUserById((int) $approval['requested_by']);
@@ -323,6 +347,10 @@ class ApprovalRequest extends Model
 
     public function getPendingForRole(array $roles, $limit = 5)
     {
+        $this->syncMissingFundRequisitions();
+        $this->syncMissingOfficeProcurements();
+        $this->syncMissingLaborRequisitions();
+
         $roles = array_map('strtolower', $roles);
 
         if (empty($roles)) {
@@ -524,6 +552,28 @@ class ApprovalRequest extends Model
             };
         }
 
+        if ($sourceTable === 'con_labor_requisitions') {
+            $lrStatus = ($status === 'approved') ? 'management_approved' : 'rejected';
+            $lrAppAmt = ($status === 'approved') ? ($approvedAmount !== null && $approvedAmount > 0 ? (float)$approvedAmount : (float)($request['request_amount'] ?? 0)) : null;
+            $stmtLr = $this->db->prepare(
+                "UPDATE con_labor_requisitions
+                 SET status = ?,
+                     management_approved_by = ?,
+                     management_approved_at = NOW(),
+                     approved_amount = COALESCE(?, approved_amount, total_amount),
+                     management_note = ?,
+                     rejection_reason = CASE WHEN ? = 'rejected' THEN ? ELSE rejection_reason END,
+                     updated_at = NOW()
+                 WHERE id = ?"
+            );
+            if ($stmtLr) {
+                $stmtLr->bind_param('sidsissi', $lrStatus, $approvedBy, $lrAppAmt, $approvalNote, $lrStatus, $approvalNote, $sourceId);
+                $stmtLr->execute();
+                $stmtLr->close();
+            }
+            return true;
+        }
+
         if ($sourceTable === 'project_extra_assets') {
             $mgmtStatus = ($status === 'approved') ? 'approved' : 'rejected';
             $overallStatus = ($status === 'approved') ? 'approved' : 'rejected';
@@ -713,6 +763,7 @@ class ApprovalRequest extends Model
     {
         $this->syncMissingFundRequisitions();
         $this->syncMissingOfficeProcurements();
+        $this->syncMissingLaborRequisitions();
 
         $sql = "SELECT 
                     COUNT(*) AS total_requests,
@@ -726,12 +777,13 @@ class ApprovalRequest extends Model
         $res = $this->db->query($sql);
         $row = $res ? $res->fetch_assoc() : [];
 
-        // Check Accounts total disbursed across incentive payments, vendor payment requests, fund requisitions & office procurement
+        // Check Accounts total disbursed across incentive payments, vendor payment requests, fund requisitions, office procurement & labor requisitions
         $sqlDisbursed = "SELECT 
                             (SELECT IFNULL(SUM(payment_amount), 0) FROM project_incentive_payments) + 
                             (SELECT IFNULL(SUM(approved_amount), 0) FROM vendor_payment_requests WHERE status = 'Approved') +
                             (SELECT IFNULL(SUM(amount), 0) FROM fund_requisitions WHERE status = 'paid') +
-                            (SELECT IFNULL(SUM(paid_amount), 0) FROM project_extra_assets WHERE payment_status = 'paid') AS total_disbursed";
+                            (SELECT IFNULL(SUM(paid_amount), 0) FROM project_extra_assets WHERE payment_status = 'paid') +
+                            (SELECT IFNULL(SUM(total_paid), 0) FROM con_labor_requisitions WHERE status IN ('paid', 'partially_paid', 'labor_disbursed')) AS total_disbursed";
         $resD = $this->db->query($sqlDisbursed);
         $totalDisbursed = $resD ? (float) ($resD->fetch_assoc()['total_disbursed'] ?? 0) : 0.00;
 
@@ -750,6 +802,7 @@ class ApprovalRequest extends Model
     {
         $this->syncMissingFundRequisitions();
         $this->syncMissingOfficeProcurements();
+        $this->syncMissingLaborRequisitions();
 
         $where = ["1=1"];
         $params = [];
@@ -843,6 +896,31 @@ class ApprovalRequest extends Model
                         $payoutDate = $pRow['pay_date'];
                     } else if ($row['status'] === 'approved') {
                         $payoutStatus = 'Pending Accounts Payout';
+                    }
+                }
+            } else if ($sourceTable === 'con_labor_requisitions') {
+                $lrSql = "SELECT status, total_amount, IFNULL(approved_amount, total_amount) AS app_amt, 
+                                 IFNULL(total_paid, 0.00) AS total_paid, payment_date 
+                          FROM con_labor_requisitions WHERE id = ? LIMIT 1";
+                $lrStmt = $this->db->prepare($lrSql);
+                if ($lrStmt) {
+                    $lrStmt->bind_param("i", $sourceId);
+                    $lrStmt->execute();
+                    $lrRow = $lrStmt->get_result()->fetch_assoc();
+                    $lrStmt->close();
+                    if ($lrRow) {
+                        if (in_array(strtolower($lrRow['status']), ['paid', 'labor_disbursed'])) {
+                            $payoutStatus = 'Paid & Settled';
+                            $payoutAmount = (float) ($lrRow['total_paid'] > 0 ? $lrRow['total_paid'] : $lrRow['app_amt']);
+                            $payoutDate = $lrRow['payment_date'];
+                        } else if (strtolower($lrRow['status']) === 'partially_paid') {
+                            $payoutStatus = 'Partially Paid';
+                            $payoutAmount = (float) $lrRow['total_paid'];
+                            $payoutDate = $lrRow['payment_date'];
+                        } else if (in_array(strtolower($lrRow['status']), ['management_approved']) || $row['status'] === 'approved') {
+                            $payoutStatus = 'Pending Accounts Payout';
+                            $payoutAmount = (float) $lrRow['app_amt'];
+                        }
                     }
                 }
             } else if ($sourceTable === 'vendor_payment_requests') {
@@ -1125,6 +1203,96 @@ class ApprovalRequest extends Model
                     ELSE 'pending' 
                 END
                OR (ar.approved_by IS NULL AND pea.mgmt_by IS NOT NULL)
+        ";
+        @$this->db->query($syncSql);
+    }
+
+    public function syncMissingLaborRequisitions()
+    {
+        // 1. Insert missing labor bills (only when work_completed or beyond, so initial pending planning is not flooded)
+        $sql = "
+            SELECT lr.*, p.name AS project_name
+            FROM con_labor_requisitions lr
+            LEFT JOIN projects p ON lr.project_id = p.id
+            LEFT JOIN approval_requests ar ON (ar.source_table = 'con_labor_requisitions' AND ar.source_id = lr.id)
+            WHERE ar.id IS NULL
+              AND lr.status IN ('work_completed', 'payment_requested', 'qc_approved', 'pm_payment_approved', 'management_approved', 'partially_paid', 'paid', 'labor_disbursed', 'rejected')
+        ";
+        $res = $this->db->query($sql);
+        if ($res && $res->num_rows > 0) {
+            while ($row = $res->fetch_assoc()) {
+                $sourceId    = (int) $row['id'];
+                $deptName    = 'Construction';
+                $requestType = 'Labor Bill by SE';
+                $projectName = !empty($row['project_name']) ? $row['project_name'] : 'Project #' . $row['project_id'];
+                $title       = "Labor Bill — " . $row['requisition_no'] . " | " . $projectName . " (" . $row['labor_count'] . " " . $row['labor_type'] . " Labors)";
+                $amount      = !empty($row['pm_verified_amount']) ? (float)$row['pm_verified_amount'] : (!empty($row['qc_approved_amount']) ? (float)$row['qc_approved_amount'] : (float)$row['total_amount']);
+                $requestedBy = (int) $row['requested_by'];
+                
+                if (in_array($row['status'], ['management_approved', 'partially_paid', 'paid', 'labor_disbursed'])) {
+                    $status = 'approved';
+                    $approvedAmount = !empty($row['approved_amount']) ? (float)$row['approved_amount'] : $amount;
+                    $approvedBy = !empty($row['management_approved_by']) ? (int)$row['management_approved_by'] : null;
+                    $approvedAt = !empty($row['management_approved_at']) ? $row['management_approved_at'] : null;
+                } elseif ($row['status'] === 'rejected') {
+                    $status = 'rejected';
+                    $approvedAmount = null;
+                    $approvedBy = !empty($row['management_approved_by']) ? (int)$row['management_approved_by'] : null;
+                    $approvedAt = !empty($row['management_approved_at']) ? $row['management_approved_at'] : null;
+                } else {
+                    $status = 'pending';
+                    $approvedAmount = null;
+                    $approvedBy = null;
+                    $approvedAt = null;
+                }
+
+                $approvalNote = !empty($row['management_note']) ? $row['management_note'] : null;
+                $metaData = json_encode([
+                    'requisition_no' => $row['requisition_no'],
+                    'labor_count'    => $row['labor_count'],
+                    'labor_type'     => $row['labor_type'],
+                    'working_days'   => $row['working_days'],
+                    'per_labor_rate' => $row['per_labor_rate'],
+                    'purpose'        => $row['purpose'],
+                ]);
+                $createdAt = !empty($row['created_at']) ? $row['created_at'] : date('Y-m-d H:i:s');
+
+                $stmt = $this->db->prepare("
+                    INSERT INTO approval_requests 
+                    (department, request_type, title, source_table, source_id, request_amount, approved_amount, requested_by, approve_role, status, approved_by, approved_at, approval_note, meta_data, created_at)
+                    VALUES (?, ?, ?, 'con_labor_requisitions', ?, ?, ?, ?, 'management', ?, ?, ?, ?, ?, ?)
+                ");
+                if ($stmt) {
+                    $stmt->bind_param("sssiddisissss", $deptName, $requestType, $title, $sourceId, $amount, $approvedAmount, $requestedBy, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+            }
+        }
+
+        // 2. Sync status for existing con_labor_requisitions in approval_requests
+        $syncSql = "
+            UPDATE approval_requests ar
+            INNER JOIN con_labor_requisitions lr ON (ar.source_table = 'con_labor_requisitions' AND ar.source_id = lr.id)
+            SET ar.status = CASE 
+                    WHEN lr.status IN ('management_approved', 'partially_paid', 'paid', 'labor_disbursed') THEN 'approved' 
+                    WHEN lr.status = 'rejected' THEN 'rejected' 
+                    ELSE 'pending' 
+                END,
+                ar.approved_by = lr.management_approved_by,
+                ar.approved_at = lr.management_approved_at,
+                ar.approval_note = lr.management_note,
+                ar.request_amount = COALESCE(lr.pm_verified_amount, lr.qc_approved_amount, lr.total_amount),
+                ar.approved_amount = CASE 
+                    WHEN lr.status IN ('management_approved', 'partially_paid', 'paid', 'labor_disbursed') THEN COALESCE(lr.approved_amount, lr.total_amount) 
+                    ELSE ar.approved_amount 
+                END
+            WHERE ar.status != CASE 
+                    WHEN lr.status IN ('management_approved', 'partially_paid', 'paid', 'labor_disbursed') THEN 'approved' 
+                    WHEN lr.status = 'rejected' THEN 'rejected' 
+                    ELSE 'pending' 
+                END
+               OR (ar.approved_by IS NULL AND lr.management_approved_by IS NOT NULL)
         ";
         @$this->db->query($syncSql);
     }

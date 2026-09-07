@@ -8,6 +8,7 @@ class Controller
         if (!isset($data['current_route'])) {
             $data['current_route'] = $GLOBALS['route'] ?? '';
         }
+        $masterData = $data;
         extract($data);
 
         $root = dirname(__DIR__, 2);
@@ -19,12 +20,13 @@ class Controller
 
         // If the view set a $page_script variable, pass it to master layout
         if (isset($page_script)) {
-            $data['page_script'] = $page_script;
+            $masterData['page_script'] = $page_script;
         }
 
         if ($useMaster) {
             // Load master layout
-            extract($data);
+            $data = $masterData;
+            extract($masterData);
             require $root . "/app/views/layouts/master.php";
         } else {
             // Just render view standalone
