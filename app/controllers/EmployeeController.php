@@ -30,18 +30,23 @@ class EmployeeController extends Controller
     // Employee List Page
     public function index()
     {
-        $searchTerm = $_GET['q'] ?? '';
+        $searchTerm = trim($_GET['q'] ?? '');
         $departmentFilter = $_GET['department_id'] ?? '';
         $teamFilter = $_GET['team_id'] ?? '';
         $workplaceFilter = $_GET['workplace'] ?? '';
 
-        $currentPage = isset($_GET['page']) ? intval($_GET['page']) : 1;
+        $currentPage = max(1, isset($_GET['page']) ? intval($_GET['page']) : 1);
         $perPage = 10;
-        $offset = ($currentPage - 1) * $perPage;
 
         // Total employee count with filters
-        $totalEmployees = $this->employeeModel->countAll($searchTerm, $departmentFilter, $teamFilter, $workplaceFilter);
+        $totalEmployees = (int) $this->employeeModel->countAll($searchTerm, $departmentFilter, $teamFilter, $workplaceFilter);
         $totalPages = ceil($totalEmployees / $perPage);
+
+        // Reset to last available page if current page exceeds total pages after filtering
+        if ($totalPages > 0 && $currentPage > $totalPages) {
+            $currentPage = (int) $totalPages;
+        }
+        $offset = ($currentPage - 1) * $perPage;
 
         // Get paginated employees with search & department filter
         $employees = $this->employeeModel->getPaginated($perPage, $offset, $searchTerm, $departmentFilter, $teamFilter, $workplaceFilter);
@@ -54,6 +59,15 @@ class EmployeeController extends Controller
 
         // Workplaces for filter dropdown
         $workplaces = $this->employeeModel->getUniqueWorkplaces();
+
+        // Build pagination route preserving all active filters (excluding 'page' and 'url')
+        $queryArr = $_GET;
+        unset($queryArr['page'], $queryArr['url']);
+        $filteredParams = array_filter($queryArr, function ($val) {
+            return $val !== '' && $val !== null;
+        });
+        $queryString = http_build_query($filteredParams);
+        $paginationRoute = $GLOBALS['base_url'] . '/employee-lists' . ($queryString ? '?' . $queryString : '');
 
         $this->view("hrm/employees/employees", [
             "current_route" => "employee-lists",
@@ -69,7 +83,8 @@ class EmployeeController extends Controller
             "searchTerm" => $searchTerm,
             "selectedDepartment" => $departmentFilter,
             "selectedTeam" => $teamFilter,
-            "selectedWorkplace" => $workplaceFilter
+            "selectedWorkplace" => $workplaceFilter,
+            "paginationRoute" => $paginationRoute
         ]);
     }
 
