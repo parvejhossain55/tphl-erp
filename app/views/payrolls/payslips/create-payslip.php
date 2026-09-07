@@ -45,6 +45,7 @@
                                     <div class="col-lg-9">
                                         <div class="form__input">
                                             <input class="form-control flatpickr-input active" id="paydate" type="date"
+                                                value="<?= htmlspecialchars($defaultPaydate ?? date('Y-m-d')) ?>"
                                                 placeholder="Select Date">
                                         </div>
                                     </div>
@@ -484,5 +485,17 @@
 
         // ── Init ─────────────────────────────────────────────────────────────────
         restorePayslipData();
+        if (!document.getElementById('paydate').value) {
+            document.getElementById('paydate').value = '<?= htmlspecialchars($defaultPaydate ?? date('Y-m-d')) ?>';
+        }
+        const initDateVal = document.getElementById('paydate').value;
+        if (initDateVal) {
+            const d = new Date(initDateVal);
+            const formatted = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            const t1 = document.getElementById('paydateText');
+            const t2 = document.getElementById('paydateText2');
+            if (t1) t1.textContent = formatted;
+            if (t2) t2.textContent = formatted;
+        }
     });
 </script>

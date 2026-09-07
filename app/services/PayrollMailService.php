@@ -6,6 +6,9 @@ use PHPMailer\PHPMailer\Exception;
 if (!class_exists('\TCPDF') && file_exists(__DIR__ . '/../../vendor/autoload.php')) {
     require_once __DIR__ . '/../../vendor/autoload.php';
 }
+if (!function_exists('amountInWords') && file_exists(__DIR__ . '/../helpers/helper.php')) {
+    require_once __DIR__ . '/../helpers/helper.php';
+}
 
 class PayrollMailService
 {
@@ -82,10 +85,29 @@ class PayrollMailService
             $mail->setFrom($mail->Username, $companyTitle . ' Payroll');
             $mail->addAddress($recipientEmail, $employeeName);
 
+            $formatVal = function ($val) {
+                if ($val <= 0) return '';
+                return ((float)$val == (int)$val) ? number_format($val, 0, '.', '') : number_format($val, 2, '.', '');
+            };
+            $netSalaryVal = (float)($payslip['net_salary'] ?? 0);
+            $bankAmountVal = (float)($payslip['bank_amount'] ?? 0);
+            $cashAmountVal = (float)($payslip['cash_amount'] ?? 0);
+            if ($bankAmountVal <= 0 && $cashAmountVal <= 0) {
+                $method = strtolower($payslip['payment_method'] ?? 'bank');
+                if ($method === 'cash') {
+                    $cashAmountVal = $netSalaryVal;
+                } else {
+                    $bankAmountVal = $netSalaryVal;
+                }
+            }
+            $netFormatted = ((float)$netSalaryVal == (int)$netSalaryVal) ? number_format($netSalaryVal, 0, '.', '') : number_format($netSalaryVal, 2, '.', '');
+            $bankFormatted = $formatVal($bankAmountVal);
+            $cashFormatted = $formatVal($cashAmountVal);
+
             $mail->isHTML(true);
             $mail->Subject = $subject;
             $mail->Body    = $htmlBody;
-            $mail->AltBody = "Dear {$employeeName},\n\nYour payslip for {$payslipMonthText} is attached. Net Payable: ৳ " . number_format((float)($payslip['net_salary'] ?? 0), 2) . ".\n\nRegards,\n{$companyTitle}";
+            $mail->AltBody = "Dear {$employeeName},\n\nPlease find attached your Payslip for {$payslipMonthText} with the salary breakdown details below:\n\nNet Payable Salary: {$netFormatted}\nBank Payment: {$bankFormatted}\nCash Payment: {$cashFormatted}\n\nPlease review the attached Payslip for your reference.";
 
             // Attach PDF
             $pdfFilename = 'Payslip_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $employeeCode) . '_' . date('Y_m', strtotime($payslip['payslip_month'] ?? 'now')) . '.pdf';
@@ -122,121 +144,71 @@ class PayrollMailService
     }
 
     /**
-     * Build HTML Email Template
+     * Build HTML Email Template matching user's requested format
      */
     protected function buildEmailHtmlTemplate(array $payslip, string $monthText, string $companyTitle): string
     {
-        $netSalary = number_format((float) ($payslip['net_salary'] ?? 0), 2);
-        $totalEarning = number_format((float) ($payslip['total_earning'] ?? 0), 2);
-        $totalDeduction = number_format((float) ($payslip['total_deduction'] ?? 0), 2);
-        $basicSalary = number_format((float) ($payslip['basic_salary'] ?? 0), 2);
+        $netSalaryVal = (float) ($payslip['net_salary'] ?? 0);
+        $bankAmountVal = (float) ($payslip['bank_amount'] ?? 0);
+        $cashAmountVal = (float) ($payslip['cash_amount'] ?? 0);
 
-        $empName = htmlspecialchars($payslip['employee_name'] ?? '');
-        $empCode = htmlspecialchars($payslip['employee_id'] ?? '');
-        $desgName = htmlspecialchars($payslip['designation_name'] ?? 'N/A');
-        $deptName = htmlspecialchars($payslip['department_name'] ?? 'N/A');
+        if ($bankAmountVal <= 0 && $cashAmountVal <= 0) {
+            $method = strtolower($payslip['payment_method'] ?? 'bank');
+            if ($method === 'cash') {
+                $cashAmountVal = $netSalaryVal;
+            } else {
+                $bankAmountVal = $netSalaryVal;
+            }
+        }
 
-        return "
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset='utf-8'>
-            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-            <title>Payslip Notification</title>
-        </head>
-        <body style='margin: 0; padding: 0; background-color: #f4f6f8; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif; color: #333;'>
-            <table width='100%' cellpadding='0' cellspacing='0' style='background-color: #f4f6f8; padding: 30px 15px;'>
-                <tr>
-                    <td align='center'>
-                        <table width='600' cellpadding='0' cellspacing='0' style='max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;'>
-                            
-                            <!-- Brand Header -->
-                            <tr>
-                                <td style='background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%); padding: 25px 30px; text-align: left;'>
-                                    <h1 style='margin: 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;'>{$companyTitle}</h1>
-                                    <p style='margin: 4px 0 0 0; color: #ccfbf1; font-size: 13px;'>Payroll & HR Department</p>
-                                </td>
-                            </tr>
+        $formatVal = function ($val) {
+            if ($val <= 0) return '';
+            return ((float)$val == (int)$val) ? number_format($val, 0, '.', '') : number_format($val, 2, '.', '');
+        };
 
-                            <!-- Body Content -->
-                            <tr>
-                                <td style='padding: 30px;'>
-                                    <h2 style='margin: 0 0 15px 0; color: #1e293b; font-size: 18px; font-weight: 600;'>Monthly Payslip Notification</h2>
-                                    <p style='margin: 0 0 20px 0; color: #475569; font-size: 14px; line-height: 1.6;'>
-                                        Dear <strong>{$empName}</strong>,
-                                    </p>
-                                    <p style='margin: 0 0 25px 0; color: #475569; font-size: 14px; line-height: 1.6;'>
-                                        Your official salary payslip for the month of <strong>{$monthText}</strong> has been generated and approved. A detailed summary is provided below, and your complete official payslip is attached as a PDF.
-                                    </p>
+        $netSalaryFormatted = ((float)$netSalaryVal == (int)$netSalaryVal) ? number_format($netSalaryVal, 0, '.', '') : number_format($netSalaryVal, 2, '.', '');
+        $bankPaymentFormatted = $formatVal($bankAmountVal);
+        $cashPaymentFormatted = $formatVal($cashAmountVal);
 
-                                    <!-- Employee Info Box -->
-                                    <table width='100%' cellpadding='0' cellspacing='0' style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 25px;'>
-                                        <tr>
-                                            <td style='padding: 12px 15px; font-size: 13px; color: #64748b; width: 50%; border-bottom: 1px solid #e2e8f0;'><strong>Employee ID:</strong> {$empCode}</td>
-                                            <td style='padding: 12px 15px; font-size: 13px; color: #64748b; width: 50%; border-bottom: 1px solid #e2e8f0;'><strong>Department:</strong> {$deptName}</td>
-                                        </tr>
-                                        <tr>
-                                            <td style='padding: 12px 15px; font-size: 13px; color: #64748b;'><strong>Designation:</strong> {$desgName}</td>
-                                            <td style='padding: 12px 15px; font-size: 13px; color: #64748b;'><strong>Salary Period:</strong> {$monthText}</td>
-                                        </tr>
-                                    </table>
+        $empName = htmlspecialchars(trim($payslip['employee_name'] ?? 'Employee'));
 
-                                    <!-- Salary Summary Card -->
-                                    <table width='100%' cellpadding='0' cellspacing='0' style='border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; margin-bottom: 25px;'>
-                                        <tr style='background-color: #f1f5f9;'>
-                                            <th align='left' style='padding: 10px 15px; font-size: 13px; color: #334155;'>Particulars</th>
-                                            <th align='right' style='padding: 10px 15px; font-size: 13px; color: #334155;'>Amount (BDT)</th>
-                                        </tr>
-                                        <tr>
-                                            <td style='padding: 10px 15px; font-size: 13px; color: #475569; border-top: 1px solid #e2e8f0;'>Basic Salary</td>
-                                            <td align='right' style='padding: 10px 15px; font-size: 13px; color: #475569; border-top: 1px solid #e2e8f0;'>৳ {$basicSalary}</td>
-                                        </tr>
-                                        <tr>
-                                            <td style='padding: 10px 15px; font-size: 13px; color: #475569; border-top: 1px solid #e2e8f0;'>Total Earnings (Gross + Allowances)</td>
-                                            <td align='right' style='padding: 10px 15px; font-size: 13px; color: #10b981; font-weight: 600; border-top: 1px solid #e2e8f0;'>৳ {$totalEarning}</td>
-                                        </tr>
-                                        <tr>
-                                            <td style='padding: 10px 15px; font-size: 13px; color: #475569; border-top: 1px solid #e2e8f0;'>Total Deductions</td>
-                                            <td align='right' style='padding: 10px 15px; font-size: 13px; color: #ef4444; font-weight: 600; border-top: 1px solid #e2e8f0;'>৳ {$totalDeduction}</td>
-                                        </tr>
-                                        <tr style='background-color: #f0fdf4;'>
-                                            <td style='padding: 14px 15px; font-size: 15px; color: #065f46; font-weight: 700; border-top: 2px solid #0f766e;'>Net Payable Salary</td>
-                                            <td align='right' style='padding: 14px 15px; font-size: 17px; color: #0f766e; font-weight: 800; border-top: 2px solid #0f766e;'>৳ {$netSalary}</td>
-                                        </tr>
-                                    </table>
-
-                                    <div style='background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 6px; padding: 12px 16px; margin-bottom: 25px;'>
-                                        <p style='margin: 0; font-size: 12px; color: #92400e; line-height: 1.5;'>
-                                            <strong>📎 Attachment Notice:</strong> Your comprehensive payslip (including full itemized allowances, attendance details, and tax breakdowns) is attached to this email as a PDF file.
-                                        </p>
-                                    </div>
-
-                                    <p style='margin: 0; color: #64748b; font-size: 13px; line-height: 1.5;'>
-                                        If you have any queries regarding your salary or deduction calculations, please reach out to the HR department.
-                                    </p>
-                                </td>
-                            </tr>
-
-                            <!-- Footer -->
-                            <tr>
-                                <td style='background-color: #f8fafc; padding: 20px 30px; text-align: center; border-top: 1px solid #e2e8f0;'>
-                                    <p style='margin: 0; font-size: 12px; color: #94a3b8;'>
-                                        © " . date('Y') . " {$companyTitle}. All rights reserved.<br>
-                                        This is an automated system email. Please do not reply directly to this message.
-                                    </p>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
-        </body>
-        </html>
-        ";
+        return "<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+            color: #222222;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        p {
+            margin: 0 0 16px 0;
+        }
+        .salary-details {
+            margin: 0 0 16px 0;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <p><strong>Dear {$empName},</strong></p>
+    <p>Please find attached your Payslip for {$monthText} with the salary breakdown details below:</p>
+    <div class='salary-details'>
+        <strong>Net Payable Salary:</strong> {$netSalaryFormatted}<br>
+        <strong>Bank Payment:</strong> {$bankPaymentFormatted}<br>
+        <strong>Cash Payment:</strong> {$cashPaymentFormatted}
+    </div>
+    <p>Please review the attached Payslip for your reference.</p>
+</body>
+</html>";
     }
 
     /**
-     * Generate PDF Payslip in Memory using TCPDF
+     * Generate PDF Payslip in Memory using TCPDF, replicating show-payslip.php layout exactly without any '?'
      */
     protected function generatePayslipPdfContent(array $payslip, string $monthText, string $companyTitle): string
     {
@@ -244,32 +216,67 @@ class PayrollMailService
         $pdf->SetCreator('TPHL ERP');
         $pdf->SetAuthor($companyTitle);
         $pdf->SetTitle("Payslip - " . ($payslip['employee_name'] ?? ''));
-        $pdf->SetMargins(15, 15, 15);
-        $pdf->SetAutoPageBreak(true, 15);
+        $pdf->SetMargins(14, 14, 14);
+        $pdf->SetAutoPageBreak(true, 14);
         $pdf->setPrintHeader(false);
         $pdf->setPrintFooter(false);
+        $pdf->SetFont('freesans', '', 10);
         $pdf->AddPage();
 
         $empName = htmlspecialchars($payslip['employee_name'] ?? '');
-        $empCode = htmlspecialchars($payslip['employee_id'] ?? '');
         $desgName = htmlspecialchars($payslip['designation_name'] ?? 'N/A');
         $deptName = htmlspecialchars($payslip['department_name'] ?? 'N/A');
-        $joinDate = !empty($payslip['joining_date']) ? date('d M Y', strtotime($payslip['joining_date'])) : 'N/A';
-        $email = htmlspecialchars($payslip['email'] ?? 'N/A');
 
         $basic = (float) ($payslip['basic_salary'] ?? 0);
         $totalEarning = (float) ($payslip['total_earning'] ?? 0);
         $totalDeduction = (float) ($payslip['total_deduction'] ?? 0);
         $netSalary = (float) ($payslip['net_salary'] ?? 0);
 
-        // Earnings items HTML
-        $earningsHtml = "<tr><td style='padding: 4px; border-bottom: 1px solid #eee;'>Basic Salary</td><td style='text-align: right; padding: 4px; border-bottom: 1px solid #eee;'>৳ " . number_format($basic, 2) . "</td></tr>";
+        // Logo resolution (prefer optimized thumbnail to prevent TCPDF memory exhaustion)
+        $logoHtml = '';
+        $logoThumb = realpath(__DIR__ . '/../../public/assets/images/logo/tphl_logo_thumb.png');
+        if ($logoThumb && file_exists($logoThumb)) {
+            $logoHtml = '<img src="' . $logoThumb . '" style="height: 38px;" /><br>';
+        } else {
+            $logoPath = realpath(__DIR__ . '/../../public/assets/images/logo/tphl_logo.png');
+            if (!$logoPath || !file_exists($logoPath)) {
+                $logoSetting = function_exists('getSetting') ? (getSetting('white_logo') ?: getSetting('logo')) : '';
+                if ($logoSetting) {
+                    $checkPath = realpath(__DIR__ . '/../../public/uploads/settings/' . $logoSetting);
+                    if ($checkPath && file_exists($checkPath)) {
+                        $logoPath = $checkPath;
+                    }
+                }
+            }
+            if ($logoPath && file_exists($logoPath)) {
+                $info = @getimagesize($logoPath);
+                if ($info && $info[0] <= 2500) {
+                    $logoHtml = '<img src="' . $logoPath . '" style="height: 38px;" /><br>';
+                }
+            }
+        }
+
+        $companyEmail = function_exists('getSetting') ? getSetting('email') : 'career@dpremiumhomes.com';
+        $companyPhone = function_exists('getSetting') ? (getSetting('phone') ?: getSetting('website_phone')) : '+8801958253300';
+
+        $isDraft = (($payslip['status'] ?? '') === 'draft');
+        $isPaid = (($payslip['status'] ?? '') === 'paid');
+
+        // Title: Exactly like screenshot
+        $titleText = "Payslip of {$monthText}";
+
+        $createdDate = !empty($payslip['created_at']) ? date('d M Y', strtotime($payslip['created_at'])) : date('d M Y');
+        $typeOrDue = $isDraft ? 'Salary Certificate (Draft)' : (!empty($payslip['updated_at']) ? date('d M Y', strtotime($payslip['updated_at'])) : date('d M Y'));
+
+        // Earnings breakdown
+        // NOTE: Taka symbol ৳ must NOT be wrapped inside <b> to prevent FreeSans Bold missing glyph '?'
+        $earningsRows = '<tr><td style="padding: 4px 0;">Basic Salary</td><td align="right" style="padding: 4px 0;">৳ ' . number_format($basic, 2) . '</td></tr>';
         $hasExtraEarnings = false;
         if (!empty($payslip['items'])) {
             foreach ($payslip['items'] as $item) {
                 if (($item['item_type'] ?? '') === 'earning' && stripos($item['item_name'], 'basic') === false) {
                     $hasExtraEarnings = true;
-                    $earningsHtml .= "<tr><td style='padding: 4px; border-bottom: 1px solid #eee;'>" . htmlspecialchars($item['item_name']) . "</td><td style='text-align: right; padding: 4px; border-bottom: 1px solid #eee;'>৳ " . number_format((float)$item['amount'], 2) . "</td></tr>";
+                    $earningsRows .= '<tr><td style="padding: 4px 0;">' . htmlspecialchars($item['item_name']) . '</td><td align="right" style="padding: 4px 0;">৳ ' . number_format((float)$item['amount'], 2) . '</td></tr>';
                 }
             }
         }
@@ -278,20 +285,20 @@ class PayrollMailService
             $med = (float)($payslip['medical_allowance'] ?? round($basic * 0.30, 2));
             $conv = (float)($payslip['conveyance_allowance'] ?? round($basic * 0.10, 2));
             $rec = (float)($payslip['recreation_allowance'] ?? round($basic * 0.10, 2));
-            if ($hr > 0) $earningsHtml .= "<tr><td style='padding: 4px; border-bottom: 1px solid #eee;'>House Rent Allowance</td><td style='text-align: right; padding: 4px; border-bottom: 1px solid #eee;'>৳ " . number_format($hr, 2) . "</td></tr>";
-            if ($med > 0) $earningsHtml .= "<tr><td style='padding: 4px; border-bottom: 1px solid #eee;'>Medical Allowance</td><td style='text-align: right; padding: 4px; border-bottom: 1px solid #eee;'>৳ " . number_format($med, 2) . "</td></tr>";
-            if ($conv > 0) $earningsHtml .= "<tr><td style='padding: 4px; border-bottom: 1px solid #eee;'>Conveyance Allowance</td><td style='text-align: right; padding: 4px; border-bottom: 1px solid #eee;'>৳ " . number_format($conv, 2) . "</td></tr>";
-            if ($rec > 0) $earningsHtml .= "<tr><td style='padding: 4px; border-bottom: 1px solid #eee;'>Recreation Allowance</td><td style='text-align: right; padding: 4px; border-bottom: 1px solid #eee;'>৳ " . number_format($rec, 2) . "</td></tr>";
+            if ($hr > 0) $earningsRows .= '<tr><td style="padding: 4px 0;">House Rent Allowance</td><td align="right" style="padding: 4px 0;">৳ ' . number_format($hr, 2) . '</td></tr>';
+            if ($med > 0) $earningsRows .= '<tr><td style="padding: 4px 0;">Medical Allowance</td><td align="right" style="padding: 4px 0;">৳ ' . number_format($med, 2) . '</td></tr>';
+            if ($conv > 0) $earningsRows .= '<tr><td style="padding: 4px 0;">Conveyance Allowance</td><td align="right" style="padding: 4px 0;">৳ ' . number_format($conv, 2) . '</td></tr>';
+            if ($rec > 0) $earningsRows .= '<tr><td style="padding: 4px 0;">Recreation Allowance</td><td align="right" style="padding: 4px 0;">৳ ' . number_format($rec, 2) . '</td></tr>';
         }
 
-        // Deductions items HTML
-        $deductionsHtml = "";
+        // Deductions breakdown
+        $deductionsRows = '';
         $hasDeductions = false;
         if (!empty($payslip['items'])) {
             foreach ($payslip['items'] as $item) {
                 if (($item['item_type'] ?? '') === 'deduction' && (float)$item['amount'] > 0) {
                     $hasDeductions = true;
-                    $deductionsHtml .= "<tr><td style='padding: 4px; border-bottom: 1px solid #eee;'>" . htmlspecialchars($item['item_name']) . "</td><td style='text-align: right; padding: 4px; border-bottom: 1px solid #eee;'>৳ " . number_format((float)$item['amount'], 2) . "</td></tr>";
+                    $deductionsRows .= '<tr><td style="padding: 4px 0;">' . htmlspecialchars($item['item_name']) . '</td><td align="right" style="padding: 4px 0;">৳ ' . number_format((float)$item['amount'], 2) . '</td></tr>';
                 }
             }
         }
@@ -300,145 +307,207 @@ class PayrollMailService
             if ((float)($payslip['advance_salary'] ?? 0) > 0) $dedItems['Advance Salary'] = (float)$payslip['advance_salary'];
             if ((float)($payslip['subsidized_lunch'] ?? 0) > 0) $dedItems['Subsidized Lunch'] = (float)$payslip['subsidized_lunch'];
             if ((float)($payslip['unpaid_absent_amount'] ?? 0) > 0) $dedItems['Unpaid Absent'] = (float)$payslip['unpaid_absent_amount'];
-            if ((float)($payslip['tax'] ?? 0) > 0) $dedItems['Tax'] = (float)$payslip['tax'];
+            if ((float)($payslip['tax'] ?? 0) > 0) $dedItems['TAX Deduction'] = (float)$payslip['tax'];
             if ((float)($payslip['arrears_deduction'] ?? 0) > 0) $dedItems['Arrears Deduction'] = (float)$payslip['arrears_deduction'];
             if ((float)($payslip['others_deduction'] ?? 0) > 0) $dedItems['Others Deduction'] = (float)$payslip['others_deduction'];
-            
             if (!empty($dedItems)) {
                 foreach ($dedItems as $dName => $dAmt) {
-                    $deductionsHtml .= "<tr><td style='padding: 4px; border-bottom: 1px solid #eee;'>" . htmlspecialchars($dName) . "</td><td style='text-align: right; padding: 4px; border-bottom: 1px solid #eee;'>৳ " . number_format($dAmt, 2) . "</td></tr>";
+                    $deductionsRows .= '<tr><td style="padding: 4px 0;">' . htmlspecialchars($dName) . '</td><td align="right" style="padding: 4px 0;">৳ ' . number_format($dAmt, 2) . '</td></tr>';
                 }
             } elseif ($totalDeduction > 0) {
-                $deductionsHtml = "<tr><td style='padding: 4px; border-bottom: 1px solid #eee;'>General Deductions</td><td style='text-align: right; padding: 4px; border-bottom: 1px solid #eee;'>৳ " . number_format($totalDeduction, 2) . "</td></tr>";
+                $deductionsRows = '<tr><td style="padding: 4px 0;">General Deductions</td><td align="right" style="padding: 4px 0;">৳ ' . number_format($totalDeduction, 2) . '</td></tr>';
             } else {
-                $deductionsHtml = "<tr><td style='padding: 4px; color: #888;'>No Deductions</td><td style='text-align: right; padding: 4px; color: #888;'>৳ 0.00</td></tr>";
+                $deductionsRows = '<tr><td style="padding: 4px 0; color: #64748b;">No Deduction</td><td align="right" style="padding: 4px 0; color: #64748b;">৳ 0.00</td></tr>';
             }
         }
 
-        $html = "
-        <style>
-            table { font-family: helvetica, sans-serif; font-size: 10pt; }
-            .header-title { font-size: 16pt; font-weight: bold; color: #0f766e; }
-            .sub-title { font-size: 9pt; color: #555; }
-            .box { border: 1px solid #cbd5e1; background-color: #f8fafc; }
-            .table-heading { background-color: #0f766e; color: #ffffff; font-weight: bold; font-size: 10pt; }
-            .total-row { background-color: #e2e8f0; font-weight: bold; }
-            .net-box { border: 2px solid #0f766e; background-color: #f0fdf4; text-align: center; }
-        </style>
+        $wordsAmount = function_exists('amountInWords') ? trim(amountInWords($netSalary)) : '';
+        $wordsText = !empty($wordsAmount) ? "{$wordsAmount} Taka Only" : "Taka Only";
 
-        <table width='100%' cellpadding='0' cellspacing='0'>
-            <tr>
-                <td width='60%'>
-                    <span class='header-title'>{$companyTitle}</span><br>
-                    <span class='sub-title'>Official Salary Payslip</span>
-                </td>
-                <td width='40%' align='right'>
-                    <b>Payslip Month:</b> {$monthText}<br>
-                    <b>Generated Date:</b> " . date('d M Y') . "<br>
-                    <b>Payslip No:</b> PS-{$payslip['id']}
-                </td>
-            </tr>
-        </table>
-        <hr color='#0f766e' height='2'>
-        <br>
+        // Status badge (only displayed for paid, no icon characters to avoid missing glyphs)
+        $statusBadgeHtml = '';
+        if ($isPaid) {
+            $statusBadgeHtml = '<div style="margin-top: 8px;"><span style="color: #166534; font-weight: bold; background-color: #dcfce7; border: 1.5px solid #22c55e; padding: 4px 18px;">PAID</span></div>';
+        }
 
-        <!-- Employee Info Table -->
-        <table width='100%' cellpadding='5' cellspacing='0' class='box'>
-            <tr>
-                <td width='20%'><b>Employee Name:</b></td>
-                <td width='30%'>{$empName}</td>
-                <td width='20%'><b>Employee ID:</b></td>
-                <td width='30%'>{$empCode}</td>
-            </tr>
-            <tr>
-                <td><b>Designation:</b></td>
-                <td>{$desgName}</td>
-                <td><b>Department:</b></td>
-                <td>{$deptName}</td>
-            </tr>
-            <tr>
-                <td><b>Joining Date:</b></td>
-                <td>{$joinDate}</td>
-                <td><b>Email:</b></td>
-                <td>{$email}</td>
-            </tr>
-        </table>
-        <br><br>
-
-        <!-- Earnings & Deductions Table -->
-        <table width='100%' cellpadding='6' cellspacing='0' border='1' bordercolor='#cbd5e1'>
-            <thead>
-                <tr class='table-heading'>
-                    <th width='50%'>Earnings</th>
-                    <th width='50%'>Deductions</th>
-                </tr>
-            </thead>
-            <tbody>
+        // Payment details (hidden in draft, displayed for paid)
+        $paymentDetailsHtml = '';
+        if ($isPaid) {
+            $bankPayment = (float) ($payslip['bank_amount'] ?? 0);
+            $cashPayment = (float) ($payslip['cash_amount'] ?? 0);
+            if ($bankPayment <= 0 && $cashPayment <= 0) {
+                $method = strtolower($payslip['payment_method'] ?? 'bank');
+                if ($method === 'cash') $cashPayment = $netSalary;
+                else $bankPayment = $netSalary;
+            }
+            $paymentDetailsHtml = '
+            <table width="100%" cellpadding="6" cellspacing="0">
                 <tr>
-                    <td valign='top'>
-                        <table width='100%' cellpadding='3' cellspacing='0'>
-                            {$earningsHtml}
-                        </table>
-                    </td>
-                    <td valign='top'>
-                        <table width='100%' cellpadding='3' cellspacing='0'>
-                            {$deductionsHtml}
+                    <td style="border: 1px solid #d1d5db; background-color: #ffffff; padding: 10px;">
+                        <span style="color: #0f766e; font-weight: bold; font-size: 11pt;">Payment Details</span><br><br>
+                        <table width="100%" cellpadding="3" cellspacing="0">
+                            <tr>
+                                <td width="50%"><b>Payment Method:</b> ' . ucfirst($payslip['payment_method'] ?? 'Bank') . '</td>
+                                <td width="50%" align="right">';
+            if ($bankPayment > 0) $paymentDetailsHtml .= '<b>Bank Transfer:</b> ৳ ' . number_format($bankPayment, 2) . ' ';
+            if ($cashPayment > 0) $paymentDetailsHtml .= '<b>Cash Payment:</b> ৳ ' . number_format($cashPayment, 2);
+            $paymentDetailsHtml .= '</td>
+                            </tr>';
+            if (!empty($payslip['bank_name']) || !empty($payslip['account_number'])) {
+                $paymentDetailsHtml .= '
+                            <tr>
+                                <td width="50%" style="color: #475569;"><b>Bank Name:</b> ' . htmlspecialchars($payslip['bank_name'] ?? 'N/A') . '</td>
+                                <td width="50%" align="right" style="color: #475569;"><b>Account Number:</b> ' . htmlspecialchars($payslip['account_number'] ?? 'N/A') . '</td>
+                            </tr>';
+            }
+            $paymentDetailsHtml .= '
                         </table>
                     </td>
                 </tr>
-                <tr class='total-row'>
-                    <td>
-                        <table width='100%' cellpadding='2' cellspacing='0'>
-                            <tr>
-                                <td><b>Total Earnings:</b></td>
-                                <td align='right'><b>৳ " . number_format($totalEarning, 2) . "</b></td>
-                            </tr>
-                        </table>
-                    </td>
-                    <td>
-                        <table width='100%' cellpadding='2' cellspacing='0'>
-                            <tr>
-                                <td><b>Total Deductions:</b></td>
-                                <td align='right'><b>৳ " . number_format($totalDeduction, 2) . "</b></td>
-                            </tr>
-                        </table>
-                    </td>
+            </table>';
+        }
+
+        $html = '
+<style>
+    body, table, div, p, span {
+        font-family: freesans, sans-serif;
+        color: #111111;
+        font-size: 10pt;
+    }
+</style>
+
+<!-- HEADER TABLE -->
+<table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+        <td width="52%" valign="top">
+            ' . $logoHtml . '
+            <span style="font-size: 9pt; color: #374151; line-height: 1.4;">
+                ' . $companyEmail . '<br>
+                ' . $companyPhone . '
+            </span>
+        </td>
+        <td width="48%" align="right" valign="top" style="line-height: 1.6; font-size: 10pt;">
+            <b>Employee:</b> ' . $empName . '<br>
+            <b>Designation:</b> ' . $desgName . '<br>
+            <b>Department:</b> ' . $deptName . '
+        </td>
+    </tr>
+</table>
+
+<!-- TEAL BORDER LINE -->
+<table width="100%" cellpadding="0" cellspacing="0">
+    <tr><td height="3" bgcolor="#0f766e" style="font-size: 1pt;">&nbsp;</td></tr>
+</table>
+<br><br>
+
+<!-- MAIN TITLE -->
+<table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+        <td align="center" style="font-size: 20pt; font-weight: bold; color: #111827;">
+            ' . $titleText . '
+        </td>
+    </tr>
+    <tr>
+        <td align="center" style="padding-top: 4px;">
+            <table width="90" cellpadding="0" cellspacing="0">
+                <tr><td height="3" bgcolor="#0f766e" style="font-size: 1pt;">&nbsp;</td></tr>
+            </table>
+        </td>
+    </tr>
+</table>
+<br><br>
+
+<!-- PERIOD BAR -->
+<table width="100%" cellpadding="6" cellspacing="0">
+    <tr>
+        <td style="border: 1px solid #d1d5db; background-color: #ffffff;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                    <td width="35%"><span style="color: #0f766e; font-weight: bold;">Created:</span> ' . $createdDate . '</td>
+                    <td width="35%" align="center"><span style="color: #0f766e; font-weight: bold;">Type:</span> ' . $typeOrDue . '</td>
+                    <td width="30%" align="right"><span style="color: #0f766e; font-weight: bold;">Payslip No:</span> PS-' . $payslip['id'] . '</td>
                 </tr>
-            </tbody>
-        </table>
-        <br><br>
+            </table>
+        </td>
+    </tr>
+</table>
+<br><br>
 
-        <!-- Net Salary Box -->
-        <table width='100%' cellpadding='10' cellspacing='0' class='net-box'>
-            <tr>
-                <td>
-                    <span style='font-size: 11pt; color: #065f46;'><b>NET PAYABLE SALARY</b></span><br>
-                    <span style='font-size: 16pt; color: #0f766e; font-weight: bold;'>৳ " . number_format($netSalary, 2) . "</span>
-                </td>
-            </tr>
-        </table>
-        <br><br><br><br>
+<!-- EARNINGS & DEDUCTIONS CARDS (SIDE BY SIDE) -->
+<table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+        <!-- Left: Earnings -->
+        <td width="48.5%" valign="top" style="border: 1px solid #d1d5db; background-color: #ffffff; padding: 10px;">
+            <table width="100%" cellpadding="4" cellspacing="0">
+                <tr>
+                    <td colspan="2" style="color: #0f766e; font-size: 12pt; font-weight: bold; padding-bottom: 6px;">Earnings</td>
+                </tr>
+                ' . $earningsRows . '
+                <tr>
+                    <td style="border-top: 1px solid #d1d5db; padding-top: 8px; font-weight: bold;">Total Earnings</td>
+                    <td align="right" style="border-top: 1px solid #d1d5db; padding-top: 8px;">৳ <b>' . number_format($totalEarning, 2) . '</b></td>
+                </tr>
+            </table>
+        </td>
 
-        <!-- Signatures -->
-        <table width='100%' cellpadding='0' cellspacing='0'>
-            <tr>
-                <td width='30%' align='center'>
-                    -----------------------------------<br>
-                    <b>Prepared By (HR)</b>
-                </td>
-                <td width='40%' align='center'>
-                    -----------------------------------<br>
-                    <b>Verified By (Accounts)</b>
-                </td>
-                <td width='30%' align='center'>
-                    -----------------------------------<br>
-                    <b>Authorized Signature</b>
-                </td>
-            </tr>
-        </table>
-        <br><br>
-        <p style='font-size: 8pt; color: #888; text-align: center;'>This is a computer-generated payslip and does not require a physical signature when sent digitally.</p>
-        ";
+        <td width="3%"></td>
+
+        <!-- Right: Deductions -->
+        <td width="48.5%" valign="top" style="border: 1px solid #d1d5db; background-color: #ffffff; padding: 10px;">
+            <table width="100%" cellpadding="4" cellspacing="0">
+                <tr>
+                    <td colspan="2" style="color: #0f766e; font-size: 12pt; font-weight: bold; padding-bottom: 6px;">Deductions</td>
+                </tr>
+                ' . $deductionsRows . '
+                <tr>
+                    <td style="border-top: 1px solid #d1d5db; padding-top: 8px; font-weight: bold;">Total Deductions</td>
+                    <td align="right" style="border-top: 1px solid #d1d5db; padding-top: 8px;">৳ <b>' . number_format($totalDeduction, 2) . '</b></td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+<br><br>
+
+<!-- NET SALARY SECTION -->
+<table width="100%" cellpadding="12" cellspacing="0">
+    <tr>
+        <td align="center" style="border: 2px solid #0f766e; background-color: #ffffff;">
+            <span style="font-size: 11pt; font-weight: bold; color: #0f766e;">Net Salary (Take Home)</span><br><br>
+            <span style="font-size: 24pt; color: #111827;"><span style="font-weight: normal;">৳</span> <b>' . number_format($netSalary, 2) . '</b></span><br><br>
+            <span style="font-size: 9.5pt; color: #374151;">
+                <span style="color: #0f766e; font-weight: bold;">Amount in Words:</span> ' . $wordsText . '
+            </span>
+            ' . $statusBadgeHtml . '
+        </td>
+    </tr>
+</table>
+
+' . $paymentDetailsHtml . '
+
+<br><br><br><br><br>
+
+<!-- SIGNATURES SECTION -->
+<table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+        <td width="45%" align="center">
+            <b>Employee Signature</b>
+            <br><br><br><br>
+            <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td height="1" bgcolor="#111111" style="font-size: 1pt;">&nbsp;</td></tr>
+            </table>
+        </td>
+        <td width="10%"></td>
+        <td width="45%" align="center">
+            <b>Authorized Signature</b>
+            <br><br><br><br>
+            <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td height="1" bgcolor="#111111" style="font-size: 1pt;">&nbsp;</td></tr>
+            </table>
+        </td>
+    </tr>
+</table>
+';
 
         $pdf->writeHTML($html, true, false, true, false, '');
 

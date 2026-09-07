@@ -130,7 +130,7 @@ $show_breadcrumb = true;
                     <a href="<?= $GLOBALS['base_url'] ?>/import-payslips" class="btn btn-info w-100 px-0">
                         Import
                     </a>
-                    <a href="<?= $GLOBALS['base_url'] ?>/create-payslip" class="btn btn-primary w-100 px-0">
+                    <a href="<?= $GLOBALS['base_url'] ?>/create-payslip?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>" class="btn btn-primary w-100 px-0">
                         Create
                     </a>
                 </div>
@@ -449,10 +449,18 @@ $show_breadcrumb = true;
     </div>
 </div>
 
+<?php if (empty($selectedProjectId)): ?>
 <div class="col-xxl-12 animate__animated animate__fadeIn mt-4">
     <div class="card__wrapper">
         <div class="d-flex justify-content-between align-items-center mb-15 flex-wrap gap-2">
-            <h5 class="fw-bold m-0 text-dark" style="font-size: 1rem;">Draft Salary Certificates</h5>
+            <h5 class="fw-bold m-0 text-dark" style="font-size: 1rem;">
+                Draft Salary Certificates <span class="badge bg-secondary ms-2"><?= count($draftPayslips ?? []) ?></span>
+            </h5>
+            <div>
+                <button type="button" class="btn btn-primary btn-sm px-3 fw-bold" onclick="sendBulkDraftPayslipEmail()">
+                    <i class="fa-light fa-envelope me-1"></i> Email Selected Certificates
+                </button>
+            </div>
         </div>
         <div class="table__wrapper table-responsive">
             <table class="table hover mb-20" id="draftPayslipListTable">
@@ -471,39 +479,53 @@ $show_breadcrumb = true;
                     </tr>
                 </thead>
                 <tbody class="table__body">
-                    <?php $sl2 = 1; ?>
-                    <?php foreach ($payslips as $payslip): ?>
-                        <?php if ($payslip['status'] != 'draft') continue; ?>
+                    <?php if (!empty($draftPayslips)): ?>
+                        <?php $sl2 = 1; ?>
+                        <?php foreach ($draftPayslips as $payslip): ?>
+                            <tr>
+                                <td><input type="checkbox" class="draft-payslip-checkbox payslip-checkbox" value="<?= $payslip['id'] ?>"></td>
+                                <td><?= $sl2++ ?></td>
+                                <td class="td_1">
+                                    <span class="table-avatar">
+                                        <a class="employee__avatar mr-5" href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $payslip['employee_id'] ?>"><img class="img-48 border-circle" src="<?= getImage('employees', $payslip['photo']) ?>" alt="User Image"><strong class="ps-2"><?= htmlspecialchars($payslip['employee_office_id'] ?? '') ?></strong></a>
+                                        <a href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $payslip['employee_id'] ?>"><?= $payslip['employee_name'] ?></a>
+                                    </span>
+                                    <?php if (!empty($payslip['email_sent_at'])): ?>
+                                        <br><span class="badge bg-success-subtle text-success border border-success-subtle px-1 py-0 mt-1" style="font-size: 10px;" title="Emailed on <?= date('d M Y H:i', strtotime($payslip['email_sent_at'])) ?>">
+                                            <i class="fa-solid fa-circle-check me-1"></i>Emailed
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="table__employee-position"><?= $payslip['desgination_name'] ?></td>
+                                <td class="table__employee-department"><?= htmlspecialchars($payslip['department_name'] ?? 'N/A') ?></td>
+                                <td class="table__employee-email"><a href="mailto:<?= htmlspecialchars($payslip['email']) ?>"><?= htmlspecialchars($payslip['email']) ?></a></td>
+                                <td class="table__joining-date"><?= $payslip['joining_date'] ?></td>
+                                <td class="table__salary"><?= $payslip['net_salary'] ?></td>
+                                <td class="table__delivery"><span class="bd-badge bg-secondary">Draft / Certificate</span></td>
+                                <td class="able__icon-box">
+                                    <div class="d-flex align-items-center justify-content-start gap-10">
+                                        <span class="badge bg-secondary-subtle text-secondary border py-2 px-2" style="font-size: 11px;">Draft Certificate</span>
+                                        <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>" class="table__icon download" title="View Payslip"><i class="fa-regular fa-eye"></i></a>
+                                        <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>?print=1" class="table__icon download" title="Print Payslip"><i class="fas fa-print"></i></a>
+                                        <button type="button" class="table__icon text-primary border-0 bg-transparent p-0" title="Email Salary Certificate" onclick="sendSinglePayslipEmail(<?= $payslip['id'] ?>, '<?= htmlspecialchars(addslashes($payslip['employee_name'])) ?>', '<?= htmlspecialchars(addslashes($payslip['email'] ?? '')) ?>')">
+                                            <i class="fa-regular fa-envelope"></i>
+                                        </button>
+                                        <a href="<?= $GLOBALS['base_url'] ?>/delete-payslip/<?= $payslip['id'] ?>" onclick="return confirm('Are you sure you want to delete this payslip?')" class="table__icon text-danger" title="Delete Payslip"><i class="fa-regular fa-trash-can"></i></a>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
                         <tr>
-                            <td><input type="checkbox" class="draft-payslip-checkbox payslip-checkbox" value="<?= $payslip['id'] ?>"></td>
-                            <td><?= $sl2++ ?></td>
-                            <td class="td_1">
-                                <span class="table-avatar">
-                                    <a class="employee__avatar mr-5" href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $payslip['employee_id'] ?>"><img class="img-48 border-circle" src="<?= getImage('employees', $payslip['photo']) ?>" alt="User Image"><strong class="ps-2"><?= htmlspecialchars($payslip['employee_office_id'] ?? '') ?></strong></a>
-                                    <a href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $payslip['employee_id'] ?>"><?= $payslip['employee_name'] ?></a>
-                                </span>
-                            </td>
-                            <td class="table__employee-position"><?= $payslip['desgination_name'] ?></td>
-                            <td class="table__employee-department"><?= htmlspecialchars($payslip['department_name'] ?? 'N/A') ?></td>
-                            <td class="table__employee-email"><a href="mailto:<?= htmlspecialchars($payslip['email']) ?>"><?= htmlspecialchars($payslip['email']) ?></a></td>
-                            <td class="table__joining-date"><?= $payslip['joining_date'] ?></td>
-                            <td class="table__salary"><?= $payslip['net_salary'] ?></td>
-                            <td class="table__delivery"><span class="bd-badge bg-secondary">Draft / Certificate</span></td>
-                            <td class="able__icon-box">
-                                <div class="d-flex align-items-center justify-content-start gap-10">
-                                    <span class="badge bg-secondary-subtle text-secondary border py-2 px-2" style="font-size: 11px;">Draft Certificate</span>
-                                    <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>" class="table__icon download" title="View Payslip"><i class="fa-regular fa-eye"></i></a>
-                                    <a href="<?= $GLOBALS['base_url'] ?>/show-payslip/<?= $payslip['id'] ?>?print=1" class="table__icon download" title="Print Payslip"><i class="fas fa-print"></i></a>
-                                    <a href="<?= $GLOBALS['base_url'] ?>/delete-payslip/<?= $payslip['id'] ?>" onclick="return confirm('Are you sure you want to delete this payslip?')" class="table__icon text-danger" title="Delete Payslip"><i class="fa-regular fa-trash-can"></i></a>
-                                </div>
-                            </td>
+                            <td colspan="10" class="text-center text-muted py-3">No draft salary certificates found for this month.</td>
                         </tr>
-                    <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+<?php endif; ?>
 </div>
 <!-- Pay Payslip Modal -->
 <div id="payPayslipModal" class="modal custom-modal fade" role="dialog">
@@ -1286,6 +1308,84 @@ $show_breadcrumb = true;
                         return res.text().then(text => {
                             console.error("Non-JSON:", text);
                             throw new Error('Server returned an invalid format. Check console.');
+                        });
+                    }
+                })
+                .catch(err => {
+                    Swal.showValidationMessage(`${err.message}`);
+                });
+            },
+            allowOutsideClick: () => !Swal.isLoading()
+        }).then(result => {
+            if (result.isConfirmed && result.value) {
+                const data = result.value;
+                let reportHtml = `<p class="fs-14">${data.message}</p>`;
+                if (data.errors && data.errors.length > 0) {
+                    reportHtml += `<hr><div class="text-start fs-12 text-muted" style="max-height:160px; overflow-y:auto;"><ul class="ps-3 mb-0">`;
+                    data.errors.forEach(err => {
+                        reportHtml += `<li>${err}</li>`;
+                    });
+                    reportHtml += `</ul></div>`;
+                }
+
+                Swal.fire({
+                    icon: data.sent_count > 0 ? 'success' : 'warning',
+                    title: 'Email Delivery Complete',
+                    html: reportHtml,
+                    confirmButtonColor: '#0f766e'
+                }).then(() => {
+                    window.location.reload();
+                });
+            }
+        });
+    }
+
+    function sendBulkDraftPayslipEmail() {
+        const selectedIds = [];
+        document.querySelectorAll('#draftPayslipListTable .draft-payslip-checkbox:checked').forEach(cb => {
+            if (cb.value) {
+                selectedIds.push(cb.value);
+            }
+        });
+
+        if (selectedIds.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Certificates Selected',
+                text: 'Please select at least one draft salary certificate using the checkboxes.',
+                confirmButtonColor: '#0f766e'
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: 'Send Draft Certificates in Bulk?',
+            html: `Are you sure you want to send draft salary certificates via email to <b>${selectedIds.length}</b> selected employee(s)?<br><br><small class="text-muted">Each employee will receive their personalized email summary with the official PDF certificate attached.</small>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fa-regular fa-paper-plane me-1"></i> Yes, Send to All',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#0f766e',
+            showLoaderOnConfirm: true,
+            preConfirm: () => {
+                return fetch('<?= $GLOBALS['base_url'] ?>/send-bulk-payslip-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payslip_ids: selectedIds })
+                })
+                .then(res => {
+                    const contentType = res.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        return res.json().then(data => {
+                             if (!res.ok || !data.success) {
+                                 throw new Error(data.message || 'Bulk email delivery encountered an issue.');
+                             }
+                             return data;
+                        });
+                    } else {
+                        return res.text().then(text => {
+                             console.error("Non-JSON:", text);
+                             throw new Error('Server returned an invalid format. Check console.');
                         });
                     }
                 })
