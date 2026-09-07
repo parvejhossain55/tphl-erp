@@ -1656,6 +1656,20 @@
                         </a>
                     </li>
                     <li class="slide ">
+                        <a href="<?= $base_url ?>/ced-central-report"
+                            class="sidebar__menu-item <?= isActive('ced-central-report', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-table-list"></i></div>
+                            <span class="sidebar__menu-label">CED Central Report</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/ced-project-notices"
+                            class="sidebar__menu-item <?= isActive('ced-project-notices', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-bullhorn"></i></div>
+                            <span class="sidebar__menu-label">Project Notices</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
                         <a href="<?= $base_url ?>/company-bank-accounts"
                             class="sidebar__menu-item <?= isActive('company-bank-accounts', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-landmark"></i></div>
