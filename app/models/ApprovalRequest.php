@@ -841,6 +841,7 @@ class ApprovalRequest extends Model
                     ar.title,
                     ar.source_table,
                     ar.source_id,
+                    ar.approve_role,
                     IFNULL(ar.request_amount, 0.00) AS request_amount,
                     IFNULL(ar.approved_amount, ar.request_amount) AS approved_amount,
                     ar.status,
@@ -1017,6 +1018,73 @@ class ApprovalRequest extends Model
                         }
                     }
                 }
+            } else if ($sourceTable === 'contractor_bill_requests') {
+                $cbSql = "SELECT status, IFNULL(approved_amount, bill_amount) AS app_amt, updated_at FROM contractor_bill_requests WHERE id = ? LIMIT 1";
+                $cbStmt = $this->db->prepare($cbSql);
+                if ($cbStmt) {
+                    $cbStmt->bind_param("i", $sourceId);
+                    $cbStmt->execute();
+                    $cbRow = $cbStmt->get_result()->fetch_assoc();
+                    $cbStmt->close();
+                    if ($cbRow) {
+                        if (in_array(strtolower($cbRow['status']), ['paid', 'fully_paid'])) {
+                            $payoutStatus = 'Paid & Settled';
+                            $payoutAmount = (float)$cbRow['app_amt'];
+                            $payoutDate = $cbRow['updated_at'];
+                        } else if (strtolower($cbRow['status']) === 'partially_paid') {
+                            $payoutStatus = 'Partially Paid';
+                            $payoutAmount = (float)$cbRow['app_amt'];
+                            $payoutDate = $cbRow['updated_at'];
+                        } else if (in_array(strtolower($cbRow['status']), ['approved']) || $row['status'] === 'approved') {
+                            $payoutStatus = 'Pending Accounts Payout';
+                            $payoutAmount = (float)$cbRow['app_amt'];
+                        }
+                    }
+                }
+            } else if ($sourceTable === 'cashout_requests') {
+                $coSql = "SELECT status, IFNULL(approved_amount, amount) AS app_amt, updated_at FROM cashout_requests WHERE id = ? LIMIT 1";
+                $coStmt = $this->db->prepare($coSql);
+                if ($coStmt) {
+                    $coStmt->bind_param("i", $sourceId);
+                    $coStmt->execute();
+                    $coRow = $coStmt->get_result()->fetch_assoc();
+                    $coStmt->close();
+                    if ($coRow) {
+                        if (in_array(strtolower($coRow['status']), ['fully_paid', 'paid'])) {
+                            $payoutStatus = 'Paid & Settled';
+                            $payoutAmount = (float)$coRow['app_amt'];
+                            $payoutDate = $coRow['updated_at'];
+                        } else if (strtolower($coRow['status']) === 'partially_paid') {
+                            $payoutStatus = 'Partially Paid';
+                            $payoutAmount = (float)$coRow['app_amt'];
+                            $payoutDate = $coRow['updated_at'];
+                        } else if (strtolower($coRow['status']) === 'approved' || $row['status'] === 'approved') {
+                            $payoutStatus = 'Pending Accounts Payout';
+                            $payoutAmount = (float)$coRow['app_amt'];
+                        }
+                    }
+                }
+            } else if ($sourceTable === 'advance_salaries') {
+                $asSql = "SELECT status, amount, updated_at FROM advance_salaries WHERE id = ? LIMIT 1";
+                $asStmt = $this->db->prepare($asSql);
+                if ($asStmt) {
+                    $asStmt->bind_param("i", $sourceId);
+                    $asStmt->execute();
+                    $asRow = $asStmt->get_result()->fetch_assoc();
+                    $asStmt->close();
+                    if ($asRow) {
+                        if (in_array(strtolower($asRow['status']), ['paid', 'deducted'])) {
+                            $payoutStatus = 'Paid & Settled';
+                            $payoutAmount = (float)$asRow['amount'];
+                            $payoutDate = $asRow['updated_at'];
+                        } else if (in_array(strtolower($asRow['status']), ['approved', 'pending_accounts']) || $row['status'] === 'approved') {
+                            $payoutStatus = 'Pending Accounts Payout';
+                            $payoutAmount = (float)$asRow['amount'];
+                        }
+                    }
+                }
+            } else if ($row['status'] === 'approved' && $sourceTable !== 'lead_payments') {
+                $payoutStatus = 'Pending Accounts Payout';
             } else if ($row['status'] === 'approved') {
                 $payoutStatus = 'Approved';
             }
@@ -1032,39 +1100,219 @@ class ApprovalRequest extends Model
             $stmt->close();
         }
 
-        // --- Role-based Custom Sorting ---
+        // --- Role-based Custom Prioritization and Sorting ---
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $sessionRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        
-        $isManagement = in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management']);
-        $isAccounts = ($sessionRoleName === 'accounts' || $sessionRoleName === 'accounts head' || $userRoleId === 4);
-        
-        if ($isManagement || $isAccounts) {
-            usort($list, function($a, $b) use ($isManagement, $isAccounts) {
-                $aPriority = 0;
-                $bPriority = 0;
-                
-                if ($isManagement) {
-                    if ($a['status'] === 'pending') $aPriority = 1;
-                    if ($b['status'] === 'pending') $bPriority = 1;
+        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        // Full Management: Super Admin (3), Admin (1), Chief Officer (33)
+        $isFullManagement = in_array($userRoleId, [1, 3, 33], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+
+        // Site Operator / Admin & Operation Head: Role 20, Role 32
+        $isRole20 = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
+
+        // Accounts: Role 6 (Accounts), Role 30 (Accounts Head)
+        $isAccounts = in_array($userRoleId, [6, 30], true) || strpos($sessionRoleName, 'account') !== false;
+
+        // HR: Role 4
+        $isHR = ($userRoleId === 4) || strpos($sessionRoleName, 'hr') !== false;
+
+        // QC: Role 13, 24, 25
+        $isQC = in_array($userRoleId, [13, 24, 25], true) || strpos($sessionRoleName, 'qc') !== false;
+
+        // Purchase Lead: Role 17, 23, 31
+        $isPurchase = in_array($userRoleId, [17, 23, 31], true) || strpos($sessionRoleName, 'purchase') !== false;
+
+        $getPriority = function($item) use ($isFullManagement, $isRole20, $isAccounts, $isHR, $isQC, $isPurchase) {
+            $status = strtolower($item['status'] ?? '');
+            $isPending = in_array($status, ['pending', 'partially_approved', '']);
+            $approveRole = strtolower($item['approve_role'] ?? 'management');
+            if (empty($approveRole)) {
+                $approveRole = 'management';
+            }
+            $payoutStatus = $item['payout_status'] ?? '';
+            $amount = (float)($item['request_amount'] ?? 0);
+            $isRejected = ($status === 'rejected');
+
+            // --- Tier 4: Directly Actionable by Logged-in User (TOP PRIORITY) ---
+
+            // 1. Accounts Users:
+            // Requests approved by Management awaiting payout/disbursement show FIRST!
+            if ($isAccounts) {
+                if (in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid'])) {
+                    return 4; // Actionable by Accounts (Payout needed)
                 }
-                if ($isAccounts) {
-                    if ($a['payout_status'] === 'Pending Accounts Payout') $aPriority = 1;
-                    if ($b['payout_status'] === 'Pending Accounts Payout') $bPriority = 1;
+                if (in_array($status, ['approved', 'partially_approved', 'partially_paid']) && !in_array($payoutStatus, ['Paid & Settled', 'Approved', 'N/A'])) {
+                    return 4;
                 }
-                
-                // Sort by priority DESC (1 first)
-                if ($aPriority !== $bPriority) {
-                    return $bPriority <=> $aPriority;
+            }
+
+            // 2. Role 20 (Admin & Operation Head, e.g. Alfesani Shuvo) & Role 32:
+            // Actionable: Pending Management requests where amount <= 100,000 show FIRST!
+            if ($isRole20) {
+                if ($isPending && in_array($approveRole, ['management', '']) && $amount <= 100000.01) {
+                    return 4; // Actionable by Role 20!
                 }
-                
-                // Fallback to original order (id DESC)
-                return $b['id'] <=> $a['id'];
-            });
+            }
+
+            // 3. Full Management (Roles 1, 3, 33):
+            // All pending Management requests (any amount) show FIRST!
+            if ($isFullManagement) {
+                if ($isPending && in_array($approveRole, ['management', ''])) {
+                    return 4; // Actionable by Full Management!
+                }
+            }
+
+            // 4. HR:
+            if ($isHR) {
+                if ($isPending && in_array($approveRole, ['hr', 'hr_head'])) {
+                    return 4;
+                }
+            }
+
+            // 5. QC:
+            if ($isQC) {
+                if ($isPending && in_array($approveRole, ['qc', 'qc_head'])) {
+                    return 4;
+                }
+            }
+
+            // 6. Purchase Lead:
+            if ($isPurchase) {
+                if ($isPending && in_array($approveRole, ['purchase team leader', 'purchase', 'purchase_lead'])) {
+                    return 4;
+                }
+            }
+
+            // --- Tier 3: Other Pending Requests (Pending on others or over threshold) ---
+            if ($isPending) {
+                return 3;
+            }
+
+            // --- Tier 2: Completed / Approved / Paid & Settled ---
+            if (!$isRejected) {
+                return 2;
+            }
+
+            // --- Tier 1: Rejected Items ---
+            return 1;
+        };
+
+        $statusFilter = strtolower(trim($filters['status'] ?? ''));
+
+        // --- Role-Based Visibility Filtering ("jar jeita pending shudu she oigulo dekhbe") ---
+        $filteredList = [];
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+
+        foreach ($list as $item) {
+            $status = strtolower($item['status'] ?? '');
+            $isPending = in_array($status, ['pending', 'partially_approved', '']);
+            $approveRole = strtolower($item['approve_role'] ?? 'management');
+            if (empty($approveRole)) {
+                $approveRole = 'management';
+            }
+            $payoutStatus = $item['payout_status'] ?? '';
+            $amount = (float)($item['request_amount'] ?? 0);
+
+            // If Super Admin explicitly requested 'all' company requests:
+            if ($isFullManagement && $statusFilter === 'all') {
+                $filteredList[] = $item;
+                continue;
+            }
+
+            // If explicit status filter: 'approved'
+            if ($statusFilter === 'approved') {
+                if ($isRole20) {
+                    if (in_array($approveRole, ['management', '']) && $amount <= 100000.01) {
+                        $filteredList[] = $item;
+                    }
+                } elseif ($isFullManagement) {
+                    if (in_array($approveRole, ['management', ''])) {
+                        $filteredList[] = $item;
+                    }
+                } elseif ($isAccounts) {
+                    if (in_array($payoutStatus, ['Paid & Settled', 'Approved'])) {
+                        $filteredList[] = $item;
+                    }
+                } else {
+                    $filteredList[] = $item;
+                }
+                continue;
+            }
+
+            // If explicit status filter: 'rejected'
+            if ($statusFilter === 'rejected') {
+                if ($status === 'rejected') {
+                    if ($isRole20) {
+                        if (in_array($approveRole, ['management', '']) && $amount <= 100000.01) {
+                            $filteredList[] = $item;
+                        }
+                    } elseif ($isFullManagement) {
+                        if (in_array($approveRole, ['management', ''])) {
+                            $filteredList[] = $item;
+                        }
+                    } else {
+                        $filteredList[] = $item;
+                    }
+                }
+                continue;
+            }
+
+            // DEFAULT (or statusFilter = 'pending' or empty):
+            // Show ONLY what is pending for the logged-in user!
+            if ($isAccounts) {
+                // Accounts only sees items waiting for Accounts payout/disbursement
+                if (in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid'])) {
+                    $filteredList[] = $item;
+                }
+            } elseif ($isRole20) {
+                // Role 20 only sees management pending items within threshold <= 100,000
+                if ($isPending && in_array($approveRole, ['management', '']) && $amount <= 100000.01) {
+                    $filteredList[] = $item;
+                }
+            } elseif ($isFullManagement) {
+                // Full Management only sees items pending management approval
+                if ($isPending && in_array($approveRole, ['management', ''])) {
+                    $filteredList[] = $item;
+                }
+            } elseif ($isQC) {
+                // QC only sees items pending QC approval
+                if ($isPending && in_array($approveRole, ['qc', 'qc_head'])) {
+                    $filteredList[] = $item;
+                }
+            } elseif ($isPurchase) {
+                // Purchase Team Leader only sees items pending purchase approval
+                if ($isPending && in_array($approveRole, ['purchase team leader', 'purchase', 'purchase_lead'])) {
+                    $filteredList[] = $item;
+                }
+            } elseif ($isHR) {
+                // HR only sees items pending HR approval
+                if ($isPending && in_array($approveRole, ['hr', 'hr_head'])) {
+                    $filteredList[] = $item;
+                }
+            } else {
+                // Dept Head / Reporting Boss
+                if ($isPending && ($approveRole === 'dept_head' || $approveRole === 'dept_head_' . $userId)) {
+                    $filteredList[] = $item;
+                }
+            }
         }
+
+        $list = $filteredList;
+
+        usort($list, function($a, $b) use ($getPriority) {
+            $pA = $getPriority($a);
+            $pB = $getPriority($b);
+
+            if ($pA !== $pB) {
+                return $pB <=> $pA; // Higher priority first
+            }
+
+            // Tie-break: Newest requests first (id DESC)
+            return ((int)$b['id']) <=> ((int)$a['id']);
+        });
 
         return $list;
     }
@@ -1088,7 +1336,30 @@ class ApprovalRequest extends Model
                 $title = "Fund Requisition: " . (mb_strlen($row['purpose']) > 80 ? mb_substr($row['purpose'], 0, 80) . '...' : $row['purpose']);
                 $amount = (float) $row['amount'];
                 $requestedBy = (int) $row['requested_by'];
-                $status = ($row['status'] === 'pending_dept') ? 'pending' : $row['status'];
+                $frStatus = $row['status'];
+                if ($frStatus === 'pending_dept') {
+                    $approveRole = 'dept_head';
+                    $status = 'pending';
+                } elseif ($frStatus === 'pending_qc') {
+                    $approveRole = 'qc';
+                    $status = 'pending';
+                } elseif ($frStatus === 'pending') {
+                    $approveRole = 'management';
+                    $status = 'pending';
+                } elseif ($frStatus === 'approved') {
+                    $approveRole = 'accounts';
+                    $status = 'approved';
+                } elseif (in_array($frStatus, ['paid', 'partially_paid'])) {
+                    $approveRole = 'completed';
+                    $status = ($frStatus === 'paid') ? 'approved' : 'partially_paid';
+                } elseif ($frStatus === 'rejected') {
+                    $approveRole = 'management';
+                    $status = 'rejected';
+                } else {
+                    $approveRole = 'management';
+                    $status = 'pending';
+                }
+
                 $approvedBy = !empty($row['approved_by']) ? (int) $row['approved_by'] : null;
                 $approvedAt = !empty($row['approved_at']) ? $row['approved_at'] : null;
                 $approvalNote = !empty($row['approval_note']) ? $row['approval_note'] : null;
@@ -1098,10 +1369,10 @@ class ApprovalRequest extends Model
                 $stmt = $this->db->prepare("
                     INSERT INTO approval_requests 
                     (department, request_type, title, source_table, source_id, request_amount, approved_amount, requested_by, approve_role, status, approved_by, approved_at, approval_note, meta_data, created_at)
-                    VALUES (?, ?, ?, 'fund_requisitions', ?, ?, ?, ?, 'management', ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, 'fund_requisitions', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if ($stmt) {
-                    $stmt->bind_param("sssiddisissss", $deptName, $requestType, $title, $sourceId, $amount, $amount, $requestedBy, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                    $stmt->bind_param("sssiddisssissss", $deptName, $requestType, $title, $sourceId, $amount, $amount, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
                     $stmt->execute();
                     $stmt->close();
                 }
@@ -1112,14 +1383,26 @@ class ApprovalRequest extends Model
         $syncSql = "
             UPDATE approval_requests ar
             INNER JOIN fund_requisitions fr ON (ar.source_table = 'fund_requisitions' AND ar.source_id = fr.id)
-            SET ar.status = CASE WHEN fr.status = 'pending_dept' THEN 'pending' ELSE fr.status END,
+            SET ar.approve_role = CASE 
+                    WHEN fr.status = 'pending_dept' THEN 'dept_head'
+                    WHEN fr.status = 'pending_qc' THEN 'qc'
+                    WHEN fr.status = 'pending' THEN 'management'
+                    WHEN fr.status = 'approved' THEN 'accounts'
+                    WHEN fr.status IN ('paid', 'partially_paid') THEN 'completed'
+                    ELSE ar.approve_role 
+                END,
+                ar.status = CASE 
+                    WHEN fr.status IN ('pending_dept', 'pending_qc', 'pending') THEN 'pending'
+                    WHEN fr.status = 'paid' THEN 'approved'
+                    WHEN fr.status = 'partially_paid' THEN 'partially_paid'
+                    WHEN fr.status = 'rejected' THEN 'rejected'
+                    ELSE 'pending'
+                END,
                 ar.approved_by = fr.approved_by,
                 ar.approved_at = fr.approved_at,
                 ar.approval_note = fr.approval_note,
                 ar.request_amount = fr.amount,
-                ar.approved_amount = fr.amount
-            WHERE ar.status != CASE WHEN fr.status = 'pending_dept' THEN 'pending' ELSE fr.status END
-               OR (ar.approved_by IS NULL AND fr.approved_by IS NOT NULL)
+                ar.approved_amount = IFNULL(fr.approved_amount, fr.amount)
         ";
         @$this->db->query($syncSql);
     }

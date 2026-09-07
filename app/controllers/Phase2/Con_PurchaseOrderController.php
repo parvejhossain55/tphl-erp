@@ -37,13 +37,26 @@ class Con_PurchaseOrderController extends Controller
 
         // Determine filters
         $isApproverRole = in_array($currentRoleId, [17, 24, 20]);
-        $filter = $_GET['filter'] ?? ($isApproverRole ? 'pending_my_approval' : 'all');
-        $projectId = $_GET['project_id'] ?? '';
+        $filter         = $_GET['filter'] ?? ($isApproverRole ? 'pending_my_approval' : 'all');
+        $projectId      = $_GET['project_id'] ?? '';
+        $paymentFilter  = $_GET['payment_filter'] ?? 'all';
 
         $filteredOrders = [];
         foreach ($orders as $po) {
             // Project filter
             if ($projectId !== '' && $po['project_id'] != $projectId) {
+                continue;
+            }
+
+            // Vendor payment filter
+            $hasVpr = !empty($po['vpr_id']);
+            $isPaid = in_array($po['vpr_status'] ?? '', ['Fully_Paid', 'Paid']) || (($po['vpr_total_paid'] ?? 0) > 0 && ($po['vpr_due'] ?? 0) <= 0);
+
+            if ($paymentFilter === 'unrequested' && $hasVpr) {
+                continue;
+            } elseif ($paymentFilter === 'requested' && (!$hasVpr || $isPaid)) {
+                continue;
+            } elseif ($paymentFilter === 'paid' && !$isPaid) {
                 continue;
             }
 
@@ -76,14 +89,33 @@ class Con_PurchaseOrderController extends Controller
             }
         }
 
-        // Sort so that CSV uploads appear at the bottom
+        // Sorting:
+        // 1. CSV uploads appear at the bottom
+        // 2. Unrequested (vendor payment not requested / not made) appear at the TOP (Rank 0)
+        // 3. Payment requested (in-progress) appear below unrequested (Rank 1)
+        // 4. Payment complete appear below in-progress (Rank 2)
+        // 5. Descending by PO ID within each rank
         usort($filteredOrders, function($a, $b) {
             $aCsv = (strpos(strtolower($a['upload_from'] ?? ''), 'csv') !== false) ? 1 : 0;
             $bCsv = (strpos(strtolower($b['upload_from'] ?? ''), 'csv') !== false) ? 1 : 0;
             if ($aCsv !== $bCsv) {
                 return $aCsv - $bCsv;
             }
-            return $b['id'] <=> $a['id']; // Descending by ID for same upload_from type
+
+            $aHasReq = !empty($a['vpr_id']);
+            $bHasReq = !empty($b['vpr_id']);
+
+            $aPaid = in_array($a['vpr_status'] ?? '', ['Fully_Paid', 'Paid']) || (($a['vpr_total_paid'] ?? 0) > 0 && ($a['vpr_due'] ?? 0) <= 0);
+            $bPaid = in_array($b['vpr_status'] ?? '', ['Fully_Paid', 'Paid']) || (($b['vpr_total_paid'] ?? 0) > 0 && ($b['vpr_due'] ?? 0) <= 0);
+
+            $aRank = !$aHasReq ? 0 : ($aPaid ? 2 : 1);
+            $bRank = !$bHasReq ? 0 : ($bPaid ? 2 : 1);
+
+            if ($aRank !== $bRank) {
+                return $aRank - $bRank;
+            }
+
+            return $b['id'] <=> $a['id']; // Descending by ID for same rank
         });
 
         $this->view('phase2/purchase-orders/purchase-order-lists', [
@@ -92,7 +124,8 @@ class Con_PurchaseOrderController extends Controller
             'orders'           => $filteredOrders,
             'currentFilter'    => $filter,
             'projects'         => $projects,
-            'currentProjectId' => $projectId
+            'currentProjectId' => $projectId,
+            'paymentFilter'    => $paymentFilter
         ]);
     }
 

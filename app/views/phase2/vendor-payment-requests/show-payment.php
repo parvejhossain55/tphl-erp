@@ -1009,6 +1009,11 @@ if ($status === 'Draft') {
                             <small class="text-muted d-block">QC Approved By</small>
                             <strong><?= htmlspecialchars($request['qc_approved_by_name'] ?? 'QC User') ?></strong>
                             <small class="text-muted">(<?= date('d M Y h:i A', strtotime($request['qc_approved_at'])) ?>)</small>
+                            <?php if (isset($request['qc_approved_amount']) && (float)$request['qc_approved_amount'] > 0): ?>
+                                <div class="mt-1">
+                                    <span class="badge bg-info text-white">QC Approved Amount: ৳ <?= number_format((float)$request['qc_approved_amount'], 2) ?></span>
+                                </div>
+                            <?php endif; ?>
                             <?php if (!empty($request['qc_note'])): ?>
                                 <p class="small text-muted mt-1 fst-italic mb-0">"<?= nl2br(htmlspecialchars($request['qc_note'])) ?>"</p>
                             <?php endif; ?>
@@ -1041,6 +1046,13 @@ if ($status === 'Draft') {
                         Review delivery details, materials received, invoice amount and submit your QC verification to forward to Management.
                     </p>
                     <form action="<?= $base_url ?>/con-vendor-payment-qc-approve/<?= $request['id'] ?>" method="POST" id="qcApproveVprForm" class="mb-3">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">QC Approved Amount (৳) <span class="text-danger">*</span></label>
+                            <input type="number" name="qc_approved_amount" id="qcApprovedAmtInput" class="form-control"
+                                value="<?= number_format($netPayable, 2, '.', '') ?>" step="0.01" min="0.01"
+                                max="<?= number_format($netPayable, 2, '.', '') ?>" required>
+                            <small class="text-muted">Net payable: ৳ <?= number_format($netPayable, 2) ?> (You can adjust this amount)</small>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">QC & Audit Observation Note <span class="text-muted">(Optional)</span></label>
                             <textarea name="qc_note" class="form-control" rows="2" placeholder="Write observation, material verification notes or comments..."></textarea>
@@ -1084,11 +1096,28 @@ if ($status === 'Draft') {
                                     value="<?= number_format($unapprovedAmt, 2, '.', '') ?>" step="0.01" min="0.01"
                                     max="<?= number_format($unapprovedAmt, 2, '.', '') ?>" required>
                             <?php else: ?>
+                                <?php 
+                                    $defaultApprovedAmt = (isset($request['qc_approved_amount']) && (float)$request['qc_approved_amount'] > 0)
+                                        ? (float)$request['qc_approved_amount']
+                                        : $netPayable;
+                                ?>
+                                <?php if (isset($request['qc_approved_amount']) && (float)$request['qc_approved_amount'] > 0): ?>
+                                    <div class="alert alert-info py-2 px-3 mb-3 small">
+                                        <i class="bi bi-shield-check me-1"></i>
+                                        QC Audited & Approved Amount: <strong>৳ <?= number_format((float)$request['qc_approved_amount'], 2) ?></strong>
+                                        <?php if ((float)$request['qc_approved_amount'] < $netPayable): ?>
+                                            <span class="text-muted">(Adjusted from Net Payable ৳ <?= number_format($netPayable, 2) ?>)</span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($request['qc_note'])): ?>
+                                            <div class="fst-italic mt-1">"<?= htmlspecialchars($request['qc_note']) ?>"</div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
                                 <label class="form-label fw-semibold">Approved Amount (৳)</label>
                                 <input type="number" name="approved_amount" id="approveAmtInput" class="form-control"
-                                    value="<?= number_format($netPayable, 2, '.', '') ?>" step="0.01" min="0.01"
+                                    value="<?= number_format($defaultApprovedAmt, 2, '.', '') ?>" step="0.01" min="0.01"
                                     max="<?= number_format($netPayable, 2, '.', '') ?>" required>
-                                <small class="text-muted">Net payable: ৳ <?= number_format($netPayable, 2) ?></small>
+                                <small class="text-muted">Net payable: ৳ <?= number_format($netPayable, 2) ?><?= (isset($request['qc_approved_amount']) && (float)$request['qc_approved_amount'] > 0) ? ' | QC Recommended: ৳ ' . number_format((float)$request['qc_approved_amount'], 2) : '' ?></small>
                             <?php endif; ?>
                         </div>
                         <div class="mb-3">
@@ -1312,6 +1341,19 @@ if ($status === 'Draft') {
         var qcApproveForm = document.getElementById('qcApproveVprForm');
         if (btnQcApprove && qcApproveForm) {
             btnQcApprove.addEventListener('click', function () {
+                var amtInput = document.getElementById('qcApprovedAmtInput');
+                if (amtInput) {
+                    var val = parseFloat(amtInput.value);
+                    var max = parseFloat(amtInput.getAttribute('max'));
+                    if (isNaN(val) || val <= 0) {
+                        Swal.fire('Validation Error', 'Please enter a valid QC approved amount greater than 0.', 'error');
+                        return;
+                    }
+                    if (max && val > max + 0.01) {
+                        Swal.fire('Validation Error', 'QC approved amount cannot exceed the net payable amount (৳ ' + max.toFixed(2) + ').', 'error');
+                        return;
+                    }
+                }
                 Swal.fire({
                     title: 'Approve QC Verification?',
                     text: 'This will verify and forward this payment request to Management for final approval.',

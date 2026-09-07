@@ -119,13 +119,12 @@
                 <div class="col-lg-3 col-md-6">
                     <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Approval Status</label>
                     <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="">All Statuses (Pending, Approved, Rejected)</option>
-                        <option value="pending" <?= ($filters['status'] ?? '') === 'pending' ? 'selected' : '' ?>>Pending
-                            Review</option>
-                        <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>
-                            Approved</option>
-                        <option value="rejected" <?= ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' ?>>
-                            Rejected</option>
+                        <option value="" <?= empty($filters['status']) || ($filters['status'] === 'pending') ? 'selected' : '' ?>>My Actionable Pending (Default)</option>
+                        <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>Approved History</option>
+                        <option value="rejected" <?= ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' ?>>Rejected History</option>
+                        <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33])): ?>
+                            <option value="all" <?= ($filters['status'] ?? '') === 'all' ? 'selected' : '' ?>>All Company Requests (Audit)</option>
+                        <?php endif; ?>
                     </select>
                 </div>
 
@@ -269,17 +268,50 @@
                                     $targetUrl = $base_url . '/asset-extra-purchases?view=' . $req['source_id'];
                                 }
                                 $reqApproveRole = strtolower($req['approve_role'] ?? 'management');
+                                if (empty($reqApproveRole)) {
+                                    $reqApproveRole = 'management';
+                                }
                                 $isMgmtRequest = ($reqApproveRole === 'management');
                                 $userRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
-                                $isManagementUser = in_array($userRoleId, [1, 3, 33], true);
-                                $isSiteOperator = ($userRoleId === 20);
-                                
-                                $canUserApprove = $isManagementUser || !$isMgmtRequest;
-                                if ($isSiteOperator && !$isManagementUser && ($req['request_amount'] ?? 0) <= 100000) {
+                                $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+                                $isManagementUser = in_array($userRoleId, [1, 3, 33], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+                                $isSiteOperator = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
+                                $isAccountsUser = in_array($userRoleId, [6, 30], true) || strpos($sessionRoleName, 'account') !== false;
+
+                                $statusLower = strtolower($req['status'] ?? '');
+                                $isPendingStatus = in_array($statusLower, ['pending', 'partially_approved', '']);
+                                $reqAmount = (float)($req['request_amount'] ?? 0);
+                                $payoutStatus = $req['payout_status'] ?? '';
+
+                                // Determine whether this request is actionable by the logged-in user right now
+                                $isActionableByMe = false;
+                                if ($isAccountsUser) {
+                                    if (in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid'])) {
+                                        $isActionableByMe = true;
+                                    }
+                                } elseif ($isSiteOperator) {
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', '']) && $reqAmount <= 100000.01) {
+                                        $isActionableByMe = true;
+                                    }
+                                } elseif ($isManagementUser) {
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', ''])) {
+                                        $isActionableByMe = true;
+                                    }
+                                } else {
+                                    if ($isPendingStatus && !empty($reqApproveRole) && strpos($sessionRoleName, $reqApproveRole) !== false) {
+                                        $isActionableByMe = true;
+                                    }
+                                }
+
+                                $canUserApprove = $isManagementUser || (!$isMgmtRequest && !$isAccountsUser);
+                                if ($isSiteOperator && !$isManagementUser && $reqAmount <= 100000.01) {
                                     $canUserApprove = true;
                                 }
+
+                                $rowBgStyle = $isActionableByMe ? 'background-color: #f8fafc;' : '';
                                 ?>
-                                <tr <?= !empty($targetUrl) ? 'data-href="' . htmlspecialchars($targetUrl) . '" class="clickable-approval-row" style="cursor: pointer;"' : '' ?>>
+                                <tr <?= !empty($targetUrl) ? 'data-href="' . htmlspecialchars($targetUrl) . '" class="clickable-approval-row' . ($isActionableByMe ? ' border-start border-primary border-3' : '') . '" style="cursor: pointer; ' . $rowBgStyle . '"' : '' ?>>
                                     <td class="ps-3">
                                         <input type="checkbox" class="approval-req-checkbox form-check-input"
                                             value="<?= $req['id'] ?>" <?= (!in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) || !$canUserApprove) ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
@@ -497,15 +529,19 @@
 
                                     <!-- Action Button (Directly routes to specific module page!) -->
                                     <td class="pe-4 text-end">
-                                        <?php if (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid'])): ?>
+                                        <?php if ($isAccountsUser && in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid'])): ?>
+                                            <a href="<?= $targetUrl ?>" class="btn btn-sm btn-success rounded-2 px-3 shadow-sm fw-semibold">
+                                                <i class="fa-solid fa-money-check-dollar me-1"></i>Pay / Disburse
+                                            </a>
+                                        <?php elseif (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid'])): ?>
                                             <?php if ($canUserApprove): ?>
-                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm">
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold">
                                                     <i class="fa-solid fa-up-right-from-square me-1"></i>Review / Process
                                                 </a>
                                             <?php else: ?>
                                                 <a href="javascript:void(0)"
                                                     class="btn btn-sm btn-light text-muted rounded-2 px-2 border"
-                                                    title="Management Approval Required">
+                                                    title="<?= ($isSiteOperator && $reqAmount > 100000) ? 'Amount exceeds ৳1,00,000 threshold - Full Management approval required' : 'Management Approval Required' ?>">
                                                     <i class="fa-solid fa-lock me-1 text-warning"></i>Management Only
                                                 </a>
                                             <?php endif; ?>

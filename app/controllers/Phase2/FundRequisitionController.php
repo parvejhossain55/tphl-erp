@@ -105,7 +105,7 @@ class FundRequisitionController extends Controller {
         } elseif ($roleId == 24) { // QC
             $pendingCondition = "fr.status = 'pending_qc'";
         } elseif (in_array($roleId, [20, 32])) { // Operation Head
-            $pendingCondition = "(fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 100000)";
+            $pendingCondition = "(fr.status IN ('pending', 'partially_approved', 'partially_paid') AND COALESCE(fr.qc_approved_amount, fr.amount) <= 100000)";
         } elseif (in_array($roleId, [6, 30])) { // Accounts
             $pendingCondition = "fr.status IN ('approved', 'partially_approved', 'partially_paid')";
         }
@@ -612,16 +612,54 @@ class FundRequisitionController extends Controller {
 
         $newMainStatus = ($status === 'approved') ? 'pending' : 'rejected';
         
-        // If approved, it's just setting status to 'pending' for Management. If rejected, it dies here.
-        $stmt = $this->db->prepare("
-            UPDATE fund_requisitions 
-            SET status = ?, 
-                qc_approved_by = ?, 
-                qc_approval_note = ?, 
-                qc_approved_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        ");
-        $stmt->bind_param("sisi", $newMainStatus, $sessionUserId, $approval_note, $id);
+        $qc_approved_amount = null;
+        if ($status === 'approved') {
+            $reqAmount = (float)($req['amount'] ?? 0);
+            if (isset($_POST['qc_approved_amount']) && is_numeric($_POST['qc_approved_amount'])) {
+                $qc_approved_amount = (float)$_POST['qc_approved_amount'];
+            } else {
+                $qc_approved_amount = $reqAmount;
+            }
+
+            if ($qc_approved_amount <= 0) {
+                setError('QC approved amount must be greater than 0.');
+                $referer = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/fund-requisitions");
+                header("Location: " . $referer);
+                exit;
+            }
+
+            if ($qc_approved_amount > $reqAmount) {
+                setError('QC approved amount cannot exceed the requested amount (৳ ' . number_format($reqAmount, 2) . ').');
+                $referer = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/fund-requisitions");
+                header("Location: " . $referer);
+                exit;
+            }
+        }
+
+        // If approved, it's setting status to 'pending' for Management. If rejected, it dies here.
+        if ($qc_approved_amount === null) {
+            $stmt = $this->db->prepare("
+                UPDATE fund_requisitions 
+                SET status = ?, 
+                    qc_approved_by = ?, 
+                    qc_approval_note = ?, 
+                    qc_approved_amount = NULL,
+                    qc_approved_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            ");
+            $stmt->bind_param("sisi", $newMainStatus, $sessionUserId, $approval_note, $id);
+        } else {
+            $stmt = $this->db->prepare("
+                UPDATE fund_requisitions 
+                SET status = ?, 
+                    qc_approved_by = ?, 
+                    qc_approval_note = ?, 
+                    qc_approved_amount = ?,
+                    qc_approved_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            ");
+            $stmt->bind_param("sisdi", $newMainStatus, $sessionUserId, $approval_note, $qc_approved_amount, $id);
+        }
 
         if ($stmt->execute()) {
             $this->syncApprovalRequest($id);
@@ -638,13 +676,14 @@ class FundRequisitionController extends Controller {
             $reqDetails = [
                 'title' => $req['purpose'] ?? 'Fund Requisition',
                 'requester_name' => $requesterName,
-                'amount' => $req['amount'] ?? 0
+                'amount' => $qc_approved_amount ?? ($req['amount'] ?? 0),
+                'note' => $approval_note
             ];
 
             $emailSent = false;
             if ($status === 'approved') {
-                $reqAmt = (float)($req['amount'] ?? 0);
-                $allowedRoles = $reqAmt <= 100000 ? "1, 3, 33, 20, 32" : "1, 3, 33";
+                $evalAmt = $qc_approved_amount ?? (float)($req['amount'] ?? 0);
+                $allowedRoles = $evalAmt <= 100000 ? "1, 3, 33, 20, 32" : "1, 3, 33";
                 $mgmtRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id IN ($allowedRoles)");
                 if ($mgmtRes) {
                     while ($mgmt = $mgmtRes->fetch_assoc()) {
@@ -662,9 +701,9 @@ class FundRequisitionController extends Controller {
             // --- Email Notification End ---
 
             if ($emailSent) {
-                setSuccess("QC status updated. Notification sent.");
+                setSuccess("QC status updated with approved amount ৳ " . number_format($qc_approved_amount ?? $req['amount'], 2) . ". Notification sent to Management.");
             } else {
-                setSuccess("QC status updated (No email was sent).");
+                setSuccess("QC status updated with approved amount ৳ " . number_format($qc_approved_amount ?? $req['amount'], 2) . ".");
             }
         } else {
             setError("Failed to update QC status: " . $this->db->error);
@@ -702,7 +741,11 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
-        if (in_array($roleId, [20, 32]) && (float)$frData['amount'] > 100000) {
+        $effectiveMax = ($frData['qc_approved_amount'] !== null && (float)$frData['qc_approved_amount'] > 0)
+            ? (float)$frData['qc_approved_amount']
+            : (float)$frData['amount'];
+
+        if (in_array($roleId, [20, 32]) && $effectiveMax > 100000) {
             setError('Operation Head can only approve requisitions up to 1,00,000 BDT.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
@@ -712,17 +755,17 @@ class FundRequisitionController extends Controller {
         $posted_amount = 0;
 
         if ($status === 'approved') {
-            $posted_amount = $frData['amount'] - $cumulative_approved_amount; 
-            $cumulative_approved_amount = $frData['amount'];
+            $posted_amount = $effectiveMax - $cumulative_approved_amount; 
+            $cumulative_approved_amount = $effectiveMax;
         } elseif ($status === 'partially_approved') {
-            if ($new_approved_amount <= 0 || ($cumulative_approved_amount + $new_approved_amount) > $frData['amount']) {
+            if ($new_approved_amount <= 0 || ($cumulative_approved_amount + $new_approved_amount) > $effectiveMax) {
                 setError('Invalid approved amount.');
                 header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
                 exit;
             }
             $cumulative_approved_amount += $new_approved_amount;
             $posted_amount = $new_approved_amount;
-            if ($cumulative_approved_amount >= $frData['amount']) {
+            if ($cumulative_approved_amount >= $effectiveMax) {
                 $status = 'approved';
             }
         } elseif ($status === 'rejected') {
@@ -1479,7 +1522,31 @@ class FundRequisitionController extends Controller {
             $approvedAmount = $amount;
         }
         $requestedBy = (int)$row['requested_by'];
-        $status = ($row['status'] === 'pending_dept') ? 'pending' : $row['status'];
+        
+        $frStatus = $row['status'];
+        if ($frStatus === 'pending_dept') {
+            $approveRole = 'dept_head';
+            $status = 'pending';
+        } elseif ($frStatus === 'pending_qc') {
+            $approveRole = 'qc';
+            $status = 'pending';
+        } elseif ($frStatus === 'pending') {
+            $approveRole = 'management';
+            $status = 'pending';
+        } elseif ($frStatus === 'approved') {
+            $approveRole = 'accounts';
+            $status = 'approved';
+        } elseif (in_array($frStatus, ['paid', 'partially_paid'])) {
+            $approveRole = 'completed';
+            $status = ($frStatus === 'paid') ? 'approved' : 'partially_paid';
+        } elseif ($frStatus === 'rejected') {
+            $approveRole = 'management';
+            $status = 'rejected';
+        } else {
+            $approveRole = 'management';
+            $status = 'pending';
+        }
+
         $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
         $approvedAt = !empty($row['approved_at']) ? $row['approved_at'] : null;
         $approvalNote = !empty($row['approval_note']) ? $row['approval_note'] : null;
@@ -1490,21 +1557,21 @@ class FundRequisitionController extends Controller {
             $stmt = $this->db->prepare("
                 INSERT INTO approval_requests 
                 (department, request_type, title, source_table, source_id, request_amount, approved_amount, requested_by, approve_role, status, approved_by, approved_at, approval_note, meta_data, created_at)
-                VALUES (?, ?, ?, 'fund_requisitions', ?, ?, ?, ?, 'management', ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, 'fund_requisitions', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             if ($stmt) {
-                $stmt->bind_param("sssiddisissss", $deptName, $requestType, $title, $fundReqId, $amount, $approvedAmount, $requestedBy, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                $stmt->bind_param("sssiddisssissss", $deptName, $requestType, $title, $fundReqId, $amount, $approvedAmount, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
                 $stmt->execute();
                 $stmt->close();
             }
         } else {
             $stmt = $this->db->prepare("
                 UPDATE approval_requests 
-                SET department = ?, request_type = ?, title = ?, request_amount = ?, approved_amount = ?, status = ?, approved_by = ?, approved_at = ?, approval_note = ?
+                SET department = ?, request_type = ?, title = ?, request_amount = ?, approved_amount = ?, approve_role = ?, status = ?, approved_by = ?, approved_at = ?, approval_note = ?
                 WHERE source_table = 'fund_requisitions' AND source_id = ?
             ");
             if ($stmt) {
-                $stmt->bind_param("sssddsissi", $deptName, $requestType, $title, $amount, $approvedAmount, $status, $approvedBy, $approvedAt, $approvalNote, $fundReqId);
+                $stmt->bind_param("sssddssissi", $deptName, $requestType, $title, $amount, $approvedAmount, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $fundReqId);
                 $stmt->execute();
                 $stmt->close();
             }

@@ -57,13 +57,13 @@ class Con_LaborRequisitionController extends Controller
 
         $requisitions = $this->model->getAll($projectId ?: null, $status ?: null, $requestedBy);
 
-        // SE sees only their assigned projects in filter dropdown; others see all
+        // SE sees only their assigned projects and common projects in filter dropdown; others see all
         if ($this->userRole === 12) {
             $rPrj = $this->db->query(
-                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 AND site_engineer_id = {$this->userId} ORDER BY name"
+                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND (under_construction = 1 OR is_common = 1) AND (site_engineer_id = {$this->userId} OR is_common = 1) ORDER BY name"
             );
         } else {
-            $rPrj = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name");
+            $rPrj = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND (under_construction = 1 OR is_common = 1) ORDER BY name");
         }
         $projects = $rPrj ? $rPrj->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -83,19 +83,19 @@ class Con_LaborRequisitionController extends Controller
     public function create()
     {
         if (!$this->isSiteEngineer() && !$this->isPM()) {
-            $_SESSION['error'] = 'Access denied.';
+            $_SESSION['error'] = 'Access denied. You do not have permission to create a labor requisition.';
             header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisitions');
             exit;
         }
 
-        // SE sees only their assigned projects; PM/PM Head/Mgmt/Admin see all
+        // SE sees only their assigned projects and common projects; PM/PM Head/Mgmt/Admin see all
         if ($this->userRole === 12) {
             $rProjects = $this->db->query(
-                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 AND site_engineer_id = {$this->userId} ORDER BY name"
+                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND (under_construction = 1 OR is_common = 1) AND (site_engineer_id = {$this->userId} OR is_common = 1) ORDER BY name"
             );
         } else {
             $rProjects = $this->db->query(
-                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name"
+                "SELECT id, name FROM projects WHERE deleted_at IS NULL AND (under_construction = 1 OR is_common = 1) ORDER BY name"
             );
         }
         $projects = $rProjects ? $rProjects->fetch_all(MYSQLI_ASSOC) : [];
@@ -117,39 +117,90 @@ class Con_LaborRequisitionController extends Controller
     // =========================================================================
     public function store()
     {
-        if (!$this->isSiteEngineer() && !$this->isPM()) { http_response_code(403); exit; }
+        if (!$this->isSiteEngineer() && !$this->isPM()) {
+            $_SESSION['error'] = 'Access denied. You do not have permission to submit a labor requisition.';
+            header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisitions');
+            exit;
+        }
+
+        $projectId  = (int)($_POST['project_id'] ?? 0);
+        $purpose    = trim($_POST['purpose'] ?? '');
+        $laborCount = (int)($_POST['labor_count'] ?? 0);
+        $rate       = (float)($_POST['per_labor_rate'] ?? 0);
+        $days       = (float)($_POST['working_days'] ?? 0);
+
+        if ($projectId <= 0) {
+            $_SESSION['error'] = 'Please select a valid project.';
+            header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisition-create');
+            exit;
+        }
+
+        if (empty($purpose)) {
+            $_SESSION['error'] = 'Please provide a purpose or work description.';
+            header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisition-create');
+            exit;
+        }
+
+        if ($laborCount <= 0) {
+            $_SESSION['error'] = 'Number of laborers must be at least 1.';
+            header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisition-create');
+            exit;
+        }
+
+        if ($rate < 0) {
+            $_SESSION['error'] = 'Rate per labor cannot be negative.';
+            header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisition-create');
+            exit;
+        }
+
+        if ($days <= 0) {
+            $_SESSION['error'] = 'Working days must be greater than 0.';
+            header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisition-create');
+            exit;
+        }
 
         $attachment = null;
         if (!empty($_FILES['attachment']['name'])) {
             $uploadDir = 'public/uploads/labor_requisitions/';
             if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-            $ext  = pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION);
-            $name = time() . '_' . $this->userId . '.' . $ext;
-            if (move_uploaded_file($_FILES['attachment']['tmp_name'], $uploadDir . $name)) {
-                $attachment = $uploadDir . $name;
+            $ext  = strtolower(pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION));
+            $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'];
+            if (in_array($ext, $allowedExts)) {
+                $name = time() . '_' . $this->userId . '.' . $ext;
+                if (move_uploaded_file($_FILES['attachment']['tmp_name'], $uploadDir . $name)) {
+                    $attachment = $uploadDir . $name;
+                }
             }
         }
 
         $data = [
-            'project_id'      => (int)$_POST['project_id'],
-            'phase_id'        => (int)($_POST['phase_id'] ?? 0) ?: null,
-            'phase_target_id' => (int)($_POST['phase_target_id'] ?? 0) ?: null,
-            'requested_by'    => $this->userId,
-            'requisition_date' => $_POST['requisition_date'],
+            'project_id'       => $projectId,
+            'phase_id'         => (int)($_POST['phase_id'] ?? 0) ?: null,
+            'phase_target_id'  => (int)($_POST['phase_target_id'] ?? 0) ?: null,
+            'requested_by'     => $this->userId,
+            'requisition_date' => !empty($_POST['requisition_date']) ? $_POST['requisition_date'] : date('Y-m-d'),
             'work_date_from'   => !empty($_POST['work_date_from']) ? $_POST['work_date_from'] : null,
             'work_date_to'     => !empty($_POST['work_date_to'])   ? $_POST['work_date_to']   : null,
-            'labor_type'      => $_POST['labor_type']     ?? 'General',
-            'labor_count'     => (int)$_POST['labor_count'],
-            'per_labor_rate'  => (float)$_POST['per_labor_rate'],
-            'working_days'    => (float)($_POST['working_days'] ?? 1),
-            'purpose'         => trim($_POST['purpose']),
-            'remarks'         => trim($_POST['remarks'] ?? ''),
-            'attachment'      => $attachment,
-            'created_by'      => $this->userId,
+            'labor_type'       => $_POST['labor_type']     ?? 'General',
+            'labor_count'      => $laborCount,
+            'per_labor_rate'   => $rate,
+            'working_days'     => $days,
+            'purpose'          => $purpose,
+            'remarks'          => trim($_POST['remarks'] ?? ''),
+            'attachment'       => $attachment,
+            'created_by'       => $this->userId,
         ];
 
         $id = $this->model->create($data);
-        $_SESSION['success'] = 'Labor Requisition submitted successfully.';
+
+        if (!$id || (int)$id <= 0) {
+            $errMsg = $this->model->getLastError() ?: 'Failed to create labor requisition. Please try again.';
+            $_SESSION['error'] = '❌ ' . $errMsg;
+            header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisition-create');
+            exit;
+        }
+
+        $_SESSION['success'] = '✅ Labor Requisition submitted successfully.';
         header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisition/' . $id);
         exit;
     }
@@ -159,8 +210,20 @@ class Con_LaborRequisitionController extends Controller
     // =========================================================================
     public function show($id)
     {
-        $req = $this->model->find((int)$id);
-        if (!$req) { die('Requisition not found.'); }
+        $id = (int)$id;
+        if ($id <= 0) {
+            $_SESSION['error'] = 'Invalid requisition ID.';
+            header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisitions');
+            exit;
+        }
+
+        $req = $this->model->find($id);
+        if (!$req) {
+            $_SESSION['error'] = 'Requisition not found.';
+            header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisitions');
+            exit;
+        }
+
 
         $paymentLogs = $this->model->getPaymentLogs((int)$id);
 

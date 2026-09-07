@@ -252,18 +252,32 @@ class Con_VendorPaymentRequest extends Model
     // QC AUDIT APPROVE & REJECT
     // =========================================================================
 
-    public function approveQC($id, $userId, $qcNote = '')
+    public function approveQC($id, $userId, $qcNote = '', $qcApprovedAmount = null)
     {
-        $stmt = $this->db->prepare(
-            "UPDATE {$this->table}
-             SET status = 'QC Approved', 
-                 qc_verified = 1, 
-                 qc_approved_by_id = ?, 
-                 qc_approved_at = NOW(), 
-                 qc_note = ?
-             WHERE id = ? AND status = 'Submitted'"
-        );
-        $stmt->bind_param('isi', $userId, $qcNote, $id);
+        if ($qcApprovedAmount === null) {
+            $stmt = $this->db->prepare(
+                "UPDATE {$this->table}
+                 SET status = 'QC Approved', 
+                     qc_verified = 1, 
+                     qc_approved_by_id = ?, 
+                     qc_approved_at = NOW(), 
+                     qc_note = ?
+                 WHERE id = ? AND status = 'Submitted'"
+            );
+            $stmt->bind_param('isi', $userId, $qcNote, $id);
+        } else {
+            $stmt = $this->db->prepare(
+                "UPDATE {$this->table}
+                 SET status = 'QC Approved', 
+                     qc_verified = 1, 
+                     qc_approved_by_id = ?, 
+                     qc_approved_at = NOW(), 
+                     qc_note = ?,
+                     qc_approved_amount = ?
+                 WHERE id = ? AND status = 'Submitted'"
+            );
+            $stmt->bind_param('isdi', $userId, $qcNote, $qcApprovedAmount, $id);
+        }
         return $stmt->execute();
     }
 

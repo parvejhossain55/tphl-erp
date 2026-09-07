@@ -61,9 +61,11 @@ class Con_VendorPaymentRequestController extends Controller
     /** Roles that can do QC Approval */
     private function canApproveQC()
     {
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         return (
-            strpos($roleName, 'qc') !== false 
+            $roleId === 24
+            || strpos($roleName, 'qc') !== false 
             || strpos($roleName, 'quality controller') !== false 
             || hasPermission('QC & Internal Audit') 
             || hasPermission('QC Dashboard') 
@@ -636,10 +638,15 @@ class Con_VendorPaymentRequestController extends Controller
             $inputAmount = (float)($_POST['approved_amount'] ?? 0);
             $approvedAmtSoFar = (float)($request['approved_amount'] ?? 0);
             $netPayable = (float)($request['net_payable'] ?? 0);
+            $qcApprovedAmount = (isset($request['qc_approved_amount']) && (float)$request['qc_approved_amount'] > 0)
+                ? (float)$request['qc_approved_amount']
+                : $netPayable;
             $unapprovedAmt = max(0, $netPayable - $approvedAmtSoFar);
 
             if ($inputAmount <= 0) {
-                $inputAmount = $unapprovedAmt;
+                $inputAmount = ($request['status'] === 'Approved' || $request['status'] === 'Partially_Paid')
+                    ? $unapprovedAmt
+                    : $qcApprovedAmount;
             }
 
             if ($request['status'] === 'Approved' || $request['status'] === 'Partially_Paid') {
@@ -738,8 +745,25 @@ class Con_VendorPaymentRequestController extends Controller
         }
 
         $qcNote = trim($_POST['qc_note'] ?? '');
+        $netPayable = (float)($request['net_payable'] ?? 0);
 
-        if ($this->model->approveQC($id, $this->userId, $qcNote)) {
+        $qcApprovedAmount = isset($_POST['qc_approved_amount']) && is_numeric($_POST['qc_approved_amount'])
+            ? (float)$_POST['qc_approved_amount']
+            : $netPayable;
+
+        if ($qcApprovedAmount <= 0) {
+            setError('QC approved amount must be greater than 0.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        if ($qcApprovedAmount > $netPayable + 0.01) {
+            setError('QC approved amount cannot exceed the net payable amount (৳ ' . number_format($netPayable, 2) . ').');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        if ($this->model->approveQC($id, $this->userId, $qcNote, $qcApprovedAmount)) {
             // Notify Management roles [1, 3, 33]
             try {
                 $updatedRequest = $this->model->find($id);
@@ -759,7 +783,7 @@ class Con_VendorPaymentRequestController extends Controller
                 error_log("Vendor Payment QC approval email failed: " . $e->getMessage());
             }
 
-            setSuccess('Payment Request successfully audited and approved by QC. Forwarded to Management for final approval.');
+            setSuccess('Payment Request successfully audited and approved by QC with amount ৳ ' . number_format($qcApprovedAmount, 2) . '. Forwarded to Management for final approval.');
         } else {
             setError('Failed to QC approve payment request.');
         }
