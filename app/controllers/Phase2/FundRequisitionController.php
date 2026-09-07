@@ -1522,7 +1522,31 @@ class FundRequisitionController extends Controller {
             $approvedAmount = $amount;
         }
         $requestedBy = (int)$row['requested_by'];
-        $status = ($row['status'] === 'pending_dept') ? 'pending' : $row['status'];
+        
+        $frStatus = $row['status'];
+        if ($frStatus === 'pending_dept') {
+            $approveRole = 'dept_head';
+            $status = 'pending';
+        } elseif ($frStatus === 'pending_qc') {
+            $approveRole = 'qc';
+            $status = 'pending';
+        } elseif ($frStatus === 'pending') {
+            $approveRole = 'management';
+            $status = 'pending';
+        } elseif ($frStatus === 'approved') {
+            $approveRole = 'accounts';
+            $status = 'approved';
+        } elseif (in_array($frStatus, ['paid', 'partially_paid'])) {
+            $approveRole = 'completed';
+            $status = ($frStatus === 'paid') ? 'approved' : 'partially_paid';
+        } elseif ($frStatus === 'rejected') {
+            $approveRole = 'management';
+            $status = 'rejected';
+        } else {
+            $approveRole = 'management';
+            $status = 'pending';
+        }
+
         $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
         $approvedAt = !empty($row['approved_at']) ? $row['approved_at'] : null;
         $approvalNote = !empty($row['approval_note']) ? $row['approval_note'] : null;
@@ -1533,21 +1557,21 @@ class FundRequisitionController extends Controller {
             $stmt = $this->db->prepare("
                 INSERT INTO approval_requests 
                 (department, request_type, title, source_table, source_id, request_amount, approved_amount, requested_by, approve_role, status, approved_by, approved_at, approval_note, meta_data, created_at)
-                VALUES (?, ?, ?, 'fund_requisitions', ?, ?, ?, ?, 'management', ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, 'fund_requisitions', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             if ($stmt) {
-                $stmt->bind_param("sssiddisissss", $deptName, $requestType, $title, $fundReqId, $amount, $approvedAmount, $requestedBy, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                $stmt->bind_param("sssiddisssissss", $deptName, $requestType, $title, $fundReqId, $amount, $approvedAmount, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
                 $stmt->execute();
                 $stmt->close();
             }
         } else {
             $stmt = $this->db->prepare("
                 UPDATE approval_requests 
-                SET department = ?, request_type = ?, title = ?, request_amount = ?, approved_amount = ?, status = ?, approved_by = ?, approved_at = ?, approval_note = ?
+                SET department = ?, request_type = ?, title = ?, request_amount = ?, approved_amount = ?, approve_role = ?, status = ?, approved_by = ?, approved_at = ?, approval_note = ?
                 WHERE source_table = 'fund_requisitions' AND source_id = ?
             ");
             if ($stmt) {
-                $stmt->bind_param("sssddsissi", $deptName, $requestType, $title, $amount, $approvedAmount, $status, $approvedBy, $approvedAt, $approvalNote, $fundReqId);
+                $stmt->bind_param("sssddssissi", $deptName, $requestType, $title, $amount, $approvedAmount, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $fundReqId);
                 $stmt->execute();
                 $stmt->close();
             }

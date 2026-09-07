@@ -119,13 +119,12 @@
                 <div class="col-lg-3 col-md-6">
                     <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Approval Status</label>
                     <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="">All Statuses (Pending, Approved, Rejected)</option>
-                        <option value="pending" <?= ($filters['status'] ?? '') === 'pending' ? 'selected' : '' ?>>Pending
-                            Review</option>
-                        <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>
-                            Approved</option>
-                        <option value="rejected" <?= ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' ?>>
-                            Rejected</option>
+                        <option value="" <?= empty($filters['status']) || ($filters['status'] === 'pending') ? 'selected' : '' ?>>My Actionable Pending (Default)</option>
+                        <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>Approved History</option>
+                        <option value="rejected" <?= ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' ?>>Rejected History</option>
+                        <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33])): ?>
+                            <option value="all" <?= ($filters['status'] ?? '') === 'all' ? 'selected' : '' ?>>All Company Requests (Audit)</option>
+                        <?php endif; ?>
                     </select>
                 </div>
 
