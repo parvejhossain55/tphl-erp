@@ -305,6 +305,22 @@ public function indexTwo($bookingId = null)
             "collectionData" => $collectionData
         ]);
     }
+
+    public function cedProjectNotices()
+    {
+        global $config;
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $apiBaseUrl = $config['notices_api_base_url'] ?? 'https://api.dpremiumhomes.com/api';
+
+        $this->view("ced/ced-project-notices", [
+            "current_route" => "ced-project-notices",
+            "page_title"    => "Project Notices",
+            "api_base_url"  => $apiBaseUrl,
+        ]);
+    }
     
     private function calculateCurrentMonthStatus($schedule, $lastPaymentDate = null) {
         if (empty($schedule)) return 'N/A';

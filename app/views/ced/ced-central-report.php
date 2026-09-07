@@ -156,6 +156,9 @@
                 <button type="button" class="btn btn-outline-success shadow-sm btn-sm px-3" onclick="exportReportToCSV()">
                     <i class="fa-solid fa-file-excel me-1"></i> Export to Excel
                 </button>
+                <button type="button" class="btn btn-outline-secondary shadow-sm btn-sm px-3" onclick="window.print()">
+                    <i class="fa-solid fa-print me-1"></i> Print View
+                </button>
                 <button type="button" class="btn btn-outline-danger shadow-sm btn-sm px-3" onclick="exportReportToPDF()">
                     <i class="fa-solid fa-file-pdf me-1"></i> Export to PDF
                 </button>
