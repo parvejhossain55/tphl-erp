@@ -141,6 +141,7 @@
                         </option>
                         <option value="contractor_bill_requests" <?= ($filters['source_table'] ?? '') === 'contractor_bill_requests' ? 'selected' : '' ?>>Contractor Bills (Construction)
                         </option>
+                        <option value="con_labor_requisitions" <?= ($filters['source_table'] ?? '') === 'con_labor_requisitions' ? 'selected' : '' ?>>Labor Bill by SE (Construction)</option>
                         <option value="operational_fund_requests" <?= ($filters['source_table'] ?? '') === 'operational_fund_requests' ? 'selected' : '' ?>>Operational Fund / Requisitions
                         </option>
                         <option value="cashout_requests" <?= ($filters['source_table'] ?? '') === 'cashout_requests' ? 'selected' : '' ?>>Cashout Requests (Accounts)</option>
@@ -244,6 +245,8 @@
                                     $targetUrl = $base_url . '/con-contractor-bill/' . $req['source_id'];
                                 } elseif ($sourceTable === 'con_land_requisitions') {
                                     $targetUrl = $base_url . '/con-land-requisitions';
+                                } elseif ($sourceTable === 'con_labor_requisitions') {
+                                    $targetUrl = $base_url . '/con-labor-requisition/' . $req['source_id'];
                                 } elseif ($sourceTable === 'con_work_orders') {
                                     $targetUrl = $base_url . '/con-work-order/' . $req['source_id'];
                                 } elseif ($sourceTable === 'fund_requisitions' || $sourceTable === 'operational_fund_requests') {
@@ -268,7 +271,7 @@
                                 $reqApproveRole = strtolower($req['approve_role'] ?? 'management');
                                 $isMgmtRequest = ($reqApproveRole === 'management');
                                 $userRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
-                                $isManagementUser = in_array($userRoleId, [1, 3], true);
+                                $isManagementUser = in_array($userRoleId, [1, 3, 33], true);
                                 $isSiteOperator = ($userRoleId === 20);
                                 
                                 $canUserApprove = $isManagementUser || !$isMgmtRequest;
@@ -276,21 +279,35 @@
                                     $canUserApprove = true;
                                 }
                                 ?>
-                                <tr>
+                                <tr <?= !empty($targetUrl) ? 'data-href="' . htmlspecialchars($targetUrl) . '" class="clickable-approval-row" style="cursor: pointer;"' : '' ?>>
                                     <td class="ps-3">
                                         <input type="checkbox" class="approval-req-checkbox form-check-input"
                                             value="<?= $req['id'] ?>" <?= (!in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) || !$canUserApprove) ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
                                     </td>
                                     <!-- Req # & Date -->
                                     <td>
-                                        <?php if ($sourceTable === 'vendor_payment_requests' && !empty($req['po_number'])): ?>
-                                            <span class="fw-bold text-success d-block">PO-
-                                                <?= htmlspecialchars($req['po_number']) ?>
-                                            </span>
+                                        <?php if (!empty($targetUrl)): ?>
+                                            <a href="<?= $targetUrl ?>" class="text-decoration-none d-block">
+                                                <?php if ($sourceTable === 'vendor_payment_requests' && !empty($req['po_number'])): ?>
+                                                    <span class="fw-bold text-success">PO-
+                                                        <?= htmlspecialchars($req['po_number']) ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="fw-bold text-dark">#REQ-
+                                                        <?= str_pad($req['id'], 5, '0', STR_PAD_LEFT) ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </a>
                                         <?php else: ?>
-                                            <span class="fw-bold text-dark d-block">#REQ-
-                                                <?= str_pad($req['id'], 5, '0', STR_PAD_LEFT) ?>
-                                            </span>
+                                            <?php if ($sourceTable === 'vendor_payment_requests' && !empty($req['po_number'])): ?>
+                                                <span class="fw-bold text-success d-block">PO-
+                                                    <?= htmlspecialchars($req['po_number']) ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="fw-bold text-dark d-block">#REQ-
+                                                    <?= str_pad($req['id'], 5, '0', STR_PAD_LEFT) ?>
+                                                </span>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                         <span class="text-muted extra-small">
                                             <?= date('d M, Y', strtotime($req['requested_at'])) ?>
@@ -312,7 +329,13 @@
                                     <td style="max-width: 250px;">
                                         <div class="fw-semibold text-dark text-truncate"
                                             title="<?= htmlspecialchars($req['title']) ?>">
-                                            <?= htmlspecialchars($req['title']) ?>
+                                            <?php if (!empty($targetUrl)): ?>
+                                                <a href="<?= $targetUrl ?>" class="text-dark text-decoration-none hover-primary">
+                                                    <?= htmlspecialchars($req['title']) ?>
+                                                </a>
+                                            <?php else: ?>
+                                                <?= htmlspecialchars($req['title']) ?>
+                                            <?php endif; ?>
                                         </div>
                                         <span class="text-muted extra-small">Source Table:
                                             <code><?= htmlspecialchars($req['source_table']) ?></code></span>
@@ -522,6 +545,17 @@
                 }
             });
         }
+
+        // Row click navigates to requisition view page (skipping buttons, inputs, links, checkboxes)
+        $('#allApprovalRequestsTable tbody').on('click', 'tr.clickable-approval-row', function (e) {
+            if ($(e.target).closest('input, button, a, .form-check, .dropdown-menu, .modal').length) {
+                return;
+            }
+            const href = $(this).attr('data-href');
+            if (href) {
+                window.location.href = href;
+            }
+        });
     });
 
     function changeApprovalTablePageLength(val) {
@@ -590,3 +624,12 @@
             });
     }
 </script>
+
+<style>
+.clickable-approval-row:hover td {
+    background-color: rgba(var(--bs-primary-rgb), 0.05) !important;
+}
+.hover-primary:hover {
+    color: var(--bs-primary) !important;
+}
+</style>

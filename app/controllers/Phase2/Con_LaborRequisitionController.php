@@ -22,12 +22,24 @@ class Con_LaborRequisitionController extends Controller
 
     // Role helpers
     // 12 = Site Engineer, 15 = Project Manager, 22 = Project Manager Head
-    // 13/24/25 = QC, 3 = Management, 6/30 = Accounts, 1 = Admin, 33 = Chief Officer
+    // 24 = QC & Internal Audit Head, 3 = Management, 6/30 = Accounts, 1 = Admin, 33 = Chief Officer
     private function isSiteEngineer() { return in_array($this->userRole, [12, 1]); }
-    private function isPM()           { return in_array($this->userRole, [15, 22, 1, 3, 33]); }
-    private function isQC()           { return in_array($this->userRole, [13, 24, 25, 1, 3, 33]); }
+    private function isPM()           { return in_array($this->userRole, [15, 22, 1]); }
+    private function isQC()           { return in_array($this->userRole, [24, 1]); }
     private function isManagement()   { return in_array($this->userRole, [3, 1, 33]);  }
     private function isAccounts()     { return in_array($this->userRole, [6, 30, 1, 3, 33]);  }
+
+    // Checks whether current user can approve management step (Roles 1, 3, 33 or Role 20 for amount <= 100,000)
+    private function canApproveManagement($amount = 0)
+    {
+        if (in_array($this->userRole, [3, 1, 33])) {
+            return true;
+        }
+        if ($this->userRole === 20 && (float)$amount <= 100000) {
+            return true;
+        }
+        return false;
+    }
 
     // =========================================================================
     // INDEX
@@ -161,9 +173,10 @@ class Con_LaborRequisitionController extends Controller
             'userId'        => $this->userId,
             'isPM'          => $this->isPM(),
             'isQC'          => $this->isQC(),
-            'isManagement'  => $this->isManagement(),
-            'isAccounts'    => $this->isAccounts(),
-            'isSE'          => $this->isSiteEngineer(),
+            'isManagement'         => ($this->isManagement() || $this->userRole === 20),
+            'canApproveManagement' => $this->canApproveManagement((float)($req['qc_approved_amount'] ?? $req['pm_verified_amount'] ?? $req['total_amount'])),
+            'isAccounts'           => $this->isAccounts(),
+            'isSE'                 => $this->isSiteEngineer(),
         ]);
     }
 
@@ -194,47 +207,66 @@ class Con_LaborRequisitionController extends Controller
     public function markWorkComplete($id)
     {
         $this->model->markWorkComplete((int)$id, $this->userId);
-        $_SESSION['success'] = 'Work marked as completed.';
+        $this->syncToApprovalRequests((int)$id);
+        $_SESSION['success'] = 'Work marked as completed. Payment approval request submitted to Management.';
         $this->back($id);
     }
 
     public function requestPayment($id)
     {
         $this->model->requestPayment((int)$id, $this->userId);
+        $this->syncToApprovalRequests((int)$id);
         $_SESSION['success'] = 'Payment request submitted successfully.';
         $this->back($id);
     }
 
     // =========================================================================
-    // QC APPROVE / REJECT
+    // QC APPROVE / REJECT (Strictly Role 24 & Super Admin)
     // =========================================================================
     public function qcApprove($id)
     {
         if (!$this->isQC()) { $_SESSION['error'] = 'Access denied.'; $this->back($id); }
+        $req = $this->model->find((int)$id);
+        if (!$req) { $_SESSION['error'] = 'Requisition not found.'; $this->back($id); }
+
+        $qcAmount = isset($_POST['qc_approved_amount']) && $_POST['qc_approved_amount'] !== '' 
+            ? (float)$_POST['qc_approved_amount'] 
+            : (float)$req['total_amount'];
+
         $note = trim($_POST['qc_note'] ?? '');
-        $this->model->qcApprove((int)$id, $this->userId, $note);
-        $_SESSION['success'] = 'QC approved the payment request.';
+        $this->model->qcApprove((int)$id, $this->userId, $qcAmount, $note);
+        $this->syncToApprovalRequests((int)$id);
+        $_SESSION['success'] = 'QC & Internal Audit Head approved amount ৳' . number_format($qcAmount, 2) . ' and forwarded to Management for payment authorization.';
         $this->back($id);
     }
 
     public function qcReject($id)
     {
         if (!$this->isQC()) { $_SESSION['error'] = 'Access denied.'; $this->back($id); }
-        $reason = trim($_POST['rejection_reason'] ?? 'Rejected by QC');
+        $reason = trim($_POST['rejection_reason'] ?? 'Rejected by QC & Internal Audit');
         $this->model->qcReject((int)$id, $this->userId, $reason);
-        $_SESSION['error'] = 'Payment request rejected by QC.';
+        $_SESSION['error'] = 'Payment request rejected by QC & Internal Audit.';
         $this->back($id);
     }
 
     // =========================================================================
-    // PM PAYMENT APPROVE / REJECT
+    // PM PAYMENT APPROVE / REJECT (Project Manager / PM Head: Role 15, 22, 1)
     // =========================================================================
     public function pmPaymentApprove($id)
     {
         if (!$this->isPM()) { $_SESSION['error'] = 'Access denied.'; $this->back($id); }
+        $req = $this->model->find((int)$id);
+        if (!$req) { $_SESSION['error'] = 'Requisition not found.'; $this->back($id); }
+
+        $defaultAmount = (float)($req['qc_approved_amount'] ?? $req['total_amount']);
+        $pmAmount = isset($_POST['pm_verified_amount']) && $_POST['pm_verified_amount'] !== '' 
+            ? (float)$_POST['pm_verified_amount'] 
+            : $defaultAmount;
+
         $note = trim($_POST['pm_payment_note'] ?? '');
-        $this->model->pmPaymentApprove((int)$id, $this->userId, $note);
-        $_SESSION['success'] = 'PM approved for management payment.';
+        $this->model->pmPaymentApprove((int)$id, $this->userId, $pmAmount, $note);
+        $this->syncToApprovalRequests((int)$id);
+        $_SESSION['success'] = 'PM verified amount ৳' . number_format($pmAmount, 2) . ' and forwarded to Management for payment approval.';
         $this->back($id);
     }
 
@@ -248,25 +280,114 @@ class Con_LaborRequisitionController extends Controller
     }
 
     // =========================================================================
-    // MANAGEMENT APPROVE / REJECT
+    // MANAGEMENT APPROVE / REJECT (Supports Management + Role 20 for amount <= 100,000)
     // =========================================================================
     public function managementApprove($id)
     {
-        if (!$this->isManagement()) { $_SESSION['error'] = 'Access denied.'; $this->back($id); }
+        $req = $this->model->find((int)$id);
+        if (!$req) { $_SESSION['error'] = 'Requisition not found.'; $this->back($id); }
+
+        $baseAmount = (float)($req['qc_approved_amount'] ?? $req['pm_verified_amount'] ?? $req['total_amount']);
+        if (!$this->canApproveManagement($baseAmount)) {
+            $_SESSION['error'] = ($this->userRole === 20)
+                ? 'Access denied. Role 20 cannot approve amounts above ৳100,000.'
+                : 'Access denied.';
+            $this->back($id);
+        }
+
         $approvedAmount = (float)($_POST['approved_amount'] ?? 0);
-        $note           = trim($_POST['management_note'] ?? '');
-        $this->model->managementApprove((int)$id, $this->userId, $approvedAmount, $note);
-        $_SESSION['success'] = 'Management approved. Ready for payment.';
+        if ($this->userRole === 20 && $approvedAmount > 100000) {
+            $_SESSION['error'] = 'Access denied. Role 20 cannot approve amounts above ৳100,000.';
+            $this->back($id);
+        }
+
+        $note = trim($_POST['management_note'] ?? '');
+        $finalApprovedAmount = $approvedAmount > 0 ? $approvedAmount : $baseAmount;
+        $this->model->managementApprove((int)$id, $this->userId, $finalApprovedAmount, $note);
+        $this->syncToApprovalRequests((int)$id, 'approved', $finalApprovedAmount, $note);
+        $_SESSION['success'] = 'Management approved ৳' . number_format($finalApprovedAmount, 2) . '. Ready for payment by Accounts.';
         $this->back($id);
     }
 
     public function managementReject($id)
     {
-        if (!$this->isManagement()) { $_SESSION['error'] = 'Access denied.'; $this->back($id); }
+        $req = $this->model->find((int)$id);
+        if (!$req) { $_SESSION['error'] = 'Requisition not found.'; $this->back($id); }
+
+        $baseAmount = (float)($req['qc_approved_amount'] ?? $req['pm_verified_amount'] ?? $req['total_amount']);
+        if (!$this->canApproveManagement($baseAmount)) {
+            $_SESSION['error'] = ($this->userRole === 20)
+                ? 'Access denied. Role 20 cannot reject amounts above ৳100,000.'
+                : 'Access denied.';
+            $this->back($id);
+        }
+
         $reason = trim($_POST['rejection_reason'] ?? 'Rejected by Management');
         $this->model->managementReject((int)$id, $this->userId, $reason);
+        $this->syncToApprovalRequests((int)$id, 'rejected', null, $reason);
         $_SESSION['error'] = 'Rejected by Management.';
         $this->back($id);
+    }
+
+    /**
+     * Sync labor requisition to central approval_requests table
+     */
+    private function syncToApprovalRequests($id, $action = 'pending', $approvedAmount = null, $note = null)
+    {
+        try {
+            $req = $this->model->find((int)$id);
+            if (!$req) return;
+
+            $existing = $this->db->query("SELECT id, status FROM approval_requests WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id . " LIMIT 1")->fetch_assoc();
+
+            $projectName = !empty($req['project_name']) ? $req['project_name'] : 'Project #' . $req['project_id'];
+            $title = "Labor Bill — " . $req['requisition_no'] . " | " . $projectName . " (" . $req['labor_count'] . " " . $req['labor_type'] . " Labors)";
+            $amount = (float)($req['pm_verified_amount'] ?? $req['qc_approved_amount'] ?? $req['total_amount']);
+            $metaData = json_encode([
+                'requisition_no' => $req['requisition_no'],
+                'labor_count'    => $req['labor_count'],
+                'labor_type'     => $req['labor_type'],
+                'working_days'   => $req['working_days'],
+                'per_labor_rate' => $req['per_labor_rate'],
+                'purpose'        => $req['purpose'],
+            ]);
+
+            if ($existing) {
+                if ($action === 'approved') {
+                    $stmt = $this->db->prepare("UPDATE approval_requests SET status = 'approved', approved_amount = ?, approved_by = ?, approved_at = NOW(), approval_note = ?, updated_at = NOW() WHERE id = ?");
+                    $appAmt = ($approvedAmount !== null && $approvedAmount > 0) ? (float)$approvedAmount : $amount;
+                    $stmt->bind_param('disi', $appAmt, $this->userId, $note, $existing['id']);
+                    $stmt->execute();
+                } elseif ($action === 'rejected') {
+                    $stmt = $this->db->prepare("UPDATE approval_requests SET status = 'rejected', approved_by = ?, approved_at = NOW(), approval_note = ?, updated_at = NOW() WHERE id = ?");
+                    $stmt->bind_param('isi', $this->userId, $note, $existing['id']);
+                    $stmt->execute();
+                } else {
+                    $stmt = $this->db->prepare("UPDATE approval_requests SET status = 'pending', request_amount = ?, updated_at = NOW() WHERE id = ?");
+                    $stmt->bind_param('di', $amount, $existing['id']);
+                    $stmt->execute();
+                }
+            } else {
+                $status = ($action === 'approved') ? 'approved' : (($action === 'rejected') ? 'rejected' : 'pending');
+                $appAmt = ($status === 'approved') ? ($approvedAmount ?: $amount) : null;
+                $appBy  = ($status !== 'pending') ? $this->userId : null;
+                $appAt  = ($status !== 'pending') ? date('Y-m-d H:i:s') : null;
+
+                $stmt = $this->db->prepare("
+                    INSERT INTO approval_requests 
+                    (department, request_type, title, source_table, source_id, request_amount, approved_amount, requested_by, approve_role, status, approved_by, approved_at, approval_note, meta_data, created_at)
+                    VALUES ('Construction', 'Labor Bill by SE', ?, 'con_labor_requisitions', ?, ?, ?, ?, 'management', ?, ?, ?, ?, ?, NOW())
+                ");
+                if ($stmt) {
+                    $reqBy = (int)$req['requested_by'];
+                    $stmt->bind_param("siddisisss", $title, $id, $amount, $appAmt, $reqBy, $status, $appBy, $appAt, $note, $metaData);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log("Error syncing labor requisition #{$id} to approval_requests: " . $e->getMessage());
+        }
     }
 
     // =========================================================================
@@ -275,6 +396,24 @@ class Con_LaborRequisitionController extends Controller
     public function markPaid($id)
     {
         if (!$this->isAccounts()) { $_SESSION['error'] = 'Access denied.'; $this->back($id); }
+
+        $req = $this->model->find((int)$id);
+        if (!$req) { $_SESSION['error'] = 'Requisition not found.'; $this->back($id); }
+
+        $approvedAmount = (float)($req['approved_amount'] ?? $req['pm_verified_amount'] ?? $req['qc_approved_amount'] ?? $req['total_amount']);
+        $totalPaid = (float)($req['total_paid'] ?? 0);
+        $dueAmount = max(0, $approvedAmount - $totalPaid);
+        $paidAmount = (float)($_POST['paid_amount'] ?? 0);
+
+        if ($paidAmount <= 0) {
+            $_SESSION['error'] = 'Please enter a valid payment amount greater than 0.';
+            $this->back($id);
+        }
+
+        if ($paidAmount > $dueAmount + 0.01) {
+            $_SESSION['error'] = 'Payment amount (৳' . number_format($paidAmount, 2) . ') cannot exceed the remaining due amount of ৳' . number_format($dueAmount, 2) . '.';
+            $this->back($id);
+        }
 
         // Handle proof image upload
         $proofImage = null;
@@ -292,7 +431,7 @@ class Con_LaborRequisitionController extends Controller
         }
 
         $data = [
-            'paid_amount'       => (float)$_POST['paid_amount'],
+            'paid_amount'       => $paidAmount,
             'paid_by'           => $this->userId,
             'payment_date'      => $_POST['payment_date'],
             'payment_method'    => $_POST['payment_method'] ?? 'Cash',
@@ -303,10 +442,11 @@ class Con_LaborRequisitionController extends Controller
 
         $result = $this->model->markPaid((int)$id, $data);
 
+        $newDue = max(0, $dueAmount - $paidAmount);
         if ($result === 'paid') {
-            $_SESSION['success'] = '✅ Full payment settled! Requisition is now marked as Paid.';
+            $_SESSION['success'] = '✅ Full payment of ৳' . number_format($paidAmount, 2) . ' disbursed! Due amount: ৳ 0.00. Requisition is now marked as Paid.';
         } elseif ($result === 'partially_paid') {
-            $_SESSION['success'] = '⚠️ Partial payment recorded. Remaining balance needs Management approval.';
+            $_SESSION['success'] = '⚠️ Partial payment of ৳' . number_format($paidAmount, 2) . ' disbursed. Remaining due amount: ৳ ' . number_format($newDue, 2) . '.';
         } else {
             $_SESSION['error'] = 'Payment processing failed. Please try again.';
         }
@@ -398,6 +538,7 @@ class Con_LaborRequisitionController extends Controller
         $stmt = $this->db->prepare("DELETE FROM con_labor_requisitions WHERE id = ?");
         $stmt->bind_param('i', $id);
         if ($stmt->execute()) {
+            $this->db->query("DELETE FROM approval_requests WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id);
             $_SESSION['success'] = '✅ Labor requisition deleted successfully!';
             header('Location: ' . $GLOBALS['base_url'] . '/con-labor-requisitions');
             exit;

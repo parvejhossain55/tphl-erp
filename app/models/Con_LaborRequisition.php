@@ -23,20 +23,56 @@ class Con_LaborRequisition extends Model
                        p.name               AS project_name,
                        ph.phase_name        AS phase_name,
                        u_req.full_name      AS requested_by_name,
+                       r_req.name           AS requested_by_role,
+                       COALESCE(d_req.name, 'Engineering, Construction, & Design') AS requested_by_dept,
                        u_pm.full_name       AS pm_approved_by_name,
+                       r_pm.name            AS pm_approved_by_role,
+                       COALESCE(d_pm.name, 'Engineering, Construction, & Design') AS pm_approved_by_dept,
                        u_qc.full_name       AS qc_approved_by_name,
+                       r_qc.name            AS qc_approved_by_role,
+                       COALESCE(d_qc.name, 'Internal Audit & QC') AS qc_approved_by_dept,
                        u_pmp.full_name      AS pm_payment_approved_by_name,
+                       r_pmp.name           AS pm_payment_approved_by_role,
+                       COALESCE(d_pmp.name, 'Engineering, Construction, & Design') AS pm_payment_approved_by_dept,
                        u_mgmt.full_name     AS management_approved_by_name,
-                       u_paid.full_name     AS paid_by_name
+                       r_mgmt.name          AS management_approved_by_role,
+                       COALESCE(d_mgmt.name, 'Management / Planning & Development') AS management_approved_by_dept,
+                       u_paid.full_name     AS paid_by_name,
+                       r_paid.name          AS paid_by_role,
+                       COALESCE(d_paid.name, 'Accounts & Finance') AS paid_by_dept
                 FROM {$this->table} lr
                 LEFT JOIN projects p              ON p.id   = lr.project_id
                 LEFT JOIN project_phases ph       ON ph.id  = lr.phase_id
                 LEFT JOIN users u_req             ON u_req.id  = lr.requested_by
+                LEFT JOIN roles r_req             ON r_req.id  = u_req.role_id
+                LEFT JOIN employees emp_req       ON (emp_req.user_id = u_req.id OR emp_req.id = u_req.employee_id)
+                LEFT JOIN designations des_req    ON des_req.id = COALESCE(emp_req.designation_id, u_req.designation_id)
+                LEFT JOIN departments d_req       ON d_req.id = COALESCE(emp_req.department_id, des_req.department_id)
                 LEFT JOIN users u_pm              ON u_pm.id   = lr.pm_approved_by
+                LEFT JOIN roles r_pm              ON r_pm.id   = u_pm.role_id
+                LEFT JOIN employees emp_pm        ON (emp_pm.user_id = u_pm.id OR emp_pm.id = u_pm.employee_id)
+                LEFT JOIN designations des_pm     ON des_pm.id = COALESCE(emp_pm.designation_id, u_pm.designation_id)
+                LEFT JOIN departments d_pm        ON d_pm.id = COALESCE(emp_pm.department_id, des_pm.department_id)
                 LEFT JOIN users u_qc              ON u_qc.id   = lr.qc_approved_by
+                LEFT JOIN roles r_qc              ON r_qc.id   = u_qc.role_id
+                LEFT JOIN employees emp_qc        ON (emp_qc.user_id = u_qc.id OR emp_qc.id = u_qc.employee_id)
+                LEFT JOIN designations des_qc     ON des_qc.id = COALESCE(emp_qc.designation_id, u_qc.designation_id)
+                LEFT JOIN departments d_qc        ON d_qc.id = COALESCE(emp_qc.department_id, des_qc.department_id)
                 LEFT JOIN users u_pmp             ON u_pmp.id  = lr.pm_payment_approved_by
+                LEFT JOIN roles r_pmp             ON r_pmp.id  = u_pmp.role_id
+                LEFT JOIN employees emp_pmp       ON (emp_pmp.user_id = u_pmp.id OR emp_pmp.id = u_pmp.employee_id)
+                LEFT JOIN designations des_pmp    ON des_pmp.id = COALESCE(emp_pmp.designation_id, u_pmp.designation_id)
+                LEFT JOIN departments d_pmp       ON d_pmp.id = COALESCE(emp_pmp.department_id, des_pmp.department_id)
                 LEFT JOIN users u_mgmt            ON u_mgmt.id = lr.management_approved_by
+                LEFT JOIN roles r_mgmt            ON r_mgmt.id = u_mgmt.role_id
+                LEFT JOIN employees emp_mgmt      ON (emp_mgmt.user_id = u_mgmt.id OR emp_mgmt.id = u_mgmt.employee_id)
+                LEFT JOIN designations des_mgmt   ON des_mgmt.id = COALESCE(emp_mgmt.designation_id, u_mgmt.designation_id)
+                LEFT JOIN departments d_mgmt      ON d_mgmt.id = COALESCE(emp_mgmt.department_id, des_mgmt.department_id)
                 LEFT JOIN users u_paid            ON u_paid.id = lr.paid_by
+                LEFT JOIN roles r_paid            ON r_paid.id = u_paid.role_id
+                LEFT JOIN employees emp_paid      ON (emp_paid.user_id = u_paid.id OR emp_paid.id = u_paid.employee_id)
+                LEFT JOIN designations des_paid   ON des_paid.id = COALESCE(emp_paid.designation_id, u_paid.designation_id)
+                LEFT JOIN departments d_paid      ON d_paid.id = COALESCE(emp_paid.department_id, des_paid.department_id)
                 WHERE 1=1";
 
         if ($projectId)   $sql .= " AND lr.project_id = ".(int)$projectId;
@@ -54,22 +90,64 @@ class Con_LaborRequisition extends Model
                        p.name               AS project_name,
                        ph.phase_name        AS phase_name,
                        u_req.full_name      AS requested_by_name,
+                       r_req.name           AS requested_by_role,
+                       COALESCE(d_req.name, 'Engineering, Construction, & Design') AS requested_by_dept,
                        u_pm.full_name       AS pm_approved_by_name,
+                       r_pm.name            AS pm_approved_by_role,
+                       COALESCE(d_pm.name, 'Engineering, Construction, & Design') AS pm_approved_by_dept,
                        u_qc.full_name       AS qc_approved_by_name,
+                       r_qc.name            AS qc_approved_by_role,
+                       COALESCE(d_qc.name, 'Internal Audit & QC') AS qc_approved_by_dept,
                        u_pmp.full_name      AS pm_payment_approved_by_name,
+                       r_pmp.name           AS pm_payment_approved_by_role,
+                       COALESCE(d_pmp.name, 'Engineering, Construction, & Design') AS pm_payment_approved_by_dept,
                        u_mgmt.full_name     AS management_approved_by_name,
+                       r_mgmt.name          AS management_approved_by_role,
+                       COALESCE(d_mgmt.name, 'Management / Planning & Development') AS management_approved_by_dept,
                        u_paid.full_name     AS paid_by_name,
-                       u_disb.full_name     AS labor_disbursed_by_name
+                       r_paid.name          AS paid_by_role,
+                       COALESCE(d_paid.name, 'Accounts & Finance') AS paid_by_dept,
+                       u_disb.full_name     AS labor_disbursed_by_name,
+                       r_disb.name          AS labor_disbursed_by_role,
+                       COALESCE(d_disb.name, 'Engineering, Construction, & Design') AS labor_disbursed_by_dept
                 FROM {$this->table} lr
                 LEFT JOIN projects p              ON p.id   = lr.project_id
                 LEFT JOIN project_phases ph       ON ph.id  = lr.phase_id
                 LEFT JOIN users u_req             ON u_req.id  = lr.requested_by
+                LEFT JOIN roles r_req             ON r_req.id  = u_req.role_id
+                LEFT JOIN employees emp_req       ON (emp_req.user_id = u_req.id OR emp_req.id = u_req.employee_id)
+                LEFT JOIN designations des_req    ON des_req.id = COALESCE(emp_req.designation_id, u_req.designation_id)
+                LEFT JOIN departments d_req       ON d_req.id = COALESCE(emp_req.department_id, des_req.department_id)
                 LEFT JOIN users u_pm              ON u_pm.id   = lr.pm_approved_by
+                LEFT JOIN roles r_pm              ON r_pm.id   = u_pm.role_id
+                LEFT JOIN employees emp_pm        ON (emp_pm.user_id = u_pm.id OR emp_pm.id = u_pm.employee_id)
+                LEFT JOIN designations des_pm     ON des_pm.id = COALESCE(emp_pm.designation_id, u_pm.designation_id)
+                LEFT JOIN departments d_pm        ON d_pm.id = COALESCE(emp_pm.department_id, des_pm.department_id)
                 LEFT JOIN users u_qc              ON u_qc.id   = lr.qc_approved_by
+                LEFT JOIN roles r_qc              ON r_qc.id   = u_qc.role_id
+                LEFT JOIN employees emp_qc        ON (emp_qc.user_id = u_qc.id OR emp_qc.id = u_qc.employee_id)
+                LEFT JOIN designations des_qc     ON des_qc.id = COALESCE(emp_qc.designation_id, u_qc.designation_id)
+                LEFT JOIN departments d_qc        ON d_qc.id = COALESCE(emp_qc.department_id, des_qc.department_id)
                 LEFT JOIN users u_pmp             ON u_pmp.id  = lr.pm_payment_approved_by
+                LEFT JOIN roles r_pmp             ON r_pmp.id  = u_pmp.role_id
+                LEFT JOIN employees emp_pmp       ON (emp_pmp.user_id = u_pmp.id OR emp_pmp.id = u_pmp.employee_id)
+                LEFT JOIN designations des_pmp    ON des_pmp.id = COALESCE(emp_pmp.designation_id, u_pmp.designation_id)
+                LEFT JOIN departments d_pmp       ON d_pmp.id = COALESCE(emp_pmp.department_id, des_pmp.department_id)
                 LEFT JOIN users u_mgmt            ON u_mgmt.id = lr.management_approved_by
+                LEFT JOIN roles r_mgmt            ON r_mgmt.id = u_mgmt.role_id
+                LEFT JOIN employees emp_mgmt      ON (emp_mgmt.user_id = u_mgmt.id OR emp_mgmt.id = u_mgmt.employee_id)
+                LEFT JOIN designations des_mgmt   ON des_mgmt.id = COALESCE(emp_mgmt.designation_id, u_mgmt.designation_id)
+                LEFT JOIN departments d_mgmt      ON d_mgmt.id = COALESCE(emp_mgmt.department_id, des_mgmt.department_id)
                 LEFT JOIN users u_paid            ON u_paid.id = lr.paid_by
+                LEFT JOIN roles r_paid            ON r_paid.id = u_paid.role_id
+                LEFT JOIN employees emp_paid      ON (emp_paid.user_id = u_paid.id OR emp_paid.id = u_paid.employee_id)
+                LEFT JOIN designations des_paid   ON des_paid.id = COALESCE(emp_paid.designation_id, u_paid.designation_id)
+                LEFT JOIN departments d_paid      ON d_paid.id = COALESCE(emp_paid.department_id, des_paid.department_id)
                 LEFT JOIN users u_disb            ON u_disb.id = lr.labor_disbursed_by
+                LEFT JOIN roles r_disb            ON r_disb.id = u_disb.role_id
+                LEFT JOIN employees emp_disb      ON (emp_disb.user_id = u_disb.id OR emp_disb.id = u_disb.employee_id)
+                LEFT JOIN designations des_disb   ON des_disb.id = COALESCE(emp_disb.designation_id, u_disb.designation_id)
+                LEFT JOIN departments d_disb      ON d_disb.id = COALESCE(emp_disb.department_id, des_disb.department_id)
                 WHERE lr.id = ?";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $id);
@@ -155,10 +233,11 @@ class Con_LaborRequisition extends Model
         return $stmt->execute();
     }
 
-    public function qcApprove($id, $userId, $note = null)
+    public function qcApprove($id, $userId, $amount = null, $note = null)
     {
-        $stmt = $this->db->prepare("UPDATE {$this->table} SET status='qc_approved', qc_approved_by=?, qc_approved_at=NOW(), qc_note=?, updated_at=NOW() WHERE id=? AND status='payment_requested'");
-        $stmt->bind_param('isi', $userId, $note, $id);
+        $amount = $amount !== null && $amount !== '' ? (float)$amount : null;
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET status='qc_approved', qc_approved_by=?, qc_approved_at=NOW(), qc_approved_amount=?, qc_note=?, updated_at=NOW() WHERE id=? AND status='payment_requested'");
+        $stmt->bind_param('idsi', $userId, $amount, $note, $id);
         return $stmt->execute();
     }
 
@@ -169,10 +248,11 @@ class Con_LaborRequisition extends Model
         return $stmt->execute();
     }
 
-    public function pmPaymentApprove($id, $userId, $note = null)
+    public function pmPaymentApprove($id, $userId, $amount = null, $note = null)
     {
-        $stmt = $this->db->prepare("UPDATE {$this->table} SET status='pm_payment_approved', pm_payment_approved_by=?, pm_payment_approved_at=NOW(), pm_payment_note=?, updated_at=NOW() WHERE id=? AND status='qc_approved'");
-        $stmt->bind_param('isi', $userId, $note, $id);
+        $amount = $amount !== null && $amount !== '' ? (float)$amount : null;
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET status='pm_payment_approved', pm_payment_approved_by=?, pm_payment_approved_at=NOW(), pm_verified_amount=?, pm_payment_note=?, updated_at=NOW() WHERE id=? AND status='qc_approved'");
+        $stmt->bind_param('idsi', $userId, $amount, $note, $id);
         return $stmt->execute();
     }
 
@@ -185,14 +265,14 @@ class Con_LaborRequisition extends Model
 
     public function managementApprove($id, $userId, $approvedAmount, $note = null)
     {
-        $stmt = $this->db->prepare("UPDATE {$this->table} SET status='management_approved', management_approved_by=?, management_approved_at=NOW(), approved_amount=?, management_note=?, updated_at=NOW() WHERE id=? AND status='pm_payment_approved'");
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET status='management_approved', management_approved_by=?, management_approved_at=NOW(), approved_amount=?, management_note=?, updated_at=NOW() WHERE id=? AND status IN ('qc_approved', 'payment_requested', 'pm_payment_approved')");
         $stmt->bind_param('idsi', $userId, $approvedAmount, $note, $id);
         return $stmt->execute();
     }
 
     public function managementReject($id, $userId, $reason)
     {
-        $stmt = $this->db->prepare("UPDATE {$this->table} SET status='rejected', management_approved_by=?, rejection_reason=?, updated_at=NOW() WHERE id=? AND status='pm_payment_approved'");
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET status='rejected', management_approved_by=?, rejection_reason=?, updated_at=NOW() WHERE id=? AND status IN ('qc_approved', 'payment_requested', 'pm_payment_approved')");
         $stmt->bind_param('isi', $userId, $reason, $id);
         return $stmt->execute();
     }
@@ -222,16 +302,21 @@ class Con_LaborRequisition extends Model
             $newTotalPaid   = (float)$row['total_paid'] + (float)$data['paid_amount'];
             $newStatus      = $newTotalPaid >= $approvedAmount ? 'paid' : 'partially_paid';
             $proofImage     = $data['proof_image'] ?? null;
+            $paidAmt        = (float)$data['paid_amount'];
+            $paidBy         = (int)$data['paid_by'];
 
             // 2. Insert into payment log
             $stmt = $this->db->prepare(
                 "INSERT INTO con_labor_payment_logs
-                 (requisition_id, paid_amount, paid_by, payment_date, payment_method,
-                  payment_reference, payment_note, proof_image)
+                 (requisition_id, amount, paid_by, payment_date, payment_method,
+                  reference, note, proof_image)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
             );
+            if (!$stmt) {
+                throw new \Exception("Prepare failed for payment log: " . $this->db->error);
+            }
             $stmt->bind_param('idisssss',
-                $id, $data['paid_amount'], $data['paid_by'],
+                $id, $paidAmt, $paidBy,
                 $data['payment_date'], $data['payment_method'],
                 $data['payment_reference'], $data['payment_note'], $proofImage
             );
@@ -245,17 +330,21 @@ class Con_LaborRequisition extends Model
                      payment_reference = ?, payment_note = ?, updated_at = NOW()
                  WHERE id = ? AND status IN ('management_approved','partially_paid')"
             );
-            $stmt2->bind_param('sddississi',
-                $newStatus, $newTotalPaid, $data['paid_amount'],
-                $data['paid_by'], $data['payment_date'], $data['payment_method'],
+            if (!$stmt2) {
+                throw new \Exception("Prepare failed for requisition update: " . $this->db->error);
+            }
+            $stmt2->bind_param('sddissssi',
+                $newStatus, $newTotalPaid, $paidAmt,
+                $paidBy, $data['payment_date'], $data['payment_method'],
                 $data['payment_reference'], $data['payment_note'], $id
             );
             $stmt2->execute();
 
             $this->db->commit();
             return $newStatus;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->db->rollback();
+            error_log("Con_LaborRequisition markPaid Error: " . $e->getMessage());
             return false;
         }
     }
@@ -282,7 +371,7 @@ class Con_LaborRequisition extends Model
      */
     public function getPaymentLogs($requisitionId)
     {
-        $sql = "SELECT pl.*, u.full_name AS paid_by_name
+        $sql = "SELECT pl.*, pl.amount AS paid_amount, pl.reference AS payment_reference, pl.note AS payment_note, u.full_name AS paid_by_name
                 FROM con_labor_payment_logs pl
                 LEFT JOIN users u ON u.id = pl.paid_by
                 WHERE pl.requisition_id = ?

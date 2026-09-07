@@ -31,16 +31,81 @@ $statusLabel = [
 $st = $req['status'];
 $isOwner = ($req['requested_by'] == $userId);
 
-// Timeline steps
+// Timeline steps (PM verification between QC and Management removed)
 $steps = [
-    ['icon' => 'fa-file-pen',     'title' => 'Submitted',           'done' => true,                              'color' => 'primary'],
-    ['icon' => 'fa-user-tie',     'title' => 'PM Approved',         'done' => !in_array($st, ['pending']),       'color' => 'info',    'user' => $req['pm_approved_by_name'], 'at' => $req['pm_approved_at'] ?? null, 'note' => $req['pm_note'] ?? null],
-    ['icon' => 'fa-hammer',       'title' => 'Work Completed',      'done' => in_array($st, ['work_completed','payment_requested','qc_approved','pm_payment_approved','management_approved','paid']), 'color' => 'warning'],
-    ['icon' => 'fa-hand-holding-dollar', 'title' => 'Payment Requested', 'done' => in_array($st, ['payment_requested','qc_approved','pm_payment_approved','management_approved','paid']), 'color' => 'orange'],
-    ['icon' => 'fa-magnifying-glass-check', 'title' => 'QC Approved', 'done' => in_array($st, ['qc_approved','pm_payment_approved','management_approved','paid']), 'color' => 'teal', 'user' => $req['qc_approved_by_name'] ?? null, 'at' => $req['qc_approved_at'] ?? null, 'note' => $req['qc_note'] ?? null],
-    ['icon' => 'fa-user-check',   'title' => 'PM Verified',         'done' => in_array($st, ['pm_payment_approved','management_approved','paid']), 'color' => 'indigo', 'user' => $req['pm_payment_approved_by_name'] ?? null, 'at' => $req['pm_payment_approved_at'] ?? null],
-    ['icon' => 'fa-building',     'title' => 'Management Approved', 'done' => in_array($st, ['management_approved','paid']), 'color' => 'success', 'user' => $req['management_approved_by_name'] ?? null, 'at' => $req['management_approved_at'] ?? null, 'note' => $req['management_note'] ?? null],
-    ['icon' => 'fa-money-bill-wave', 'title' => 'Paid',            'done' => $st === 'paid',                    'color' => 'success', 'user' => $req['paid_by_name'] ?? null, 'at' => $req['payment_date'] ?? null],
+    [
+        'icon'       => 'fa-file-pen',
+        'title'      => 'Submitted',
+        'done'       => true,
+        'color'      => 'primary',
+        'user'       => $req['requested_by_name'] ?? null,
+        'role'       => $req['requested_by_role'] ?? null,
+        'department' => $req['requested_by_dept'] ?? null,
+        'at'         => $req['created_at'] ?? $req['requisition_date'] ?? null,
+        'amount'     => $req['total_amount'] ?? null
+    ],
+    [
+        'icon'       => 'fa-user-tie',
+        'title'      => 'PM Approved',
+        'done'       => !in_array($st, ['pending']),
+        'color'      => 'info',
+        'user'       => $req['pm_approved_by_name'] ?? null,
+        'role'       => $req['pm_approved_by_role'] ?? null,
+        'department' => $req['pm_approved_by_dept'] ?? null,
+        'at'         => $req['pm_approved_at'] ?? null,
+        'amount'     => $req['total_amount'] ?? null,
+        'note'       => $req['pm_note'] ?? null
+    ],
+    [
+        'icon'       => 'fa-hammer',
+        'title'      => 'Work Completed',
+        'done'       => in_array($st, ['work_completed','payment_requested','qc_approved','pm_payment_approved','management_approved','partially_paid','paid','labor_disbursed']),
+        'color'      => 'warning'
+    ],
+    [
+        'icon'       => 'fa-hand-holding-dollar',
+        'title'      => 'Payment Requested',
+        'done'       => in_array($st, ['payment_requested','qc_approved','pm_payment_approved','management_approved','partially_paid','paid','labor_disbursed']),
+        'color'      => 'orange',
+        'at'         => $req['payment_requested_at'] ?? null,
+        'amount'     => $req['total_amount'] ?? null
+    ],
+    [
+        'icon'       => 'fa-magnifying-glass-check',
+        'title'      => 'QC & Internal Audit Approved',
+        'done'       => in_array($st, ['qc_approved','pm_payment_approved','management_approved','partially_paid','paid','labor_disbursed']),
+        'color'      => 'teal',
+        'user'       => $req['qc_approved_by_name'] ?? null,
+        'role'       => $req['qc_approved_by_role'] ?? null,
+        'department' => $req['qc_approved_by_dept'] ?? null,
+        'at'         => $req['qc_approved_at'] ?? null,
+        'amount'     => $req['qc_approved_amount'] ?? null,
+        'note'       => $req['qc_note'] ?? null
+    ],
+    [
+        'icon'       => 'fa-building-circle-check',
+        'title'      => 'Management Approved',
+        'done'       => in_array($st, ['management_approved','partially_paid','paid','labor_disbursed']),
+        'color'      => 'success',
+        'user'       => $req['management_approved_by_name'] ?? null,
+        'role'       => $req['management_approved_by_role'] ?? null,
+        'department' => $req['management_approved_by_dept'] ?? null,
+        'at'         => $req['management_approved_at'] ?? null,
+        'amount'     => $req['approved_amount'] ?? null,
+        'note'       => $req['management_note'] ?? null
+    ],
+    [
+        'icon'       => 'fa-money-bill-wave',
+        'title'      => 'Paid / Disbursed',
+        'done'       => in_array($st, ['paid','labor_disbursed']),
+        'color'      => 'success',
+        'user'       => $req['paid_by_name'] ?? null,
+        'role'       => $req['paid_by_role'] ?? null,
+        'department' => $req['paid_by_dept'] ?? null,
+        'at'         => $req['payment_date'] ?? null,
+        'amount'     => $req['total_paid'] ?? $req['paid_amount'] ?? null,
+        'note'       => $req['payment_note'] ?? null
+    ],
 ];
 ?>
 
@@ -152,29 +217,66 @@ $steps = [
                         <div class="col-12">
                             <div class="p-2 rounded text-center" style="background:linear-gradient(135deg,#e8f5e9,#f0f7ff)">
                                 <div class="text-muted fs-11 fw-semibold text-uppercase">Total Requested</div>
-                                <div class="fw-bold fs-22 text-success">৳ <?php echo number_format($req['total_amount'], 2); ?></div>
+                                <div class="fw-bold fs-20 text-success">৳ <?php echo number_format($req['total_amount'], 2); ?></div>
                             </div>
                         </div>
 
-                        <?php if (!is_null($req['approved_amount'])): ?>
+                        <?php if (!is_null($req['qc_approved_amount'])): ?>
                         <div class="col-12">
-                            <div class="p-2 rounded text-center bg-success bg-opacity-10 border border-success border-opacity-25">
-                                <div class="text-light fs-11 fw-semibold text-uppercase">Approved Amount</div>
-                                <div class="fw-bold fs-20 text-light">৳ <?php echo number_format($req['approved_amount'], 2); ?></div>
+                            <div class="p-2 rounded text-center" style="background:rgba(32,201,151,.08);border:1px solid rgba(32,201,151,.25)">
+                                <div class="fs-11 fw-semibold text-uppercase" style="color:#0f8964">QC Approved Amount</div>
+                                <div class="fw-bold fs-18" style="color:#0f8964">৳ <?php echo number_format($req['qc_approved_amount'], 2); ?></div>
+                                <?php if (!empty($req['qc_approved_by_name'])): ?>
+                                    <div class="fs-10 text-muted">by <?= htmlspecialchars($req['qc_approved_by_name']) ?> <?= !empty($req['qc_approved_by_role']) ? '('.htmlspecialchars($req['qc_approved_by_role']).')' : '' ?></div>
+                                <?php endif; ?>
                             </div>
                         </div>
                         <?php endif; ?>
 
-                        <?php if ($st === 'paid' && !is_null($req['paid_amount'])): ?>
+                        <?php if (!is_null($req['pm_verified_amount'])): ?>
                         <div class="col-12">
-                            <div class="p-2 rounded text-center bg-primary bg-opacity-10">
-                                <div class="text-light fs-11 fw-semibold text-uppercase">Paid Amount</div>
-                                <div class="fw-bold fs-20 text-light">৳ <?php echo number_format($req['paid_amount'], 2); ?></div>
-                                <div class="fs-11 text-light mt-1">
-                                    via <?php echo htmlspecialchars($req['payment_method'] ?? 'Cash'); ?>
-                                    <?php if ($req['payment_reference']): ?>· Ref: <?php echo htmlspecialchars($req['payment_reference']); ?><?php endif; ?>
-                                    <br>on <?php echo $req['payment_date'] ? date('d M Y', strtotime($req['payment_date'])) : '---'; ?>
+                            <div class="p-2 rounded text-center" style="background:rgba(102,16,242,.08);border:1px solid rgba(102,16,242,.2)">
+                                <div class="fs-11 fw-semibold text-uppercase text-indigo">PM Verified Amount</div>
+                                <div class="fw-bold fs-18 text-indigo">৳ <?php echo number_format($req['pm_verified_amount'], 2); ?></div>
+                                <?php if (!empty($req['pm_payment_approved_by_name'])): ?>
+                                    <div class="fs-10 text-muted">by <?= htmlspecialchars($req['pm_payment_approved_by_name']) ?> <?= !empty($req['pm_payment_approved_by_role']) ? '('.htmlspecialchars($req['pm_payment_approved_by_role']).')' : '' ?></div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (!is_null($req['approved_amount'])): ?>
+                        <div class="col-12">
+                            <div class="p-2 rounded text-center bg-success bg-opacity-10 border border-success border-opacity-25">
+                                <div class="text-success fs-11 fw-semibold text-uppercase">Management Approved Amount</div>
+                                <div class="fw-bold fs-20 text-success">৳ <?php echo number_format($req['approved_amount'], 2); ?></div>
+                                <?php if (!empty($req['management_approved_by_name'])): ?>
+                                    <div class="fs-10 text-muted">by <?= htmlspecialchars($req['management_approved_by_name']) ?> <?= !empty($req['management_approved_by_role']) ? '('.htmlspecialchars($req['management_approved_by_role']).')' : '' ?></div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php 
+                        $showFinanceSummary = in_array($st, ['management_approved', 'partially_paid', 'paid', 'labor_disbursed']);
+                        if ($showFinanceSummary):
+                            $fApproved = (float)($req['approved_amount'] ?? $req['pm_verified_amount'] ?? $req['qc_approved_amount'] ?? $req['total_amount']);
+                            $fPaid = (float)($req['total_paid'] ?? 0);
+                            $fDue = max(0, $fApproved - $fPaid);
+                        ?>
+                        <div class="col-12">
+                            <div class="p-2 rounded border" style="background:#fcfcfd">
+                                <div class="d-flex justify-content-between align-items-center mb-1 fs-12">
+                                    <span class="text-muted fw-semibold">Disbursed / Paid:</span>
+                                    <span class="fw-bold text-primary">৳ <?= number_format($fPaid, 2) ?></span>
                                 </div>
+                                <div class="d-flex justify-content-between align-items-center fs-12">
+                                    <span class="text-muted fw-semibold">Remaining Due:</span>
+                                    <span class="fw-bold <?= $fDue > 0 ? 'text-danger' : 'text-success' ?>">৳ <?= number_format($fDue, 2) ?></span>
+                                </div>
+                                <?php if ($fDue <= 0 && ($fPaid > 0 || $st === 'paid')): ?>
+                                    <div class="mt-1 text-center"><span class="badge bg-success-transparent text-success fs-10"><i class="fa-solid fa-circle-check me-1"></i>Fully Disbursed</span></div>
+                                <?php endif; ?>
                             </div>
                         </div>
                         <?php endif; ?>
@@ -215,17 +317,32 @@ $steps = [
                                 <i class="fa-solid <?php echo $step['icon']; ?>"></i>
                             </div>
                             <div class="ms-1">
-                                <div class="fw-semibold fs-13 <?php echo !$step['done'] ? 'text-muted' : ''; ?>">
-                                    <?php echo $step['title']; ?>
-                                    <?php if ($step['done'] && !empty($step['user'])): ?>
-                                        <span class="text-muted fw-normal fs-12">— <?php echo htmlspecialchars($step['user']); ?></span>
+                                <div class="d-flex align-items-center flex-wrap gap-1 mb-1">
+                                    <span class="fw-bold fs-13 <?php echo !$step['done'] ? 'text-muted' : 'text-dark'; ?>">
+                                        <?php echo $step['title']; ?>
+                                    </span>
+                                    <?php if ($step['done'] && !empty($step['amount'])): ?>
+                                        <span class="badge bg-success text-white fw-bold fs-11 ms-1">৳ <?= number_format((float)$step['amount'], 2) ?></span>
                                     <?php endif; ?>
                                 </div>
+
+                                <?php if ($step['done'] && !empty($step['user'])): ?>
+                                <div class="d-flex align-items-center flex-wrap gap-1 mb-1 fs-12">
+                                    <span class="fw-semibold text-primary"><i class="fa-solid fa-user-check me-1"></i><?= htmlspecialchars($step['user']); ?></span>
+                                    <?php if (!empty($step['department'])): ?>
+                                        <span class="badge bg-primary-transparent text-primary fs-10"><i class="fa-solid fa-building me-1"></i><?= htmlspecialchars($step['department']) ?></span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($step['role'])): ?>
+                                        <span class="badge bg-light text-dark border fs-10"><i class="fa-solid fa-id-badge me-1"></i><?= htmlspecialchars($step['role']) ?></span>
+                                    <?php endif; ?>
+                                </div>
+                                <?php endif; ?>
+
                                 <?php if (!empty($step['at'])): ?>
-                                    <div class="fs-11 text-muted"><?php echo date('d M Y, h:i A', strtotime($step['at'])); ?></div>
+                                    <div class="fs-11 text-muted"><i class="fa-regular fa-clock me-1"></i><?php echo date('d M Y, h:i A', strtotime($step['at'])); ?></div>
                                 <?php endif; ?>
                                 <?php if (!empty($step['note'])): ?>
-                                    <div class="fs-11 text-muted fst-italic mt-1 p-1 bg-light rounded"><?php echo htmlspecialchars($step['note']); ?></div>
+                                    <div class="fs-11 text-dark fst-italic mt-1 p-2 bg-light rounded border"><i class="fa-solid fa-comment-dots me-1 text-muted"></i><?php echo htmlspecialchars($step['note']); ?></div>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -307,17 +424,21 @@ $steps = [
             </div>
             <?php endif; ?>
 
-            <!-- STEP 4: QC Approve Payment (status=payment_requested) -->
+            <!-- STEP 4: QC Approve Payment (status=payment_requested, strictly Role 24 & Admin) -->
             <?php if ($st === 'payment_requested' && $isQC): ?>
             <div class="card custom-card mb-3 border border-teal border-opacity-50" style="border-color:#20c997!important">
                 <div class="card-header" style="background:rgba(32,201,151,.1)">
-                    <div class="card-title fs-13" style="color:#20c997"><i class="fa-solid fa-magnifying-glass-check me-2"></i> QC Review & Approval</div>
+                    <div class="card-title fs-13" style="color:#20c997"><i class="fa-solid fa-magnifying-glass-check me-2"></i> QC & Internal Audit Head Review & Approval</div>
                 </div>
                 <div class="card-body">
-                    <p class="fs-13 text-muted mb-3">QC verification required before PM approval for payment.</p>
+                    <p class="fs-13 text-muted mb-2">QC & Internal Audit verification is required. You can enter or adjust the verified amount to forward to Project Manager / PM Head.</p>
+                    <div class="p-2 rounded mb-3 bg-light border d-flex justify-content-between align-items-center">
+                        <span class="text-muted fs-12 fw-semibold">Requested Amount:</span>
+                        <span class="fs-16 fw-bold text-dark">৳ <?= number_format($req['total_amount'], 2) ?></span>
+                    </div>
                     <div class="action-btn-group">
-                        <button class="btn btn-sm fw-semibold " style="background:#20c997" data-bs-toggle="modal" data-bs-target="#qcApproveModal">
-                            <i class="fa-solid fa-check me-1"></i> QC Approve
+                        <button class="btn btn-sm fw-semibold text-white" style="background:#20c997" data-bs-toggle="modal" data-bs-target="#qcApproveModal">
+                            <i class="fa-solid fa-check me-1"></i> QC Approve & Forward
                         </button>
                         <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#qcRejectModal">
                             <i class="fa-solid fa-xmark me-1"></i> Reject
@@ -327,43 +448,90 @@ $steps = [
             </div>
             <?php endif; ?>
 
-            <!-- STEP 5: PM Payment Approve (status=qc_approved) -->
-            <?php if ($st === 'qc_approved' && $isPM): ?>
-            <div class="card custom-card mb-3" style="border:1.5px solid #12b958!important">
-                <div class="card-header" style="background:rgba(102,16,242,.08)">
-                    <div class="card-title fs-13" style="color:#12b958"><i class="fa-solid fa-user-check me-2"></i> PM / PM Head Payment Verification</div>
-                </div>
-                <div class="card-body">
-                    <p class="fs-13 text-muted mb-3">Verify and forward to Management for final payment approval.</p>
-                    <div class="action-btn-group">
-                        <button class="btn btn-sm fw-semibold " style="background:#12b958" data-bs-toggle="modal" data-bs-target="#pmPayApproveModal">
-                            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Approve & Forward to Management
-                        </button>
-                        <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#pmPayRejectModal">
-                            <i class="fa-solid fa-xmark me-1"></i> Reject
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <?php endif; ?>
-
-            <!-- STEP 6: Management Approve (status=pm_payment_approved) -->
-            <!-- STEP 6: Management Approve (status=pm_payment_approved) -->
-            <?php if ($st === 'pm_payment_approved' && $isManagement): ?>
+            <!-- STEP 5: Management & Role 20 Payment Approval (Direct after QC, or direct at payment_requested) -->
+            <?php 
+            $mgmtBaseAmount = (float)($req['qc_approved_amount'] ?? $req['pm_verified_amount'] ?? $req['total_amount']);
+            $canApproveMgmt = !empty($canApproveManagement);
+            $isRole20OverLimit = (($userRole ?? 0) === 20 && $mgmtBaseAmount > 100000);
+            ?>
+            <?php if (in_array($st, ['qc_approved', 'payment_requested', 'pm_payment_approved']) && ($canApproveMgmt || $isRole20OverLimit)): ?>
             <div class="card custom-card mb-3 border border-success border-opacity-50">
-                <div class="card-header bg-success-transparent">
-                    <div class="card-title fs-13 text-success"><i class="fa-solid fa-building me-2"></i> Management Payment Approval</div>
+                <div class="card-header bg-success-transparent d-flex justify-content-between align-items-center">
+                    <div class="card-title fs-13 text-success mb-0"><i class="fa-solid fa-building-circle-check me-2"></i> Management / Role 20 Payment Approval</div>
+                    <?php if ($st === 'qc_approved'): ?>
+                        <span class="badge bg-teal text-white fs-11"><i class="fa-solid fa-shield-check me-1"></i> QC Verified</span>
+                    <?php elseif ($st === 'payment_requested'): ?>
+                        <span class="badge bg-warning text-dark fs-11"><i class="fa-solid fa-bolt me-1"></i> Payment Requested (Direct Approval)</span>
+                    <?php endif; ?>
                 </div>
                 <div class="card-body">
-                    <p class="fs-13 text-muted mb-3">Review and approve the payment amount. You may adjust the amount if needed.</p>
-                    <div class="action-btn-group">
-                        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#mgmtApproveModal">
-                            <i class="fa-solid fa-check-double me-1"></i> Approve Payment
-                        </button>
-                        <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#mgmtRejectModal">
-                            <i class="fa-solid fa-ban me-1"></i> Reject
-                        </button>
+                    <?php if (!empty($req['qc_approved_by_name'])): ?>
+                    <!-- QC Approval Details Highlight -->
+                    <div class="p-3 mb-3 rounded border" style="background:#f4fbf7;border-color:#bbf7d0!important">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="badge bg-success text-white fs-11 fw-semibold"><i class="fa-solid fa-shield-check me-1"></i> QC & Internal Audit Approved Information</span>
+                            <span class="text-muted fs-11"><?= !empty($req['qc_approved_at']) ? date('d M Y, h:i A', strtotime($req['qc_approved_at'])) : '' ?></span>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-sm-6">
+                                <div class="text-muted fs-11 text-uppercase fw-semibold">Approved By (QC)</div>
+                                <div class="fw-bold text-dark fs-13">
+                                    <i class="fa-solid fa-user-check text-success me-1"></i>
+                                    <?= htmlspecialchars($req['qc_approved_by_name']) ?>
+                                    <?php if (!empty($req['qc_approved_by_dept'])): ?>
+                                        <span class="badge bg-primary-transparent text-primary fs-10 ms-1"><?= htmlspecialchars($req['qc_approved_by_dept']) ?></span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($req['qc_approved_by_role'])): ?>
+                                        <span class="badge bg-light text-dark border fs-10 ms-1"><?= htmlspecialchars($req['qc_approved_by_role']) ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="text-muted fs-11 text-uppercase fw-semibold">QC Approved Amount</div>
+                                <div class="fw-bold text-success fs-18">
+                                    ৳ <?= number_format((float)($req['qc_approved_amount'] ?? $req['total_amount']), 2) ?>
+                                </div>
+                            </div>
+                            <?php if (!empty($req['qc_note'])): ?>
+                            <div class="col-12">
+                                <div class="text-muted fs-11 text-uppercase fw-semibold">QC Remarks</div>
+                                <div class="fs-12 text-dark bg-white p-2 rounded border mt-1 fst-italic">
+                                    "<?= htmlspecialchars($req['qc_note']) ?>"
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
+                    <?php endif; ?>
+
+                    <!-- Verification Breakdown -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-6 text-center p-2 rounded bg-light border">
+                            <div class="fs-11 text-muted fw-semibold">Requested Amount</div>
+                            <div class="fw-bold fs-15 text-dark">৳ <?= number_format($req['total_amount'], 2) ?></div>
+                        </div>
+                        <div class="col-6 text-center p-2 rounded" style="background:rgba(32,201,151,.1)">
+                            <div class="fs-11 text-muted fw-semibold"><?= !empty($req['qc_approved_amount']) ? 'QC Approved Amount' : 'Amount to Authorize' ?></div>
+                            <div class="fw-bold fs-15 text-success">৳ <?= number_format($mgmtBaseAmount, 2) ?></div>
+                        </div>
+                    </div>
+
+                    <?php if ($isRole20OverLimit): ?>
+                        <div class="alert alert-warning py-2 mb-0 fs-13">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                            <strong>Top Management Approval Required:</strong> Amount (৳ <?= number_format($mgmtBaseAmount, 2) ?>) exceeds ৳1,00,000 threshold for Role 20. Higher Management (Managing Director / Director / Chairman) approval required.
+                        </div>
+                    <?php else: ?>
+                        <p class="fs-13 text-muted mb-3">Review and authorize payment disbursement for Accounts. You may adjust the approved amount if needed.</p>
+                        <div class="action-btn-group">
+                            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#mgmtApproveModal">
+                                <i class="fa-solid fa-check-double me-1"></i> Approve Payment
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#mgmtRejectModal">
+                                <i class="fa-solid fa-ban me-1"></i> Reject
+                            </button>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php endif; ?>
@@ -371,9 +539,9 @@ $steps = [
             <!-- STEP 7a: Partially Paid — Management must approve remaining -->
             <?php if ($st === 'partially_paid' && $isManagement): ?>
             <?php
-                $approvedAmt  = (float)($req['approved_amount'] ?? $req['total_amount']);
+                $approvedAmt  = (float)($req['approved_amount'] ?? $req['pm_verified_amount'] ?? $req['qc_approved_amount'] ?? $req['total_amount']);
                 $totalPaidAmt = (float)($req['total_paid'] ?? 0);
-                $remainingAmt = $approvedAmt - $totalPaidAmt;
+                $remainingAmt = max(0, $approvedAmt - $totalPaidAmt);
             ?>
             <div class="card custom-card mb-3" style="border:1.5px solid #fd7e14!important">
                 <div class="card-header" style="background:rgba(253,126,20,.1)">
@@ -390,7 +558,7 @@ $steps = [
                             <div class="fw-bold fs-15 text-primary">৳ <?= number_format($totalPaidAmt, 2) ?></div>
                         </div>
                         <div class="col-4 text-center p-2 rounded" style="background:rgba(253,126,20,.1)">
-                            <div class="fs-11 text-muted fw-semibold">Remaining</div>
+                            <div class="fs-11 text-muted fw-semibold">Remaining Due</div>
                             <div class="fw-bold fs-15" style="color:#fd7e14">৳ <?= number_format($remainingAmt, 2) ?></div>
                         </div>
                     </div>
@@ -403,7 +571,7 @@ $steps = [
 
             <!-- STEP 7b: Accounts Pay (management_approved OR partially_paid re-approved) -->
             <?php
-            $approvedAmt  = (float)($req['approved_amount'] ?? $req['total_amount']);
+            $approvedAmt  = (float)($req['approved_amount'] ?? $req['pm_verified_amount'] ?? $req['qc_approved_amount'] ?? $req['total_amount']);
             $totalPaidAmt = (float)($req['total_paid'] ?? 0);
             $remainingAmt = max(0, $approvedAmt - $totalPaidAmt);
             ?>
@@ -411,26 +579,26 @@ $steps = [
             <div class="card custom-card mb-3 border border-primary border-opacity-50">
                 <div class="card-header bg-primary-transparent">
                     <div class="card-title fs-13 text-primary"><i class="fa-solid fa-money-bill-wave me-2"></i>
-                        <?= $st === 'partially_paid' ? 'Process Remaining Payment' : 'Process Payment' ?>
+                        <?= $st === 'partially_paid' ? 'Accounts: Process Remaining Payment' : 'Accounts: Disburse Payment' ?>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="row g-2 mb-3">
                         <div class="col-4 text-center p-2 rounded" style="background:rgba(40,167,69,.1)">
-                            <div class="fs-11 text-muted fw-semibold">Approved</div>
+                            <div class="fs-11 text-muted fw-semibold">Approved Amount</div>
                             <div class="fw-bold fs-15 text-success">৳ <?= number_format($approvedAmt, 2) ?></div>
                         </div>
                         <div class="col-4 text-center p-2 rounded" style="background:rgba(13,110,253,.1)">
-                            <div class="fs-11 text-muted fw-semibold">Paid So Far</div>
+                            <div class="fs-11 text-muted fw-semibold">Disbursed / Paid</div>
                             <div class="fw-bold fs-15 text-primary">৳ <?= number_format($totalPaidAmt, 2) ?></div>
                         </div>
-                        <div class="col-4 text-center p-2 rounded" style="background:rgba(253,126,20,.1)">
-                            <div class="fs-11 text-muted fw-semibold">Remaining</div>
-                            <div class="fw-bold fs-15" style="color:#fd7e14">৳ <?= number_format($remainingAmt, 2) ?></div>
+                        <div class="col-4 text-center p-2 rounded" style="background:rgba(220,53,69,.1)">
+                            <div class="fs-11 text-danger fw-semibold">Remaining Due</div>
+                            <div class="fw-bold fs-15 text-danger">৳ <?= number_format($remainingAmt, 2) ?></div>
                         </div>
                     </div>
                     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#payModal">
-                        <i class="fa-solid fa-credit-card me-1"></i> Pay Now (Max: ৳ <?= number_format($remainingAmt, 2) ?>)
+                        <i class="fa-solid fa-credit-card me-1"></i> Disburse Payment (Due: ৳ <?= number_format($remainingAmt, 2) ?>)
                     </button>
                 </div>
             </div>
@@ -713,23 +881,31 @@ $steps = [
 </div>
 <?php endif; ?>
 
-<!-- QC Approve -->
+<!-- QC Approve Modal (Strictly Role 24 & Super Admin) -->
 <?php if ($st === 'payment_requested' && $isQC): ?>
 <div class="modal fade" id="qcApproveModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-qc-approve/<?php echo $req['id']; ?>" method="POST">
         <div class="modal-content">
-            <div class="modal-header" style="background:rgba(32,201,151,.1)"><h5 class="modal-title" style="color:#20c997">QC Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header" style="background:rgba(32,201,151,.1)"><h5 class="modal-title" style="color:#20c997"><i class="fa-solid fa-shield-check me-2"></i>QC & Internal Audit Head Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
-                <div class="mb-3"><label class="form-label">QC Note (Optional)</label><textarea name="qc_note" class="form-control" rows="2"></textarea></div>
+                <div class="alert alert-info py-2 fs-12 mb-3">
+                    Requested Amount: <strong>৳ <?= number_format($req['total_amount'], 2) ?></strong> (<?= $req['labor_count'] ?> laborers × ৳<?= number_format($req['per_labor_rate'], 0) ?> × <?= $req['working_days'] ?> days)
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">QC Approved / Forward Amount (৳) <span class="text-danger">*</span></label>
+                    <input type="number" name="qc_approved_amount" class="form-control" step="0.01" min="0.01" value="<?php echo htmlspecialchars($req['qc_approved_amount'] ?? $req['total_amount']); ?>" required>
+                    <div class="form-text text-muted">Type or adjust the amount to forward to Project Manager / PM Head.</div>
+                </div>
+                <div class="mb-3"><label class="form-label">QC Note / Observation (Optional)</label><textarea name="qc_note" class="form-control" rows="2" placeholder="QC verification notes..."></textarea></div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-sm fw-semibold " style="background:#20c997">QC Approve</button></div>
+            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-sm fw-semibold text-white" style="background:#20c997">Approve & Forward</button></div>
         </div>
     </form></div>
 </div>
 <div class="modal fade" id="qcRejectModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-qc-reject/<?php echo $req['id']; ?>" method="POST">
         <div class="modal-content">
-            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger">QC Rejection</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger">QC & Internal Audit Rejection</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label">Reason <span class="text-danger">*</span></label><textarea name="rejection_reason" class="form-control" rows="3" required></textarea></div>
             </div>
@@ -739,54 +915,43 @@ $steps = [
 </div>
 <?php endif; ?>
 
-<!-- PM Payment Approve -->
-<?php if ($st === 'qc_approved' && $isPM): ?>
-<div class="modal fade" id="pmPayApproveModal" tabindex="-1">
-    <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-pm-pay-approve/<?php echo $req['id']; ?>" method="POST">
-        <div class="modal-content">
-            <div class="modal-header" style="background:rgba(18,185,88,.1)"><h5 class="modal-title" style="color:#12b958">PM / PM Head Payment Verification</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">
-                <div class="mb-3"><label class="form-label">Note (Optional)</label><textarea name="pm_payment_note" class="form-control" rows="2"></textarea></div>
-            </div>
-            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-sm fw-semibold " style="background:#12b958">Approve & Forward</button></div>
-        </div>
-    </form></div>
-</div>
-<div class="modal fade" id="pmPayRejectModal" tabindex="-1">
-    <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-pm-pay-reject/<?php echo $req['id']; ?>" method="POST">
-        <div class="modal-content">
-            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger">PM / PM Head Reject Payment</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">
-                <div class="mb-3"><label class="form-label">Reason <span class="text-danger">*</span></label><textarea name="rejection_reason" class="form-control" rows="3" required></textarea></div>
-            </div>
-            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-danger btn-sm">Reject</button></div>
-        </div>
-    </form></div>
-</div>
-<?php endif; ?>
-
-<!-- Management Approve -->
-<?php if ($st === 'pm_payment_approved' && $isManagement): ?>
+<!-- Management Approve Modal (Direct after QC, or direct at payment_requested) -->
+<?php if (in_array($st, ['qc_approved', 'payment_requested', 'pm_payment_approved']) && (!empty($canApproveManagement) || !empty($isManagement))): ?>
+<?php $mgmtDefaultAmount = (float)($req['qc_approved_amount'] ?? $req['pm_verified_amount'] ?? $req['total_amount']); ?>
 <div class="modal fade" id="mgmtApproveModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-mgmt-approve/<?php echo $req['id']; ?>" method="POST">
         <div class="modal-content">
-            <div class="modal-header bg-success bg-opacity-10"><h5 class="modal-title text-success">Management Payment Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-success bg-opacity-10"><h5 class="modal-title text-success"><i class="fa-solid fa-building-circle-check me-2"></i>Management / Role 20 Payment Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Approved Amount (৳) <span class="text-danger">*</span></label>
-                    <input type="number" name="approved_amount" class="form-control" step="0.01" value="<?php echo $req['total_amount']; ?>" required>
-                    <div class="form-text">Requested: ৳ <?php echo number_format($req['total_amount'], 2); ?></div>
+                <div class="row g-2 mb-3 text-center">
+                    <div class="col-6 p-2 rounded bg-light border">
+                        <div class="fs-11 text-muted fw-semibold">Requested Amount</div>
+                        <div class="fw-bold fs-14 text-dark">৳ <?= number_format($req['total_amount'], 2) ?></div>
+                    </div>
+                    <div class="col-6 p-2 rounded" style="background:rgba(32,201,151,.1)">
+                        <div class="fs-11 text-muted fw-semibold"><?= !empty($req['qc_approved_amount']) ? 'QC Approved Amount' : 'Forwarded Amount' ?></div>
+                        <div class="fw-bold fs-14 text-success">৳ <?= number_format($mgmtDefaultAmount, 2) ?></div>
+                    </div>
                 </div>
-                <div class="mb-3"><label class="form-label">Management Note</label><textarea name="management_note" class="form-control" rows="2"></textarea></div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Approved Amount (৳) <span class="text-danger">*</span></label>
+                    <input type="number" name="approved_amount" class="form-control" step="0.01" value="<?php echo $mgmtDefaultAmount; ?>" <?= (($userRole ?? 0) === 20) ? 'max="100000"' : '' ?> required>
+                    <div class="form-text">
+                        <?php if (($userRole ?? 0) === 20): ?>
+                            <span class="badge bg-success-transparent text-success border border-success border-opacity-25 mt-1"><i class="fa-solid fa-check me-1"></i>Role 20 Approval (Limit: Max ৳1,00,000)</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="mb-3"><label class="form-label">Management Note (Optional)</label><textarea name="management_note" class="form-control" rows="2" placeholder="Approval note..."></textarea></div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-success btn-sm">Approve Payment</button></div>
+            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-success btn-sm"><i class="fa-solid fa-check-double me-1"></i> Authorize Payment</button></div>
         </div>
     </form></div>
 </div>
 <div class="modal fade" id="mgmtRejectModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-mgmt-reject/<?php echo $req['id']; ?>" method="POST">
         <div class="modal-content">
-            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger">Management Reject</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger"><i class="fa-solid fa-ban me-2"></i>Management Reject</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="mb-3"><label class="form-label">Reason <span class="text-danger">*</span></label><textarea name="rejection_reason" class="form-control" rows="3" required></textarea></div>
             </div>
@@ -798,7 +963,7 @@ $steps = [
 
 <!-- Accounts Pay Modal -->
 <?php
-$approvedAmt  = (float)($req['approved_amount'] ?? $req['total_amount']);
+$approvedAmt  = (float)($req['approved_amount'] ?? $req['pm_verified_amount'] ?? $req['qc_approved_amount'] ?? $req['total_amount']);
 $totalPaidAmt = (float)($req['total_paid'] ?? 0);
 $remainingAmt = max(0, $approvedAmt - $totalPaidAmt);
 ?>
@@ -806,28 +971,28 @@ $remainingAmt = max(0, $approvedAmt - $totalPaidAmt);
 <div class="modal fade" id="payModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-mark-paid/<?php echo $req['id']; ?>" method="POST" enctype="multipart/form-data">
         <div class="modal-content">
-            <div class="modal-header bg-primary bg-opacity-10"><h5 class="modal-title text-primary"><i class="fa-solid fa-credit-card me-2"></i>Process Payment</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-primary bg-opacity-10"><h5 class="modal-title text-primary"><i class="fa-solid fa-credit-card me-2"></i>Process Payment Disbursement</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="row g-2 mb-3 text-center">
                     <div class="col-4 p-2 rounded" style="background:rgba(40,167,69,.1)">
-                        <div class="fs-11 text-muted">Total Approved</div>
+                        <div class="fs-11 text-muted">Approved Amount</div>
                         <div class="fw-bold text-success">৳ <?= number_format($approvedAmt, 2) ?></div>
                     </div>
                     <div class="col-4 p-2 rounded" style="background:rgba(13,110,253,.1)">
-                        <div class="fs-11 text-muted">Paid So Far</div>
+                        <div class="fs-11 text-muted">Disbursed / Paid</div>
                         <div class="fw-bold text-primary">৳ <?= number_format($totalPaidAmt, 2) ?></div>
                     </div>
-                    <div class="col-4 p-2 rounded" style="background:rgba(253,126,20,.1)">
-                        <div class="fs-11 text-muted">Remaining</div>
-                        <div class="fw-bold" style="color:#fd7e14">৳ <?= number_format($remainingAmt, 2) ?></div>
+                    <div class="col-4 p-2 rounded" style="background:rgba(220,53,69,.1)">
+                        <div class="fs-11 text-danger fw-bold">Remaining Due</div>
+                        <div class="fw-bold text-danger fs-15">৳ <?= number_format($remainingAmt, 2) ?></div>
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Paid Amount (৳) <span class="text-danger">*</span></label>
+                    <label class="form-label fw-semibold">Disbursement / Paid Amount (৳) <span class="text-danger">*</span></label>
                     <input type="number" name="paid_amount" id="payAmountInput" class="form-control"
                            step="0.01" min="0.01" max="<?= $remainingAmt ?>"
                            value="<?= $remainingAmt ?>" required>
-                    <div class="form-text">Max payable: ৳ <?= number_format($remainingAmt, 2) ?></div>
+                    <div class="form-text text-danger fw-semibold">Due Amount: ৳ <?= number_format($remainingAmt, 2) ?> (Max payable)</div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Payment Date <span class="text-danger">*</span></label>
@@ -856,7 +1021,7 @@ $remainingAmt = max(0, $approvedAmt - $totalPaidAmt);
                     <textarea name="payment_note" class="form-control" rows="2"></textarea>
                 </div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-check me-1"></i>Confirm Payment</button></div>
+            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-check me-1"></i>Confirm Disbursement</button></div>
         </div>
     </form></div>
 </div>

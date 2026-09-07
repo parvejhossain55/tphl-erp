@@ -656,9 +656,9 @@ if (!empty($periodYear)) {
     <div class="section-label">Individual KPI Cards</div>
 
     <?php if (!empty($kpiData)): ?>
-        <?php foreach ($kpiData as $index => $data): ?>
+        <?php foreach ($kpiData as $index => $kpiItem): ?>
             <?php
-            $user = $data['user'];
+            $user = $kpiItem['user'];
             $initials = strtoupper(substr($user['full_name'], 0, 2));
             $avatarClass = ['av-blue', 'av-green', 'av-amber', 'av-coral', 'av-purple'][$index % 5];
             ?>
@@ -680,38 +680,38 @@ if (!empty($periodYear)) {
                 <div class="kpi-grid">
                     <div class="kpi-cell">
                         <div class="kc-label">Leads assigned</div>
-                        <div class="kc-val"><?= $data['total_leads'] ?></div>
+                        <div class="kc-val"><?= $kpiItem['total_leads'] ?></div>
                         <div class="kc-sub">Total assigned</div>
                     </div>
                     <div class="kpi-cell">
                         <div class="kc-label">Site visits</div>
-                        <div class="kc-val"><?= $data['total_visits'] ?></div>
+                        <div class="kc-val"><?= $kpiItem['total_visits'] ?></div>
                         <div class="kc-sub">Completed visits</div>
                     </div>
                     <div class="kpi-cell">
                         <div class="kc-label">Bookings</div>
-                        <div class="kc-val"><?= $data['total_bookings'] ?></div>
+                        <div class="kc-val"><?= $kpiItem['total_bookings'] ?></div>
                         <div class="kc-sub">Confirmed bookings</div>
                     </div>
                     <div class="kpi-cell">
                         <div class="kc-label">Money collected</div>
-                        <div class="kc-val" style="font-size:16px;">৳<?= number_format($data['total_money'], 0) ?></div>
+                        <div class="kc-val" style="font-size:16px;">৳<?= number_format($kpiItem['total_money'], 0) ?></div>
                         <div class="kc-sub">Total collected</div>
                     </div>
                     <div class="kpi-cell">
                         <div class="kc-label">Conversion rate</div>
-                        <div class="kc-val"><?= $data['conversion_rate'] ?>%</div>
+                        <div class="kc-val"><?= $kpiItem['conversion_rate'] ?>%</div>
                         <div class="kc-sub">Leads → bookings</div>
                         <div class="kc-bar">
-                            <div class="kc-bar-fill" style="width:<?= min($data['conversion_rate'], 100) ?>%;background:#F59E0B;"></div>
+                            <div class="kc-bar-fill" style="width:<?= min($kpiItem['conversion_rate'], 100) ?>%;background:#F59E0B;"></div>
                         </div>
                     </div>
                 </div>
-                <?php if (!empty($data['project_bookings']) && $data['total_bookings'] > 0): ?>
-                    <?php foreach ($data['project_bookings'] as $project): ?>
+                <?php if (!empty($kpiItem['project_bookings']) && $kpiItem['total_bookings'] > 0): ?>
+                    <?php foreach ($kpiItem['project_bookings'] as $project): ?>
                         <?php
                         // Check if this project has any paid flats
-                        $userId = $data['user']['id'];
+                        $userId = $kpiItem['user']['id'];
                         $projectId = $project['project_id'];
                         $flatsSql = "
                     SELECT f.flat_name, lb.booking_date, lp.amount
@@ -762,22 +762,22 @@ if (!empty($periodYear)) {
                         <tbody>
                             <tr>
                                 <td>Leads Assigned</td>
-                                <td class="td-num"><?= $data['total_leads'] ?></td>
+                                <td class="td-num"><?= $kpiItem['total_leads'] ?></td>
                                 <td><span class="status-dot dot-green"></span>Active</td>
                             </tr>
                             <tr>
                                 <td>Site Visits</td>
-                                <td class="td-num"><?= $data['total_visits'] ?></td>
+                                <td class="td-num"><?= $kpiItem['total_visits'] ?></td>
                                 <td><span class="status-dot dot-green"></span>Completed</td>
                             </tr>
                             <tr>
                                 <td>Bookings</td>
-                                <td class="td-num"><?= $data['total_bookings'] ?></td>
+                                <td class="td-num"><?= $kpiItem['total_bookings'] ?></td>
                                 <td><span class="status-dot dot-amber"></span>In Progress</td>
                             </tr>
                             <tr>
                                 <td>Money Collected</td>
-                                <td class="td-money">৳<?= number_format($data['total_money'], 0) ?></td>
+                                <td class="td-money">৳<?= number_format($kpiItem['total_money'], 0) ?></td>
                                 <td><span class="status-dot dot-green"></span>Collected</td>
                             </tr>
                         </tbody>
