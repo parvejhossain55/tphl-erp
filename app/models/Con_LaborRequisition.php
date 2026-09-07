@@ -311,8 +311,23 @@ class Con_LaborRequisition extends Model
     public function qcApprove($id, $userId, $amount = null, $note = null)
     {
         $amount = $amount !== null && $amount !== '' ? (float)$amount : null;
-        $stmt = $this->db->prepare("UPDATE {$this->table} SET status='qc_approved', qc_approved_by=?, qc_approved_at=NOW(), qc_approved_amount=?, qc_note=?, updated_at=NOW() WHERE id=? AND status='payment_requested'");
-        $stmt->bind_param('idsi', $userId, $amount, $note, $id);
+
+        // Auto-check and create qc_approved_amount column if missing
+        $colChk = $this->db->query("SHOW COLUMNS FROM {$this->table} LIKE 'qc_approved_amount'");
+        $hasQcAmt = ($colChk && $colChk->num_rows > 0);
+        if (!$hasQcAmt) {
+            @$this->db->query("ALTER TABLE {$this->table} ADD COLUMN qc_approved_amount DECIMAL(12,2) NULL DEFAULT NULL AFTER qc_approved_at");
+            $colChk = $this->db->query("SHOW COLUMNS FROM {$this->table} LIKE 'qc_approved_amount'");
+            $hasQcAmt = ($colChk && $colChk->num_rows > 0);
+        }
+
+        if ($hasQcAmt && $amount !== null) {
+            $stmt = $this->db->prepare("UPDATE {$this->table} SET status='qc_approved', qc_approved_by=?, qc_approved_at=NOW(), qc_approved_amount=?, qc_note=?, updated_at=NOW() WHERE id=? AND status='payment_requested'");
+            $stmt->bind_param('idsi', $userId, $amount, $note, $id);
+        } else {
+            $stmt = $this->db->prepare("UPDATE {$this->table} SET status='qc_approved', qc_approved_by=?, qc_approved_at=NOW(), qc_note=?, updated_at=NOW() WHERE id=? AND status='payment_requested'");
+            $stmt->bind_param('isi', $userId, $note, $id);
+        }
         return $stmt->execute();
     }
 

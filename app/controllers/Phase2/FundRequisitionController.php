@@ -13,6 +13,38 @@ class FundRequisitionController extends Controller {
             header("Location: " . $GLOBALS['base_url'] . "/login");
             exit;
         }
+        $this->ensureFundRequisitionSchema();
+    }
+
+    /**
+     * Automatically ensure required QC columns and status ENUM values exist in fund_requisitions
+     */
+    private function ensureFundRequisitionSchema() {
+        static $checked = false;
+        if ($checked) return;
+        $checked = true;
+
+        $colsNeeded = [
+            'qc_approved_by' => "INT(11) NULL DEFAULT NULL AFTER dept_head_approval_note",
+            'qc_approved_at' => "TIMESTAMP NULL DEFAULT NULL AFTER qc_approved_by",
+            'qc_approval_note' => "TEXT NULL DEFAULT NULL AFTER qc_approved_at",
+            'qc_approved_amount' => "DECIMAL(12,2) NULL DEFAULT NULL AFTER qc_approval_note"
+        ];
+
+        foreach ($colsNeeded as $col => $definition) {
+            $chk = $this->db->query("SHOW COLUMNS FROM fund_requisitions LIKE '{$col}'");
+            if ($chk && $chk->num_rows === 0) {
+                @$this->db->query("ALTER TABLE fund_requisitions ADD COLUMN {$col} {$definition}");
+            }
+        }
+
+        // Ensure status ENUM includes pending_qc
+        $colStatus = $this->db->query("SHOW COLUMNS FROM fund_requisitions LIKE 'status'");
+        if ($colStatus && $r = $colStatus->fetch_assoc()) {
+            if (isset($r['Type']) && strpos($r['Type'], "'pending_qc'") === false) {
+                @$this->db->query("ALTER TABLE fund_requisitions MODIFY COLUMN status ENUM('pending_dept','pending_qc','pending','approved','rejected','paid','partially_approved','partially_paid') DEFAULT 'pending'");
+            }
+        }
     }
 
     public function index() {
@@ -636,67 +668,109 @@ class FundRequisitionController extends Controller {
             }
         }
 
-        // If approved, it's setting status to 'pending' for Management. If rejected, it dies here.
-        if ($qc_approved_amount === null) {
-            $stmt = $this->db->prepare("
-                UPDATE fund_requisitions 
-                SET status = ?, 
-                    qc_approved_by = ?, 
-                    qc_approval_note = ?, 
-                    qc_approved_amount = NULL,
-                    qc_approved_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-            ");
-            $stmt->bind_param("sisi", $newMainStatus, $sessionUserId, $approval_note, $id);
-        } else {
-            $stmt = $this->db->prepare("
-                UPDATE fund_requisitions 
-                SET status = ?, 
-                    qc_approved_by = ?, 
-                    qc_approval_note = ?, 
-                    qc_approved_amount = ?,
-                    qc_approved_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-            ");
-            $stmt->bind_param("sisdi", $newMainStatus, $sessionUserId, $approval_note, $qc_approved_amount, $id);
+        $this->ensureFundRequisitionSchema();
+
+        // Dynamically inspect existing columns to ensure prepared statement never fails
+        $existingCols = [];
+        $colRes = $this->db->query("SHOW COLUMNS FROM fund_requisitions");
+        if ($colRes) {
+            while ($cRow = $colRes->fetch_assoc()) {
+                $existingCols[$cRow['Field']] = true;
+            }
         }
+
+        $fields = ["status = ?"];
+        $types = "s";
+        $values = [$newMainStatus];
+
+        if (isset($existingCols['qc_approved_by'])) {
+            $fields[] = "qc_approved_by = ?";
+            $types .= "i";
+            $values[] = $sessionUserId;
+        }
+
+        if (isset($existingCols['qc_approval_note'])) {
+            $fields[] = "qc_approval_note = ?";
+            $types .= "s";
+            $values[] = $approval_note;
+        }
+
+        if (isset($existingCols['qc_approved_amount'])) {
+            if ($qc_approved_amount === null) {
+                $fields[] = "qc_approved_amount = NULL";
+            } else {
+                $fields[] = "qc_approved_amount = ?";
+                $types .= "d";
+                $values[] = $qc_approved_amount;
+            }
+        }
+
+        if (isset($existingCols['qc_approved_at'])) {
+            $fields[] = "qc_approved_at = CURRENT_TIMESTAMP";
+        }
+
+        $fieldsStr = implode(", ", $fields);
+        $sql = "UPDATE fund_requisitions SET {$fieldsStr} WHERE id = ?";
+        $types .= "i";
+        $values[] = $id;
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("Failed to prepare QC approval query: " . $this->db->error);
+            setError("Database error updating QC approval: " . $this->db->error);
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+            exit;
+        }
+
+        $stmt->bind_param($types, ...$values);
 
         if ($stmt->execute()) {
             $this->syncApprovalRequest($id);
 
-            // --- Email Notification Start ---
-            require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
-            $mailService = new \MailService();
-            $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id;
-
-            $reqUserRes = $this->db->query("SELECT full_name, email FROM users WHERE id = {$req['requested_by']}");
-            $requesterInfo = ($reqUserRes && $reqUserRes->num_rows > 0) ? $reqUserRes->fetch_assoc() : null;
-            $requesterName = $requesterInfo['full_name'] ?? 'Unknown';
-
-            $reqDetails = [
-                'title' => $req['purpose'] ?? 'Fund Requisition',
-                'requester_name' => $requesterName,
-                'amount' => $qc_approved_amount ?? ($req['amount'] ?? 0),
-                'note' => $approval_note
-            ];
-
+            // --- Fast Batch Email Notification ---
             $emailSent = false;
-            if ($status === 'approved') {
-                $evalAmt = $qc_approved_amount ?? (float)($req['amount'] ?? 0);
-                $allowedRoles = $evalAmt <= 100000 ? "1, 3, 33, 20, 32" : "1, 3, 33";
-                $mgmtRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id IN ($allowedRoles)");
-                if ($mgmtRes) {
-                    while ($mgmt = $mgmtRes->fetch_assoc()) {
-                        if (!empty($mgmt['email'])) {
-                            $sent = $mailService->sendRequisitionNotification($mgmt['email'], $mgmt['full_name'], 'Pending Management Approval', 'Fund Requisition', $reqDetails, $link);
-                            if ($sent) $emailSent = true;
+            try {
+                require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
+                $mailService = new \MailService();
+                $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id;
+
+                $reqUserRes = $this->db->query("SELECT full_name, email FROM users WHERE id = {$req['requested_by']}");
+                $requesterInfo = ($reqUserRes && $reqUserRes->num_rows > 0) ? $reqUserRes->fetch_assoc() : null;
+                $requesterName = $requesterInfo['full_name'] ?? 'Unknown';
+
+                $reqDetails = [
+                    'title' => $req['purpose'] ?? 'Fund Requisition',
+                    'requester_name' => $requesterName,
+                    'amount' => $qc_approved_amount ?? ($req['amount'] ?? 0),
+                    'note' => $approval_note
+                ];
+
+                if ($status === 'approved') {
+                    $evalAmt = $qc_approved_amount ?? (float)($req['amount'] ?? 0);
+                    // Filter down to actual management decision-makers (excluding dozens of field site operators)
+                    if ($evalAmt <= 100000) {
+                        $mgmtSql = "SELECT DISTINCT full_name, email FROM users WHERE (role_id IN (1, 3, 33) OR id = 200 OR role_id = 32) AND email != '' AND email IS NOT NULL";
+                    } else {
+                        $mgmtSql = "SELECT DISTINCT full_name, email FROM users WHERE role_id IN (1, 3, 33) AND email != '' AND email IS NOT NULL";
+                    }
+                    $mgmtRes = $this->db->query($mgmtSql);
+                    $recipients = [];
+                    if ($mgmtRes) {
+                        while ($mgmt = $mgmtRes->fetch_assoc()) {
+                            $recipients[] = $mgmt;
                         }
                     }
+
+                    if (!empty($recipients)) {
+                        $emailSent = $mailService->sendRequisitionNotificationBatch($recipients, 'Pending Management Approval', 'Fund Requisition', $reqDetails, $link);
+                    }
+                } else if ($status === 'rejected') {
+                    if ($requesterInfo && !empty($requesterInfo['email'])) {
+                        $emailSent = $mailService->sendRequisitionNotification($requesterInfo['email'], $requesterName, 'Rejected by QC & Internal Audit Head', 'Fund Requisition', $reqDetails, $link);
+                    }
                 }
-            } else if ($status === 'rejected') {
-                if ($requesterInfo && !empty($requesterInfo['email'])) {
-                    $emailSent = $mailService->sendRequisitionNotification($requesterInfo['email'], $requesterName, 'Rejected by QC & Internal Audit Head', 'Fund Requisition', $reqDetails, $link);
-                }
+            } catch (\Throwable $t) {
+                error_log("QC approval email notification error: " . $t->getMessage());
             }
             // --- Email Notification End ---
 
@@ -1523,6 +1597,7 @@ class FundRequisitionController extends Controller {
         }
         $requestedBy = (int)$row['requested_by'];
         
+        // Dynamically resolve approve_role and status according to current stage in approval chain
         $frStatus = $row['status'];
         if ($frStatus === 'pending_dept') {
             $approveRole = 'dept_head';
@@ -1537,7 +1612,7 @@ class FundRequisitionController extends Controller {
             $approveRole = 'accounts';
             $status = 'approved';
         } elseif (in_array($frStatus, ['paid', 'partially_paid'])) {
-            $approveRole = 'completed';
+            $approveRole = 'accounts';
             $status = ($frStatus === 'paid') ? 'approved' : 'partially_paid';
         } elseif ($frStatus === 'rejected') {
             $approveRole = 'management';
@@ -1560,7 +1635,7 @@ class FundRequisitionController extends Controller {
                 VALUES (?, ?, ?, 'fund_requisitions', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             if ($stmt) {
-                $stmt->bind_param("sssiddisssissss", $deptName, $requestType, $title, $fundReqId, $amount, $approvedAmount, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                $stmt->bind_param("sssiddississss", $deptName, $requestType, $title, $fundReqId, $amount, $approvedAmount, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
                 $stmt->execute();
                 $stmt->close();
             }

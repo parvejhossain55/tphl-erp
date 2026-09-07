@@ -41,6 +41,7 @@ class MailService
             $mail->isSMTP();
             $mail->CharSet = 'UTF-8';
             $mail->SMTPDebug = 0; // set to 0 to prevent raw debug output from breaking HTTP redirects
+            $mail->Timeout = 5;
 
             $mail->Host       = $this->host;
             $mail->SMTPAuth   = true;
@@ -130,6 +131,7 @@ class MailService
             $mail->isSMTP();
             $mail->CharSet = 'UTF-8';
             $mail->SMTPDebug = 0; // set to 0 to avoid breaking JSON responses with debug output
+            $mail->Timeout = 5;
             $mail->Host       = $this->host;
             $mail->SMTPAuth   = true;
             $mail->Username   = $this->username;
@@ -190,6 +192,95 @@ class MailService
         ";
 
         return $this->sendGenericMail($toEmail, $subject, $body);
+    }
+
+    /**
+     * Send notification to multiple recipients in a SINGLE SMTP connection to eliminate slow page loads
+     */
+    public function sendRequisitionNotificationBatch($recipients, $actionType, $requisitionType, $requisitionDetails, $link)
+    {
+        if (empty($recipients)) {
+            return false;
+        }
+
+        $subject = "Action Required: {$requisitionType} - {$actionType}";
+        
+        $body = "
+        <div style='font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;'>
+            <h2 style='color: #10a34dff; border-bottom: 2px solid #0e6119ff; padding-bottom: 10px;'>{$requisitionType} Update</h2>
+            <p>Dear Management,</p>
+            <p>A <strong>{$requisitionType}</strong> requires your attention. Current Status: <strong>{$actionType}</strong></p>
+            
+            <table style='width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 20px;'>
+                <tr>
+                    <td style='padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold; width: 30%;'>Title/Purpose</td>
+                    <td style='padding: 8px; border: 1px solid #ddd;'>{$requisitionDetails['title']}</td>
+                </tr>
+                <tr>
+                    <td style='padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;'>Requested By</td>
+                    <td style='padding: 8px; border: 1px solid #ddd;'>{$requisitionDetails['requester_name']}</td>
+                </tr>
+                <tr>
+                    <td style='padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;'>Amount</td>
+                    <td style='padding: 8px; border: 1px solid #ddd;'>৳" . number_format((float)$requisitionDetails['amount'], 2) . "</td>
+                </tr>
+            </table>
+            
+            <div style='text-align: center; margin-top: 30px;'>
+                <a href='{$link}' style='background-color: #03791dff; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>View Requisition in ERP</a>
+            </div>
+            
+            <p style='margin-top: 30px; font-size: 12px; color: #807d7dff; text-align: center;'>
+                This is an automated notification from TPHL ERP. Please do not reply to this email.
+            </p>
+        </div>
+        ";
+
+        $mail = new PHPMailer(true);
+        try {
+            $mail->isSMTP();
+            $mail->CharSet = 'UTF-8';
+            $mail->SMTPDebug = 0;
+            $mail->Timeout = 5;
+            $mail->Host       = $this->host;
+            $mail->SMTPAuth   = true;
+            $mail->Username   = $this->username;
+            $mail->Password   = $this->password;
+            $mail->SMTPSecure = isset($this->secure) ? $this->secure : 'ssl';
+            $mail->Port       = $this->port;
+
+            $mail->setFrom($this->username, 'TPHL ERP');
+            
+            $primaryAdded = false;
+            foreach ($recipients as $item) {
+                $email = is_array($item) ? ($item['email'] ?? '') : $item;
+                $name = is_array($item) ? ($item['full_name'] ?? '') : '';
+                if (empty($email)) continue;
+
+                if (!$primaryAdded) {
+                    $mail->addAddress($email, $name);
+                    $primaryAdded = true;
+                } else {
+                    $mail->addBCC($email, $name);
+                }
+            }
+
+            if (!$primaryAdded) {
+                return false;
+            }
+
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body    = $body;
+            $mail->AltBody = strip_tags(str_replace(['<br>', '</p>'], ["\r\n", "\r\n\r\n"], $body));
+
+            $mail->send();
+            return true;
+        } catch (Exception $e) {
+            $this->lastError = $mail->ErrorInfo;
+            error_log("Mail Batch Error: " . $mail->ErrorInfo);
+            return false;
+        }
     }
 }
 
