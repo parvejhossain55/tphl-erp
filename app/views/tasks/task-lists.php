@@ -28,6 +28,19 @@
 
   </div>
 
+  <?php if (isset($_SESSION['success'])): ?>
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+          <i class="bi bi-check-circle me-1"></i> <?= $_SESSION['success']; unset($_SESSION['success']); ?>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+  <?php endif; ?>
+  <?php if (isset($_SESSION['error'])): ?>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          <i class="bi bi-exclamation-triangle me-1"></i> <?= $_SESSION['error']; unset($_SESSION['error']); ?>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+  <?php endif; ?>
+
   <div class="row align-items-stretch">
       <?php foreach ($tasks as $task): ?>
 
@@ -132,10 +145,12 @@
                       </div>
 
                   </div>
-                  <div class="task__btn mt-auto d-flex justify-content-between">
-                      <a class="btn btn-outline-theme-border" href="<?= $base_url ?>/show-task/<?= $task['id'] ?>">View Task</a>
-                      <a class="btn btn-outline-theme-border" href="<?= $base_url ?>/edit-task/<?= $task['id'] ?>">Edit Task</a>
-
+                  <div class="task__btn mt-auto d-flex justify-content-between align-items-center gap-2">
+                      <a class="btn btn-sm btn-outline-theme-border flex-grow-1 text-center" href="<?= $base_url ?>/show-task/<?= $task['id'] ?>">View</a>
+                      <a class="btn btn-sm btn-outline-theme-border flex-grow-1 text-center" href="<?= $base_url ?>/edit-task/<?= $task['id'] ?>">Edit</a>
+                      <a class="btn btn-sm btn-outline-danger px-3 text-center" href="<?= $base_url ?>/delete-task/<?= $task['id'] ?>" onclick="return confirm('Are you sure you want to permanently delete this task from everywhere?');" title="Delete Task">
+                          <i class="fa-solid fa-trash-can me-1"></i> Delete
+                      </a>
                   </div>
               </div>
           </div>

@@ -308,9 +308,43 @@ LEFT JOIN designations AS desig ON u.designation_id = desig.id
 
     public function delete($id)
     {
-        $stmt = $this->db->prepare("DELETE FROM users WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        return $stmt->execute();
+        return $this->deleteFromEverywhere($id);
+    }
+
+    public function deleteFromEverywhere($id)
+    {
+        $id = (int)$id;
+        $task = $this->find($id);
+        if (!$task) {
+            return false;
+        }
+
+        // 1. Delete associated notifications
+        $stmtNotif = $this->db->prepare("DELETE FROM notifications WHERE task_id = ?");
+        if ($stmtNotif) {
+            $stmtNotif->bind_param("i", $id);
+            $stmtNotif->execute();
+            $stmtNotif->close();
+        }
+
+        // 2. Delete attachment image from disk if exists
+        if (!empty($task['attachment_image'])) {
+            $filePath = __DIR__ . '/../../public/uploads/tasks/' . $task['attachment_image'];
+            if (file_exists($filePath) && is_file($filePath)) {
+                @unlink($filePath);
+            }
+        }
+
+        // 3. Delete task record from tasks table
+        $stmt = $this->db->prepare("DELETE FROM tasks WHERE id = ?");
+        if ($stmt) {
+            $stmt->bind_param("i", $id);
+            $res = $stmt->execute();
+            $stmt->close();
+            return $res;
+        }
+
+        return false;
     }
 
 

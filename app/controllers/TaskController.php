@@ -169,15 +169,38 @@ class TaskController extends Controller
     }
 
 
-    // Delete Employee
+    // Delete Task
     public function delete($id)
     {
-        if ($this->userModel->delete($id)) {
+        $id = (int)$id;
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $userId = $_SESSION['user']['id'] ?? 0;
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        $task = $this->taskModel->find($id);
+        if (!$task) {
+            setError("Task not found.");
             header("Location: {$GLOBALS['base_url']}/task-lists");
             exit;
-        } else {
-            echo "<h3 style='color:red'>Failed to delete task</h3>";
         }
+
+        // Permission check: Task creator (assigned_by) or Admin/Management (roles 1, 3, 33)
+        if ($task['assigned_by'] != $userId && !in_array($roleId, [1, 3, 33])) {
+            setError("You don't have permission to delete this task.");
+            header("Location: {$GLOBALS['base_url']}/task-lists");
+            exit;
+        }
+
+        if ($this->taskModel->deleteFromEverywhere($id)) {
+            setSuccess("Task has been deleted successfully from everywhere.");
+        } else {
+            setError("Failed to delete task.");
+        }
+
+        header("Location: {$GLOBALS['base_url']}/task-lists");
+        exit;
     }
 
     public function show($id)

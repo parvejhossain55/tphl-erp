@@ -10,10 +10,40 @@ class ProjectOtherCost extends Model
     }
 
     /* =========================
+       Sync Pending Dept Head Status
+    ========================== */
+    public function syncPendingDeptHeadStatus()
+    {
+        // Automatically sync pending requests when employee reporting_user_id or is_dept_head is assigned or changed
+        $this->db->query("
+            UPDATE project_other_costs poc
+            JOIN employees e ON e.user_id = poc.created_by_id AND e.deleted_at IS NULL
+            SET poc.dept_head_status = 'pending'
+            WHERE poc.status = 'pending'
+              AND poc.dept_head_approved_by IS NULL
+              AND e.is_dept_head = 0
+              AND e.reporting_user_id IS NOT NULL
+              AND poc.dept_head_status != 'pending'
+        ");
+
+        $this->db->query("
+            UPDATE project_other_costs poc
+            JOIN employees e ON e.user_id = poc.created_by_id AND e.deleted_at IS NULL
+            SET poc.dept_head_status = 'not_required'
+            WHERE poc.status = 'pending'
+              AND poc.dept_head_approved_by IS NULL
+              AND (e.is_dept_head = 1 OR e.reporting_user_id IS NULL)
+              AND poc.dept_head_status != 'not_required'
+        ");
+    }
+
+    /* =========================
        Get All Requests
     ========================== */
     public function getAll($status = null)
     {
+        $this->syncPendingDeptHeadStatus();
+
         $query = "
             SELECT 
                 poc.*,
@@ -65,6 +95,8 @@ class ProjectOtherCost extends Model
     ========================== */
     public function getByReportingBossId($bossUserId)
     {
+        $this->syncPendingDeptHeadStatus();
+
         $query = "
             SELECT 
                 poc.*,
@@ -106,6 +138,8 @@ class ProjectOtherCost extends Model
     
     public function getByUserId($user_id)
     {
+        $this->syncPendingDeptHeadStatus();
+
         $sql = $this->db->prepare("
             SELECT 
                 poc.*,
@@ -144,6 +178,8 @@ class ProjectOtherCost extends Model
     ========================== */
     public function getById($id)
     {
+        $this->syncPendingDeptHeadStatus();
+
         $sql = $this->db->prepare("
             SELECT 
                 poc.*,

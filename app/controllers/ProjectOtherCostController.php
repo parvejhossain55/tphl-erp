@@ -457,6 +457,9 @@ class ProjectOtherCostController extends Controller
             exit;
         }
 
+        // Keep approval_requests table in sync with the latest status
+        $this->syncToApprovalRequests($id);
+
         $this->view('project-other-costs/review', [
             'request' => $request,
             'roleId' => $roleId,
