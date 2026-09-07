@@ -1048,7 +1048,11 @@ class ApprovalRequest extends Model
                     }
                 }
             } else if ($sourceTable === 'project_other_costs') {
-                $pocSql = "SELECT status, payment_at, payment_amount, approved_amount FROM project_other_costs WHERE id = ? LIMIT 1";
+                $pocSql = "SELECT poc.*, e.reporting_user_id, u_dh.full_name as dh_boss_name 
+                           FROM project_other_costs poc 
+                           LEFT JOIN employees e ON e.user_id = poc.created_by_id AND e.deleted_at IS NULL
+                           LEFT JOIN users u_dh ON u_dh.id = e.reporting_user_id
+                           WHERE poc.id = ? LIMIT 1";
                 $pocStmt = $this->db->prepare($pocSql);
                 if ($pocStmt) {
                     $pocStmt->bind_param("i", $sourceId);
@@ -1057,12 +1061,27 @@ class ApprovalRequest extends Model
                     $pocStmt->close();
                     if ($pocRow) {
                         $pocStatus = strtolower($pocRow['status'] ?? '');
-                        if (in_array($pocStatus, ['submitted', 'pending', ''])) {
+                        $dhStatus = strtolower($pocRow['dept_head_status'] ?? '');
+                        if ($pocStatus === 'rejected' || $dhStatus === 'rejected') {
+                            $row['status'] = 'rejected';
+                            $pendingStageLabel = 'Rejected';
+                            $pendingForText = 'Rejected';
+                        } elseif ($pocStatus === 'pending' && $dhStatus === 'pending') {
+                            $row['approve_role'] = 'dept_head';
+                            $row['status'] = 'pending';
+                            $pendingStageLabel = 'Pending Dept Head';
+                            $pendingForText = !empty($pocRow['dh_boss_name']) ? 'Dept Head (' . $pocRow['dh_boss_name'] . ')' : 'Department Head';
+                        } elseif (in_array($pocStatus, ['submitted', 'pending', ''])) {
                             $row['approve_role'] = 'qc';
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending QC & Audit';
                             $pendingForText = 'QC & Internal Audit Head (Role 24)';
-                        } elseif ($pocStatus === 'approved') {
+                        } elseif ($pocStatus === 'qc_approved') {
+                            $row['approve_role'] = 'management';
+                            $row['status'] = 'pending';
+                            $pendingStageLabel = 'Pending Management';
+                            $pendingForText = 'Management Approval';
+                        } elseif ($pocStatus === 'management_approved' || $pocStatus === 'approved') {
                             $row['approve_role'] = 'accounts';
                             $row['status'] = 'approved';
                             $pendingStageLabel = 'Pending Accounts Payout';

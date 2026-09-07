@@ -24,9 +24,19 @@ class ProjectOtherCostController extends Controller
         // Approver roles: QC(13, 24, 25), Management(3, 33, 32, 15, 22), Accounts(6, 30), Admin(1)
         $approverRoles = [1, 3, 6, 13, 15, 20, 22, 24, 25, 30, 32, 33];
         
+        // Check if user is a designated reporting boss for any employees
+        $isReportingBoss = false;
+        $bossCheck = $this->db->query("SELECT 1 FROM employees WHERE reporting_user_id = $userId AND deleted_at IS NULL LIMIT 1");
+        if ($bossCheck && $bossCheck->num_rows > 0) {
+            $isReportingBoss = true;
+        }
+
         if (in_array($roleId, $approverRoles)) {
             // Show all requests to these roles so they can track the status
             $approvalRequests = $this->otherCostModel->getAll();
+        } elseif ($isReportingBoss) {
+            // Show requests created by subordinates or approved by them
+            $approvalRequests = $this->otherCostModel->getByReportingBossId($userId);
         }
 
         $userRole = $roleId;
@@ -72,6 +82,8 @@ class ProjectOtherCostController extends Controller
             'myRequests' => $myRequests,
             'approvalRequests' => $approvalRequests,
             'roleId' => $roleId,
+            'userId' => $userId,
+            'isReportingBoss' => $isReportingBoss,
             'projects' => $projects
         ]);
     }
@@ -124,12 +136,16 @@ class ProjectOtherCostController extends Controller
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = $_SESSION['user']['id'];
             
-            $empStmt = $this->db->prepare("SELECT reporting_user_id FROM employees WHERE user_id = ? AND deleted_at IS NULL");
+            $empStmt = $this->db->prepare("SELECT is_dept_head, reporting_user_id FROM employees WHERE user_id = ? AND deleted_at IS NULL");
             $empStmt->bind_param('i', $userId);
             $empStmt->execute();
             $empResult = $empStmt->get_result()->fetch_assoc();
-            $reporting_user_id = !empty($empResult['reporting_user_id']) ? $empResult['reporting_user_id'] : null;
-            $dept_head_status = $reporting_user_id ? 'pending' : 'not_required';
+            
+            $isDeptHead = !empty($empResult) ? (int)$empResult['is_dept_head'] : 0;
+            $reporting_user_id = (!empty($empResult) && !empty($empResult['reporting_user_id'])) ? (int)$empResult['reporting_user_id'] : null;
+
+            // Only require Dept Head approval if the creator is NOT a dept head (is_dept_head == 0) and has a designated reporting boss
+            $dept_head_status = ($isDeptHead == 0 && !empty($reporting_user_id)) ? 'pending' : 'not_required';
 
             $data = [
                 'project_id' => $_POST['project_id'],
@@ -150,6 +166,7 @@ class ProjectOtherCostController extends Controller
 
                 if (move_uploaded_file($_FILES['creator_attachment']['tmp_name'], $targetFilePath)) {
                     $data['attachment'] = $fileName;
+                    $data['creator_attachment'] = $fileName;
                 }
             }
 
@@ -170,11 +187,28 @@ class ProjectOtherCostController extends Controller
     public function approve_dept_head($id)
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $userId = $_SESSION['user']['id'];
+            $roleId = (int)$_SESSION['user']['role_id'];
+
+            $request = $this->otherCostModel->getById($id);
+            if (!$request) {
+                setError("Request not found.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
+                exit();
+            }
+
+            $creatorReportingUserId = (int)($request['creator_reporting_user_id'] ?? 0);
+            if ($userId != $creatorReportingUserId && $roleId !== 1) {
+                setError("You are not authorized to approve this request as Department Head.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                exit();
+            }
+
             $status = $_POST['dept_head_status'] ?? 'approved';
             $data = [
                 'dept_head_status' => $status,
                 'dept_head_approval_note' => $_POST['dept_head_approval_note'] ?? null,
-                'dept_head_approved_by' => $_SESSION['user']['id'],
+                'dept_head_approved_by' => $userId,
                 'dept_head_approved_at' => date('Y-m-d H:i:s'),
             ];
 
@@ -184,7 +218,7 @@ class ProjectOtherCostController extends Controller
 
             if ($this->otherCostModel->update($id, $data)) {
                 $this->syncToApprovalRequests($id);
-                setSuccess("Request Dept Head " . ucfirst($status) . " successfully.");
+                setSuccess("Request Department Head " . ucfirst($status) . " successfully.");
             } else {
                 setError("Failed to process request.");
             }
@@ -337,7 +371,13 @@ class ProjectOtherCostController extends Controller
         $approvedAt = null;
         $approvalNote = null;
 
-        if ($row['status'] == 'pending') {
+        if ($row['status'] == 'rejected' || $row['dept_head_status'] == 'rejected') {
+            $status = 'rejected';
+            $approveRole = 'rejected';
+            $approvedBy = $row['dept_head_approved_by'] ?? $row['qc_audit_approved_id'] ?? $row['management_apporved_by_id'];
+            $approvedAt = $row['dept_head_approved_at'] ?? $row['updated_at'];
+            $approvalNote = $row['dept_head_approval_note'] ?? $row['qc_audit_note'] ?? $row['management_apporved_note'];
+        } elseif ($row['status'] == 'pending') {
             if ($row['dept_head_status'] === 'pending') {
                 $status = 'pending';
                 // Lookup dept head
@@ -410,29 +450,17 @@ class ProjectOtherCostController extends Controller
         $userId = $_SESSION['user']['id'];
         $roleId = (int)$_SESSION['user']['role_id'];
 
-        $res = $this->db->query("
-            SELECT r.*, p.name as project_name, u.full_name as creator_name,
-                   dh.full_name as dh_name,
-                   qc.full_name as qc_name, m.full_name as mgmt_name, pa.full_name as pay_name
-            FROM project_other_costs r
-            LEFT JOIN projects p ON r.project_id = p.id
-            LEFT JOIN users u ON r.created_by_id = u.id
-            LEFT JOIN users dh ON r.dept_head_approved_by = dh.id
-            LEFT JOIN users qc ON r.qc_audit_approved_id = qc.id
-            LEFT JOIN users m ON r.management_apporved_by_id = m.id
-            LEFT JOIN users pa ON r.payment_by_id = pa.id
-            WHERE r.id = $id
-        ");
-        if (!$res || $res->num_rows == 0) {
+        $request = $this->otherCostModel->getById($id);
+        if (!$request) {
             setError("Request not found.");
             header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
             exit;
         }
-        $request = $res->fetch_assoc();
 
         $this->view('project-other-costs/review', [
             'request' => $request,
-            'roleId' => $roleId
+            'roleId' => $roleId,
+            'userId' => $userId
         ]);
     }
 }

@@ -113,6 +113,12 @@
                                     <?php if($request['dept_head_approval_note']): ?><small>Note: <?= htmlspecialchars($request['dept_head_approval_note']) ?></small><?php endif; ?>
                                 <?php else: ?>
                                     <span class="text-warning"><i class="bi bi-clock"></i> Pending</span>
+                                    <?php if (!empty($request['designated_dh_name'])): ?>
+                                        from <strong><?= htmlspecialchars($request['designated_dh_name']) ?></strong>
+                                        <?php if (!empty($request['designated_dh_designation'])): ?>
+                                            <span class="text-muted small">(<?= htmlspecialchars($request['designated_dh_designation']) ?>)</span>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </li>
                             <li class="list-group-item">
@@ -163,12 +169,9 @@
             <!-- Action / Processing Card -->
             <div class="col-lg-4">
                 <?php
-                $canDeptHeadApprove = ($request['dept_head_status'] === 'pending' && $userId == (function() use ($request) {
-                    $c = db();
-                    $r = $c->query("SELECT reporting_user_id FROM employees WHERE user_id = " . (int)$request['created_by_id'] . " AND deleted_at IS NULL");
-                    if($r && $r->num_rows > 0) return $r->fetch_assoc()['reporting_user_id'];
-                    return null;
-                })());
+                $userId = $_SESSION['user']['id'] ?? ($userId ?? null);
+                $creatorReportingUserId = (int)($request['creator_reporting_user_id'] ?? 0);
+                $canDeptHeadApprove = ($request['dept_head_status'] === 'pending' && ($userId == $creatorReportingUserId || $roleId == 1));
                 $canQCApprove = ($request['status'] == 'pending' && $request['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25, 1]));
                 $canMgmtApprove = ($request['status'] == 'qc_approved' && in_array($roleId, [3, 15, 20, 22, 32, 33, 1]));
                 $canPay = ($request['status'] == 'management_approved' && in_array($roleId, [6, 30, 1]));
@@ -256,7 +259,19 @@
                 <?php else: ?>
                     <div class="alert alert-secondary text-center shadow-sm">
                         <i class="bi bi-info-circle fs-4 d-block mb-2 text-muted"></i>
-                        No actions required from your end at this stage.
+                        <?php if ($request['dept_head_status'] === 'pending'): ?>
+                            Currently waiting for Department Head approval from <strong><?= htmlspecialchars($request['designated_dh_name'] ?? 'Reporting Boss') ?></strong>.
+                        <?php elseif ($request['status'] === 'pending'): ?>
+                            Currently waiting for QC & Audit approval.
+                        <?php elseif ($request['status'] === 'qc_approved'): ?>
+                            Currently waiting for Management approval.
+                        <?php elseif ($request['status'] === 'management_approved'): ?>
+                            Currently waiting for Accounts Payout.
+                        <?php elseif ($request['status'] === 'paid'): ?>
+                            Request has been paid and completed.
+                        <?php else: ?>
+                            No actions required from your end at this stage.
+                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
             </div>
