@@ -119,11 +119,12 @@
                 <div class="col-lg-3 col-md-6">
                     <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Approval Status</label>
                     <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="" <?= empty($filters['status']) || ($filters['status'] === 'pending') ? 'selected' : '' ?>>My Actionable Pending (Default)</option>
+                        <option value="" <?= empty($filters['status']) || $filters['status'] === 'pending' || $filters['status'] === 'my_pending' ? 'selected' : '' ?>>My Actionable Pending (Default)</option>
                         <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>Approved History</option>
                         <option value="rejected" <?= ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' ?>>Rejected History</option>
                         <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33])): ?>
-                            <option value="all" <?= ($filters['status'] ?? '') === 'all' ? 'selected' : '' ?>>All Company Requests (Audit)</option>
+                            <option value="all_pending" <?= ($filters['status'] ?? '') === 'all_pending' ? 'selected' : '' ?>>All Departments Pending (Audit)</option>
+                            <option value="all" <?= ($filters['status'] ?? '') === 'all' ? 'selected' : '' ?>>All Company Requests (Complete Audit)</option>
                         <?php endif; ?>
                     </select>
                 </div>
@@ -202,7 +203,7 @@
                             <th>Requested By</th>
                             <th>Requested Amount</th>
                             <th>Approved Amount</th>
-                            <th class="text-center">Management Status</th>
+                            <th class="text-center">Approval Status & Pending At</th>
                             <th class="text-center">Accounts Payout</th>
                             <th class="pe-4 text-end">Action</th>
                         </tr>
@@ -210,7 +211,7 @@
                     <tbody>
                         <?php if (empty($approvalHistory)): ?>
                             <tr>
-                                <td colspan="9" class="text-center py-4 text-muted">
+                                <td colspan="10" class="text-center py-4 text-muted">
                                     <i class="fa-solid fa-folder-open fs-3 d-block mb-2"></i>
                                     No approval requests found matching your filter criteria.
                                 </td>
@@ -278,6 +279,10 @@
                                 $isManagementUser = in_array($userRoleId, [1, 3, 33], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
                                 $isSiteOperator = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
                                 $isAccountsUser = in_array($userRoleId, [6, 30], true) || strpos($sessionRoleName, 'account') !== false;
+                                $isQcUser = in_array($userRoleId, [13, 24, 25], true) || strpos($sessionRoleName, 'qc') !== false || strpos($sessionRoleName, 'audit') !== false;
+                                $isHrUser = ($userRoleId === 4) || strpos($sessionRoleName, 'hr') !== false;
+                                $isPurchaseUser = in_array($userRoleId, [17, 23, 31], true) || strpos($sessionRoleName, 'purchase') !== false;
+                                $isDeptHeadUser = in_array($userRoleId, [8, 9, 10, 11, 12, 14, 15, 16, 18, 19], true) || strpos($sessionRoleName, 'head') !== false || strpos($sessionRoleName, 'manager') !== false;
 
                                 $statusLower = strtolower($req['status'] ?? '');
                                 $isPendingStatus = in_array($statusLower, ['pending', 'partially_approved', '']);
@@ -286,27 +291,47 @@
 
                                 // Determine whether this request is actionable by the logged-in user right now
                                 $isActionableByMe = false;
+                                $canUserApprove = false;
                                 if ($isAccountsUser) {
-                                    if (in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid'])) {
+                                    if (in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid']) || ($reqApproveRole === 'accounts' && in_array($statusLower, ['pending', 'approved', 'partially_approved', 'partially_paid']))) {
                                         $isActionableByMe = true;
+                                        $canUserApprove = true;
                                     }
                                 } elseif ($isSiteOperator) {
                                     if ($isPendingStatus && in_array($reqApproveRole, ['management', '']) && $reqAmount <= 100000.01) {
                                         $isActionableByMe = true;
+                                        $canUserApprove = true;
                                     }
                                 } elseif ($isManagementUser) {
                                     if ($isPendingStatus && in_array($reqApproveRole, ['management', ''])) {
                                         $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    }
+                                } elseif ($isQcUser) {
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['qc', 'qc_head'])) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    }
+                                } elseif ($isPurchaseUser) {
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['purchase', 'purchase team leader', 'purchase_lead'])) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    }
+                                } elseif ($isHrUser) {
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['hr', 'hr_head'])) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    }
+                                } elseif ($isDeptHeadUser) {
+                                    if ($isPendingStatus && ($reqApproveRole === 'dept_head' || $reqApproveRole === 'dept_head_' . ($_SESSION['user']['id'] ?? 0))) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
                                     }
                                 } else {
                                     if ($isPendingStatus && !empty($reqApproveRole) && strpos($sessionRoleName, $reqApproveRole) !== false) {
                                         $isActionableByMe = true;
+                                        $canUserApprove = true;
                                     }
-                                }
-
-                                $canUserApprove = $isManagementUser || (!$isMgmtRequest && !$isAccountsUser);
-                                if ($isSiteOperator && !$isManagementUser && $reqAmount <= 100000.01) {
-                                    $canUserApprove = true;
                                 }
 
                                 $rowBgStyle = $isActionableByMe ? 'background-color: #f8fafc;' : '';
@@ -440,12 +465,35 @@
                                         <?php endif; ?>
                                     </td>
 
-                                    <!-- Management Status -->
+                                    <!-- Approval Status & Pending At -->
                                     <td class="text-center">
                                         <?php if ($req['status'] === 'pending'): ?>
-                                            <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small">
-                                                <i class="fa-solid fa-clock me-1"></i>Pending Review
+                                            <?php
+                                            $badgeClass = 'bg-warning text-dark';
+                                            $stageLabel = $req['pending_stage_label'] ?? 'Pending Review';
+                                            if (stripos($stageLabel, 'QC') !== false || stripos($stageLabel, 'Audit') !== false) {
+                                                $badgeClass = 'bg-info text-dark';
+                                            } elseif (stripos($stageLabel, 'Dept') !== false) {
+                                                $badgeClass = 'bg-secondary text-white';
+                                            } elseif (stripos($stageLabel, 'HR') !== false) {
+                                                $badgeClass = 'bg-primary text-white';
+                                            } elseif (stripos($stageLabel, 'Purchase') !== false) {
+                                                $badgeClass = 'bg-secondary text-white';
+                                            } elseif (stripos($stageLabel, 'PM') !== false) {
+                                                $badgeClass = 'bg-info text-white';
+                                            } elseif (stripos($stageLabel, 'Management') !== false) {
+                                                $badgeClass = 'bg-warning text-dark';
+                                            } elseif (stripos($stageLabel, 'Accounts') !== false) {
+                                                $badgeClass = 'bg-success text-white';
+                                            }
+                                            ?>
+                                            <span class="badge <?= $badgeClass ?> rounded-pill px-3 py-1 extra-small fw-semibold">
+                                                <i class="fa-solid fa-clock me-1"></i><?= htmlspecialchars($stageLabel) ?>
                                             </span>
+                                            <div class="extra-small text-dark mt-1">
+                                                <i class="fa-solid fa-hourglass-half text-warning me-1"></i><strong>Pending at:</strong>
+                                                <span class="text-primary fw-semibold d-block"><?= htmlspecialchars($req['pending_for_text'] ?? 'Management') ?></span>
+                                            </div>
                                         <?php elseif (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'])): ?>
                                             <span
                                                 class="badge <?= $req['status'] === 'approved' ? 'bg-success' : 'bg-info' ?> text-white rounded-pill px-3 py-1 extra-small d-block mb-1">
@@ -541,8 +589,8 @@
                                             <?php else: ?>
                                                 <a href="javascript:void(0)"
                                                     class="btn btn-sm btn-light text-muted rounded-2 px-2 border"
-                                                    title="<?= ($isSiteOperator && $reqAmount > 100000) ? 'Amount exceeds ৳1,00,000 threshold - Full Management approval required' : 'Management Approval Required' ?>">
-                                                    <i class="fa-solid fa-lock me-1 text-warning"></i>Management Only
+                                                    title="<?= ($isSiteOperator && $reqAmount > 100000) ? 'Amount exceeds ৳1,00,000 threshold - Full Management approval required' : 'Pending for ' . htmlspecialchars($req['pending_for_text'] ?? 'Other Role') ?>">
+                                                    <i class="fa-solid fa-lock me-1 text-warning"></i><?= ($isSiteOperator && $reqAmount > 100000) ? 'Management Only' : 'Pending Other Role' ?>
                                                 </a>
                                             <?php endif; ?>
                                         <?php else: ?>

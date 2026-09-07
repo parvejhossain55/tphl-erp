@@ -254,7 +254,16 @@ class Con_VendorPaymentRequest extends Model
 
     public function approveQC($id, $userId, $qcNote = '', $qcApprovedAmount = null)
     {
-        if ($qcApprovedAmount === null) {
+        // Auto-check and create qc_approved_amount column if missing
+        $colChk = $this->db->query("SHOW COLUMNS FROM {$this->table} LIKE 'qc_approved_amount'");
+        $hasQcAmt = ($colChk && $colChk->num_rows > 0);
+        if (!$hasQcAmt) {
+            @$this->db->query("ALTER TABLE {$this->table} ADD COLUMN qc_approved_amount DECIMAL(16,4) NULL DEFAULT NULL AFTER net_payable");
+            $colChk = $this->db->query("SHOW COLUMNS FROM {$this->table} LIKE 'qc_approved_amount'");
+            $hasQcAmt = ($colChk && $colChk->num_rows > 0);
+        }
+
+        if ($qcApprovedAmount === null || !$hasQcAmt) {
             $stmt = $this->db->prepare(
                 "UPDATE {$this->table}
                  SET status = 'QC Approved', 
