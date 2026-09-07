@@ -28,9 +28,10 @@
         <?php endif; ?>
 
         <?php 
-        $isApprover = in_array($roleId, [1, 3, 6, 9, 13, 15, 20, 24, 25, 30, 32]);
+        $userId = $_SESSION['user']['id'] ?? ($userId ?? null);
+        $isApprover = in_array($roleId, [1, 3, 6, 9, 13, 15, 20, 22, 24, 25, 30, 32, 33]) || !empty($isReportingBoss);
         $showApprovalTab = !empty($approvalRequests) || $isApprover;
-        $activeTab = $isApprover ? 'approval' : 'my-requests';
+        $activeTab = ($isApprover || !empty($approvalRequests)) && empty($myRequests) ? 'approval' : ($isApprover ? 'approval' : 'my-requests');
         ?>
 
         <!-- Nav tabs -->
@@ -81,9 +82,20 @@
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <span class="badge bg-<?= $row['status'] == 'pending' ? 'warning' : ($row['status'] == 'paid' ? 'success' : 'info') ?>">
-                                                    <?= ucfirst(str_replace('_', ' ', $row['status'])) ?>
-                                                </span>
+                                                <?php if ($row['dept_head_status'] === 'pending'): ?>
+                                                    <span class="badge bg-warning text-dark mb-1">
+                                                        <i class="bi bi-clock me-1"></i>Dept Head Pending
+                                                    </span>
+                                                    <?php if (!empty($row['designated_dh_name'])): ?>
+                                                        <div class="text-muted" style="font-size: 0.75rem;">
+                                                            Approver: <strong><?= htmlspecialchars($row['designated_dh_name']) ?></strong>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                <?php else: ?>
+                                                    <span class="badge bg-<?= $row['status'] == 'pending' ? 'warning' : ($row['status'] == 'paid' ? 'success' : ($row['status'] == 'rejected' ? 'danger' : 'info')) ?>">
+                                                        <?= ucfirst(str_replace('_', ' ', $row['status'])) ?>
+                                                    </span>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <div class="fw-bold"><?= htmlspecialchars($row['created_by_name'] ?? 'N/A') ?></div>
@@ -146,9 +158,25 @@
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <span class="badge bg-<?= $row['status'] == 'pending' ? 'warning' : ($row['status'] == 'paid' ? 'success' : 'info') ?>">
-                                                    <?= ucfirst(str_replace('_', ' ', $row['status'])) ?>
-                                                </span>
+                                                <?php if ($row['dept_head_status'] === 'pending'): ?>
+                                                    <span class="badge bg-warning text-dark mb-1">
+                                                        <i class="bi bi-clock me-1"></i>Dept Head Pending
+                                                    </span>
+                                                    <?php if (!empty($row['designated_dh_name'])): ?>
+                                                        <div class="text-muted" style="font-size: 0.75rem;">
+                                                            Approver: <strong><?= htmlspecialchars($row['designated_dh_name']) ?></strong>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                <?php else: ?>
+                                                    <span class="badge bg-<?= $row['status'] == 'pending' ? 'warning' : ($row['status'] == 'paid' ? 'success' : ($row['status'] == 'rejected' ? 'danger' : 'info')) ?>">
+                                                        <?= ucfirst(str_replace('_', ' ', $row['status'])) ?>
+                                                    </span>
+                                                    <?php if ($row['dept_head_status'] === 'approved'): ?>
+                                                        <div class="text-success" style="font-size: 0.75rem;">
+                                                            <i class="bi bi-check-circle"></i> Dept Head Approved
+                                                        </div>
+                                                    <?php endif; ?>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <div class="fw-bold"><?= htmlspecialchars($row['created_by_name'] ?? 'N/A') ?></div>
@@ -159,14 +187,8 @@
                                                     <?php
                                                     $canApprove = false;
                                                     
-                                                    $isDeptHead = false;
-                                                    if ($row['dept_head_status'] === 'pending') {
-                                                        $c = db();
-                                                        $r = $c->query("SELECT reporting_user_id FROM employees WHERE user_id = " . (int)$row['created_by_id'] . " AND deleted_at IS NULL");
-                                                        if($r && $r->num_rows > 0 && $r->fetch_assoc()['reporting_user_id'] == $userId) {
-                                                            $isDeptHead = true;
-                                                        }
-                                                    }
+                                                    $creatorReportingUserId = (int)($row['creator_reporting_user_id'] ?? 0);
+                                                    $isDeptHead = ($row['dept_head_status'] === 'pending' && ($creatorReportingUserId === (int)$userId || $roleId === 1));
                                                     
                                                     if ($isDeptHead) $canApprove = true;
                                                     if ($row['status'] == 'pending' && $row['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25, 1])) $canApprove = true;

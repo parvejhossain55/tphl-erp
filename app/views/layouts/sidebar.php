@@ -206,10 +206,29 @@
             elseif (in_array($sidebarRoleId, [6, 30, 1])) $pocStatus = 'management_approved';
             
             if ($pocStatus) {
-                $pocRes = $db->prepare("SELECT COUNT(*) AS c FROM project_other_costs WHERE status = ?");
-                $pocRes->bind_param("s", $pocStatus);
-                $pocRes->execute();
-                $sidebarPendingPOCostsCount += $pocRes->get_result()->fetch_assoc()['c'] ?? 0;
+                if ($pocStatus === 'pending') {
+                    // For QC/Admin, only count requests that are cleared by Dept Head
+                    $pocRes = $db->query("SELECT COUNT(*) AS c FROM project_other_costs WHERE status = 'pending' AND dept_head_status != 'pending'");
+                    if ($pocRes) {
+                        $sidebarPendingPOCostsCount += (int)($pocRes->fetch_assoc()['c'] ?? 0);
+                    }
+                } else {
+                    $pocRes = $db->prepare("SELECT COUNT(*) AS c FROM project_other_costs WHERE status = ?");
+                    $pocRes->bind_param("s", $pocStatus);
+                    $pocRes->execute();
+                    $sidebarPendingPOCostsCount += $pocRes->get_result()->fetch_assoc()['c'] ?? 0;
+                }
+            }
+
+            // Check if user is a reporting boss for employees with pending other cost requests awaiting Dept Head approval
+            $dhPocRes = $db->query("
+                SELECT COUNT(*) AS c 
+                FROM project_other_costs poc 
+                JOIN employees e ON e.user_id = poc.created_by_id AND e.deleted_at IS NULL
+                WHERE poc.status = 'pending' AND poc.dept_head_status = 'pending' AND e.reporting_user_id = {$sidebarUserId}
+            ");
+            if ($dhPocRes) {
+                $sidebarPendingPOCostsCount += (int)($dhPocRes->fetch_assoc()['c'] ?? 0);
             }
             // 1. Pending Purchase Requests awaiting role-specific action
             if (in_array($sidebarRoleId, [1, 3])) {

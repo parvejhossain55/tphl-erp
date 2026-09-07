@@ -22,10 +22,18 @@ class ProjectOtherCost extends Model
                 dh.full_name AS dh_name,
                 qc.full_name AS qc_name,
                 mb.full_name AS management_name,
-                pb.full_name AS payment_by_name
+                pb.full_name AS payment_by_name,
+                creator_emp.is_dept_head AS creator_is_dept_head,
+                creator_emp.reporting_user_id AS creator_reporting_user_id,
+                boss_user.full_name AS designated_dh_name,
+                boss_des.name AS designated_dh_designation
             FROM project_other_costs poc
             LEFT JOIN projects p ON poc.project_id = p.id
             LEFT JOIN users cb ON poc.created_by_id = cb.id
+            LEFT JOIN employees creator_emp ON creator_emp.user_id = poc.created_by_id AND creator_emp.deleted_at IS NULL
+            LEFT JOIN users boss_user ON boss_user.id = creator_emp.reporting_user_id
+            LEFT JOIN employees boss_emp ON boss_emp.user_id = boss_user.id AND boss_emp.deleted_at IS NULL
+            LEFT JOIN designations boss_des ON boss_des.id = boss_emp.designation_id
             LEFT JOIN users dh ON poc.dept_head_approved_by = dh.id
             LEFT JOIN users qc ON poc.qc_audit_approved_id = qc.id
             LEFT JOIN users mb ON poc.management_apporved_by_id = mb.id
@@ -51,6 +59,50 @@ class ProjectOtherCost extends Model
         $result = $sql->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+
+    /* =========================
+       Get Requests for Reporting Boss
+    ========================== */
+    public function getByReportingBossId($bossUserId)
+    {
+        $query = "
+            SELECT 
+                poc.*,
+                p.name AS project_name,
+                cb.full_name AS created_by_name,
+                dh.full_name AS dh_name,
+                qc.full_name AS qc_name,
+                mb.full_name AS management_name,
+                pb.full_name AS payment_by_name,
+                creator_emp.is_dept_head AS creator_is_dept_head,
+                creator_emp.reporting_user_id AS creator_reporting_user_id,
+                boss_user.full_name AS designated_dh_name,
+                boss_des.name AS designated_dh_designation
+            FROM project_other_costs poc
+            LEFT JOIN projects p ON poc.project_id = p.id
+            LEFT JOIN users cb ON poc.created_by_id = cb.id
+            LEFT JOIN employees creator_emp ON creator_emp.user_id = poc.created_by_id AND creator_emp.deleted_at IS NULL
+            LEFT JOIN users boss_user ON boss_user.id = creator_emp.reporting_user_id
+            LEFT JOIN employees boss_emp ON boss_emp.user_id = boss_user.id AND boss_emp.deleted_at IS NULL
+            LEFT JOIN designations boss_des ON boss_des.id = boss_emp.designation_id
+            LEFT JOIN users dh ON poc.dept_head_approved_by = dh.id
+            LEFT JOIN users qc ON poc.qc_audit_approved_id = qc.id
+            LEFT JOIN users mb ON poc.management_apporved_by_id = mb.id
+            LEFT JOIN users pb ON poc.payment_by_id = pb.id
+            WHERE (creator_emp.reporting_user_id = ? OR poc.dept_head_approved_by = ?)
+            ORDER BY poc.id DESC
+        ";
+
+        $sql = $this->db->prepare($query);
+        $sql->bind_param("ii", $bossUserId, $bossUserId);
+
+        if (!$sql->execute()) {
+            return [];
+        }
+
+        $result = $sql->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
     
     public function getByUserId($user_id)
     {
@@ -62,10 +114,18 @@ class ProjectOtherCost extends Model
                 dh.full_name AS dh_name,
                 qc.full_name AS qc_name,
                 mb.full_name AS management_name,
-                pb.full_name AS payment_by_name
+                pb.full_name AS payment_by_name,
+                creator_emp.is_dept_head AS creator_is_dept_head,
+                creator_emp.reporting_user_id AS creator_reporting_user_id,
+                boss_user.full_name AS designated_dh_name,
+                boss_des.name AS designated_dh_designation
             FROM project_other_costs poc
             LEFT JOIN projects p ON poc.project_id = p.id
             LEFT JOIN users cb ON poc.created_by_id = cb.id
+            LEFT JOIN employees creator_emp ON creator_emp.user_id = poc.created_by_id AND creator_emp.deleted_at IS NULL
+            LEFT JOIN users boss_user ON boss_user.id = creator_emp.reporting_user_id
+            LEFT JOIN employees boss_emp ON boss_emp.user_id = boss_user.id AND boss_emp.deleted_at IS NULL
+            LEFT JOIN designations boss_des ON boss_des.id = boss_emp.designation_id
             LEFT JOIN users dh ON poc.dept_head_approved_by = dh.id
             LEFT JOIN users qc ON poc.qc_audit_approved_id = qc.id
             LEFT JOIN users mb ON poc.management_apporved_by_id = mb.id
@@ -92,10 +152,18 @@ class ProjectOtherCost extends Model
                 dh.full_name AS dh_name,
                 qc.full_name AS qc_name,
                 mb.full_name AS mgmt_name,
-                pb.full_name AS pay_name
+                pb.full_name AS pay_name,
+                creator_emp.is_dept_head AS creator_is_dept_head,
+                creator_emp.reporting_user_id AS creator_reporting_user_id,
+                boss_user.full_name AS designated_dh_name,
+                boss_des.name AS designated_dh_designation
             FROM project_other_costs poc
             LEFT JOIN projects p ON poc.project_id = p.id
             LEFT JOIN users cb ON poc.created_by_id = cb.id
+            LEFT JOIN employees creator_emp ON creator_emp.user_id = poc.created_by_id AND creator_emp.deleted_at IS NULL
+            LEFT JOIN users boss_user ON boss_user.id = creator_emp.reporting_user_id
+            LEFT JOIN employees boss_emp ON boss_emp.user_id = boss_user.id AND boss_emp.deleted_at IS NULL
+            LEFT JOIN designations boss_des ON boss_des.id = boss_emp.designation_id
             LEFT JOIN users dh ON poc.dept_head_approved_by = dh.id
             LEFT JOIN users qc ON poc.qc_audit_approved_id = qc.id
             LEFT JOIN users mb ON poc.management_apporved_by_id = mb.id
@@ -113,23 +181,25 @@ class ProjectOtherCost extends Model
     ========================== */
     public function create($data)
     {
-        $sql = $this->db->prepare("
-            INSERT INTO project_other_costs 
-            (project_id, rcost_type, purpose, request_amount, created_by_id, attachment, dept_head_status, status) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-        ");
-
         $attachment = $data['attachment'] ?? null;
+        $creator_attachment = $data['creator_attachment'] ?? $attachment;
         $dept_head_status = $data['dept_head_status'] ?? 'pending';
 
+        $sql = $this->db->prepare("
+            INSERT INTO project_other_costs 
+            (project_id, rcost_type, purpose, request_amount, created_by_id, attachment, creator_attachment, dept_head_status, status) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+        ");
+
         $sql->bind_param(
-            "issdiss",
+            "issdisss",
             $data['project_id'],
             $data['rcost_type'],
             $data['purpose'],
             $data['request_amount'],
             $data['created_by_id'],
             $attachment,
+            $creator_attachment,
             $dept_head_status
         );
 
