@@ -142,7 +142,10 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                     <div>
                         <span class="text-muted fs-11 text-uppercase fw-bold d-block">Req / Approved</span>
                         <div class="fw-extrabold text-primary mt-1 fs-15">&#2547; <?php echo number_format($req['amount'], 2); ?></div>
-                        <div class="fs-12 text-muted mt-1 fw-medium">App: &#2547; <?php echo number_format($req['approved_amount'] ?? (in_array($req['status'], ['approved','paid']) ? $req['amount'] : 0), 2); ?></div>
+                        <?php if (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0): ?>
+                            <div class="fs-11 text-info mt-0 fw-medium">QC: &#2547; <?php echo number_format((float)$req['qc_approved_amount'], 2); ?></div>
+                        <?php endif; ?>
+                        <div class="fs-12 text-muted mt-1 fw-medium">App: &#2547; <?php echo number_format($req['approved_amount'] ?? (in_array($req['status'], ['approved','paid']) ? ($req['qc_approved_amount'] ?? $req['amount']) : 0), 2); ?></div>
                     </div>
                     <div class="avatar avatar-md bg-primary-transparent rounded-circle fs-18">
                         <i class="fa-solid fa-wallet text-primary"></i>
@@ -433,6 +436,13 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                                             <?php endif; ?>
                                             <?php echo !empty($req['qc_approved_at']) ? 'on ' . date('d M Y, h:i A', strtotime($req['qc_approved_at'])) : ''; ?>
                                         </p>
+                                        <?php if (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0): ?>
+                                            <div class="mt-1">
+                                                <span class="badge bg-info-transparent text-info fs-11">
+                                                    <i class="fa-solid fa-bangladeshi-taka-sign me-1"></i>QC Approved Amount: &#2547; <?php echo number_format((float)$req['qc_approved_amount'], 2); ?>
+                                                </span>
+                                            </div>
+                                        <?php endif; ?>
                                         <?php if (!empty($req['qc_approval_note'])): ?>
                                             <div class="bg-light p-2 rounded fs-12 mt-2 text-dark border">
                                                 <i class="fa-solid fa-quote-left text-muted me-1 fs-11"></i><?php echo htmlspecialchars($req['qc_approval_note']); ?>
@@ -783,12 +793,28 @@ if ($req['status'] === 'pending_qc' && $canApproveQc):
             <div class="modal-header"><h5 class="modal-title">QC & Internal Audit Head Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
-                <div class="mb-3"><label class="form-label">Action</label>
-                    <select name="status" class="form-select" required><option value="approved">Approve (Send to Management)</option><option value="rejected">Reject</option></select></div>
-                <div class="mb-3"><label class="form-label">Remarks / Note</label>
-                    <textarea name="approval_note" class="form-control" rows="3" placeholder="Enter remarks..."></textarea></div>
+                <div class="mb-3 p-3 bg-light rounded border">
+                    <small class="text-muted d-block fs-11 text-uppercase fw-semibold">Requested Amount</small>
+                    <div class="fs-15 text-dark fw-bold mt-1">&#2547; <?php echo number_format($req['amount'], 2); ?></div>
+                </div>
+                <div class="mb-3"><label class="form-label fw-semibold">Action</label>
+                    <select name="status" id="qc_action_select" class="form-select" required>
+                        <option value="approved">Approve (Send to Management)</option>
+                        <option value="rejected">Reject</option>
+                    </select>
+                </div>
+                <div class="mb-3" id="qc_amount_div">
+                    <label class="form-label fw-semibold">QC Approved Amount (&#2547;) <span class="text-danger">*</span></label>
+                    <input type="number" name="qc_approved_amount" id="qc_approved_amount_input" class="form-control" 
+                           step="0.01" min="0.01" max="<?php echo $req['amount']; ?>" 
+                           value="<?php echo number_format($req['amount'], 2, '.', ''); ?>" required>
+                    <small class="text-muted">You can adjust the approved amount up to requested &#2547; <?php echo number_format($req['amount'], 2); ?></small>
+                </div>
+                <div class="mb-3"><label class="form-label fw-semibold">Remarks / Observation Note</label>
+                    <textarea name="approval_note" class="form-control" rows="3" placeholder="Enter remarks or audit observation notes..."></textarea>
+                </div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-info text-white btn-sm">Submit Decision</button></div>
+            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-info text-white btn-sm fw-bold">Submit Decision</button></div>
         </div>
     </form></div>
 </div>
@@ -816,7 +842,10 @@ if ($req['status'] === 'pending_dept' && $canApproveDept):
 <?php endif; ?>
 
 <?php 
-$dueToApprove = $req['amount'] - ($req['approved_amount'] ?? 0);
+$effectiveReqAmount = (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0)
+    ? (float)$req['qc_approved_amount']
+    : (float)$req['amount'];
+$dueToApprove = $effectiveReqAmount - ($req['approved_amount'] ?? 0);
 if (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) && $canApprove && $dueToApprove > 0): ?>
 <div class="modal fade" id="approveModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve" method="POST">
@@ -824,12 +853,26 @@ if (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']
             <div class="modal-header"><h5 class="modal-title">Approve / Reject Requisition</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <input type="hidden" name="id" value="<?php echo $req['id']; ?>">
+                
+                <?php if (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0): ?>
+                    <div class="alert alert-info py-2 px-3 mb-2 small">
+                        <i class="fa-solid fa-shield-check me-1"></i>
+                        <strong>QC & Internal Audit Approved:</strong> &#2547; <?php echo number_format((float)$req['qc_approved_amount'], 2); ?>
+                        <?php if ((float)$req['qc_approved_amount'] < (float)$req['amount']): ?>
+                            <span class="text-muted">(Reduced from requested &#2547; <?php echo number_format($req['amount'], 2); ?>)</span>
+                        <?php endif; ?>
+                        <?php if (!empty($req['qc_approval_note'])): ?>
+                            <div class="fst-italic mt-1">"<?php echo htmlspecialchars($req['qc_approval_note']); ?>"</div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
                 <div class="mb-2 p-3 bg-light rounded border">
                     <div class="fs-15 text-dark fw-bold mt-1">Due to Approve: &#2547; <?php echo number_format($dueToApprove, 2); ?></div>
                 </div>
                 <div class="mb-3"><label class="form-label">Action</label>
                     <select name="status" id="approve_action_select" class="form-select" required>
-                        <option value="approved">Approve (Full Due Amount)</option>
+                        <option value="approved">Approve (Full Due Amount - &#2547; <?php echo number_format($dueToApprove, 2); ?>)</option>
                         <option value="partially_approved">Partially Approve</option>
                         <option value="rejected">Reject</option>
                     </select>
@@ -1045,6 +1088,22 @@ if (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'
     }
     window.onbeforeprint = setPrintDate;
     document.addEventListener('DOMContentLoaded', setPrintDate);
+
+    // Toggle QC approve amount field
+    var qcSelect = document.getElementById('qc_action_select');
+    var qcAmountDiv = document.getElementById('qc_amount_div');
+    if (qcSelect && qcAmountDiv) {
+        qcSelect.addEventListener('change', function() {
+            var input = qcAmountDiv.querySelector('input');
+            if (this.value === 'rejected') {
+                qcAmountDiv.classList.add('d-none');
+                if (input) input.removeAttribute('required');
+            } else {
+                qcAmountDiv.classList.remove('d-none');
+                if (input) input.setAttribute('required', 'required');
+            }
+        });
+    }
 
     // Toggle partial approve/pay fields
     var approveSelect = document.getElementById('approve_action_select');

@@ -16,6 +16,13 @@
 class Con_LaborRequisition extends Model
 {
     protected $table = 'con_labor_requisitions';
+    protected $lastError = null;
+
+    public function getLastError()
+    {
+        return $this->lastError;
+    }
+
 
     public function getAll($projectId = null, $status = null, $requestedBy = null)
     {
@@ -173,35 +180,103 @@ class Con_LaborRequisition extends Model
         return $r ? $r->fetch_all(MYSQLI_ASSOC) : [];
     }
 
+    public function generateRequisitionNo()
+    {
+        $year = date('Y');
+        $prefix = 'LR-' . $year . '-';
+
+        $sql = "SELECT requisition_no 
+                FROM {$this->table} 
+                WHERE requisition_no LIKE '{$prefix}%' 
+                ORDER BY CAST(SUBSTRING_INDEX(requisition_no, '-', -1) AS UNSIGNED) DESC 
+                LIMIT 1";
+        $r = $this->db->query($sql);
+        $maxNum = 0;
+        if ($r && $row = $r->fetch_assoc()) {
+            $parts = explode('-', $row['requisition_no']);
+            $maxNum = (int)end($parts);
+        }
+
+        $nextNum = max($maxNum + 1, 1);
+
+        while (true) {
+            $candidate = $prefix . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
+            $check = $this->db->prepare("SELECT id FROM {$this->table} WHERE requisition_no = ? LIMIT 1");
+            if ($check) {
+                $check->bind_param('s', $candidate);
+                $check->execute();
+                $check->store_result();
+                $exists = ($check->num_rows > 0);
+                $check->close();
+                if (!$exists) {
+                    return $candidate;
+                }
+            } else {
+                return $candidate;
+            }
+            $nextNum++;
+        }
+    }
+
     public function create($data)
     {
-        $year  = date('Y');
-        $r     = $this->db->query("SELECT COUNT(*) AS cnt FROM {$this->table} WHERE YEAR(created_at) = $year");
-        $count = (int)($r->fetch_assoc()['cnt'] ?? 0) + 1;
-        $reqNo = 'LR-'.$year.'-'.str_pad($count, 4, '0', STR_PAD_LEFT);
+        try {
+            $reqNo = $this->generateRequisitionNo();
 
-        $sql = "INSERT INTO {$this->table}
-                (requisition_no, project_id, phase_id, phase_target_id, requested_by,
-                 requisition_date, work_date_from, work_date_to, labor_type,
-                 labor_count, per_labor_rate, working_days, purpose, remarks, attachment,
-                 status, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)";
-        $stmt = $this->db->prepare($sql);
-        $phaseId   = $data['phase_id']       ?: null;
-        $targetId  = $data['phase_target_id'] ?: null;
-        $from      = $data['work_date_from']  ?: null;
-        $to        = $data['work_date_to']    ?: null;
-        $attach    = $data['attachment']      ?: null;
-        $stmt->bind_param('siiiissssiddsssi',
-            $reqNo, $data['project_id'], $phaseId, $targetId,
-            $data['requested_by'], $data['requisition_date'], $from, $to,
-            $data['labor_type'], $data['labor_count'], $data['per_labor_rate'],
-            $data['working_days'], $data['purpose'], $data['remarks'],
-            $attach, $data['created_by']
-        );
-        $stmt->execute();
-        return $stmt->insert_id;
+            $sql = "INSERT INTO {$this->table}
+                    (requisition_no, project_id, phase_id, phase_target_id, requested_by,
+                     requisition_date, work_date_from, work_date_to, labor_type,
+                     labor_count, per_labor_rate, working_days, purpose, remarks, attachment,
+                     status, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)";
+            $stmt = $this->db->prepare($sql);
+            if (!$stmt) {
+                $this->lastError = "Database prepare failed: " . $this->db->error;
+                error_log($this->lastError);
+                return false;
+            }
+
+            $projId    = (int)($data['project_id'] ?? 0);
+            $phaseId   = !empty($data['phase_id']) ? (int)$data['phase_id'] : null;
+            $targetId  = !empty($data['phase_target_id']) ? (int)$data['phase_target_id'] : null;
+            $reqBy     = (int)($data['requested_by'] ?? 0);
+            $reqDate   = !empty($data['requisition_date']) ? $data['requisition_date'] : date('Y-m-d');
+            $from      = !empty($data['work_date_from']) ? $data['work_date_from'] : null;
+            $to        = !empty($data['work_date_to']) ? $data['work_date_to'] : null;
+            $lType     = !empty($data['labor_type']) ? $data['labor_type'] : 'General';
+            $lCount    = max(1, (int)($data['labor_count'] ?? 1));
+            $lRate     = (float)($data['per_labor_rate'] ?? 0);
+            $wDays     = (float)($data['working_days'] ?? 1);
+            $purpose   = trim($data['purpose'] ?? '');
+            $remarks   = !empty($data['remarks']) ? trim($data['remarks']) : null;
+            $attach    = !empty($data['attachment']) ? $data['attachment'] : null;
+            $createdBy = (int)($data['created_by'] ?? $reqBy);
+
+            $stmt->bind_param('siiiissssiddsssi',
+                $reqNo, $projId, $phaseId, $targetId,
+                $reqBy, $reqDate, $from, $to,
+                $lType, $lCount, $lRate,
+                $wDays, $purpose, $remarks,
+                $attach, $createdBy
+            );
+
+            if (!$stmt->execute()) {
+                $this->lastError = "Database execute failed: " . $stmt->error;
+                error_log($this->lastError);
+                $stmt->close();
+                return false;
+            }
+
+            $insertId = $stmt->insert_id;
+            $stmt->close();
+            return $insertId;
+        } catch (\Throwable $e) {
+            $this->lastError = $e->getMessage();
+            error_log("Con_LaborRequisition create error: " . $e->getMessage());
+            return false;
+        }
     }
+
 
     // -- Approval Steps --
 

@@ -124,6 +124,9 @@ $canApprove = $canApprove ?? false;
                                                 <strong>QC:</strong> 
                                                 <?php if (!empty($req['qc_approved_by_name'])): ?>
                                                     <span class="text-success fw-semibold"><?= htmlspecialchars($req['qc_approved_by_name']) ?></span>
+                                                    <?php if (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0): ?>
+                                                        <br><span class="badge bg-info text-white" style="font-size:9.5px">৳ <?= number_format((float)$req['qc_approved_amount'], 2) ?></span>
+                                                    <?php endif; ?>
                                                     <?php if (!empty($req['qc_approved_at'])): ?>
                                                         <br><small class="text-muted" style="font-size:9.5px"><?= date('d M Y', strtotime($req['qc_approved_at'])) ?></small>
                                                     <?php endif; ?>

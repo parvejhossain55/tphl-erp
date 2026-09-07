@@ -20,12 +20,33 @@ class Con_PurchaseOrder extends Model
                        v.name AS vendor_name,
                        (SELECT SUM(total_price) FROM {$this->itemTable} WHERE purchase_order_id = po.id) AS total_amount,
                        (SELECT u2.full_name FROM po_negotiation_notes n JOIN users u2 ON u2.id = n.user_id WHERE n.purchase_order_id = po.id ORDER BY n.created_at DESC LIMIT 1) AS latest_note_author,
-                       (SELECT n2.note_text FROM po_negotiation_notes n2 WHERE n2.purchase_order_id = po.id ORDER BY n2.created_at DESC LIMIT 1) AS latest_note_text
+                       (SELECT n2.note_text FROM po_negotiation_notes n2 WHERE n2.purchase_order_id = po.id ORDER BY n2.created_at DESC LIMIT 1) AS latest_note_text,
+                       vpr.id AS vpr_id,
+                       vpr.status AS vpr_status,
+                       vpr.payment_type AS vpr_payment_type,
+                       COALESCE(vpr.net_payable, vpr.net_payable_amount, 0) AS vpr_net_payable,
+                       COALESCE(vpr_txn.total_paid, 0) AS vpr_total_paid,
+                       GREATEST(0, COALESCE(vpr.net_payable, vpr.net_payable_amount, 0) - COALESCE(vpr_txn.total_paid, 0)) AS vpr_due
                 FROM {$this->table} po
                 JOIN purchase_requests pr ON pr.id = po.request_id
                 LEFT JOIN projects p ON p.id = pr.project_id
                 LEFT JOIN users u ON u.id = po.created_by
                 LEFT JOIN vendors v ON v.id = po.vendor_id
+                LEFT JOIN (
+                    SELECT v1.* 
+                    FROM vendor_payment_requests v1
+                    INNER JOIN (
+                        SELECT purchase_order_id, MAX(id) AS max_id 
+                        FROM vendor_payment_requests 
+                        GROUP BY purchase_order_id
+                    ) v2 ON v1.id = v2.max_id
+                ) vpr ON vpr.purchase_order_id = po.id
+                LEFT JOIN (
+                    SELECT ref_id, SUM(amount_paid) AS total_paid 
+                    FROM con_financial_transactions 
+                    WHERE ref_type = 'vendor_payment' 
+                    GROUP BY ref_id
+                ) vpr_txn ON vpr_txn.ref_id = vpr.id
                 ORDER BY po.id DESC";
         $result = $this->db->query($sql);
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];

@@ -1476,6 +1476,9 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
         </td>
         <td class="text-end fw-bold text-dark">
             BDT <?= number_format($req['amount'], 2) ?>
+            <?php if (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0): ?>
+                <div class="fs-11 text-info fw-normal">QC: BDT <?= number_format((float)$req['qc_approved_amount'], 2) ?></div>
+            <?php endif; ?>
         </td>
         <td class="text-wrap" style="max-width: 200px;">
             <?php 
@@ -1499,6 +1502,11 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
             <?php if (!empty($req['dept_head_approval_note'])): ?>
                 <div class="fs-10 text-warning mt-1">
                     <strong>Dept Note:</strong> <?= htmlspecialchars($req['dept_head_approval_note']) ?>
+                </div>
+            <?php endif; ?>
+            <?php if (!empty($req['qc_approval_note'])): ?>
+                <div class="fs-10 text-info mt-1">
+                    <strong>QC Note:</strong> <?= htmlspecialchars($req['qc_approval_note']) ?>
                 </div>
             <?php endif; ?>
             <?php if (!empty($req['approval_note'])): ?>
