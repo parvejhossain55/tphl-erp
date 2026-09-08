@@ -1699,6 +1699,7 @@ document.addEventListener("DOMContentLoaded", function() {
     // ── Approval Pending Tab Logic ──
     let allTipsoiRequests = [];
     let loggedUserApproverInfo = null;
+    let hrEmployeeOfficeIds = [];
 
     function loadApprovalsData() {
         const tbody = document.getElementById("approvalsTableBody");
@@ -1720,6 +1721,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 allTipsoiRequests = res.data || [];
                 console.log("Fetched Tipsoi Requests Data:", allTipsoiRequests);
                 loggedUserApproverInfo = res.logged_user || null;
+                hrEmployeeOfficeIds = res.hr_employee_office_ids || [];
                 console.log("Logged User Approver Info:", loggedUserApproverInfo);
                 renderApprovalsTable();
             } else {
@@ -1787,25 +1789,45 @@ document.addEventListener("DOMContentLoaded", function() {
             const firstAppName = String(rec.firstApproverName || '').trim();
             const normFirst = normalizeName(firstAppName);
             const firstAppId = String(rec.firstApproverId || '');
+            const firstAppOfficeId = String(rec.firstApproverOfficeId || '').trim();
             const firstStatus = rec.firstApprovalStatus;
 
             const secondAppName = String(rec.secondApproverName || '').trim();
             const normSecond = normalizeName(secondAppName);
             const secondAppId = String(rec.secondApproverId || '');
+            const secondAppOfficeId = String(rec.secondApproverOfficeId || '').trim();
             const secondStatus = rec.secondApprovalStatus;
 
             const isFirstApprover = (userTipsoiId && firstAppId && userTipsoiId === firstAppId) ||
-                (normUser && normFirst && (normUser.includes(normFirst) || normFirst.includes(normUser))) ||
-                (userOfficeId && firstAppName && firstAppName.includes(userOfficeId));
+                (userOfficeId && firstAppOfficeId && userOfficeId === firstAppOfficeId) ||
+                (userOfficeId && firstAppName && firstAppName.includes(userOfficeId)) ||
+                (normUser && normFirst && normFirst.length >= 3 && (normUser.includes(normFirst) || normFirst.includes(normUser)));
 
             const isSecondApprover = (userTipsoiId && secondAppId && userTipsoiId === secondAppId) ||
-                (normUser && normSecond && (normUser.includes(normSecond) || normSecond.includes(normUser))) ||
-                (userOfficeId && secondAppName && secondAppName.includes(userOfficeId));
+                (userOfficeId && secondAppOfficeId && userOfficeId === secondAppOfficeId) ||
+                (userOfficeId && secondAppName && secondAppName.includes(userOfficeId)) ||
+                (normUser && normSecond && normSecond.length >= 3 && (normUser.includes(normSecond) || normSecond.includes(normUser)));
 
             // Do NOT show user's own requests in this "Requests Pending My Approval" tab
             const isMyOwnRequest = (userOfficeId && String(rec.employeeOfficeId || '') === userOfficeId) || 
                                    (normUser && normUser === normalizeName(rec.employeeName));
             if (isMyOwnRequest) {
+                return false;
+            }
+
+            // CRITICAL RULE: One HR cannot see or approve another HR's requests!
+            // Check if applicant is in HR department
+            const applicantDept = String(rec.departmentName || '').toLowerCase();
+            const applicantOfficeId = String(rec.employeeOfficeId || '');
+            const isApplicantHr = applicantDept.includes('human') || applicantDept.includes('hr') || hrEmployeeOfficeIds.includes(applicantOfficeId);
+
+            // Check if logged in user is in HR department
+            const loggedUserDept = String(loggedUser ? (loggedUser.department_name || '') : '').toLowerCase();
+            const isLoggedUserHr = loggedUser ? (loggedUser.is_hr_dept || loggedUserDept.includes('human') || loggedUserDept.includes('hr') || hrEmployeeOfficeIds.includes(userOfficeId)) : false;
+
+            // If the applicant is in HR, other HR personnel MUST NEVER see or approve it!
+            // (Only Management like DCEO/CEO/Super Admin can see and approve HR personnel requests)
+            if (isApplicantHr && isLoggedUserHr) {
                 return false;
             }
 
@@ -1818,11 +1840,6 @@ document.addEventListener("DOMContentLoaded", function() {
             
             // If the user is the second approver (and it's pending)
             if (isSecondApprover && secondStatus == 0) {
-                isForMe = true;
-            }
-
-            // If the user is HR/Admin, they oversee all requests waiting for approval
-            if (isHr) {
                 isForMe = true;
             }
 
