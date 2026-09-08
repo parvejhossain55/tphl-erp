@@ -24,7 +24,7 @@ class LandRequisitionController extends Controller {
         // Accounts (role 6) see approved and paid ones
         // Land Officers (role 14) see their own or all
         $where = "1=1";
-        if (!in_array($roleId, [1, 2, 3, 33, 6])) {
+        if (!in_array($roleId, [1, 2, 3, 33, 6, 30])) {
             $where = "lfr.requested_by = $userId";
         }
 
@@ -203,7 +203,7 @@ class LandRequisitionController extends Controller {
 
     public function pay() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 6])) {
+        if (!in_array($roleId, [1, 6, 30])) {
             setError('Only Accounts can record payments.');
             header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
             exit;

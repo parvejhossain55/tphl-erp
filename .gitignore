@@ -23,6 +23,11 @@ vendor
 
 # Antigravity Agent Rules
 .agents/
+.agents/**
+.agents/rules/
+.agents/rules/*.md
+GEMINI.md
+AGENTS.md
 
 # Custom DB Migration
 custme-migration/tphl_db.sql

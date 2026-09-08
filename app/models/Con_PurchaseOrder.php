@@ -26,7 +26,29 @@ class Con_PurchaseOrder extends Model
                        vpr.payment_type AS vpr_payment_type,
                        COALESCE(vpr.net_payable, vpr.net_payable_amount, 0) AS vpr_net_payable,
                        COALESCE(vpr_txn.total_paid, 0) AS vpr_total_paid,
-                       GREATEST(0, COALESCE(vpr.net_payable, vpr.net_payable_amount, 0) - COALESCE(vpr_txn.total_paid, 0)) AS vpr_due
+                       GREATEST(0, COALESCE(vpr.net_payable, vpr.net_payable_amount, 0) - COALESCE(vpr_txn.total_paid, 0)) AS vpr_due,
+                       COALESCE(
+                           (SELECT GROUP_CONCAT(DISTINCT m.category_id)
+                            FROM {$this->itemTable} poi
+                            JOIN con_materials m ON m.id = poi.material_id
+                            WHERE poi.purchase_order_id = po.id),
+                           (SELECT GROUP_CONCAT(DISTINCT m_pr.category_id)
+                            FROM purchase_request_items pri
+                            JOIN con_materials m_pr ON m_pr.id = pri.material_id
+                            WHERE pri.request_id = po.request_id)
+                       ) AS category_ids,
+                       COALESCE(
+                           (SELECT GROUP_CONCAT(DISTINCT COALESCE(cat.name, 'Uncategorized') SEPARATOR ', ')
+                            FROM {$this->itemTable} poi
+                            JOIN con_materials m ON m.id = poi.material_id
+                            LEFT JOIN con_material_categories cat ON cat.id = m.category_id
+                            WHERE poi.purchase_order_id = po.id),
+                           (SELECT GROUP_CONCAT(DISTINCT COALESCE(cat_pr.name, 'Uncategorized') SEPARATOR ', ')
+                            FROM purchase_request_items pri
+                            JOIN con_materials m_pr ON m_pr.id = pri.material_id
+                            LEFT JOIN con_material_categories cat_pr ON cat_pr.id = m_pr.category_id
+                            WHERE pri.request_id = po.request_id)
+                       ) AS category_names
                 FROM {$this->table} po
                 JOIN purchase_requests pr ON pr.id = po.request_id
                 LEFT JOIN projects p ON p.id = pr.project_id

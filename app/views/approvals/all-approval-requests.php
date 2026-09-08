@@ -145,9 +145,14 @@
                         <option value="operational_fund_requests" <?= ($filters['source_table'] ?? '') === 'operational_fund_requests' ? 'selected' : '' ?>>Operational Fund / Requisitions
                         </option>
                         <option value="cashout_requests" <?= ($filters['source_table'] ?? '') === 'cashout_requests' ? 'selected' : '' ?>>Cashout Requests (Accounts)</option>
-                        <option value="payslips" <?= ($filters['source_table'] ?? '') === 'payslips' ? 'selected' : '' ?>>
-                            Payslips & Salary (HR)</option>
+                        <option value="advance_salaries" <?= ($filters['source_table'] ?? '') === 'advance_salaries' ? 'selected' : '' ?>>Advance Salary Requests (HR & Accounts)</option>
+                        <option value="payslips" <?= ($filters['source_table'] ?? '') === 'payslips' ? 'selected' : '' ?>>Payslips & Salary (HR)</option>
+                        <option value="project_other_costs" <?= ($filters['source_table'] ?? '') === 'project_other_costs' ? 'selected' : '' ?>>Project Other Costs (Construction)</option>
                         <option value="project_extra_assets" <?= in_array($filters['source_table'] ?? '', ['project_extra_assets', 'purchase_requests']) ? 'selected' : '' ?>>Office Procurement Requests</option>
+                        <option value="client_refund_requests" <?= ($filters['source_table'] ?? '') === 'client_refund_requests' ? 'selected' : '' ?>>Client Refund Requests</option>
+                        <option value="con_work_orders" <?= ($filters['source_table'] ?? '') === 'con_work_orders' ? 'selected' : '' ?>>Work Orders (Construction)</option>
+                        <option value="lead_bookings" <?= ($filters['source_table'] ?? '') === 'lead_bookings' ? 'selected' : '' ?>>Booking Discounts (Sales)</option>
+                        <option value="manpower_requisitions" <?= ($filters['source_table'] ?? '') === 'manpower_requisitions' ? 'selected' : '' ?>>Manpower Requisitions</option>
                     </select>
                 </div>
 

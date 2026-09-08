@@ -34,16 +34,16 @@ class Con_FinancialTransactionController extends Controller
         return in_array($this->userRole, [1, 3, 33]);
     }
 
-    /** Roles 1, 3, 6 (Accounts), 15 (Project Manager) can process payments */
+    /** Roles 1, 3, 6, 30 (Accounts), 15 (Project Manager) can process payments */
     private function canProcessPayment()
     {
-        return in_array($this->userRole, [1, 3, 33, 6, 15]);
+        return in_array($this->userRole, [1, 3, 33, 6, 15, 30]);
     }
 
-    /** Admin-level viewing: roles 1, 3, 6, 15 */
+    /** Admin-level viewing: roles 1, 3, 6, 15, 30 */
     private function isAdminUser()
     {
-        return in_array($this->userRole, [1, 3, 33, 6, 15]);
+        return in_array($this->userRole, [1, 3, 33, 6, 15, 30]);
     }
 
     /* =====================

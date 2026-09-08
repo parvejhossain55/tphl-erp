@@ -27,6 +27,22 @@
 .payment-requested-row:hover {
     background-color: #dff2e6 !important;
 }
+.card__header .select2-container .select2-selection--single {
+    height: 31px !important;
+    padding: 2px 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-color: #dee2e6;
+    display: flex;
+    align-items: center;
+}
+.card__header .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 29px !important;
+}
+.card__header .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 27px !important;
+    padding-left: 2px;
+}
 </style>
 
     <div class="card__wrapper shadow-sm">
@@ -37,8 +53,8 @@
                     <i class="fa-solid fa-square me-1" style="color:#28a745"></i> Light Green = Payment Requested
                 </span>
             </h6>
-            <form method="GET" class="d-flex gap-2 mb-0 flex-wrap">
-                <select name="project_id" class="form-select form-select-sm fw-semibold" onchange="this.form.submit()" style="width: 220px; border-color: #dee2e6;">
+            <form method="GET" class="d-flex gap-2 mb-0 flex-wrap align-items-center">
+                <select name="project_id" class="form-select form-select-sm fw-semibold" onchange="this.form.submit()" style="width: 190px; border-color: #dee2e6;">
                     <option value="">All Projects</option>
                     <?php if (!empty($projects)): ?>
                         <?php foreach ($projects as $proj): ?>
@@ -48,17 +64,46 @@
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </select>
-                <select name="payment_filter" class="form-select form-select-sm fw-semibold" onchange="this.form.submit()" style="width: 210px; border-color: #dee2e6;">
+
+                <div style="min-width: 210px;">
+                    <select name="category_id" id="category_filter" class="form-select form-select-sm fw-semibold select2-no-scroll" onchange="this.form.submit()" data-placeholder="All Material Categories" style="width: 100%;">
+                        <option value="">All Material Categories</option>
+                        <?php if (!empty($categories)): ?>
+                            <?php foreach ($categories as $cat): ?>
+                                <option value="<?= $cat['id'] ?>" <?= (string)($currentCategoryId ?? '') === (string)$cat['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($cat['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+
+                <select name="payment_filter" class="form-select form-select-sm fw-semibold" onchange="this.form.submit()" style="width: 190px; border-color: #dee2e6;">
                     <option value="all" <?= ($paymentFilter ?? 'all') === 'all' ? 'selected' : '' ?>>All Payment Status</option>
                     <option value="unrequested" <?= ($paymentFilter ?? '') === 'unrequested' ? 'selected' : '' ?>>Payment Not Requested</option>
                     <option value="requested" <?= ($paymentFilter ?? '') === 'requested' ? 'selected' : '' ?>>Payment Requested</option>
                     <option value="paid" <?= ($paymentFilter ?? '') === 'paid' ? 'selected' : '' ?>>Payment Completed</option>
                 </select>
+
                 <select name="filter" class="form-select form-select-sm fw-semibold" onchange="this.form.submit()" style="width: 180px; border-color: #dee2e6;">
                     <option value="pending_my_approval" <?= ($currentFilter ?? '') === 'pending_my_approval' ? 'selected' : '' ?>>Pending My Approval</option>
+                    <option value="pending_approval" <?= ($currentFilter ?? '') === 'pending_approval' ? 'selected' : '' ?>>Pending Any Approval</option>
                     <option value="my_approved" <?= ($currentFilter ?? '') === 'my_approved' ? 'selected' : '' ?>>Approved By Me</option>
                     <option value="all" <?= ($currentFilter ?? '') === 'all' ? 'selected' : '' ?>>All Orders</option>
                 </select>
+
+                <button type="submit" class="btn btn-sm btn-primary d-flex align-items-center" style="padding: 4px 12px; font-weight: 600;" title="Apply Filters">
+                    <i class="fa-solid fa-magnifying-glass me-1"></i>Filter
+                </button>
+
+                <?php
+                $hasActiveFilters = (!empty($currentProjectId) || !empty($currentCategoryId) || (($paymentFilter ?? 'all') !== 'all') || (($currentFilter ?? '') !== ($isApproverRole ? 'pending_my_approval' : 'all')));
+                ?>
+                <?php if ($hasActiveFilters): ?>
+                    <a href="<?= $base_url ?>/con-purchase-orders" class="btn btn-sm btn-outline-secondary d-flex align-items-center" style="padding: 4px 10px;" title="Reset all filters">
+                        <i class="fa-solid fa-rotate-left me-1"></i>Reset
+                    </a>
+                <?php endif; ?>
             </form>
         </div>
         <div class="card__body p-0">
@@ -85,6 +130,13 @@
                                 <td><span class="fw-bold text-primary">PO-<?= $po['id'] ?></span></td>
                                 <td class="fw-bold">
                                     <?= htmlspecialchars($po['project_name']) ?>
+                                    <?php if (!empty($po['category_names'])): ?>
+                                        <div class="mt-1" title="Material Category">
+                                            <span class="badge bg-light text-dark border fw-normal" style="font-size:10.5px; border-color: #cbd5e1 !important;">
+                                                <i class="fa-solid fa-tags me-1 text-primary"></i><?= htmlspecialchars($po['category_names']) ?>
+                                            </span>
+                                        </div>
+                                    <?php endif; ?>
                                     <?php if (!empty($po['remarks'])): ?>
                                         <div class="text-muted small fw-normal mt-1" style="font-size:11px" title="Remarks">
                                             <i class="bi bi-chat-left-text me-1 text-primary"></i><?= htmlspecialchars($po['remarks']) ?>
@@ -269,3 +321,13 @@
             </div>
         </div>
     </div>
+
+<script>
+window.addEventListener('load', function () {
+    if (typeof jQuery !== 'undefined') {
+        $('#category_filter').on('change select2:select select2:clear', function () {
+            $(this).closest('form').submit();
+        });
+    }
+});
+</script>
