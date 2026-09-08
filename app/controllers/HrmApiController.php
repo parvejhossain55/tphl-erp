@@ -1008,11 +1008,23 @@ class HrmApiController extends Controller
                 }
             }
 
+            // Fetch office IDs of employees belonging to HR Department
+            $hrEmployeeOfficeIds = [];
+            $hrDeptQ = $this->db->query("SELECT e.employee_id FROM employees e JOIN departments d ON e.department_id = d.id WHERE d.name LIKE '%Human%' OR d.name LIKE '%HR%'");
+            if ($hrDeptQ) {
+                while ($hrRow = $hrDeptQ->fetch_assoc()) {
+                    $hrOid = trim($hrRow['employee_id'] ?? '');
+                    if ($hrOid !== '') {
+                        $hrEmployeeOfficeIds[] = $hrOid;
+                    }
+                }
+            }
+
             // Fetch Logged-in user information for approver matching
             $loggedUser = null;
             if (!empty($_SESSION['user']['id'])) {
                 $loggedUserId = (int) $_SESSION['user']['id'];
-                $stmt = $this->db->prepare("SELECT u.id, u.role_id, e.employee_id, e.email, e.full_name FROM users u LEFT JOIN employees e ON u.employee_id = e.id WHERE u.id = ? LIMIT 1");
+                $stmt = $this->db->prepare("SELECT u.id, u.role_id, e.employee_id, e.email, e.full_name, d.name as department_name FROM users u LEFT JOIN employees e ON u.employee_id = e.id LEFT JOIN departments d ON e.department_id = d.id WHERE u.id = ? LIMIT 1");
                 if ($stmt) {
                     $stmt->bind_param("i", $loggedUserId);
                     $stmt->execute();
@@ -1020,6 +1032,8 @@ class HrmApiController extends Controller
                     if ($uRes) {
                         $normEmpOfficeId = trim($uRes['employee_id'] ?? '');
                         $normEmpEmail = strtolower(trim($uRes['email'] ?? ''));
+                        $userDeptName = strtolower(trim($uRes['department_name'] ?? ''));
+                        $isLoggedUserInHrDept = (strpos($userDeptName, 'human') !== false || strpos($userDeptName, 'hr') !== false || in_array($normEmpOfficeId, $hrEmployeeOfficeIds));
 
                         // Auto-detect tipsoi_id from externalEmployees if missing in session
                         $detectedTipsoiId = $_SESSION['user']['tipsoi_id'] ?? null;
@@ -1043,6 +1057,8 @@ class HrmApiController extends Controller
                             'email' => $normEmpEmail,
                             'employee_id' => $normEmpOfficeId,
                             'full_name' => trim($uRes['full_name'] ?? ''),
+                            'department_name' => $uRes['department_name'] ?? '',
+                            'is_hr_dept' => $isLoggedUserInHrDept,
                             'tipsoi_id' => $detectedTipsoiId,
                             'tipsoi_office_id' => $detectedOfficeId,
                             'role_id' => (int) ($uRes['role_id'] ?? 0),
@@ -1099,6 +1115,9 @@ class HrmApiController extends Controller
                     }
                 }
 
+                $firstAppId = $log['firstApproverId'] ?? null;
+                $secondAppId = $log['secondApproverId'] ?? null;
+
                 $pendingRequests["leave_$id"] = [
                     'id' => $id,
                     'employeeOfficeId' => $officeIdVal,
@@ -1115,10 +1134,12 @@ class HrmApiController extends Controller
                     'categoryName' => $log['categoryName'] ?? 'Leave Request',
                     'firstApproverName' => $log['firstApproverName'] ?? '',
                     'firstApprovalStatus' => $log['firstApprovalStatus'] ?? 0,
-                    'firstApproverId' => $log['firstApproverId'] ?? null,
+                    'firstApproverId' => $firstAppId,
+                    'firstApproverOfficeId' => ($firstAppId && isset($tipsoiIdToOfficeIdMap[$firstAppId])) ? $tipsoiIdToOfficeIdMap[$firstAppId] : '',
                     'secondApproverName' => $log['secondApproverName'] ?? '',
                     'secondApprovalStatus' => $log['secondApprovalStatus'] ?? 0,
-                    'secondApproverId' => $log['secondApproverId'] ?? null,
+                    'secondApproverId' => $secondAppId,
+                    'secondApproverOfficeId' => ($secondAppId && isset($tipsoiIdToOfficeIdMap[$secondAppId])) ? $tipsoiIdToOfficeIdMap[$secondAppId] : '',
                     'status' => 0
                 ];
             }
@@ -1158,6 +1179,9 @@ class HrmApiController extends Controller
                     $logDateVal = date('Y-m-d', (int) ($log['entryTime'] / 1000));
                 }
 
+                $firstLateAppId = $log['firstLateApproverId'] ?? $log['firstApproverId'] ?? null;
+                $secondLateAppId = $log['secondLateApproverId'] ?? $log['secondApproverId'] ?? null;
+
                 $pendingRequests["late_$id"] = [
                     'id' => $id,
                     'employeeOfficeId' => $officeIdVal,
@@ -1174,10 +1198,12 @@ class HrmApiController extends Controller
                     'categoryName' => 'Late Excuse',
                     'firstApproverName' => $log['firstLateApproverName'] ?? '',
                     'firstApprovalStatus' => $log['firstLateApprovalStatus'] ?? 0,
-                    'firstApproverId' => $log['firstLateApproverId'] ?? $log['firstApproverId'] ?? null,
+                    'firstApproverId' => $firstLateAppId,
+                    'firstApproverOfficeId' => ($firstLateAppId && isset($tipsoiIdToOfficeIdMap[$firstLateAppId])) ? $tipsoiIdToOfficeIdMap[$firstLateAppId] : '',
                     'secondApproverName' => $log['secondLateApproverName'] ?? '',
                     'secondApprovalStatus' => $log['secondLateApprovalStatus'] ?? 0,
-                    'secondApproverId' => $log['secondLateApproverId'] ?? $log['secondApproverId'] ?? null,
+                    'secondApproverId' => $secondLateAppId,
+                    'secondApproverOfficeId' => ($secondLateAppId && isset($tipsoiIdToOfficeIdMap[$secondLateAppId])) ? $tipsoiIdToOfficeIdMap[$secondLateAppId] : '',
                     'status' => 0
                 ];
             }
@@ -1283,6 +1309,9 @@ class HrmApiController extends Controller
                     $endDateVal = $startDateVal;
                 }
 
+                $firstManId = $entry['firstManualEntryApproverId'] ?? null;
+                $secondManId = $entry['secondManualEntryApproverId'] ?? null;
+
                 $pendingRequests["manual_$id"] = [
                     'id' => $id,
                     'employeeOfficeId' => $officeIdVal,
@@ -1299,10 +1328,12 @@ class HrmApiController extends Controller
                     'categoryName' => $reqType,
                     'firstApproverName' => $entry['firstManualApproverName'] ?? '',
                     'firstApprovalStatus' => $entry['firstManualEntryApprovalStatus'] ?? 0,
-                    'firstApproverId' => $entry['firstManualEntryApproverId'] ?? null,
+                    'firstApproverId' => $firstManId,
+                    'firstApproverOfficeId' => ($firstManId && isset($tipsoiIdToOfficeIdMap[$firstManId])) ? $tipsoiIdToOfficeIdMap[$firstManId] : '',
                     'secondApproverName' => $entry['secondManualApproverName'] ?? '',
                     'secondApprovalStatus' => $entry['secondManualEntryApprovalStatus'] ?? 0,
-                    'secondApproverId' => $entry['secondManualEntryApproverId'] ?? null,
+                    'secondApproverId' => $secondManId,
+                    'secondApproverOfficeId' => ($secondManId && isset($tipsoiIdToOfficeIdMap[$secondManId])) ? $tipsoiIdToOfficeIdMap[$secondManId] : '',
                     'status' => 0
                 ];
             }
@@ -1315,6 +1346,7 @@ class HrmApiController extends Controller
                 'local_employees' => $localEmployees,
                 'local_employee_ids' => $localIds,
                 'local_employee_emails' => $localEmails,
+                'hr_employee_office_ids' => $hrEmployeeOfficeIds,
                 'logged_user' => $loggedUser
             ]);
             exit;
