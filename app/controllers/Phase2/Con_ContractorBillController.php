@@ -145,7 +145,7 @@ class Con_ContractorBillController extends Controller
 
     public function create()
     {
-        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31, 20, 32, 12])) {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31, 20, 32, 12, 6, 30])) {
             setError('You do not have permission to create contractor bills.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
             exit;
@@ -171,7 +171,7 @@ class Con_ContractorBillController extends Controller
 
     public function store()
     {
-        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31, 20, 32, 12])) {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31, 20, 32, 12, 6, 30])) {
             setError('You do not have permission to create contractor bills.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
             exit;
@@ -312,7 +312,7 @@ class Con_ContractorBillController extends Controller
 
     public function edit($id)
     {
-        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31, 20, 32, 12])) {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31, 20, 32, 12, 6, 30])) {
             setError('You do not have permission to edit contractor bills.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
             exit;
@@ -353,7 +353,7 @@ class Con_ContractorBillController extends Controller
 
     public function update($id)
     {
-        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31, 20, 32, 12])) {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31, 20, 32, 12, 6, 30])) {
             setError('You do not have permission to edit contractor bills.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
             exit;
@@ -415,7 +415,7 @@ class Con_ContractorBillController extends Controller
 
     public function delete($id)
     {
-        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31, 20, 32, 12])) {
+        if (!hasPermission('Contractor Bill') && !in_array($this->userRole, [1, 3, 33, 17, 23, 31, 20, 32, 12, 6, 30])) {
             setError('You do not have permission to delete contractor bills.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bills");
             exit;

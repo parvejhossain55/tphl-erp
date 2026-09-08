@@ -179,8 +179,8 @@
             }
         }
 
-        // 3. Accounts Pending Pay Count (Accounts roles 1, 6)
-        if (in_array($loggedRoleId, [1, 6])) {
+        // 3. Accounts Pending Pay Count (Accounts roles 1, 6, 30)
+        if (in_array($loggedRoleId, [1, 6, 30])) {
             $resAccts = $db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status = 'approved'");
             if ($resAccts) {
                 $pendingFundReqAccountsCount = (int) ($resAccts->fetch_assoc()['total'] ?? 0);
@@ -389,7 +389,7 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [6, 20])): ?>
+                <?php if ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [6, 30, 20])): ?>
                     <!-- All Approval Requests for Management & Accounts -->
                     <li class="slide <?= isActive('all-approval-requests', $current_route) ?>">
                         <a href="<?= $base_url ?>/all-approval-requests"
@@ -2232,7 +2232,7 @@
                 <?php if (($_SESSION['user']['role_id'] ?? 0) != 9): ?>
                     <?php if (($_SESSION['user']['role_id'] ?? 0) != 33): // Hide Construction module for role 33 ?>
                     <?php
-                    $hasConPerms = hasPermission('Construction Management') || hasPermission('site engineer dashboard') || in_array($_SESSION['user']['role_id'] ?? 0, [20, 32]) || hasPermission('Purchase order') || ($_SESSION['user']['role_id'] ?? 0) == 23 || hasPermission('Project Draft Design') || hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Estimator dashboard') || hasPermission('Project structure design') || hasPermission('QC Dashboard') || hasPermission('Project Manage') || hasPermission('Estimate Budget') || hasPermission('Work Order') || hasPermission('Working Plan') || hasPermission('Project Target Set') || hasPermission('Budget Extend') || hasPermission('Material Manage') || hasPermission('Operators & Bills') || hasPermission('Project Report') || hasPermission('Bill & Payments') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3]);
+                    $hasConPerms = hasPermission('Construction Management') || hasPermission('site engineer dashboard') || in_array($_SESSION['user']['role_id'] ?? 0, [20, 32]) || hasPermission('Purchase order') || ($_SESSION['user']['role_id'] ?? 0) == 23 || hasPermission('Project Draft Design') || hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Estimator dashboard') || hasPermission('Project structure design') || hasPermission('QC Dashboard') || hasPermission('Project Manage') || hasPermission('Estimate Budget') || hasPermission('Work Order') || hasPermission('Working Plan') || hasPermission('Project Target Set') || hasPermission('Budget Extend') || hasPermission('Material Manage') || hasPermission('Operators & Bills') || hasPermission('Project Report') || hasPermission('Bill & Payments') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 30]);
                     if ($hasConPerms):
                         ?>
                         <li class="sidebar__menu-category">
@@ -2550,7 +2550,7 @@
                                             href="<?= $base_url ?>/con-land-visibility-studies">Land Visibility Study</a>
                                     </li>
                                 <?php endif; ?>
-                                <?php if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 6, 14])): ?>
+                                <?php if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 6, 14, 30])): ?>
                                     <li
                                         class="slide <?= isActive(['con-land-acquisitions', 'con-land-acquisitions/create', 'con-land-acquisitions/edit'], $current_route) ? 'active' : '' ?>">
                                         <a class="sidebar__menu-item <?= isActive(['con-land-acquisitions', 'con-land-acquisitions/create', 'con-land-acquisitions/edit'], $current_route) ? 'active' : '' ?>"
@@ -2969,7 +2969,7 @@
 
 
                     <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
-                    <?php if (hasPermission('Contractor Bill') || hasPermission('QC & Internal Audit') || hasPermission('Operation manage') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 12, 15, 17, 20, 22, 23, 24, 25, 30, 31, 32, 33])): ?>
+                    <?php if (hasPermission('Contractor Bill') || hasPermission('QC & Internal Audit') || hasPermission('Operation manage') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 17, 20, 22, 23, 24, 25, 30, 31, 32, 33])): ?>
                         <li
                             class="slide has-sub <?= isActive(['con-contractor-bills', 'con-contractor-bill-create', 'con-fund-requests', 'con-fund-request-create'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
@@ -2996,7 +2996,7 @@
                                 </li>
 
                                 <!-- Labor Requisition shortcut inside Bills menu -->
-                                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 20, 22, 24, 33])): ?>
+                                <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 20, 22, 24, 30, 33])): ?>
                                     <li class="slide">
                                         <a href="<?= $base_url ?>/con-labor-requisitions"
                                             class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
@@ -3023,7 +3023,7 @@
                     <?php endif; ?>
 
                     <!-- ====== Labor Requisitions ====== -->
-                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 20, 22, 24, 33])): ?>
+                    <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 12, 15, 20, 22, 24, 30, 33])): ?>
                         <li
                             class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"

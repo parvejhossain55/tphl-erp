@@ -33,19 +33,33 @@ class Con_PurchaseOrderController extends Controller
         $projectModel = new \Project($this->db);
         $projects = $projectModel->getAll();
 
+        // Fetch material categories for filter
+        require_once __DIR__ . '/../../models/Con_MaterialCategory.php';
+        $categoryModel = new \Con_MaterialCategory($this->db);
+        $categories    = $categoryModel->getAll();
+
         $orders = $this->poModel->getAll();
 
         // Determine filters
         $isApproverRole = in_array($currentRoleId, [17, 24, 20]);
         $filter         = $_GET['filter'] ?? ($isApproverRole ? 'pending_my_approval' : 'all');
         $projectId      = $_GET['project_id'] ?? '';
+        $categoryId     = $_GET['category_id'] ?? '';
         $paymentFilter  = $_GET['payment_filter'] ?? 'all';
 
         $filteredOrders = [];
         foreach ($orders as $po) {
             // Project filter
-            if ($projectId !== '' && $po['project_id'] != $projectId) {
+            if ($projectId !== '' && (string)$po['project_id'] !== (string)$projectId) {
                 continue;
+            }
+
+            // Material Category filter
+            if ($categoryId !== '') {
+                $poCatIds = array_map('trim', explode(',', (string)($po['category_ids'] ?? '')));
+                if (!in_array(trim((string)$categoryId), $poCatIds)) {
+                    continue;
+                }
             }
 
             // Vendor payment filter
@@ -77,6 +91,11 @@ class Con_PurchaseOrderController extends Controller
 
             if ($filter === 'pending_my_approval') {
                 if ($iCanApprove) {
+                    $filteredOrders[] = $po;
+                }
+            } elseif ($filter === 'pending_approval') {
+                // Any approval pending (Issued, Purchase Head Approved, QC Approved)
+                if (in_array($po['status'], ['Issued', 'Purchase Head Approved', 'QC Approved'])) {
                     $filteredOrders[] = $po;
                 }
             } elseif ($filter === 'my_approved') {
@@ -119,13 +138,16 @@ class Con_PurchaseOrderController extends Controller
         });
 
         $this->view('phase2/purchase-orders/purchase-order-lists', [
-            'current_route'    => 'con-purchase-orders',
-            'page_title'       => 'Purchase Orders',
-            'orders'           => $filteredOrders,
-            'currentFilter'    => $filter,
-            'projects'         => $projects,
-            'currentProjectId' => $projectId,
-            'paymentFilter'    => $paymentFilter
+            'current_route'     => 'con-purchase-orders',
+            'page_title'        => 'Purchase Orders',
+            'orders'            => $filteredOrders,
+            'currentFilter'     => $filter,
+            'projects'          => $projects,
+            'currentProjectId'  => $projectId,
+            'categories'        => $categories,
+            'currentCategoryId' => $categoryId,
+            'paymentFilter'     => $paymentFilter,
+            'isApproverRole'    => $isApproverRole
         ]);
     }
 

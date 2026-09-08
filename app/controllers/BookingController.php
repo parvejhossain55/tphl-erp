@@ -21,6 +21,106 @@ class BookingController extends Controller
         $this->approvalRequestModel = new ApprovalRequest($this->db);
     }
 
+    /**
+     * Resolve user ID and details from various inputs (email, username, full name, or ID)
+     */
+    protected function resolveUserByInput($input)
+    {
+        $clean = strtolower(trim((string)$input));
+        if ($clean === '') {
+            return null;
+        }
+
+        // 1. Direct ID if numeric
+        if (is_numeric($clean)) {
+            $stmt = $this->db->prepare("SELECT id, team_id, full_name, email FROM users WHERE id = ? LIMIT 1");
+            if ($stmt) {
+                $uid = (int)$clean;
+                $stmt->bind_param("i", $uid);
+                $stmt->execute();
+                $res = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+                if ($res) return $res;
+            }
+        }
+
+        // 2. Exact match on email in users
+        $stmt = $this->db->prepare("SELECT id, team_id, full_name, email FROM users WHERE LOWER(TRIM(email)) = ? LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("s", $clean);
+            $stmt->execute();
+            $res = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if ($res) return $res;
+        }
+
+        // 3. Exact username or full name in users
+        $stmt = $this->db->prepare("SELECT id, team_id, full_name, email FROM users WHERE (user_name IS NOT NULL AND LOWER(TRIM(user_name)) = ?) OR (full_name IS NOT NULL AND LOWER(TRIM(full_name)) = ?) LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("ss", $clean, $clean);
+            $stmt->execute();
+            $res = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if ($res) return $res;
+        }
+
+        // 4. Check employees table email (returns user_id)
+        $stmt = $this->db->prepare("SELECT user_id AS id, team_id, full_name, email FROM employees WHERE LOWER(TRIM(email)) = ? AND user_id IS NOT NULL AND user_id > 0 LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("s", $clean);
+            $stmt->execute();
+            $res = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if ($res) return $res;
+        }
+
+        // 5. Prefix match on email in users
+        $likeEmail = $clean . '%';
+        $stmt = $this->db->prepare("SELECT id, team_id, full_name, email FROM users WHERE LOWER(TRIM(email)) LIKE ? LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("s", $likeEmail);
+            $stmt->execute();
+            $res = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if ($res) return $res;
+        }
+
+        return null;
+    }
+
+    /**
+     * Flexible case-insensitive column extraction from CSV row data
+     */
+    protected function getCsvValue($rowArray, ...$keys)
+    {
+        if (!is_array($rowArray)) return '';
+
+        // 1. Direct check
+        foreach ($keys as $k) {
+            if (isset($rowArray[$k]) && trim((string)$rowArray[$k]) !== '') {
+                return trim((string)$rowArray[$k]);
+            }
+        }
+
+        // 2. Normalized check (lowercase, replace spaces and special characters with underscores)
+        $normalized = [];
+        foreach ($rowArray as $k => $v) {
+            $cleanKey = strtolower(preg_replace('/[^a-zA-Z0-9_]/', '_', trim((string)$k)));
+            $cleanKey = trim(preg_replace('/_+/', '_', $cleanKey), '_');
+            $normalized[$cleanKey] = $v;
+        }
+
+        foreach ($keys as $k) {
+            $cleanSearch = strtolower(preg_replace('/[^a-zA-Z0-9_]/', '_', trim((string)$k)));
+            $cleanSearch = trim(preg_replace('/_+/', '_', $cleanSearch), '_');
+            if (isset($normalized[$cleanSearch]) && trim((string)$normalized[$cleanSearch]) !== '') {
+                return trim((string)$normalized[$cleanSearch]);
+            }
+        }
+
+        return '';
+    }
+
     // Index page: show leads for follow-up
     public function index($lead_id = null)
     {
@@ -101,8 +201,42 @@ class BookingController extends Controller
         }
 
         //  Get assigned_by from leads table
-        $lead = $this->leadModel->find($_POST['lead_id']);
+        $leadId = (int)($_POST['lead_id'] ?? 0);
+        $lead = $this->leadModel->find($leadId);
         $salesById = $lead['assigned_id'] ?? ''; // fallback to current user if null
+
+        // Check if sales_agent / sales_agent_email was explicitly submitted
+        $submittedAgent = trim($_POST['sales_agent'] ?? $_POST['sales_agent_email'] ?? $_POST['sales_by_id'] ?? '');
+        if (!empty($submittedAgent)) {
+            $matchedUser = $this->resolveUserByInput($submittedAgent);
+            if ($matchedUser) {
+                $salesById = $matchedUser['id'];
+                $now = date('Y-m-d H:i:s');
+                $teamId = $matchedUser['team_id'] ?? null;
+                if (!empty($teamId)) {
+                    $stmtLead = $this->db->prepare("UPDATE leads SET assigned_id = ?, team_id = COALESCE(?, team_id), assigned_at = COALESCE(assigned_at, ?), last_lead_action = 'booked' WHERE id = ?");
+                    if ($stmtLead) {
+                        $stmtLead->bind_param("iisi", $salesById, $teamId, $now, $leadId);
+                        $stmtLead->execute();
+                        $stmtLead->close();
+                    }
+                } else {
+                    $stmtLead = $this->db->prepare("UPDATE leads SET assigned_id = ?, assigned_at = COALESCE(assigned_at, ?), last_lead_action = 'booked' WHERE id = ?");
+                    if ($stmtLead) {
+                        $stmtLead->bind_param("isi", $salesById, $now, $leadId);
+                        $stmtLead->execute();
+                        $stmtLead->close();
+                    }
+                }
+            }
+        } elseif ($leadId) {
+            $stmtLead = $this->db->prepare("UPDATE leads SET last_lead_action = 'booked' WHERE id = ?");
+            if ($stmtLead) {
+                $stmtLead->bind_param("i", $leadId);
+                $stmtLead->execute();
+                $stmtLead->close();
+            }
+        }
         
         $approvalStatus = $discount > 0 ? 'pending' : 'not_required';
         $approvedAmount = null;
@@ -310,9 +444,9 @@ class BookingController extends Controller
                     ? array_combine($header, $row)
                     : array_combine(array_slice($header, 0, count($row)), $row);
 
-                $errPhone   = trim($partialData['lead_phone']    ?? '—');
-                $errProject = trim($partialData['project_name']  ?? '—');
-                $errFlat    = trim($partialData['flat_name']     ?? '—');
+                $errPhone   = $this->getCsvValue($partialData, 'lead_phone', 'phone', 'phone_number', 'lead_number') ?: '—';
+                $errProject = $this->getCsvValue($partialData, 'project_name', 'project') ?: '—';
+                $errFlat    = $this->getCsvValue($partialData, 'flat_name', 'flat', 'unit_name', 'unit') ?: '—';
 
                 if (count($header) !== count($row)) {
                     $reason = "Column mismatch (expected " . count($header) . ", got " . count($row) . ")";
@@ -338,7 +472,7 @@ class BookingController extends Controller
                 $rowIssues = [];
                 
                 // 1. Resolve lead
-                $leadPhone = trim($data['lead_phone'] ?? '');
+                $leadPhone = $this->getCsvValue($data, 'lead_phone', 'phone', 'phone_number', 'lead_number');
                 if (empty($leadPhone)) {
                     $rowIssues[] = "lead_phone is empty";
                 } else {
@@ -388,39 +522,23 @@ class BookingController extends Controller
                 }
 
                 // 2. Resolve sales agent
-                $salesAgentInput = trim($data['sales_agent'] ?? '');
+                $salesAgentInput = $this->getCsvValue($data, 'sales_agent', 'sales_agent_email', 'sales_email', 'agent_email', 'sales_person', 'sales_by', 'agent');
                 if (!empty($salesAgentInput)) {
                     if (!isset($usersCache[$salesAgentInput])) {
-                        $cleanInput = strtolower($salesAgentInput);
-                        $likeEmail  = $cleanInput . '%';
-                        $stmt = $this->db->prepare("
-                            SELECT id FROM users 
-                            WHERE LOWER(TRIM(email)) = ? 
-                               OR LOWER(TRIM(email)) LIKE ? 
-                               OR (user_name IS NOT NULL AND LOWER(TRIM(user_name)) = ?)
-                               OR (full_name IS NOT NULL AND LOWER(TRIM(full_name)) = ?)
-                            LIMIT 1
-                        ");
-                        if ($stmt) {
-                            $stmt->bind_param("ssss", $cleanInput, $likeEmail, $cleanInput, $cleanInput);
-                            $stmt->execute();
-                            $res = $stmt->get_result()->fetch_assoc();
-                            $stmt->close();
-
-                            if ($res) {
-                                $usersCache[$salesAgentInput] = $res['id'];
-                            } else {
-                                $rowIssues[] = "Sales agent not found for email '$salesAgentInput'";
-                            }
+                        $agentUser = $this->resolveUserByInput($salesAgentInput);
+                        if ($agentUser) {
+                            $usersCache[$salesAgentInput] = $agentUser;
                         } else {
-                            error_log("Failed to prepare sales agent query in BookingController: " . $this->db->error);
-                            $rowIssues[] = "Sales agent lookup error for '$salesAgentInput'";
+                            $usersCache[$salesAgentInput] = null;
+                            $rowIssues[] = "Sales agent not found for email '$salesAgentInput'";
                         }
+                    } elseif ($usersCache[$salesAgentInput] === null) {
+                        $rowIssues[] = "Sales agent not found for email '$salesAgentInput'";
                     }
                 }
 
                 // 3. Resolve project
-                $projectName = $normalizeText($data['project_name'] ?? '');
+                $projectName = $normalizeText($this->getCsvValue($data, 'project_name', 'project'));
                 $projectId   = null;
                 if (empty($projectName)) {
                     $rowIssues[] = "project_name is empty";
@@ -453,7 +571,7 @@ class BookingController extends Controller
                 }
 
                 // 4. Resolve flat
-                $flatName = $normalizeText($data['flat_name'] ?? '');
+                $flatName = $normalizeText($this->getCsvValue($data, 'flat_name', 'flat', 'unit_name', 'unit'));
                 if (empty($flatName)) {
                     $rowIssues[] = "flat_name is empty";
                 } elseif ($projectId) {
@@ -598,7 +716,7 @@ class BookingController extends Controller
                 $rowIssues = [];
                 
                 // 1. Resolve lead
-                $leadPhone = trim($data['lead_phone'] ?? '');
+                $leadPhone = $this->getCsvValue($data, 'lead_phone', 'phone', 'phone_number', 'lead_number');
                 $leadId = null;
                 if (empty($leadPhone)) {
                     $rowIssues[] = "lead_phone is empty";
@@ -655,37 +773,27 @@ class BookingController extends Controller
                 }
 
                 // 2. Resolve sales agent
-                $salesAgentInput = trim($data['sales_agent'] ?? '');
-                $salesById       = null;
+                $salesAgentInput = $this->getCsvValue($data, 'sales_agent', 'sales_agent_email', 'sales_email', 'agent_email', 'sales_person', 'sales_by', 'agent');
+                $salesById   = null;
+                $salesTeamId = null;
+
                 if (!empty($salesAgentInput)) {
                     if (isset($usersCache[$salesAgentInput])) {
-                        $salesById = $usersCache[$salesAgentInput];
-                    } else {
-                        $cleanInput = strtolower($salesAgentInput);
-                        $likeEmail  = $cleanInput . '%';
-                        $stmt = $this->db->prepare("
-                            SELECT id FROM users 
-                            WHERE LOWER(TRIM(email)) = ? 
-                               OR LOWER(TRIM(email)) LIKE ? 
-                               OR (user_name IS NOT NULL AND LOWER(TRIM(user_name)) = ?)
-                               OR (full_name IS NOT NULL AND LOWER(TRIM(full_name)) = ?)
-                            LIMIT 1
-                        ");
-                        if ($stmt) {
-                            $stmt->bind_param("ssss", $cleanInput, $likeEmail, $cleanInput, $cleanInput);
-                            $stmt->execute();
-                            $res = $stmt->get_result()->fetch_assoc();
-                            $stmt->close();
-
-                            if ($res) {
-                                $salesById = $res['id'];
-                                $usersCache[$salesAgentInput] = $salesById;
-                            } else {
-                                $rowIssues[] = "Sales agent not found";
-                            }
+                        if ($usersCache[$salesAgentInput]) {
+                            $salesById   = $usersCache[$salesAgentInput]['id'];
+                            $salesTeamId = $usersCache[$salesAgentInput]['team_id'] ?? null;
                         } else {
-                            error_log("Failed to prepare sales agent query in BookingController: " . $this->db->error);
-                            $rowIssues[] = "Sales agent lookup error";
+                            $rowIssues[] = "Sales agent not found for email '$salesAgentInput'";
+                        }
+                    } else {
+                        $agentUser = $this->resolveUserByInput($salesAgentInput);
+                        if ($agentUser) {
+                            $usersCache[$salesAgentInput] = $agentUser;
+                            $salesById   = $agentUser['id'];
+                            $salesTeamId = $agentUser['team_id'] ?? null;
+                        } else {
+                            $usersCache[$salesAgentInput] = null;
+                            $rowIssues[] = "Sales agent not found for email '$salesAgentInput'";
                         }
                     }
                 } else {
@@ -695,7 +803,7 @@ class BookingController extends Controller
                 }
 
                 // 3. Resolve project
-                $projectName = $normalizeText($data['project_name'] ?? '');
+                $projectName = $normalizeText($this->getCsvValue($data, 'project_name', 'project'));
                 $projectId   = null;
                 if (empty($projectName)) {
                     $rowIssues[] = "project_name is empty";
@@ -728,7 +836,7 @@ class BookingController extends Controller
                 }
 
                 // 4. Resolve flat
-                $flatName = $normalizeText($data['flat_name'] ?? '');
+                $flatName = $normalizeText($this->getCsvValue($data, 'flat_name', 'flat', 'unit_name', 'unit'));
                 $flatId   = null;
                 if (empty($flatName)) {
                     $rowIssues[] = "flat_name is empty";
@@ -813,16 +921,55 @@ class BookingController extends Controller
                 try {
                     $bookingId = $this->bookingModel->createFromCsvBulk($data);
 
-                    if ($salesById && $leadId) {
-                        $stmtLead = $this->db->prepare("UPDATE leads SET assigned_id = ? WHERE id = ?");
-                        $stmtLead->bind_param("ii", $salesById, $leadId);
-                        $stmtLead->execute();
+                    // Update leads table: assigned_id, assigned_at, team_id, last_lead_action = 'booked'
+                    if ($leadId) {
+                        $now = date('Y-m-d H:i:s');
+                        if ($salesById) {
+                            if (!empty($salesTeamId)) {
+                                $stmtLead = $this->db->prepare("
+                                    UPDATE leads 
+                                    SET assigned_id = ?, 
+                                        team_id = COALESCE(?, team_id), 
+                                        assigned_at = COALESCE(assigned_at, ?), 
+                                        last_lead_action = 'booked' 
+                                    WHERE id = ?
+                                ");
+                                if ($stmtLead) {
+                                    $stmtLead->bind_param("iisi", $salesById, $salesTeamId, $now, $leadId);
+                                    $stmtLead->execute();
+                                    $stmtLead->close();
+                                }
+                            } else {
+                                $stmtLead = $this->db->prepare("
+                                    UPDATE leads 
+                                    SET assigned_id = ?, 
+                                        assigned_at = COALESCE(assigned_at, ?), 
+                                        last_lead_action = 'booked' 
+                                    WHERE id = ?
+                                ");
+                                if ($stmtLead) {
+                                    $stmtLead->bind_param("isi", $salesById, $now, $leadId);
+                                    $stmtLead->execute();
+                                    $stmtLead->close();
+                                }
+                            }
+                        } else {
+                            $stmtLead = $this->db->prepare("UPDATE leads SET last_lead_action = 'booked' WHERE id = ?");
+                            if ($stmtLead) {
+                                $stmtLead->bind_param("i", $leadId);
+                                $stmtLead->execute();
+                                $stmtLead->close();
+                            }
+                        }
                     }
 
                     if ($flatId) {
                         $stmtFlat = $this->db->prepare("UPDATE flats SET is_booked = 1, status = 'booked' WHERE id = ?");
-                        $stmtFlat->bind_param("i", $flatId);
-                        $stmtFlat->execute();
+                        if ($stmtFlat) {
+                            $stmtFlat->bind_param("i", $flatId);
+                            $stmtFlat->execute();
+                            $stmtFlat->close();
+                        }
                     }
 
                     $successCount++;

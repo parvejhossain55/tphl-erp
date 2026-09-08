@@ -25,19 +25,27 @@ class ApprovalRequestController extends Controller
     public function index()
     {
         $sessionRole = $_SESSION['user']['role_name'] ?? 'management';
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $sessionRoleClean = strtolower(trim($sessionRole));
 
         $roleMap = [
-            'super admin' => ['management'],
-            'admin'       => ['management'],
-            'hr'          => ['hr'],
-            'accounts'    => ['accounts']
+            'super admin'   => ['management'],
+            'admin'         => ['management'],
+            'hr'            => ['hr'],
+            'accounts'      => ['accounts'],
+            'accounts head' => ['accounts']
         ];
 
         // Also add the role name as it is for other roles like "QC & Internal Audit"
-        $roles = $roleMap[strtolower($sessionRole)] ?? [strtolower($sessionRole)];
+        $roles = $roleMap[$sessionRoleClean] ?? [$sessionRoleClean];
+
+        // Force accounts approval role for Accounts (Role 6) and Accounts Head (Role 30)
+        if (in_array($roleId, [6, 30], true) || strpos($sessionRoleClean, 'account') !== false) {
+            $roles = ['accounts'];
+        }
         
         // Let's add management for Admins, Chief Officer and Site Operators / Operation Heads
-        if(in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 20, 33])) {
+        if(in_array($roleId, [1, 3, 20, 33])) {
             $roles[] = 'management';
         }
 
