@@ -129,13 +129,25 @@ class Con_ContractorBillController extends Controller
             }
         }
 
-        $bills = $this->billModel->getAllWithRelations($filterUserId, $filterProjectIds);
+        $selectedContractorId = !empty($_GET['contractor_id']) ? (int)$_GET['contractor_id'] : null;
+
+        $bills = $this->billModel->getAllWithRelations($filterUserId, $filterProjectIds, $selectedContractorId);
+
+        // Fetch contractors with trade/expertise for search & filter
+        $contractors = $this->db->query("
+            SELECT id, name, role, trade 
+            FROM contractors 
+            WHERE status = 'active' OR id IN (SELECT DISTINCT operator_id FROM contractor_bill_requests WHERE operator_id IS NOT NULL)
+            ORDER BY name ASC
+        ")->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/contractor-bills/bill-lists', [
-            'current_route' => 'con-contractor-bills',
-            'page_title'    => 'Contractor Bill Requests',
-            'bills'         => $bills,
-            'userRole'      => $this->userRole,
+            'current_route'        => 'con-contractor-bills',
+            'page_title'           => 'Contractor Bill Requests',
+            'bills'                => $bills,
+            'userRole'             => $this->userRole,
+            'contractors'          => $contractors,
+            'selectedContractorId' => $selectedContractorId,
         ]);
     }
 

@@ -9,11 +9,12 @@ class Con_ContractorBill extends Model
      * @param int|null $userId      If set, show bills created_by this user
      * @param array    $projectIds  If set, also show bills for these project_ids (e.g. site engineer assigned projects)
      */
-    public function getAllWithRelations($userId = null, array $projectIds = [])
+    public function getAllWithRelations($userId = null, array $projectIds = [], $contractorId = null)
     {
         $sql = "SELECT cbr.*,
                        oo.name  AS operator_name,
                        oo.role  AS operator_role,
+                       oo.trade AS operator_trade,
                        p.name   AS project_name,
                        u.full_name  AS created_by_name,
                        v.full_name  AS verified_by_name,
@@ -49,19 +50,27 @@ class Con_ContractorBill extends Model
                 LEFT JOIN project_phases pp ON pp.id = pwp.phase_id
                 LEFT JOIN phase_monthly_targets pmt ON pmt.id = pwp.target_id";
 
-        $conditions = [];
-
+        $roleConditions = [];
         if ($userId !== null) {
-            $conditions[] = "cbr.created_by = " . (int)$userId;
+            $roleConditions[] = "cbr.created_by = " . (int)$userId;
         }
 
         if (!empty($projectIds)) {
             $safeIds = implode(',', array_map('intval', $projectIds));
-            $conditions[] = "cbr.project_id IN ($safeIds)";
+            $roleConditions[] = "cbr.project_id IN ($safeIds)";
+        }
+
+        $conditions = [];
+        if (!empty($roleConditions)) {
+            $conditions[] = "(" . implode(' OR ', $roleConditions) . ")";
+        }
+
+        if (!empty($contractorId)) {
+            $conditions[] = "cbr.operator_id = " . (int)$contractorId;
         }
 
         if (!empty($conditions)) {
-            $sql .= " WHERE (" . implode(' OR ', $conditions) . ")";
+            $sql .= " WHERE " . implode(' AND ', $conditions);
         }
 
         $sql .= " ORDER BY cbr.created_at DESC";

@@ -394,13 +394,18 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                     ?>
 
                                     <?php 
-                                    // Management (roles 1,3) can directly approve pending requests — no QC step needed
-                                    $isManagement = in_array(($userRole ?? 0), [1, 3]);
-                                    $isQCOnlyUser = $canApproveQC && !$isManagement;
+                                    $userRoleId = (int) ($userRole ?? 0);
+                                    $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+                                    $isFullManagement = in_array($userRoleId, [1, 3, 33], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+                                    $isSiteOperatorUser = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
+
+                                    $reqAmount = (float)($request['amount'] ?? 0);
+                                    $canDirectApprove = $isFullManagement || ($isSiteOperatorUser && $reqAmount <= 100000.01);
+                                    $isQCOnlyUser = $canApproveQC && !$isFullManagement && !$isSiteOperatorUser;
                                     ?>
 
-                                    <?php if ($isPending && $isManagement && $canApproveOrReject && !$isAlreadyApproved): ?>
-                                        <!-- Management Direct Approval (skip QC) -->
+                                    <?php if ($isPending && $canDirectApprove && !$isAlreadyApproved): ?>
+                                        <!-- Management / Operation Head Direct Approval (skip QC) -->
                                         <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST" class="mb-2">
                                             <input type="hidden" name="id" value="<?= $request['id'] ?>">
                                             <input type="hidden" name="status" value="approved">
@@ -421,6 +426,12 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                             <i class="fa-light fa-times me-2"></i> Reject Request
                                         </button>
 
+                                    <?php elseif ($isPending && $isSiteOperatorUser && $reqAmount > 100000.01 && !$isAlreadyApproved): ?>
+                                        <!-- Threshold notice for Operation Head -->
+                                        <div class="alert alert-warning mb-2 py-2">
+                                            <small><i class="fa-light fa-lock me-1"></i> Amount (৳<?= number_format($reqAmount, 2) ?>) exceeds ৳1,00,000 threshold. Full Management approval is required.</small>
+                                        </div>
+
                                     <?php elseif ($isPending && $isQCOnlyUser && !$isAlreadyApproved): ?>
                                         <!-- QC Approval (only for QC-role users, not management) -->
                                         <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST" class="mb-2">
@@ -439,14 +450,18 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                             <i class="fa-light fa-times me-2"></i> Reject Request
                                         </button>
 
-                                    <?php elseif ($isQCApproved && $canApproveOrReject && !$isAlreadyApproved): ?>
-                                        <!-- Management Approval (after QC has approved) -->
+                                    <?php elseif ($isQCApproved && $canDirectApprove && !$isAlreadyApproved): ?>
+                                        <!-- Management / Operation Head Approval (after QC has approved) -->
                                         <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST" class="mb-2">
                                             <input type="hidden" name="id" value="<?= $request['id'] ?>">
                                             <input type="hidden" name="status" value="approved">
                                             <div class="mb-3">
                                                 <label class="form-label fw-semibold">Approved Amount (Optional)</label>
                                                 <input type="number" step="0.01" name="approved_amount" class="form-control" value="<?= htmlspecialchars($request['amount']) ?>" max="<?= htmlspecialchars($request['amount']) ?>">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Approval Note (Optional)</label>
+                                                <textarea name="approval_note" class="form-control" rows="2" placeholder="Leave a note..."></textarea>
                                             </div>
                                             <button type="submit" class="btn btn-success w-100 mb-2">
                                                 <i class="fa-light fa-check me-2"></i> Approve Request
@@ -841,6 +856,22 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    document.querySelectorAll('form[action*="approve-cashout-request"]').forEach(function(f) {
+        var isSubmitting = false;
+        f.addEventListener('submit', function(e) {
+            if (isSubmitting) {
+                e.preventDefault();
+                return false;
+            }
+            isSubmitting = true;
+            var btn = f.querySelector('button[type="submit"]');
+            if (btn) {
+                btn.classList.add('disabled');
+                btn.innerHTML = '<i class="fa-light fa-spinner fa-spin me-2"></i> Processing...';
+            }
+        });
+    });
 });
 </script>
 <?php endif; ?>

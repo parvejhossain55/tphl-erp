@@ -16,8 +16,44 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
     </div>
 
     <div class="card custom-card">
-        <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h6 class="card-title mb-0"><i class="bi bi-receipt me-2 text-primary"></i> All Contractor Bills</h6>
+
+            <!-- Search by Contractor & Trade / Expertise Filter -->
+            <form method="GET" action="<?= $base_url ?>/con-contractor-bills" class="d-flex align-items-center gap-2 mb-0 flex-wrap" id="contractorFilterForm">
+                <div class="d-flex align-items-center gap-2" style="min-width: 320px;">
+                    <label for="contractor_id" class="form-label mb-0 fw-semibold text-muted text-nowrap" style="font-size: 13px;">
+                        <i class="bi bi-funnel text-primary me-1"></i> Contractor / Trade:
+                    </label>
+                    <div style="min-width: 250px;">
+                        <select name="contractor_id" id="contractor_id" class="form-select form-select-sm select2" style="width: 100%;">
+                            <option value="">All Contractors & Trades</option>
+                            <?php if (!empty($contractors)): ?>
+                                <?php foreach ($contractors as $c): ?>
+                                    <?php
+                                        $tradeLabel = !empty($c['trade']) ? ucwords(str_replace('_', ' ', $c['trade'])) : (!empty($c['role']) ? $c['role'] : '');
+                                        $displayTxt = htmlspecialchars($c['name']) . (!empty($tradeLabel) ? ' (' . htmlspecialchars($tradeLabel) . ')' : '');
+                                        $isSelected = (!empty($selectedContractorId) && (int)$selectedContractorId === (int)$c['id']);
+                                    ?>
+                                    <option value="<?= $c['id'] ?>" <?= $isSelected ? 'selected' : '' ?>>
+                                        <?= $displayTxt ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-sm btn-primary d-flex align-items-center gap-1">
+                    <i class="bi bi-search"></i> Search
+                </button>
+
+                <?php if (!empty($selectedContractorId)): ?>
+                    <a href="<?= $base_url ?>/con-contractor-bills" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1" title="Clear Filter">
+                        <i class="bi bi-x-circle"></i> Clear
+                    </a>
+                <?php endif; ?>
+            </form>
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -68,8 +104,14 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <span class="fw-semibold"><?= htmlspecialchars($b['operator_name'] ?? '-') ?></span><br>
-                                        <small class="text-muted"><?= htmlspecialchars($b['operator_role'] ?? '') ?></small>
+                                        <span class="fw-semibold text-dark"><?= htmlspecialchars($b['operator_name'] ?? '-') ?></span><br>
+                                        <?php if (!empty($b['operator_trade'])): ?>
+                                            <span class="badge bg-light text-primary border border-primary-subtle mt-1" style="font-size: 11px;">
+                                                <i class="bi bi-tools me-1"></i><?= htmlspecialchars(ucwords(str_replace('_', ' ', $b['operator_trade']))) ?>
+                                            </span>
+                                        <?php elseif (!empty($b['operator_role'])): ?>
+                                            <small class="text-muted"><?= htmlspecialchars($b['operator_role']) ?></small>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <span class="badge bg-<?= ($b['bill_type'] === 'Advance') ? 'warning' : (($b['bill_type'] === 'Retention') ? 'info' : 'primary') ?>-transparent">
@@ -131,8 +173,41 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
     </div>
 </div>
 
+<style>
+.custom-card .card-header .select2-container--default .select2-selection--single {
+    height: 31px;
+    border-color: #dee2e6;
+    display: flex;
+    align-items: center;
+}
+.custom-card .card-header .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 31px;
+    font-size: 13px;
+    padding-left: 8px;
+    color: #333;
+}
+.custom-card .card-header .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 31px;
+}
+</style>
+
 <script>
 $(document).ready(function () {
-    $('#billTable').DataTable({ responsive: true, pageLength: 25, order: [[3, 'desc']] });
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('#contractor_id').select2({
+            placeholder: "Search by Contractor Name or Trade / Expertise...",
+            allowClear: true,
+            width: '100%'
+        });
+        $('#contractor_id').on('change select2:select select2:clear', function () {
+            $('#contractorFilterForm').submit();
+        });
+    }
+
+    $('#billTable').DataTable({ 
+        responsive: true, 
+        pageLength: 25, 
+        order: [[4, 'desc']] 
+    });
 });
 </script>

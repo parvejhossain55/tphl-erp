@@ -123,8 +123,9 @@ class ApprovalRequestController extends Controller
         $failedCount = 0;
 
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $isManagement = in_array($userRoleId, [1, 3, 33], true);
-        $isSiteOperator = ($userRoleId === 20);
+        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isManagement = in_array($userRoleId, [1, 3, 33], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+        $isSiteOperator = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
 
         foreach ($requestIds as $id) {
             try {

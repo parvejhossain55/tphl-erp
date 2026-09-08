@@ -490,17 +490,40 @@ public function createRequest($data)
     }
 
     // Update request status - BOTH tables AND sync approved amount
-    public function updateStatus($id, $status, $userId = null, $rejectionReason = null)
+    public function updateStatus($id, $status, $userId = null, $rejectionReason = null, $manualApprovedAmount = null, $manualApprovalNote = null)
     {
         $this->db->begin_transaction();
 
         try {
             // Get approval details first
             $approvalRequest = $this->getApprovalRequest($id);
-            $approvedAmount = $approvalRequest['approved_amount'] ?? null;
-            $approvalNote = $approvalRequest['approval_note'] ?? null;
+            $currentRequest = $this->getRequestById($id);
 
-            // 1. Update cashout_requests table with approved amount from approval system
+            // Determine approved amount
+            if ($manualApprovedAmount !== null && (float)$manualApprovedAmount > 0) {
+                $approvedAmount = (float)$manualApprovedAmount;
+            } elseif (!empty($approvalRequest['approved_amount'])) {
+                $approvedAmount = (float)$approvalRequest['approved_amount'];
+            } elseif (!empty($currentRequest['approved_amount'])) {
+                $approvedAmount = (float)$currentRequest['approved_amount'];
+            } elseif ($status === 'approved') {
+                $approvedAmount = (float)($currentRequest['amount'] ?? 0);
+            } else {
+                $approvedAmount = null;
+            }
+
+            // Determine approval note
+            if ($manualApprovalNote !== null && $manualApprovalNote !== '') {
+                $approvalNote = $manualApprovalNote;
+            } elseif (!empty($approvalRequest['approval_note'])) {
+                $approvalNote = $approvalRequest['approval_note'];
+            } elseif (!empty($currentRequest['approval_note'])) {
+                $approvalNote = $currentRequest['approval_note'];
+            } else {
+                $approvalNote = null;
+            }
+
+            // 1. Update cashout_requests table
             $cashoutSql = "UPDATE {$this->table} SET 
                     status = ?,
                     approved_amount = ?,
@@ -508,12 +531,28 @@ public function createRequest($data)
                     updated_at = NOW()";
 
             $cashoutParams = [$status, $approvedAmount, $approvalNote];
-            $cashoutTypes = "sss";
+            $cashoutTypes = "sds";
 
             if ($status === 'approved') {
-                $cashoutSql .= ", approved_by = ?, approved_at = NOW()";
+                // Calculate due_amount = approved_amount - total payments
+                $totalPaid = 0;
+                $paidSql = "SELECT COALESCE(SUM(amount), 0) as total FROM cashout_payments WHERE cashout_request_id = ?";
+                $paidStmt = $this->db->prepare($paidSql);
+                if ($paidStmt) {
+                    $paidStmt->bind_param("i", $id);
+                    $paidStmt->execute();
+                    $paidResult = $paidStmt->get_result();
+                    if ($row = $paidResult->fetch_assoc()) {
+                        $totalPaid = (float)$row['total'];
+                    }
+                    $paidStmt->close();
+                }
+                $dueAmount = max(0, (float)$approvedAmount - $totalPaid);
+
+                $cashoutSql .= ", due_amount = ?, approved_by = ?, approved_at = NOW()";
+                $cashoutParams[] = $dueAmount;
                 $cashoutParams[] = $userId;
-                $cashoutTypes .= "i";
+                $cashoutTypes .= "di";
             } elseif ($status === 'rejected') {
                 $cashoutSql .= ", rejected_by = ?, rejected_at = NOW(), rejection_reason = ?";
                 $cashoutParams[] = $userId;
@@ -533,14 +572,36 @@ public function createRequest($data)
             }
             $stmt->close();
 
-            // 2. Update approval_requests table if not already updated from homepage
-            if (!empty($approvalRequest) && $approvalRequest['status'] === 'pending') {
+            // 2. Update approval_requests table if exists
+            if (!empty($approvalRequest)) {
+                $approvalReqStatus = in_array($status, ['approved', 'fully_paid']) ? 'approved' : ($status === 'partially_paid' ? 'partially_paid' : $status);
+                if (!in_array($approvalReqStatus, ['pending', 'approved', 'rejected', 'cancelled', 'partially_approved', 'partially_paid', 'partial'])) {
+                    $approvalReqStatus = 'approved';
+                }
+
                 $approvalSql = "UPDATE approval_requests 
-                               SET status = ?, approved_by = ?, approved_at = NOW()
-                               WHERE id = ?";
+                               SET status = ?, approved_by = ?, approved_at = NOW()";
+                $approvalParams = [$approvalReqStatus, $userId];
+                $approvalTypes = "si";
+
+                if ($approvedAmount !== null) {
+                    $approvalSql .= ", approved_amount = ?";
+                    $approvalParams[] = $approvedAmount;
+                    $approvalTypes .= "d";
+                }
+
+                if ($approvalNote !== null) {
+                    $approvalSql .= ", approval_note = ?";
+                    $approvalParams[] = $approvalNote;
+                    $approvalTypes .= "s";
+                }
+
+                $approvalSql .= " WHERE id = ?";
+                $approvalParams[] = $approvalRequest['id'];
+                $approvalTypes .= "i";
 
                 $approvalStmt = $this->db->prepare($approvalSql);
-                $approvalStmt->bind_param("sii", $status, $userId, $approvalRequest['id']);
+                $approvalStmt->bind_param($approvalTypes, ...$approvalParams);
 
                 if (!$approvalStmt->execute()) {
                     throw new Exception("Approval request update failed: " . $approvalStmt->error);

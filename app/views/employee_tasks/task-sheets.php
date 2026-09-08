@@ -733,10 +733,10 @@
 <!-- Filter Bar -->
 <?php
 $totalTasks   = count($taskSheets);
-$doneTasks    = count(array_filter($taskSheets, fn($t) => $t['status'] === 'Done'));
-$pendingTasks = count(array_filter($taskSheets, fn($t) => $t['status'] === 'Pending'));
+$doneTasks    = count(array_filter($taskSheets, fn($t) => strtolower($t['status'] ?? '') === 'done'));
+$pendingTasks = count(array_filter($taskSheets, fn($t) => strtolower($t['status'] ?? '') === 'pending'));
 $totalHours   = array_sum(array_column($taskSheets, 'hours_spent'));
-$currentMonth = $_GET['month'] ?? date('Y-m');
+$currentMonth = $currentMonth ?? ($_GET['month'] ?? date('Y-m'));
 ?>
 <div class="filter-bar">
     <span class="filter-label">Month</span>
@@ -794,7 +794,8 @@ $currentMonth = $_GET['month'] ?? date('Y-m');
                                 <td class="row-hours"><?= number_format($task['hours_spent'], 2) ?><span style="color:#bbb;font-size:.62rem">h</span></td>
                                 <td>
                                     <?php
-                                    $s   = $task['status'];
+                                    $rawStatus = $task['status'] ?? '';
+                                    $s   = strtolower(str_replace(' ', '_', trim($rawStatus)));
                                     $cls = match ($s) {
                                         'done' => 'status-done',
                                         'pending' => 'status-pending',
@@ -804,7 +805,7 @@ $currentMonth = $_GET['month'] ?? date('Y-m');
                                         'done' => 'Done',
                                         'pending' => 'Pending',
                                         'in_progress' => 'In Progress',
-                                        default => ucfirst($s)
+                                        default => ucfirst($rawStatus)
                                     };
                                     ?>
                                     <span class="status-badge <?= $cls ?>"><?= $lbl ?></span>
@@ -940,117 +941,12 @@ $currentMonth = $_GET['month'] ?? date('Y-m');
 </div><!-- /page-wrapper -->
 
 <script>
-    async function applyFilters() {
-        const dept = document.getElementById('deptFilter').value;
-        const emp = document.getElementById('empFilter').value;
-        const status = document.getElementById('statusFilter').value;
-        const from = document.getElementById('dateFrom').value;
-        const to = document.getElementById('dateTo').value;
-
-        let url = `index.php?controller=task&action=getTaskData
-        &department_id=${dept}
-        &employee_id=${emp}
-        &status=${status}
-        &date_from=${from}
-        &date_to=${to}`;
-
-        const res = await fetch(url);
-        const data = await res.json();
-
-        renderTable(data);
+function filterMonth(month) {
+    if (month) {
+        window.location.href = '<?= $GLOBALS['base_url'] ?>/task-sheets?month=' + month;
     }
-
-    function renderTable(data) {
-        const tbody = document.getElementById('tableBody');
-        tbody.innerHTML = "";
-
-        if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9">No data found</td></tr>`;
-            return;
-        }
-
-        data.forEach((row, i) => {
-            tbody.innerHTML += `
-            <tr>
-                <td>${i + 1}</td>
-                <td>${row.emp_name}</td>
-                <td>${row.department_name}</td>
-                <td>${row.work_date}</td>
-                <td>${row.task_description}</td>
-                <td>${row.hours_spent}</td>
-                <td>${row.status}</td>
-                <td>${row.remarks ?? '-'}</td>
-                <td>${row.created_at}</td>
-            </tr>
-        `;
-        });
-
-        document.getElementById('recordCount').innerText =
-            "Total Records: " + data.length;
-    }
-
-    // Reset filters
-    function resetFilters() {
-        document.getElementById('deptFilter').value = "";
-        document.getElementById('empFilter').value = "";
-        document.getElementById('statusFilter').value = "";
-        document.getElementById('dateFrom').value = "";
-        document.getElementById('dateTo').value = "";
-
-        applyFilters();
-    }
-
-    // Load on page start
-    window.onload = applyFilters;
-</script>
-
-
-<script>
-    function exportCSV() {
-        let table = document.getElementById("taskTable");
-        let rows = table.querySelectorAll("tr");
-
-        let csv = [];
-        rows.forEach(row => {
-            let cols = row.querySelectorAll("td, th");
-            let rowData = [];
-            cols.forEach(col => rowData.push(col.innerText));
-            csv.push(rowData.join(","));
-        });
-
-        let blob = new Blob([csv.join("\n")], {
-            type: 'text/csv'
-        });
-        let a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "task_report.csv";
-        a.click();
-    }
-</script>
-
-
-<script>
-function exportCSV() {
-    let table = document.getElementById("taskTable");
-    let rows = table.querySelectorAll("tr");
-
-    let csv = [];
-    rows.forEach(row => {
-        let cols = row.querySelectorAll("td, th");
-        let rowData = [];
-        cols.forEach(col => rowData.push(col.innerText));
-        csv.push(rowData.join(","));
-    });
-
-    let blob = new Blob([csv.join("\n")], { type: 'text/csv' });
-    let a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "task_report.csv";
-    a.click();
 }
-</script>
 
-<script>
 function loadTask(task) {
     console.log(task); // debug
 
@@ -1060,21 +956,29 @@ function loadTask(task) {
     document.getElementById('hoursSpent').value = task.hours_spent;
     document.getElementById('taskRemarks').value = task.remarks ?? '';
 
-    // status mapping (IMPORTANT)
+    // status mapping
+    let rawStatus = (task.status || '').trim();
     let statusMap = {
         'done': 'Done',
         'pending': 'Pending',
-        'in_progress': 'In Progress'
+        'in_progress': 'In Progress',
+        'in progress': 'In Progress',
+        'Done': 'Done',
+        'Pending': 'Pending',
+        'In Progress': 'In Progress'
     };
 
     document.getElementById('taskStatus').value =
-        statusMap[task.status] ?? task.status;
+        statusMap[rawStatus.toLowerCase()] ?? rawStatus;
 
     // UI change
     document.getElementById('formTitle').innerText = "Edit Task";
     document.getElementById('saveLabel').innerText = "Update Task";
 
-    document.getElementById('formPanel').classList.remove('mode-new');
+    const formPanel = document.getElementById('formPanel');
+    if (formPanel) {
+        formPanel.classList.remove('mode-new');
+    }
 }
 
 function resetForm() {
@@ -1088,6 +992,9 @@ function resetForm() {
     // Reset UI
     document.getElementById('formTitle').innerText = "New Entry";
     document.getElementById('saveLabel').innerText = "Add Task";
-    document.getElementById('formPanel').classList.add('mode-new');
+    const formPanel = document.getElementById('formPanel');
+    if (formPanel) {
+        formPanel.classList.add('mode-new');
+    }
 }
 </script>

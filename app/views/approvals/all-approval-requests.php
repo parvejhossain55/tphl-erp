@@ -257,7 +257,7 @@
                                 } elseif ($sourceTable === 'fund_requisitions' || $sourceTable === 'operational_fund_requests') {
                                     $targetUrl = $base_url . '/fund-requisitions/view/' . $req['source_id'];
                                 } elseif ($sourceTable === 'cashout_requests') {
-                                    $targetUrl = $base_url . '/admin-view-cashout-request?id=' . $req['source_id'];
+                                    $targetUrl = $base_url . '/view-cashout-request?id=' . $req['source_id'];
                                 } elseif ($sourceTable === 'payslips' || $sourceTable === 'salary_requests' || $requestType === 'salary') {
                                     $targetUrl = $base_url . '/show-payslip/' . $req['source_id'];
                                 } elseif ($sourceTable === 'client_refund_requests') {
