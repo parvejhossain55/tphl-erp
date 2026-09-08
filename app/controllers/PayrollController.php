@@ -91,10 +91,17 @@ class PayrollController extends Controller
             }
         }
 
+        // Fetch draft salary certificates (only shown when All Projects is selected / no specific project)
+        $draftPayslips = [];
+        if (empty($selectedProjectId)) {
+            $draftPayslips = $this->paymentModel->getDraftSalaryCertificates($selectedYear, $selectedMonth);
+        }
+
         $this->view("payrolls/payslips/payslip-lists", [
             "current_route" => "payslip-lists",
             "page_title" => "Payroll Lists",
             "payslips" => $payslips,
+            "draftPayslips" => $draftPayslips,
             "totalEmployees" => $totalEmployees,
             "paidCount" => $paidCount,
             "pendingCount" => $pendingCount,
@@ -112,6 +119,10 @@ class PayrollController extends Controller
 
     public function create()
     {
+        $selectedYear = isset($_GET['year']) && $_GET['year'] !== '' ? (int)$_GET['year'] : (int)date('Y');
+        $selectedMonth = isset($_GET['month']) && $_GET['month'] !== '' ? (int)$_GET['month'] : (int)date('m');
+        $defaultPaydate = sprintf('%04d-%02d-01', $selectedYear, $selectedMonth);
+
         $employees = $this->employeeModel->getAllWithDesignation();
         $items = $this->payslipItemModel->getAll();
 
@@ -132,9 +143,9 @@ class PayrollController extends Controller
             require_once __DIR__ . '/../models/AdvanceSalary.php';
         }
         $advanceSalaryModel = new AdvanceSalary($this->db);
-        $currentMonth = date('Y-m');
+        $currentMonthStr = sprintf('%04d-%02d', $selectedYear, $selectedMonth);
         foreach ($employees as &$emp) {
-            $emp['advance_salary'] = $advanceSalaryModel->getMonthlyDeductionAmount($emp['id'], $currentMonth);
+            $emp['advance_salary'] = $advanceSalaryModel->getMonthlyDeductionAmount($emp['id'], $currentMonthStr);
         }
         unset($emp);
 
@@ -143,7 +154,7 @@ class PayrollController extends Controller
             "page_title" => "Create Payslip",
             "employees" => $employees,
             "items" => $items,
-
+            "defaultPaydate" => $defaultPaydate,
         ]);
     }
 
@@ -172,10 +183,14 @@ class PayrollController extends Controller
             $status = 'draft';
         }
 
+        $paydate = !empty($payload['paydate']) ? $payload['paydate'] : (!empty($_POST['paydate']) ? $_POST['paydate'] : date('Y-m-d'));
+        $payslipMonth = date('Y-m-01', strtotime($paydate));
+
         $payslipId = $payslipModel->create([
             'employee_id' => $payload['employee_id'],
+            'payroll_project_id' => null, // Standalone salary certificate / manual payslip - independent of projects
             'designation_id' => $payload['designation_id'],
-            'payslip_month' => date('Y-m-01'),
+            'payslip_month' => $payslipMonth,
             'total_earning' => $payload['total_earning'],
             'total_deduction' => $payload['total_deduction'],
             'net_salary' => $payload['net_salary'],

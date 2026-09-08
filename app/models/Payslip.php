@@ -600,6 +600,65 @@ class Payslip extends Model
 
 
 
+    public function getDraftSalaryCertificates($year = null, $month = null)
+    {
+        $sql = "
+            SELECT 
+                p.id AS id,
+                e.id AS employee_id,
+                e.employee_id AS employee_office_id,
+                e.full_name AS employee_name,
+                e.photo AS photo,
+                e.email AS email,
+                e.joining_date AS joining_date,
+                d.name AS desgination_name,
+                dept.name AS department_name,
+                p.total_earning,
+                p.total_deduction,
+                COALESCE(p.net_salary, e.gross_salary) AS net_salary,
+                p.status,
+                p.payment_method,
+                p.company_bank_id,
+                p.upload_by,
+                p.payslip_month,
+                p.email_sent_at,
+                e.gross_salary AS emp_gross_salary
+            FROM payslips AS p
+            LEFT JOIN employees AS e ON p.employee_id = e.id
+            LEFT JOIN designations AS d ON e.designation_id = d.id
+            LEFT JOIN departments AS dept ON e.department_id = dept.id
+            WHERE p.status = 'draft'
+        ";
+        $params = [];
+        $types = "";
+
+        if (!empty($year)) {
+            $sql .= " AND YEAR(p.payslip_month) = ?";
+            $params[] = (int) $year;
+            $types .= "i";
+        }
+        if (!empty($month)) {
+            $sql .= " AND MONTH(p.payslip_month) = ?";
+            $params[] = (int) $month;
+            $types .= "i";
+        }
+
+        $sql .= " ORDER BY p.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            die("Prepare failed: " . $this->db->error);
+        }
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $data = $res->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $data;
+    }
+
     public function getDueEmployeePayslip($month)
     {
         $sql = "SELECT e.id, e.full_name, e.employee_id, e.email, e.designation, e.designation_id, e.basic_salary
