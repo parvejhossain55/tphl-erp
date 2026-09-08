@@ -26,7 +26,9 @@ $photoPath = !empty($employee['photo'])
                     <div class="card__icon"><span class="chip badge-present"><i class="bi bi-arrow-up"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Present Days</h6>
-                        <h4 class="card__title text-break text-success mb-10" id="tipsoi-present-days"><?= $presentDays ?? 0 ?></h4>
+                        <h4 class="card__title text-break text-success mb-10" id="tipsoi-present-days">
+                            <span class="spinner-border spinner-border-sm text-success" role="status" aria-hidden="true" style="width:1.1rem;height:1.1rem;border-width:2px;"></span>
+                        </h4>
                     </div>
                 </div>
             </div>
@@ -38,7 +40,7 @@ $photoPath = !empty($employee['photo'])
                     <div class="card__icon"><span class="chip badge-present"><i class="bi bi-clock-history" style="color:var(--accent4)"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Late Arrivals</h6>
-                        <span class="chip badge-late"><i class="bi bi-dot"></i> Check-in &gt; 9:40 · <strong class="ms-1" id="tipsoi-late-days"><?= $lateDays ?? 0 ?></strong></span>
+                        <span class="chip badge-late"><i class="bi bi-dot"></i> Check-in &gt; 9:40 · <strong class="ms-1" id="tipsoi-late-days"><span class="spinner-border spinner-border-sm text-warning" role="status" aria-hidden="true" style="width:0.75rem;height:0.75rem;border-width:2px;"></span></strong></span>
                     </div>
                 </div>
             </div>
@@ -50,7 +52,7 @@ $photoPath = !empty($employee['photo'])
                     <div class="card__icon"><span class="chip badge-present"><i class="bi bi-x-circle-fill" style="color:var(--accent5)"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Absent Days</h6>
-                        <span class="chip badge-absent" id="tipsoi-absent-days"><?= $absentDays ?? 0 ?></span>
+                        <span class="chip badge-absent" id="tipsoi-absent-days"><span class="spinner-border spinner-border-sm text-danger" role="status" aria-hidden="true" style="width:0.75rem;height:0.75rem;border-width:2px;"></span></span>
                     </div>
                 </div>
             </div>
@@ -62,7 +64,7 @@ $photoPath = !empty($employee['photo'])
                     <div class="card__icon"><span class="chip badge-present"><i class="bi bi-umbrella-fill" style="color:var(--accent2)"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Leave Days Taken</h6>
-                        <span class="chip badge-leave" id="tipsoi-leave-days"><?= $leaveDays ?? 0 ?> Approved</span>
+                        <span class="chip badge-leave" id="tipsoi-leave-days"><span class="spinner-border spinner-border-sm text-info" role="status" aria-hidden="true" style="width:0.75rem;height:0.75rem;border-width:2px;"></span></span>
                     </div>
                 </div>
             </div>
@@ -93,9 +95,9 @@ $photoPath = !empty($employee['photo'])
                                 id="tipsoi-ring-circle" />
                         </svg>
                         <div class="ring-center">
-                            <div class="ring-pct" id="tipsoi-ring-pct" style="color:var(--accent3)"><?= $attendancePct ?? 0 ?>%</div>
-                            <div class="ring-lbl">Rate</div>
-                        </div>
+                        <div class="ring-pct" id="tipsoi-ring-pct" style="color:var(--accent3)"><span class="spinner-border spinner-border-sm text-success" role="status" aria-hidden="true" style="width:1.2rem;height:1.2rem;border-width:2px;"></span></div>
+                        <div class="ring-lbl">Rate</div>
+                    </div>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -168,7 +170,10 @@ $photoPath = !empty($employee['photo'])
                             </div>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <p class="text-muted" style="font-size:.85rem">No leave types configured.</p>
+                        <div id="tipsoi-leave-spinner" class="text-center py-4">
+                            <span class="spinner-border spinner-border-sm text-primary" role="status" style="width:1.2rem;height:1.2rem;border-width:2px;"></span>
+                            <div class="text-muted mt-2" style="font-size:0.75rem;">Loading leave balances...</div>
+                        </div>
                     <?php endif; ?>
                 </div>
                 <div class="mt-3 p-3 rounded-3" style="background:rgba(79,140,255,.07);border:1px solid rgba(79,140,255,.2)">
@@ -411,10 +416,33 @@ $photoPath = !empty($employee['photo'])
         const currentMonth = "<?= date('Y-m') ?>";
         const baseUrl = "<?= $GLOBALS['base_url'] ?>";
 
+        function restoreFallback() {
+            const elPresent = document.getElementById("tipsoi-present-days");
+            if (elPresent && elPresent.querySelector(".spinner-border")) elPresent.textContent = "<?= $presentDays ?? 0 ?>";
+
+            const elLate = document.getElementById("tipsoi-late-days");
+            if (elLate && elLate.querySelector(".spinner-border")) elLate.textContent = "<?= $lateDays ?? 0 ?>";
+
+            const elAbsent = document.getElementById("tipsoi-absent-days");
+            if (elAbsent && elAbsent.querySelector(".spinner-border")) elAbsent.textContent = "<?= $absentDays ?? 0 ?>";
+
+            const elLeave = document.getElementById("tipsoi-leave-days");
+            if (elLeave && elLeave.querySelector(".spinner-border")) elLeave.textContent = "<?= $leaveDays ?? 0 ?> Approved";
+
+            const elRingPct = document.getElementById("tipsoi-ring-pct");
+            if (elRingPct && elRingPct.querySelector(".spinner-border")) elRingPct.textContent = "<?= $attendancePct ?? 0 ?>%";
+
+            const leaveSpinner = document.getElementById("tipsoi-leave-spinner");
+            if (leaveSpinner) {
+                leaveSpinner.innerHTML = '<div class="text-muted py-2" style="font-size:.85rem">No leave types configured.</div>';
+            }
+        }
+
         fetch(`${baseUrl}/api/employee/tipsoi-data?month=${currentMonth}`)
             .then(res => res.json())
             .then(res => {
                 if (!res || !res.success || !res.isRegistered) {
+                    restoreFallback();
                     return;
                 }
 
@@ -536,10 +564,15 @@ $photoPath = !empty($employee['photo'])
                         if (elTotalUsed) elTotalUsed.textContent = totalUsed;
                         if (elTotalAllowed) elTotalAllowed.textContent = totalAllowed;
                     }
+                } else {
+                    const leaveSpinner = document.getElementById("tipsoi-leave-spinner");
+                    if (leaveSpinner) {
+                        leaveSpinner.innerHTML = '<div class="text-muted py-2" style="font-size:.85rem">No leave records found.</div>';
+                    }
                 }
             })
             .catch(err => {
-                // Silently keep local values if Tipsoi request fails
+                restoreFallback();
                 console.warn("Tipsoi sync notice:", err);
             });
 
