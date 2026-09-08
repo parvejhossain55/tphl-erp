@@ -59,30 +59,52 @@
         </div>
 
         <!-- Tabs Navigation -->
+        <?php
+        $excelExportUrl = '?' . http_build_query(array_merge($_GET, ['tab' => $activeTab, 'year' => $year, 'month' => $month, 'date' => $date, 'export' => 'excel']));
+        $pdfExportUrl = '?' . http_build_query(array_merge($_GET, ['tab' => $activeTab, 'year' => $year, 'month' => $month, 'date' => $date, 'export' => 'pdf']));
+        ?>
         <div class="card custom-card">
             <div class="card-body">
-                <ul class="nav nav-tabs tab-style-1 d-sm-flex d-block" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link <?= $activeTab == 'dashboard' ? 'active' : '' ?>" href="?tab=dashboard&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?>">Ranking Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?= $activeTab == 'monthly' ? 'active' : '' ?>" href="?tab=monthly&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?>">Monthly Team Summary</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?= $activeTab == 'all-team' ? 'active' : '' ?>" href="?tab=all-team&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?>">All Team Report</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?= $activeTab == 'daily' ? 'active' : '' ?>" href="?tab=daily&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?>">Daily Report</a>
-                    </li>
-                </ul>
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2 border-bottom pb-2">
+                    <ul class="nav nav-tabs tab-style-1 d-sm-flex d-block border-bottom-0 mb-0" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link <?= $activeTab == 'dashboard' ? 'active' : '' ?>" href="?tab=dashboard&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?>">Ranking Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?= $activeTab == 'monthly' ? 'active' : '' ?>" href="?tab=monthly&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?>">Monthly Team Summary</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?= $activeTab == 'all-team' ? 'active' : '' ?>" href="?tab=all-team&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?>">All Team Report</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?= $activeTab == 'daily' ? 'active' : '' ?>" href="?tab=daily&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?>">Daily Report</a>
+                        </li>
+                    </ul>
+                    <div class="d-flex gap-2">
+                        <a href="<?= $excelExportUrl ?>" class="btn btn-sm btn-success d-inline-flex align-items-center gap-1 shadow-sm" title="Export current tab data to Excel">
+                            <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+                        </a>
+                        <a href="<?= $pdfExportUrl ?>" target="_blank" class="btn btn-sm btn-danger d-inline-flex align-items-center gap-1 shadow-sm" title="Export current tab data to PDF">
+                            <i class="fa-solid fa-file-pdf me-1"></i> Export PDF
+                        </a>
+                    </div>
+                </div>
 
                 <div class="tab-content mt-3">
                     
                     <!-- Ranking Dashboard Tab -->
                     <div class="tab-pane <?= $activeTab == 'dashboard' ? 'show active' : '' ?>">
                         <div class="row">
-                            <div class="col-md-12">
-                                <h4 class="mb-4">Top Performers Ranking</h4>
+                            <div class="col-md-12 d-flex justify-content-between align-items-center mb-4">
+                                <h4 class="mb-0">Top Performers Ranking</h4>
+                                <div class="d-flex gap-2">
+                                    <a href="<?= $excelExportUrl ?>" class="btn btn-sm btn-outline-success shadow-sm" title="Download Excel">
+                                        <i class="fa-solid fa-file-excel me-1"></i> Excel
+                                    </a>
+                                    <a href="<?= $pdfExportUrl ?>" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm" title="Download PDF">
+                                        <i class="fa-solid fa-file-pdf me-1"></i> PDF
+                                    </a>
+                                </div>
                             </div>
                             <?php 
                             $inds = $monthlyData['individuals'] ?? []; 
@@ -127,6 +149,17 @@
 
                     <!-- Monthly Team Summary Tab -->
                     <div class="tab-pane <?= $activeTab == 'monthly' ? 'show active' : '' ?>">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0 fw-semibold text-primary"><i class="fa-solid fa-table me-2"></i>Monthly Team & Member Summary</h5>
+                            <div class="d-flex gap-2">
+                                <a href="<?= $excelExportUrl ?>" class="btn btn-sm btn-outline-success shadow-sm" title="Download Excel">
+                                    <i class="fa-solid fa-file-excel me-1"></i> Excel
+                                </a>
+                                <a href="<?= $pdfExportUrl ?>" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm" title="Download PDF">
+                                    <i class="fa-solid fa-file-pdf me-1"></i> PDF
+                                </a>
+                            </div>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-bordered table-striped table-hover text-nowrap align-middle">
                                 <thead class="table-primary text-center">
@@ -193,6 +226,17 @@
 
                     <!-- All Team Report Tab -->
                     <div class="tab-pane <?= $activeTab == 'all-team' ? 'show active' : '' ?>">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0 fw-semibold text-info"><i class="fa-solid fa-users me-2"></i>All Team Performance Report</h5>
+                            <div class="d-flex gap-2">
+                                <a href="<?= $excelExportUrl ?>" class="btn btn-sm btn-outline-success shadow-sm" title="Download Excel">
+                                    <i class="fa-solid fa-file-excel me-1"></i> Excel
+                                </a>
+                                <a href="<?= $pdfExportUrl ?>" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm" title="Download PDF">
+                                    <i class="fa-solid fa-file-pdf me-1"></i> PDF
+                                </a>
+                            </div>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-bordered table-striped text-nowrap align-middle">
                                 <thead class="table-info text-center">
@@ -243,8 +287,18 @@
 
                     <!-- Daily Report Tab -->
                     <div class="tab-pane <?= $activeTab == 'daily' ? 'show active' : '' ?>">
-                        <div class="alert alert-primary">
-                            Showing daily activity report for <strong><?= date('d M, Y', strtotime($date)) ?></strong>
+                        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                            <div class="alert alert-primary mb-0 py-2 px-3">
+                                Showing daily activity report for <strong><?= date('d M, Y', strtotime($date)) ?></strong>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="<?= $excelExportUrl ?>" class="btn btn-sm btn-outline-success shadow-sm" title="Download Excel">
+                                    <i class="fa-solid fa-file-excel me-1"></i> Excel
+                                </a>
+                                <a href="<?= $pdfExportUrl ?>" target="_blank" class="btn btn-sm btn-outline-danger shadow-sm" title="Download PDF">
+                                    <i class="fa-solid fa-file-pdf me-1"></i> PDF
+                                </a>
+                            </div>
                         </div>
                         <div class="table-responsive">
                             <table class="table table-bordered table-striped text-nowrap align-middle">

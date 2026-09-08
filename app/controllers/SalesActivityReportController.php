@@ -34,6 +34,16 @@ class SalesActivityReportController extends Controller
         // Daily Data
         $dailyData = $this->trackerService->getDailyReport($date, $loggedInUser);
 
+        // Check if Export requested
+        if (isset($_GET['export'])) {
+            $exportType = strtolower(trim($_GET['export']));
+            if ($exportType === 'excel') {
+                $this->exportExcel($activeTab, $monthlyData, $dailyData, $year, $month, $date);
+            } elseif ($exportType === 'pdf') {
+                $this->exportPdf($activeTab, $monthlyData, $dailyData, $year, $month, $date);
+            }
+        }
+
         $this->view('sales-activity-report/index', [
             'monthlyData' => $monthlyData,
             'dailyData' => $dailyData,
@@ -42,5 +52,436 @@ class SalesActivityReportController extends Controller
             'date' => $date,
             'activeTab' => $activeTab
         ]);
+    }
+
+    /**
+     * Export report data to Excel (.xlsx)
+     */
+    private function exportExcel($tab, $monthlyData, $dailyData, $year, $month, $date)
+    {
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        $periodText = !empty($monthlyData['period']) 
+            ? date('d M, Y', strtotime($monthlyData['period']['start'])) . ' to ' . date('d M, Y', strtotime($monthlyData['period']['end']))
+            : "Month: {$month}, Year: {$year}";
+            
+        $dailyDateText = date('d M, Y', strtotime($date));
+
+        // Company Title
+        $sheet->setCellValue('A1', 'THE PREMIUM HOMES LTD');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16)->getColor()->setRGB('1F4E79');
+
+        $headers = [];
+        $dataRows = [];
+        $reportTitle = '';
+        $subTitle = '';
+        $filenamePrefix = '';
+
+        if ($tab === 'dashboard') {
+            $reportTitle = 'Sales Activity Report - Ranking Dashboard (Top Performers)';
+            $subTitle = 'Period: ' . $periodText;
+            $filenamePrefix = "Sales_Ranking_Dashboard_{$year}_{$month}";
+            $headers = ['Rank', 'Member Name', 'Designation', 'Team Name', 'Total Score', 'Achieved Volume (Tk)', 'Follow Up Rate (%)', 'Assigned Leads', 'Total Follow Up', 'Total Contacted', 'Site Visits', 'Units Sold'];
+            
+            $inds = $monthlyData['individuals'] ?? [];
+            foreach ($inds as $emp) {
+                $dataRows[] = [
+                    '#' . ($emp['rank'] ?? '-'),
+                    $emp['member_name'] ?? '',
+                    $emp['level_designation'] ?? '',
+                    $emp['team_name'] ?? '',
+                    number_format((float)($emp['performance_score'] ?? 0), 2),
+                    number_format((float)($emp['total_volume_achieved'] ?? 0), 2),
+                    ($emp['follow_up_pct'] ?? 0) . '%',
+                    $emp['assigned_leads'] ?? 0,
+                    $emp['total_follow_up'] ?? 0,
+                    $emp['total_contacted'] ?? 0,
+                    $emp['visited'] ?? 0,
+                    $emp['units_sold'] ?? 0
+                ];
+            }
+        } elseif ($tab === 'monthly') {
+            $reportTitle = 'Sales Activity Report - Monthly Team Summary';
+            $subTitle = 'Period: ' . $periodText;
+            $filenamePrefix = "Sales_Monthly_Team_Summary_{$year}_{$month}";
+            $headers = [
+                'Rank', 'Team Name', 'Member Name', 'Designation', 
+                'Unit Target', 'Volume Target (Tk)', 'Visit Target', 
+                'Assigned Leads', 'Follow Up', 'Follow Up %', 'Contacted', 'Contacted %', 'Interested', 
+                'Visits Done', 'Visit Ach %', 
+                'Units Sold', 'Unit Ach %', 'Volume Assigned (Tk)', 'Volume Unassigned (Tk)', 'Total Volume Achieved (Tk)', 'Perf. Score'
+            ];
+            
+            $inds = $monthlyData['individuals'] ?? [];
+            foreach ($inds as $emp) {
+                $dataRows[] = [
+                    '#' . ($emp['rank'] ?? '-'),
+                    $emp['team_name'] ?? '',
+                    $emp['member_name'] ?? '',
+                    $emp['level_designation'] ?? '',
+                    $emp['unit_target'] ?? 0,
+                    number_format((float)($emp['volume_target'] ?? 0), 2),
+                    $emp['visit_target'] ?? 0,
+                    $emp['assigned_leads'] ?? 0,
+                    $emp['total_follow_up'] ?? 0,
+                    ($emp['follow_up_pct'] ?? 0) . '%',
+                    $emp['total_contacted'] ?? 0,
+                    ($emp['contacted_pct'] ?? 0) . '%',
+                    $emp['interested'] ?? 0,
+                    $emp['visited'] ?? 0,
+                    ($emp['visit_ach_pct'] ?? 0) . '%',
+                    $emp['units_sold'] ?? 0,
+                    ($emp['unit_ach_pct'] ?? 0) . '%',
+                    number_format((float)($emp['volume_assigned'] ?? 0), 2),
+                    number_format((float)($emp['volume_unassigned'] ?? 0), 2),
+                    number_format((float)($emp['total_volume_achieved'] ?? 0), 2),
+                    number_format((float)($emp['performance_score'] ?? 0), 2)
+                ];
+            }
+        } elseif ($tab === 'all-team') {
+            $reportTitle = 'Sales Activity Report - All Team Report';
+            $subTitle = 'Period: ' . $periodText;
+            $filenamePrefix = "Sales_All_Team_Report_{$year}_{$month}";
+            $headers = [
+                'Rank', 'Team Name', 'Total Leads', 'Follow Up', 'Follow Up %', 
+                'Contacted', 'Contacted %', 'Not Contacted', 'Interested', 'Not Interested', 
+                'Visits Done', 'Visit Target', 'Visit Ach %', 
+                'Units Sold', 'Volume Target (Tk)', 'Volume Achieved (Tk)', 'Volume Ach %', 'Team Score'
+            ];
+            
+            $teams = $monthlyData['teams'] ?? [];
+            foreach ($teams as $t) {
+                $dataRows[] = [
+                    '#' . ($t['rank'] ?? '-'),
+                    $t['team_name'] ?? '',
+                    $t['total_leads'] ?? 0,
+                    $t['total_follow_up'] ?? 0,
+                    ($t['follow_up_pct'] ?? 0) . '%',
+                    $t['total_contacted'] ?? 0,
+                    ($t['contacted_pct'] ?? 0) . '%',
+                    $t['total_not_contacted'] ?? 0,
+                    $t['interested'] ?? 0,
+                    $t['not_interested'] ?? 0,
+                    $t['visited'] ?? 0,
+                    $t['visit_target'] ?? 0,
+                    ($t['visit_ach_pct'] ?? 0) . '%',
+                    $t['units_sold'] ?? 0,
+                    number_format((float)($t['volume_target'] ?? 0), 2),
+                    number_format((float)($t['total_volume_achieved'] ?? 0), 2),
+                    ($t['volume_ach_pct'] ?? 0) . '%',
+                    number_format((float)($t['performance_score'] ?? 0), 2)
+                ];
+            }
+        } else { // daily
+            $reportTitle = 'Sales Activity Report - Daily Activity Report';
+            $subTitle = 'Specific Date: ' . $dailyDateText;
+            $filenamePrefix = "Sales_Daily_Report_{$date}";
+            $headers = [
+                'SL', 'Member Name', 'Designation', 'Team Name', 
+                'Leads Assigned Today', 'Followed Up Today', 'Contacted Today', 
+                'Interested', 'Not Interested', 'Will Visit Today', 'Visited Today', 'Units Sold Today', 'Volume Achieved Today (Tk)'
+            ];
+            
+            $daily = $dailyData ?? [];
+            $sl = 1;
+            foreach ($daily as $emp) {
+                $dataRows[] = [
+                    $sl++,
+                    $emp['member_name'] ?? '',
+                    $emp['level_designation'] ?? '',
+                    $emp['team_name'] ?? '',
+                    $emp['assigned_leads'] ?? 0,
+                    $emp['total_follow_up'] ?? 0,
+                    $emp['total_contacted'] ?? 0,
+                    $emp['interested'] ?? 0,
+                    $emp['not_interested'] ?? 0,
+                    $emp['will_visit'] ?? 0,
+                    $emp['visited'] ?? 0,
+                    $emp['units_sold'] ?? 0,
+                    number_format((float)($emp['total_volume_achieved'] ?? 0), 2)
+                ];
+            }
+        }
+
+        $sheet->setCellValue('A2', $reportTitle);
+        $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(12);
+
+        $sheet->setCellValue('A3', $subTitle . ' | Exported on: ' . date('d M Y, h:i A'));
+        $sheet->getStyle('A3')->getFont()->setItalic(true)->setSize(10)->getColor()->setRGB('555555');
+
+        // Headers row (Row 5)
+        $headerRow = 5;
+        $totalCols = count($headers);
+        for ($i = 0; $i < $totalCols; $i++) {
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
+            $sheet->setCellValue($colLetter . $headerRow, $headers[$i]);
+        }
+
+        $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
+        $headerRange = 'A5:' . $lastColLetter . '5';
+        $sheet->getStyle($headerRange)->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 10],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '1F4E79']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+        ]);
+        $sheet->getRowDimension(5)->setRowHeight(25);
+
+        // Data rows
+        $currentRow = 6;
+        foreach ($dataRows as $row) {
+            $colIdx = 1;
+            foreach ($row as $val) {
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
+                $sheet->setCellValue($colLetter . $currentRow, $val);
+                $colIdx++;
+            }
+            if ($currentRow % 2 == 0) {
+                $rowRange = 'A' . $currentRow . ':' . $lastColLetter . $currentRow;
+                $sheet->getStyle($rowRange)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F8FAFC');
+            }
+            $currentRow++;
+        }
+
+        $lastDataRow = $currentRow - 1;
+        if (!empty($dataRows)) {
+            $fullTableRange = 'A5:' . $lastColLetter . $lastDataRow;
+            $sheet->getStyle($fullTableRange)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)->getColor()->setRGB('D9D9D9');
+        }
+
+        for ($c = 1; $c <= $totalCols; $c++) {
+            $colString = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c);
+            $sheet->getColumnDimension($colString)->setAutoSize(true);
+        }
+
+        $filename = $filenamePrefix . '_' . date('Ymd_His') . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
+    /**
+     * Export report data to PDF
+     */
+    private function exportPdf($tab, $monthlyData, $dailyData, $year, $month, $date)
+    {
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        $periodText = !empty($monthlyData['period']) 
+            ? date('d M, Y', strtotime($monthlyData['period']['start'])) . ' to ' . date('d M, Y', strtotime($monthlyData['period']['end']))
+            : "Month: {$month}, Year: {$year}";
+            
+        $dailyDateText = date('d M, Y', strtotime($date));
+
+        $headers = [];
+        $dataRows = [];
+        $reportTitle = '';
+        $subTitle = '';
+        $filenamePrefix = '';
+
+        if ($tab === 'dashboard') {
+            $reportTitle = 'Sales Activity Report - Ranking Dashboard (Top Performers)';
+            $subTitle = 'Period: ' . $periodText;
+            $filenamePrefix = "Sales_Ranking_Dashboard_{$year}_{$month}";
+            $headers = ['Rank', 'Member Name', 'Designation', 'Team Name', 'Total Score', 'Achieved Volume (Tk)', 'Follow Up Rate (%)', 'Assigned Leads', 'Total Follow Up', 'Contacted', 'Visits', 'Units Sold'];
+            
+            $inds = $monthlyData['individuals'] ?? [];
+            foreach ($inds as $emp) {
+                $dataRows[] = [
+                    '#' . ($emp['rank'] ?? '-'),
+                    $emp['member_name'] ?? '',
+                    $emp['level_designation'] ?? '',
+                    $emp['team_name'] ?? '',
+                    number_format((float)($emp['performance_score'] ?? 0), 2),
+                    number_format((float)($emp['total_volume_achieved'] ?? 0), 2),
+                    ($emp['follow_up_pct'] ?? 0) . '%',
+                    $emp['assigned_leads'] ?? 0,
+                    $emp['total_follow_up'] ?? 0,
+                    $emp['total_contacted'] ?? 0,
+                    $emp['visited'] ?? 0,
+                    $emp['units_sold'] ?? 0
+                ];
+            }
+        } elseif ($tab === 'monthly') {
+            $reportTitle = 'Sales Activity Report - Monthly Team Summary';
+            $subTitle = 'Period: ' . $periodText;
+            $filenamePrefix = "Sales_Monthly_Team_Summary_{$year}_{$month}";
+            $headers = [
+                'Rank', 'Team', 'Member Name', 'Designation', 
+                'Unit Tgt', 'Vol Tgt', 'Visit Tgt', 
+                'Assigned', 'F.Up', 'F.Up%', 'Contact', 'Contact%', 'Interest', 
+                'Visits', 'Visit%', 
+                'Sold', 'Sold%', 'Assigned Vol', 'Unassigned Vol', 'Total Vol Achieved', 'Perf Score'
+            ];
+            
+            $inds = $monthlyData['individuals'] ?? [];
+            foreach ($inds as $emp) {
+                $dataRows[] = [
+                    '#' . ($emp['rank'] ?? '-'),
+                    $emp['team_name'] ?? '',
+                    $emp['member_name'] ?? '',
+                    $emp['level_designation'] ?? '',
+                    $emp['unit_target'] ?? 0,
+                    number_format((float)($emp['volume_target'] ?? 0)),
+                    $emp['visit_target'] ?? 0,
+                    $emp['assigned_leads'] ?? 0,
+                    $emp['total_follow_up'] ?? 0,
+                    ($emp['follow_up_pct'] ?? 0) . '%',
+                    $emp['total_contacted'] ?? 0,
+                    ($emp['contacted_pct'] ?? 0) . '%',
+                    $emp['interested'] ?? 0,
+                    $emp['visited'] ?? 0,
+                    ($emp['visit_ach_pct'] ?? 0) . '%',
+                    $emp['units_sold'] ?? 0,
+                    ($emp['unit_ach_pct'] ?? 0) . '%',
+                    number_format((float)($emp['volume_assigned'] ?? 0)),
+                    number_format((float)($emp['volume_unassigned'] ?? 0)),
+                    number_format((float)($emp['total_volume_achieved'] ?? 0)),
+                    number_format((float)($emp['performance_score'] ?? 0), 2)
+                ];
+            }
+        } elseif ($tab === 'all-team') {
+            $reportTitle = 'Sales Activity Report - All Team Report';
+            $subTitle = 'Period: ' . $periodText;
+            $filenamePrefix = "Sales_All_Team_Report_{$year}_{$month}";
+            $headers = [
+                'Rank', 'Team Name', 'Total Leads', 'Follow Up', 'Follow Up %', 
+                'Contacted', 'Contacted %', 'Not Contacted', 'Interested', 'Not Interested', 
+                'Visits (Ach/Tgt)', 'Sold Units', 'Volume Target (Tk)', 'Volume Achieved (Tk)', 'Vol Ach %', 'Score'
+            ];
+            
+            $teams = $monthlyData['teams'] ?? [];
+            foreach ($teams as $t) {
+                $dataRows[] = [
+                    '#' . ($t['rank'] ?? '-'),
+                    $t['team_name'] ?? '',
+                    $t['total_leads'] ?? 0,
+                    $t['total_follow_up'] ?? 0,
+                    ($t['follow_up_pct'] ?? 0) . '%',
+                    $t['total_contacted'] ?? 0,
+                    ($t['contacted_pct'] ?? 0) . '%',
+                    $t['total_not_contacted'] ?? 0,
+                    $t['interested'] ?? 0,
+                    $t['not_interested'] ?? 0,
+                    ($t['visited'] ?? 0) . ' / ' . ($t['visit_target'] ?? 0) . ' (' . ($t['visit_ach_pct'] ?? 0) . '%)',
+                    $t['units_sold'] ?? 0,
+                    number_format((float)($t['volume_target'] ?? 0)),
+                    number_format((float)($t['total_volume_achieved'] ?? 0)),
+                    ($t['volume_ach_pct'] ?? 0) . '%',
+                    number_format((float)($t['performance_score'] ?? 0), 2)
+                ];
+            }
+        } else { // daily
+            $reportTitle = 'Sales Activity Report - Daily Activity Report';
+            $subTitle = 'Specific Date: ' . $dailyDateText;
+            $filenamePrefix = "Sales_Daily_Report_{$date}";
+            $headers = [
+                'SL', 'Member Name', 'Designation', 'Team Name', 
+                'Assigned Today', 'Followed Up', 'Contacted', 
+                'Interested', 'Not Interested', 'Will Visit', 'Visited', 'Sold Units', 'Achieved Volume (Tk)'
+            ];
+            
+            $daily = $dailyData ?? [];
+            $sl = 1;
+            foreach ($daily as $emp) {
+                $dataRows[] = [
+                    $sl++,
+                    $emp['member_name'] ?? '',
+                    $emp['level_designation'] ?? '',
+                    $emp['team_name'] ?? '',
+                    $emp['assigned_leads'] ?? 0,
+                    $emp['total_follow_up'] ?? 0,
+                    $emp['total_contacted'] ?? 0,
+                    $emp['interested'] ?? 0,
+                    $emp['not_interested'] ?? 0,
+                    $emp['will_visit'] ?? 0,
+                    $emp['visited'] ?? 0,
+                    $emp['units_sold'] ?? 0,
+                    number_format((float)($emp['total_volume_achieved'] ?? 0), 2)
+                ];
+            }
+        }
+
+        $html = '<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>' . htmlspecialchars($reportTitle) . '</title>
+            <style>
+                @page { margin: 16px 18px; size: A4 landscape; }
+                body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 8.5px; color: #2d3748; line-height: 1.3; }
+                .report-header { text-align: center; margin-bottom: 10px; border-bottom: 2px solid #1F4E79; padding-bottom: 6px; }
+                .company-name { font-size: 15px; font-weight: bold; color: #1F4E79; margin: 0 0 2px 0; letter-spacing: 0.5px; text-transform: uppercase; }
+                .report-title { font-size: 11px; font-weight: bold; color: #2d3748; margin: 0 0 3px 0; }
+                .meta-info { font-size: 8.5px; color: #718096; margin: 0; }
+                table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 7.5px; }
+                th, td { border: 1px solid #cbd5e0; padding: 3.5px 4.5px; text-align: center; word-break: break-word; }
+                th { background-color: #1F4E79; color: #ffffff; font-weight: bold; text-transform: uppercase; font-size: 7.5px; }
+                tr:nth-child(even) { background-color: #f8fafc; }
+                .text-start { text-align: left !important; }
+                .text-end { text-align: right !important; }
+                .fw-bold { font-weight: bold; }
+                .footer { margin-top: 10px; font-size: 7.5px; color: #a0aec0; text-align: right; }
+            </style>
+        </head>
+        <body>
+            <div class="report-header">
+                <div class="company-name">THE PREMIUM HOMES LTD</div>
+                <div class="report-title">' . htmlspecialchars($reportTitle) . '</div>
+                <div class="meta-info">' . htmlspecialchars($subTitle) . ' &nbsp;|&nbsp; Generated on: ' . date('d M Y, h:i A') . '</div>
+            </div>
+            <table>
+                <thead>
+                    <tr>';
+        foreach ($headers as $h) {
+            $html .= '<th>' . htmlspecialchars($h) . '</th>';
+        }
+        $html .= '  </tr>
+                </thead>
+                <tbody>';
+
+        if (!empty($dataRows)) {
+            foreach ($dataRows as $row) {
+                $html .= '<tr>';
+                $colIdx = 0;
+                foreach ($row as $val) {
+                    $class = '';
+                    if ($colIdx === 1 || ($tab === 'monthly' && ($colIdx === 1 || $colIdx === 2))) {
+                        $class = ' class="text-start"';
+                    }
+                    $html .= '<td' . $class . '>' . htmlspecialchars($val) . '</td>';
+                    $colIdx++;
+                }
+                $html .= '</tr>';
+            }
+        } else {
+            $html .= '<tr><td colspan="' . count($headers) . '" style="text-align: center; padding: 15px; color: #718096;">No records found for the selected period.</td></tr>';
+        }
+
+        $html .= '  </tbody>
+            </table>
+            <div class="footer">
+                Printed from TPHL ERP System &copy; ' . date('Y') . ' The Premium Homes Ltd. All rights reserved.
+            </div>
+        </body>
+        </html>';
+
+        $dompdf = new \Dompdf\Dompdf(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        $filename = $filenamePrefix . '_' . date('Ymd_His') . '.pdf';
+        $dompdf->stream($filename, ["Attachment" => true]);
+        exit;
     }
 }
