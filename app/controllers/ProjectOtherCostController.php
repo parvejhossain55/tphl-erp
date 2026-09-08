@@ -406,19 +406,21 @@ class ProjectOtherCostController extends Controller
         } elseif ($row['status'] == 'management_approved') {
             $status = 'approved';
             $approveRole = 'accounts';
-            $approvedBy = $row['management_apporved_by_id'];
-            $approvedAt = $row['updated_at'];
-            $approvalNote = $row['management_apporved_note'];
+            $approvedAmount = !empty($row['approved_amount']) ? (float)$row['approved_amount'] : $amount;
+            $approvedBy = $row['management_apporved_by_id'] ?? null;
+            $approvedAt = $row['management_apporved_at'] ?? $row['updated_at'];
+            $approvalNote = $row['management_apporved_note'] ?? null;
         } elseif ($row['status'] == 'paid') {
             $status = 'approved';
             $approveRole = 'completed';
-            $approvedBy = $row['management_apporved_by_id'];
-            $approvedAt = $row['updated_at'];
-            $approvalNote = $row['management_apporved_note'];
+            $approvedAmount = !empty($row['approved_amount']) ? (float)$row['approved_amount'] : (!empty($row['payment_amount']) ? (float)$row['payment_amount'] : $amount);
+            $approvedBy = $row['management_apporved_by_id'] ?? null;
+            $approvedAt = $row['management_apporved_at'] ?? $row['payment_at'] ?? $row['updated_at'];
+            $approvalNote = $row['management_apporved_note'] ?? null;
         }
 
         $metaData = json_encode(['purpose' => $row['purpose'], 'project_id' => $row['project_id'], 'project_name' => $row['project_name']]);
-        $createdAt = $row['created_at'];
+        $createdAt = !empty($row['created_at']) ? $row['created_at'] : date('Y-m-d H:i:s');
 
         if ($check && $check->num_rows == 0) {
             $stmt = $this->db->prepare("
@@ -427,7 +429,7 @@ class ProjectOtherCostController extends Controller
                 VALUES (?, ?, ?, 'project_other_costs', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             if ($stmt) {
-                $stmt->bind_param("sssdddisisssss", $deptName, $requestType, $title, $reqId, $amount, $approvedAmount, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                $stmt->bind_param("sssiddssssssss", $deptName, $requestType, $title, $reqId, $amount, $approvedAmount, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
                 $stmt->execute();
                 $stmt->close();
             }
@@ -438,7 +440,7 @@ class ProjectOtherCostController extends Controller
                 WHERE source_table = 'project_other_costs' AND source_id = ?
             ");
             if ($stmt) {
-                $stmt->bind_param("sssddssissi", $deptName, $requestType, $title, $amount, $approvedAmount, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $reqId);
+                $stmt->bind_param("sssddsssssi", $deptName, $requestType, $title, $amount, $approvedAmount, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $reqId);
                 $stmt->execute();
                 $stmt->close();
             }
