@@ -42,7 +42,7 @@ class UserDashboardController extends Controller
         $userTeamId = $_SESSION['user']['team_id'] ?? null;
         
         $assignedUsers = [];
-        if (in_array($userRoleId, [5, 33, 8, 3])) {
+        if (in_array((int)$userRoleId, [5, 8])) {
             if ($userTeamId) {
                 $assignedUsers = $this->userModel->getUsersByTeamAndRole($userTeamId);
             } else {

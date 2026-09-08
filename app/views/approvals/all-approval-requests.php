@@ -580,13 +580,51 @@
                                         <?php endif; ?>
                                     </td>
 
-                                    <!-- Action Button (Directly routes to specific module page!) -->
-                                    <td class="pe-4 text-end">
-                                        <?php if ($isAccountsUser && in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid'])): ?>
+                                    <!-- Action Button (Directly routes to specific module page or Debit Voucher!) -->
+                                    <td class="pe-4 text-end text-nowrap">
+                                        <?php
+                                        $voucherSupportedModules = [
+                                            'advance_salaries', 'contractor_bill_requests', 'vendor_payment_requests',
+                                            'fund_requisitions', 'project_other_costs', 'cashout_requests',
+                                            'payslips', 'project_extra_assets', 'purchase_requests',
+                                            'con_labor_requisitions', 'con_land_requisitions', 'land_fund_requisitions',
+                                            'client_refund_requests', 'project_incentive_claims', 'operational_fund_requests',
+                                            'expense_adjustments'
+                                        ];
+                                        $isVoucherSupported = in_array($sourceTable, $voucherSupportedModules);
+                                        $voucherUrl = $base_url . '/print-debit-voucher?module=' . urlencode($sourceTable) . '&id=' . (int)$req['source_id'];
+                                        $isPaidOrSettled = in_array($payoutStatus, ['Paid & Settled', 'Settled']) || in_array(strtolower($req['status']), ['paid', 'fully_paid', 'labor_disbursed', 'deducted']);
+                                        $isPartiallyPaid = ($payoutStatus === 'Partially Paid') || strtolower($req['status']) === 'partially_paid';
+                                        ?>
+
+                                        <?php if ($isPartiallyPaid): ?>
+                                            <?php if ($isAccountsUser): ?>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-success rounded-2 px-2 shadow-sm fw-semibold me-1" title="Disburse remaining amount">
+                                                    <i class="fa-solid fa-money-check-dollar me-1"></i>Pay
+                                                </a>
+                                            <?php endif; ?>
+                                            <?php if ($isVoucherSupported): ?>
+                                                <a href="<?= $voucherUrl ?>" target="_blank" class="btn btn-sm btn-outline-primary rounded-2 px-2 shadow-sm fw-semibold" title="View, Print & Download Payment Voucher">
+                                                    <i class="fa-solid fa-file-invoice-dollar me-1"></i>Payment Voucher
+                                                </a>
+                                            <?php endif; ?>
+
+                                        <?php elseif ($isPaidOrSettled): ?>
+                                            <?php if ($isVoucherSupported): ?>
+                                                <a href="<?= $voucherUrl ?>" target="_blank" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold me-1" title="View, Print & Download Payment Voucher">
+                                                    <i class="fa-solid fa-file-invoice-dollar me-1"></i>Payment Voucher
+                                                </a>
+                                            <?php endif; ?>
+                                            <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Module Page">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </a>
+
+                                        <?php elseif ($isAccountsUser && in_array($payoutStatus, ['Pending Accounts Payout'])): ?>
                                             <a href="<?= $targetUrl ?>" class="btn btn-sm btn-success rounded-2 px-3 shadow-sm fw-semibold">
                                                 <i class="fa-solid fa-money-check-dollar me-1"></i>Pay / Disburse
                                             </a>
-                                        <?php elseif (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid'])): ?>
+
+                                        <?php elseif (in_array($req['status'], ['pending', 'partially_approved'])): ?>
                                             <?php if ($canUserApprove): ?>
                                                 <a href="<?= $targetUrl ?>" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold">
                                                     <i class="fa-solid fa-up-right-from-square me-1"></i>Review / Process
@@ -598,6 +636,7 @@
                                                     <i class="fa-solid fa-lock me-1 text-warning"></i><?= ($isSiteOperator && $reqAmount > 100000) ? 'Management Only' : 'Pending Other Role' ?>
                                                 </a>
                                             <?php endif; ?>
+
                                         <?php else: ?>
                                             <a href="<?= $targetUrl ?>"
                                                 class="btn btn-sm btn-light text-dark rounded-2 px-2 border">
