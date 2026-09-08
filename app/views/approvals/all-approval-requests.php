@@ -120,9 +120,9 @@
                     <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Approval Status</label>
                     <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="" <?= empty($filters['status']) || $filters['status'] === 'pending' || $filters['status'] === 'my_pending' ? 'selected' : '' ?>>My Actionable Pending (Default)</option>
-                        <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>Approved History</option>
+                        <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>Approved & Paid History</option>
                         <option value="rejected" <?= ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' ?>>Rejected History</option>
-                        <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33])): ?>
+                        <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 30, 33])): ?>
                             <option value="all_pending" <?= ($filters['status'] ?? '') === 'all_pending' ? 'selected' : '' ?>>All Departments Pending (Audit)</option>
                             <option value="all" <?= ($filters['status'] ?? '') === 'all' ? 'selected' : '' ?>>All Company Requests (Complete Audit)</option>
                         <?php endif; ?>
@@ -658,7 +658,7 @@
     let approvalTable;
 
     document.addEventListener('DOMContentLoaded', function () {
-        if (typeof $.fn.DataTable !== 'undefined') {
+        if (typeof $.fn.DataTable !== 'undefined' && $('#allApprovalRequestsTable tbody tr td[colspan]').length === 0) {
             if ($.fn.DataTable.isDataTable('#allApprovalRequestsTable')) {
                 $('#allApprovalRequestsTable').DataTable().destroy();
             }

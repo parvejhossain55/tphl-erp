@@ -287,8 +287,17 @@
                                     if (!empty($tx['bank_name'])) $details[] = "Bank: " . $tx['bank_name'];
                                     if (!empty($tx['cheque_no'])) $details[] = "Cheque: " . $tx['cheque_no'];
                                     if (!empty($tx['online_type'])) $details[] = "Type: " . $tx['online_type'];
-                                    echo htmlspecialchars(implode(', ', $details));
+                                    $refText = implode(', ', $details);
+                                    $descText = !empty($tx['description']) ? $tx['description'] : (!empty($voucher['expense_details']) ? $voucher['expense_details'] : '');
                                 ?>
+                                <?php if (!empty($refText)): ?>
+                                    <div style="font-weight: 600; color: #111;"><?= htmlspecialchars($refText) ?></div>
+                                <?php endif; ?>
+                                <?php if (!empty($descText)): ?>
+                                    <div style="color: #333; font-size: 12px; margin-top: <?= !empty($refText) ? '4px' : '0' ?>; line-height: 1.4;">
+                                        <strong>Details:</strong> <?= nl2br(htmlspecialchars($descText)) ?>
+                                    </div>
+                                <?php endif; ?>
                             </td>
                             <td style="text-align: right; font-weight: 600;"><?= number_format($tx['amount_paid'], 2) ?></td>
                         </tr>

@@ -48,17 +48,23 @@ class VoucherController extends Controller
                 $voucherData['project'] = $req['project_name'] ?? 'Head Office / Operations';
                 $voucherData['purpose'] = 'Cashout Request - ' . ($req['remarks'] ?? 'General Cashout');
                 
+                $expenseDetails = !empty($req['description']) ? $req['description'] : (!empty($req['remarks']) ? $req['remarks'] : ($req['purpose_paid_to'] ?? 'Cashout Requisition'));
+                $voucherData['expense_details'] = $expenseDetails;
+
                 // Transactions
                 $tStmt = $this->db->prepare("SELECT amount as amount_paid, payment_method, payment_date as transaction_date, bank_name, bank_account_no, cheque_no, online_type, transaction_ref as reference_number FROM cashout_payments WHERE cashout_request_id = ? ORDER BY created_at ASC");
-                $tStmt->bind_param("i", $id);
-                $tStmt->execute();
-                $tRes = $tStmt->get_result();
-                while ($row = $tRes->fetch_assoc()) {
-                    $voucherData['transactions'][] = $row;
-                    $voucherData['amount'] += (float)$row['amount_paid'];
-                    $voucherData['payment_method'] = $row['payment_method'];
+                if ($tStmt) {
+                    $tStmt->bind_param("i", $id);
+                    $tStmt->execute();
+                    $tRes = $tStmt->get_result();
+                    while ($row = $tRes->fetch_assoc()) {
+                        $row['description'] = $expenseDetails;
+                        $voucherData['transactions'][] = $row;
+                        $voucherData['amount'] += (float)$row['amount_paid'];
+                        $voucherData['payment_method'] = $row['payment_method'];
+                    }
+                    $tStmt->close();
                 }
-                $tStmt->close();
                 if (empty($voucherData['transactions'])) {
                     $voucherData['amount'] = (float)($req['approved_amount'] ?? $req['amount'] ?? 0);
                     $voucherData['payment_method'] = 'Cash';
@@ -67,7 +73,8 @@ class VoucherController extends Controller
                         'payment_method' => 'Cash',
                         'transaction_date' => $req['updated_at'] ?? date('Y-m-d'),
                         'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
-                        'reference_number' => 'CSH-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                        'reference_number' => 'CSH-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+                        'description' => $expenseDetails
                     ];
                 }
                 break;
@@ -85,6 +92,13 @@ class VoucherController extends Controller
                 $voucherData['paid_to'] = $req['full_name'];
                 $voucherData['project'] = $req['project_name'] ?? 'General Operations';
                 $voucherData['purpose'] = 'Petty Cash / Fund Requisition - ' . $req['purpose'];
+
+                $descParts = [];
+                if (!empty($req['category'])) $descParts[] = ucfirst(str_replace('_', ' ', $req['category']));
+                if (!empty($req['purpose'])) $descParts[] = $req['purpose'];
+                $expenseDetails = !empty($descParts) ? implode(' — ', $descParts) : ($req['purpose'] ?? 'Fund Requisition');
+                $voucherData['expense_details'] = $expenseDetails;
+
                 $voucherData['amount'] = (float)(!empty($req['paid_amount']) && $req['paid_amount'] > 0 ? $req['paid_amount'] : $req['amount']);
                 $voucherData['payment_method'] = $req['payment_method'] ?? 'Cash';
                 
@@ -93,7 +107,8 @@ class VoucherController extends Controller
                     'payment_method' => $req['payment_method'] ?? 'Cash',
                     'transaction_date' => $req['paid_at'] ?? $req['updated_at'] ?? date('Y-m-d'),
                     'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '', 
-                    'reference_number' => 'FR-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                    'reference_number' => 'FR-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+                    'description' => $expenseDetails
                 ];
                 break;
 
@@ -111,11 +126,18 @@ class VoucherController extends Controller
                 $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
                 $voucherData['purpose'] = 'Contractor Bill - ' . $req['work_description'];
                 
+                $descParts = [];
+                if (!empty($req['bill_type'])) $descParts[] = "Bill Type: " . ucfirst(str_replace('_', ' ', $req['bill_type']));
+                if (!empty($req['work_description'])) $descParts[] = $req['work_description'];
+                $expenseDetails = !empty($descParts) ? implode(' — ', $descParts) : 'Contractor Work Bill';
+                $voucherData['expense_details'] = $expenseDetails;
+
                 $tStmt = $this->db->prepare("SELECT amount_paid, payment_method, transaction_date, reference_number FROM con_financial_transactions WHERE ref_type = 'contractor_bill' AND ref_id = ? ORDER BY created_at ASC");
                 $tStmt->bind_param("i", $id);
                 $tStmt->execute();
                 $tRes = $tStmt->get_result();
                 while ($row = $tRes->fetch_assoc()) {
+                    $row['description'] = $expenseDetails;
                     $voucherData['transactions'][] = $row;
                     $voucherData['amount'] += (float)$row['amount_paid'];
                     $voucherData['payment_method'] = $row['payment_method'];
@@ -129,14 +151,16 @@ class VoucherController extends Controller
                         'payment_method' => 'Bank / Cash',
                         'transaction_date' => $req['updated_at'] ?? date('Y-m-d'),
                         'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
-                        'reference_number' => 'CB-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                        'reference_number' => 'CB-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+                        'description' => $expenseDetails
                     ];
                 }
                 break;
 
             case 'vendor_payment':
             case 'vendor_payment_requests':
-                $stmt = $this->db->prepare("SELECT vpr.*, p.name as project_name, v.name as vendor_name FROM vendor_payment_requests vpr LEFT JOIN projects p ON vpr.project_id = p.id LEFT JOIN vendors v ON v.id = vpr.vendor_id WHERE vpr.id = ?");
+                $stmt = $this->db->prepare("SELECT vpr.*, p.name as project_name, v.name as vendor_name, po.id as po_number, po.remarks as po_remarks FROM vendor_payment_requests vpr LEFT JOIN projects p ON vpr.project_id = p.id LEFT JOIN vendors v ON v.id = vpr.vendor_id LEFT JOIN purchase_orders po ON po.id = vpr.purchase_order_id WHERE vpr.id = ?");
+                if (!$stmt) die("Error preparing query: " . $this->db->error);
                 $stmt->bind_param("i", $id);
                 $stmt->execute();
                 $req = $stmt->get_result()->fetch_assoc();
@@ -144,15 +168,25 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
-                $voucherData['paid_to'] = $req['vendor_name'];
+                $voucherData['paid_to'] = $req['vendor_name'] ?? 'Vendor';
                 $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
                 $voucherData['purpose'] = 'Vendor Payment - Invoice ' . ($req['invoice_number'] ?? 'N/A');
                 
+                $descParts = [];
+                if (!empty($req['po_number'])) $descParts[] = "PO: #" . $req['po_number'];
+                if (!empty($req['invoice_number'])) $descParts[] = "Invoice: " . $req['invoice_number'];
+                if (!empty($req['payment_type'])) $descParts[] = "Payment Type: " . ucfirst(str_replace('_', ' ', $req['payment_type']));
+                if (!empty($req['management_note'])) $descParts[] = "Note: " . $req['management_note'];
+                if (!empty($req['qc_note'])) $descParts[] = "QC Note: " . $req['qc_note'];
+                $expenseDetails = !empty($descParts) ? implode(' | ', $descParts) : 'Vendor Materials / Supplies';
+                $voucherData['expense_details'] = $expenseDetails;
+
                 $tStmt = $this->db->prepare("SELECT amount_paid, payment_method, transaction_date, reference_number FROM con_financial_transactions WHERE ref_type = 'vendor_payment' AND ref_id = ? ORDER BY created_at ASC");
                 $tStmt->bind_param("i", $id);
                 $tStmt->execute();
                 $tRes = $tStmt->get_result();
                 while ($row = $tRes->fetch_assoc()) {
+                    $row['description'] = $expenseDetails;
                     $voucherData['transactions'][] = $row;
                     $voucherData['amount'] += (float)$row['amount_paid'];
                     $voucherData['payment_method'] = $row['payment_method'];
@@ -166,7 +200,8 @@ class VoucherController extends Controller
                         'payment_method' => 'Bank / Cash',
                         'transaction_date' => $req['updated_at'] ?? date('Y-m-d'),
                         'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
-                        'reference_number' => 'VEND-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                        'reference_number' => 'VEND-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+                        'description' => $expenseDetails
                     ];
                 }
                 break;
@@ -185,11 +220,15 @@ class VoucherController extends Controller
                 $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
                 $voucherData['purpose'] = 'Operational Fund - ' . $req['purpose'];
                 
+                $expenseDetails = !empty($req['purpose']) ? $req['purpose'] : 'Operational Site Fund';
+                $voucherData['expense_details'] = $expenseDetails;
+
                 $tStmt = $this->db->prepare("SELECT amount_paid, payment_method, transaction_date, reference_number FROM con_financial_transactions WHERE ref_type = 'fund_request' AND ref_id = ? ORDER BY created_at ASC");
                 $tStmt->bind_param("i", $id);
                 $tStmt->execute();
                 $tRes = $tStmt->get_result();
                 while ($row = $tRes->fetch_assoc()) {
+                    $row['description'] = $expenseDetails;
                     $voucherData['transactions'][] = $row;
                     $voucherData['amount'] += (float)$row['amount_paid'];
                     $voucherData['payment_method'] = $row['payment_method'];
@@ -203,7 +242,8 @@ class VoucherController extends Controller
                         'payment_method' => 'Cash',
                         'transaction_date' => $req['updated_at'] ?? date('Y-m-d'),
                         'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
-                        'reference_number' => 'OPF-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                        'reference_number' => 'OPF-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+                        'description' => $expenseDetails
                     ];
                 }
                 break;
@@ -227,6 +267,14 @@ class VoucherController extends Controller
                 $voucherData['paid_to'] = (!empty($req['employee_name']) ? $req['employee_name'] : 'Employee') . (!empty($req['emp_code']) ? ' (' . $req['emp_code'] . ')' : '');
                 $voucherData['project'] = !empty($req['dept_name']) ? $req['dept_name'] : 'Head Office / HR Payroll';
                 $voucherData['purpose'] = 'Advance Salary Request - ' . ($req['reason'] ?? 'Staff Advance');
+                
+                $descParts = [];
+                if (!empty($req['reason'])) $descParts[] = "Reason: " . $req['reason'];
+                if (!empty($req['deduction_months'])) $descParts[] = "Deduction: " . $req['deduction_months'] . " Month(s)";
+                if (!empty($req['deduction_start_month'])) $descParts[] = "Starting: " . date('M Y', strtotime($req['deduction_start_month'] . '-01'));
+                $expenseDetails = !empty($descParts) ? implode(' — ', $descParts) : 'Advance Salary Request';
+                $voucherData['expense_details'] = $expenseDetails;
+
                 $amt = (float)(!empty($req['paid_amount']) && $req['paid_amount'] > 0 ? $req['paid_amount'] : $req['amount']);
                 $voucherData['amount'] = $amt;
                 $voucherData['payment_method'] = 'Cash / Bank';
@@ -236,7 +284,8 @@ class VoucherController extends Controller
                     'payment_method' => 'Cash / Bank',
                     'transaction_date' => $req['approved_date'] ?? $req['updated_at'] ?? date('Y-m-d'),
                     'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
-                    'reference_number' => 'ADV-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                    'reference_number' => 'ADV-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+                    'description' => $expenseDetails
                 ];
                 break;
 
@@ -258,7 +307,15 @@ class VoucherController extends Controller
 
                 $voucherData['paid_to'] = $req['requester_name'] ?? 'Site Operator';
                 $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
-                $voucherData['purpose'] = 'Project Other Cost (' . ($req['rcost_type'] ?? 'Site Expense') . ') - ' . ($req['purpose'] ?? '');
+                $costTypeLabel = !empty($req['rcost_type']) ? ucfirst(str_replace('_', ' ', $req['rcost_type'])) : 'Site Expense';
+                $voucherData['purpose'] = 'Project Other Cost (' . $costTypeLabel . ') - ' . ($req['purpose'] ?? '');
+
+                $descParts = [];
+                if (!empty($req['rcost_type'])) $descParts[] = $costTypeLabel;
+                if (!empty($req['purpose'])) $descParts[] = $req['purpose'];
+                $expenseDetails = !empty($descParts) ? implode(' — ', $descParts) : 'Project Other Cost';
+                $voucherData['expense_details'] = $expenseDetails;
+
                 $amt = (float)(!empty($req['payment_amount']) && $req['payment_amount'] > 0 ? $req['payment_amount'] : (!empty($req['approved_amount']) ? $req['approved_amount'] : $req['request_amount']));
                 $voucherData['amount'] = $amt;
                 $voucherData['payment_method'] = 'Cash';
@@ -268,7 +325,8 @@ class VoucherController extends Controller
                     'payment_method' => 'Cash',
                     'transaction_date' => $req['payment_at'] ?? $req['updated_at'] ?? date('Y-m-d'),
                     'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
-                    'reference_number' => 'POC-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                    'reference_number' => 'POC-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+                    'description' => $expenseDetails
                 ];
                 break;
 
@@ -291,6 +349,16 @@ class VoucherController extends Controller
                 $voucherData['paid_to'] = $req['se_name'] ?? 'Site Engineer / Labor Contractor';
                 $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
                 $voucherData['purpose'] = 'Labor Bill by SE - ' . ($req['requisition_no'] ?? 'Requisition #' . $id);
+                
+                $descParts = [];
+                if (!empty($req['labor_count'])) {
+                    $descParts[] = $req['labor_count'] . " " . ucfirst($req['labor_type'] ?? 'General') . " Labors" . (!empty($req['working_days']) ? " (" . $req['working_days'] . " days)" : "");
+                }
+                if (!empty($req['purpose'])) $descParts[] = $req['purpose'];
+                if (!empty($req['remarks'])) $descParts[] = "Note: " . $req['remarks'];
+                $expenseDetails = !empty($descParts) ? implode(' — ', $descParts) : 'Labor Bill';
+                $voucherData['expense_details'] = $expenseDetails;
+
                 $amt = (float)(!empty($req['total_paid']) && $req['total_paid'] > 0 ? $req['total_paid'] : (!empty($req['approved_amount']) ? $req['approved_amount'] : $req['total_amount']));
                 $voucherData['amount'] = $amt;
                 $voucherData['payment_method'] = 'Cash';
@@ -301,6 +369,7 @@ class VoucherController extends Controller
                     $tStmt->execute();
                     $tRes = $tStmt->get_result();
                     while ($row = $tRes->fetch_assoc()) {
+                        $row['description'] = $expenseDetails;
                         $voucherData['transactions'][] = $row;
                         $voucherData['payment_method'] = $row['payment_method'];
                     }
@@ -313,7 +382,8 @@ class VoucherController extends Controller
                         'payment_method' => 'Cash',
                         'transaction_date' => $req['payment_date'] ?? $req['updated_at'] ?? date('Y-m-d'),
                         'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
-                        'reference_number' => $req['requisition_no'] ?? ('LAB-' . str_pad($id, 4, '0', STR_PAD_LEFT))
+                        'reference_number' => $req['requisition_no'] ?? ('LAB-' . str_pad($id, 4, '0', STR_PAD_LEFT)),
+                        'description' => $expenseDetails
                     ];
                 }
                 break;
@@ -339,6 +409,14 @@ class VoucherController extends Controller
                 $voucherData['paid_to'] = (!empty($req['employee_name']) ? $req['employee_name'] : 'Employee') . (!empty($req['emp_code']) ? ' (' . $req['emp_code'] . ')' : '');
                 $voucherData['project'] = !empty($req['project_name']) ? $req['project_name'] : (!empty($req['dept_name']) ? $req['dept_name'] : 'Head Office');
                 $voucherData['purpose'] = 'Monthly Staff Salary - ' . ($req['payslip_month'] ?? date('M Y'));
+                
+                $descParts = [];
+                if (!empty($req['payslip_month'])) $descParts[] = "Salary Month: " . $req['payslip_month'];
+                if (!empty($req['remarks'])) $descParts[] = $req['remarks'];
+                if (!empty($req['attendance_remarks'])) $descParts[] = $req['attendance_remarks'];
+                $expenseDetails = !empty($descParts) ? implode(' — ', $descParts) : 'Monthly Staff Salary';
+                $voucherData['expense_details'] = $expenseDetails;
+
                 $amt = (float)($req['net_salary'] ?? 0);
                 $voucherData['amount'] = $amt;
                 $voucherData['payment_method'] = $req['payment_method'] ?? 'Bank / Cash';
@@ -348,7 +426,8 @@ class VoucherController extends Controller
                     'payment_method' => $req['payment_method'] ?? 'Bank / Cash',
                     'transaction_date' => $req['disbursed_at'] ?? $req['updated_at'] ?? date('Y-m-d'),
                     'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
-                    'reference_number' => 'SAL-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                    'reference_number' => 'SAL-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+                    'description' => $expenseDetails
                 ];
                 break;
 
@@ -372,6 +451,16 @@ class VoucherController extends Controller
                 $voucherData['paid_to'] = !empty($req['vendor_name']) ? $req['vendor_name'] : ($req['requester_name'] ?? 'Procurement Vendor');
                 $voucherData['project'] = $req['project_name'] ?? 'Head Office / Operations';
                 $voucherData['purpose'] = 'Office Procurement / Extra Asset - ' . ($req['item_name'] ?? 'Procurement');
+                
+                $descParts = [];
+                if (!empty($req['item_name'])) {
+                    $descParts[] = $req['item_name'] . (!empty($req['quantity']) ? " (Qty: " . $req['quantity'] . ")" : "");
+                }
+                if (!empty($req['justification'])) $descParts[] = "Justification: " . $req['justification'];
+                if (!empty($req['purchase_note'])) $descParts[] = "Note: " . $req['purchase_note'];
+                $expenseDetails = !empty($descParts) ? implode(' — ', $descParts) : 'Office Procurement Request';
+                $voucherData['expense_details'] = $expenseDetails;
+
                 $amt = (float)(!empty($req['paid_amount']) && $req['paid_amount'] > 0 ? $req['paid_amount'] : (!empty($req['total_price']) ? $req['total_price'] : 0));
                 $voucherData['amount'] = $amt;
                 $voucherData['payment_method'] = $req['payment_method'] ?? 'Cash / Bank';
@@ -381,7 +470,8 @@ class VoucherController extends Controller
                     'payment_method' => $req['payment_method'] ?? 'Cash / Bank',
                     'transaction_date' => $req['paid_at'] ?? $req['updated_at'] ?? date('Y-m-d'),
                     'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
-                    'reference_number' => 'PROC-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                    'reference_number' => 'PROC-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+                    'description' => $expenseDetails
                 ];
                 break;
 
@@ -399,6 +489,14 @@ class VoucherController extends Controller
                 $voucherData['paid_to'] = $req['full_name'];
                 $voucherData['project'] = 'Land Acquisition';
                 $voucherData['purpose'] = 'Land Requisition (' . $req['requisition_type'] . ') - ' . $req['purpose'];
+                
+                $descParts = [];
+                if (!empty($req['requisition_type'])) $descParts[] = ucfirst($req['requisition_type']);
+                if (!empty($req['purpose'])) $descParts[] = $req['purpose'];
+                if (!empty($req['remarks'])) $descParts[] = "Note: " . $req['remarks'];
+                $expenseDetails = !empty($descParts) ? implode(' — ', $descParts) : 'Land Fund Requisition';
+                $voucherData['expense_details'] = $expenseDetails;
+
                 $voucherData['amount'] = (float)$req['requested_amount'];
                 $voucherData['payment_method'] = $req['payment_method'] ?? 'Cash';
                 
@@ -407,20 +505,22 @@ class VoucherController extends Controller
                     'payment_method' => $req['payment_method'] ?? 'Cash',
                     'transaction_date' => $req['accounts_paid_at'] ?? $req['updated_at'] ?? date('Y-m-d'),
                     'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '', 
-                    'reference_number' => $req['transaction_no'] ?? ('LAND-' . str_pad($id, 4, '0', STR_PAD_LEFT))
+                    'reference_number' => $req['transaction_no'] ?? ('LAND-' . str_pad($id, 4, '0', STR_PAD_LEFT)),
+                    'description' => $expenseDetails
                 ];
                 break;
 
             case 'client_refund_requests':
             case 'client_refund':
                 $stmt = $this->db->prepare("
-                    SELECT cr.*, b.booking_code, l.lead_name, p.name as project_name 
+                    SELECT cr.*, cr.booking_id, l.lead_name, p.name as project_name 
                     FROM client_refund_requests cr 
-                    LEFT JOIN bookings b ON b.id = cr.booking_id 
-                    LEFT JOIN leads l ON l.id = b.lead_id 
-                    LEFT JOIN projects p ON p.id = b.project_id 
+                    LEFT JOIN lead_bookings lb ON lb.id = cr.booking_id 
+                    LEFT JOIN leads l ON l.id = cr.lead_id 
+                    LEFT JOIN projects p ON p.id = cr.project_id 
                     WHERE cr.id = ?
                 ");
+                if (!$stmt) die("Error preparing query: " . $this->db->error);
                 $stmt->bind_param("i", $id);
                 $stmt->execute();
                 $req = $stmt->get_result()->fetch_assoc();
@@ -430,7 +530,14 @@ class VoucherController extends Controller
 
                 $voucherData['paid_to'] = $req['lead_name'] ?? 'Client / Buyer';
                 $voucherData['project'] = $req['project_name'] ?? 'Sales Project';
-                $voucherData['purpose'] = 'Client Refund Request (' . ($req['booking_code'] ?? 'Booking #' . $req['booking_id']) . ') - ' . ($req['reason'] ?? 'Booking Refund');
+                $voucherData['purpose'] = 'Client Refund Request (' . (!empty($req['booking_id']) ? 'Booking #' . $req['booking_id'] : '') . ') - ' . ($req['reason'] ?? 'Booking Refund');
+                
+                $descParts = [];
+                if (!empty($req['booking_id'])) $descParts[] = "Booking: #" . $req['booking_id'];
+                if (!empty($req['reason'])) $descParts[] = "Reason: " . $req['reason'];
+                $expenseDetails = !empty($descParts) ? implode(' — ', $descParts) : 'Client Refund Request';
+                $voucherData['expense_details'] = $expenseDetails;
+
                 $amt = (float)($req['refund_amount'] ?? 0);
                 $voucherData['amount'] = $amt;
                 $voucherData['payment_method'] = 'Bank Transfer / Cheque';
@@ -440,7 +547,8 @@ class VoucherController extends Controller
                     'payment_method' => 'Bank Transfer / Cheque',
                     'transaction_date' => $req['updated_at'] ?? date('Y-m-d'),
                     'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
-                    'reference_number' => 'REF-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                    'reference_number' => 'REF-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+                    'description' => $expenseDetails
                 ];
                 break;
 
@@ -449,10 +557,11 @@ class VoucherController extends Controller
                 $stmt = $this->db->prepare("
                     SELECT pic.*, u.full_name as exec_name, p.name as project_name 
                     FROM project_incentive_claims pic 
-                    LEFT JOIN users u ON u.id = pic.claimed_by 
+                    LEFT JOIN users u ON u.id = pic.user_id 
                     LEFT JOIN projects p ON p.id = pic.project_id 
                     WHERE pic.id = ?
                 ");
+                if (!$stmt) die("Error preparing query: " . $this->db->error);
                 $stmt->bind_param("i", $id);
                 $stmt->execute();
                 $req = $stmt->get_result()->fetch_assoc();
@@ -464,12 +573,21 @@ class VoucherController extends Controller
                 $voucherData['project'] = $req['project_name'] ?? 'Sales Department';
                 $voucherData['purpose'] = 'Sales Incentive Claim - ' . ($req['remarks'] ?? 'Incentive Claim');
                 
-                $pStmt = $this->db->prepare("SELECT payment_amount as amount_paid, payment_method, payment_date as transaction_date, bank_name, cheque_number as cheque_no, transaction_reference as reference_number FROM project_incentive_payments WHERE claim_id = ? ORDER BY created_at ASC");
+                $expenseDetails = !empty($req['remarks']) ? $req['remarks'] : 'Sales Incentive Claim';
+                $voucherData['expense_details'] = $expenseDetails;
+
+                $pStmt = $this->db->prepare("SELECT payment_amount as amount_paid, payment_method, payment_date as transaction_date, bank_name, transaction_ref as reference_number, notes as description FROM project_incentive_payments WHERE claim_id = ? ORDER BY created_at ASC");
                 if ($pStmt) {
                     $pStmt->bind_param("i", $id);
                     $pStmt->execute();
                     $pRes = $pStmt->get_result();
                     while ($pRow = $pRes->fetch_assoc()) {
+                        $pRow['cheque_no'] = '';
+                        $pRow['bank_account_no'] = '';
+                        $pRow['online_type'] = '';
+                        if (empty($pRow['description'])) {
+                            $pRow['description'] = $expenseDetails;
+                        }
                         $voucherData['transactions'][] = $pRow;
                         $voucherData['amount'] += (float)$pRow['amount_paid'];
                         $voucherData['payment_method'] = $pRow['payment_method'];
@@ -484,7 +602,8 @@ class VoucherController extends Controller
                         'payment_method' => 'Bank / Cash',
                         'transaction_date' => $req['claim_date'] ?? date('Y-m-d'),
                         'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '', 
-                        'reference_number' => 'INC-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                        'reference_number' => 'INC-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+                        'description' => $expenseDetails
                     ];
                 }
                 break;
@@ -492,6 +611,7 @@ class VoucherController extends Controller
             case 'expense_adjustment':
             case 'expense_adjustments':
                 $stmt = $this->db->prepare("SELECT ea.*, u.full_name FROM expense_adjustments ea LEFT JOIN users u ON u.id = ea.user_id WHERE ea.id = ?");
+                if (!$stmt) die("Error preparing query: " . $this->db->error);
                 $stmt->bind_param("i", $id);
                 $stmt->execute();
                 $req = $stmt->get_result()->fetch_assoc();
@@ -503,20 +623,40 @@ class VoucherController extends Controller
                 $voucherData['project'] = 'N/A';
                 $voucherData['purpose'] = 'Expense Adjustment - ' . $req['title'];
                 
-                $tStmt = $this->db->prepare("SELECT amount as amount_paid, payment_method, payment_date as transaction_date, bank_name, bank_account_no, cheque_no, online_type, transaction_ref as reference_number FROM adjustment_transactions WHERE adjustment_id = ? ORDER BY created_at ASC");
-                $tStmt->bind_param("i", $id);
-                $tStmt->execute();
-                $tRes = $tStmt->get_result();
-                while ($row = $tRes->fetch_assoc()) {
-                    $voucherData['transactions'][] = $row;
-                    $voucherData['amount'] += (float)$row['amount_paid'];
-                    $voucherData['payment_method'] = $row['payment_method'];
+                $descParts = [];
+                if (!empty($req['title'])) $descParts[] = $req['title'];
+                if (!empty($req['description'])) $descParts[] = $req['description'];
+                $expenseDetails = !empty($descParts) ? implode(' — ', $descParts) : 'Expense Adjustment';
+                $voucherData['expense_details'] = $expenseDetails;
+
+                $tStmt = $this->db->prepare("SELECT amount as amount_paid, payment_method, payment_date as transaction_date, bank_account_no, cheque_no, online_type, transaction_ref as reference_number FROM adjustment_transactions WHERE adjustment_id = ? ORDER BY created_at ASC");
+                if ($tStmt) {
+                    $tStmt->bind_param("i", $id);
+                    $tStmt->execute();
+                    $tRes = $tStmt->get_result();
+                    while ($row = $tRes->fetch_assoc()) {
+                        $row['bank_name'] = '';
+                        $row['description'] = $expenseDetails;
+                        $voucherData['transactions'][] = $row;
+                        $voucherData['amount'] += (float)$row['amount_paid'];
+                        $voucherData['payment_method'] = $row['payment_method'];
+                    }
+                    $tStmt->close();
                 }
-                $tStmt->close();
                 break;
 
             default:
                 die("Unknown module");
+        }
+
+        // Ensure every transaction item has description populated if not already present
+        if (!empty($voucherData['transactions'])) {
+            foreach ($voucherData['transactions'] as &$tItem) {
+                if (empty($tItem['description'])) {
+                    $tItem['description'] = $voucherData['expense_details'] ?? '';
+                }
+            }
+            unset($tItem);
         }
 
         // Fetch audit trail (Created by, Multi-tier Approvals, Paid by with dates)
