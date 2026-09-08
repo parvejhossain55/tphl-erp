@@ -6,42 +6,54 @@
         transition: transform 0.2s ease;
     }
     .kpi-card {
+        background: #ffffff;
         border-radius: 12px;
-        border: none;
+        border: 1px solid #eef2f6;
         padding: 16px 18px;
-        color: white;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.07);
-        position: relative;
-        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
     }
-    .kpi-card .kpi-icon {
-        position: absolute;
-        right: 15px;
-        bottom: 12px;
-        font-size: 2.5rem;
-        opacity: 0.18;
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+    }
+    .kpi-icon-wrapper {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        background: #eff2fe;
+        color: #0d9488;
+        font-size: 1.15rem;
+    }
+    .kpi-content {
+        flex-grow: 1;
+        min-width: 0;
     }
     .kpi-title {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        font-weight: 700;
-        margin-bottom: 6px;
-        opacity: 0.9;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #4b5563;
+        margin-bottom: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .kpi-value {
-        font-size: 1.45rem;
+        font-size: 1rem;
         font-weight: 700;
+        color: #111827;
         margin-bottom: 0;
         white-space: nowrap;
+        line-height: 1.2;
     }
-    .bg-grad-clients { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
-    .bg-grad-dev-total { background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%); }
-    .bg-grad-dev-paid { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
-    .bg-grad-dev-due { background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%); color: #212529 !important; }
-    .bg-grad-emi-total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-    .bg-grad-emi-paid { background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%); }
-    .bg-grad-emi-due { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); }
 
     .table-container {
         max-height: 720px;
@@ -130,6 +142,11 @@
             border: 1px solid #ccc !important;
             color: #000 !important;
             background: #fff !important;
+        }
+        .kpi-icon-wrapper {
+            background: #f8fafc !important;
+            color: #334155 !important;
+            border: 1px solid #ddd !important;
         }
         .table-sticky thead th {
             position: static !important;
@@ -249,64 +266,92 @@
         <div class="row g-3 mb-4">
             <!-- 1. Total Clients -->
             <div class="col-xl col-md-4 col-sm-6">
-                <div class="kpi-card bg-grad-clients">
-                    <div class="kpi-title">Total Clients</div>
-                    <div class="kpi-value" id="kpi-total-clients"><?= number_format($summaryCards['total_clients']) ?></div>
-                    <i class="fa-solid fa-users kpi-icon"></i>
+                <div class="kpi-card">
+                    <div class="kpi-icon-wrapper">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <div class="kpi-title">Total Clients</div>
+                        <div class="kpi-value" id="kpi-total-clients"><?= number_format($summaryCards['total_clients']) ?></div>
+                    </div>
                 </div>
             </div>
 
             <!-- 2. Total Development Charge -->
             <div class="col-xl col-md-4 col-sm-6">
-                <div class="kpi-card bg-grad-dev-total">
-                    <div class="kpi-title">Total Dev Charge</div>
-                    <div class="kpi-value">৳ <span id="kpi-total-dev"><?= number_format($summaryCards['total_dev_charge']) ?></span></div>
-                    <i class="fa-solid fa-building-columns kpi-icon"></i>
+                <div class="kpi-card">
+                    <div class="kpi-icon-wrapper">
+                        <i class="fa-solid fa-building-columns"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <div class="kpi-title">Total Dev Charge</div>
+                        <div class="kpi-value">TK <span id="kpi-total-dev"><?= number_format($summaryCards['total_dev_charge']) ?></span></div>
+                    </div>
                 </div>
             </div>
 
             <!-- 3. Dev Charge Paid -->
             <div class="col-xl col-md-4 col-sm-6">
-                <div class="kpi-card bg-grad-dev-paid">
-                    <div class="kpi-title">Dev Charge Paid</div>
-                    <div class="kpi-value">৳ <span id="kpi-dev-paid"><?= number_format($summaryCards['total_dev_charge_paid']) ?></span></div>
-                    <i class="fa-solid fa-circle-check kpi-icon"></i>
+                <div class="kpi-card">
+                    <div class="kpi-icon-wrapper">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <div class="kpi-title">Dev Charge Paid</div>
+                        <div class="kpi-value">TK <span id="kpi-dev-paid"><?= number_format($summaryCards['total_dev_charge_paid']) ?></span></div>
+                    </div>
                 </div>
             </div>
 
             <!-- 4. Dev Charge Due -->
             <div class="col-xl col-md-4 col-sm-6">
-                <div class="kpi-card bg-grad-dev-due">
-                    <div class="kpi-title text-dark">Dev Charge Due</div>
-                    <div class="kpi-value text-dark">৳ <span id="kpi-dev-due"><?= number_format($summaryCards['total_dev_charge_due']) ?></span></div>
-                    <i class="fa-solid fa-clock-rotate-left kpi-icon" style="opacity: 0.15; color: #000;"></i>
+                <div class="kpi-card">
+                    <div class="kpi-icon-wrapper">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <div class="kpi-title">Dev Charge Due</div>
+                        <div class="kpi-value">TK <span id="kpi-dev-due"><?= number_format($summaryCards['total_dev_charge_due']) ?></span></div>
+                    </div>
                 </div>
             </div>
 
-            <!-- 5. Total EMI (New Card) -->
+            <!-- 5. Total EMI -->
             <div class="col-xl col-md-4 col-sm-6">
-                <div class="kpi-card bg-grad-emi-total">
-                    <div class="kpi-title">Total EMI</div>
-                    <div class="kpi-value">৳ <span id="kpi-total-emi"><?= number_format($summaryCards['total_emi'] ?? 0) ?></span></div>
-                    <i class="fa-solid fa-coins kpi-icon"></i>
+                <div class="kpi-card">
+                    <div class="kpi-icon-wrapper">
+                        <i class="fa-solid fa-coins"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <div class="kpi-title">Total EMI</div>
+                        <div class="kpi-value">TK <span id="kpi-total-emi"><?= number_format($summaryCards['total_emi'] ?? 0) ?></span></div>
+                    </div>
                 </div>
             </div>
 
             <!-- 6. Total EMI Paid -->
             <div class="col-xl col-md-4 col-sm-6">
-                <div class="kpi-card bg-grad-emi-paid">
-                    <div class="kpi-title">Total EMI Paid</div>
-                    <div class="kpi-value">৳ <span id="kpi-emi-paid"><?= number_format($summaryCards['total_emi_paid']) ?></span></div>
-                    <i class="fa-solid fa-receipt kpi-icon"></i>
+                <div class="kpi-card">
+                    <div class="kpi-icon-wrapper">
+                        <i class="fa-solid fa-receipt"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <div class="kpi-title">Total EMI Paid</div>
+                        <div class="kpi-value">TK <span id="kpi-emi-paid"><?= number_format($summaryCards['total_emi_paid']) ?></span></div>
+                    </div>
                 </div>
             </div>
 
             <!-- 7. Total EMI Due -->
             <div class="col-xl col-md-4 col-sm-6">
-                <div class="kpi-card bg-grad-emi-due">
-                    <div class="kpi-title">Total EMI Due</div>
-                    <div class="kpi-value">৳ <span id="kpi-emi-due"><?= number_format($summaryCards['total_emi_due']) ?></span></div>
-                    <i class="fa-solid fa-triangle-exclamation kpi-icon"></i>
+                <div class="kpi-card">
+                    <div class="kpi-icon-wrapper">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <div class="kpi-title">Total EMI Due</div>
+                        <div class="kpi-value">TK <span id="kpi-emi-due"><?= number_format($summaryCards['total_emi_due']) ?></span></div>
+                    </div>
                 </div>
             </div>
         </div>
