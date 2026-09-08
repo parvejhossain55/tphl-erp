@@ -34,6 +34,7 @@ class VoucherController extends Controller
 
         switch ($module) {
             case 'cashout':
+            case 'cashout_requests':
                 // Main Request
                 $stmt = $this->db->prepare("SELECT cr.*, p.name as project_name FROM cashout_requests cr LEFT JOIN projects p ON cr.project_id = p.id WHERE cr.id = ?");
                 $stmt->bind_param("i", $id);
@@ -44,8 +45,8 @@ class VoucherController extends Controller
                 if (!$req) die("Not found");
 
                 $voucherData['paid_to'] = $req['purpose_paid_to'];
-                $voucherData['project'] = $req['project_name'] ?? 'N/A';
-                $voucherData['purpose'] = 'Cashout Request';
+                $voucherData['project'] = $req['project_name'] ?? 'Head Office / Operations';
+                $voucherData['purpose'] = 'Cashout Request - ' . ($req['remarks'] ?? 'General Cashout');
                 
                 // Transactions
                 $tStmt = $this->db->prepare("SELECT amount as amount_paid, payment_method, payment_date as transaction_date, bank_name, bank_account_no, cheque_no, online_type, transaction_ref as reference_number FROM cashout_payments WHERE cashout_request_id = ? ORDER BY created_at ASC");
@@ -55,12 +56,24 @@ class VoucherController extends Controller
                 while ($row = $tRes->fetch_assoc()) {
                     $voucherData['transactions'][] = $row;
                     $voucherData['amount'] += (float)$row['amount_paid'];
-                    $voucherData['payment_method'] = $row['payment_method']; // Last one
+                    $voucherData['payment_method'] = $row['payment_method'];
                 }
                 $tStmt->close();
+                if (empty($voucherData['transactions'])) {
+                    $voucherData['amount'] = (float)($req['approved_amount'] ?? $req['amount'] ?? 0);
+                    $voucherData['payment_method'] = 'Cash';
+                    $voucherData['transactions'][] = [
+                        'amount_paid' => $voucherData['amount'],
+                        'payment_method' => 'Cash',
+                        'transaction_date' => $req['updated_at'] ?? date('Y-m-d'),
+                        'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
+                        'reference_number' => 'CSH-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                    ];
+                }
                 break;
 
             case 'fund_requisition':
+            case 'fund_requisitions':
                 $stmt = $this->db->prepare("SELECT fr.*, p.name as project_name, u.full_name FROM fund_requisitions fr LEFT JOIN projects p ON fr.project_id = p.id LEFT JOIN users u ON u.id = fr.requested_by WHERE fr.id = ?");
                 $stmt->bind_param("i", $id);
                 $stmt->execute();
@@ -70,22 +83,22 @@ class VoucherController extends Controller
                 if (!$req) die("Not found");
 
                 $voucherData['paid_to'] = $req['full_name'];
-                $voucherData['project'] = $req['project_name'] ?? 'N/A';
+                $voucherData['project'] = $req['project_name'] ?? 'General Operations';
                 $voucherData['purpose'] = 'Petty Cash / Fund Requisition - ' . $req['purpose'];
-                $voucherData['amount'] = (float)$req['amount'];
+                $voucherData['amount'] = (float)(!empty($req['paid_amount']) && $req['paid_amount'] > 0 ? $req['paid_amount'] : $req['amount']);
                 $voucherData['payment_method'] = $req['payment_method'] ?? 'Cash';
                 
-                if ($req['status'] === 'paid') {
-                    $voucherData['transactions'][] = [
-                        'amount_paid' => $req['amount'],
-                        'payment_method' => $req['payment_method'] ?? 'Cash',
-                        'transaction_date' => $req['paid_at'] ?? $req['updated_at'],
-                        'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '', 'reference_number' => ''
-                    ];
-                }
+                $voucherData['transactions'][] = [
+                    'amount_paid' => $voucherData['amount'],
+                    'payment_method' => $req['payment_method'] ?? 'Cash',
+                    'transaction_date' => $req['paid_at'] ?? $req['updated_at'] ?? date('Y-m-d'),
+                    'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '', 
+                    'reference_number' => 'FR-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                ];
                 break;
 
             case 'contractor_bill':
+            case 'contractor_bill_requests':
                 $stmt = $this->db->prepare("SELECT cbr.*, p.name as project_name, c.name as contractor_name FROM contractor_bill_requests cbr LEFT JOIN projects p ON cbr.project_id = p.id LEFT JOIN contractors c ON c.id = cbr.operator_id WHERE cbr.id = ?");
                 $stmt->bind_param("i", $id);
                 $stmt->execute();
@@ -95,7 +108,7 @@ class VoucherController extends Controller
                 if (!$req) die("Not found");
 
                 $voucherData['paid_to'] = $req['contractor_name'];
-                $voucherData['project'] = $req['project_name'] ?? 'N/A';
+                $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
                 $voucherData['purpose'] = 'Contractor Bill - ' . $req['work_description'];
                 
                 $tStmt = $this->db->prepare("SELECT amount_paid, payment_method, transaction_date, reference_number FROM con_financial_transactions WHERE ref_type = 'contractor_bill' AND ref_id = ? ORDER BY created_at ASC");
@@ -108,9 +121,21 @@ class VoucherController extends Controller
                     $voucherData['payment_method'] = $row['payment_method'];
                 }
                 $tStmt->close();
+                if (empty($voucherData['transactions'])) {
+                    $voucherData['amount'] = (float)(!empty($req['approved_amount']) ? $req['approved_amount'] : $req['bill_amount']);
+                    $voucherData['payment_method'] = 'Bank / Cash';
+                    $voucherData['transactions'][] = [
+                        'amount_paid' => $voucherData['amount'],
+                        'payment_method' => 'Bank / Cash',
+                        'transaction_date' => $req['updated_at'] ?? date('Y-m-d'),
+                        'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
+                        'reference_number' => 'CB-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                    ];
+                }
                 break;
 
             case 'vendor_payment':
+            case 'vendor_payment_requests':
                 $stmt = $this->db->prepare("SELECT vpr.*, p.name as project_name, v.name as vendor_name FROM vendor_payment_requests vpr LEFT JOIN projects p ON vpr.project_id = p.id LEFT JOIN vendors v ON v.id = vpr.vendor_id WHERE vpr.id = ?");
                 $stmt->bind_param("i", $id);
                 $stmt->execute();
@@ -120,7 +145,7 @@ class VoucherController extends Controller
                 if (!$req) die("Not found");
 
                 $voucherData['paid_to'] = $req['vendor_name'];
-                $voucherData['project'] = $req['project_name'] ?? 'N/A';
+                $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
                 $voucherData['purpose'] = 'Vendor Payment - Invoice ' . ($req['invoice_number'] ?? 'N/A');
                 
                 $tStmt = $this->db->prepare("SELECT amount_paid, payment_method, transaction_date, reference_number FROM con_financial_transactions WHERE ref_type = 'vendor_payment' AND ref_id = ? ORDER BY created_at ASC");
@@ -133,9 +158,21 @@ class VoucherController extends Controller
                     $voucherData['payment_method'] = $row['payment_method'];
                 }
                 $tStmt->close();
+                if (empty($voucherData['transactions'])) {
+                    $voucherData['amount'] = (float)(!empty($req['approved_amount']) ? $req['approved_amount'] : $req['requested_amount']);
+                    $voucherData['payment_method'] = 'Bank / Cash';
+                    $voucherData['transactions'][] = [
+                        'amount_paid' => $voucherData['amount'],
+                        'payment_method' => 'Bank / Cash',
+                        'transaction_date' => $req['updated_at'] ?? date('Y-m-d'),
+                        'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
+                        'reference_number' => 'VEND-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                    ];
+                }
                 break;
 
             case 'operational_fund':
+            case 'operational_fund_requests':
                 $stmt = $this->db->prepare("SELECT ofr.*, p.name as project_name, u.full_name FROM operational_fund_requests ofr LEFT JOIN projects p ON ofr.project_id = p.id LEFT JOIN users u ON u.id = ofr.requester_id WHERE ofr.id = ?");
                 $stmt->bind_param("i", $id);
                 $stmt->execute();
@@ -145,7 +182,7 @@ class VoucherController extends Controller
                 if (!$req) die("Not found");
 
                 $voucherData['paid_to'] = $req['full_name'];
-                $voucherData['project'] = $req['project_name'] ?? 'N/A';
+                $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
                 $voucherData['purpose'] = 'Operational Fund - ' . $req['purpose'];
                 
                 $tStmt = $this->db->prepare("SELECT amount_paid, payment_method, transaction_date, reference_number FROM con_financial_transactions WHERE ref_type = 'fund_request' AND ref_id = ? ORDER BY created_at ASC");
@@ -158,9 +195,199 @@ class VoucherController extends Controller
                     $voucherData['payment_method'] = $row['payment_method'];
                 }
                 $tStmt->close();
+                if (empty($voucherData['transactions'])) {
+                    $voucherData['amount'] = (float)(!empty($req['approved_amount']) ? $req['approved_amount'] : $req['requested_amount']);
+                    $voucherData['payment_method'] = 'Cash';
+                    $voucherData['transactions'][] = [
+                        'amount_paid' => $voucherData['amount'],
+                        'payment_method' => 'Cash',
+                        'transaction_date' => $req['updated_at'] ?? date('Y-m-d'),
+                        'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
+                        'reference_number' => 'OPF-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                    ];
+                }
+                break;
+
+            case 'advance_salaries':
+            case 'advance_salary':
+                $stmt = $this->db->prepare("
+                    SELECT a.*, e.full_name as employee_name, e.employee_id as emp_code, d.name as dept_name 
+                    FROM advance_salaries a 
+                    LEFT JOIN employees e ON e.id = a.employee_id 
+                    LEFT JOIN departments d ON d.id = e.department_id 
+                    WHERE a.id = ?
+                ");
+                $stmt->bind_param("i", $id);
+                $stmt->execute();
+                $req = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+
+                if (!$req) die("Not found");
+
+                $voucherData['paid_to'] = (!empty($req['employee_name']) ? $req['employee_name'] : 'Employee') . (!empty($req['emp_code']) ? ' (' . $req['emp_code'] . ')' : '');
+                $voucherData['project'] = !empty($req['dept_name']) ? $req['dept_name'] : 'Head Office / HR Payroll';
+                $voucherData['purpose'] = 'Advance Salary Request - ' . ($req['reason'] ?? 'Staff Advance');
+                $amt = (float)(!empty($req['paid_amount']) && $req['paid_amount'] > 0 ? $req['paid_amount'] : $req['amount']);
+                $voucherData['amount'] = $amt;
+                $voucherData['payment_method'] = 'Cash / Bank';
+
+                $voucherData['transactions'][] = [
+                    'amount_paid' => $amt,
+                    'payment_method' => 'Cash / Bank',
+                    'transaction_date' => $req['approved_date'] ?? $req['updated_at'] ?? date('Y-m-d'),
+                    'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
+                    'reference_number' => 'ADV-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                ];
+                break;
+
+            case 'project_other_costs':
+            case 'project_other_cost':
+                $stmt = $this->db->prepare("
+                    SELECT poc.*, p.name as project_name, u.full_name as requester_name 
+                    FROM project_other_costs poc 
+                    LEFT JOIN projects p ON p.id = poc.project_id 
+                    LEFT JOIN users u ON u.id = poc.created_by_id 
+                    WHERE poc.id = ?
+                ");
+                $stmt->bind_param("i", $id);
+                $stmt->execute();
+                $req = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+
+                if (!$req) die("Not found");
+
+                $voucherData['paid_to'] = $req['requester_name'] ?? 'Site Operator';
+                $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
+                $voucherData['purpose'] = 'Project Other Cost (' . ($req['rcost_type'] ?? 'Site Expense') . ') - ' . ($req['purpose'] ?? '');
+                $amt = (float)(!empty($req['payment_amount']) && $req['payment_amount'] > 0 ? $req['payment_amount'] : (!empty($req['approved_amount']) ? $req['approved_amount'] : $req['request_amount']));
+                $voucherData['amount'] = $amt;
+                $voucherData['payment_method'] = 'Cash';
+
+                $voucherData['transactions'][] = [
+                    'amount_paid' => $amt,
+                    'payment_method' => 'Cash',
+                    'transaction_date' => $req['payment_at'] ?? $req['updated_at'] ?? date('Y-m-d'),
+                    'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
+                    'reference_number' => 'POC-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                ];
+                break;
+
+            case 'con_labor_requisitions':
+            case 'con_labor_requisition':
+                $stmt = $this->db->prepare("
+                    SELECT lr.*, p.name as project_name, u.full_name as se_name 
+                    FROM con_labor_requisitions lr 
+                    LEFT JOIN projects p ON p.id = lr.project_id 
+                    LEFT JOIN users u ON u.id = lr.requested_by 
+                    WHERE lr.id = ?
+                ");
+                $stmt->bind_param("i", $id);
+                $stmt->execute();
+                $req = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+
+                if (!$req) die("Not found");
+
+                $voucherData['paid_to'] = $req['se_name'] ?? 'Site Engineer / Labor Contractor';
+                $voucherData['project'] = $req['project_name'] ?? 'Construction Site';
+                $voucherData['purpose'] = 'Labor Bill by SE - ' . ($req['requisition_no'] ?? 'Requisition #' . $id);
+                $amt = (float)(!empty($req['total_paid']) && $req['total_paid'] > 0 ? $req['total_paid'] : (!empty($req['approved_amount']) ? $req['approved_amount'] : $req['total_amount']));
+                $voucherData['amount'] = $amt;
+                $voucherData['payment_method'] = 'Cash';
+
+                $tStmt = $this->db->prepare("SELECT amount_paid, payment_method, transaction_date, reference_number FROM con_financial_transactions WHERE ref_type = 'labor_requisition' AND ref_id = ? ORDER BY created_at ASC");
+                if ($tStmt) {
+                    $tStmt->bind_param("i", $id);
+                    $tStmt->execute();
+                    $tRes = $tStmt->get_result();
+                    while ($row = $tRes->fetch_assoc()) {
+                        $voucherData['transactions'][] = $row;
+                        $voucherData['payment_method'] = $row['payment_method'];
+                    }
+                    $tStmt->close();
+                }
+
+                if (empty($voucherData['transactions'])) {
+                    $voucherData['transactions'][] = [
+                        'amount_paid' => $amt,
+                        'payment_method' => 'Cash',
+                        'transaction_date' => $req['payment_date'] ?? $req['updated_at'] ?? date('Y-m-d'),
+                        'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
+                        'reference_number' => $req['requisition_no'] ?? ('LAB-' . str_pad($id, 4, '0', STR_PAD_LEFT))
+                    ];
+                }
+                break;
+
+            case 'payslips':
+            case 'payslip':
+            case 'salary':
+                $stmt = $this->db->prepare("
+                    SELECT ps.*, e.full_name as employee_name, e.employee_id as emp_code, d.name as dept_name, pr.name as project_name 
+                    FROM payslips ps 
+                    LEFT JOIN employees e ON e.id = ps.employee_id 
+                    LEFT JOIN departments d ON d.id = e.department_id 
+                    LEFT JOIN payroll_projects pr ON pr.id = ps.payroll_project_id 
+                    WHERE ps.id = ?
+                ");
+                $stmt->bind_param("i", $id);
+                $stmt->execute();
+                $req = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+
+                if (!$req) die("Not found");
+
+                $voucherData['paid_to'] = (!empty($req['employee_name']) ? $req['employee_name'] : 'Employee') . (!empty($req['emp_code']) ? ' (' . $req['emp_code'] . ')' : '');
+                $voucherData['project'] = !empty($req['project_name']) ? $req['project_name'] : (!empty($req['dept_name']) ? $req['dept_name'] : 'Head Office');
+                $voucherData['purpose'] = 'Monthly Staff Salary - ' . ($req['payslip_month'] ?? date('M Y'));
+                $amt = (float)($req['net_salary'] ?? 0);
+                $voucherData['amount'] = $amt;
+                $voucherData['payment_method'] = $req['payment_method'] ?? 'Bank / Cash';
+
+                $voucherData['transactions'][] = [
+                    'amount_paid' => $amt,
+                    'payment_method' => $req['payment_method'] ?? 'Bank / Cash',
+                    'transaction_date' => $req['disbursed_at'] ?? $req['updated_at'] ?? date('Y-m-d'),
+                    'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
+                    'reference_number' => 'SAL-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                ];
+                break;
+
+            case 'project_extra_assets':
+            case 'purchase_requests':
+            case 'office_procurement':
+                $stmt = $this->db->prepare("
+                    SELECT pea.*, p.name as project_name, u.full_name as requester_name 
+                    FROM project_extra_assets pea 
+                    LEFT JOIN projects p ON p.id = pea.project_id 
+                    LEFT JOIN users u ON u.id = pea.requested_by 
+                    WHERE pea.id = ?
+                ");
+                $stmt->bind_param("i", $id);
+                $stmt->execute();
+                $req = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+
+                if (!$req) die("Not found");
+
+                $voucherData['paid_to'] = !empty($req['vendor_name']) ? $req['vendor_name'] : ($req['requester_name'] ?? 'Procurement Vendor');
+                $voucherData['project'] = $req['project_name'] ?? 'Head Office / Operations';
+                $voucherData['purpose'] = 'Office Procurement / Extra Asset - ' . ($req['item_name'] ?? 'Procurement');
+                $amt = (float)(!empty($req['paid_amount']) && $req['paid_amount'] > 0 ? $req['paid_amount'] : (!empty($req['total_price']) ? $req['total_price'] : 0));
+                $voucherData['amount'] = $amt;
+                $voucherData['payment_method'] = $req['payment_method'] ?? 'Cash / Bank';
+
+                $voucherData['transactions'][] = [
+                    'amount_paid' => $amt,
+                    'payment_method' => $req['payment_method'] ?? 'Cash / Bank',
+                    'transaction_date' => $req['paid_at'] ?? $req['updated_at'] ?? date('Y-m-d'),
+                    'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
+                    'reference_number' => 'PROC-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                ];
                 break;
 
             case 'land_requisition':
+            case 'land_fund_requisitions':
+            case 'con_land_requisitions':
                 $stmt = $this->db->prepare("SELECT lr.*, u.full_name FROM land_fund_requisitions lr LEFT JOIN users u ON u.id = lr.requested_by WHERE lr.id = ?");
                 $stmt->bind_param("i", $id);
                 $stmt->execute();
@@ -175,17 +402,95 @@ class VoucherController extends Controller
                 $voucherData['amount'] = (float)$req['requested_amount'];
                 $voucherData['payment_method'] = $req['payment_method'] ?? 'Cash';
                 
-                if ($req['accounts_status'] === 'Paid') {
+                $voucherData['transactions'][] = [
+                    'amount_paid' => $req['requested_amount'],
+                    'payment_method' => $req['payment_method'] ?? 'Cash',
+                    'transaction_date' => $req['accounts_paid_at'] ?? $req['updated_at'] ?? date('Y-m-d'),
+                    'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '', 
+                    'reference_number' => $req['transaction_no'] ?? ('LAND-' . str_pad($id, 4, '0', STR_PAD_LEFT))
+                ];
+                break;
+
+            case 'client_refund_requests':
+            case 'client_refund':
+                $stmt = $this->db->prepare("
+                    SELECT cr.*, b.booking_code, l.lead_name, p.name as project_name 
+                    FROM client_refund_requests cr 
+                    LEFT JOIN bookings b ON b.id = cr.booking_id 
+                    LEFT JOIN leads l ON l.id = b.lead_id 
+                    LEFT JOIN projects p ON p.id = b.project_id 
+                    WHERE cr.id = ?
+                ");
+                $stmt->bind_param("i", $id);
+                $stmt->execute();
+                $req = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+
+                if (!$req) die("Not found");
+
+                $voucherData['paid_to'] = $req['lead_name'] ?? 'Client / Buyer';
+                $voucherData['project'] = $req['project_name'] ?? 'Sales Project';
+                $voucherData['purpose'] = 'Client Refund Request (' . ($req['booking_code'] ?? 'Booking #' . $req['booking_id']) . ') - ' . ($req['reason'] ?? 'Booking Refund');
+                $amt = (float)($req['refund_amount'] ?? 0);
+                $voucherData['amount'] = $amt;
+                $voucherData['payment_method'] = 'Bank Transfer / Cheque';
+
+                $voucherData['transactions'][] = [
+                    'amount_paid' => $amt,
+                    'payment_method' => 'Bank Transfer / Cheque',
+                    'transaction_date' => $req['updated_at'] ?? date('Y-m-d'),
+                    'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
+                    'reference_number' => 'REF-' . str_pad($id, 4, '0', STR_PAD_LEFT)
+                ];
+                break;
+
+            case 'project_incentive_claims':
+            case 'incentive_claim':
+                $stmt = $this->db->prepare("
+                    SELECT pic.*, u.full_name as exec_name, p.name as project_name 
+                    FROM project_incentive_claims pic 
+                    LEFT JOIN users u ON u.id = pic.claimed_by 
+                    LEFT JOIN projects p ON p.id = pic.project_id 
+                    WHERE pic.id = ?
+                ");
+                $stmt->bind_param("i", $id);
+                $stmt->execute();
+                $req = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+
+                if (!$req) die("Not found");
+
+                $voucherData['paid_to'] = $req['exec_name'] ?? 'Sales Executive';
+                $voucherData['project'] = $req['project_name'] ?? 'Sales Department';
+                $voucherData['purpose'] = 'Sales Incentive Claim - ' . ($req['remarks'] ?? 'Incentive Claim');
+                
+                $pStmt = $this->db->prepare("SELECT payment_amount as amount_paid, payment_method, payment_date as transaction_date, bank_name, cheque_number as cheque_no, transaction_reference as reference_number FROM project_incentive_payments WHERE claim_id = ? ORDER BY created_at ASC");
+                if ($pStmt) {
+                    $pStmt->bind_param("i", $id);
+                    $pStmt->execute();
+                    $pRes = $pStmt->get_result();
+                    while ($pRow = $pRes->fetch_assoc()) {
+                        $voucherData['transactions'][] = $pRow;
+                        $voucherData['amount'] += (float)$pRow['amount_paid'];
+                        $voucherData['payment_method'] = $pRow['payment_method'];
+                    }
+                    $pStmt->close();
+                }
+                if (empty($voucherData['transactions'])) {
+                    $voucherData['amount'] = (float)($req['claim_amount'] ?? 0);
+                    $voucherData['payment_method'] = 'Bank / Cash';
                     $voucherData['transactions'][] = [
-                        'amount_paid' => $req['requested_amount'],
-                        'payment_method' => $req['payment_method'] ?? 'Cash',
-                        'transaction_date' => $req['accounts_paid_at'] ?? $req['updated_at'],
-                        'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '', 'reference_number' => $req['transaction_no'] ?? ''
+                        'amount_paid' => $voucherData['amount'],
+                        'payment_method' => 'Bank / Cash',
+                        'transaction_date' => $req['claim_date'] ?? date('Y-m-d'),
+                        'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '', 
+                        'reference_number' => 'INC-' . str_pad($id, 4, '0', STR_PAD_LEFT)
                     ];
                 }
                 break;
 
             case 'expense_adjustment':
+            case 'expense_adjustments':
                 $stmt = $this->db->prepare("SELECT ea.*, u.full_name FROM expense_adjustments ea LEFT JOIN users u ON u.id = ea.user_id WHERE ea.id = ?");
                 $stmt->bind_param("i", $id);
                 $stmt->execute();
@@ -204,11 +509,7 @@ class VoucherController extends Controller
                 $tRes = $tStmt->get_result();
                 while ($row = $tRes->fetch_assoc()) {
                     $voucherData['transactions'][] = $row;
-                    if ($req['transaction_type'] === 'cashout') {
-                        $voucherData['amount'] += (float)$row['amount_paid'];
-                    } else {
-                        $voucherData['amount'] += (float)$row['amount_paid']; 
-                    }
+                    $voucherData['amount'] += (float)$row['amount_paid'];
                     $voucherData['payment_method'] = $row['payment_method'];
                 }
                 $tStmt->close();
@@ -218,11 +519,261 @@ class VoucherController extends Controller
                 die("Unknown module");
         }
 
+        // Fetch audit trail (Created by, Multi-tier Approvals, Paid by with dates)
+        $voucherData['audit_trail'] = $this->getAuditTrail($module, $id, $req ?? []);
+
         // Convert number to words helper
         $voucherData['amount_words'] = $this->numberToWords($voucherData['amount']) . " Taka Only";
 
         // Load view
         $this->view('accounts/vouchers/debit-voucher-print', ['voucher' => $voucherData]);
+    }
+
+    protected function getAuditTrail($module, $id, $row = [])
+    {
+        $tableMapping = [
+            'cashout' => 'cashout_requests',
+            'fund_requisition' => 'fund_requisitions',
+            'contractor_bill' => 'contractor_bill_requests',
+            'vendor_payment' => 'vendor_payment_requests',
+            'operational_fund' => 'operational_fund_requests',
+            'advance_salary' => 'advance_salaries',
+            'project_other_cost' => 'project_other_costs',
+            'con_labor_requisition' => 'con_labor_requisitions',
+            'payslip' => 'payslips',
+            'salary' => 'payslips',
+            'purchase_requests' => 'project_extra_assets',
+            'office_procurement' => 'project_extra_assets',
+            'client_refund' => 'client_refund_requests',
+            'incentive_claim' => 'project_incentive_claims',
+            'expense_adjustment' => 'expense_adjustments',
+            'land_requisition' => 'con_land_requisitions'
+        ];
+        $sourceTable = $tableMapping[$module] ?? $module;
+
+        $audit = [
+            'creator' => null,
+            'approvers' => [],
+            'disburser' => null
+        ];
+
+        // 1. Fetch matching approval_requests record
+        $appReq = null;
+        $arStmt = $this->db->prepare("
+            SELECT ar.*, 
+                   u_req.full_name as req_name, 
+                   u_app.full_name as app_name,
+                   des_app.name as app_des
+            FROM approval_requests ar
+            LEFT JOIN users u_req ON ar.requested_by = u_req.id
+            LEFT JOIN users u_app ON ar.approved_by = u_app.id
+            LEFT JOIN employees e_app ON (e_app.user_id = u_app.id OR e_app.id = u_app.employee_id)
+            LEFT JOIN designations des_app ON des_app.id = e_app.designation_id
+            WHERE (ar.source_table = ? OR ar.source_table = ?) AND ar.source_id = ?
+            ORDER BY ar.id DESC LIMIT 1
+        ");
+        if ($arStmt) {
+            $arStmt->bind_param("ssi", $sourceTable, $module, $id);
+            $arStmt->execute();
+            $appReq = $arStmt->get_result()->fetch_assoc();
+            $arStmt->close();
+        }
+
+        // Helper to get user display info
+        $getUser = function($uid) {
+            if (empty($uid)) return null;
+            $st = $this->db->prepare("
+                SELECT u.full_name, e.employee_id, IFNULL(des.name, r.name) as designation 
+                FROM users u 
+                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id) 
+                LEFT JOIN designations des ON des.id = e.designation_id 
+                LEFT JOIN roles r ON r.id = u.role_id 
+                WHERE u.id = ? LIMIT 1
+            ");
+            if ($st) {
+                $st->bind_param("i", $uid);
+                $st->execute();
+                $u = $st->get_result()->fetch_assoc();
+                $st->close();
+                if ($u) {
+                    $name = $u['full_name'];
+                    if (!empty($u['employee_id'])) $name .= ' [' . $u['employee_id'] . ']';
+                    if (!empty($u['designation'])) $name .= ' (' . $u['designation'] . ')';
+                    return $name;
+                }
+            }
+
+            // Fallback check directly in employees table
+            $st2 = $this->db->prepare("
+                SELECT e.full_name, e.employee_id, des.name as designation 
+                FROM employees e 
+                LEFT JOIN designations des ON des.id = e.designation_id 
+                WHERE e.id = ? LIMIT 1
+            ");
+            if ($st2) {
+                $st2->bind_param("i", $uid);
+                $st2->execute();
+                $u = $st2->get_result()->fetch_assoc();
+                $st2->close();
+                if ($u) {
+                    $name = $u['full_name'];
+                    if (!empty($u['employee_id'])) $name .= ' [' . $u['employee_id'] . ']';
+                    if (!empty($u['designation'])) $name .= ' (' . $u['designation'] . ')';
+                    return $name;
+                }
+            }
+
+            return null;
+        };
+
+        // Helper to add approver without duplicates
+        $addApprover = function($stage, $uid, $dateTime) use (&$audit, $getUser) {
+            if (empty($uid) && empty($dateTime)) return;
+            $name = !empty($uid) ? $getUser($uid) : 'Authorized Official';
+            if (empty($name)) return;
+
+            foreach ($audit['approvers'] as $appr) {
+                if ($appr['stage'] === $stage && $appr['name'] === $name) {
+                    return; // Avoid duplicate
+                }
+            }
+
+            $audit['approvers'][] = [
+                'stage' => $stage,
+                'name'  => $name,
+                'date'  => !empty($dateTime) ? date('d M, Y h:i A', strtotime($dateTime)) : null
+            ];
+        };
+
+        // --- 1. CREATOR ---
+        $creatorId = $row['created_by_id'] ?? $row['created_by'] ?? $row['requested_by'] ?? $row['requester_id'] ?? $row['claimed_by'] ?? ($appReq['requested_by'] ?? null);
+        $creatorDate = $row['created_at'] ?? $row['request_date'] ?? $row['requisition_date'] ?? $row['bill_date'] ?? ($appReq['created_at'] ?? null);
+        $creatorName = null;
+        if (!empty($appReq['req_name'])) {
+            $creatorName = $appReq['req_name'];
+        } elseif (!empty($creatorId)) {
+            $creatorName = $getUser($creatorId);
+        }
+        if (empty($creatorName)) {
+            $creatorName = $row['requester_name'] ?? $row['employee_name'] ?? $row['se_name'] ?? $row['exec_name'] ?? $row['full_name'] ?? 'Authorized Requisitioner';
+        }
+        $audit['creator'] = [
+            'name' => $creatorName,
+            'date' => !empty($creatorDate) ? date('d M, Y h:i A', strtotime($creatorDate)) : date('d M, Y')
+        ];
+
+        // --- 2. MULTI-TIER APPROVERS ---
+        // Department Head
+        if (!empty($row['dept_head_approved_by'])) {
+            $addApprover('Department Head', $row['dept_head_approved_by'], $row['dept_head_approved_at'] ?? null);
+        }
+        // Project Manager
+        if (!empty($row['pm_approved_by'])) {
+            $addApprover('Project Manager', $row['pm_approved_by'], $row['pm_approved_at'] ?? null);
+        }
+        // Site Engineer Verification (Contractor bills)
+        if (!empty($row['verified_by'])) {
+            $addApprover('Engineer Verification', $row['verified_by'], $row['verified_at'] ?? null);
+        }
+        // Operations Review (Extra assets / procurement)
+        if (!empty($row['operations_by'])) {
+            $addApprover('Operations Review', $row['operations_by'], $row['operations_at'] ?? null);
+        }
+        // Purchase Head
+        if (!empty($row['purchase_head_by'])) {
+            $addApprover('Purchase Lead', $row['purchase_head_by'], $row['purchase_head_at'] ?? null);
+        }
+        // PM Payment Approved (Labor requisitions)
+        if (!empty($row['pm_payment_approved_by'])) {
+            $addApprover('PM Verification', $row['pm_payment_approved_by'], $row['pm_payment_approved_at'] ?? null);
+        }
+        // QC & Internal Audit
+        $qcId = $row['qc_approved_by'] ?? $row['qc_audit_approved_id'] ?? $row['qc_approved_by_id'] ?? $row['qc_audit_by'] ?? null;
+        $qcDate = $row['qc_approved_at'] ?? $row['qc_audit_approved_at'] ?? $row['qc_audit_at'] ?? null;
+        if (!empty($qcId)) {
+            $addApprover('QC & Internal Audit', $qcId, $qcDate);
+        }
+        // Land Requisition Management
+        if (!empty($row['mgmt_by'])) {
+            $addApprover('Management Approval', $row['mgmt_by'], $row['mgmt_approved_at'] ?? null);
+        }
+        // General / Final Management Approval
+        $mgmtId = $row['management_apporved_by_id'] ?? $row['management_approved_by'] ?? $row['approved_by'] ?? ($appReq['approved_by'] ?? null);
+        $mgmtDate = $row['management_apporved_at'] ?? $row['management_approved_at'] ?? $row['approved_at'] ?? ($appReq['approved_at'] ?? ($row['approved_date'] ?? null));
+        $mgmtStage = !empty($appReq['approve_role']) ? ucwords(str_replace('_', ' ', $appReq['approve_role'])) : 'Management Approval';
+        if (!empty($mgmtId) || !empty($appReq['app_name'])) {
+            if (!empty($appReq['app_name'])) {
+                $mgmtName = $appReq['app_name'] . (!empty($appReq['app_des']) ? ' (' . $appReq['app_des'] . ')' : '');
+                $audit['approvers'][] = [
+                    'stage' => $mgmtStage,
+                    'name'  => $mgmtName,
+                    'date'  => !empty($mgmtDate) ? date('d M, Y h:i A', strtotime($mgmtDate)) : null
+                ];
+            } else {
+                $addApprover($mgmtStage, $mgmtId, $mgmtDate);
+            }
+        }
+        // Check con_approval_logs if available
+        $cal = $this->db->query("SELECT step_name, actioned_by, actioned_at FROM con_approval_logs WHERE ref_table = '{$sourceTable}' AND ref_id = {$id} AND status = 'approved' ORDER BY id ASC");
+        if ($cal) {
+            while ($calr = $cal->fetch_assoc()) {
+                $addApprover(ucwords(str_replace('_', ' ', $calr['step_name'])), $calr['actioned_by'], $calr['actioned_at']);
+            }
+        }
+        // If still empty but status is approved/paid
+        if (empty($audit['approvers'])) {
+            $audit['approvers'][] = [
+                'stage' => 'Management / Authority',
+                'name'  => 'Approved & Authorized',
+                'date'  => !empty($creatorDate) ? date('d M, Y', strtotime($creatorDate)) : date('d M, Y')
+            ];
+        }
+
+        // --- 3. DISBURSED / PAID BY ---
+        $disbId = $row['paid_by'] ?? $row['payment_by_id'] ?? $row['disbursed_by'] ?? $row['labor_disbursed_by'] ?? $row['accounts_by'] ?? null;
+        $disbDate = $row['paid_at'] ?? $row['payment_at'] ?? $row['disbursed_at'] ?? $row['labor_disbursed_at'] ?? $row['accounts_paid_at'] ?? $row['payment_date'] ?? null;
+        
+        if (empty($disbId)) {
+            if ($sourceTable === 'cashout_requests') {
+                $cp = $this->db->query("SELECT created_by, payment_date FROM cashout_payments WHERE cashout_request_id = {$id} ORDER BY id DESC LIMIT 1");
+                if ($cp && $cpr = $cp->fetch_assoc()) {
+                    $disbId = $cpr['created_by'];
+                    $disbDate = $cpr['payment_date'];
+                }
+            } elseif ($sourceTable === 'con_labor_requisitions') {
+                $clp = $this->db->query("SELECT paid_by, payment_date FROM con_labor_payment_logs WHERE requisition_id = {$id} ORDER BY id DESC LIMIT 1");
+                if ($clp && $clpr = $clp->fetch_assoc()) {
+                    $disbId = $clpr['paid_by'];
+                    $disbDate = $clpr['payment_date'];
+                }
+            } elseif (in_array($sourceTable, ['contractor_bill_requests', 'vendor_payment_requests', 'operational_fund_requests'])) {
+                $refTypeMap = [
+                    'contractor_bill_requests' => 'contractor_bill',
+                    'vendor_payment_requests' => 'vendor_payment',
+                    'operational_fund_requests' => 'fund_request'
+                ];
+                $rt = $refTypeMap[$sourceTable] ?? '';
+                $tx = $this->db->query("SELECT created_by, transaction_date FROM con_financial_transactions WHERE ref_type = '{$rt}' AND ref_id = {$id} ORDER BY id DESC LIMIT 1");
+                if ($tx && $txr = $tx->fetch_assoc()) {
+                    $disbId = $txr['created_by'];
+                    $disbDate = $txr['transaction_date'];
+                }
+            } elseif ($sourceTable === 'project_incentive_claims') {
+                $pip = $this->db->query("SELECT created_by, payment_date FROM project_incentive_payments WHERE claim_id = {$id} ORDER BY id DESC LIMIT 1");
+                if ($pip && $pipr = $pip->fetch_assoc()) {
+                    $disbId = $pipr['created_by'];
+                    $disbDate = $pipr['payment_date'];
+                }
+            }
+        }
+
+        $disbName = !empty($disbId) ? $getUser($disbId) : 'Accounts & Finance Department';
+        $audit['disburser'] = [
+            'name' => $disbName,
+            'date' => !empty($disbDate) ? date('d M, Y h:i A', strtotime($disbDate)) : date('d M, Y')
+        ];
+
+        return $audit;
     }
 
     private function numberToWords($number)

@@ -41,9 +41,13 @@ class LeadController extends Controller
             exit;
         }
 
-        if (in_array($userRoleId, [5, 9]) || $isCoLeader) {
+        // Role 9 (Sales Team Head) must always see all sales members across all teams for assignment and filtering,
+        // even if they have a team_id assigned in users/employees table.
+        if ((int)$userRoleId === 9) {
+            $assignedUsers = $this->userModel->getAllRoleUser();
+        } elseif ((int)$userRoleId === 5 || $isCoLeader) {
             if (!empty($userTeamId)) {
-                // team wise users
+                // team wise users for Sales Manager / Co-Leader
                 $assignedUsers = $this->userModel->getUsersByTeamAndRole($userTeamId);
             } else {
                 // no team → global sales users
@@ -76,7 +80,7 @@ class LeadController extends Controller
         }
 
         // Determine team restriction: roles 1, 3, 9, 32, 33 see all by default (unless filtered), others filter by team.
-        if (in_array($userRoleId, [1, 3, 9, 32, 33])) {
+        if (in_array((int)$userRoleId, [1, 3, 9, 32, 33])) {
             $teamIdForQuery = $filterTeamId;
         } else {
             // If they have no team_id, let them see everything (e.g. Sales Manager with no team)
@@ -98,7 +102,7 @@ class LeadController extends Controller
 
         // Get total count for pagination
         // Co-leader gets team-scoped data same as role_id=5 (Sales Manager)
-        $effectiveRoleId = ($isCoLeader && !in_array($userRoleId, [1, 3, 5, 9, 32, 33])) ? 5 : $userRoleId;
+        $effectiveRoleId = ($isCoLeader && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33])) ? 5 : (int)$userRoleId;
         $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
 
         // Fetch paginated records
@@ -150,7 +154,11 @@ class LeadController extends Controller
         $dupGroups  = [];
         $dupCount   = 0;
 
-        if ($userTeamId && $userId) {
+        $isGlobalViewer = in_array((int)$userRoleId, [1, 3, 9, 32, 33]);
+        $targetTeamIdForDup = $isGlobalViewer ? $filterTeamId : (!empty($userTeamId) ? (int)$userTeamId : null);
+
+        if ($userId && ($targetTeamIdForDup || $isGlobalViewer)) {
+            $teamCond = $targetTeamIdForDup ? "AND l2.team_id = ?" : "";
             $dupSql = "
                 SELECT
                     l.id,
@@ -180,7 +188,7 @@ class LeadController extends Controller
                           WHERE l2.deleted_at IS NULL
                             AND l2.assigned_id IS NOT NULL
                             AND l2.phone_number IS NOT NULL AND l2.phone_number != ''
-                            AND l2.team_id = ?
+                            $teamCond
                             AND (emp2.employee_status IS NULL OR emp2.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
                       ))
                       OR
@@ -191,7 +199,7 @@ class LeadController extends Controller
                           WHERE l2.deleted_at IS NULL
                             AND l2.assigned_id IS NOT NULL
                             AND l2.email IS NOT NULL AND l2.email != ''
-                            AND l2.team_id = ?
+                            $teamCond
                             AND (emp2.employee_status IS NULL OR emp2.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
                       ))
                   )
@@ -200,7 +208,9 @@ class LeadController extends Controller
 
             $dupStmt = $this->db->prepare($dupSql);
             if ($dupStmt) {
-                $dupStmt->bind_param('ii', $userTeamId, $userTeamId);
+                if ($targetTeamIdForDup) {
+                    $dupStmt->bind_param('ii', $targetTeamIdForDup, $targetTeamIdForDup);
+                }
                 $dupStmt->execute();
                 $dupResult = $dupStmt->get_result();
                 $allDups   = [];
@@ -387,7 +397,7 @@ class LeadController extends Controller
         }
 
         // Determine team restriction: roles 1, 3, 9, 32, 33 see all by default, but can filter.
-        if (in_array($userRoleId, [1, 3, 9, 32, 33])) {
+        if (in_array((int)$userRoleId, [1, 3, 9, 32, 33])) {
             $teamIdForQuery = $filterTeamId;
         } else {
             // If they have no team_id, let them see everything (e.g. Sales Manager with no team)
@@ -395,7 +405,7 @@ class LeadController extends Controller
         }
 
         // Co-leader gets same team-scoped access as Sales Manager (role_id=5)
-        $effectiveRoleId = (isSalesCoLeader() && !in_array($userRoleId, [1, 3, 5, 9, 32, 33])) ? 5 : $userRoleId;
+        $effectiveRoleId = (isSalesCoLeader() && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33])) ? 5 : (int)$userRoleId;
 
         $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
 
