@@ -167,11 +167,261 @@ class QcAuditController extends Controller
             }
         }
 
+        $vendors = [];
+        $vRes = $this->db->query("SELECT id, name, company_name, phone FROM vendors WHERE status = 'active' OR status IS NULL ORDER BY name ASC");
+        if ($vRes) {
+            while ($vRow = $vRes->fetch_assoc()) {
+                $vendors[] = $vRow;
+            }
+        }
+
+        $contractors = [];
+        $cRes = $this->db->query("SELECT id, name, trade, role, phone FROM contractors ORDER BY name ASC");
+        if ($cRes) {
+            while ($cRow = $cRes->fetch_assoc()) {
+                $contractors[] = $cRow;
+            }
+        }
+
         $this->view('qc-audit/advanced-filtering', [
             'current_route' => 'qc-advanced-audit',
             'page_title' => 'Advanced Auditing',
-            'projects' => $projects
+            'projects' => $projects,
+            'vendors' => $vendors,
+            'contractors' => $contractors
         ]);
+    }
+
+    public function getAuditVendorPOs()
+    {
+        $vendorId  = !empty($_GET['vendor_id']) ? (int)$_GET['vendor_id'] : null;
+        $projectId = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null;
+        $status    = !empty($_GET['status']) ? trim($_GET['status']) : null;
+        $search    = !empty($_GET['search']) ? trim($_GET['search']) : null;
+
+        $where = ["1=1"];
+        if ($vendorId) {
+            $where[] = "po.vendor_id = $vendorId";
+        }
+        if ($projectId) {
+            $where[] = "pr.project_id = $projectId";
+        }
+        if ($status) {
+            $safeStatus = $this->db->real_escape_string($status);
+            $where[] = "(po.status = '$safeStatus' OR vpr.status = '$safeStatus')";
+        }
+        if ($search) {
+            $safeSearch = $this->db->real_escape_string($search);
+            $where[] = "(v.name LIKE '%$safeSearch%' OR p.name LIKE '%$safeSearch%' OR po.id = '$safeSearch' OR poi_agg.materials_summary LIKE '%$safeSearch%')";
+        }
+
+        $whereSql = implode(' AND ', $where);
+
+        $query = "SELECT 
+            po.id as po_id,
+            po.order_date,
+            po.created_at,
+            po.status as po_status,
+            v.id as vendor_id,
+            v.name as vendor_name,
+            v.phone as vendor_phone,
+            p.id as project_id,
+            p.name as project_name,
+            COALESCE(poi_agg.item_count, 0) as item_count,
+            COALESCE(poi_agg.po_total_amount, 0) as po_total_amount,
+            COALESCE(poi_agg.materials_summary, 'No items specified') as materials_summary,
+            COALESCE(poi_agg.items_json, '[]') as items_json,
+            vpr.id as vpr_id,
+            vpr.status as vpr_status,
+            vpr.invoice_number,
+            vpr.invoice_amount,
+            COALESCE(
+                (SELECT SUM(cft.amount_paid) FROM con_financial_transactions cft WHERE cft.ref_id = vpr.id AND cft.ref_type = 'vendor_payment'),
+                CASE WHEN vpr.status = 'Fully_Paid' THEN vpr.invoice_amount ELSE 0 END,
+                0
+            ) as paid_amount,
+            COALESCE(
+                vpr.due_amount,
+                CASE WHEN vpr.status = 'Fully_Paid' THEN 0 
+                     ELSE (COALESCE(poi_agg.po_total_amount, 0) - COALESCE((SELECT SUM(cft.amount_paid) FROM con_financial_transactions cft WHERE cft.ref_id = vpr.id AND cft.ref_type = 'vendor_payment'), 0)) 
+                END,
+                0
+            ) as due_amount
+        FROM purchase_orders po
+        JOIN vendors v ON po.vendor_id = v.id
+        LEFT JOIN purchase_requests pr ON pr.id = po.request_id
+        LEFT JOIN projects p ON p.id = pr.project_id
+        LEFT JOIN (
+            SELECT 
+                poi.purchase_order_id,
+                COUNT(poi.id) as item_count,
+                SUM(poi.total_price) as po_total_amount,
+                GROUP_CONCAT(CONCAT(m.name, ' (', poi.quantity, ' ', COALESCE(m.unit, ''), ')') SEPARATOR ', ') as materials_summary,
+                CONCAT('[', GROUP_CONCAT(
+                    CONCAT('{\"name\":\"', REPLACE(REPLACE(m.name, '\"', '\\\"'), '\\\\', '\\\\\\\\'), '\",\"qty\":', poi.quantity, ',\"unit\":\"', COALESCE(m.unit, ''), '\",\"rate\":', poi.unit_price, ',\"total\":', poi.total_price, '}')
+                    SEPARATOR ','
+                ), ']') as items_json
+            FROM purchase_order_items poi
+            JOIN con_materials m ON poi.material_id = m.id
+            GROUP BY poi.purchase_order_id
+        ) poi_agg ON poi_agg.purchase_order_id = po.id
+        LEFT JOIN vendor_payment_requests vpr ON vpr.purchase_order_id = po.id
+        WHERE $whereSql
+        ORDER BY po.id DESC";
+
+        $result = $this->db->query($query);
+        $data = [];
+        $totalPOs = 0;
+        $totalAmount = 0;
+        $totalPaid = 0;
+        $totalDue = 0;
+
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $totalPOs++;
+                $totalAmount += (float)$row['po_total_amount'];
+                $totalPaid   += (float)$row['paid_amount'];
+                $totalDue    += (float)$row['due_amount'];
+                $data[] = $row;
+            }
+        }
+
+        // Materials breakdown for the selected filter / vendor
+        $matBreakdownQuery = "SELECT 
+            m.name as material_name,
+            COALESCE(m.unit, '') as unit,
+            SUM(poi.quantity) as total_quantity,
+            SUM(poi.total_price) as total_amount,
+            COUNT(DISTINCT po.id) as po_occurrences
+        FROM purchase_orders po
+        JOIN vendors v ON po.vendor_id = v.id
+        LEFT JOIN purchase_requests pr ON pr.id = po.request_id
+        LEFT JOIN projects p ON p.id = pr.project_id
+        JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
+        JOIN con_materials m ON poi.material_id = m.id
+        LEFT JOIN vendor_payment_requests vpr ON vpr.purchase_order_id = po.id
+        WHERE $whereSql
+        GROUP BY m.name, m.unit
+        ORDER BY total_amount DESC";
+
+        $matRes = $this->db->query($matBreakdownQuery);
+        $materialsBreakdown = [];
+        if ($matRes) {
+            while ($mRow = $matRes->fetch_assoc()) {
+                $materialsBreakdown[] = $mRow;
+            }
+        }
+
+        $summary = [
+            'total_pos' => $totalPOs,
+            'total_amount' => $totalAmount,
+            'total_paid' => $totalPaid,
+            'total_due' => max(0, $totalDue),
+            'material_count' => count($materialsBreakdown),
+            'materials_breakdown' => $materialsBreakdown
+        ];
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'data' => $data,
+            'summary' => $summary
+        ]);
+        exit;
+    }
+
+    public function getAuditContractorBills()
+    {
+        $contractorId = !empty($_GET['contractor_id']) ? (int)$_GET['contractor_id'] : null;
+        $projectId    = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null;
+        $status       = !empty($_GET['status']) ? trim($_GET['status']) : null;
+        $search       = !empty($_GET['search']) ? trim($_GET['search']) : null;
+
+        $where = ["1=1"];
+        if ($contractorId) {
+            $where[] = "cbr.operator_id = $contractorId";
+        }
+        if ($projectId) {
+            $where[] = "cbr.project_id = $projectId";
+        }
+        if ($status) {
+            $safeStatus = $this->db->real_escape_string($status);
+            $where[] = "cbr.status = '$safeStatus'";
+        }
+        if ($search) {
+            $safeSearch = $this->db->real_escape_string($search);
+            $where[] = "(c.name LIKE '%$safeSearch%' OR c.trade LIKE '%$safeSearch%' OR p.name LIKE '%$safeSearch%' OR cbr.id = '$safeSearch' OR cbr.work_description LIKE '%$safeSearch%')";
+        }
+
+        $whereSql = implode(' AND ', $where);
+
+        $query = "SELECT 
+            cbr.id as bill_id,
+            cbr.bill_date,
+            cbr.bill_type,
+            cbr.work_description,
+            cbr.status as bill_status,
+            c.id as contractor_id,
+            c.name as contractor_name,
+            c.trade as contractor_trade,
+            c.role as contractor_role,
+            c.phone as contractor_phone,
+            p.id as project_id,
+            p.name as project_name,
+            cbr.bill_amount,
+            COALESCE(cbr.approved_amount, 0) as approved_amount,
+            COALESCE(
+                (SELECT SUM(cft.amount_paid) FROM con_financial_transactions cft WHERE cft.ref_id = cbr.id AND cft.ref_type = 'contractor_bill'),
+                CASE WHEN cbr.status IN ('paid', 'fully_paid') THEN COALESCE(cbr.approved_amount, cbr.bill_amount) ELSE 0 END,
+                0
+            ) as paid_amount,
+            COALESCE(
+                cbr.due_amount,
+                CASE WHEN cbr.status IN ('paid', 'fully_paid') THEN 0 
+                     ELSE (COALESCE(cbr.approved_amount, cbr.bill_amount) - COALESCE((SELECT SUM(cft.amount_paid) FROM con_financial_transactions cft WHERE cft.ref_id = cbr.id AND cft.ref_type = 'contractor_bill'), 0)) 
+                END,
+                0
+            ) as due_amount
+        FROM contractor_bill_requests cbr
+        JOIN contractors c ON cbr.operator_id = c.id
+        LEFT JOIN projects p ON cbr.project_id = p.id
+        WHERE $whereSql
+        ORDER BY cbr.id DESC";
+
+        $result = $this->db->query($query);
+        $data = [];
+        $totalBills = 0;
+        $totalRequested = 0;
+        $totalApproved = 0;
+        $totalPaid = 0;
+        $totalDue = 0;
+
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $totalBills++;
+                $totalRequested += (float)$row['bill_amount'];
+                $totalApproved  += (float)$row['approved_amount'];
+                $totalPaid      += (float)$row['paid_amount'];
+                $totalDue       += (float)$row['due_amount'];
+                $data[] = $row;
+            }
+        }
+
+        $summary = [
+            'total_bills' => $totalBills,
+            'total_requested' => $totalRequested,
+            'total_approved' => $totalApproved,
+            'total_paid' => $totalPaid,
+            'total_due' => max(0, $totalDue)
+        ];
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'data' => $data,
+            'summary' => $summary
+        ]);
+        exit;
     }
 
     public function getAuditMaterials()
@@ -240,7 +490,8 @@ class QcAuditController extends Controller
                 id AS ref_id,
                 amount AS amount,
                 CASE WHEN qc_approved_by_id IS NOT NULL THEN 'QC Approved' ELSE 'Pending' END AS qc_status,
-                status AS mgmt_status
+                status AS mgmt_status,
+                COALESCE((SELECT SUM(amount) FROM cashout_payments WHERE cashout_request_id = cashout_requests.id), 0) as paid_amount
             FROM cashout_requests
             UNION ALL
             SELECT 
@@ -249,7 +500,8 @@ class QcAuditController extends Controller
                 id AS ref_id,
                 net_payable_amount AS amount,
                 CASE WHEN qc_approved_by_id IS NOT NULL THEN 'QC Approved' ELSE 'Pending' END AS qc_status,
-                status AS mgmt_status
+                status AS mgmt_status,
+                COALESCE((SELECT SUM(amount_paid) FROM con_financial_transactions WHERE ref_id = vendor_payment_requests.id AND ref_type = 'vendor_payment'), CASE WHEN status IN ('Fully_Paid', 'Paid') THEN invoice_amount ELSE 0 END, 0) as paid_amount
             FROM vendor_payment_requests
             UNION ALL
             SELECT 
@@ -258,7 +510,8 @@ class QcAuditController extends Controller
                 id AS ref_id,
                 bill_amount AS amount,
                 CASE WHEN qc_approved_by_id IS NOT NULL THEN 'QC Approved' ELSE 'Pending' END AS qc_status,
-                status AS mgmt_status
+                status AS mgmt_status,
+                COALESCE((SELECT SUM(amount_paid) FROM con_financial_transactions WHERE ref_id = contractor_bill_requests.id AND ref_type = 'contractor_bill'), CASE WHEN status IN ('paid', 'fully_paid') THEN bill_amount ELSE 0 END, 0) as paid_amount
             FROM contractor_bill_requests
             ORDER BY request_date DESC";
         
