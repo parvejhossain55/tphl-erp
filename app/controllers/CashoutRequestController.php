@@ -281,30 +281,28 @@ class CashoutRequestController extends Controller
         $isAdmin        = $this->isAdminUser();
         $approvalRequest = $this->cashoutModel->getApprovalRequest($id);
 
+        $reqAmount      = (float) ($request['amount'] ?? 0);
+
         $this->view("accounts/cashout/view-request", [
-            "current_route"    => "view-cashout-request",
-            "page_title"       => "Cashout Request Details",
-            "request"          => $request,
-            "payments"         => $payments,
-            "total_paid"       => $totalPaid,
-            "approval_request" => $approvalRequest,
-            "isAdmin"          => $isAdmin,
-            "canApproveOrReject"   => $this->canApproveOrReject(), 
-            "canApproveQC"     => $this->canApproveQC(),
-            "userRole"         => $this->userRole,
-            "userId"           => $this->userId
+            "current_route"      => "view-cashout-request",
+            "page_title"         => "Cashout Request Details",
+            "request"            => $request,
+            "payments"           => $payments,
+            "total_paid"         => $totalPaid,
+            "approval_request"   => $approvalRequest,
+            "isAdmin"            => $isAdmin,
+            "canApproveOrReject" => $this->canApproveOrReject($reqAmount), 
+            "canApproveQC"       => $this->canApproveQC(),
+            "isSiteOperator"     => $this->isSiteOperator(),
+            "isManagement"       => $this->isManagementUser(),
+            "userRole"           => $this->userRole,
+            "userId"             => $this->userId
         ]);
     }
 
-    // Admin view single request
+    // Admin view single request - redirect directly to canonical view-cashout-request
     public function adminShow()
     {
-        if (!$this->isAdminUser()) {
-            setError("You are not authorized to access this page.");
-            header("Location: {$GLOBALS['base_url']}/cashout-requests");
-            exit;
-        }
-
         $id = $_GET['id'] ?? null;
         if (!$id || !is_numeric($id)) {
             setError("Request ID missing or invalid.");
@@ -312,32 +310,8 @@ class CashoutRequestController extends Controller
             exit;
         }
 
-        $this->syncWithApprovalSystem($id);
-
-        $request = $this->cashoutModel->getRequestById($id);
-        if (!$request) {
-            setError("Request not found.");
-            header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
-            exit;
-        }
-
-        $payments        = $this->paymentModel->getPaymentsByRequest($id);
-        $totalPaid       = $this->paymentModel->getTotalPaid($id);
-        $approvalRequest = $this->cashoutModel->getApprovalRequest($id);
-
-        $this->view("accounts/cashout/admin-view-request", [
-            "current_route"    => "view-cashout-request",
-            "page_title"       => "Admin - Cashout Request Details",
-            "request"          => $request,
-            "payments"         => $payments,
-            "total_paid"       => $totalPaid,
-            "approval_request" => $approvalRequest,
-            "isAdmin"          => true,
-            "canApproveOrReject" => $this->canApproveOrReject(), 
-            "canApproveQC"     => $this->canApproveQC(),
-            "userRole"         => $this->userRole,
-            "userId"           => $this->userId
-        ]);
+        header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $id);
+        exit;
     }
 
     public function syncAllApprovals()
@@ -511,10 +485,21 @@ class CashoutRequestController extends Controller
             }
 
         } else {
-            // Management approval
-            if (!$this->canApproveOrReject()) {
-                setError("Access Denied: Only authorized approvers can approve requests.");
-                header("Location: {$GLOBALS['base_url']}/cashout-requests");
+            // Management / Operation Head approval
+            $reqAmount = (float)($request['amount'] ?? 0);
+            if (!$this->canApproveOrReject($reqAmount)) {
+                if ($this->isSiteOperator() && $reqAmount > 100000) {
+                    setError("Access Denied: Amount exceeds ৳1,00,000 threshold. Full Management approval required.");
+                } else {
+                    setError("Access Denied: Only authorized approvers can approve requests.");
+                }
+                header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
+                exit;
+            }
+
+            if ($request['display_status'] === 'approved' || ($request['status'] ?? '') === 'approved') {
+                setSuccess("Request approved successfully! Ready for payment processing.");
+                header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
                 exit;
             }
 
@@ -524,12 +509,14 @@ class CashoutRequestController extends Controller
                 exit;
             }
 
-            $approvedAmount = !empty($_POST['approved_amount']) ? (float)$_POST['approved_amount'] : $request['amount'];
+            $approvedAmount = !empty($_POST['approved_amount']) ? (float)$_POST['approved_amount'] : $reqAmount;
+            $approvalNote = trim($_POST['approval_note'] ?? '');
+
             if ($approvedAmount > 0) {
                 $this->cashoutModel->updateApprovedAmount($requestId, $approvedAmount);
             }
 
-            $result = $this->cashoutModel->updateStatus($requestId, 'approved', $this->userId);
+            $result = $this->cashoutModel->updateStatus($requestId, 'approved', $this->userId, null, $approvedAmount, $approvalNote);
             if ($result) {
                 // Trigger Email Notification ON APPROVAL
                 $freshRequest = $this->cashoutModel->getRequestById($requestId);
@@ -562,18 +549,19 @@ class CashoutRequestController extends Controller
             exit;
         }
 
+        $reqAmount = (float)($request['amount'] ?? 0);
         $isQC = ($request['display_status'] === 'pending');
-        $isMgmt = ($request['display_status'] === 'qc_approved');
+        $isMgmt = in_array($request['display_status'], ['qc_approved', 'pending']);
 
-        if ($isQC && !$this->canApproveQC()) {
-            setError("You are not authorized to reject as QC.");
-            header("Location: {$GLOBALS['base_url']}/cashout-requests");
+        if ($isQC && !$this->canApproveQC() && !$this->canApproveOrReject($reqAmount)) {
+            setError("You are not authorized to reject this request.");
+            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
             exit;
         }
 
-        if ($isMgmt && !$this->canApproveOrReject()) {
-            setError("You are not authorized to reject as Management.");
-            header("Location: {$GLOBALS['base_url']}/cashout-requests");
+        if ($isMgmt && !$this->canApproveOrReject($reqAmount)) {
+            setError("You are not authorized to reject this request.");
+            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
             exit;
         }
 
@@ -739,29 +727,60 @@ class CashoutRequestController extends Controller
     // Role helper methods
     // -------------------------------------------------------
 
-    /**
-     * Full admin access: roles 1 (Admin) and 3 (Super Admin).
-     * Also includes roles 6 and 10 for viewing admin pages
-     * and adding payments.
-     */
-    private function isAdminUser()
+    public function isSiteOperator()
     {
-        return in_array($this->userRole, [1, 3, 6, 10, 30]);
+        $roleId = (int) $this->userRole;
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        return in_array($roleId, [20, 32], true)
+            || strpos($roleName, 'operation head') !== false
+            || strpos($roleName, 'admin & operation') !== false;
+    }
+
+    public function isManagementUser()
+    {
+        $roleId = (int) $this->userRole;
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        return in_array($roleId, [1, 3, 33], true)
+            || in_array($roleName, ['super admin', 'admin', 'management', 'chief officer'], true);
     }
 
     /**
-     * Only roles 1 and 3 may approve or reject requests.
+     * Full admin access: roles 1 (Admin), 3 (Super Admin), 33 (Chief Officer),
+     * Accounts (6, 30), Marketing (10), and Operation Head (20, 32).
      */
-    private function canApproveOrReject()
+    private function isAdminUser()
     {
-        return in_array($this->userRole, [1, 3]);
+        $roleId = (int) $this->userRole;
+        return in_array($roleId, [1, 3, 6, 10, 20, 30, 32, 33], true)
+            || $this->isManagementUser()
+            || $this->isSiteOperator();
+    }
+
+    /**
+     * Management (roles 1, 3, 33) can approve any amount.
+     * Operation Head (roles 20, 32) can approve requests <= 100,000.
+     */
+    public function canApproveOrReject($amount = null)
+    {
+        if ($this->isManagementUser()) {
+            return true;
+        }
+
+        if ($this->isSiteOperator()) {
+            if ($amount === null) {
+                return true;
+            }
+            return ((float) $amount <= 100000.01);
+        }
+
+        return false;
     }
 
     private function canApproveQC()
     {
         if (in_array($this->userRole, [1, 24, 25])) return true;
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        return (str_contains($roleName, 'qc & internal audit') || hasPermission('QC & Internal Audit') || $this->canApproveOrReject());
+        return (str_contains($roleName, 'qc & internal audit') || hasPermission('QC & Internal Audit'));
     }
 
     /**

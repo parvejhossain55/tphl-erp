@@ -31,12 +31,42 @@ class EmployeeTask extends Model
 
     public function getTasksByEmployeeAndMonth($employee_id, $month)
     {
-        $stmt = $this->db->prepare("
-        SELECT * FROM employee_tasks 
-        WHERE employee_id = ? AND DATE_FORMAT(work_date, '%Y-%m') = ?
-        ORDER BY work_date DESC
-    ");
-        $stmt->bind_param("is", $employee_id, $month);
+        $ids = is_array($employee_id) ? array_filter($employee_id) : [$employee_id];
+
+        if (!empty($ids)) {
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $empStmt = $this->db->prepare("SELECT id, employee_id FROM employees WHERE id IN ($placeholders) OR employee_id IN ($placeholders)");
+            if ($empStmt) {
+                $types = str_repeat('s', count($ids) * 2);
+                $allParams = array_merge($ids, $ids);
+                $empStmt->bind_param($types, ...$allParams);
+                $empStmt->execute();
+                $empRes = $empStmt->get_result();
+                while ($empRow = $empRes->fetch_assoc()) {
+                    if (!empty($empRow['id'])) $ids[] = (int)$empRow['id'];
+                    if (!empty($empRow['employee_id'])) $ids[] = $empRow['employee_id'];
+                }
+                $empStmt->close();
+            }
+        }
+        $ids = array_values(array_unique(array_filter($ids)));
+
+        if (empty($ids)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "SELECT * FROM employee_tasks 
+                WHERE employee_id IN ($placeholders) 
+                  AND DATE_FORMAT(work_date, '%Y-%m') = ?
+                ORDER BY work_date DESC, id DESC";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+        $types = str_repeat('s', count($ids)) . 's';
+        $params = array_merge($ids, [$month]);
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $result = $stmt->get_result();
         return $result->fetch_all(MYSQLI_ASSOC);

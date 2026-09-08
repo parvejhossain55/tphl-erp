@@ -90,6 +90,21 @@ class LoginController extends Controller
                                 $stmtAct->close();
                             }
 
+                            $empDbId = $user['employee_db_id'] ?? null;
+                            if (!$empDbId && !empty($user['id'])) {
+                                $stmtEmp = $this->db->prepare("SELECT id FROM employees WHERE user_id = ? OR (employee_id != '' AND employee_id = ?) LIMIT 1");
+                                if ($stmtEmp) {
+                                    $userEmpIdStr = (string)($user['employee_id'] ?? '');
+                                    $stmtEmp->bind_param("is", $user['id'], $userEmpIdStr);
+                                    $stmtEmp->execute();
+                                    $empRow = $stmtEmp->get_result()->fetch_assoc();
+                                    if ($empRow) {
+                                        $empDbId = (int)$empRow['id'];
+                                    }
+                                    $stmtEmp->close();
+                                }
+                            }
+
                             $_SESSION['user'] = [
                                 "id" => $user['id'],
                                 "full_name" => $user['full_name'],
@@ -100,6 +115,7 @@ class LoginController extends Controller
                                 "secondary_role_id" => $user['secondary_role_id'] ?? null,
                                 "team_id" => $user['emp_team_id'] ?? $user['team_id'] ?? null,
                                 "employee_id" => $user['employee_id'] ?? null,
+                                "employee_db_id" => $empDbId,
                                 "role_name" => strtolower($user['role_name'] ?? ''),
                                 "designation_name" => strtolower($user['designation_name'] ?? ''),
                                 "department_name" => strtolower($user['department_name'] ?? ''),
