@@ -82,7 +82,60 @@ class SalesActivityReportController extends Controller
         $subTitle = '';
         $filenamePrefix = '';
 
-        if ($tab === 'dashboard') {
+        if ($tab === 'target-vs-achievement') {
+            $reportTitle = 'Sales Activity Report - Target Vs Achievement (8-Pillar Scorecard)';
+            $subTitle = 'Period: ' . $periodText;
+            $filenamePrefix = "Sales_Target_Vs_Achievement_{$year}_{$month}";
+            $headers = [
+                'Rank', 'Member Name', 'Designation', 'Team Name',
+                'Vol Target (Tk)', 'Vol Achieved (Tk)', 'Vol Ach %', 'Rev Score (/30)',
+                'Min 20% Met', 'Val Score (/20)',
+                'Unit Target', 'Units Sold', 'Unit Ach %', 'Unit Score (/10)',
+                'Visit Target', 'Visits Done', 'Visit Ach %', 'Visit Score (/10)',
+                'Assigned Leads', 'CVR %', 'CVR Score (/10)',
+                'Contacted %', 'Followed %', 'Conn Score (/10)',
+                'Quality Leads', 'Quality %', 'Quality Score (/5)',
+                'HR Score (/5)',
+                'Total Score (/100)', 'Grade'
+            ];
+            
+            $inds = $monthlyData['scorecard_individuals'] ?? ($monthlyData['individuals'] ?? []);
+            foreach ($inds as $emp) {
+                $sc = $emp['scorecard'] ?? [];
+                $dataRows[] = [
+                    '#' . ($sc['rank'] ?? ($emp['rank'] ?? '-')),
+                    $emp['member_name'] ?? '',
+                    $emp['level_designation'] ?? '',
+                    $emp['team_name'] ?? '',
+                    number_format((float)($emp['volume_target'] ?? 0), 2),
+                    number_format((float)($emp['total_volume_achieved'] ?? 0), 2),
+                    ($emp['volume_ach_pct'] ?? 0) . '%',
+                    number_format((float)($sc['pillar1_score'] ?? 0), 2) . ' / 30',
+                    !empty($sc['min_20_met']) ? 'Yes' : 'No',
+                    number_format((float)($sc['pillar2_score'] ?? 0), 2) . ' / 20',
+                    $emp['unit_target'] ?? 0,
+                    $emp['units_sold'] ?? 0,
+                    ($emp['unit_ach_pct'] ?? 0) . '%',
+                    number_format((float)($sc['pillar3_score'] ?? 0), 2) . ' / 10',
+                    $emp['visit_target'] ?? 0,
+                    $emp['visited'] ?? 0,
+                    ($emp['visit_ach_pct'] ?? 0) . '%',
+                    number_format((float)($sc['pillar4_score'] ?? 0), 2) . ' / 10',
+                    $emp['assigned_leads'] ?? 0,
+                    ($sc['cvr_pct'] ?? 0) . '%',
+                    number_format((float)($sc['pillar5_score'] ?? 0), 2) . ' / 10',
+                    ($sc['contacted_ratio_pct'] ?? 0) . '%',
+                    ($sc['followed_ratio_pct'] ?? 0) . '%',
+                    number_format((float)($sc['pillar6_score'] ?? 0), 2) . ' / 10',
+                    $sc['quality_leads'] ?? 0,
+                    ($sc['quality_pct'] ?? 0) . '%',
+                    number_format((float)($sc['pillar7_score'] ?? 0), 2) . ' / 5',
+                    number_format((float)($sc['pillar8_score'] ?? 0), 2) . ' / 5',
+                    number_format((float)($sc['total_score'] ?? 0), 2) . ' %',
+                    $sc['grade'] ?? 'N/A'
+                ];
+            }
+        } elseif ($tab === 'dashboard') {
             $reportTitle = 'Sales Activity Report - Ranking Dashboard (Top Performers)';
             $subTitle = 'Period: ' . $periodText;
             $filenamePrefix = "Sales_Ranking_Dashboard_{$year}_{$month}";
@@ -288,7 +341,58 @@ class SalesActivityReportController extends Controller
         $subTitle = '';
         $filenamePrefix = '';
 
-        if ($tab === 'dashboard') {
+        if ($tab === 'target-vs-achievement') {
+            $reportTitle = 'Sales Activity Report - Target Vs Achievement (8-Pillar Scorecard)';
+            $subTitle = 'Period: ' . $periodText;
+            $filenamePrefix = "Sales_Target_Vs_Achievement_{$year}_{$month}";
+            $headers = [
+                'Rank', 'Member Name', 'Designation', 'Team Name',
+                'Vol Tgt (Tk)', 'Vol Ach (Tk)', 'Vol %', 'Rev (/30)',
+                'Min 20%', 'Val (/20)',
+                'Unit Tgt', 'Units', 'Unit %', 'Unit (/10)',
+                'Visit Tgt', 'Visits', 'Visit %', 'Visit (/10)',
+                'Leads', 'CVR %', 'CVR (/10)',
+                'Cont %', 'Foll %', 'Conn (/10)',
+                'Qual Leads', 'Qual (/5)', 'HR (/5)',
+                'Total (/100)', 'Grade'
+            ];
+            
+            $inds = $monthlyData['scorecard_individuals'] ?? ($monthlyData['individuals'] ?? []);
+            foreach ($inds as $emp) {
+                $sc = $emp['scorecard'] ?? [];
+                $dataRows[] = [
+                    '#' . ($sc['rank'] ?? ($emp['rank'] ?? '-')),
+                    $emp['member_name'] ?? '',
+                    $emp['level_designation'] ?? '',
+                    $emp['team_name'] ?? '',
+                    number_format((float)($emp['volume_target'] ?? 0), 0),
+                    number_format((float)($emp['total_volume_achieved'] ?? 0), 0),
+                    ($emp['volume_ach_pct'] ?? 0) . '%',
+                    number_format((float)($sc['pillar1_score'] ?? 0), 1),
+                    !empty($sc['min_20_met']) ? 'Yes' : 'No',
+                    number_format((float)($sc['pillar2_score'] ?? 0), 1),
+                    $emp['unit_target'] ?? 0,
+                    $emp['units_sold'] ?? 0,
+                    ($emp['unit_ach_pct'] ?? 0) . '%',
+                    number_format((float)($sc['pillar3_score'] ?? 0), 1),
+                    $emp['visit_target'] ?? 0,
+                    $emp['visited'] ?? 0,
+                    ($emp['visit_ach_pct'] ?? 0) . '%',
+                    number_format((float)($sc['pillar4_score'] ?? 0), 1),
+                    $emp['assigned_leads'] ?? 0,
+                    ($sc['cvr_pct'] ?? 0) . '%',
+                    number_format((float)($sc['pillar5_score'] ?? 0), 1),
+                    ($sc['contacted_ratio_pct'] ?? 0) . '%',
+                    ($sc['followed_ratio_pct'] ?? 0) . '%',
+                    number_format((float)($sc['pillar6_score'] ?? 0), 1),
+                    $sc['quality_leads'] ?? 0,
+                    number_format((float)($sc['pillar7_score'] ?? 0), 1),
+                    number_format((float)($sc['pillar8_score'] ?? 0), 1),
+                    number_format((float)($sc['total_score'] ?? 0), 1) . '%',
+                    $sc['grade'] ?? 'N/A'
+                ];
+            }
+        } elseif ($tab === 'dashboard') {
             $reportTitle = 'Sales Activity Report - Ranking Dashboard (Top Performers)';
             $subTitle = 'Period: ' . $periodText;
             $filenamePrefix = "Sales_Ranking_Dashboard_{$year}_{$month}";

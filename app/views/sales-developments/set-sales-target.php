@@ -42,13 +42,14 @@ $show_breadcrumb = true;
 
                     <!-- Category -->
                     <div class="col-lg-6 mb-3">
-                        <label>Assigned Category (Optional)</label>
-                        <select name="category_id" id="category_select" class="form-control select2" data-placeholder="-- Select Category --">
-                            <option value="">-- Select Category --</option>
+                        <label>Assigned Category(s) (Optional)</label>
+                        <select name="category_ids[]" id="category_select" class="form-control select2" multiple data-placeholder="-- Select Category(s) --">
                             <?php foreach ($categories as $cat): ?>
-                                <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['category_name']) ?><?= !empty($cat['main_category']) ? ' - ' . htmlspecialchars($cat['main_category']) : '' ?></option>
+                                <?php $cLabel = !empty($cat['main_category']) ? $cat['category_name'] . ' (' . $cat['main_category'] . ')' : $cat['category_name']; ?>
+                                <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cLabel) ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <small class="text-muted">All projects under selected categories will automatically count as assigned projects.</small>
                     </div>
 
                     <!-- Project -->
@@ -56,10 +57,13 @@ $show_breadcrumb = true;
                         <label>Assigned Project(s) (Optional)</label>
                         <select name="project_ids[]" id="project_select" class="form-control select2" multiple data-placeholder="-- Select Project(s) --">
                             <?php foreach ($projects as $proj): ?>
-                                <option value="<?= $proj['id'] ?>" data-category="<?= $proj['category_id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
+                                <?php $catLabel = !empty($proj['main_category']) ? $proj['main_category'] : ($proj['cat_name'] ?? 'General'); ?>
+                                <option value="<?= $proj['id'] ?>" data-category="<?= $proj['category_id'] ?>">
+                                    <?= htmlspecialchars($proj['name']) ?> (<?= htmlspecialchars($catLabel) ?>)
+                                </option>
                             <?php endforeach; ?>
                         </select>
-                        <small class="text-muted">You can select multiple projects.</small>
+                        <small class="text-muted">You can select multiple specific projects.</small>
                     </div>
                     <!-- Land Share Target (Amount) -->
                     <div class="col-lg-6 mb-3">
@@ -113,7 +117,7 @@ $show_breadcrumb = true;
     <div class="card__wrapper">
         <div class="card__header d-flex justify-content-between align-items-center mb-3">
             <h5 class="card__title mb-0" id="transactionsTitle">
-                Today's Follow-ups
+                Target History & Progress
             </h5>
 
         </div>
@@ -124,7 +128,7 @@ $show_breadcrumb = true;
                     <tr class="table__title">
                         <th>S/L</th>
                         <th>Month</th>
-                        <th>Category</th>
+                        <th>Category(s)</th>
                         <th>Project(s)</th>
                         <th>Site Visit Target</th>
                         <th>Booking Target</th>
@@ -138,14 +142,18 @@ $show_breadcrumb = true;
                             <tr>
                                 <td><?= $index + 1 ?></td>
                                 <td><?= date('F Y', strtotime($row['month'])) ?></td>
-                                <td><?= htmlspecialchars($row['category_name'] ?? 'All') ?></td>
+                                <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($row['category_names_display'] ?? ($row['category_name'] ?? 'All / None')) ?></span></td>
                                 <td>
                                     <?php 
                                         if (!empty($row['project_ids'])) {
                                             $pIds = json_decode($row['project_ids'], true);
-                                            echo "Selected " . count($pIds) . " project(s)";
+                                            if (is_array($pIds)) {
+                                                echo '<span class="badge bg-primary-transparent">' . count($pIds) . ' project(s)</span>';
+                                            } else {
+                                                echo htmlspecialchars($row['project_ids']);
+                                            }
                                         } else {
-                                            echo "All/None";
+                                            echo '<span class="text-muted">Category-wide / All</span>';
                                         }
                                     ?>
                                 </td>
@@ -160,6 +168,7 @@ $show_breadcrumb = true;
                                         data-id="<?= $row['id'] ?>"
                                         data-month="<?= $row['month'] ?>"
                                         data-category="<?= $row['category_id'] ?>"
+                                        data-category-ids="<?= htmlspecialchars($row['category_ids'] ?? '') ?>"
                                         data-projects="<?= htmlspecialchars($row['project_ids']) ?>"
                                         data-site_visit="<?= $row['site_visit_target'] ?>"
                                         data-booking="<?= $row['booking_target'] ?>"
@@ -173,7 +182,7 @@ $show_breadcrumb = true;
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="6" class="text-center">No targets found.</td>
+                            <td colspan="8" class="text-center">No targets found.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -185,7 +194,7 @@ $show_breadcrumb = true;
 
 
 <div class="modal fade" id="editSalesTarget" tabindex="-1" aria-labelledby="editSalesTargetLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="editSalesTargetLabel">Edit Sales Target</h5>
@@ -197,7 +206,7 @@ $show_breadcrumb = true;
             <div class="modal-body">
                 <form action="<?= $GLOBALS['base_url'] ?>/update-sales-target" method="POST">
                     <input type="hidden" name="id" id="edit_target_id">
-                    <input type="hidden" name="user_id" value="<?= $user['id'] ?>"> <!-- Add this -->
+                    <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
 
 
                     <div class="card__wrapper mb-20">
@@ -211,8 +220,8 @@ $show_breadcrumb = true;
 
                             <!-- Sales Role -->
                             <div class="col-lg-6 mb-3">
-                                <label>Sales Role</label>
-                                <select name="sales_role" id="edit_target_sales_role" class="form-control">
+                                <label>Sales Role <span>*</span></label>
+                                <select name="sales_role" id="edit_target_sales_role" class="form-control" required>
                                     <option value="">-- Select Sales Role --</option>
                                     <option value="KAM">KAM</option>
                                     <option value="KAE">KAE</option>
@@ -221,13 +230,14 @@ $show_breadcrumb = true;
 
                             <!-- Category -->
                             <div class="col-lg-6 mb-3">
-                                <label>Assigned Category (Optional)</label>
-                                <select name="category_id" id="edit_target_category" class="form-control">
-                                    <option value="">-- Select Category --</option>
+                                <label>Assigned Category(s) (Optional)</label>
+                                <select name="category_ids[]" id="edit_target_categories" class="form-control" multiple size="4">
                                     <?php foreach ($categories as $cat): ?>
-                                        <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['category_name']) ?></option>
+                                        <?php $cLabel = !empty($cat['main_category']) ? $cat['category_name'] . ' (' . $cat['main_category'] . ')' : $cat['category_name']; ?>
+                                        <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cLabel) ?></option>
                                     <?php endforeach; ?>
                                 </select>
+                                <small class="text-muted">Hold Ctrl (Windows) / Cmd (Mac) to select multiple.</small>
                             </div>
 
                             <!-- Project -->
@@ -235,27 +245,30 @@ $show_breadcrumb = true;
                                 <label>Assigned Project(s) (Optional)</label>
                                 <select name="project_ids[]" id="edit_target_project" class="form-control" multiple size="4">
                                     <?php foreach ($projects as $proj): ?>
-                                        <option value="<?= $proj['id'] ?>" data-category="<?= $proj['category_id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
+                                        <?php $catLabel = !empty($proj['main_category']) ? $proj['main_category'] : ($proj['cat_name'] ?? 'General'); ?>
+                                        <option value="<?= $proj['id'] ?>" data-category="<?= $proj['category_id'] ?>">
+                                            <?= htmlspecialchars($proj['name']) ?> (<?= htmlspecialchars($catLabel) ?>)
+                                        </option>
                                     <?php endforeach; ?>
                                 </select>
-                                <small class="text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</small>
+                                <small class="text-muted">Hold Ctrl (Windows) / Cmd (Mac) to select multiple.</small>
                             </div>
 
                             <!-- Site Visit Target -->
-                            <div class="col-lg-6 mb-3">
+                            <div class="col-lg-4 mb-3">
                                 <label>Site Visit Target</label>
                                 <input type="number" name="site_visit_target" id="edit_target_site_visit" class="form-control" min="0">
                             </div>
 
                             <!-- Booking Target -->
-                            <div class="col-lg-6 mb-3">
+                            <div class="col-lg-4 mb-3">
                                 <label>Booking Target</label>
                                 <input type="number" name="booking_target" id="edit_target_booking" class="form-control" min="0">
                             </div>
 
                             <!-- Booking Value Target -->
-                            <div class="col-lg-6 mb-3">
-                                <label>Booking Value Target <small class="text-danger">Optional</small></label>
+                            <div class="col-lg-4 mb-3">
+                                <label>Booking Value Target</label>
                                 <input type="number" name="booking_value_target" id="edit_target_booking_value" class="form-control" min="0" step="0.01">
                             </div>
 
@@ -263,7 +276,7 @@ $show_breadcrumb = true;
                     </div>
 
                     <div class="submit__btn text-center">
-                        <button class="btn btn-primary" type="submit">Update</button>
+                        <button class="btn btn-primary" type="submit">Update Target</button>
                     </div>
 
                 </form>
@@ -278,7 +291,7 @@ $show_breadcrumb = true;
 
 
 <script>
-    const base_url = "<?= $GLOBALS['base_url'] ?>"; // PHP outputs the correct base URL
+    const base_url = "<?= $GLOBALS['base_url'] ?>";
 
     const modal = document.getElementById('editSalesTarget');
 
@@ -288,6 +301,14 @@ $show_breadcrumb = true;
         const id = button.getAttribute('data-id');
         const month = button.getAttribute('data-month');
         const category = button.getAttribute('data-category');
+        let categoryIds = [];
+        try { 
+            categoryIds = JSON.parse(button.getAttribute('data-category-ids') || "[]"); 
+        } catch(e){}
+        if ((!Array.isArray(categoryIds) || categoryIds.length === 0) && category) {
+            categoryIds = [String(category)];
+        }
+
         let projects = [];
         try { projects = JSON.parse(button.getAttribute('data-projects') || "[]"); } catch(e){}
         const siteVisit = button.getAttribute('data-site_visit');
@@ -297,41 +318,26 @@ $show_breadcrumb = true;
 
         document.getElementById('edit_target_id').value = id;
         document.getElementById('edit_target_month').value = month ? month.substring(0, 7) : '';
-        document.getElementById('edit_target_category').value = category || '';
         document.getElementById('edit_target_site_visit').value = siteVisit ?? 0;
         document.getElementById('edit_target_booking').value = booking ?? 0;
         document.getElementById('edit_target_booking_value').value = bookingValue ?? 0;
         document.getElementById('edit_target_sales_role').value = salesRole || '';
 
-        const projSelect = document.getElementById('edit_target_project');
-        for (let i = 0; i < projSelect.options.length; i++) {
-            projSelect.options[i].selected = projects.includes(projSelect.options[i].value);
-        }
-    });
-
-    // Filter projects by category
-    document.getElementById('category_select').addEventListener('change', function() {
-        const catId = this.value;
-        const projs = document.getElementById('project_select').options;
-        for (let i = 0; i < projs.length; i++) {
-            if (!catId || projs[i].getAttribute('data-category') == catId) {
-                projs[i].style.display = 'block';
-            } else {
-                projs[i].style.display = 'none';
-                projs[i].selected = false;
+        // Populate Categories in modal
+        const catSelect = document.getElementById('edit_target_categories');
+        if (catSelect) {
+            const catIdStrings = categoryIds.map(String);
+            for (let i = 0; i < catSelect.options.length; i++) {
+                catSelect.options[i].selected = catIdStrings.includes(String(catSelect.options[i].value));
             }
         }
-    });
-    
-    document.getElementById('edit_target_category').addEventListener('change', function() {
-        const catId = this.value;
-        const projs = document.getElementById('edit_target_project').options;
-        for (let i = 0; i < projs.length; i++) {
-            if (!catId || projs[i].getAttribute('data-category') == catId) {
-                projs[i].style.display = 'block';
-            } else {
-                projs[i].style.display = 'none';
-                projs[i].selected = false;
+
+        // Populate Projects in modal
+        const projSelect = document.getElementById('edit_target_project');
+        if (projSelect) {
+            const projIdStrings = projects.map(String);
+            for (let i = 0; i < projSelect.options.length; i++) {
+                projSelect.options[i].selected = projIdStrings.includes(String(projSelect.options[i].value));
             }
         }
     });
