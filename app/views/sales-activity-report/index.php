@@ -600,7 +600,7 @@
                                         <th colspan="2" class="bg-secondary-transparent text-secondary fw-bold">6. Connected (10%)</th>
                                         <th colspan="2" class="bg-danger-transparent text-danger fw-bold">7. Quality (5%)</th>
                                         <th rowspan="2" class="bg-secondary-transparent text-secondary">8. HR (5%)</th>
-                                        <th rowspan="2" style="min-width: 140px;" class="bg-success text-white fw-bold">Total Score</th>
+                                        <th rowspan="2" style="min-width: 140px;" class="bg-success text-light fw-bold">Total Score</th>
                                         <th rowspan="2" style="width: 60px;">Action</th>
                                     </tr>
                                     <tr class="fs-11">
@@ -634,7 +634,7 @@
                                     <?php 
                                         $sc = $emp['scorecard'] ?? [];
                                         $sRank = $sc['rank'] ?? 0;
-                                        $rankBadge = $sRank == 1 ? 'bg-warning text-dark' : ($sRank == 2 ? 'bg-secondary text-white' : ($sRank == 3 ? 'bg-info text-white' : 'bg-light text-dark border'));
+                                        $rankBadge = $sRank == 1 ? 'bg-warning text-dark' : ($sRank == 2 ? 'bg-secondary ' : ($sRank == 3 ? 'bg-info ' : 'bg-light text-dark border'));
                                         $gradeClass = $sc['grade_class'] ?? 'success';
                                     ?>
                                     <tr class="text-center fs-12">
@@ -679,7 +679,7 @@
                                         <!-- Total Score -->
                                         <td class="text-start bg-light">
                                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                                <span class="fw-bold fs-13 text-<?= $gradeClass ?>"><?= number_format($sc['total_score'] ?? 0, 2) ?>%</span>
+                                                <span class="fw-bold fs-13 "><?= number_format($sc['total_score'] ?? 0, 2) ?>%</span>
                                                 <span class="badge bg-<?= $gradeClass ?> fs-10"><?= $sc['grade'] ?? 'Good' ?></span>
                                             </div>
                                             <div class="progress progress-xs">

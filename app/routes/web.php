@@ -231,6 +231,12 @@ return [
     'team-performance' => ['controller' => 'SalesActivityReportController', 'method' => 'teamPerformance'],
     'team-performance-export' => ['controller' => 'SalesActivityReportController', 'method' => 'exportTeamPerformanceExcel'],
     'team-performance/export' => ['controller' => 'SalesActivityReportController', 'method' => 'exportTeamPerformanceExcel'],
+
+    // =========================================================================
+    // Controller: ExpenseAnalyticsController (Company Expense Analytics Dashboard)
+    // =========================================================================
+    'expense-analytics' => ['controller' => 'ExpenseAnalyticsController', 'method' => 'index'],
+    'expense-analytics/export' => ['controller' => 'ExpenseAnalyticsController', 'method' => 'exportExcel'],
 ];
 
 

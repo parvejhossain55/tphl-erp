@@ -881,7 +881,7 @@
                                                                 <?= htmlspecialchars($m['member_name'] ?? '—') ?>
                                                             </td>
                                                             <td style="color:var(--text-muted);">
-                                                                <?= htmlspecialchars($m['level_designation'] ?? 'Sales Exec') ?>
+                                                                <?= htmlspecialchars($m['level_designation'] ?? 'Sales Executive') ?>
                                                             </td>
                                                             <td><?= number_format($m['assigned_leads'] ?? 0) ?></td>
                                                             <td><?= number_format($m['total_follow_up_calls'] ?? 0) ?></td>
