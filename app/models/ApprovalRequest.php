@@ -350,6 +350,7 @@ class ApprovalRequest extends Model
         $this->syncMissingFundRequisitions();
         $this->syncMissingOfficeProcurements();
         $this->syncMissingLaborRequisitions();
+        $this->syncMissingVendorPaymentRequests();
 
         $roles = array_map('strtolower', $roles);
 
@@ -444,20 +445,30 @@ class ApprovalRequest extends Model
             return $stmtForward->execute();
         }
 
-        if ($sourceTable === 'vendor_payment_requests' && strpos(strtolower($request['approve_role'] ?? ''), 'purchase team leader') !== false && $status === 'approved') {
-            // Forward to management instead of marking as approved
+        if ($sourceTable === 'vendor_payment_requests' && (strpos(strtolower($request['approve_role'] ?? ''), 'purchase team leader') !== false || strtolower($request['approve_role'] ?? '') === 'qc') && $status === 'approved') {
+            // Update source table to QC Approved
+            $qcApprovedAmt = ($approvedAmount !== null && $approvedAmount > 0) ? (float)$approvedAmount : (float)($request['request_amount'] ?? 0);
+            $stmtVpr = $this->db->prepare("UPDATE vendor_payment_requests SET status = 'QC Approved', qc_verified = 1, qc_approved_by_id = ?, qc_approved_at = NOW(), qc_approved_amount = ?, qc_note = ? WHERE id = ?");
+            if ($stmtVpr) {
+                $stmtVpr->bind_param('idsi', $approvedBy, $qcApprovedAmt, $approvalNote, $sourceId);
+                $stmtVpr->execute();
+                $stmtVpr->close();
+            }
+
+            // Forward to management instead of marking as completed
             $sqlForward = "UPDATE {$this->table}
                 SET 
                     approve_role = 'management',
                     status = 'pending',
+                    request_amount = ?,
                     approved_amount = NULL,
                     approved_by = NULL,
                     approval_note = ?,
                     approved_at = NULL
                 WHERE id = ?";
             $stmtForward = $this->db->prepare($sqlForward);
-            $phNote = "Approved by Purchase Head. Note: " . ($approvalNote ?? '');
-            $stmtForward->bind_param('si', $phNote, $id);
+            $qcNote = "Audited & Approved by QC. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('dsi', $qcApprovedAmt, $qcNote, $id);
             return $stmtForward->execute();
         }
 
@@ -765,6 +776,9 @@ class ApprovalRequest extends Model
         $this->syncMissingOfficeProcurements();
         $this->syncMissingLaborRequisitions();
         $this->syncMissingProjectOtherCosts();
+        $this->syncMissingVendorPaymentRequests();
+        $this->syncMissingAdvanceSalaries();
+        $this->syncMissingCashoutRequests();
 
         $sql = "SELECT 
                     COUNT(*) AS total_requests,
@@ -806,6 +820,9 @@ class ApprovalRequest extends Model
         $this->syncMissingOfficeProcurements();
         $this->syncMissingLaborRequisitions();
         $this->syncMissingProjectOtherCosts();
+        $this->syncMissingVendorPaymentRequests();
+        $this->syncMissingAdvanceSalaries();
+        $this->syncMissingCashoutRequests();
 
         $where = ["1=1"];
         $params = [];
@@ -1015,7 +1032,7 @@ class ApprovalRequest extends Model
                     $vRow = $vStmt->get_result()->fetch_assoc();
                     $vStmt->close();
                     if ($vRow) {
-                        $vStatus = strtolower($vRow['status'] ?? '');
+                        $vStatus = strtolower(trim(str_replace('_', ' ', $vRow['status'] ?? '')));
                         $row['vpr_payment_type'] = $vRow['payment_type'] ?? null;
                         $row['po_number'] = $vRow['purchase_order_id'] ?? null;
 
@@ -1024,21 +1041,21 @@ class ApprovalRequest extends Model
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending QC & Audit';
                             $pendingForText = 'QC & Internal Audit Head (Role 24)';
-                        } elseif ($vStatus === 'qc_approved') {
+                        } elseif (in_array($vStatus, ['qc approved', 'qc_approved'])) {
                             $row['approve_role'] = 'management';
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending Management';
                             $pendingForText = 'Management / Operation Head';
-                        } elseif (in_array($vStatus, ['approved', 'management_approved'])) {
+                        } elseif (in_array($vStatus, ['approved', 'management approved', 'management_approved'])) {
                             $row['approve_role'] = 'accounts';
                             $row['status'] = 'approved';
                             $pendingStageLabel = 'Pending Accounts Payout';
                             $pendingForText = 'Accounts & Finance';
-                        } elseif (in_array($vStatus, ['paid', 'completed', 'fully_paid'])) {
+                        } elseif (in_array($vStatus, ['paid', 'completed', 'fully paid', 'fully_paid'])) {
                             $row['status'] = 'approved';
                             $pendingStageLabel = 'Paid & Settled';
                             $pendingForText = 'Settled';
-                        } elseif ($vStatus === 'partially_paid') {
+                        } elseif (in_array($vStatus, ['partially paid', 'partially_paid'])) {
                             $row['status'] = 'partially_paid';
                             $pendingStageLabel = 'Partially Paid';
                             $pendingForText = 'Accounts & Finance';
@@ -1048,11 +1065,11 @@ class ApprovalRequest extends Model
                             $pendingForText = 'Rejected';
                         }
 
-                        if (in_array($vStatus, ['approved', 'paid', 'completed', 'fully_paid'])) {
+                        if (in_array($vStatus, ['approved', 'management approved', 'management_approved', 'paid', 'completed', 'fully paid', 'fully_paid'])) {
                             $payoutStatus = 'Paid & Settled';
                             $payoutAmount = (float) $vRow['app_amt'];
                             $payoutDate = $vRow['updated_at'];
-                        } else if ($vStatus === 'partially_paid') {
+                        } else if (in_array($vStatus, ['partially paid', 'partially_paid'])) {
                             $payoutStatus = 'Partially Paid';
                             $payoutAmount = (float) $vRow['app_amt'];
                             $payoutDate = $vRow['updated_at'];
@@ -1303,6 +1320,8 @@ class ApprovalRequest extends Model
                     if ($coRow) {
                         $coStatus = strtolower($coRow['status'] ?? '');
                         if (in_array($coStatus, ['fully_paid', 'paid'])) {
+                            $row['status'] = 'approved';
+                            $row['approve_role'] = 'completed';
                             $payoutStatus = 'Paid & Settled';
                             $payoutAmount = (float)$coRow['app_amt'];
                             $payoutDate = $coRow['updated_at'];
@@ -1471,15 +1490,11 @@ class ApprovalRequest extends Model
 
         // Visibility Filtering:
         // Default (or statusFilter = 'pending' or empty):
-        // Show ONLY what is pending for the logged-in user! Other roles' pending lists are hidden!
+        // Show ONLY what is actionable pending for the logged-in user! Other roles' pending lists and already approved/paid records are hidden!
         if (empty($statusFilter) || $statusFilter === 'pending' || $statusFilter === 'my_pending') {
             $filteredList = [];
             foreach ($list as $item) {
-                // If a user selected a specific module filter (e.g. project_other_costs) and left status empty/default,
-                // allow accounts and management to see all records of that module (both pending and approved/paid)!
-                if (!empty($filters['source_table']) && ($isAccounts || $isFullManagement)) {
-                    $filteredList[] = $item;
-                } elseif ($isActionableByCurrentUser($item)) {
+                if ($isActionableByCurrentUser($item)) {
                     $filteredList[] = $item;
                 }
             }
@@ -1927,6 +1942,233 @@ class ApprovalRequest extends Model
                OR (poc.status = 'management_approved' AND ar.status != 'approved')
                OR (poc.status = 'rejected' AND ar.status != 'rejected')
                OR (poc.status = 'qc_approved' AND ar.approve_role != 'management')
+        ";
+        @$this->db->query($syncSql);
+    }
+
+    public function syncMissingVendorPaymentRequests()
+    {
+        // 1. Insert missing vendor_payment_requests into approval_requests
+        $sql = "
+            SELECT vpr.*, p.name AS project_name, v.name AS vendor_name
+            FROM vendor_payment_requests vpr
+            LEFT JOIN projects p ON vpr.project_id = p.id
+            LEFT JOIN vendors v ON vpr.vendor_id = v.id
+            LEFT JOIN approval_requests ar ON (ar.source_table = 'vendor_payment_requests' AND ar.source_id = vpr.id)
+            WHERE ar.id IS NULL
+        ";
+        $res = $this->db->query($sql);
+        if ($res && $res->num_rows > 0) {
+            while ($row = $res->fetch_assoc()) {
+                $sourceId    = (int) $row['id'];
+                $deptName    = 'Construction';
+                $requestType = 'vendor_payment';
+                $vendorName  = !empty($row['vendor_name']) ? $row['vendor_name'] : 'Vendor';
+                $projectName = !empty($row['project_name']) ? $row['project_name'] : 'Project';
+                $title       = "Vendor Payment — {$vendorName} | {$projectName}";
+                $netPayable  = (float) ($row['net_payable'] ?? $row['invoice_amount'] ?? 0);
+                $qcAppAmt    = (isset($row['qc_approved_amount']) && (float)$row['qc_approved_amount'] > 0) ? (float)$row['qc_approved_amount'] : $netPayable;
+                $requestedBy = (int) ($row['created_by'] ?? 1);
+
+                $vStatus = strtolower(trim(str_replace('_', ' ', $row['status'] ?? '')));
+
+                $status = 'pending';
+                $approveRole = 'qc';
+                $requestAmount = $netPayable;
+                $approvedAmount = null;
+                $approvedBy = null;
+                $approvedAt = null;
+                $approvalNote = null;
+
+                if ($vStatus === 'rejected') {
+                    $status = 'rejected';
+                    $approveRole = 'rejected';
+                    $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
+                    $approvedAt = !empty($row['updated_at']) ? $row['updated_at'] : null;
+                } elseif (in_array($vStatus, ['submitted', 'pending', 'draft', ''])) {
+                    $status = 'pending';
+                    $approveRole = 'qc';
+                } elseif (in_array($vStatus, ['qc approved', 'qc_approved'])) {
+                    $status = 'pending';
+                    $approveRole = 'management';
+                    $requestAmount = $qcAppAmt;
+                    $approvedBy = !empty($row['qc_approved_by_id']) ? (int)$row['qc_approved_by_id'] : null;
+                    $approvedAt = !empty($row['qc_approved_at']) ? $row['qc_approved_at'] : (!empty($row['updated_at']) ? $row['updated_at'] : null);
+                    $approvalNote = !empty($row['qc_note']) ? $row['qc_note'] : null;
+                } elseif (in_array($vStatus, ['approved', 'management approved', 'management_approved'])) {
+                    $status = 'approved';
+                    $approveRole = 'accounts';
+                    $requestAmount = $qcAppAmt;
+                    $approvedAmount = (isset($row['approved_amount']) && (float)$row['approved_amount'] > 0) ? (float)$row['approved_amount'] : $netPayable;
+                    $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
+                    $approvedAt = !empty($row['updated_at']) ? $row['updated_at'] : null;
+                    $approvalNote = !empty($row['management_note']) ? $row['management_note'] : null;
+                } elseif (in_array($vStatus, ['paid', 'completed', 'fully paid', 'fully_paid', 'partially paid', 'partially_paid'])) {
+                    $status = 'approved';
+                    $approveRole = 'completed';
+                    $requestAmount = $netPayable;
+                    $approvedAmount = (isset($row['approved_amount']) && (float)$row['approved_amount'] > 0) ? (float)$row['approved_amount'] : $netPayable;
+                    $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
+                    $approvedAt = !empty($row['updated_at']) ? $row['updated_at'] : null;
+                    $approvalNote = !empty($row['management_note']) ? $row['management_note'] : null;
+                }
+
+                $metaData = json_encode([
+                    'vendor_id'         => $row['vendor_id'],
+                    'vendor_name'       => $vendorName,
+                    'project_id'        => $row['project_id'],
+                    'project_name'      => $projectName,
+                    'purchase_order_id' => $row['purchase_order_id'],
+                    'payment_type'      => $row['payment_type'] ?? 'Final',
+                    'invoice_number'    => $row['invoice_number'] ?? null
+                ]);
+                $createdAt = !empty($row['created_at']) ? $row['created_at'] : date('Y-m-d H:i:s');
+
+                $stmt = $this->db->prepare("
+                    INSERT INTO approval_requests 
+                    (department, request_type, title, source_table, source_id, request_amount, approved_amount, requested_by, approve_role, status, approved_by, approved_at, approval_note, meta_data, created_at)
+                    VALUES (?, ?, ?, 'vendor_payment_requests', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                if ($stmt) {
+                    $stmt->bind_param("sssiddississss", $deptName, $requestType, $title, $sourceId, $requestAmount, $approvedAmount, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+            }
+        }
+
+        // 2. Sync and self-heal existing vendor_payment_requests in approval_requests
+        $syncSql = "
+            UPDATE approval_requests ar
+            INNER JOIN vendor_payment_requests vpr ON (ar.source_table = 'vendor_payment_requests' AND ar.source_id = vpr.id)
+            SET 
+                ar.approve_role = CASE
+                    WHEN vpr.status = 'Rejected' THEN 'rejected'
+                    WHEN vpr.status IN ('Submitted', 'Draft') THEN 'qc'
+                    WHEN vpr.status = 'QC Approved' THEN 'management'
+                    WHEN vpr.status = 'Approved' THEN 'accounts'
+                    WHEN vpr.status IN ('Paid', 'Partially_Paid', 'Fully_Paid') THEN 'completed'
+                    ELSE ar.approve_role
+                END,
+                ar.status = CASE
+                    WHEN vpr.status = 'Rejected' THEN 'rejected'
+                    WHEN vpr.status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid') THEN 'approved'
+                    ELSE 'pending'
+                END,
+                ar.request_amount = CASE
+                    WHEN vpr.qc_approved_amount IS NOT NULL AND vpr.qc_approved_amount > 0 THEN vpr.qc_approved_amount
+                    WHEN vpr.net_payable IS NOT NULL AND vpr.net_payable > 0 THEN vpr.net_payable
+                    ELSE ar.request_amount
+                END,
+                ar.approved_amount = CASE
+                    WHEN vpr.status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid') THEN COALESCE(vpr.approved_amount, vpr.net_payable, ar.request_amount)
+                    ELSE ar.approved_amount
+                END,
+                ar.approved_by = CASE
+                    WHEN vpr.status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid') THEN COALESCE(vpr.approved_by, ar.approved_by)
+                    WHEN vpr.status = 'QC Approved' THEN COALESCE(vpr.qc_approved_by_id, ar.approved_by)
+                    ELSE ar.approved_by
+                END,
+                ar.approved_at = CASE
+                    WHEN vpr.status IN ('Approved', 'Paid', 'Partially_Paid', 'Fully_Paid') THEN COALESCE(vpr.updated_at, ar.approved_at)
+                    WHEN vpr.status = 'QC Approved' THEN COALESCE(vpr.qc_approved_at, ar.approved_at)
+                    ELSE ar.approved_at
+                END,
+                ar.approval_note = CASE
+                    WHEN vpr.status = 'QC Approved' AND vpr.qc_note IS NOT NULL AND vpr.qc_note != '' THEN vpr.qc_note
+                    WHEN vpr.status = 'Approved' AND vpr.management_note IS NOT NULL AND vpr.management_note != '' THEN vpr.management_note
+                    ELSE ar.approval_note
+                END
+            WHERE 
+                -- Items where QC has approved, but approval_request is still in 'purchase team leader' or 'qc'
+                (vpr.status = 'QC Approved' AND ar.approve_role != 'management')
+                -- Items where Management has approved, but approval_request is not in accounts / approved
+                OR (vpr.status = 'Approved' AND (ar.approve_role != 'accounts' OR ar.status != 'approved'))
+                -- Items paid
+                OR (vpr.status IN ('Paid', 'Partially_Paid', 'Fully_Paid') AND ar.approve_role != 'completed')
+                -- Items rejected
+                OR (vpr.status = 'Rejected' AND ar.status != 'rejected')
+                -- Items submitted but stuck in purchase team leader
+                OR (vpr.status IN ('Submitted', 'Draft') AND ar.approve_role = 'purchase team leader')
+                -- Empty status
+                OR ar.status = '' OR ar.status IS NULL
+        ";
+        @$this->db->query($syncSql);
+    }
+
+    public function syncMissingAdvanceSalaries()
+    {
+        $syncSql = "
+            UPDATE approval_requests ar
+            INNER JOIN advance_salaries as_tbl ON (ar.source_table = 'advance_salaries' AND ar.source_id = as_tbl.id)
+            SET 
+                ar.approve_role = CASE
+                    WHEN as_tbl.status = 'rejected' THEN 'rejected'
+                    WHEN as_tbl.status = 'pending_hr' THEN 'hr_head'
+                    WHEN as_tbl.status = 'pending' THEN 'management'
+                    WHEN as_tbl.status IN ('pending_accounts', 'approved') THEN 'accounts'
+                    WHEN as_tbl.status IN ('paid', 'deducted') THEN 'completed'
+                    ELSE ar.approve_role
+                END,
+                ar.status = CASE
+                    WHEN as_tbl.status = 'rejected' THEN 'rejected'
+                    WHEN as_tbl.status IN ('pending_accounts', 'approved', 'paid', 'deducted') THEN 'approved'
+                    ELSE 'pending'
+                END,
+                ar.approved_amount = CASE
+                    WHEN as_tbl.status IN ('pending_accounts', 'approved', 'paid', 'deducted') THEN COALESCE(ar.approved_amount, as_tbl.amount, ar.request_amount)
+                    ELSE ar.approved_amount
+                END,
+                ar.approved_at = CASE
+                    WHEN as_tbl.approved_date IS NOT NULL THEN as_tbl.approved_date
+                    ELSE ar.approved_at
+                END
+            WHERE 
+                (as_tbl.status IN ('pending_accounts', 'approved') AND (ar.approve_role != 'accounts' OR ar.status != 'approved'))
+                OR (as_tbl.status IN ('paid', 'deducted') AND ar.approve_role != 'completed')
+                OR (as_tbl.status = 'rejected' AND ar.status != 'rejected')
+                OR (as_tbl.status = 'pending_hr' AND ar.approve_role != 'hr_head')
+                OR (as_tbl.status = 'pending' AND ar.approve_role != 'management')
+        ";
+        @$this->db->query($syncSql);
+    }
+
+    public function syncMissingCashoutRequests()
+    {
+        $syncSql = "
+            UPDATE approval_requests ar
+            INNER JOIN cashout_requests cr ON (ar.source_table = 'cashout_requests' AND ar.source_id = cr.id)
+            SET 
+                ar.approve_role = CASE
+                    WHEN cr.status = 'rejected' THEN 'rejected'
+                    WHEN cr.status = 'pending' THEN 'management'
+                    WHEN cr.status = 'approved' THEN 'accounts'
+                    WHEN cr.status IN ('fully_paid', 'paid') THEN 'completed'
+                    ELSE ar.approve_role
+                END,
+                ar.status = CASE
+                    WHEN cr.status = 'rejected' THEN 'rejected'
+                    WHEN cr.status IN ('approved', 'fully_paid', 'paid') THEN 'approved'
+                    ELSE 'pending'
+                END,
+                ar.approved_amount = CASE
+                    WHEN cr.status IN ('approved', 'fully_paid', 'paid') THEN COALESCE(cr.approved_amount, cr.amount, ar.request_amount)
+                    ELSE ar.approved_amount
+                END,
+                ar.approved_by = CASE
+                    WHEN cr.approved_by IS NOT NULL THEN cr.approved_by
+                    ELSE ar.approved_by
+                END,
+                ar.approved_at = CASE
+                    WHEN cr.approved_at IS NOT NULL THEN cr.approved_at
+                    ELSE ar.approved_at
+                END
+            WHERE 
+                (cr.status IN ('fully_paid', 'paid') AND (ar.approve_role != 'completed' OR ar.status != 'approved'))
+                OR (cr.status = 'approved' AND (ar.approve_role != 'accounts' OR ar.status != 'approved'))
+                OR (cr.status = 'rejected' AND ar.status != 'rejected')
+                OR (cr.status = 'pending' AND (ar.approve_role != 'management' OR ar.status != 'pending'))
+                OR ar.status = '' OR ar.status IS NULL
         ";
         @$this->db->query($syncSql);
     }

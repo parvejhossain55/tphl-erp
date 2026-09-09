@@ -125,13 +125,18 @@ class EmployeeController extends Controller
             }
 
             // checkbox value
-            $makeUser = $_POST['make_user'] ?? 0;
+            $makeUser = (int)($_POST['make_user'] ?? 0);
+            $roleId = (int)($_POST['role_id'] ?? 0);
+            $secondaryRoleId = !empty($_POST['secondary_role_id']) ? (int)$_POST['secondary_role_id'] : null;
+            if ($roleId > 0 || $secondaryRoleId !== null) {
+                $makeUser = 1;
+            }
 
             // password check
             $plainPassword = trim($_POST['password'] ?? '');
 
             if ($makeUser == 1 && empty($plainPassword)) {
-                throw new Exception("Password is required when creating user account!");
+                $plainPassword = '12345678';
             }
 
             $hashedPassword = ($makeUser == 1)
@@ -243,15 +248,15 @@ class EmployeeController extends Controller
                 $userData = prepareUserData($_POST, true);
 
                 $userData['full_name'] = $employeeData['full_name'];
-                $userData['user_name'] = $employeeData['username'];
+                $userData['user_name'] = !empty($employeeData['username']) ? $employeeData['username'] : $employeeData['email'];
                 $userData['phone'] = $employeeData['phone'];
                 $userData['email'] = $employeeData['email'];
                 $userData['nid'] = $employeeData['nid'];
                 $userData['designation_id'] = $employeeData['designation_id'];
                 $userData['address'] = $employeeData['address'];
-                $userData['password'] = $hashedPassword;
-                $userData['role_id'] = $_POST['role_id'] ?? null;
-                $userData['secondary_role_id'] = $_POST['secondary_role_id'] ?? null;
+                $userData['password'] = !empty($plainPassword) ? $plainPassword : '12345678';
+                $userData['role_id'] = $roleId ?: ($_POST['role_id'] ?? 2);
+                $userData['secondary_role_id'] = $secondaryRoleId;
                 $userData['employee_id'] = $employee_id;
                 $userData['team_id'] = $employeeData['team_id'];
 
@@ -264,7 +269,7 @@ class EmployeeController extends Controller
                     throw new Exception("User creation failed!");
                 } else {
                     // Link the employee to the newly created user
-                    $this->db->query("UPDATE employees SET user_id = $user_id WHERE id = $employee_id");
+                    $this->db->query("UPDATE employees SET user_id = $user_id, make_user = 1 WHERE id = $employee_id");
                 }
             }
 
@@ -355,22 +360,28 @@ class EmployeeController extends Controller
 
         $existingEmployee = $this->employeeModel->find($id);
         if (!$existingEmployee) {
-            $_SESSION['error'] = "Employee not found!";
+            setError("Employee not found!");
             header("Location: {$GLOBALS['base_url']}/employee-lists");
             exit;
         }
 
-        $makeUser = $_POST['make_user'] ?? 0;
+        $roleId = (int) ($_POST['role_id'] ?? 0);
+        $secondaryRoleId = !empty($_POST['secondary_role_id']) ? (int) $_POST['secondary_role_id'] : null;
+        $makeUser = (int) ($_POST['make_user'] ?? 0);
+        if ($roleId > 0 || $secondaryRoleId !== null) {
+            $makeUser = 1;
+        }
+
         $plainPassword = trim($_POST['password'] ?? '');
         $submittedEmail = trim($_POST['email'] ?? '');
-        $existingUserId = $existingEmployee['user_id'] ?? null;
+        $existingUserId = !empty($existingEmployee['user_id']) ? (int) $existingEmployee['user_id'] : null;
 
         // User account linking check by email
         if ($submittedEmail) {
             $matchedUserByEmail = $this->userModel->getByEmail($submittedEmail);
-            if ($matchedUserByEmail && $matchedUserByEmail['id'] != $existingUserId) {
+            if ($matchedUserByEmail && (int)$matchedUserByEmail['id'] !== $existingUserId) {
                 $existingUserId = (int) $matchedUserByEmail['id'];
-                $this->db->query("UPDATE employees SET user_id = $existingUserId WHERE id = $id");
+                $this->db->query("UPDATE employees SET user_id = $existingUserId, make_user = 1 WHERE id = $id");
                 $this->db->query("UPDATE users SET employee_id = $id WHERE id = $existingUserId");
             }
         }
@@ -381,19 +392,16 @@ class EmployeeController extends Controller
             if ($userByEmpResult && $userByEmpResult->num_rows > 0) {
                 $userRow = $userByEmpResult->fetch_assoc();
                 $existingUserId = (int) $userRow['id'];
-                $this->db->query("UPDATE employees SET user_id = $existingUserId WHERE id = $id");
+                $this->db->query("UPDATE employees SET user_id = $existingUserId, make_user = 1 WHERE id = $id");
             }
-        }
-
-        // password validation only for NEW user account
-        if ($makeUser == 1 && !$existingUserId && empty($plainPassword)) {
-            $_SESSION['error'] = "Password is required when creating a new user account!";
-            header("Location: {$GLOBALS['base_url']}/edit-employee/$id");
-            exit;
         }
 
         $hashedPassword = $existingEmployee['password'] ?? '';
         if (!empty($plainPassword)) {
+            $hashedPassword = password_hash($plainPassword, PASSWORD_DEFAULT);
+        } elseif (($makeUser == 1 || $roleId > 0) && !$existingUserId && empty($hashedPassword)) {
+            // Default password for new user account if none provided
+            $plainPassword = '12345678';
             $hashedPassword = password_hash($plainPassword, PASSWORD_DEFAULT);
         }
 
@@ -441,12 +449,12 @@ class EmployeeController extends Controller
             'is_sales_co_leader' => (int) ($_POST['is_sales_co_leader'] ?? 0),
             'is_dept_head' => (int) ($_POST['is_dept_head'] ?? 0),
             'reporting_user_id' => ((int) ($_POST['is_dept_head'] ?? 0) == 1) ? null : (!empty($_POST['reporting_user_id']) ? (int) $_POST['reporting_user_id'] : null),
-            'make_user' => $makeUser,
+            'make_user' => ($existingUserId || $makeUser == 1) ? 1 : 0,
             'password' => $hashedPassword
         ];
 
         if (!$this->employeeModel->update($id, $employeeData, 'photo')) {
-            $_SESSION['error'] = "Employee update failed!";
+            setError("Employee update failed!");
             header("Location: {$GLOBALS['base_url']}/edit-employee/$id");
             exit;
         }
@@ -468,20 +476,18 @@ class EmployeeController extends Controller
         }
 
         // User account handling
-
-
         if ($existingUserId) {
             $userData = [
                 'full_name' => $employeeData['full_name'],
-                'user_name' => $employeeData['username'],
+                'user_name' => !empty($employeeData['username']) ? $employeeData['username'] : $employeeData['email'],
                 'phone' => $employeeData['phone'],
                 'email' => $employeeData['email'],
                 'nid' => $employeeData['nid'],
                 'designation_id' => $employeeData['designation_id'],
                 'address' => $employeeData['address'],
                 'team_id' => $employeeData['team_id'],
-                'role_id' => (int) ($_POST['role_id'] ?? 0),
-                'secondary_role_id' => !empty($_POST['secondary_role_id']) ? (int) $_POST['secondary_role_id'] : null,
+                'role_id' => $roleId ?: ($existingEmployee['role_id'] ?? 2),
+                'secondary_role_id' => $secondaryRoleId,
                 'employee_id' => $id,
             ];
 
@@ -490,30 +496,30 @@ class EmployeeController extends Controller
             }
 
             $this->userModel->update($userData, $existingUserId);
-        } elseif ($makeUser == 1) {
+            $this->db->query("UPDATE employees SET user_id = $existingUserId, make_user = 1 WHERE id = $id");
+        } elseif ($makeUser == 1 || $roleId > 0) {
             $userData = [
                 'full_name' => $employeeData['full_name'],
-                'user_name' => $employeeData['username'],
+                'user_name' => !empty($employeeData['username']) ? $employeeData['username'] : $employeeData['email'],
                 'phone' => $employeeData['phone'],
                 'email' => $employeeData['email'],
                 'nid' => $employeeData['nid'],
                 'designation_id' => $employeeData['designation_id'],
                 'address' => $employeeData['address'],
-                'role_id' => (int) ($_POST['role_id'] ?? 0),
-                'secondary_role_id' => !empty($_POST['secondary_role_id']) ? (int) $_POST['secondary_role_id'] : null,
+                'role_id' => $roleId ?: 2,
+                'secondary_role_id' => $secondaryRoleId,
                 'employee_id' => $id,
                 'team_id' => $employeeData['team_id'],
-                'password' => $plainPassword,
+                'password' => !empty($plainPassword) ? $plainPassword : '12345678',
             ];
 
             $user_id = $this->userModel->create($userData);
 
             if ($user_id) {
                 // Update employee with user_id
-                $this->db->query("UPDATE employees SET user_id = $user_id WHERE id = $id");
+                $this->db->query("UPDATE employees SET user_id = $user_id, make_user = 1 WHERE id = $id");
             }
         }
-
 
         setSuccess("Employee updated successfully!");
 

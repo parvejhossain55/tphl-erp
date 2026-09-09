@@ -41,11 +41,14 @@ class ProjectOtherCostController extends Controller
 
         $userRole = $roleId;
         
-        // Allowed roles to see all under_construction projects:
-        // 1(Admin), 3(Management), 33(Chief Officer), 17(Purchase Head), 22(PM Head), 23(Purchase Exec), 31(Sr Purchase Exec), 
+        // Allowed roles to see all under_construction projects (including Employee role 2):
+        // 1(Admin), 2(Employee), 3(Management), 33(Chief Officer), 17(Purchase Head), 22(PM Head), 23(Purchase Exec), 31(Sr Purchase Exec), 
         // 6(Accounts), 30(Accounts Head), 24(QC Head), 25(QC Exec), 32(Admin Operation)
-        if (in_array($userRole, [1, 3, 33, 17, 22, 23, 31, 6, 30, 24, 25, 32])) {
-            $pResult  = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name ASC");
+        if (in_array($userRole, [1, 2, 3, 33, 17, 22, 23, 31, 6, 30, 24, 25, 32])) {
+            $pResult  = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL AND (under_construction = 1 OR is_common = 1) ORDER BY name ASC");
+            if (!$pResult || $pResult->num_rows === 0) {
+                $pResult = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
+            }
             $projects = $pResult ? $pResult->fetch_all(MYSQLI_ASSOC) : [];
         } else {
             // Other construction roles (e.g. Site Engineer, Project Manager, Site Operator) → any project they are assigned to
@@ -93,8 +96,11 @@ class ProjectOtherCostController extends Controller
         $userId = $_SESSION['user']['id'];
         $userRole = (int)$_SESSION['user']['role_id'];
         
-        if (in_array($userRole, [1, 3, 33, 17, 22, 23, 31, 6, 30, 24, 25, 32])) {
-            $pResult  = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name ASC");
+        if (in_array($userRole, [1, 2, 3, 33, 17, 22, 23, 31, 6, 30, 24, 25, 32])) {
+            $pResult  = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL AND (under_construction = 1 OR is_common = 1) ORDER BY name ASC");
+            if (!$pResult || $pResult->num_rows === 0) {
+                $pResult = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
+            }
             $projects = $pResult ? $pResult->fetch_all(MYSQLI_ASSOC) : [];
         } else {
             $pStmt = $this->db->prepare("

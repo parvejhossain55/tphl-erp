@@ -2,18 +2,21 @@
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
     :root {
-        --primary: #4f46e5;
-        --primary-hover: #4338ca;
-        --accent: #4f46e5;
-        --accent-dim: #eef2ff;
+        --primary: var(--primary-green, #16a34a);
+        --primary-hover: #15803d;
+        --primary-dark: #166534;
+        --accent: var(--primary-green, #16a34a);
+        --accent-dim: #f0fdf4;
+        --accent-light: #dcfce7;
+        --accent-border: #bbf7d0;
         --bg-main: #f8fafc;
         --paper: #ffffff;
         --text-main: #1e293b;
         --text-muted: #64748b;
         --rule: #e2e8f0;
         
-        --green: #10b981;
-        --green-dim: #d1fae5;
+        --green: var(--primary-green, #16a34a);
+        --green-dim: #dcfce7;
         --gold: #f59e0b;
         --gold-dim: #fef3c7;
         --blue: #3b82f6;
@@ -62,14 +65,14 @@
     .brand-icon {
         width: 48px;
         height: 48px;
-        background: linear-gradient(135deg, var(--primary), #818cf8);
+        background: linear-gradient(135deg, var(--primary), #22c55e);
         border-radius: 12px;
         display: grid;
         place-items: center;
         font-size: 22px;
         color: white;
         flex-shrink: 0;
-        box-shadow: var(--shadow-md);
+        box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
     }
 
     .brand h1 {
@@ -111,49 +114,191 @@
         border-radius: var(--radius);
         border: 1px solid var(--rule);
         box-shadow: var(--shadow-sm);
-        padding: 16px 32px;
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        flex-wrap: wrap;
+        padding: 18px 24px;
         margin-bottom: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .filter-form-wrapper {
+        display: flex;
+        align-items: flex-end;
+        gap: 12px;
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .filter-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
     }
 
     .filter-label {
-        font-size: 0.8rem;
-        font-weight: 600;
+        font-size: 0.75rem;
+        font-weight: 700;
         text-transform: uppercase;
         color: var(--text-muted);
         letter-spacing: 0.05em;
     }
 
-    .month-input {
+    .filter-control {
         font-family: var(--font-main);
-        font-size: 0.95rem;
+        font-size: 0.88rem;
         font-weight: 500;
         border: 1px solid var(--rule);
         border-radius: 8px;
-        padding: 8px 12px;
+        padding: 7px 12px;
         color: var(--text-main);
         outline: none;
         cursor: pointer;
         transition: all 0.2s;
         background: #f8fafc;
+        min-height: 38px;
     }
 
-    .month-input:focus {
+    .filter-control:focus {
         border-color: var(--primary);
         box-shadow: 0 0 0 3px var(--accent-dim);
         background: white;
     }
 
+    .filter-checkbox-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 0.83rem;
+        font-weight: 600;
+        color: var(--text-main);
+        cursor: pointer;
+        padding: 7px 12px;
+        background: #f1f5f9;
+        border: 1px solid var(--rule);
+        border-radius: 8px;
+        transition: all 0.2s;
+        user-select: none;
+        min-height: 38px;
+    }
+
+    .filter-checkbox-label:hover {
+        background: #e2e8f0;
+    }
+
+    .filter-checkbox-label input[type="checkbox"] {
+        accent-color: var(--primary);
+        width: 15px;
+        height: 15px;
+        cursor: pointer;
+    }
+
+    .filter-divider {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 2px;
+        align-self: flex-end;
+        height: 38px;
+    }
+
+    .filter-divider span {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        background: #e2e8f0;
+        padding: 2px 7px;
+        border-radius: 10px;
+        letter-spacing: 0.05em;
+    }
+
+    .filter-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+        flex-wrap: wrap;
+    }
+
+    .btn-filter-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--font-main);
+        font-size: 0.82rem;
+        font-weight: 600;
+        padding: 8px 14px;
+        border-radius: 8px;
+        text-decoration: none !important;
+        cursor: pointer;
+        transition: all 0.2s;
+        min-height: 38px;
+        border: 1px solid transparent;
+        line-height: 1;
+    }
+
+    .btn-apply {
+        background: var(--primary);
+        color: white !important;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .btn-apply:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(22, 163, 74, 0.28);
+    }
+
+    .btn-all-time {
+        background: var(--accent-dim);
+        color: var(--primary) !important;
+        border-color: var(--accent-border);
+    }
+
+    .btn-all-time:hover,
+    .btn-all-time.active {
+        background: var(--primary);
+        color: white !important;
+        border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+    }
+
+    .btn-reset {
+        background: white;
+        color: var(--text-muted) !important;
+        border-color: var(--rule);
+    }
+
+    .btn-reset:hover {
+        background: #f1f5f9;
+        color: var(--text-main) !important;
+        border-color: #cbd5e1;
+    }
+
+    .filter-status-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        border-top: 1px solid var(--rule);
+        padding-top: 12px;
+        margin-top: 2px;
+    }
+
+    .filter-pills {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
     .stat-pill {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        font-size: 0.85rem;
+        gap: 6px;
+        font-size: 0.82rem;
         font-weight: 500;
-        padding: 6px 16px;
+        padding: 5px 14px;
         border-radius: 20px;
         border: 1px solid var(--rule);
         background: #f8fafc;
@@ -163,7 +308,7 @@
     .stat-pill strong {
         font-weight: 600;
         color: var(--text-main);
-        font-size: 0.95rem;
+        font-size: 0.9rem;
     }
 
     /* Main Grid */
@@ -220,6 +365,31 @@
         background: var(--bg-main);
         color: var(--primary);
         border-color: #cbd5e1;
+    }
+
+    .btn-export-excel {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #10b981;
+        color: #ffffff !important;
+        font-family: var(--font-main);
+        font-size: 0.82rem;
+        font-weight: 600;
+        padding: 7px 14px;
+        border-radius: 8px;
+        text-decoration: none !important;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s;
+        border: none;
+        line-height: 1.2;
+    }
+
+    .btn-export-excel:hover {
+        background: #059669;
+        color: #ffffff !important;
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
     }
 
     /* Spreadsheet Table */
@@ -371,7 +541,7 @@
 
     .form-header {
         padding: 24px;
-        background: linear-gradient(135deg, var(--primary), #818cf8);
+        background: linear-gradient(135deg, var(--primary), #22c55e);
         color: white;
         transition: background 0.3s ease;
     }
@@ -671,8 +841,10 @@
         }
 
         .btn-icon,
+        .btn-export-excel,
         .action-btn,
         .month-input,
+        .filter-bar,
         .form-panel {
             display: none !important;
             visibility: hidden !important;
@@ -729,28 +901,128 @@
         </div>
     </header>
 </div>
-
 <!-- Filter Bar -->
 <?php
 $totalTasks   = count($taskSheets);
-$doneTasks    = count(array_filter($taskSheets, fn($t) => strtolower($t['status'] ?? '') === 'done'));
-$pendingTasks = count(array_filter($taskSheets, fn($t) => strtolower($t['status'] ?? '') === 'pending'));
+$doneTasks    = count(array_filter($taskSheets, fn($t) => strtolower(trim($t['status'] ?? '')) === 'done'));
+$pendingTasks = count(array_filter($taskSheets, fn($t) => strtolower(trim($t['status'] ?? '')) === 'pending'));
 $totalHours   = array_sum(array_column($taskSheets, 'hours_spent'));
-$currentMonth = $currentMonth ?? ($_GET['month'] ?? date('Y-m'));
+$filter       = $filter ?? [
+    'mode' => 'month_year',
+    'year' => date('Y'),
+    'month' => date('m'),
+    'date_from' => '',
+    'date_to' => '',
+    'all_months' => false,
+    'period_label' => date('F Y')
+];
+$exportQueryString = $exportQueryString ?? ('month=' . date('Y-m'));
 ?>
 <div class="filter-bar">
-    <span class="filter-label">Month</span>
-    <input type="month" class="month-input" id="monthFilter"
-        value="<?= htmlspecialchars($currentMonth) ?>"
-        onchange="filterMonth(this.value)">
+    <form method="GET" action="<?= $GLOBALS['base_url'] ?>/task-sheets" id="filterForm" class="filter-form-wrapper">
+        <!-- Year Select (2025 - 2035) -->
+        <div class="filter-item">
+            <label for="filterYear" class="filter-label"><i class="bi bi-calendar"></i> Year / বছর</label>
+            <select name="year" id="filterYear" class="filter-control">
+                <option value="all" <?= ($filter['year'] === 'all') ? 'selected' : '' ?>>All Years (সব বছর)</option>
+                <?php for ($y = 2025; $y <= 2035; $y++): ?>
+                    <option value="<?= $y ?>" <?= ((string)$filter['year'] === (string)$y) ? 'selected' : '' ?>><?= $y ?></option>
+                <?php endfor; ?>
+            </select>
+        </div>
 
-    <div class="stat-pill">
-        Done: <strong><?= $doneTasks ?></strong>
+        <!-- Month Select -->
+        <div class="filter-item">
+            <label for="filterMonth" class="filter-label"><i class="bi bi-calendar3"></i> Month / মাস</label>
+            <select name="month" id="filterMonth" class="filter-control">
+                <option value="all" <?= ($filter['month'] === 'all') ? 'selected' : '' ?>>All Months (সব মাস)</option>
+                <?php
+                $monthsList = [
+                    '01' => '01 - Jan (জানুয়ারি)',
+                    '02' => '02 - Feb (ফেব্রুয়ারি)',
+                    '03' => '03 - Mar (মার্চ)',
+                    '04' => '04 - Apr (এপ্রিল)',
+                    '05' => '05 - May (মে)',
+                    '06' => '06 - Jun (জুন)',
+                    '07' => '07 - Jul (জুলাই)',
+                    '08' => '08 - Aug (আগস্ট)',
+                    '09' => '09 - Sep (সেপ্টেম্বর)',
+                    '10' => '10 - Oct (অক্টোবর)',
+                    '11' => '11 - Nov (নভেম্বর)',
+                    '12' => '12 - Dec (ডিসেম্বর)',
+                ];
+                foreach ($monthsList as $mCode => $mText): ?>
+                    <option value="<?= $mCode ?>" <?= ($filter['month'] === $mCode) ? 'selected' : '' ?>><?= $mText ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <!-- All Months Checkbox Option -->
+        <div class="filter-item">
+            <label class="filter-checkbox-label" title="নির্বাচিত বছরের সকল মাসের ডাটা ফিল্টার ছাড়াই একসাথে দেখতে টিক দিন">
+                <input type="checkbox" name="all_months" id="allMonthsCheck" value="1" <?= !empty($filter['all_months']) ? 'checked' : '' ?> onchange="toggleAllMonths(this.checked)">
+                <span>All Months / সব মাস</span>
+            </label>
+        </div>
+
+        <div class="filter-divider">
+            <span>OR</span>
+        </div>
+
+        <!-- Date Range Filter -->
+        <div class="filter-item">
+            <label for="dateFrom" class="filter-label"><i class="bi bi-calendar-event"></i> From / শুরু</label>
+            <input type="date" name="date_from" id="dateFrom" class="filter-control"
+                   value="<?= htmlspecialchars($filter['date_from'] ?? '') ?>"
+                   onchange="onDateRangeChange()">
+        </div>
+
+        <div class="filter-item">
+            <label for="dateTo" class="filter-label"><i class="bi bi-calendar-check"></i> To / শেষ</label>
+            <input type="date" name="date_to" id="dateTo" class="filter-control"
+                   value="<?= htmlspecialchars($filter['date_to'] ?? '') ?>"
+                   onchange="onDateRangeChange()">
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="filter-actions">
+            <button type="submit" class="btn-filter-action btn-apply" title="ফিল্টার প্রয়োগ করুন">
+                <i class="bi bi-funnel-fill"></i> Filter
+            </button>
+            <a href="<?= $GLOBALS['base_url'] ?>/task-sheets?all=1" class="btn-filter-action btn-all-time <?= ($filter['mode'] === 'all') ? 'active' : '' ?>" title="শুরু থেকে আজ পর্যন্ত সকল টাস্ক একসাথে দেখুন">
+                <i class="bi bi-collection-play"></i> All Time (সব ডাটা)
+            </a>
+            <a href="<?= $GLOBALS['base_url'] ?>/task-sheets" class="btn-filter-action btn-reset" title="বর্তমান মাসে ফিরে যান">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset
+            </a>
+        </div>
+    </form>
+
+    <!-- Filter Status Row -->
+    <div class="filter-status-row">
+        <div class="filter-pills">
+            <div class="stat-pill" title="মোট টাস্ক">
+                Total: <strong><?= $totalTasks ?></strong>
+            </div>
+            <div class="stat-pill" title="সম্পন্ন টাস্ক">
+                Done: <strong style="color:var(--green);"><?= $doneTasks ?></strong>
+            </div>
+            <div class="stat-pill" title="চলমান / অপেক্ষমাণ টাস্ক">
+                Pending: <strong style="color:var(--gold);"><?= $pendingTasks ?></strong>
+            </div>
+            <div class="stat-pill" title="মোট ব্যয়িত ঘণ্টা">
+                Total Hours: <strong style="color:var(--primary);"><?= number_format($totalHours, 2) ?>h</strong>
+            </div>
+        </div>
+
+        <div>
+            <a href="<?= $GLOBALS['base_url'] ?>/task-sheets-export?<?= $exportQueryString ?>" 
+               class="btn-export-excel" 
+               title="বর্তমান ফিল্টারের টাস্ক শিট এক্সেলে ডাউনলোড করুন">
+                <i class="bi bi-file-earmark-excel-fill"></i> Export Excel
+            </a>
+        </div>
     </div>
-    <div class="stat-pill">
-        Pending: <strong><?= $pendingTasks ?></strong>
-    </div>
-   
 </div>
 
 <!-- Main Grid -->
@@ -758,8 +1030,15 @@ $currentMonth = $currentMonth ?? ($_GET['month'] ?? date('Y-m'));
     <!-- Sheet / Table -->
     <div class="sheet-panel">
         <div class="sheet-toolbar">
-            <span class="toolbar-label">Task Records — <?= date('F Y', strtotime($currentMonth . '-01')) ?></span>
-            <button class="btn-icon" title="Print" onclick="window.print()"><i class="bi bi-printer"></i></button>
+            <span class="toolbar-label">Task Records — <?= htmlspecialchars($filter['period_label']) ?></span>
+            <div class="d-flex align-items-center gap-2">
+                <a href="<?= $GLOBALS['base_url'] ?>/task-sheets-export?<?= $exportQueryString ?>" 
+                   class="btn-export-excel" 
+                   title="Download Excel">
+                    <i class="bi bi-file-earmark-excel-fill"></i> Export Excel
+                </a>
+                <button class="btn-icon" title="Print" onclick="window.print()"><i class="bi bi-printer"></i></button>
+            </div>
         </div>
 
         <div class="table__wrapper table-responsive">
@@ -780,7 +1059,7 @@ $currentMonth = $currentMonth ?? ($_GET['month'] ?? date('Y-m'));
                         <tr class="empty-row">
                             <td colspan="7">
                                 <i class="bi bi-journal-x" style="font-size:1.5rem;display:block;margin-bottom:8px"></i>
-                                No tasks recorded this month
+                                No tasks recorded for <?= htmlspecialchars($filter['period_label']) ?>
                             </td>
                         </tr>
                     <?php else: ?>
@@ -917,8 +1196,8 @@ $currentMonth = $currentMonth ?? ($_GET['month'] ?? date('Y-m'));
 <!-- Footer -->
 <footer class="ledger-footer">
     <div class="footer-stat">
-        <span class="footer-label">Month</span>
-        <span class="footer-value"><?= date('F Y', strtotime($currentMonth . '-01')) ?></span>
+        <span class="footer-label">Period</span>
+        <span class="footer-value"><?= htmlspecialchars($filter['period_label'] ?? $currentMonth) ?></span>
     </div>
     <div class="footer-sep"></div>
     <div class="footer-stat">
@@ -941,9 +1220,50 @@ $currentMonth = $currentMonth ?? ($_GET['month'] ?? date('Y-m'));
 </div><!-- /page-wrapper -->
 
 <script>
-function filterMonth(month) {
-    if (month) {
-        window.location.href = '<?= $GLOBALS['base_url'] ?>/task-sheets?month=' + month;
+function toggleAllMonths(isChecked) {
+    const monthSelect = document.getElementById('filterMonth');
+    if (isChecked) {
+        monthSelect.value = 'all';
+    } else {
+        if (monthSelect.value === 'all') {
+            const now = new Date();
+            const currentM = String(now.getMonth() + 1).padStart(2, '0');
+            monthSelect.value = currentM;
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const filterMonthEl = document.getElementById('filterMonth');
+    const allMonthsCheck = document.getElementById('allMonthsCheck');
+    const filterYearEl = document.getElementById('filterYear');
+    const dateFromEl = document.getElementById('dateFrom');
+    const dateToEl = document.getElementById('dateTo');
+
+    if (filterMonthEl) {
+        filterMonthEl.addEventListener('change', function() {
+            if (allMonthsCheck) {
+                allMonthsCheck.checked = (this.value === 'all');
+            }
+            if (dateFromEl) dateFromEl.value = '';
+            if (dateToEl) dateToEl.value = '';
+        });
+    }
+
+    if (filterYearEl) {
+        filterYearEl.addEventListener('change', function() {
+            if (dateFromEl) dateFromEl.value = '';
+            if (dateToEl) dateToEl.value = '';
+        });
+    }
+});
+
+function onDateRangeChange() {
+    const df = document.getElementById('dateFrom')?.value;
+    const dt = document.getElementById('dateTo')?.value;
+    if (df || dt) {
+        const allMonthsCheck = document.getElementById('allMonthsCheck');
+        if (allMonthsCheck) allMonthsCheck.checked = false;
     }
 }
 

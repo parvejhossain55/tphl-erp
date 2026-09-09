@@ -362,20 +362,20 @@
                  </div>
 
                  <div class="col-lg-6">
-                    <div class="form__input-box">
-                        <div class="form__input-box">
-                            <label>
-                                <input type="checkbox" id="make_user" name="make_user" value="1" <?= ($employee['make_user'] == 1) ? 'checked' : '' ?>>
-                                Create User Account?
-                            </label>
+                     <div class="form__input-box">
+                         <div class="form__input-box">
+                             <label>
+                                 <input type="checkbox" id="make_user" name="make_user" value="1" <?= (($employee['make_user'] == 1 || !empty($employee['user_id']))) ? 'checked' : '' ?>>
+                                 <?= !empty($employee['user_id']) ? 'User Account (Active)' : 'Create User Account?' ?>
+                             </label>
 
-                            <div id="password_box" style="display: <?= ($employee['make_user'] == 1) ? 'block' : 'none' ?>;">
-                                <label>Password</label>
-                                <input type="password" name="password" class="form-control">
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                             <div id="password_box" style="display: <?= (($employee['make_user'] == 1 || !empty($employee['user_id']))) ? 'block' : 'none' ?>;">
+                                 <label>Password <?= !empty($employee['user_id']) ? '<span class="text-muted" style="font-size:11px;">(Leave blank to keep current)</span>' : '<span class="text-muted" style="font-size:11px;">(Default: 12345678 if blank)</span>' ?></label>
+                                 <input type="password" name="password" class="form-control" placeholder="<?= !empty($employee['user_id']) ? 'Enter new password to change' : 'Enter password or leave blank for default' ?>">
+                             </div>
+                         </div>
+                     </div>
+                 </div>
 
 
 
@@ -471,13 +471,29 @@
   </div>
 
   <script>
-      document.getElementById("make_user").addEventListener("change", function() {
-          if (this.checked) {
-              document.getElementById("password_box").style.display = "block";
-          } else {
-              document.getElementById("password_box").style.display = "none";
-          }
-      });
+      const makeUserCb = document.getElementById("make_user");
+      const passwordBox = document.getElementById("password_box");
+      if (makeUserCb) {
+          makeUserCb.addEventListener("change", function() {
+              if (passwordBox) {
+                  passwordBox.style.display = this.checked ? "block" : "none";
+              }
+          });
+      }
+
+      // Automatically check User Account if a role is selected
+      if (typeof $ !== 'undefined') {
+          $(document).ready(function() {
+              $('select[name="role_id"]').on('change', function() {
+                  if ($(this).val()) {
+                      if (makeUserCb && !makeUserCb.checked) {
+                          makeUserCb.checked = true;
+                          if (passwordBox) passwordBox.style.display = "block";
+                      }
+                  }
+              });
+          });
+      }
 
       const isDeptHeadCheckbox = document.getElementById("is_dept_head");
       const reportingBossContainer = document.getElementById("reporting_boss_container");
