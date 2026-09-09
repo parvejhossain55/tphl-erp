@@ -337,29 +337,33 @@ public function getUsersByTeamAndRole($teamId)
     {
         // Photo upload
         $photo = uploadImage('userphoto', 'users', 'fixed', 300, 300);
+        if (empty($photo) && !empty($data['photo'])) {
+            $photo = $data['photo'];
+        }
 
         // Ensure password is hashed
         $password = ensureHashedPassword($data['password']);
 
         // Assign array elements to variables (needed for bind_param)
         $full_name      = $data['full_name'] ?? '';
-        $employee_id    = $data['employee_id'] ?? null;
+        $employee_id    = ($data['employee_id'] && (int)$data['employee_id'] > 0) ? (int)$data['employee_id'] : null;
         $phone          = $data['phone'] ?? '';
         $email          = $data['email'] ?? '';
         $designation_id = (int)($data['designation_id'] ?? 0);
         $address        = $data['address'] ?? '';
         $nid            = $data['nid'] ?? '';
         $role_id        = (int)($data['role_id'] ?? 2); // default role
-        $user_name      = $data['user_name'] ?? '';
+        $secondary_role_id = isset($data['secondary_role_id']) && $data['secondary_role_id'] !== '' ? (int)$data['secondary_role_id'] : null;
+        $user_name      = !empty($data['user_name']) ? $data['user_name'] : (!empty($data['username']) ? $data['username'] : $email);
         $media_link1    = $data['media_link1'] ?? '';
         $media_link2    = $data['media_link2'] ?? '';
         $created_by     = (int)($data['created_by'] ?? 0);
-        $team_id         = (int)($data['team_id'] ?? 0);
+        $team_id        = (int)($data['team_id'] ?? 0);
 
         $stmt = $this->db->prepare(
             "INSERT INTO users
-        (full_name, employee_id, phone, email, designation_id, address, nid, role_id, user_name, password, photo, media_link1, media_link2, created_by,team_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)"
+        (full_name, employee_id, phone, email, designation_id, address, nid, role_id, secondary_role_id, user_name, password, photo, media_link1, media_link2, created_by, team_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
 
         if (!$stmt) {
@@ -368,7 +372,7 @@ public function getUsersByTeamAndRole($teamId)
         }
 
         $stmt->bind_param(
-            "sissississsssii",
+            "sisssisiissssiii",
             $full_name,
             $employee_id,
             $phone,
@@ -377,6 +381,7 @@ public function getUsersByTeamAndRole($teamId)
             $address,
             $nid,
             $role_id,
+            $secondary_role_id,
             $user_name,
             $password,
             $photo,

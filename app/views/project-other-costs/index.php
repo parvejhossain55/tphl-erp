@@ -245,10 +245,10 @@
                                     <option value="">Select Project</option>
                                     <?php if (!empty($projects)): ?>
                                         <?php foreach ($projects as $project): ?>
-                                            <option value="<?= $project['id'] ?>"><?= htmlspecialchars($project['name']) ?> (<?= $project['under_construction'] ?? 'null' ?>)</option>
+                                            <option value="<?= $project['id'] ?>"><?= htmlspecialchars($project['name']) ?></option>
                                         <?php endforeach; ?>
                                     <?php else: ?>
-                                        <option value="">No projects available (<?= count($projects ?? []) ?> found)</option>
+                                        <option value="">No projects available</option>
                                     <?php endif; ?>
                                 </select>
                             </div>
