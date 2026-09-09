@@ -1,8 +1,8 @@
 <?php
 
-$current_server = 3;
+$current_server = 1;
 // Local Development Server
-if ($current_server == 1) {
+if ($current_server == 3) {
     return [
         "db_host" => "127.0.0.1",
         "db_user" => "root",

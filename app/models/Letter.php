@@ -19,10 +19,10 @@ class Letter extends Model
                 letter_date, ref_number,
                 joining_date, effective_date,
                 current_salary, revised_salary, new_designation,
-                signatory_name, signatory_title,
+                signatory_name, signatory_title, include_signature, custom_signature,
                 cc_email, send_to_email, status,
                 purpose, certificate_month, gross_salary, net_salary
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
 
         if (!$stmt) {
@@ -31,13 +31,15 @@ class Letter extends Model
 
         $template_id = !empty($data['template_id']) ? (int) $data['template_id'] : null;
         $send_to_email = !empty($data['send_to_email']) ? (int) $data['send_to_email'] : 0;
+        $include_signature = isset($data['include_signature']) ? (int) $data['include_signature'] : 1;
+        $custom_signature = !empty($data['custom_signature']) ? $data['custom_signature'] : null;
         $purpose = !empty($data['purpose']) ? $data['purpose'] : null;
         $certificate_month = !empty($data['certificate_month']) ? $data['certificate_month'] : null;
         $gross_salary = isset($data['gross_salary']) && $data['gross_salary'] !== '' ? (float) $data['gross_salary'] : null;
         $net_salary = isset($data['net_salary']) && $data['net_salary'] !== '' ? (float) $data['net_salary'] : null;
 
         $stmt->bind_param(
-            "iiisissssssssssssisssdd",
+            "iiisissssssssssisisisisssdd",
             $data['employee_id'],
             $data['designation_id'],
             $data['department_id'],
@@ -54,6 +56,8 @@ class Letter extends Model
             $data['new_designation'],
             $data['signatory_name'],
             $data['signatory_title'],
+            $include_signature,
+            $custom_signature,
             $data['cc_email'],
             $send_to_email,
             $data['status'],
@@ -70,12 +74,37 @@ class Letter extends Model
         return $this->db->insert_id;
     }
 
-    public function getAllWithDetails($designation_id = null, $letter_type = null, $employee_id = null)
+    public function countAllWithDetails($designation_id = null, $letter_type = null, $search = null)
+    {
+        $sql = "SELECT COUNT(l.id) as total
+                FROM letters l
+                LEFT JOIN employees e ON l.employee_id = e.id
+                LEFT JOIN designations d ON l.designation_id = d.id
+                LEFT JOIN departments dept ON l.department_id = dept.id
+                WHERE 1=1";
+
+        if (!empty($designation_id)) {
+            $sql .= " AND l.designation_id = " . (int) $designation_id;
+        }
+        if (!empty($letter_type)) {
+            $sql .= " AND l.letter_type = '" . $this->db->real_escape_string($letter_type) . "'";
+        }
+        if (!empty($search)) {
+            $s = $this->db->real_escape_string(trim($search));
+            $sql .= " AND (e.full_name LIKE '%$s%' OR e.employee_id LIKE '%$s%' OR l.subject LIKE '%$s%' OR l.ref_number LIKE '%$s%')";
+        }
+
+        $res = $this->db->query($sql);
+        $row = $res ? $res->fetch_assoc() : null;
+        return (int) ($row['total'] ?? 0);
+    }
+
+    public function getAllWithDetails($designation_id = null, $letter_type = null, $search = null, $page = 1, $limit = 15)
     {
         $sql = "SELECT l.id, l.employee_id, l.designation_id, l.department_id, l.letter_type, l.template_id,
                        l.subject, l.body, l.letter_date, l.ref_number, l.joining_date, l.effective_date,
                        l.current_salary, l.revised_salary, l.new_designation, l.signatory_name, l.signatory_title,
-                       l.cc_email, l.send_to_email, l.status, l.created_at, l.updated_at,
+                       l.include_signature, l.custom_signature, l.cc_email, l.send_to_email, l.status, l.created_at, l.updated_at,
                        l.purpose, l.certificate_month, l.gross_salary, l.net_salary,
                        e.full_name, e.employee_id as employee_code,
                        d.name as designation_name, dept.name as department_name
@@ -85,17 +114,23 @@ class Letter extends Model
                 LEFT JOIN departments dept ON l.department_id = dept.id
                 WHERE 1=1";
 
-        if ($designation_id) {
+        if (!empty($designation_id)) {
             $sql .= " AND l.designation_id = " . (int) $designation_id;
         }
-        if ($letter_type) {
+        if (!empty($letter_type)) {
             $sql .= " AND l.letter_type = '" . $this->db->real_escape_string($letter_type) . "'";
         }
-        if ($employee_id) {
-            $sql .= " AND l.employee_id = " . (int) $employee_id;
+        if (!empty($search)) {
+            $s = $this->db->real_escape_string(trim($search));
+            $sql .= " AND (e.full_name LIKE '%$s%' OR e.employee_id LIKE '%$s%' OR l.subject LIKE '%$s%' OR l.ref_number LIKE '%$s%')";
         }
 
         $sql .= " ORDER BY l.id DESC";
+
+        if ($limit > 0) {
+            $offset = max(0, ($page - 1) * $limit);
+            $sql .= " LIMIT $limit OFFSET $offset";
+        }
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
@@ -106,10 +141,10 @@ class Letter extends Model
             SELECT l.id, l.employee_id, l.designation_id, l.department_id, l.letter_type, l.template_id,
                    l.subject, l.body, l.letter_date, l.ref_number, l.joining_date, l.effective_date,
                    l.current_salary, l.revised_salary, l.new_designation, l.signatory_name, l.signatory_title,
-                   l.cc_email, l.send_to_email, l.status, l.created_at, l.updated_at,
+                   l.include_signature, l.custom_signature, l.cc_email, l.send_to_email, l.status, l.created_at, l.updated_at,
                    l.purpose, l.certificate_month, l.gross_salary, l.net_salary,
-                   e.full_name, e.employee_id as employee_code, e.address, e.employee_type,
-                   e.joining_date as emp_joining_date,
+                   e.full_name, e.employee_id as employee_code, e.address, e.employee_type, e.email as employee_email,
+                   e.joining_date as emp_joining_date, e.resign_date as emp_resign_date,
                    d.name as designation_name, dept.name as department_name
             FROM letters l
             LEFT JOIN employees e ON l.employee_id = e.id
@@ -142,6 +177,8 @@ class Letter extends Model
                 new_designation = ?,
                 signatory_name = ?,
                 signatory_title = ?,
+                include_signature = ?,
+                custom_signature = ?,
                 cc_email = ?,
                 send_to_email = ?,
                 status = ?,
@@ -158,6 +195,8 @@ class Letter extends Model
 
         $template_id = !empty($data['template_id']) ? (int) $data['template_id'] : null;
         $send_to_email = !empty($data['send_to_email']) ? (int) $data['send_to_email'] : 0;
+        $include_signature = isset($data['include_signature']) ? (int) $data['include_signature'] : 1;
+        $custom_signature = !empty($data['custom_signature']) ? $data['custom_signature'] : null;
         $purpose = !empty($data['purpose']) ? $data['purpose'] : null;
         $certificate_month = !empty($data['certificate_month']) ? $data['certificate_month'] : null;
         $gross_salary = isset($data['gross_salary']) && $data['gross_salary'] !== '' ? (float) $data['gross_salary'] : null;
@@ -165,7 +204,7 @@ class Letter extends Model
         $id = (int) $id;
 
         $stmt->bind_param(
-            "iiisissssssssssssisssddi",
+            "iiisissssssssssisisisisssddi",
             $data['employee_id'],
             $data['designation_id'],
             $data['department_id'],
@@ -182,6 +221,8 @@ class Letter extends Model
             $data['new_designation'],
             $data['signatory_name'],
             $data['signatory_title'],
+            $include_signature,
+            $custom_signature,
             $data['cc_email'],
             $send_to_email,
             $data['status'],

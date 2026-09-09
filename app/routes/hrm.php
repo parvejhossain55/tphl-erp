@@ -152,6 +152,7 @@ return [
     'delete-letter/(\d+)' => ['controller' => 'LetterTemplateController', 'method' => 'deleteLetter'],
     'edit-letter/(\d+)' => ['controller' => 'LetterTemplateController', 'method' => 'editLetter'],
     'update-letter/(\d+)' => ['controller' => 'LetterTemplateController', 'method' => 'updateLetter'],
+    'update-hr-signature' => ['controller' => 'LetterTemplateController', 'method' => 'updateOfficialSignature'],
 
     // =========================================================================
     // Controller: LeaveController

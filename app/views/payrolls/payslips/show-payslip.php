@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payslip - <?= htmlspecialchars($payslip['employee_name']) ?></title>
+    <title>Payslip of <?= !empty($payslip['payslip_month']) ? date('F Y', strtotime($payslip['payslip_month'])) : date('F Y', strtotime($payslip['created_at'])) ?> - <?= htmlspecialchars($payslip['employee_name']) ?></title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -563,7 +563,7 @@
 
         <!-- TITLE -->
         <div class="payslip-main-title">
-            Payslip of <?= date('F Y', strtotime($payslip['created_at'])) ?>
+            Payslip of <?= !empty($payslip['payslip_month']) ? date('F Y', strtotime($payslip['payslip_month'])) : date('F Y', strtotime($payslip['created_at'])) ?>
         </div>
 
         <!-- PERIOD -->
@@ -572,7 +572,7 @@
             <?php if ($payslip['status'] === 'draft'): ?>
                 <div><span class="period-label">Type:</span> Salary Certificate (Draft)</div>
             <?php else: ?>
-                <div><span class="period-label">Due:</span> <?= date('d M Y', strtotime($payslip['updated_at'])) ?></div>
+                <div><span class="period-label">Salary Month:</span> <?= date('F Y', strtotime($payslip['payslip_month'] ?? $payslip['created_at'])) ?></div>
             <?php endif; ?>
             <div><span class="period-label">Payslip No:</span> PS-<?= $payslip['id'] ?></div>
         </div>

@@ -33,6 +33,9 @@ spl_autoload_register(function ($class) {
 // ini_set('display_errors', 1);
 
 $root = dirname(__DIR__);
+if (!defined('BASE_PATH')) {
+    define('BASE_PATH', $root);
+}
 $GLOBALS['base_url'] = '/TPHL-ERP';
 
 // Load config

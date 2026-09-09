@@ -91,7 +91,7 @@
                 </a>
             </div>
 
-            <form action="<?= $GLOBALS['base_url'] ?>/store-generate-letter" method="POST" id="letterForm">
+            <form action="<?= $GLOBALS['base_url'] ?>/store-generate-letter" method="POST" enctype="multipart/form-data" id="letterForm">
 
                 <!-- ═══ Section: Employee Info ═══════════════════════════════ -->
                 <div class="card__wrapper mb-20">
@@ -112,8 +112,18 @@
                                         <?php if (!empty($employees)): ?>
                                             <?php foreach ($employees as $emp): ?>
                                                 <option value="<?= $emp['id'] ?>"
+                                                    data-name="<?= htmlspecialchars($emp['full_name']) ?>"
+                                                    data-code="<?= htmlspecialchars($emp['employee_id']) ?>"
                                                     data-designation="<?= $emp['designation_id'] ?>"
-                                                    data-department="<?= $emp['department_id'] ?>">
+                                                    data-designation-id="<?= $emp['designation_id'] ?>"
+                                                    data-designation-name="<?= htmlspecialchars($emp['designation_name'] ?? '') ?>"
+                                                    data-department="<?= $emp['department_id'] ?>"
+                                                    data-department-id="<?= $emp['department_id'] ?>"
+                                                    data-department-name="<?= htmlspecialchars($emp['department_name'] ?? '') ?>"
+                                                    data-joining="<?= $emp['joining_date'] ?? '' ?>"
+                                                    data-resign="<?= $emp['resign_date'] ?? '' ?>"
+                                                    data-gender="<?= $emp['gender'] ?? '' ?>"
+                                                    data-email="<?= htmlspecialchars($emp['email'] ?? '') ?>">
                                                     <?= htmlspecialchars($emp['full_name']) ?>
                                                     (<?= htmlspecialchars($emp['employee_id']) ?>)
                                                 </option>
@@ -297,7 +307,7 @@
                             <div class="from__input-box">
                                 <div class="form__input-title"><label>Letter Date <span>*</span></label></div>
                                 <div class="form__input"><input class="form-control" name="sc_letter_date"
-                                        id="sc_letter_date" type="date"></div>
+                                        id="sc_letter_date" type="date" value="<?= date('Y-m-d') ?>"></div>
                             </div>
                         </div>
 
@@ -306,7 +316,7 @@
                                 <div class="form__input-title"><label>Certificate Month <span>*</span></label></div>
                                 <div class="form__input">
                                     <input class="form-control" name="certificate_month" id="certificate_month"
-                                        type="month" placeholder="e.g. 2026-06">
+                                        type="month" placeholder="e.g. 2026-06" value="<?= date('Y-m') ?>">
                                 </div>
                             </div>
                         </div>
@@ -317,14 +327,14 @@
                                             class="text-muted">Optional</span></label></div>
                                 <div class="form__input"><input class="form-control" name="sc_ref_number"
                                         id="sc_ref_number" type="text"
-                                        placeholder="TPHL/HR/Salary Certificate/June-2026"></div>
+                                        placeholder="TPHL/HR/Salary Certificate/September-2026" value="TPHL/HR/Salary Certificate/<?= date('F-Y') ?>"></div>
                             </div>
                         </div>
 
                         <div class="col-lg-6">
                             <div class="from__input-box">
                                 <div class="form__input-title"><label>Subject <span>*</span></label></div>
-                                <div class="form__input"><input class="form-control" name="subject" id="sc_subject"
+                                <div class="form__input"><input class="form-control" name="sc_subject" id="sc_subject"
                                         type="text" value="Salary Certificate"></div>
                             </div>
                         </div>
@@ -336,6 +346,7 @@
                                     <select class="form-control" name="purpose" id="purpose"
                                         onchange="toggleOtherPurpose()">
                                         <option value="">— Select Purpose —</option>
+                                        <option value="Final Settlement" selected>Final Settlement</option>
                                         <option value="Bank Loan">Bank Loan</option>
                                         <option value="Visa Application">Visa Application</option>
                                         <option value="Tenancy / House Rent">Tenancy / House Rent</option>
@@ -346,7 +357,21 @@
                             </div>
                         </div>
 
-                        <div class="col-lg-6" id="other_purpose_box" style="display:none;">
+                        <div class="col-lg-6">
+                            <div class="from__input-box">
+                                <div class="form__input-title"><label>Employment Joining Date</label></div>
+                                <div class="form__input"><input class="form-control" name="sc_joining_date" id="sc_joining_date" type="date"></div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="from__input-box">
+                                <div class="form__input-title"><label>Separation / End Date <span class="text-muted">(Leave blank if currently employed)</span></label></div>
+                                <div class="form__input"><input class="form-control" name="sc_effective_date" id="sc_effective_date" type="date"></div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-12" id="other_purpose_box" style="display:none;">
                             <div class="from__input-box">
                                 <div class="form__input-title"><label>Specify Purpose</label></div>
                                 <div class="form__input">
@@ -411,7 +436,7 @@
                                 <div class="form__input-title"><label for="signatory_name">Signed By
                                         <span>*</span></label></div>
                                 <div class="form__input"><input class="form-control" name="signatory_name"
-                                        id="signatory_name" type="text" placeholder="Full Name" required></div>
+                                        id="signatory_name" type="text" placeholder="Full Name" value="Mohammad Jasim Uddin Khan" required></div>
                             </div>
                         </div>
 
@@ -421,7 +446,58 @@
                                         <span>*</span></label></div>
                                 <div class="form__input"><input class="form-control" name="signatory_title"
                                         id="signatory_title" type="text" placeholder="e.g. Chief Executive Officer"
-                                        required></div>
+                                        value="Chief Executive Officer" required></div>
+                            </div>
+                        </div>
+
+                        <?php
+                        $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 4);
+                        $hasOfficialSig = file_exists($baseDir . '/public/assets/images/hrm/hr_signature.png');
+                        ?>
+                        <div class="col-lg-4">
+                            <div class="from__input-box">
+                                <div class="form__input-title"><label for="signature_choice">Digital Seal & Signature</label></div>
+                                <div class="form__input">
+                                    <select class="form-control" name="signature_choice" id="signature_choice" onchange="handleSignatureChoice(this.value)">
+                                        <?php if ($hasOfficialSig): ?>
+                                            <option value="official" selected>Yes — Include Official HR Signature</option>
+                                            <option value="custom">🖊️ Upload Custom Signature (Paper Photo/Scan)</option>
+                                            <option value="none">No — Leave Blank (Physical Sign)</option>
+                                        <?php else: ?>
+                                            <option value="none" selected>No — Leave Blank (Physical Sign)</option>
+                                            <option value="custom">🖊️ Upload Custom Signature (Paper Photo/Scan)</option>
+                                            <option value="official" disabled>Official HR Signature (Not uploaded yet)</option>
+                                        <?php endif; ?>
+                                    </select>
+                                    <input type="hidden" name="include_signature" id="include_signature" value="<?= $hasOfficialSig ? '1' : '0' ?>">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Custom Signature Upload Box (Hidden by default) -->
+                        <div class="col-12" id="custom_sig_wrapper" style="display: none;">
+                            <div class="card p-3 border rounded shadow-sm bg-light mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-bold text-dark"><i class="fa-solid fa-wand-magic-sparkles text-primary me-1"></i> Auto-Extracted Signature Upload</span>
+                                    <span class="badge bg-primary text-white">AI Background Remover</span>
+                                </div>
+                                <p class="text-muted small mb-3">
+                                    Upload any mobile photo or paper scan with a signature. Our intelligent extractor automatically removes shadows and off-white paper backgrounds, enhances ink contrast, and crops it cleanly with 100% transparency.
+                                </p>
+                                <div class="row align-items-center g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold">Choose Signature Photo / Scan</label>
+                                        <input type="file" name="custom_signature_file" id="custom_signature_file" class="form-control" accept="image/*">
+                                        <div class="form-text small">Accepts JPG, PNG, WEBP, or HEIC scans from phones/scanners.</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold">Live Extraction Preview (Transparent Output)</label>
+                                        <div id="sig_preview_box" class="p-2 border rounded text-center" style="min-height: 80px; display: flex; align-items: center; justify-content: center; background-image: repeating-linear-gradient(45deg, #e2e8f0 25%, transparent 25%, transparent 75%, #e2e8f0 75%, #e2e8f0), repeating-linear-gradient(45deg, #e2e8f0 25%, #ffffff 25%, #ffffff 75%, #e2e8f0 75%, #e2e8f0); background-size: 16px 16px; background-position: 0 0, 8px 8px;">
+                                            <span id="sig_preview_placeholder" class="text-muted small">Select an image to preview transparent extraction</span>
+                                            <canvas id="sig_preview_canvas" style="display: none; max-height: 70px; max-width: 100%; object-fit: contain;"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -434,7 +510,7 @@
                             </div>
                         </div>
 
-                        <div class="col-lg-6">
+                        <div class="col-lg-4">
                             <div class="from__input-box">
                                 <div class="form__input-title"><label for="send_to_email">Send to Employee Email <span
                                             class="text-muted">Optional</span></label></div>
@@ -447,14 +523,13 @@
                             </div>
                         </div>
 
-                        <div class="col-lg-6">
+                        <div class="col-lg-4">
                             <div class="from__input-box">
                                 <div class="form__input-title"><label for="letter_status">Letter Status
                                         <span>*</span></label></div>
                                 <div class="form__input">
                                     <select class="form-control" name="letter_status" id="letter_status" required>
-                                        <option value="">— Select Status —</option>
-                                        <option value="draft">Draft</option>
+                                        <option value="draft" selected>Draft</option>
                                         <option value="issued">Issued</option>
                                     </select>
                                 </div>
@@ -475,6 +550,100 @@
 </div>
 
 <script>
+    // ─── Placeholder Replacement Engine ────────────────────────────────────────
+    window.currentRawTemplateSubject = '';
+    window.currentRawTemplateBody = '';
+
+    function replacePlaceholdersInText(text) {
+        if (!text) return '';
+        var empSelect = document.getElementById('employee_id');
+        if (!empSelect || empSelect.selectedIndex < 0) return text;
+        var opt = empSelect.options[empSelect.selectedIndex];
+        if (!opt || !opt.value) return text;
+
+        var empName = opt.dataset.name || '';
+        var empCode = opt.dataset.code || '';
+        var desigName = opt.dataset.designationName || '';
+        var deptName = opt.dataset.departmentName || '';
+        var joiningRaw = opt.dataset.joining || '';
+        var resignRaw = opt.dataset.resign || '';
+        var gender = (opt.dataset.gender || '').toLowerCase();
+
+        // Check if designation or department dropdown is selected
+        var dSelect = document.getElementById('designation_id');
+        if (dSelect && dSelect.selectedIndex > 0) {
+            var dText = dSelect.options[dSelect.selectedIndex].text;
+            desigName = dText.replace(/\s*\(.*\)$/, '').trim();
+        }
+        var dpSelect = document.getElementById('department_id');
+        if (dpSelect && dpSelect.selectedIndex > 0) {
+            deptName = dpSelect.options[dpSelect.selectedIndex].text.trim();
+        }
+
+        var joinInput = document.getElementById('joining_date');
+        if (joinInput && joinInput.value) joiningRaw = joinInput.value;
+
+        var effInput = document.getElementById('effective_date');
+        if (effInput && effInput.value) resignRaw = effInput.value;
+
+        function formatLongDate(dateStr) {
+            if (!dateStr) return '';
+            var parts = dateStr.split('-');
+            if (parts.length === 3) {
+                var y = parseInt(parts[0], 10);
+                var m = parseInt(parts[1], 10) - 1;
+                var d = parseInt(parts[2], 10);
+                var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                var dayStr = (d < 10 ? '0' : '') + d;
+                return months[m] + ' ' + dayStr + ', ' + y;
+            }
+            return dateStr;
+        }
+
+        var joiningFormatted = formatLongDate(joiningRaw);
+        var releaseFormatted = formatLongDate(resignRaw);
+
+        // Gender pronoun detection
+        var isFemale = (gender === 'female');
+        if (!isFemale) {
+            var femaleKeywords = ['ms.', 'mrs.', 'miss', 'khatun', 'begum', 'akter', 'akther', 'sultana', 'jahan', 'nahar', 'parvin', 'nasrin', 'farzana', 'roksana', 'shammi', 'bornali'];
+            var nl = empName.toLowerCase();
+            for (var i = 0; i < femaleKeywords.length; i++) {
+                if (nl.indexOf(femaleKeywords[i]) !== -1) {
+                    isFemale = true;
+                    break;
+                }
+            }
+        }
+
+        var sheHe = isFemale ? 'she' : 'he';
+        var SheHe = isFemale ? 'She' : 'He';
+        var herHis = isFemale ? 'her' : 'his';
+        var HerHis = isFemale ? 'Her' : 'His';
+        var herHim = isFemale ? 'her' : 'him';
+        var companyName = 'The Premium Homes Limited';
+
+        var res = text;
+        res = res.replace(/\{\{\s*employee_name\s*\}\}/gi, empName);
+        res = res.replace(/\{\{\s*name\s*\}\}/gi, empName);
+        res = res.replace(/\{\{\s*employee_code\s*\}\}/gi, empCode);
+        res = res.replace(/\{\{\s*employee_id\s*\}\}/gi, empCode);
+        res = res.replace(/\{\{\s*designation\s*\}\}/gi, desigName);
+        res = res.replace(/\{\{\s*department\s*\}\}/gi, deptName);
+        res = res.replace(/\{\{\s*company_name\s*\}\}/gi, companyName);
+        res = res.replace(/\{\{\s*joining_date\s*\}\}/gi, joiningFormatted);
+        res = res.replace(/\{\{\s*release_date\s*\}\}/gi, releaseFormatted);
+        res = res.replace(/\{\{\s*effective_date\s*\}\}/gi, releaseFormatted);
+        res = res.replace(/\{\{\s*separation_date\s*\}\}/gi, releaseFormatted);
+        res = res.replace(/\{\{\s*she_he\s*\}\}/g, sheHe);
+        res = res.replace(/\{\{\s*She_He\s*\}\}/g, SheHe);
+        res = res.replace(/\{\{\s*her_his\s*\}\}/g, herHis);
+        res = res.replace(/\{\{\s*Her_His\s*\}\}/g, HerHis);
+        res = res.replace(/\{\{\s*her_him\s*\}\}/g, herHim);
+
+        return res;
+    }
+
     // ─── Employee Change ────────────────────────────────────────────────────────
     function onEmployeeChange() {
         var sel = document.getElementById('employee_id');
@@ -489,11 +658,62 @@
         }
 
         // Auto-fill designation & department
-        var desigId = opt.dataset.designation || '';
-        var deptId = opt.dataset.department || '';
+        var desigId = opt.dataset.designationId || opt.dataset.designation || '';
+        var deptId = opt.dataset.departmentId || opt.dataset.department || '';
         if (typeof $ !== 'undefined') {
             $('#designation_id').val(desigId).trigger('change');
             $('#department_id').val(deptId).trigger('change');
+        }
+
+        // Auto-fill dates
+        var joinDate = opt.dataset.joining || '';
+        var resignDate = opt.dataset.resign || '';
+        var joinInput = document.getElementById('joining_date');
+        if (joinInput && (!joinInput.value || joinInput.value === '') && joinDate) {
+            joinInput.value = joinDate;
+        }
+        var scJoinInput = document.getElementById('sc_joining_date');
+        if (scJoinInput && (!scJoinInput.value || scJoinInput.value === '') && joinDate) {
+            scJoinInput.value = joinDate;
+        }
+
+        var effInput = document.getElementById('effective_date');
+        if (effInput && (!effInput.value || effInput.value === '') && resignDate) {
+            effInput.value = resignDate;
+        }
+        var scEffInput = document.getElementById('sc_effective_date');
+        if (scEffInput && (!scEffInput.value || scEffInput.value === '') && resignDate) {
+            scEffInput.value = resignDate;
+        }
+
+        var letDateInput = document.getElementById('letter_date');
+        if (letDateInput && (!letDateInput.value || letDateInput.value === '')) {
+            letDateInput.value = '<?= date('Y-m-d') ?>';
+        }
+        var scDateInput = document.getElementById('sc_letter_date');
+        if (scDateInput && (!scDateInput.value || scDateInput.value === '')) {
+            scDateInput.value = '<?= date('Y-m-d') ?>';
+        }
+
+        // Live update placeholders in TinyMCE & Subject if template body is loaded
+        if (window.currentRawTemplateBody) {
+            var replacedBody = replacePlaceholdersInText(window.currentRawTemplateBody);
+            if (typeof tinymce !== 'undefined' && tinymce.get('tinymce_simple_textarea')) {
+                tinymce.get('tinymce_simple_textarea').setContent(replacedBody);
+            }
+            var textareaEl = document.getElementById('tinymce_simple_textarea');
+            if (textareaEl) textareaEl.value = replacedBody;
+
+            if (window.currentRawTemplateSubject) {
+                var replacedSubj = replacePlaceholdersInText(window.currentRawTemplateSubject);
+                var subjectEl = document.getElementById('subject');
+                if (subjectEl) subjectEl.value = replacedSubj;
+            }
+        } else if (typeof tinymce !== 'undefined' && tinymce.get('tinymce_simple_textarea')) {
+            var curContent = tinymce.get('tinymce_simple_textarea').getContent();
+            if (curContent && curContent.indexOf('{{') !== -1) {
+                tinymce.get('tinymce_simple_textarea').setContent(replacePlaceholdersInText(curContent));
+            }
         }
 
         // If salary_certificate, also fetch salary info
@@ -510,13 +730,39 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    // Auto-fill basic salary as first earning row if earnings empty
                     var container = document.getElementById('earnings_container');
-                    if (container.children.length === 0) {
-                        addSalaryRowWithData('earning', 'Basic Salary', data.basic_salary || 0);
+                    container.innerHTML = '';
+
+                    if (data.items && data.items.length > 0) {
+                        data.items.forEach(function (it) {
+                            addSalaryRowWithData('earning', it.label, it.amount);
+                        });
+                    } else if (data.basic_salary) {
+                        addSalaryRowWithData('earning', 'Basic Salary', data.basic_salary);
                     }
+
+                    // Auto-fill dates & ref number if empty
+                    var scDate = document.getElementById('sc_letter_date');
+                    if (scDate && (!scDate.value || scDate.value === '') && data.letter_date) {
+                        scDate.value = data.letter_date;
+                    }
+                    var certM = document.getElementById('certificate_month');
+                    if (certM && (!certM.value || certM.value === '') && data.certificate_month) {
+                        certM.value = data.certificate_month;
+                    }
+                    var refNum = document.getElementById('sc_ref_number');
+                    if (refNum && (!refNum.value || refNum.value === '') && data.ref_number) {
+                        refNum.value = data.ref_number;
+                    }
+                    var scJoin = document.getElementById('sc_joining_date');
+                    if (scJoin && (!scJoin.value || scJoin.value === '') && data.joining_date) {
+                        scJoin.value = data.joining_date;
+                    }
+
+                    recalcTotals();
                 }
-            });
+            })
+            .catch(error => console.error('Error fetching employee salary:', error));
     }
 
     // ─── Letter Type Change ─────────────────────────────────────────────────────
@@ -538,6 +784,17 @@
             el.disabled = isSalaryCert;
         });
 
+        // Smart defaults for letter types
+        var refInput = document.getElementById('ref_number');
+        var subjInput = document.getElementById('subject');
+
+        if (type === 'experience') {
+            if (refInput && !refInput.value) refInput.value = 'TPHL/HR/Experience Certificate/<?= date('M-Y') ?>';
+            if (subjInput && !subjInput.value) subjInput.value = 'Experience Certificate';
+        } else if (type === 'caution') {
+            if (subjInput && !subjInput.value) subjInput.value = 'Caution Letter for Negligence and Lack of Oversight on Site';
+        }
+
         // load templates for other types
         if (!isSalaryCert) {
             loadTemplatesForType();
@@ -549,6 +806,12 @@
             if (empSel && empSel.value) {
                 fetchEmployeeSalary(empSel.value);
             }
+            var scDate = document.getElementById('sc_letter_date');
+            if (scDate && !scDate.value) scDate.value = '<?= date('Y-m-d') ?>';
+            var certM = document.getElementById('certificate_month');
+            if (certM && !certM.value) certM.value = '<?= date('Y-m') ?>';
+            var refNum = document.getElementById('sc_ref_number');
+            if (refNum && !refNum.value) refNum.value = 'TPHL/HR/Salary Certificate/<?= date('F-Y') ?>';
         }
     }
 
@@ -564,7 +827,7 @@
         var container = document.getElementById(containerId);
 
         var borderColor = itemType === 'earning' ? '#0d6efd' : '#dc3545';
-        var suggestions = ['Basic Salary', 'House Rent Allowance', 'Medical Allowance', 'Conveyance', 'Mobile Allowance', 'Food Allowance', 'Others Allowance'];
+        var suggestions = ['Basic Salary', 'House Rent', 'Medical Allowance', 'Conveyance', 'Mobile Allowance', 'Food Allowance', 'Others Allowance'];
         var suggestList = suggestions.map(s => '<option value="' + s + '">').join('');
 
         var html = '<div class="salary-row-item d-flex align-items-center gap-2" id="row_' + rowCounter + '" style="border-left:3px solid ' + borderColor + ';">';
@@ -620,6 +883,10 @@
 
     // ─── Before form submit: validation + sync ───────────────────────────────────
     document.getElementById('letterForm').addEventListener('submit', function (e) {
+        if (typeof tinymce !== 'undefined') {
+            tinymce.triggerSave();
+        }
+
         var type = document.getElementById('letter_type').value;
         if (!type) { e.preventDefault(); alert('Please select a letter type.'); return; }
 
@@ -648,6 +915,15 @@
             document.getElementById('ref_number').value = document.getElementById('sc_ref_number').value;
             document.getElementById('subject').value = document.getElementById('sc_subject').value;
 
+            var scJoinVal = document.getElementById('sc_joining_date');
+            if (scJoinVal && scJoinVal.value) {
+                document.getElementById('joining_date').value = scJoinVal.value;
+            }
+            var scEffVal = document.getElementById('sc_effective_date');
+            if (scEffVal && scEffVal.value) {
+                document.getElementById('effective_date').value = scEffVal.value;
+            }
+
             recalcTotals();
         }
     });
@@ -674,14 +950,19 @@
         fetch('<?= $GLOBALS['base_url'] ?>/get-templates-for-type?type=' + encodeURIComponent(letterType))
             .then(r => r.json())
             .then(data => {
-                if (data.success && data.templates) {
-                    var html = '<option value="">— No Template —</option>';
+                if (data.success && data.templates && data.templates.length > 0) {
+                    var html = '<option value="">— Select Template —</option>';
                     data.templates.forEach(t => { html += '<option value="' + t.id + '">' + t.name + '</option>'; });
                     templateSelect.innerHTML = html;
+
+                    // Automatically select first template and load content
+                    templateSelect.value = data.templates[0].id;
+                    loadTemplate();
                 } else {
                     templateSelect.innerHTML = '<option value="">— No Template —</option>';
                 }
-            });
+            })
+            .catch(error => console.error('Error loading templates for type:', error));
     }
 
     function loadTemplate() {
@@ -691,9 +972,134 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success && data.template) {
-                    document.getElementById('subject').value = data.template.subject || '';
-                    document.getElementById('letter_body').value = data.template.body || '';
+                    window.currentRawTemplateSubject = data.template.subject || '';
+                    window.currentRawTemplateBody = data.template.body || '';
+
+                    var replacedSubject = replacePlaceholdersInText(window.currentRawTemplateSubject);
+                    var replacedBody = replacePlaceholdersInText(window.currentRawTemplateBody);
+
+                    var subjectEl = document.getElementById('subject');
+                    if (subjectEl) {
+                        subjectEl.value = replacedSubject;
+                    }
+
+                    if (typeof tinymce !== 'undefined' && tinymce.get('tinymce_simple_textarea')) {
+                        tinymce.get('tinymce_simple_textarea').setContent(replacedBody);
+                    }
+                    var textareaEl = document.getElementById('tinymce_simple_textarea');
+                    if (textareaEl) {
+                        textareaEl.value = replacedBody;
+                    }
                 }
-            });
+            })
+            .catch(error => console.error('Error loading template:', error));
+    }
+
+    function handleSignatureChoice(choice) {
+        var wrapper = document.getElementById('custom_sig_wrapper');
+        var hiddenInc = document.getElementById('include_signature');
+        if (choice === 'custom') {
+            if (wrapper) wrapper.style.display = 'block';
+            if (hiddenInc) hiddenInc.value = '1';
+        } else if (choice === 'none') {
+            if (wrapper) wrapper.style.display = 'none';
+            if (hiddenInc) hiddenInc.value = '0';
+        } else {
+            if (wrapper) wrapper.style.display = 'none';
+            if (hiddenInc) hiddenInc.value = '1';
+        }
+    }
+
+    // Client-side live signature extraction preview
+    var sigFileInput = document.getElementById('custom_signature_file');
+    if (sigFileInput) {
+        sigFileInput.addEventListener('change', function (e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function (event) {
+                var img = new Image();
+                img.onload = function () {
+                    var canvas = document.getElementById('sig_preview_canvas');
+                    var placeholder = document.getElementById('sig_preview_placeholder');
+                    if (!canvas) return;
+
+                    var w = img.width;
+                    var h = img.height;
+                    var maxD = 1200;
+                    if (w > maxD || h > maxD) {
+                        var scale = Math.min(maxD / w, maxD / h);
+                        w = Math.floor(w * scale);
+                        h = Math.floor(h * scale);
+                    }
+
+                    var offCanvas = document.createElement('canvas');
+                    offCanvas.width = w;
+                    offCanvas.height = h;
+                    var offCtx = offCanvas.getContext('2d');
+                    offCtx.drawImage(img, 0, 0, w, h);
+
+                    var imgData = offCtx.getImageData(0, 0, w, h);
+                    var data = imgData.data;
+
+                    var minX = w, maxX = 0, minY = h, maxY = 0;
+                    var threshold = 205;
+
+                    for (var y = 0; y < h; y++) {
+                        for (var x = 0; x < w; x++) {
+                            var idx = (y * w + x) * 4;
+                            var r = data[idx];
+                            var g = data[idx + 1];
+                            var b = data[idx + 2];
+                            var lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                            if (lum >= threshold) {
+                                data[idx + 3] = 0;
+                            } else {
+                                var alphaRatio = (threshold - lum) / threshold;
+                                var alpha = Math.min(255, Math.floor(alphaRatio * 255 * 1.5));
+                                data[idx + 3] = alpha;
+                                data[idx] = Math.max(0, r - 50);
+                                data[idx + 1] = Math.max(0, g - 50);
+                                data[idx + 2] = Math.max(0, b - 40);
+
+                                if (x < minX) minX = x;
+                                if (x > maxX) maxX = x;
+                                if (y < minY) minY = y;
+                                if (y > maxY) maxY = y;
+                            }
+                        }
+                    }
+
+                    offCtx.putImageData(imgData, 0, 0);
+
+                    if (maxX >= minX && maxY >= minY) {
+                        var pad = 10;
+                        minX = Math.max(0, minX - pad);
+                        minY = Math.max(0, minY - pad);
+                        maxX = Math.min(w - 1, maxX + pad);
+                        maxY = Math.min(h - 1, maxY + pad);
+                        var cropW = maxX - minX + 1;
+                        var cropH = maxY - minY + 1;
+
+                        canvas.width = cropW;
+                        canvas.height = cropH;
+                        var ctx = canvas.getContext('2d');
+                        ctx.clearRect(0, 0, cropW, cropH);
+                        ctx.drawImage(offCanvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+                    } else {
+                        canvas.width = w;
+                        canvas.height = h;
+                        var ctx = canvas.getContext('2d');
+                        ctx.drawImage(offCanvas, 0, 0);
+                    }
+
+                    if (placeholder) placeholder.style.display = 'none';
+                    canvas.style.display = 'inline-block';
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
     }
 </script>

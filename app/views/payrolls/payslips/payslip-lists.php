@@ -401,7 +401,7 @@ $show_breadcrumb = true;
                                  <td class="able__icon-box">
                                      <div class="d-flex align-items-center justify-content-start gap-10">
                                          <?php if (empty($payslip['id'])): ?>
-                                             <a href="<?= $GLOBALS['base_url'] ?>/create-payslip" class="btn btn-info btn-sm">
+                                             <a href="<?= $GLOBALS['base_url'] ?>/create-payslip?year=<?= $selectedYear ?>&month=<?= $selectedMonth ?>&employee_id=<?= $payslip['employee_id'] ?>" class="btn btn-info btn-sm">
                                                  <i class="fa-light fa-plus me-1"></i> Create Payslip
                                              </a>
                                          <?php else: ?>
