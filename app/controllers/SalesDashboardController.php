@@ -502,11 +502,17 @@ class SalesDashboardController extends Controller
     {
         $user = $this->userModel->find($id);
         $targets = $this->salesTargetModel->getAllTargets($id);
-        $projects = $this->db->query("SELECT id, name, category_id FROM projects WHERE deleted_at IS NULL")->fetch_all(MYSQLI_ASSOC);
+        $projects = $this->db->query("
+            SELECT p.id, p.name, p.category_id, pc.name as cat_name, pc.main_category 
+            FROM projects p 
+            LEFT JOIN project_categories pc ON p.category_id = pc.id 
+            WHERE p.deleted_at IS NULL 
+            ORDER BY p.name ASC
+        ")->fetch_all(MYSQLI_ASSOC);
         $team = $this->db->query("SELECT t.name FROM users u JOIN teams t ON u.team_id = t.id WHERE u.id = $id LIMIT 1")->fetch_assoc();
         $teamName = $team['name'] ?? 'No Team';
         
-        $categories = $this->db->query("SELECT id, name AS category_name, main_category FROM project_categories")->fetch_all(MYSQLI_ASSOC);
+        $categories = $this->db->query("SELECT id, name AS category_name, main_category FROM project_categories ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
 
         $this->view("sales-developments/set-sales-target", [
             "current_route" => "sales-executive-teams",
@@ -524,11 +530,14 @@ class SalesDashboardController extends Controller
         $monthInput = $_POST['month']; // e.g. 2026-02
         $month = date('Y-m-01', strtotime($monthInput));
 
-        $categoryId = !empty($_POST['category_id']) ? (int) $_POST['category_id'] : null;
-        $projectIds = !empty($_POST['project_ids']) ? json_encode($_POST['project_ids']) : null;
-        $siteVisit = $_POST['site_visit_target'] ?? 0;
-        $bookingTarget = $_POST['booking_target'] ?? 0;
-        $bookingValue = $_POST['booking_value_target'] ?? 0;
+        $categoryIds = !empty($_POST['category_ids']) ? (array)$_POST['category_ids'] : [];
+        $categoryId = !empty($categoryIds) ? (int)reset($categoryIds) : (!empty($_POST['category_id']) ? (int)$_POST['category_id'] : null);
+        $categoryIdsJson = !empty($categoryIds) ? json_encode(array_values(array_map('strval', $categoryIds))) : null;
+
+        $projectIds = !empty($_POST['project_ids']) ? json_encode(array_values(array_map('strval', (array)$_POST['project_ids']))) : null;
+        $siteVisit = (int)($_POST['site_visit_target'] ?? 0);
+        $bookingTarget = (int)($_POST['booking_target'] ?? 0);
+        $bookingValue = (float)($_POST['booking_value_target'] ?? 0);
         $salesRole = $_POST['sales_role'] ?? null;
         
         if (empty($salesRole)) {
@@ -545,7 +554,8 @@ class SalesDashboardController extends Controller
             $bookingValue,
             $categoryId,
             $projectIds,
-            $salesRole
+            $salesRole,
+            $categoryIdsJson
         );
 
         if ($saved) {
@@ -560,20 +570,22 @@ class SalesDashboardController extends Controller
 
     public function updateSalesTarget()
     {
-        $id = $_POST['id']; // hidden input
+        $id = (int)$_POST['id']; // hidden input
         $monthInput = $_POST['month'];
-
         $month = date('Y-m-01', strtotime($monthInput));
 
-        $categoryId = !empty($_POST['category_id']) ? (int) $_POST['category_id'] : null;
-        $projectIds = !empty($_POST['project_ids']) ? json_encode($_POST['project_ids']) : null;
+        $categoryIds = !empty($_POST['category_ids']) ? (array)$_POST['category_ids'] : [];
+        $categoryId = !empty($categoryIds) ? (int)reset($categoryIds) : (!empty($_POST['category_id']) ? (int)$_POST['category_id'] : null);
+        $categoryIdsJson = !empty($categoryIds) ? json_encode(array_values(array_map('strval', $categoryIds))) : null;
 
-        $siteVisit = $_POST['site_visit_target'] ?? 0;
-        $booking = $_POST['booking_target'] ?? 0;
-        $bookingValue = $_POST['booking_value_target'] ?? 0;
+        $projectIds = !empty($_POST['project_ids']) ? json_encode(array_values(array_map('strval', (array)$_POST['project_ids']))) : null;
+
+        $siteVisit = (int)($_POST['site_visit_target'] ?? 0);
+        $booking = (int)($_POST['booking_target'] ?? 0);
+        $bookingValue = (float)($_POST['booking_value_target'] ?? 0);
 
         $salesRole = $_POST['sales_role'] ?? null;
-        $userId = $_POST['user_id'];
+        $userId = (int)$_POST['user_id'];
         
         if (empty($salesRole)) {
             $_SESSION['error'] = "Sales Role is required!";
@@ -582,22 +594,23 @@ class SalesDashboardController extends Controller
         }
 
         $sql = "
-        UPDATE sales_targets 
-        SET month = ?, 
-            site_visit_target = ?, 
-            booking_target = ?, 
-            booking_value_target = ?,
-            category_id = ?,
-            project_ids = ?,
-            sales_role = ?
-        WHERE id = ?
-    ";
+            UPDATE sales_targets 
+            SET month = ?, 
+                site_visit_target = ?, 
+                booking_target = ?, 
+                booking_value_target = ?,
+                category_id = ?,
+                category_ids = ?,
+                project_ids = ?,
+                sales_role = ?
+            WHERE id = ?
+        ";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("siidissi", $month, $siteVisit, $booking, $bookingValue, $categoryId, $projectIds, $salesRole, $id);
+        $stmt->bind_param("siidisssi", $month, $siteVisit, $booking, $bookingValue, $categoryId, $categoryIdsJson, $projectIds, $salesRole, $id);
         $stmt->execute();
 
         $_SESSION['success'] = "Target updated successfully!";
-        header("Location: " . $GLOBALS['base_url'] . "/set-sales-target/" . $_POST['user_id']);
+        header("Location: " . $GLOBALS['base_url'] . "/set-sales-target/" . $userId);
         exit;
     }
 }

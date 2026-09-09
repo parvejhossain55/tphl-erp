@@ -13,41 +13,80 @@ class SalesTarget extends Model
             FROM sales_targets st
             LEFT JOIN project_categories c ON st.category_id = c.id
             WHERE st.sales_user_id = ?
-            ORDER BY st.month ASC";
+            ORDER BY st.month DESC";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param("i", $userId);
         $stmt->execute();
         $result = $stmt->get_result();
-        return $result->fetch_all(MYSQLI_ASSOC);
+        $targets = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Preload category map for multiple categories display
+        $catRes = $this->db->query("SELECT id, name FROM project_categories");
+        $catMap = [];
+        if ($catRes) {
+            while ($c = $catRes->fetch_assoc()) {
+                $catMap[$c['id']] = $c['name'];
+            }
+        }
+
+        foreach ($targets as &$t) {
+            $catNames = [];
+            if (!empty($t['category_ids'])) {
+                $cIds = json_decode($t['category_ids'], true);
+                if (is_array($cIds)) {
+                    foreach ($cIds as $cid) {
+                        if (isset($catMap[$cid])) {
+                            $catNames[] = $catMap[$cid];
+                        }
+                    }
+                }
+            }
+            if (empty($catNames) && !empty($t['category_name'])) {
+                $catNames[] = $t['category_name'];
+            }
+            $t['category_names_display'] = !empty($catNames) ? implode(', ', $catNames) : 'All / None';
+        }
+        unset($t);
+
+        return $targets;
     }
 
 
     /**
-     * Insert or update target
+     * Insert or update target with multiple categories and multiple projects
      */
-    public function saveTarget($userId, $month, $siteVisit, $bookingTarget, $bookingValue, $categoryId = null, $projectIds = null, $salesRole = null)
+    public function saveTarget($userId, $month, $siteVisit, $bookingTarget, $bookingValue, $categoryId = null, $projectIds = null, $salesRole = null, $categoryIds = null)
     {
+        if (is_array($categoryIds)) {
+            if (empty($categoryId) && !empty($categoryIds)) {
+                $categoryId = (int)reset($categoryIds);
+            }
+            $categoryIds = json_encode(array_values(array_map('strval', $categoryIds)));
+        }
+
         $sql = "
             INSERT INTO sales_targets
-            (sales_user_id, month, site_visit_target, booking_target, booking_value_target, category_id, project_ids, sales_role)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (sales_user_id, month, site_visit_target, booking_target, booking_value_target, category_id, category_ids, project_ids, sales_role)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 site_visit_target = VALUES(site_visit_target),
                 booking_target = VALUES(booking_target),
                 booking_value_target = VALUES(booking_value_target),
                 category_id = VALUES(category_id),
+                category_ids = VALUES(category_ids),
                 project_ids = VALUES(project_ids),
                 sales_role = VALUES(sales_role)
         ";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            "isiidiss",
+            "isiidisss",
             $userId,
             $month,
             $siteVisit,
             $bookingTarget,
             $bookingValue,
             $categoryId,
+            $categoryIds,
             $projectIds,
             $salesRole
         );

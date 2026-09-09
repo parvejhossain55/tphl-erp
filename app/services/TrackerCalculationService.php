@@ -45,6 +45,71 @@ class TrackerCalculationService
     }
 
     /**
+     * Consolidate assigned project IDs from both explicitly chosen projects
+     * AND all projects belonging to chosen categories
+     */
+    public function resolveAssignedProjectIds($projectIdsRaw, $categoryIdRaw, $categoryIdsRaw, &$categoryProjectsCache = [])
+    {
+        $assigned = [];
+
+        // 1. Explicitly selected project IDs
+        if (!empty($projectIdsRaw)) {
+            $decoded = json_decode($projectIdsRaw, true);
+            if (is_array($decoded)) {
+                foreach ($decoded as $pid) {
+                    if (!empty($pid)) $assigned[] = (int)$pid;
+                }
+            } else {
+                $parts = explode(',', (string)$projectIdsRaw);
+                foreach ($parts as $pid) {
+                    $pid = trim($pid, "[]\"' ");
+                    if ($pid !== '' && is_numeric($pid)) $assigned[] = (int)$pid;
+                }
+            }
+        }
+
+        // 2. Selected Category IDs
+        $catIds = [];
+        if (!empty($categoryIdsRaw)) {
+            $decodedCats = json_decode($categoryIdsRaw, true);
+            if (is_array($decodedCats)) {
+                foreach ($decodedCats as $cid) {
+                    if (!empty($cid)) $catIds[] = (int)$cid;
+                }
+            } else {
+                $parts = explode(',', (string)$categoryIdsRaw);
+                foreach ($parts as $cid) {
+                    $cid = trim($cid, "[]\"' ");
+                    if ($cid !== '' && is_numeric($cid)) $catIds[] = (int)$cid;
+                }
+            }
+        }
+        if (!empty($categoryIdRaw) && !in_array((int)$categoryIdRaw, $catIds)) {
+            $catIds[] = (int)$categoryIdRaw;
+        }
+
+        // 3. Expand Category IDs to all member project IDs
+        if (!empty($catIds)) {
+            foreach ($catIds as $cid) {
+                if (!isset($categoryProjectsCache[$cid])) {
+                    $categoryProjectsCache[$cid] = [];
+                    $pRes = $this->db->query("SELECT id FROM projects WHERE category_id = " . (int)$cid . " AND deleted_at IS NULL");
+                    if ($pRes) {
+                        while ($pr = $pRes->fetch_assoc()) {
+                            $categoryProjectsCache[$cid][] = (int)$pr['id'];
+                        }
+                    }
+                }
+                foreach ($categoryProjectsCache[$cid] as $pid) {
+                    $assigned[] = (int)$pid;
+                }
+            }
+        }
+
+        return array_values(array_unique($assigned));
+    }
+
+    /**
      * Get the visibility scope for a given user
      */
     public function getVisibilityScope($user)
@@ -109,10 +174,10 @@ class TrackerCalculationService
 
         $scope = $this->getVisibilityScope($loggedInUser);
 
-        // Build the base condition for employees
-        $empCondition = "e.employee_status = 'active' AND (u.role_id IN (5, 8, 9, 2, 6) OR st.id IS NOT NULL OR e.team_id IS NOT NULL)";
+        // Build the base condition for employees: only active sales department employees
+        $empCondition = "e.department_id = 1 AND LOWER(e.employee_status) = 'active'";
         if ($scope['type'] === 'TEAM') {
-            $empCondition .= " AND e.team_id = " . (int)$scope['team_id'];
+            $empCondition .= " AND COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0), 0) = " . (int)$scope['team_id'];
         } elseif ($scope['type'] === 'SELF') {
             $empCondition .= " AND e.user_id = " . (int)$scope['user_id'];
         }
@@ -123,17 +188,20 @@ class TrackerCalculationService
             SELECT 
                 e.user_id,
                 e.full_name as member_name,
-                e.team_id,
-                t.name as team_name,
+                COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0), 0) as team_id,
+                COALESCE(t.name, 'General Team') as team_name,
                 e.reporting_user_id,
-                st.sales_role as level_designation,
+                COALESCE(st.sales_role, r.name, 'Sales Exec') as level_designation,
                 COALESCE(st.booking_target, 0) as unit_target,
                 COALESCE(st.booking_value_target, 0) as volume_target,
                 COALESCE(st.site_visit_target, 0) as visit_target,
-                st.project_ids as assigned_project_ids
+                st.project_ids as assigned_project_ids,
+                st.category_id,
+                st.category_ids
             FROM employees e
             INNER JOIN users u ON e.user_id = u.id
-            LEFT JOIN (SELECT id, name FROM teams) t ON e.team_id = t.id
+            LEFT JOIN teams t ON COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0)) = t.id
+            LEFT JOIN roles r ON u.role_id = r.id
             LEFT JOIN sales_targets st ON e.user_id = st.sales_user_id AND st.month = '$monthString'
             WHERE $empCondition
         ";
@@ -145,6 +213,7 @@ class TrackerCalculationService
         }
 
         $employees = [];
+        $categoryProjectsCache = [];
         
         // Fallback without teams table if needed
         if (!$employeesResult) {
@@ -159,7 +228,9 @@ class TrackerCalculationService
                     COALESCE(st.booking_target, 0) as unit_target,
                     COALESCE(st.booking_value_target, 0) as volume_target,
                     COALESCE(st.site_visit_target, 0) as visit_target,
-                    st.project_ids as assigned_project_ids
+                    st.project_ids as assigned_project_ids,
+                    st.category_id,
+                    st.category_ids
                 FROM employees e
                 INNER JOIN users u ON e.user_id = u.id
                 LEFT JOIN sales_targets st ON e.user_id = st.sales_user_id AND st.month = '$monthString'
@@ -177,6 +248,14 @@ class TrackerCalculationService
                 if (empty($row['team_name']) && !empty($row['team_id'])) {
                     $row['team_name'] = 'Team ' . $row['team_id'];
                 }
+
+                $assignedProjects = $this->resolveAssignedProjectIds(
+                    $row['assigned_project_ids'] ?? null,
+                    $row['category_id'] ?? null,
+                    $row['category_ids'] ?? null,
+                    $categoryProjectsCache
+                );
+
                 $employees[$row['user_id']] = [
                     'user_id' => (int)$row['user_id'],
                     'member_name' => $row['member_name'],
@@ -186,7 +265,7 @@ class TrackerCalculationService
                     'unit_target' => (int)$row['unit_target'],
                     'volume_target' => (float)$row['volume_target'],
                     'visit_target' => (int)$row['visit_target'],
-                    'assigned_project_ids' => !empty($row['assigned_project_ids']) ? explode(',', $row['assigned_project_ids']) : [],
+                    'assigned_project_ids' => $assignedProjects,
                     'assigned_leads' => 0,
                     'total_follow_up_calls' => 0,
                     'unique_leads_followed' => 0,
@@ -370,7 +449,35 @@ class TrackerCalculationService
             }
         }
 
-        // Calculate Percentages and Weighted Ranking Score
+        // 4. Data Quality: Hot and High Prospect Leads
+        $qLeadQ = "
+            SELECT assigned_id, COUNT(DISTINCT id) as cnt 
+            FROM leads 
+            WHERE assigned_id IN ($userIds)
+              AND (lead_type IN ('Hot', 'High Prospect') OR lead_quality = 'High Quality')
+              AND deleted_at IS NULL
+              AND (
+                  (assigned_at IS NOT NULL AND assigned_at BETWEEN '$start' AND '$end')
+                  OR (assigned_at IS NULL AND created_at BETWEEN '$start' AND '$end')
+                  OR (id IN (
+                      SELECT DISTINCT lead_id 
+                      FROM lead_follow_ups 
+                      WHERE created_by IN ($userIds) AND created_at BETWEEN '$start' AND '$end'
+                  ))
+              )
+            GROUP BY assigned_id
+        ";
+        $qLeadRes = $this->db->query($qLeadQ);
+        if ($qLeadRes) {
+            while ($row = $qLeadRes->fetch_assoc()) {
+                $uid = (int)$row['assigned_id'];
+                if (isset($employees[$uid])) {
+                    $employees[$uid]['quality_leads'] = (int)$row['cnt'];
+                }
+            }
+        }
+
+        // Calculate Percentages, Weighted Ranking Score, and Target Vs Achievement 8-Pillar Scorecard
         foreach ($employees as $uid => &$emp) {
             $emp['total_volume_achieved'] = $emp['volume_assigned'] + $emp['volume_unassigned'];
             
@@ -418,10 +525,122 @@ class TrackerCalculationService
                 ($emp['follow_up_pct'] * 0.10),
                 2
             );
+
+            // -------------------------------------------------------------
+            // Target Vs Achievement 8-Pillar 100% Scorecard Calculation
+            // -------------------------------------------------------------
+            // 1. Target Volume / Land Share Revenue Generation (30%)
+            $volTarget = (float)$emp['volume_target'];
+            $volAch = (float)$emp['total_volume_achieved'];
+            $pillar1_score = $volTarget > 0 
+                ? min(30.00, round(($volAch / $volTarget) * 30.00, 2)) 
+                : ($volAch > 0 ? 30.00 : 0.00);
+
+            // 2. Target vs Achievement Value Realization (20%)
+            $min20Met = $emp['volume_ach_pct'] >= 20.00;
+            $pillar2_score = $volTarget > 0 
+                ? min(20.00, round(($volAch / $volTarget) * 20.00, 2)) 
+                : ($volAch > 0 ? 20.00 : 0.00);
+
+            // 3. No. of Unit Sold (10%)
+            $unitTarget = (int)$emp['unit_target'];
+            $unitsSold = (int)$emp['units_sold'];
+            $pillar3_score = $unitTarget > 0 
+                ? min(10.00, round(($unitsSold / $unitTarget) * 10.00, 2)) 
+                : ($unitsSold > 0 ? 10.00 : 0.00);
+
+            // 4. Highest Visit / Site Visits (10%)
+            $visitTarget = (int)$emp['visit_target'];
+            $visitsDone = (int)$emp['visited'];
+            $pillar4_score = $visitTarget > 0 
+                ? min(10.00, round(($visitsDone / $visitTarget) * 10.00, 2)) 
+                : ($visitsDone > 0 ? 10.00 : 0.00);
+
+            // 5. Sales CVR Conversion Rate (Min 1%) (10%)
+            $assignedLeads = (int)$emp['assigned_leads'];
+            $cvrPct = $assignedLeads > 0 ? round(($unitsSold / $assignedLeads) * 100, 2) : 0.00;
+            $cvrMin1Met = $cvrPct >= 1.00;
+            if ($cvrPct >= 1.00) {
+                // Baseline 5.00 for reaching 1.0% min threshold + scaled up to 10.00 for 2.0% CVR
+                $pillar5_score = min(10.00, round(5.00 + (($cvrPct - 1.00) / 1.00) * 5.00, 2));
+            } elseif ($cvrPct > 0.00) {
+                $pillar5_score = round(($cvrPct / 1.00) * 5.00, 2);
+            } else {
+                $pillar5_score = 0.00;
+            }
+
+            // 6. Leads Connected and Follow-up (10%)
+            $contacted = (int)$emp['total_contacted'];
+            $followed = (int)$emp['unique_leads_followed'];
+            $contactedRatioPct = $assignedLeads > 0 ? round(($contacted / $assignedLeads) * 100, 2) : 0.00;
+            $followedRatioPct = $assignedLeads > 0 ? round(($followed / $assignedLeads) * 100, 2) : 0.00;
+            $pillar6_score = $assignedLeads > 0 
+                ? min(10.00, round((($contacted / $assignedLeads) * 5.00) + (($followed / $assignedLeads) * 5.00), 2)) 
+                : 0.00;
+
+            // 7. Data Quality & Timeliness (Hot / High Prospect Leads) (5%)
+            $qualityLeads = (int)($emp['quality_leads'] ?? 0);
+            $qualityPct = $assignedLeads > 0 ? round(($qualityLeads / $assignedLeads) * 100, 2) : 0.00;
+            // 10% benchmark of leads being hot/high prospect yields full 5.00 points
+            $pillar7_score = $assignedLeads > 0 
+                ? min(5.00, round(($qualityLeads / max(1, $assignedLeads * 0.10)) * 5.00, 2)) 
+                : 0.00;
+
+            // 8. HR Compliance & Discipline (5%)
+            $pillar8_score = 5.00;
+
+            $totalScorecard = round($pillar1_score + $pillar2_score + $pillar3_score + $pillar4_score + $pillar5_score + $pillar6_score + $pillar7_score + $pillar8_score, 2);
+
+            // Performance Tier Grade
+            if ($totalScorecard >= 85.00) {
+                $grade = 'Platinum';
+                $gradeClass = 'success';
+            } elseif ($totalScorecard >= 70.00) {
+                $grade = 'Gold';
+                $gradeClass = 'info';
+            } elseif ($totalScorecard >= 50.00) {
+                $grade = 'Silver';
+                $gradeClass = 'primary';
+            } elseif ($totalScorecard >= 20.00) {
+                $grade = 'Bronze';
+                $gradeClass = 'warning';
+            } else {
+                $grade = 'Needs Improvement';
+                $gradeClass = 'danger';
+            }
+
+            $emp['scorecard'] = [
+                'pillar1_score' => $pillar1_score,
+                'pillar1_max'   => 30.00,
+                'pillar2_score' => $pillar2_score,
+                'pillar2_max'   => 20.00,
+                'min_20_met'    => $min20Met,
+                'pillar3_score' => $pillar3_score,
+                'pillar3_max'   => 10.00,
+                'pillar4_score' => $pillar4_score,
+                'pillar4_max'   => 10.00,
+                'pillar5_score' => $pillar5_score,
+                'pillar5_max'   => 10.00,
+                'cvr_pct'       => $cvrPct,
+                'cvr_min_1_met' => $cvrMin1Met,
+                'pillar6_score' => $pillar6_score,
+                'pillar6_max'   => 10.00,
+                'contacted_ratio_pct' => $contactedRatioPct,
+                'followed_ratio_pct'  => $followedRatioPct,
+                'pillar7_score' => $pillar7_score,
+                'pillar7_max'   => 5.00,
+                'quality_leads' => $qualityLeads,
+                'quality_pct'   => $qualityPct,
+                'pillar8_score' => $pillar8_score,
+                'pillar8_max'   => 5.00,
+                'total_score'   => $totalScorecard,
+                'grade'         => $grade,
+                'grade_class'   => $gradeClass
+            ];
         }
         unset($emp);
 
-        // Sort for Individual Ranking
+        // Sort for Individual Ranking (Activity Weighted Score)
         uasort($employees, function($a, $b) {
             return $b['performance_score'] <=> $a['performance_score'];
         });
@@ -431,6 +650,17 @@ class TrackerCalculationService
             $emp['rank'] = $rank++;
         }
         unset($emp);
+
+        // Create Scorecard-ranked list (sorted by 8-Pillar Total Score)
+        $scorecardIndividuals = $employees;
+        uasort($scorecardIndividuals, function($a, $b) {
+            return $b['scorecard']['total_score'] <=> $a['scorecard']['total_score'];
+        });
+        $scRank = 1;
+        foreach ($scorecardIndividuals as &$scEmp) {
+            $scEmp['scorecard']['rank'] = $scRank++;
+        }
+        unset($scEmp);
 
         // Aggregate Team Summaries
         $teams = [];
@@ -550,6 +780,37 @@ class TrackerCalculationService
             'top_team' => !empty($teams) ? reset($teams) : null
         ];
 
+        // Scorecard KPIs Summary
+        $scVolTarget = array_sum(array_column($scorecardIndividuals, 'volume_target'));
+        $scVolAch = array_sum(array_column($scorecardIndividuals, 'total_volume_achieved'));
+        $scUnitTarget = array_sum(array_column($scorecardIndividuals, 'unit_target'));
+        $scUnitsSold = array_sum(array_column($scorecardIndividuals, 'units_sold'));
+        $scVisitTarget = array_sum(array_column($scorecardIndividuals, 'visit_target'));
+        $scVisited = array_sum(array_column($scorecardIndividuals, 'visited'));
+        $scAssignedLeads = array_sum(array_column($scorecardIndividuals, 'assigned_leads'));
+        $scQualityLeads = array_sum(array_column($scorecardIndividuals, 'quality_leads'));
+        $scScores = array_map(function($e) { return $e['scorecard']['total_score'] ?? 0; }, $scorecardIndividuals);
+        $avgScore = !empty($scScores) ? round(array_sum($scScores) / count($scScores), 2) : 0;
+        $topScorer = !empty($scorecardIndividuals) ? reset($scorecardIndividuals) : null;
+
+        $scorecardKpis = [
+            'total_volume_target' => $scVolTarget,
+            'total_volume_achieved' => $scVolAch,
+            'volume_ach_pct' => $scVolTarget > 0 ? round(($scVolAch / $scVolTarget) * 100, 2) : 0,
+            'total_unit_target' => $scUnitTarget,
+            'total_units_sold' => $scUnitsSold,
+            'unit_ach_pct' => $scUnitTarget > 0 ? round(($scUnitsSold / $scUnitTarget) * 100, 2) : 0,
+            'total_visit_target' => $scVisitTarget,
+            'total_visited' => $scVisited,
+            'visit_ach_pct' => $scVisitTarget > 0 ? round(($scVisited / $scVisitTarget) * 100, 2) : 0,
+            'total_assigned_leads' => $scAssignedLeads,
+            'avg_cvr_pct' => $scAssignedLeads > 0 ? round(($scUnitsSold / $scAssignedLeads) * 100, 2) : 0,
+            'total_quality_leads' => $scQualityLeads,
+            'avg_quality_pct' => $scAssignedLeads > 0 ? round(($scQualityLeads / $scAssignedLeads) * 100, 2) : 0,
+            'avg_score' => $avgScore,
+            'top_scorer' => $topScorer
+        ];
+
         return [
             'period' => [
                 'start' => date('d M, Y', strtotime($start)),
@@ -557,9 +818,19 @@ class TrackerCalculationService
                 'is_custom' => $dateRange['is_custom']
             ],
             'individuals' => $employees,
+            'scorecard_individuals' => array_values($scorecardIndividuals),
             'teams' => $teams,
-            'kpis' => $kpis
+            'kpis' => $kpis,
+            'scorecard_kpis' => $scorecardKpis
         ];
+    }
+
+    /**
+     * Dedicated Target Vs Achievement Report Service Method
+     */
+    public function getTargetVsAchievementReport($year, $month, $loggedInUser)
+    {
+        return $this->getTrackerReport($year, $month, $loggedInUser);
     }
 
     /**
@@ -583,9 +854,10 @@ class TrackerCalculationService
         $start = date('Y-m-d 00:00:00', strtotime($date));
         $end   = date('Y-m-d 23:59:59', strtotime($date));
 
-        $empCondition = "e.employee_status = 'active' AND (u.role_id IN (5, 8, 9, 2, 6) OR st.id IS NOT NULL OR e.team_id IS NOT NULL)";
+        // Build the base condition for employees: only active sales department employees
+        $empCondition = "e.department_id = 1 AND LOWER(e.employee_status) = 'active'";
         if ($scope['type'] === 'TEAM') {
-            $empCondition .= " AND e.team_id = " . (int)$scope['team_id'];
+            $empCondition .= " AND COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0), 0) = " . (int)$scope['team_id'];
         } elseif ($scope['type'] === 'SELF') {
             $empCondition .= " AND e.user_id = " . (int)$scope['user_id'];
         }
@@ -594,16 +866,20 @@ class TrackerCalculationService
 
         $query = "
             SELECT 
-                e.user_id, e.full_name as member_name, e.team_id,
-                t.name as team_name,
-                st.sales_role as level_designation,
+                e.user_id, e.full_name as member_name, 
+                COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0), 0) as team_id,
+                COALESCE(t.name, 'General Team') as team_name,
+                COALESCE(st.sales_role, r.name, 'Sales Exec') as level_designation,
                 COALESCE(st.booking_target, 0) as unit_target,
                 COALESCE(st.booking_value_target, 0) as volume_target,
                 COALESCE(st.site_visit_target, 0) as visit_target,
-                st.project_ids as assigned_project_ids
+                st.project_ids as assigned_project_ids,
+                st.category_id,
+                st.category_ids
             FROM employees e
             INNER JOIN users u ON e.user_id = u.id
-            LEFT JOIN (SELECT id, name FROM teams) t ON e.team_id = t.id
+            LEFT JOIN teams t ON COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0)) = t.id
+            LEFT JOIN roles r ON u.role_id = r.id
             LEFT JOIN sales_targets st ON e.user_id = st.sales_user_id AND st.month = '$monthString'
             WHERE $empCondition
         ";
@@ -614,6 +890,7 @@ class TrackerCalculationService
             $employeesResult = false;
         }
         $employees = [];
+        $categoryProjectsCache = [];
         
         if (!$employeesResult) {
             $query = "
@@ -624,7 +901,9 @@ class TrackerCalculationService
                     COALESCE(st.booking_target, 0) as unit_target,
                     COALESCE(st.booking_value_target, 0) as volume_target,
                     COALESCE(st.site_visit_target, 0) as visit_target,
-                    st.project_ids as assigned_project_ids
+                    st.project_ids as assigned_project_ids,
+                    st.category_id,
+                    st.category_ids
                 FROM employees e
                 INNER JOIN users u ON e.user_id = u.id
                 LEFT JOIN sales_targets st ON e.user_id = st.sales_user_id AND st.month = '$monthString'
@@ -642,6 +921,14 @@ class TrackerCalculationService
                 if (empty($row['team_name']) && !empty($row['team_id'])) {
                     $row['team_name'] = 'Team ' . $row['team_id'];
                 }
+
+                $assignedProjects = $this->resolveAssignedProjectIds(
+                    $row['assigned_project_ids'] ?? null,
+                    $row['category_id'] ?? null,
+                    $row['category_ids'] ?? null,
+                    $categoryProjectsCache
+                );
+
                 $employees[$row['user_id']] = [
                     'user_id' => (int)$row['user_id'],
                     'member_name' => $row['member_name'],
@@ -651,7 +938,7 @@ class TrackerCalculationService
                     'unit_target' => (int)$row['unit_target'],
                     'volume_target' => (float)$row['volume_target'],
                     'visit_target' => (int)$row['visit_target'],
-                    'assigned_project_ids' => !empty($row['assigned_project_ids']) ? explode(',', $row['assigned_project_ids']) : [],
+                    'assigned_project_ids' => $assignedProjects,
                     'assigned_leads' => 0,
                     'total_follow_up_calls' => 0,
                     'unique_leads_followed' => 0,

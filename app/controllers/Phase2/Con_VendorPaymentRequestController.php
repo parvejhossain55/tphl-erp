@@ -125,7 +125,7 @@ class Con_VendorPaymentRequestController extends Controller
         // Other roles only see their own requests OR requests for projects they are assigned to
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         $isPrivileged = (
-            in_array($this->userRole, [1, 3, 33, 6, 22, 17, 31])
+            in_array($this->userRole, [1, 3, 33, 6, 22, 17, 23, 31])
             || strpos($roleName, 'admin') !== false
             || strpos($roleName, 'management') !== false
             || strpos($roleName, 'accounts') !== false
@@ -134,6 +134,7 @@ class Con_VendorPaymentRequestController extends Controller
             || strpos($roleName, 'purchase team leader') !== false
             || strpos($roleName, 'operation head') !== false
             || strpos($roleName, 'senior purchase executive') !== false
+            || strpos($roleName, 'purchase executive') !== false
         );
 
         $filterUserId = null;
