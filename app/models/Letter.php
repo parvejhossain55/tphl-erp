@@ -39,7 +39,7 @@ class Letter extends Model
         $net_salary = isset($data['net_salary']) && $data['net_salary'] !== '' ? (float) $data['net_salary'] : null;
 
         $stmt->bind_param(
-            "iiisissssssssssisisisisssdd",
+            "iiisisssssssssssississsdd",
             $data['employee_id'],
             $data['designation_id'],
             $data['department_id'],
@@ -204,7 +204,7 @@ class Letter extends Model
         $id = (int) $id;
 
         $stmt->bind_param(
-            "iiisissssssssssisisisisssddi",
+            "iiisisssssssssssississsddi",
             $data['employee_id'],
             $data['designation_id'],
             $data['department_id'],
