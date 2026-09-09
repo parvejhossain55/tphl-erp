@@ -464,6 +464,17 @@ class Payslip extends Model
             $params = [$projectId];
             $types = "i";
 
+            if (!empty($year)) {
+                $sql .= " AND YEAR(p.payslip_month) = ?";
+                $params[] = (int) $year;
+                $types .= "i";
+            }
+            if (!empty($month)) {
+                $sql .= " AND MONTH(p.payslip_month) = ?";
+                $params[] = (int) $month;
+                $types .= "i";
+            }
+
             if ($status === 'paid') {
                 $sql .= " AND p.status = 'paid' AND (p.is_excluded = 0 OR p.is_excluded IS NULL)";
             } elseif ($status === 'draft') {
@@ -627,7 +638,7 @@ class Payslip extends Model
             LEFT JOIN employees AS e ON p.employee_id = e.id
             LEFT JOIN designations AS d ON e.designation_id = d.id
             LEFT JOIN departments AS dept ON e.department_id = dept.id
-            WHERE p.status = 'draft'
+            WHERE p.status = 'draft' AND (p.payroll_project_id IS NULL OR p.payroll_project_id = 0)
         ";
         $params = [];
         $types = "";

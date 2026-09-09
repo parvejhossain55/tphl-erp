@@ -1,169 +1,277 @@
 <?php
 $empTypeLabel = [
-    'permanent' => 'Permanent',
-    'contract' => 'Contractual',
-    'director' => 'Director',
-    'intern' => 'Intern',
-    'remote' => 'Remote',
-    'probation' => 'Probationary',
-    'management' => 'Management',
+    'permanent' => 'permanent',
+    'contract' => 'contractual',
+    'director' => 'director',
+    'intern' => 'intern',
+    'remote' => 'remote',
+    'probation' => 'probationary',
+    'management' => 'management',
 ];
-$empType = $empTypeLabel[$letter['employee_type'] ?? 'permanent'] ?? 'Permanent';
+$empType = $empTypeLabel[$letter['employee_type'] ?? 'permanent'] ?? 'permanent';
+
+$rawName = trim($letter['full_name'] ?? '');
+
+// Gender pronoun detection
+$isFemale = false;
+$nameLower = strtolower($rawName);
+$femaleKeywords = ['ms.', 'mrs.', 'miss', 'khatun', 'begum', 'akter', 'akther', 'sultana', 'jahan', 'nahar', 'parvin', 'nasrin', 'farzana', 'roksana', 'shammi', 'bornali'];
+foreach ($femaleKeywords as $kw) {
+    if (strpos($nameLower, $kw) !== false) {
+        $isFemale = true;
+        break;
+    }
+}
+$herHis = $isFemale ? 'her' : 'his';
+$sheHe = $isFemale ? 'she' : 'he';
+$herHim = $isFemale ? 'her' : 'him';
+
 $certMonth = '';
 if (!empty($letter['certificate_month'])) {
-    $certMonth = date('F Y', strtotime($letter['certificate_month'] . '-01'));
+    $certMonth = date('F-Y', strtotime($letter['certificate_month'] . '-01'));
 }
-$refNum = $letter['ref_number'] ?? ('TPHL/HR/Salary Certificate/' . $certMonth);
+$refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/Salary Certificate/' . ($certMonth ?: date('F-Y')));
+
+$companyName = function_exists('getSetting') ? getSetting('website_title', 'The Premium Homes Ltd.') : 'The Premium Homes Ltd.';
+if (stripos($companyName, 'Homes') === false && stripos($companyName, 'Home') !== false) {
+    $companyName = str_ireplace('Home', 'Homes', $companyName);
+}
+$companyFullName = $companyName;
+if (stripos($companyFullName, 'Limited') === false) {
+    $companyFullName = str_ireplace('Ltd.', 'Limited', $companyFullName);
+    if (stripos($companyFullName, 'Limited') === false) {
+        $companyFullName .= ' Limited';
+    }
+}
+
+// Dates
+$startDate = !empty($letter['joining_date']) ? date('d F Y', strtotime($letter['joining_date'])) : (!empty($letter['emp_joining_date']) ? date('d F Y', strtotime($letter['emp_joining_date'])) : 'N/A');
+$endDate = !empty($letter['effective_date']) ? date('d F Y', strtotime($letter['effective_date'])) : (!empty($letter['emp_resign_date']) ? date('d F Y', strtotime($letter['emp_resign_date'])) : '');
+
+$periodText = $startDate;
+if (!empty($endDate)) {
+    $periodText = "from " . $startDate . " to " . $endDate;
+} else {
+    $periodText = "from " . $startDate . " to present";
+}
+
+$purposeText = !empty($letter['purpose']) ? $letter['purpose'] : 'final settlement';
+if (strtolower($purposeText) === 'personal use') {
+    $purposeText = 'personal use';
+}
 ?>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Salary Certificate - <?= htmlspecialchars($rawName) ?></title>
 <style>
+    @page {
+        size: 210mm 297mm;
+        margin: 0;
+    }
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
     body {
-        font-family: helvetica;
-        font-size: 11pt;
-        color: #333;
-        line-height: 1.6;
+        width: 210mm;
+        height: 297mm;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 13px;
+        line-height: 1.7;
+        color: #111827;
+        position: relative;
+    }
+    .bg-letterhead {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 210mm;
+        height: 297mm;
+        z-index: -1;
+    }
+    .letter-content {
+        position: absolute;
+        top: 32mm;
+        left: 20mm;
+        right: 20mm;
+        bottom: 35mm;
     }
 
-    .cert-title {
-        font-size: 13pt;
+    .sc-meta-stacked {
+        font-size: 12.5px;
+        line-height: 1.6;
+        color: #000;
+        margin-bottom: 22px;
+    }
+    .sc-meta-stacked .sc-meta-line {
+        font-weight: bold;
+    }
+
+    .sc-title-centered {
+        font-size: 15px;
         font-weight: bold;
         text-align: center;
-        text-decoration: underline;
-        letter-spacing: 1px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: #000;
+        margin: 18px 0 22px 0;
     }
 
-    .salary-table {
+    .sc-text {
+        text-align: justify;
+        font-size: 12.5px;
+        line-height: 1.75;
+        color: #000;
+        margin-bottom: 14px;
+    }
+
+    .sc-table {
         width: 100%;
         border-collapse: collapse;
-        margin: 14px 0;
-        font-size: 10.5pt;
+        margin: 16px 0 20px;
+        font-size: 12.5px;
+        border: 1px solid #000;
     }
 
-    .salary-table th,
-    .salary-table td {
-        border: 1px solid #aaa;
-        padding: 7px 12px;
+    .sc-table th,
+    .sc-table td {
+        border: 1px solid #000;
+        padding: 6.5px 12px;
+        vertical-align: middle;
+        color: #000;
     }
 
-    .salary-table th {
-        background: #eeeeee;
+    .sc-table thead th {
+        background-color: #ffffff;
+        color: #000;
         font-weight: bold;
+        font-size: 12.5px;
         text-align: center;
     }
 
-    .salary-table .amount {
-        text-align: right;
+    .sc-table tbody td.col-earning {
+        padding-left: 18px;
+        font-size: 12.5px;
+        color: #000;
     }
 
-    .total-row td {
-        background: #d4edda;
+    .sc-table tbody td.col-amount {
+        text-align: center;
+        font-size: 12.5px;
+        color: #000;
+    }
+
+    .sc-table .total-row td {
+        background-color: #ffffff;
+        color: #000;
         font-weight: bold;
+        border-top: 1px solid #000;
     }
 
-    .deduct-row td {
-        background: #fff3f3;
+    .sc-signature-block {
+        margin-top: 36px;
+        display: block;
     }
 
-    .sign-block {
-        margin-top: 40px;
+    .sc-signature-space {
+        height: 40px;
+    }
+
+    .sc-sign-line {
+        font-size: 13px;
+        color: #000;
+        margin-bottom: 5px;
+        letter-spacing: -1px;
+    }
+
+    .sc-sign-dept {
+        font-size: 12.5px;
+        font-weight: bold;
+        color: #000;
+        margin-top: 2px;
+    }
+
+    .sc-sign-company {
+        font-size: 12.5px;
+        font-weight: bold;
+        color: #000;
     }
 </style>
+</head>
+<body>
+    <?php if (!empty($bgBase64)): ?>
+        <img src="<?= $bgBase64 ?>" class="bg-letterhead" alt="">
+    <?php endif; ?>
 
-<!-- Ref & Date -->
-<table width="100%" style="margin-top:8px; margin-bottom:10px;">
-    <tr>
-        <td align="left"><strong>Ref:</strong> <?= htmlspecialchars($refNum) ?></td>
-        <td align="right"><strong>Date:</strong> <?= date('d F, Y', strtotime($letter['letter_date'])) ?></td>
-    </tr>
-</table>
+    <div class="letter-content">
 
-<!-- Title -->
-<p class="cert-title">To Whom It May Concern</p>
+        <!-- Ref & Date (Stacked Left) -->
+        <div class="sc-meta-stacked">
+            <div class="sc-meta-line"><strong>Ref:</strong> <?= htmlspecialchars($refNum) ?></div>
+            <div class="sc-meta-line"><strong>Date:</strong> <?= date('d F, Y', strtotime($letter['letter_date'])) ?></div>
+        </div>
 
-<!-- Opening -->
-<p>
-    This is to certify that <strong>Mr./Ms. <?= htmlspecialchars($letter['full_name']) ?></strong>
-    (Employee ID: <?= htmlspecialchars($letter['employee_code']) ?>) is a
-    <strong><?= $empType ?></strong> employee of
-    <strong><?= getSetting('website_title', 'The Premium Homes Ltd.') ?></strong>
-    and is employed as <strong><?= htmlspecialchars($letter['designation_name'] ?? '') ?> –
-        <?= htmlspecialchars($letter['department_name'] ?? '') ?></strong>
-    since
-    <strong><?= !empty($letter['emp_joining_date']) ? date('d F, Y', strtotime($letter['emp_joining_date'])) : 'N/A' ?></strong>.
-</p>
+        <!-- Title -->
+        <div class="sc-title-centered">TO WHOM IT MAY CONCERN</div>
 
-<p>According to our records, his/her current monthly salary breakdown for <strong><?= $certMonth ?></strong> is as
-    follows:</p>
+        <!-- Opening paragraph -->
+        <p class="sc-text">
+            This is to certify that <strong><?= htmlspecialchars($rawName) ?></strong> (Employee ID: <?= htmlspecialchars($letter['employee_code']) ?>) was a <?= htmlspecialchars($empType) ?> employee of <strong><?= htmlspecialchars($companyName) ?></strong> and <?= $sheHe ?> was employed as <strong><?= htmlspecialchars($letter['designation_name'] ?? 'N/A') ?></strong> <?= $periodText ?>.
+        </p>
 
-<!-- Earnings Table -->
-<table class="salary-table">
-    <thead>
-        <tr>
-            <th width="60%" align="left">Earning</th>
-            <th width="40%" align="right">Amount (BDT)</th>
-        </tr>
-    </thead>
-    <tbody>
-        <?php
-        $totalEarning = 0;
-        foreach ($salaryItems['earning'] as $item):
-            $totalEarning += $item['amount'];
-            ?>
-            <tr>
-                <td><?= htmlspecialchars($item['label']) ?></td>
-                <td class="amount"><?= number_format($item['amount'], 2) ?></td>
-            </tr>
-        <?php endforeach; ?>
-        <tr class="total-row">
-            <td><strong>Gross Salary</strong></td>
-            <td class="amount"><strong><?= number_format($letter['gross_salary'] ?? $totalEarning, 2) ?> (BDT)</strong>
-            </td>
-        </tr>
-    </tbody>
-</table>
+        <p class="sc-text">
+            According to our records, <?= $herHis ?> monthly salary breakdown was as follows:
+        </p>
 
-<!-- Deductions (if any) -->
-<?php if (!empty($salaryItems['deduction'])): ?>
-    <table class="salary-table">
-        <thead>
-            <tr>
-                <th width="60%" align="left">Deduction</th>
-                <th width="40%" align="right">Amount (BDT)</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php
-            $totalDeduction = 0;
-            foreach ($salaryItems['deduction'] as $item):
-                $totalDeduction += $item['amount'];
-                ?>
-                <tr class="deduct-row">
-                    <td><?= htmlspecialchars($item['label']) ?></td>
-                    <td class="amount"><?= number_format($item['amount'], 2) ?></td>
+        <!-- Salary Table -->
+        <table class="sc-table">
+            <thead>
+                <tr>
+                    <th width="60%">Earning</th>
+                    <th width="40%">Amount (BDT)</th>
                 </tr>
-            <?php endforeach; ?>
-            <tr class="total-row">
-                <td><strong>Net Salary</strong></td>
-                <td class="amount">
-                    <strong><?= number_format($letter['net_salary'] ?? ($totalEarning - $totalDeduction), 2) ?>
-                        (BDT)</strong></td>
-            </tr>
-        </tbody>
-    </table>
-<?php endif; ?>
+            </thead>
+            <tbody>
+                <?php $totalEarning = 0;
+                foreach ($salaryItems['earning'] as $item):
+                    $totalEarning += (float) $item['amount']; ?>
+                    <tr>
+                        <td width="60%" class="col-earning"><?= htmlspecialchars($item['label']) ?></td>
+                        <td width="40%" class="col-amount"><?= number_format((float) $item['amount']) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                <tr class="total-row">
+                    <td class="col-earning"><strong>Gross Salary</strong></td>
+                    <td class="col-amount">
+                        <strong><?= number_format((float) ($letter['gross_salary'] ?? $totalEarning)) ?> (BDT)</strong>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
 
-<!-- Closing -->
-<p>
-    This certificate is issued upon his/her request for the purpose of
-    <strong><?= htmlspecialchars($letter['purpose'] ?? 'personal use') ?></strong>
-    without any liability on the part of this company.
-</p>
-<p>We wish him/her all the very best.</p>
+        <!-- Closing paragraph -->
+        <p class="sc-text" style="margin-top: 14px;">
+            This certificate is issued upon <?= $herHis ?> request for <?= htmlspecialchars($purposeText) ?> without any liability on the part of this company.
+        </p>
+        <p class="sc-text">We wish <?= $herHim ?> all the very best.</p>
 
-<!-- Signature -->
-<div class="sign-block">
-    <br><br>
-    <strong><?= htmlspecialchars($letter['signatory_name']) ?></strong><br>
-    <i><?= htmlspecialchars($letter['signatory_title']) ?></i><br>
-    Human Resources Department<br>
-    <?= getSetting('website_title', 'The Premium Homes Limited') ?>
-</div>
+        <!-- Signature Block -->
+        <div class="sc-signature-block" style="page-break-inside: avoid;">
+            <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigBase64)): ?>
+                <div style="height: 48px; margin-bottom: -15px;">
+                    <img src="<?= $sigBase64 ?>" style="height: 45px; max-width: 170px;">
+                </div>
+            <?php else: ?>
+                <div class="sc-signature-space"></div>
+            <?php endif; ?>
+            <div class="sc-sign-line">______________________________</div>
+            <div class="sc-sign-dept">Human Resources Department</div>
+            <div class="sc-sign-company"><?= htmlspecialchars($companyFullName) ?></div>
+        </div>
+
+    </div>
+</body>
+</html>

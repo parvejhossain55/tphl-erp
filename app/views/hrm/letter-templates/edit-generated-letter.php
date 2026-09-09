@@ -1,36 +1,98 @@
 <style>
-@media (max-width: 767.98px) {
-    /* Side-by-side filter/action buttons on mobile */
-    .submit__btn {
-        display: flex !important;
-        gap: 10px !important;
-        width: 100% !important;
-        justify-content: center !important;
+    @media (max-width: 767.98px) {
+        /* Side-by-side filter/action buttons on mobile */
+        .submit__btn {
+            display: flex !important;
+            gap: 10px !important;
+            width: 100% !important;
+            justify-content: center !important;
+        }
+
+        .submit__btn button,
+        .submit__btn a {
+            flex: 1 !important;
+            margin: 0 !important;
+            text-align: center !important;
+            display: inline-flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            height: 42px !important;
+            font-size: 14px !important;
+        }
     }
 
-    .submit__btn button,
-    .submit__btn a {
-        flex: 1 !important;
-        margin: 0 !important;
-        text-align: center !important;
-        display: inline-flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        height: 42px !important; /* Force a clean and consistent height */
-        font-size: 14px !important;
+    .salary-row-item {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        transition: all 0.2s;
     }
-}
+
+    .salary-row-item:hover {
+        border-color: #6c757d;
+    }
+
+    .btn-add-row {
+        border: 2px dashed #0d6efd;
+        color: #0d6efd;
+        background: transparent;
+        border-radius: 8px;
+        padding: 8px 18px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s;
+        width: 100%;
+    }
+
+    .btn-add-row:hover {
+        background: #e8f0ff;
+    }
+
+    .gross-box {
+        background: linear-gradient(135deg, #1a3c6b, #2563a8);
+        color: #fff;
+        border-radius: 10px;
+        padding: 14px 20px;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    .net-box {
+        background: linear-gradient(135deg, #155724, #198754);
+        color: #fff;
+        border-radius: 10px;
+        padding: 14px 20px;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .section-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #6c757d;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 6px;
+        margin-bottom: 12px;
+    }
 </style>
 
 <div class="row">
     <div class="card__wrapper">
         <div class="col-xxl-12 col-xl-12 col-lg-12">
 
-            <div class="card__title-wrap mb-20">
+            <div class="card__title-wrap mb-20 d-flex align-items-center justify-content-between">
                 <h5 class="card__heading-title">Edit Generated Letter</h5>
+                <a href="<?= $GLOBALS['base_url'] ?>/generate-letter" class="btn btn-secondary btn-sm">
+                    <i class="fa fa-arrow-left me-1"></i> Back to List
+                </a>
             </div>
 
-            <form action="<?= $GLOBALS['base_url'] ?>/update-letter/<?= $letter['id'] ?>" method="POST">
+            <form action="<?= $GLOBALS['base_url'] ?>/update-letter/<?= $letter['id'] ?>" method="POST" enctype="multipart/form-data" id="editLetterForm">
 
                 <!-- Section: Employee Info -->
                 <div class="card__wrapper mb-20">
@@ -53,8 +115,18 @@
                                             <?php foreach ($employees as $emp): ?>
                                                 <option
                                                     value="<?= $emp['id'] ?>"
+                                                    data-name="<?= htmlspecialchars($emp['full_name']) ?>"
+                                                    data-code="<?= htmlspecialchars($emp['employee_id']) ?>"
                                                     data-designation="<?= $emp['designation_id'] ?>"
+                                                    data-designation-id="<?= $emp['designation_id'] ?>"
+                                                    data-designation-name="<?= htmlspecialchars($emp['designation_name'] ?? '') ?>"
                                                     data-department="<?= $emp['department_id'] ?>"
+                                                    data-department-id="<?= $emp['department_id'] ?>"
+                                                    data-department-name="<?= htmlspecialchars($emp['department_name'] ?? '') ?>"
+                                                    data-joining="<?= $emp['joining_date'] ?? '' ?>"
+                                                    data-resign="<?= $emp['resign_date'] ?? '' ?>"
+                                                    data-gender="<?= $emp['gender'] ?? '' ?>"
+                                                    data-email="<?= htmlspecialchars($emp['email'] ?? '') ?>"
                                                     <?= $emp['id'] == $letter['employee_id'] ? 'selected' : '' ?>>
                                                     <?= htmlspecialchars($emp['full_name']) ?> (<?= htmlspecialchars($emp['employee_id']) ?>)
                                                 </option>
@@ -72,7 +144,7 @@
                                     <label for="letter_type">Letter Type <span>*</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <select class="form-control" name="letter_type" id="letter_type" >
+                                    <select class="form-control" name="letter_type" id="letter_type" onchange="onLetterTypeChange()">
                                         <option value="">— Select Letter Type —</option>
                                         <option value="appointment" <?= $letter['letter_type'] == 'appointment' ? 'selected' : '' ?>>Appointment Letter</option>
                                         <option value="joining" <?= $letter['letter_type'] == 'joining' ? 'selected' : '' ?>>Joining Letter</option>
@@ -80,6 +152,7 @@
                                         <option value="increment" <?= $letter['letter_type'] == 'increment' ? 'selected' : '' ?>>Salary Increment Letter</option>
                                         <option value="experience" <?= $letter['letter_type'] == 'experience' ? 'selected' : '' ?>>Experience Certificate</option>
                                         <option value="noc" <?= $letter['letter_type'] == 'noc' ? 'selected' : '' ?>>No Objection Certificate (NOC)</option>
+                                        <option value="salary_certificate" <?= $letter['letter_type'] == 'salary_certificate' ? 'selected' : '' ?>>💼 Salary Certificate</option>
                                         <option value="show_cause" <?= $letter['letter_type'] == 'show_cause' ? 'selected' : '' ?>>Show Cause Letter</option>
                                         <option value="warning" <?= $letter['letter_type'] == 'warning' ? 'selected' : '' ?>>Warning Letter</option>
                                         <option value="caution" <?= $letter['letter_type'] == 'caution' ? 'selected' : '' ?>>Caution Letter</option>
@@ -129,11 +202,10 @@
 
                     </div>
 
-
                 </div>
 
-                <!-- Section: Letter Details -->
-                <div class="card__wrapper mb-20">
+                <!-- Section: Standard Letter Details -->
+                <div id="section_standard_details" class="card__wrapper mb-20">
                     <div class="card__title-wrap mb-15">
                         <h6 class="card__heading-title">Letter Details</h6>
                     </div>
@@ -146,7 +218,7 @@
                                     <label for="letter_date">Letter Date <span>*</span></label>
                                 </div>
                                 <div class="form__input">
-                                    <input class="form-control" name="letter_date" id="letter_date" type="date" value="<?= htmlspecialchars((string)($letter['letter_date'] ?? '')) ?>" required>
+                                    <input class="form-control" name="letter_date" id="letter_date" type="date" value="<?= htmlspecialchars((string)($letter['letter_date'] ?? '')) ?>">
                                 </div>
                             </div>
                         </div>
@@ -165,7 +237,7 @@
                         <div class="col-lg-6">
                             <div class="from__input-box">
                                 <div class="form__input-title">
-                                    <label for="joining_date">Joining Date <span>*</span></label>
+                                    <label for="joining_date">Joining Date</label>
                                 </div>
                                 <div class="form__input">
                                     <input class="form-control" name="joining_date" id="joining_date" type="date" value="<?= htmlspecialchars((string)($letter['joining_date'] ?? '')) ?>">
@@ -184,10 +256,9 @@
                             </div>
                         </div>
 
-
                         <div class="col-lg-6">
                             <label>Subject *</label>
-                            <input type="text" name="subject" id="subject" class="form-control" value="<?= htmlspecialchars((string)($letter['subject'] ?? '')) ?>" required>
+                            <input type="text" name="subject" id="subject" class="form-control" value="<?= htmlspecialchars((string)($letter['subject'] ?? '')) ?>">
                         </div>
 
                         <div class="col-lg-6">
@@ -209,17 +280,17 @@
                         <div class="col-md-12">
                             <label>Letter Body *</label>
                             <div class="from__input-box">
-                                <textarea class="form-control" id="tinymce_simple_textarea" name="letter_body" rows="4" placeholder="Enter key responsibilities..."><?= htmlspecialchars((string)($letter['body'] ?? '')) ?></textarea>
+                                <textarea class="form-control" id="tinymce_simple_textarea" name="letter_body" rows="4" placeholder="Enter letter content..."><?= htmlspecialchars((string)($letter['body'] ?? '')) ?></textarea>
                             </div>
                         </div>
 
                     </div>
                 </div>
 
-                <!-- Section: Salary Info -->
-                <div class="card__wrapper mb-20">
+                <!-- Section: Salary & Promotion Info -->
+                <div id="section_salary_promo" class="card__wrapper mb-20">
                     <div class="card__title-wrap mb-15">
-                        <h6 class="card__heading-title">Salary Information <small class="text-muted">(For Increment Letter)</small></h6>
+                        <h6 class="card__heading-title">Salary Information <small class="text-muted">(For Increment / Promotion Letter)</small></h6>
                     </div>
 
                     <div class="row g-20 gy-20">
@@ -260,7 +331,161 @@
                     </div>
                 </div>
 
+                <!-- Section: Salary Certificate (visible only for salary_certificate) -->
+                <?php
+                $isSalaryCert = ($letter['letter_type'] === 'salary_certificate');
+                $knownPurposes = ['Bank Loan', 'Visa Application', 'Tenancy / House Rent', 'Personal Use'];
+                $currPurpose = $letter['purpose'] ?? '';
+                $isOtherPurpose = (!empty($currPurpose) && !in_array($currPurpose, $knownPurposes));
+                ?>
+                <div id="section_salary_cert" class="card__wrapper mb-20" style="<?= $isSalaryCert ? '' : 'display:none;' ?>">
+                    <div class="card__title-wrap mb-15">
+                        <h6 class="card__heading-title">💼 Salary Certificate Details</h6>
+                    </div>
+                    <div class="row g-20 gy-20 mb-20">
 
+                        <div class="col-lg-4">
+                            <div class="from__input-box">
+                                <div class="form__input-title"><label>Letter Date <span>*</span></label></div>
+                                <div class="form__input"><input class="form-control" name="sc_letter_date"
+                                        id="sc_letter_date" type="date" value="<?= htmlspecialchars((string)($letter['letter_date'] ?? '')) ?>"></div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-4">
+                            <div class="from__input-box">
+                                <div class="form__input-title"><label>Certificate Month <span>*</span></label></div>
+                                <div class="form__input">
+                                    <input class="form-control" name="certificate_month" id="certificate_month"
+                                        type="month" placeholder="e.g. 2026-06" value="<?= htmlspecialchars((string)($letter['certificate_month'] ?? '')) ?>">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-4">
+                            <div class="from__input-box">
+                                <div class="form__input-title"><label>Reference Number <span
+                                            class="text-muted">Optional</span></label></div>
+                                <div class="form__input"><input class="form-control" name="sc_ref_number"
+                                        id="sc_ref_number" type="text"
+                                        placeholder="TPHL/HR/Salary Certificate/June-2026" value="<?= htmlspecialchars((string)($letter['ref_number'] ?? '')) ?>"></div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="from__input-box">
+                                <div class="form__input-title"><label>Subject <span>*</span></label></div>
+                                <div class="form__input"><input class="form-control" name="sc_subject" id="sc_subject"
+                                        type="text" value="<?= htmlspecialchars((string)($letter['subject'] ?? 'Salary Certificate')) ?>"></div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="from__input-box">
+                                <div class="form__input-title"><label>Purpose <span>*</span></label></div>
+                                <div class="form__input">
+                                    <select class="form-control" name="purpose" id="purpose"
+                                        onchange="toggleOtherPurpose()">
+                                        <option value="">— Select Purpose —</option>
+                                        <option value="Final Settlement" <?= (empty($currPurpose) || $currPurpose === 'Final Settlement') ? 'selected' : '' ?>>Final Settlement</option>
+                                        <option value="Bank Loan" <?= $currPurpose === 'Bank Loan' ? 'selected' : '' ?>>Bank Loan</option>
+                                        <option value="Visa Application" <?= $currPurpose === 'Visa Application' ? 'selected' : '' ?>>Visa Application</option>
+                                        <option value="Tenancy / House Rent" <?= $currPurpose === 'Tenancy / House Rent' ? 'selected' : '' ?>>Tenancy / House Rent</option>
+                                        <option value="Personal Use" <?= $currPurpose === 'Personal Use' ? 'selected' : '' ?>>Personal Use</option>
+                                        <option value="Other" <?= $isOtherPurpose ? 'selected' : '' ?>>Other (specify)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="from__input-box">
+                                <div class="form__input-title"><label>Employment Joining Date</label></div>
+                                <div class="form__input"><input class="form-control" name="sc_joining_date" id="sc_joining_date" type="date" value="<?= htmlspecialchars((string)($letter['joining_date'] ?? $letter['emp_joining_date'] ?? '')) ?>"></div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="from__input-box">
+                                <div class="form__input-title"><label>Separation / End Date <span class="text-muted">(Leave blank if currently employed)</span></label></div>
+                                <div class="form__input"><input class="form-control" name="sc_effective_date" id="sc_effective_date" type="date" value="<?= htmlspecialchars((string)($letter['effective_date'] ?? $letter['emp_resign_date'] ?? '')) ?>"></div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-12" id="other_purpose_box" style="<?= $isOtherPurpose ? '' : 'display:none;' ?>">
+                            <div class="from__input-box">
+                                <div class="form__input-title"><label>Specify Purpose</label></div>
+                                <div class="form__input">
+                                    <input class="form-control" type="text" id="purpose_other_text"
+                                        placeholder="Enter purpose..." value="<?= $isOtherPurpose ? htmlspecialchars($currPurpose) : '' ?>">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- ── Earnings Table ─────────────────────────────────── -->
+                    <div class="mb-20">
+                        <div class="section-label">💰 Earnings</div>
+                        <div id="earnings_container">
+                            <?php if (!empty($salaryItems['earning'])): ?>
+                                <?php foreach ($salaryItems['earning'] as $idx => $item): ?>
+                                    <div class="salary-row-item d-flex align-items-center gap-2" id="row_edit_earn_<?= $idx ?>" style="border-left:3px solid #0d6efd;">
+                                        <input type="hidden" name="item_type_row[]" value="earning">
+                                        <input type="text" name="item_label[]" class="form-control form-control-sm" placeholder="Label" value="<?= htmlspecialchars($item['label']) ?>" style="flex:2;" oninput="recalcTotals()">
+                                        <input type="number" name="item_amount[]" class="form-control form-control-sm text-end" placeholder="Amount" value="<?= (float)$item['amount'] ?>" style="flex:1; max-width:160px;" oninput="recalcTotals()" step="0.01" min="0">
+                                        <button type="button" class="btn btn-sm btn-outline-danger px-2" onclick="removeSalaryRow('row_edit_earn_<?= $idx ?>')" title="Remove"><i class="fa fa-times"></i></button>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                        <button type="button" class="btn-add-row mt-2" onclick="addSalaryRow('earning')">
+                            <i class="fa fa-plus-circle me-1"></i> Add Earning Row
+                        </button>
+                    </div>
+
+                    <!-- ── Deductions Table ───────────────────────────────── -->
+                    <div class="mb-20">
+                        <div class="section-label">➖ Deductions <small class="text-muted fw-normal">(Optional)</small>
+                        </div>
+                        <div id="deductions_container">
+                            <?php if (!empty($salaryItems['deduction'])): ?>
+                                <?php foreach ($salaryItems['deduction'] as $idx => $item): ?>
+                                    <div class="salary-row-item d-flex align-items-center gap-2" id="row_edit_deduct_<?= $idx ?>" style="border-left:3px solid #dc3545;">
+                                        <input type="hidden" name="item_type_row[]" value="deduction">
+                                        <input type="text" name="item_label[]" class="form-control form-control-sm" placeholder="Label" value="<?= htmlspecialchars($item['label']) ?>" style="flex:2;" oninput="recalcTotals()">
+                                        <input type="number" name="item_amount[]" class="form-control form-control-sm text-end" placeholder="Amount" value="<?= (float)$item['amount'] ?>" style="flex:1; max-width:160px;" oninput="recalcTotals()" step="0.01" min="0">
+                                        <button type="button" class="btn btn-sm btn-outline-danger px-2" onclick="removeSalaryRow('row_edit_deduct_<?= $idx ?>')" title="Remove"><i class="fa fa-times"></i></button>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                        <button type="button" class="btn-add-row mt-2" style="border-color:#dc3545; color:#dc3545;"
+                            onclick="addSalaryRow('deduction')">
+                            <i class="fa fa-minus-circle me-1"></i> Add Deduction Row
+                        </button>
+                    </div>
+
+                    <!-- ── Totals ─────────────────────────────────────────── -->
+                    <div class="row g-10 mt-10">
+                        <div class="col-lg-6">
+                            <div class="gross-box d-flex justify-content-between align-items-center">
+                                <span>Gross Salary (Total Earnings)</span>
+                                <span id="gross_display">BDT <?= number_format((float)($letter['gross_salary'] ?? 0), 2) ?></span>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="net-box d-flex justify-content-between align-items-center">
+                                <span>Net Salary (After Deductions)</span>
+                                <span id="net_display">BDT <?= number_format((float)($letter['net_salary'] ?? 0), 2) ?></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="gross_salary" id="gross_salary_hidden" value="<?= (float)($letter['gross_salary'] ?? 0) ?>">
+                    <input type="hidden" name="net_salary" id="net_salary_hidden" value="<?= (float)($letter['net_salary'] ?? 0) ?>">
+
+                </div>
 
                 <!-- Section: Signatory -->
                 <div class="card__wrapper mb-20">
@@ -292,6 +517,73 @@
                             </div>
                         </div>
 
+                        <?php
+                        $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 4);
+                        $hasCustomSig = !empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($letter['custom_signature'], '/\\'));
+                        $hasOfficialSig = file_exists($baseDir . '/public/assets/images/hrm/hr_signature.png');
+
+                        $sigChoice = 'none';
+                        if ($hasCustomSig) {
+                            $sigChoice = 'custom';
+                        } elseif ($hasOfficialSig && (!isset($letter['include_signature']) || $letter['include_signature'] == 1)) {
+                            $sigChoice = 'official';
+                        }
+                        ?>
+                        <div class="col-lg-4">
+                            <div class="from__input-box">
+                                <div class="form__input-title"><label for="signature_choice">Digital Seal & Signature</label></div>
+                                <div class="form__input">
+                                    <select class="form-control" name="signature_choice" id="signature_choice" onchange="handleSignatureChoice(this.value)">
+                                        <?php if ($hasOfficialSig): ?>
+                                            <option value="official" <?= ($sigChoice === 'official') ? 'selected' : '' ?>>Yes — Include Official HR Signature</option>
+                                        <?php else: ?>
+                                            <option value="official" disabled>Official HR Signature (Not uploaded yet)</option>
+                                        <?php endif; ?>
+                                        <option value="custom" <?= ($sigChoice === 'custom') ? 'selected' : '' ?>>🖊️ Upload Custom Signature (Paper Photo/Scan)</option>
+                                        <option value="none" <?= ($sigChoice === 'none') ? 'selected' : '' ?>>No — Leave Blank (Physical Sign)</option>
+                                    </select>
+                                    <input type="hidden" name="include_signature" id="include_signature" value="<?= ($sigChoice === 'none') ? '0' : '1' ?>">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Custom Signature Upload Box -->
+                        <div class="col-12" id="custom_sig_wrapper" style="display: <?= ($sigChoice === 'custom') ? 'block' : 'none' ?>;">
+                            <div class="card p-3 border rounded shadow-sm bg-light mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-bold text-dark"><i class="fa-solid fa-wand-magic-sparkles text-primary me-1"></i> Auto-Extracted Signature Upload</span>
+                                    <span class="badge bg-primary text-white">AI Background Remover</span>
+                                </div>
+                                <p class="text-muted small mb-3">
+                                    Upload any mobile photo or paper scan with a signature. Our extractor automatically removes shadows, off-white paper backgrounds, enhances ink contrast, and crops it cleanly with 100% transparency.
+                                </p>
+                                <div class="row align-items-center g-3">
+                                    <?php if ($hasCustomSig): ?>
+                                        <div class="col-12 mb-2">
+                                            <div class="p-2 border rounded bg-white d-flex align-items-center gap-3">
+                                                <div style="background-image: repeating-linear-gradient(45deg, #e2e8f0 25%, transparent 25%, transparent 75%, #e2e8f0 75%, #e2e8f0), repeating-linear-gradient(45deg, #e2e8f0 25%, #ffffff 25%, #ffffff 75%, #e2e8f0 75%, #e2e8f0); background-size: 16px 16px; background-position: 0 0, 8px 8px; padding: 4px; border-radius: 4px;">
+                                                    <img src="<?= $GLOBALS['base_url'] . '/' . ltrim($letter['custom_signature'], '/\\') ?>" alt="Current Custom Signature" style="height: 45px; max-width: 160px; object-fit: contain;">
+                                                </div>
+                                                <span class="small text-muted"><i class="fa-solid fa-circle-check text-success me-1"></i> Current custom signature is attached. Uploading a new photo below will replace it.</span>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold">Choose New Signature Photo / Scan</label>
+                                        <input type="file" name="custom_signature_file" id="custom_signature_file" class="form-control" accept="image/*">
+                                        <div class="form-text small">Accepts JPG, PNG, WEBP, or HEIC scans from phones/scanners.</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold">Live Extraction Preview (Transparent Output)</label>
+                                        <div id="sig_preview_box" class="p-2 border rounded text-center" style="min-height: 80px; display: flex; align-items: center; justify-content: center; background-image: repeating-linear-gradient(45deg, #e2e8f0 25%, transparent 25%, transparent 75%, #e2e8f0 75%, #e2e8f0), repeating-linear-gradient(45deg, #e2e8f0 25%, #ffffff 25%, #ffffff 75%, #e2e8f0 75%, #e2e8f0); background-size: 16px 16px; background-position: 0 0, 8px 8px;">
+                                            <span id="sig_preview_placeholder" class="text-muted small">Select an image to preview transparent extraction</span>
+                                            <canvas id="sig_preview_canvas" style="display: none; max-height: 70px; max-width: 100%; object-fit: contain;"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="col-lg-4">
                             <div class="from__input-box">
                                 <div class="form__input-title">
@@ -303,7 +595,7 @@
                             </div>
                         </div>
 
-                        <div class="col-lg-6">
+                        <div class="col-lg-4">
                             <div class="from__input-box">
                                 <div class="form__input-title">
                                     <label for="send_to_email">Send to Employee Email <span class="text-muted">Optional</span></label>
@@ -317,7 +609,7 @@
                             </div>
                         </div>
 
-                        <div class="col-lg-6">
+                        <div class="col-lg-4">
                             <div class="from__input-box">
                                 <div class="form__input-title">
                                     <label for="letter_status">Letter Status <span>*</span></label>
@@ -346,39 +638,185 @@
 </div>
 
 <script>
-  function autoSelectDeptDesig() {
-    var empSelect = document.getElementById('employee_id');
-    var selected = empSelect.options[empSelect.selectedIndex];
+    function autoSelectDeptDesig() {
+        var empSelect = document.getElementById('employee_id');
+        var selected = empSelect.options[empSelect.selectedIndex];
 
-    if (!selected || !selected.value) {
-        if (typeof $ !== 'undefined') {
-            $('#designation_id').val('').trigger('change');
-            $('#department_id').val('').trigger('change');
-        } else {
-            document.getElementById('designation_id').value = '';
-            document.getElementById('department_id').value = '';
+        if (!selected || !selected.value) {
+            if (typeof $ !== 'undefined') {
+                $('#designation_id').val('').trigger('change');
+                $('#department_id').val('').trigger('change');
+            } else {
+                document.getElementById('designation_id').value = '';
+                document.getElementById('department_id').value = '';
+            }
+            return;
         }
-        return;
+
+        var desigId = selected.dataset.designation || '';
+        var deptId = selected.dataset.department || '';
+
+        if (typeof $ !== 'undefined') {
+            $('#designation_id').val(desigId).trigger('change');
+            $('#department_id').val(deptId).trigger('change');
+        } else {
+            document.getElementById('designation_id').value = desigId;
+            document.getElementById('department_id').value = deptId;
+        }
     }
 
-    // Use data attributes directly from the <option>
-    var desigId = selected.dataset.designation || '';
-    var deptId = selected.dataset.department || '';
+    // ─── Letter Type Change ─────────────────────────────────────────────────────
+    function onLetterTypeChange() {
+        var type = document.getElementById('letter_type').value;
+        var isSalaryCert = (type === 'salary_certificate');
 
-    if (typeof $ !== 'undefined') {
-        $('#designation_id').val(desigId).trigger('change');
-        $('#department_id').val(deptId).trigger('change');
-    } else {
-        document.getElementById('designation_id').value = desigId;
-        document.getElementById('department_id').value = deptId;
+        var stdSection = document.getElementById('section_standard_details');
+        var salaryPromo = document.getElementById('section_salary_promo');
+        var certSection = document.getElementById('section_salary_cert');
+
+        if (stdSection) stdSection.style.display = isSalaryCert ? 'none' : '';
+        if (salaryPromo) salaryPromo.style.display = isSalaryCert ? 'none' : '';
+        if (certSection) certSection.style.display = isSalaryCert ? '' : 'none';
+
+        // Disable required fields in hidden section so browser validation doesn't block
+        if (stdSection) {
+            var stdRequiredFields = stdSection.querySelectorAll('[required], [name="subject"], [name="letter_date"], [name="letter_body"]');
+            stdRequiredFields.forEach(function (el) {
+                el.disabled = isSalaryCert;
+            });
+        }
+
+        if (!isSalaryCert) {
+            loadTemplatesForType();
+        }
     }
-}
+
+    // ─── Add salary row ─────────────────────────────────────────────────────────
+    var rowCounter = 100;
+    function addSalaryRow(itemType) {
+        addSalaryRowWithData(itemType, '', 0);
+    }
+
+    function addSalaryRowWithData(itemType, label, amount) {
+        rowCounter++;
+        var containerId = itemType === 'earning' ? 'earnings_container' : 'deductions_container';
+        var container = document.getElementById(containerId);
+
+        var borderColor = itemType === 'earning' ? '#0d6efd' : '#dc3545';
+        var suggestions = ['Basic Salary', 'House Rent Allowance', 'Medical Allowance', 'Conveyance', 'Mobile Allowance', 'Food Allowance', 'Others Allowance'];
+        var suggestList = suggestions.map(s => '<option value="' + s + '">').join('');
+
+        var html = '<div class="salary-row-item d-flex align-items-center gap-2" id="row_' + rowCounter + '" style="border-left:3px solid ' + borderColor + ';">';
+        html += '<input type="hidden" name="item_type_row[]" value="' + itemType + '">';
+        html += '<datalist id="suggest_' + rowCounter + '">' + suggestList + '</datalist>';
+        html += '<input type="text" name="item_label[]" class="form-control form-control-sm" placeholder="Label (e.g. House Rent)" list="suggest_' + rowCounter + '" value="' + htmlEscape(label) + '" style="flex:2;" oninput="recalcTotals()">';
+        html += '<input type="number" name="item_amount[]" class="form-control form-control-sm text-end" placeholder="Amount" value="' + (amount || '') + '" style="flex:1; max-width:160px;" oninput="recalcTotals()" step="0.01" min="0">';
+        html += '<button type="button" class="btn btn-sm btn-outline-danger px-2" onclick="removeSalaryRow(\'row_' + rowCounter + '\')" title="Remove"><i class="fa fa-times"></i></button>';
+        html += '</div>';
+
+        container.insertAdjacentHTML('beforeend', html);
+        recalcTotals();
+    }
+
+    function removeSalaryRow(id) {
+        var el = document.getElementById(id);
+        if (el) { el.remove(); recalcTotals(); }
+    }
+
+    // ─── Recalculate totals ─────────────────────────────────────────────────────
+    function recalcTotals() {
+        var gross = 0;
+        var deduction = 0;
+
+        document.querySelectorAll('#earnings_container .salary-row-item').forEach(function (row) {
+            var input = row.querySelector('input[name="item_amount[]"]');
+            var amt = input ? (parseFloat(input.value) || 0) : 0;
+            gross += amt;
+        });
+        document.querySelectorAll('#deductions_container .salary-row-item').forEach(function (row) {
+            var input = row.querySelector('input[name="item_amount[]"]');
+            var amt = input ? (parseFloat(input.value) || 0) : 0;
+            deduction += amt;
+        });
+
+        var net = gross - deduction;
+        var grossDisp = document.getElementById('gross_display');
+        var netDisp = document.getElementById('net_display');
+        var grossHid = document.getElementById('gross_salary_hidden');
+        var netHid = document.getElementById('net_salary_hidden');
+
+        if (grossDisp) grossDisp.textContent = 'BDT ' + formatNum(gross);
+        if (netDisp) netDisp.textContent = 'BDT ' + formatNum(net);
+        if (grossHid) grossHid.value = gross.toFixed(2);
+        if (netHid) netHid.value = net.toFixed(2);
+    }
+
+    function formatNum(n) {
+        return n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function htmlEscape(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // ─── Purpose "Other" toggle ─────────────────────────────────────────────────
+    function toggleOtherPurpose() {
+        var val = document.getElementById('purpose').value;
+        var box = document.getElementById('other_purpose_box');
+        if (box) box.style.display = (val === 'Other') ? '' : 'none';
+    }
+
+    // ─── Form submit handler ────────────────────────────────────────────────────
+    document.getElementById('editLetterForm').addEventListener('submit', function (e) {
+        if (typeof tinymce !== 'undefined') {
+            tinymce.triggerSave();
+        }
+
+        var type = document.getElementById('letter_type').value;
+        if (!type) { e.preventDefault(); alert('Please select a letter type.'); return; }
+
+        if (type === 'salary_certificate') {
+            var scDate = document.getElementById('sc_letter_date').value;
+            var certMonth = document.getElementById('certificate_month').value;
+            var purposeSel = document.getElementById('purpose');
+
+            if (!scDate) { e.preventDefault(); alert('Please select a letter date.'); return; }
+            if (!certMonth) { e.preventDefault(); alert('Please select the certificate month.'); return; }
+            if (!purposeSel.value) { e.preventDefault(); alert('Please select a purpose.'); return; }
+
+            if (purposeSel.value === 'Other') {
+                var otherText = document.getElementById('purpose_other_text').value.trim();
+                if (!otherText) { e.preventDefault(); alert('Please specify the purpose.'); return; }
+                purposeSel.value = otherText;
+            }
+
+            // Re-enable disabled fields so they are included in POST data
+            var stdSection = document.getElementById('section_standard_details');
+            if (stdSection) {
+                stdSection.querySelectorAll('[disabled]').forEach(function (el) { el.disabled = false; });
+            }
+
+            // Sync salary-cert inputs → standard POST fields
+            document.getElementById('letter_date').value = scDate;
+            document.getElementById('ref_number').value = document.getElementById('sc_ref_number').value;
+            document.getElementById('subject').value = document.getElementById('sc_subject').value;
+
+            var scJoinVal = document.getElementById('sc_joining_date');
+            if (scJoinVal && scJoinVal.value) {
+                document.getElementById('joining_date').value = scJoinVal.value;
+            }
+            var scEffVal = document.getElementById('sc_effective_date');
+            if (scEffVal && scEffVal.value) {
+                document.getElementById('effective_date').value = scEffVal.value;
+            }
+
+            recalcTotals();
+        }
+    });
 
     document.addEventListener('DOMContentLoaded', function() {
-        var letterTypeSelect = document.getElementById('letter_type');
-        if (letterTypeSelect) {
-            letterTypeSelect.addEventListener('change', loadTemplatesForType);
-        }
+        onLetterTypeChange();
+        recalcTotals();
     });
 
     function loadTemplatesForType() {
@@ -411,10 +849,7 @@
 
     function loadTemplate() {
         var templateId = document.getElementById('template_id').value;
-
-        if (!templateId) {
-            return;
-        }
+        if (!templateId) return;
 
         fetch('<?= $GLOBALS['base_url'] ?>/get-template?id=' + encodeURIComponent(templateId))
             .then(response => response.json())
@@ -429,5 +864,113 @@
                 }
             })
             .catch(error => console.error('Error loading template:', error));
+    }
+
+    function handleSignatureChoice(choice) {
+        var wrapper = document.getElementById('custom_sig_wrapper');
+        var hiddenInc = document.getElementById('include_signature');
+        if (choice === 'custom') {
+            if (wrapper) wrapper.style.display = 'block';
+            if (hiddenInc) hiddenInc.value = '1';
+        } else if (choice === 'none') {
+            if (wrapper) wrapper.style.display = 'none';
+            if (hiddenInc) hiddenInc.value = '0';
+        } else {
+            if (wrapper) wrapper.style.display = 'none';
+            if (hiddenInc) hiddenInc.value = '1';
+        }
+    }
+
+    // Client-side live signature extraction preview
+    var sigFileInput = document.getElementById('custom_signature_file');
+    if (sigFileInput) {
+        sigFileInput.addEventListener('change', function (e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function (event) {
+                var img = new Image();
+                img.onload = function () {
+                    var canvas = document.getElementById('sig_preview_canvas');
+                    var placeholder = document.getElementById('sig_preview_placeholder');
+                    if (!canvas) return;
+
+                    var w = img.width;
+                    var h = img.height;
+                    var maxD = 1200;
+                    if (w > maxD || h > maxD) {
+                        var scale = Math.min(maxD / w, maxD / h);
+                        w = Math.floor(w * scale);
+                        h = Math.floor(h * scale);
+                    }
+
+                    var offCanvas = document.createElement('canvas');
+                    offCanvas.width = w;
+                    offCanvas.height = h;
+                    var offCtx = offCanvas.getContext('2d');
+                    offCtx.drawImage(img, 0, 0, w, h);
+
+                    var imgData = offCtx.getImageData(0, 0, w, h);
+                    var data = imgData.data;
+
+                    var minX = w, maxX = 0, minY = h, maxY = 0;
+                    var threshold = 205;
+
+                    for (var y = 0; y < h; y++) {
+                        for (var x = 0; x < w; x++) {
+                            var idx = (y * w + x) * 4;
+                            var r = data[idx];
+                            var g = data[idx + 1];
+                            var b = data[idx + 2];
+                            var lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                            if (lum >= threshold) {
+                                data[idx + 3] = 0;
+                            } else {
+                                var alphaRatio = (threshold - lum) / threshold;
+                                var alpha = Math.min(255, Math.floor(alphaRatio * 255 * 1.5));
+                                data[idx + 3] = alpha;
+                                data[idx] = Math.max(0, r - 50);
+                                data[idx + 1] = Math.max(0, g - 50);
+                                data[idx + 2] = Math.max(0, b - 40);
+
+                                if (x < minX) minX = x;
+                                if (x > maxX) maxX = x;
+                                if (y < minY) minY = y;
+                                if (y > maxY) maxY = y;
+                            }
+                        }
+                    }
+
+                    offCtx.putImageData(imgData, 0, 0);
+
+                    if (maxX >= minX && maxY >= minY) {
+                        var pad = 10;
+                        minX = Math.max(0, minX - pad);
+                        minY = Math.max(0, minY - pad);
+                        maxX = Math.min(w - 1, maxX + pad);
+                        maxY = Math.min(h - 1, maxY + pad);
+                        var cropW = maxX - minX + 1;
+                        var cropH = maxY - minY + 1;
+
+                        canvas.width = cropW;
+                        canvas.height = cropH;
+                        var ctx = canvas.getContext('2d');
+                        ctx.clearRect(0, 0, cropW, cropH);
+                        ctx.drawImage(offCanvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+                    } else {
+                        canvas.width = w;
+                        canvas.height = h;
+                        var ctx = canvas.getContext('2d');
+                        ctx.drawImage(offCanvas, 0, 0);
+                    }
+
+                    if (placeholder) placeholder.style.display = 'none';
+                    canvas.style.display = 'inline-block';
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
     }
 </script>

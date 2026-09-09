@@ -485,9 +485,28 @@
 
         // ── Init ─────────────────────────────────────────────────────────────────
         restorePayslipData();
-        if (!document.getElementById('paydate').value) {
-            document.getElementById('paydate').value = '<?= htmlspecialchars($defaultPaydate ?? date('Y-m-d')) ?>';
+
+        const hasExplicitDate = <?= !empty($hasExplicitDate) ? 'true' : 'false' ?>;
+        const defaultPaydateVal = '<?= htmlspecialchars($defaultPaydate ?? date('Y-m-d')) ?>';
+        const preselectedEmpId = '<?= !empty($preselectedEmployeeId) ? (int)$preselectedEmployeeId : "" ?>';
+
+        if (hasExplicitDate) {
+            document.getElementById('paydate').value = defaultPaydateVal;
+        } else if (!document.getElementById('paydate').value) {
+            document.getElementById('paydate').value = defaultPaydateVal;
         }
+
+        if (preselectedEmpId) {
+            const empSel = document.getElementById('employeeSelect');
+            if (empSel) {
+                empSel.value = preselectedEmpId;
+                if (typeof $ !== 'undefined' && $.fn.select2) {
+                    $(empSel).trigger('change');
+                }
+                applyEmployeeData(empSel);
+            }
+        }
+
         const initDateVal = document.getElementById('paydate').value;
         if (initDateVal) {
             const d = new Date(initDateVal);
@@ -497,5 +516,6 @@
             if (t1) t1.textContent = formatted;
             if (t2) t2.textContent = formatted;
         }
+        collectPayslipData();
     });
 </script>

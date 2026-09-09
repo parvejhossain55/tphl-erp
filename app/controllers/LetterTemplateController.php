@@ -29,8 +29,16 @@ class LetterTemplateController extends Controller
         if ($employee) {
             echo json_encode([
                 'success' => true,
-                'department_id' => $employee['department_id'],
-                'designation_id' => $employee['designation_id'],
+                'full_name' => $employee['full_name'] ?? '',
+                'employee_id' => $employee['employee_id'] ?? '',
+                'department_id' => $employee['department_id'] ?? '',
+                'designation_id' => $employee['designation_id'] ?? '',
+                'designation_name' => $employee['designation_name'] ?? '',
+                'department_name' => $employee['department_name'] ?? '',
+                'joining_date' => $employee['joining_date'] ?? '',
+                'resign_date' => $employee['resign_date'] ?? '',
+                'gender' => $employee['gender'] ?? '',
+                'email' => $employee['email'] ?? '',
             ]);
         } else {
             echo json_encode(['success' => false]);
@@ -49,10 +57,80 @@ class LetterTemplateController extends Controller
         $employee = $this->employeeModel->find($empId);
 
         if ($employee) {
+            $gross = (float) ($employee['gross_salary'] ?? 0);
+            $basic = (float) ($employee['basic_salary'] ?? 0);
+            if ($basic <= 0 && $gross > 0) {
+                $basic = round($gross * 0.50, 2);
+            }
+
+            $items = [];
+            $hasPayslip = false;
+
+            // Check if employee has payslip breakdown in payslips table
+            $payslipStmt = $this->db->prepare("
+                SELECT house_rent_allowance, medical_allowance, conveyance_allowance, recreation_allowance, duty_allowance
+                FROM payslips 
+                WHERE employee_id = ? 
+                ORDER BY payslip_month DESC, id DESC 
+                LIMIT 1
+            ");
+            if ($payslipStmt) {
+                $payslipStmt->bind_param("i", $empId);
+                $payslipStmt->execute();
+                $payslip = $payslipStmt->get_result()->fetch_assoc();
+                $payslipStmt->close();
+
+                if ($payslip) {
+                    $hasPayslip = true;
+                    if ($basic > 0) {
+                        $items[] = ['label' => 'Basic Salary', 'amount' => $basic];
+                    }
+                    if (!empty($payslip['house_rent_allowance']) && (float) $payslip['house_rent_allowance'] > 0) {
+                        $items[] = ['label' => 'House Rent Allowance', 'amount' => (float) $payslip['house_rent_allowance']];
+                    }
+                    if (!empty($payslip['medical_allowance']) && (float) $payslip['medical_allowance'] > 0) {
+                        $items[] = ['label' => 'Medical Allowance', 'amount' => (float) $payslip['medical_allowance']];
+                    }
+                    if (!empty($payslip['conveyance_allowance']) && (float) $payslip['conveyance_allowance'] > 0) {
+                        $items[] = ['label' => 'Conveyance', 'amount' => (float) $payslip['conveyance_allowance']];
+                    }
+                    if (!empty($payslip['recreation_allowance']) && (float) $payslip['recreation_allowance'] > 0) {
+                        $items[] = ['label' => 'Recreation Allowance', 'amount' => (float) $payslip['recreation_allowance']];
+                    }
+                    if (!empty($payslip['duty_allowance']) && (float) $payslip['duty_allowance'] > 0) {
+                        $items[] = ['label' => 'Duty Allowance', 'amount' => (float) $payslip['duty_allowance']];
+                    }
+                }
+            }
+
+            // Fallback standard structure if no payslip found, but gross salary exists
+            if (!$hasPayslip && $gross > 0) {
+                $houseRent = round($gross * 0.25, 2);
+                $medical = round($gross * 0.15, 2);
+                $conveyance = round($gross * 0.05, 2);
+                $recreation = round($gross - $basic - $houseRent - $medical - $conveyance, 2);
+                if ($recreation < 0) $recreation = 0;
+
+                $items[] = ['label' => 'Basic Salary', 'amount' => $basic];
+                $items[] = ['label' => 'House Rent', 'amount' => $houseRent];
+                $items[] = ['label' => 'Medical Allowance', 'amount' => $medical];
+                $items[] = ['label' => 'Conveyance', 'amount' => $conveyance];
+                if ($recreation > 0) {
+                    $items[] = ['label' => 'Others Allowance', 'amount' => $recreation];
+                }
+            }
+
+            $currentMonth = date('Y-m');
+            $refNumber = 'TPHL/HR/Salary Certificate/' . date('F-Y');
+
             echo json_encode([
                 'success' => true,
-                'basic_salary' => $employee['basic_salary'] ?? 0,
-                'gross_salary' => $employee['gross_salary'] ?? 0,
+                'basic_salary' => $basic,
+                'gross_salary' => $gross,
+                'items' => $items,
+                'letter_date' => date('Y-m-d'),
+                'certificate_month' => $currentMonth,
+                'ref_number' => $refNumber,
                 'designation_id' => $employee['designation_id'],
                 'designation_name' => $employee['designation_name'] ?? '',
                 'department_id' => $employee['department_id'],
@@ -104,11 +182,15 @@ class LetterTemplateController extends Controller
     // ─── List all generated letters ───────────────────────────────────────────
     public function generateLetter()
     {
-        $designation_id = $_GET['designation_id'] ?? null;
-        $letter_type = $_GET['type'] ?? null;
-        $employee_id = $_GET['employee_id'] ?? null;
+        $designation_id = !empty($_GET['designation_id']) ? (int) $_GET['designation_id'] : null;
+        $letter_type = !empty($_GET['type']) ? trim($_GET['type']) : (!empty($_GET['letter_type']) ? trim($_GET['letter_type']) : null);
+        $search = !empty($_GET['search']) ? trim($_GET['search']) : null;
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $limit = 15;
 
-        $letters = $this->letterModel->getAllWithDetails($designation_id, $letter_type, $employee_id);
+        $totalLetters = $this->letterModel->countAllWithDetails($designation_id, $letter_type, $search);
+        $totalPages = max(1, (int) ceil($totalLetters / $limit));
+        $letters = $this->letterModel->getAllWithDetails($designation_id, $letter_type, $search, $page, $limit);
 
         require_once __DIR__ . '/../models/Designation.php';
         $designationModel = new Designation($this->db);
@@ -117,6 +199,13 @@ class LetterTemplateController extends Controller
         $this->view("hrm/letter-templates/generate-employee-letter", [
             "letters" => $letters,
             "designations" => $designations,
+            "totalLetters" => $totalLetters,
+            "totalPages" => $totalPages,
+            "currentPage" => $page,
+            "limit" => $limit,
+            "search" => $search,
+            "designation_id" => $designation_id,
+            "letter_type" => $letter_type,
         ]);
     }
 
@@ -154,9 +243,10 @@ class LetterTemplateController extends Controller
             $template = $this->templateModel->find($data['template_id']);
         }
 
-        $body = $data['letter_body'] ?? '';
-        if ($template && $data['letter_type'] !== 'salary_certificate') {
-            $body = $this->replacePlaceholders($template['body'], $employee, $data);
+        // Prioritize user's edited body from editor, fallback to template body if empty
+        $body = !empty(trim($data['letter_body'] ?? '')) ? $data['letter_body'] : ($template['body'] ?? '');
+        if ($data['letter_type'] !== 'salary_certificate') {
+            $body = $this->replacePlaceholders($body, $employee, $data);
         }
 
         // Build salary items from POST (salary_certificate only)
@@ -194,23 +284,55 @@ class LetterTemplateController extends Controller
         $letterDate = !empty($data['letter_date']) ? $data['letter_date'] : (!empty($data['sc_letter_date']) ? $data['sc_letter_date'] : date('Y-m-d'));
         $refNumber = !empty($data['ref_number']) ? $data['ref_number'] : (!empty($data['sc_ref_number']) ? $data['sc_ref_number'] : null);
 
+        // Process custom signature upload if provided
+        $customSignaturePath = null;
+        $sigChoice = $data['signature_choice'] ?? ($data['include_signature'] ?? '1');
+
+        if ($sigChoice === 'custom' && !empty($_FILES['custom_signature_file']['tmp_name']) && is_uploaded_file($_FILES['custom_signature_file']['tmp_name'])) {
+            $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
+            $sigDir = $baseDir . '/public/assets/images/hrm/signatures';
+            if (!is_dir($sigDir)) {
+                mkdir($sigDir, 0777, true);
+            }
+            $filename = 'sig_' . time() . '_' . mt_rand(1000, 9999) . '.png';
+            $destPath = $sigDir . '/' . $filename;
+            $threshold = isset($data['sig_threshold']) ? (int)$data['sig_threshold'] : 205;
+            $extractResult = SignatureExtractor::extractAndSave($_FILES['custom_signature_file']['tmp_name'], $destPath, $threshold);
+            if ($extractResult['success']) {
+                $customSignaturePath = 'public/assets/images/hrm/signatures/' . $filename;
+            }
+        }
+
+        $includeSignature = 1;
+        if ($sigChoice === '0' || $sigChoice === 'none') {
+            $includeSignature = 0;
+            $customSignaturePath = null;
+        } elseif ($sigChoice === '1' || $sigChoice === 'official') {
+            $includeSignature = 1;
+            $customSignaturePath = null;
+        } elseif ($sigChoice === 'custom') {
+            $includeSignature = 1;
+        }
+
         $saveData = [
             "employee_id" => $data['employee_id'],
-            "designation_id" => $employee['designation_id'] ?? null,
-            "department_id" => $employee['department_id'] ?? null,
+            "designation_id" => !empty($data['designation_id']) ? (int) $data['designation_id'] : ($employee['designation_id'] ?? null),
+            "department_id" => !empty($data['department_id']) ? (int) $data['department_id'] : ($employee['department_id'] ?? null),
             "letter_type" => $data['letter_type'],
             "template_id" => (!empty($data['template_id'])) ? $data['template_id'] : null,
             "subject" => !empty($data['subject']) ? $data['subject'] : ($data['sc_subject'] ?? 'Salary Certificate'),
             "body" => $body,
             "letter_date" => $letterDate,
             "ref_number" => $refNumber,
-            "joining_date" => (!empty($data['joining_date'])) ? $data['joining_date'] : null,
-            "effective_date" => (!empty($data['effective_date'])) ? $data['effective_date'] : null,
+            "joining_date" => (!empty($data['joining_date'])) ? $data['joining_date'] : (!empty($data['sc_joining_date']) ? $data['sc_joining_date'] : null),
+            "effective_date" => (!empty($data['effective_date'])) ? $data['effective_date'] : (!empty($data['sc_effective_date']) ? $data['sc_effective_date'] : null),
             "current_salary" => (!empty($data['current_salary'])) ? $data['current_salary'] : null,
             "revised_salary" => (!empty($data['revised_salary'])) ? $data['revised_salary'] : null,
             "new_designation" => (!empty($data['new_designation'])) ? $data['new_designation'] : null,
             "signatory_name" => $data['signatory_name'] ?? '',
             "signatory_title" => $data['signatory_title'] ?? '',
+            "include_signature" => $includeSignature,
+            "custom_signature" => $customSignaturePath,
             "cc_email" => (!empty($data['cc_email'])) ? $data['cc_email'] : null,
             "send_to_email" => (!empty($data['send_to_email'])) ? (int) $data['send_to_email'] : 0,
             "status" => $data['letter_status'] ?? 'draft',
@@ -231,22 +353,100 @@ class LetterTemplateController extends Controller
             $this->letterModel->createSalaryItems((int) $letterId, $salaryItems);
         }
 
+        // Send to employee email if enabled
+        if (!empty($data['send_to_email'])) {
+            $this->sendLetterEmail((int) $letterId);
+        }
+
         header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
     }
 
     // ─── Placeholder replace ──────────────────────────────────────────────────
     private function replacePlaceholders($body, $employee, $data)
     {
+        if (empty($body)) {
+            return '';
+        }
+
+        $companyName = function_exists('getSetting') ? getSetting('website_title', 'The Premium Homes Limited') : 'The Premium Homes Limited';
+        if (stripos($companyName, 'Homes') === false && stripos($companyName, 'Home') !== false) {
+            $companyName = str_ireplace('Home', 'Homes', $companyName);
+        }
+
+        $designationName = '';
+        if (!empty($data['designation_id'])) {
+            $dStmt = $this->db->prepare("SELECT name FROM designations WHERE id = ?");
+            if ($dStmt) {
+                $dStmt->bind_param("i", $data['designation_id']);
+                $dStmt->execute();
+                $dRow = $dStmt->get_result()->fetch_assoc();
+                $designationName = $dRow['name'] ?? '';
+                $dStmt->close();
+            }
+        }
+        if (empty($designationName)) {
+            $designationName = $employee['designation_name'] ?? '';
+        }
+
+        $departmentName = '';
+        if (!empty($data['department_id'])) {
+            $dpStmt = $this->db->prepare("SELECT name FROM departments WHERE id = ?");
+            if ($dpStmt) {
+                $dpStmt->bind_param("i", $data['department_id']);
+                $dpStmt->execute();
+                $dpRow = $dpStmt->get_result()->fetch_assoc();
+                $departmentName = $dpRow['name'] ?? '';
+                $dpStmt->close();
+            }
+        }
+        if (empty($departmentName)) {
+            $departmentName = $employee['department_name'] ?? '';
+        }
+
+        $joiningDate = !empty($data['joining_date']) ? date('F d, Y', strtotime($data['joining_date'])) : (!empty($employee['joining_date']) ? date('F d, Y', strtotime($employee['joining_date'])) : '');
+        $letterDate = !empty($data['letter_date']) ? date('F d, Y', strtotime($data['letter_date'])) : date('F d, Y');
+        $effectiveDate = !empty($data['effective_date']) ? date('F d, Y', strtotime($data['effective_date'])) : (!empty($employee['resign_date']) ? date('F d, Y', strtotime($employee['resign_date'])) : date('F d, Y'));
+
+        $currentSalary = !empty($data['current_salary']) ? number_format((float) $data['current_salary'], 2) : (!empty($employee['gross_salary']) ? number_format((float) $employee['gross_salary'], 2) : '');
+        $revisedSalary = !empty($data['revised_salary']) ? number_format((float) $data['revised_salary'], 2) : '';
+
+        // Gender pronoun detection
+        $isFemale = false;
+        $nameLower = strtolower($employee['full_name'] ?? '');
+        $femaleKeywords = ['ms.', 'mrs.', 'miss', 'khatun', 'begum', 'akter', 'akther', 'sultana', 'jahan', 'nahar', 'parvin', 'nasrin', 'farzana', 'roksana', 'shammi', 'bornali'];
+        foreach ($femaleKeywords as $kw) {
+            if (strpos($nameLower, $kw) !== false) {
+                $isFemale = true;
+                break;
+            }
+        }
+        $her_his = $isFemale ? 'her' : 'his';
+        $she_he = $isFemale ? 'she' : 'he';
+        $her_him = $isFemale ? 'her' : 'him';
+        $Her_His = $isFemale ? 'Her' : 'His';
+        $She_He = $isFemale ? 'She' : 'He';
+
         $replace = [
+            "{{company_name}}" => $companyName,
             "{{employee_name}}" => $employee['full_name'] ?? '',
             "{{employee_code}}" => $employee['employee_id'] ?? '',
-            "{{designation}}" => $employee['designation_name'] ?? '',
-            "{{department}}" => $employee['department_name'] ?? '',
-            "{{joining_date}}" => $data['joining_date'] ?? '',
-            "{{current_salary}}" => $data['current_salary'] ?? '',
-            "{{revised_salary}}" => $data['revised_salary'] ?? '',
+            "{{designation}}" => $designationName,
+            "{{department}}" => $departmentName,
+            "{{address}}" => $employee['address'] ?? '',
+            "{{joining_date}}" => $joiningDate,
+            "{{effective_date}}" => $effectiveDate,
+            "{{release_date}}" => $effectiveDate,
+            "{{separation_date}}" => $effectiveDate,
+            "{{current_salary}}" => $currentSalary,
+            "{{revised_salary}}" => $revisedSalary,
             "{{new_designation}}" => $data['new_designation'] ?? '',
-            "{{letter_date}}" => $data['letter_date'] ?? '',
+            "{{letter_date}}" => $letterDate,
+            "{{ref_number}}" => $data['ref_number'] ?? '',
+            "{{her_his}}" => $her_his,
+            "{{she_he}}" => $she_he,
+            "{{her_him}}" => $her_him,
+            "{{Her_His}}" => $Her_His,
+            "{{She_He}}" => $She_He,
         ];
 
         return str_replace(array_keys($replace), array_values($replace), $body);
@@ -340,51 +540,37 @@ class LetterTemplateController extends Controller
         header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
     }
 
-    // ─── Generate PDF ─────────────────────────────────────────────────────────
-    public function generatePDFLetter($id)
+    // ─── Render Letter to Dompdf Instance ─────────────────────────────────────
+    public function renderLetterPDF($id)
     {
-        // Increase memory limit for TCPDF image processing
         ini_set('memory_limit', '512M');
 
         $letter = $this->letterModel->find($id);
         if (!$letter) {
-            die("Letter not found");
+            return null;
         }
 
-        // ── A4 dimensions: 210mm x 297mm ──
-        // Template header zone: ~35mm, footer zone: ~45mm
-        // Content area: top=35mm, left=18mm, right=18mm, bottom=45mm
-        $topMargin = 35;  // mm – below the letterhead header graphic
-        $sideMargin = 18;  // mm
-        $bottomMargin = 45;  // mm – above the letterhead footer graphic
-
-        $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
-        $pdf->SetCreator('TPHL ERP');
-        $pdf->SetTitle(ucwords(str_replace('_', ' ', $letter['letter_type'])) . " - " . $letter['employee_code']);
-        $pdf->setPrintHeader(false);
-        $pdf->setPrintFooter(false);
-        $pdf->setCellPaddings(1, 1, 1, 1);
-
-        // ── Step 1: Add page with ZERO margins so image can bleed to full edges ──
-        $pdf->SetMargins(0, 0, 0);
-        $pdf->SetAutoPageBreak(false, 0);
-        $pdf->AddPage();
-
-        // ── Step 2: Draw the letterhead JPEG covering the full A4 page ──
-        // __DIR__ = app/controllers → ../../ resolves to project root (TPHL-ERP/)
+        // Base64 encode the letterhead background image for 100% reliable Dompdf rendering
         $bgPath = realpath(__DIR__ . '/../../public/assets/email-template/new-letter-template.jpeg');
-        if ($bgPath && file_exists($bgPath)) {
-            $pdf->Image($bgPath, 0, 0, 210, 297, 'JPEG', '', 'N', false, 96, '', false, false, 0, false, false, false);
+        $bgBase64 = ($bgPath && file_exists($bgPath)) ? ('data:image/jpeg;base64,' . base64_encode(file_get_contents($bgPath))) : '';
+
+        // Base64 encode signature (custom letter signature or default official HR signature)
+        $sigPath = null;
+        if (!empty($letter['custom_signature'])) {
+            $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
+            $candidatePath = $baseDir . '/' . ltrim($letter['custom_signature'], '/\\');
+            if (file_exists($candidatePath)) {
+                $sigPath = realpath($candidatePath);
+            }
         }
+        if (!$sigPath) {
+            $sigPath = realpath(__DIR__ . '/../../public/assets/images/hrm/hr_signature.png');
+        }
+        $sigBase64 = ($sigPath && file_exists($sigPath)) ? ('data:image/png;base64,' . base64_encode(file_get_contents($sigPath))) : '';
 
-        // ── Step 3: Switch to content margins so text sits in the white zone ──
-        $pdf->SetMargins($sideMargin, $topMargin, $sideMargin);
-        $pdf->SetAutoPageBreak(true, $bottomMargin);
-        $pdf->SetXY($sideMargin, $topMargin);
-
-        // ── Now render the letter body HTML ──
+        // Render HTML
         ob_start();
-        extract(['letter' => $letter]);
+        extract(['letter' => $letter, 'bgBase64' => $bgBase64, 'sigBase64' => $sigBase64]);
 
         if ($letter['letter_type'] === 'salary_certificate') {
             $salaryItems = $this->letterModel->getSalaryItems((int) $id);
@@ -396,16 +582,126 @@ class LetterTemplateController extends Controller
 
         $html = ob_get_clean();
 
-        $pdf->SetFont('helvetica', '', 11);
-        $pdf->SetTextColor(0, 0, 0);
-        $pdf->writeHTML($html, true, false, true, false, '');
+        // Modern Dompdf Engine for 100% pixel-perfect HTML/CSS rendering identical to View
+        $options = new \Dompdf\Options();
+        $options->set('isRemoteEnabled', true);
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('defaultFont', 'Helvetica');
+        $options->set('dpi', 96);
 
-        $filename = str_replace([' ', '/'], '_', $letter['letter_type']) . '_' . $letter['employee_code'] . '.pdf';
+        $dompdf = new \Dompdf\Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
 
-        if (ob_get_length())
+        $code = !empty($letter['employee_code']) ? $letter['employee_code'] : $letter['id'];
+        $filename = str_replace([' ', '/'], '_', $letter['letter_type']) . '_' . $code . '.pdf';
+
+        return [
+            'letter' => $letter,
+            'dompdf' => $dompdf,
+            'pdfContent' => $dompdf->output(),
+            'filename' => $filename,
+        ];
+    }
+
+    // ─── Generate PDF (Dompdf Engine - Stream to Browser) ─────────────────────
+    public function generatePDFLetter($id)
+    {
+        $rendered = $this->renderLetterPDF($id);
+        if (!$rendered) {
+            die("Letter not found");
+        }
+
+        if (ob_get_length()) {
             ob_end_clean();
-        $pdf->Output($filename, 'I');
+        }
+
+        // Prevent browser caching so users always see the latest updated PDF
+        if (!headers_sent()) {
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+        }
+
+        $rendered['dompdf']->stream($rendered['filename'], ['Attachment' => 0]);
         exit;
+    }
+
+    // ─── Send Generated Letter to Employee via Email with PDF Attachment ─────
+    private function sendLetterEmail($letterId)
+    {
+        $rendered = $this->renderLetterPDF($letterId);
+        if (!$rendered) {
+            return false;
+        }
+
+        $letter = $rendered['letter'];
+        $recipientEmail = trim($letter['employee_email'] ?? '');
+        if (empty($recipientEmail)) {
+            $emp = $this->employeeModel->find($letter['employee_id']);
+            $recipientEmail = trim($emp['email'] ?? '');
+        }
+
+        if (empty($recipientEmail)) {
+            error_log("Cannot dispatch letter email: Employee #{$letter['employee_id']} has no email registered.");
+            return false;
+        }
+
+        $config = require __DIR__ . '/../config/config.php';
+        $companyTitle = function_exists('getSetting') ? getSetting('website_title', 'The Premium Homes Limited') : 'The Premium Homes Limited';
+        $employeeName = $letter['full_name'] ?? 'Employee';
+        $letterSubject = !empty($letter['subject']) ? $letter['subject'] : ucwords(str_replace('_', ' ', $letter['letter_type']));
+
+        require_once __DIR__ . '/../../vendor/autoload.php';
+
+        try {
+            $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+            $mail->isSMTP();
+            $mail->SMTPDebug = 0;
+            $mail->Host       = $config['smtp_host'] ?? 'smtp.gmail.com';
+            $mail->SMTPAuth   = true;
+            $mail->Username   = $config['smtp_user'] ?? 'farzana.tphl13@gmail.com';
+            $mail->Password   = $config['smtp_pass'] ?? 'hvptjfnsprecofmi';
+            $mail->SMTPSecure = $config['smtp_secure'] ?? 'ssl';
+            $mail->Port       = (int) ($config['smtp_port'] ?? 465);
+
+            $mail->setFrom($mail->Username, $companyTitle . ' HR');
+            $mail->addAddress($recipientEmail, $employeeName);
+
+            if (!empty($letter['cc_email'])) {
+                $ccList = array_map('trim', explode(',', $letter['cc_email']));
+                foreach ($ccList as $cc) {
+                    if (filter_var($cc, FILTER_VALIDATE_EMAIL)) {
+                        $mail->addCC($cc);
+                    }
+                }
+            }
+
+            $mail->isHTML(true);
+            $mail->Subject = $letterSubject . ' - ' . $companyTitle;
+            $mail->Body = "
+                <div style='font-family: Arial, sans-serif; font-size: 14px; color: #333; line-height: 1.6;'>
+                    <p>Dear <strong>" . htmlspecialchars($employeeName) . "</strong>,</p>
+                    <p>Please find attached your official <strong>" . htmlspecialchars($letterSubject) . "</strong> issued by <strong>" . htmlspecialchars($companyTitle) . "</strong>.</p>
+                    <p>If you have any questions regarding this letter, please feel free to reach out to the Human Resources Department.</p>
+                    <br>
+                    <p>Warm regards,<br>
+                    <strong>Human Resources Department</strong><br>
+                    " . htmlspecialchars($companyTitle) . "</p>
+                </div>
+            ";
+            $mail->AltBody = "Dear {$employeeName},\n\nPlease find attached your official {$letterSubject} issued by {$companyTitle}.\n\nWarm regards,\nHuman Resources Department\n{$companyTitle}";
+
+            // Attach PDF in memory
+            $mail->addStringAttachment($rendered['pdfContent'], $rendered['filename'], 'base64', 'application/pdf');
+
+            $mail->send();
+            return true;
+        } catch (\Exception $e) {
+            error_log("Failed to send letter email: " . $e->getMessage());
+            return false;
+        }
     }
 
     // ─── Edit letter form ─────────────────────────────────────────────────────
@@ -456,7 +752,7 @@ class LetterTemplateController extends Controller
         $employee = $this->employeeModel->find($data['employee_id']);
 
         $body = $data['letter_body'] ?? '';
-        if (!empty($data['template_id']) && $data['letter_type'] !== 'salary_certificate') {
+        if ($data['letter_type'] !== 'salary_certificate') {
             $body = $this->replacePlaceholders($body, $employee, $data);
         }
 
@@ -494,6 +790,41 @@ class LetterTemplateController extends Controller
         $refNumber = !empty($data['ref_number']) ? $data['ref_number'] : (!empty($data['sc_ref_number']) ? $data['sc_ref_number'] : null);
         $subject = !empty($data['subject']) ? $data['subject'] : ($data['sc_subject'] ?? 'Salary Certificate');
 
+        $currentLetter = $this->letterModel->find($id);
+        $customSignaturePath = $currentLetter['custom_signature'] ?? null;
+        $sigChoice = $data['signature_choice'] ?? ($data['include_signature'] ?? '1');
+
+        $includeSignature = 1;
+        if ($sigChoice === '0' || $sigChoice === 'none') {
+            $includeSignature = 0;
+            $customSignaturePath = null;
+        } elseif ($sigChoice === '1' || $sigChoice === 'official') {
+            $includeSignature = 1;
+            $customSignaturePath = null;
+        } elseif ($sigChoice === 'custom') {
+            $includeSignature = 1;
+            if (!empty($_FILES['custom_signature_file']['tmp_name']) && is_uploaded_file($_FILES['custom_signature_file']['tmp_name'])) {
+                $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
+                $sigDir = $baseDir . '/public/assets/images/hrm/signatures';
+                if (!is_dir($sigDir)) {
+                    mkdir($sigDir, 0777, true);
+                }
+                $filename = 'sig_' . time() . '_' . mt_rand(1000, 9999) . '.png';
+                $destPath = $sigDir . '/' . $filename;
+                $threshold = isset($data['sig_threshold']) ? (int)$data['sig_threshold'] : 205;
+                $extractResult = SignatureExtractor::extractAndSave($_FILES['custom_signature_file']['tmp_name'], $destPath, $threshold);
+                if ($extractResult['success']) {
+                    if (!empty($currentLetter['custom_signature'])) {
+                        $oldFile = $baseDir . '/' . ltrim($currentLetter['custom_signature'], '/\\');
+                        if (file_exists($oldFile) && strpos($oldFile, 'signatures') !== false) {
+                            @unlink($oldFile);
+                        }
+                    }
+                    $customSignaturePath = 'public/assets/images/hrm/signatures/' . $filename;
+                }
+            }
+        }
+
         $updateData = [
             "employee_id" => $data['employee_id'],
             "designation_id" => $data['designation_id'] ?? null,
@@ -504,13 +835,15 @@ class LetterTemplateController extends Controller
             "body" => $body,
             "letter_date" => $letterDate,
             "ref_number" => $refNumber,
-            "joining_date" => (!empty($data['joining_date'])) ? $data['joining_date'] : null,
-            "effective_date" => (!empty($data['effective_date'])) ? $data['effective_date'] : null,
+            "joining_date" => (!empty($data['joining_date'])) ? $data['joining_date'] : (!empty($data['sc_joining_date']) ? $data['sc_joining_date'] : null),
+            "effective_date" => (!empty($data['effective_date'])) ? $data['effective_date'] : (!empty($data['sc_effective_date']) ? $data['sc_effective_date'] : null),
             "current_salary" => (!empty($data['current_salary'])) ? $data['current_salary'] : null,
             "revised_salary" => (!empty($data['revised_salary'])) ? $data['revised_salary'] : null,
             "new_designation" => (!empty($data['new_designation'])) ? $data['new_designation'] : null,
             "signatory_name" => $data['signatory_name'] ?? '',
             "signatory_title" => $data['signatory_title'] ?? '',
+            "include_signature" => $includeSignature,
+            "custom_signature" => $customSignaturePath,
             "cc_email" => (!empty($data['cc_email'])) ? $data['cc_email'] : null,
             "send_to_email" => (!empty($data['send_to_email'])) ? (int) $data['send_to_email'] : 0,
             "status" => $data['letter_status'] ?? 'draft',
@@ -530,6 +863,61 @@ class LetterTemplateController extends Controller
             if (!empty($salaryItems)) {
                 $this->letterModel->createSalaryItems((int) $id, $salaryItems);
             }
+        }
+
+        // Send to employee email if enabled
+        if (!empty($data['send_to_email'])) {
+            $this->sendLetterEmail((int) $id);
+        }
+
+        header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
+    }
+
+    // ─── Update Default Official HR Signature ─────────────────────────────────
+    public function updateOfficialSignature()
+    {
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || isset($_POST['is_ajax']);
+
+        if (empty($_FILES['official_signature']['tmp_name']) || !is_uploaded_file($_FILES['official_signature']['tmp_name'])) {
+            if ($isAjax) {
+                echo json_encode(['success' => false, 'message' => 'No signature file was selected.']);
+                return;
+            }
+            $_SESSION['error'] = 'No signature file was selected.';
+            header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
+            return;
+        }
+
+        $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
+        $targetDir = $baseDir . '/public/assets/images/hrm';
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0777, true);
+        }
+        $targetFile = $targetDir . '/hr_signature.png';
+
+        $threshold = isset($_POST['sig_threshold']) ? (int)$_POST['sig_threshold'] : 205;
+        $result = SignatureExtractor::extractAndSave(
+            $_FILES['official_signature']['tmp_name'],
+            $targetFile,
+            $threshold
+        );
+
+        if ($result['success']) {
+            if ($isAjax) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Official HR signature updated successfully!',
+                    'url' => $GLOBALS['base_url'] . '/public/assets/images/hrm/hr_signature.png?v=' . time()
+                ]);
+                return;
+            }
+            $_SESSION['success'] = 'Official HR signature updated successfully!';
+        } else {
+            if ($isAjax) {
+                echo json_encode(['success' => false, 'message' => $result['message']]);
+                return;
+            }
+            $_SESSION['error'] = 'Failed to extract signature: ' . $result['message'];
         }
 
         header("Location: " . $GLOBALS['base_url'] . "/generate-letter");

@@ -155,6 +155,8 @@ class PayrollController extends Controller
             "employees" => $employees,
             "items" => $items,
             "defaultPaydate" => $defaultPaydate,
+            "hasExplicitDate" => (isset($_GET['year']) && $_GET['year'] !== '') || (isset($_GET['month']) && $_GET['month'] !== ''),
+            "preselectedEmployeeId" => isset($_GET['employee_id']) ? (int)$_GET['employee_id'] : null,
         ]);
     }
 
