@@ -402,6 +402,23 @@
                     </li>
                 <?php endif; ?>
 
+                <?php 
+                $sidebarUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+                // Allowed roles: Admin (1), Super Admin (3), Accounts (6), Accounts Head (30), Role 20, Role 32, Purchase Head (17)
+                // Excludes Chief Officer (Role 33)
+                $canViewExpenseAnalytics = in_array($sidebarUserRoleId, [1, 3, 6, 30, 20, 32, 17], true);
+                if ($canViewExpenseAnalytics): 
+                ?>
+                    <!-- Expense Analytics Dashboard -->
+                    <li class="slide <?= isActive('expense-analytics', $current_route) ?>">
+                        <a href="<?= $base_url ?>/expense-analytics"
+                            class="sidebar__menu-item <?= isActive('expense-analytics', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-pie text-warning"></i></div>
+                            <span class="sidebar__menu-label">Expense Analytics</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
                 <?php
                 // Check if user has ERP Tracker access
                 $sidebar_user_id = $_SESSION['user']['id'] ?? 0;
@@ -1857,6 +1874,13 @@
                                         <span class="badge bg-danger rounded-pill ms-2"><?= $pendingApprovalCount ?></span>
                                     <?php endif; ?>
                                 </span>
+                            </a>
+                        </li>
+                        <li class="slide <?= isActive('expense-analytics', $current_route) ?>">
+                            <a href="<?= $base_url ?>/expense-analytics"
+                                class="sidebar__menu-item <?= isActive('expense-analytics', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-chart-pie text-warning"></i></div>
+                                <span class="sidebar__menu-label">Expense Analytics</span>
                             </a>
                         </li>
                     <?php endif; ?>

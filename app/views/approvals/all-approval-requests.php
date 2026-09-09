@@ -1,3 +1,84 @@
+<style>
+    /* 5 Columns per row responsive grid for compact mini-cards */
+    .module-mini-card-col {
+        flex: 0 0 20%;
+        max-width: 20%;
+        padding: 4px;
+        margin-bottom: 6px;
+    }
+    @media (max-width: 1400px) {
+        .module-mini-card-col {
+            flex: 0 0 20%;
+            max-width: 20%;
+        }
+    }
+    @media (max-width: 1200px) {
+        .module-mini-card-col {
+            flex: 0 0 25%;
+            max-width: 25%;
+        }
+    }
+    @media (max-width: 992px) {
+        .module-mini-card-col {
+            flex: 0 0 33.333333%;
+            max-width: 33.333333%;
+        }
+    }
+    @media (max-width: 768px) {
+        .module-mini-card-col {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
+    }
+    @media (max-width: 500px) {
+        .module-mini-card-col {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+    }
+
+    .module-mini-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 8px 10px;
+        transition: all 0.2s ease-in-out;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        text-decoration: none !important;
+        position: relative;
+        min-height: 64px;
+        height: 64px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        user-select: none;
+    }
+    .module-mini-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.07);
+        border-color: #cbd5e1;
+    }
+    .module-mini-card.is-active-filter {
+        border: 2px solid #3b82f6 !important;
+        background: #f0f7ff !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18) !important;
+    }
+    .pulse-dot-amber {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: #f59e0b;
+        animation: pulseAnimationAmber 1.6s infinite;
+        margin-right: 3px;
+    }
+    @keyframes pulseAnimationAmber {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 4px rgba(245, 158, 11, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    }
+</style>
+
 <div class="container-fluid py-4">
     <!-- Page Header -->
     <div class="d-flex align-items-center justify-content-between mb-4">
@@ -16,7 +97,7 @@
     </div>
 
     <!-- Company Dashboard Summary Metrics Row -->
-    <div class="row mb-4 ">
+    <div class="row mb-4">
         <!-- Total System Requests -->
         <div class="col-xl-3 col-md-6 col-sm-6">
             <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-primary">
@@ -95,11 +176,112 @@
         </div>
     </div>
 
+    <!-- Module-Wise Requisition & Expense Tracking (Compact Cards: 5 Per Row) -->
+    <?php if (!empty($moduleMetrics)): 
+        $currentStatus = $filters['status'] ?? '';
+        $isAllPendingMode = ($currentStatus === 'all_pending');
+        $isMyPendingMode = (empty($currentStatus) || $currentStatus === 'pending' || $currentStatus === 'my_pending');
+        $modeTitle = $isAllPendingMode ? 'All Departments Pending' : ($isMyPendingMode ? 'My Actionable Pending' : ucfirst($currentStatus));
+        $totalCardPendingCount = array_sum(array_column($moduleMetrics, 'pending_count'));
+        $totalCardPendingAmount = array_sum(array_column($moduleMetrics, 'pending_amount'));
+    ?>
+        <div class="mb-3">
+            <div class="d-flex flex-wrap align-items-center justify-content-between mb-2">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <h6 class="fw-bold text-dark mb-0 d-flex align-items-center">
+                        <i class="fa-solid fa-boxes-stacked text-primary me-2"></i>Expense & Requisition Modules
+                    </h6>
+                    <!-- View mode indicator pill -->
+                    <span class="badge <?= $isAllPendingMode ? 'bg-indigo-subtle text-indigo border border-indigo-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle' ?> rounded-pill px-2 py-1 extra-small fw-semibold" id="cardViewModeBadge">
+                        <i class="fa-solid <?= $isAllPendingMode ? 'fa-building-shield' : 'fa-user-check' ?> me-1"></i>
+                        Showing: <?= htmlspecialchars($modeTitle) ?> (<?= number_format($totalCardPendingCount) ?> items &bull; ৳<?= number_format($totalCardPendingAmount, 0) ?>)
+                    </span>
+                </div>
+                <div class="d-flex align-items-center gap-2 mt-2 mt-sm-0">
+                    <!-- Quick Switch Toggle: My Actionable vs All Departments Pending -->
+                    <div class="btn-group btn-group-sm p-0 rounded-pill bg-light border shadow-sm">
+                        <a href="<?= $base_url ?>/all-approval-requests?status=my_pending<?= !empty($filters['department']) ? '&department=' . urlencode($filters['department']) : '' ?><?= !empty($filters['source_table']) ? '&source_table=' . urlencode($filters['source_table']) : '' ?>" 
+                           class="btn btn-xs rounded-pill px-3 py-1 fw-semibold <?= $isMyPendingMode ? 'btn-primary text-white shadow-sm' : 'text-muted' ?>"
+                           style="font-size: 11px;">
+                           <i class="fa-solid fa-user-check me-1"></i>My Actionable
+                        </a>
+                        <a href="<?= $base_url ?>/all-approval-requests?status=all_pending<?= !empty($filters['department']) ? '&department=' . urlencode($filters['department']) : '' ?><?= !empty($filters['source_table']) ? '&source_table=' . urlencode($filters['source_table']) : '' ?>" 
+                           class="btn btn-xs rounded-pill px-3 py-1 fw-semibold <?= $isAllPendingMode ? 'btn-primary text-white shadow-sm' : 'text-muted' ?>"
+                           style="font-size: 11px; <?= $isAllPendingMode ? 'background-color: #6366f1; border-color: #6366f1;' : '' ?>">
+                           <i class="fa-solid fa-building-shield me-1"></i>All Dept Pending
+                        </a>
+                    </div>
+                    <?php if (!empty($filters['source_table'])): ?>
+                        <a href="<?= $base_url ?>/all-approval-requests?status=<?= urlencode($currentStatus) ?><?= !empty($filters['department']) ? '&department=' . urlencode($filters['department']) : '' ?>#approvalRequestsTable" 
+                           class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 text-decoration-none extra-small" title="Clear Module Filter">
+                            <i class="fa-solid fa-circle-xmark me-1"></i><?= htmlspecialchars($moduleMetrics[$filters['source_table']]['name'] ?? $filters['source_table']) ?>
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- 5 Cards Per Row Compact Grid -->
+            <div class="d-flex flex-wrap" style="margin-left: -4px; margin-right: -4px;" id="moduleCardsGrid">
+                <?php foreach ($moduleMetrics as $modKey => $mod): 
+                    $isActive = ($filters['source_table'] ?? '') === $modKey;
+                    $hasPending = $mod['pending_count'] > 0;
+                    if ($isActive) {
+                        $cardClickUrl = $base_url . "/all-approval-requests?status=" . urlencode($currentStatus) . (!empty($filters['department']) ? '&department=' . urlencode($filters['department']) : '') . "#approvalRequestsTable";
+                    } else {
+                        $cardClickUrl = $base_url . "/all-approval-requests?source_table=" . urlencode($modKey) . "&status=" . urlencode($currentStatus) . (!empty($filters['department']) ? '&department=' . urlencode($filters['department']) : '') . "#approvalRequestsTable";
+                    }
+                    $portalUrl = !empty($mod['portal_url']) ? $base_url . '/' . $mod['portal_url'] : '#';
+                ?>
+                    <div class="module-mini-card-col">
+                        <div class="module-mini-card <?= $isActive ? 'is-active-filter' : '' ?>" 
+                             id="card-<?= htmlspecialchars($modKey) ?>"
+                             onclick="window.location.href='<?= $cardClickUrl ?>'"
+                             data-mod-key="<?= htmlspecialchars($modKey) ?>"
+                             data-pending-count="<?= (int)$mod['pending_count'] ?>"
+                             data-pending-amount="<?= (float)$mod['pending_amount'] ?>"
+                             title="Click to <?= $isActive ? 'clear filter' : 'filter by ' . htmlspecialchars($mod['name']) ?>">
+                            <div class="d-flex align-items-center justify-content-between w-100">
+                                <div class="d-flex align-items-center gap-2 text-truncate me-1">
+                                    <div class="mini-card-icon rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                                         style="background-color: <?= $mod['accent_hex'] ?>18; color: <?= $mod['accent_hex'] ?>; width: 34px; height: 34px;">
+                                        <i class="<?= $mod['icon'] ?> fs-14"></i>
+                                    </div>
+                                    <div class="text-truncate">
+                                        <div class="fw-bold text-dark text-truncate" style="font-size: 11.5px; line-height: 1.25;" title="<?= htmlspecialchars($mod['name']) ?>">
+                                            <?= htmlspecialchars($mod['name']) ?>
+                                        </div>
+                                        <div class="extra-small text-truncate" style="font-size: 10.5px; line-height: 1.2;">
+                                            <?php if ($hasPending): ?>
+                                                <span class="text-dark fw-semibold">৳ <?= number_format($mod['pending_amount'], 0) ?></span>
+                                            <?php else: ?>
+                                                <span class="text-success"><i class="fa-solid fa-circle-check extra-small me-1"></i>Clear</span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                    <span class="badge <?= $hasPending ? 'bg-warning text-dark' : 'bg-light text-muted border' ?> rounded-pill px-2 py-1 extra-small fw-bold mod-badge-count" 
+                                          data-mod-key="<?= htmlspecialchars($modKey) ?>"
+                                          style="font-size: 10px;">
+                                        <?= $mod['pending_count'] ?><?= $hasPending ? ' Req' : '' ?>
+                                    </span>
+                                    <?php if ($isActive): ?>
+                                        <i class="fa-solid fa-check text-primary extra-small ms-1"></i>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <!-- Main Content Table Card -->
-    <div class="card border-0 shadow-sm rounded-3">
+    <div class="card border-0 shadow-sm rounded-3" id="approvalRequestsTable">
         <!-- Filter Toolbar -->
         <div class="card-header bg-white py-3 border-bottom">
-            <form method="GET" action="<?= $base_url ?>/all-approval-requests" class="row  align-items-center">
+            <form method="GET" action="<?= $base_url ?>/all-approval-requests" class="row align-items-center">
                 <!-- Search / Filter Title -->
                 <div class="col-lg-3 col-md-6">
                     <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Department
@@ -122,15 +304,8 @@
                         <option value="" <?= empty($filters['status']) || $filters['status'] === 'pending' || $filters['status'] === 'my_pending' ? 'selected' : '' ?>>My Actionable Pending (Default)</option>
                         <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>Approved & Paid History</option>
                         <option value="rejected" <?= ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' ?>>Rejected History</option>
-                        <?php 
-                        $canAuditAll = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 20, 30, 32, 33]) 
-                            || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false 
-                            || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false;
-                        if ($canAuditAll): 
-                        ?>
-                            <option value="all_pending" <?= ($filters['status'] ?? '') === 'all_pending' ? 'selected' : '' ?>>All Departments Pending (Audit)</option>
-                            <option value="all" <?= ($filters['status'] ?? '') === 'all' ? 'selected' : '' ?>>All Company Requests (Complete Audit)</option>
-                        <?php endif; ?>
+                        <option value="all_pending" <?= ($filters['status'] ?? '') === 'all_pending' ? 'selected' : '' ?>>All Departments Pending (Audit)</option>
+                        <option value="all" <?= ($filters['status'] ?? '') === 'all' ? 'selected' : '' ?>>All Company Requests (Complete Audit)</option>
                     </select>
                 </div>
 
@@ -311,9 +486,15 @@
                                     if ($isPendingStatus && in_array($reqApproveRole, ['management', '']) && $reqAmount <= 100000.01) {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
+                                    } elseif ($isPendingStatus && $sourceTable === 'project_other_costs') {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
                                     }
                                 } elseif ($isManagementUser) {
                                     if ($isPendingStatus && in_array($reqApproveRole, ['management', ''])) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    } elseif ($isPendingStatus && $sourceTable === 'project_other_costs') {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
                                     }
@@ -346,7 +527,7 @@
 
                                 $rowBgStyle = $isActionableByMe ? 'background-color: #f8fafc;' : '';
                                 ?>
-                                <tr <?= !empty($targetUrl) ? 'data-href="' . htmlspecialchars($targetUrl) . '" class="clickable-approval-row' . ($isActionableByMe ? ' border-start border-primary border-3' : '') . '" style="cursor: pointer; ' . $rowBgStyle . '"' : '' ?>>
+                                <tr data-source-table="<?= htmlspecialchars($req['source_table']) ?>" <?= !empty($targetUrl) ? 'data-href="' . htmlspecialchars($targetUrl) . '" class="clickable-approval-row' . ($isActionableByMe ? ' border-start border-primary border-3' : '') . '" style="cursor: pointer; ' . $rowBgStyle . '"' : '' ?>>
                                     <td class="ps-3">
                                         <input type="checkbox" class="approval-req-checkbox form-check-input"
                                             value="<?= $req['id'] ?>" <?= (!in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) || !$canUserApprove) ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
@@ -414,6 +595,13 @@
                                                 <?= htmlspecialchars($req['title']) ?>
                                             <?php endif; ?>
                                         </div>
+                                        <?php if (!empty($req['project_name'])): ?>
+                                            <div class="mt-1">
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle extra-small">
+                                                    <i class="fa-solid fa-building me-1"></i><?= htmlspecialchars($req['project_name']) ?>
+                                                </span>
+                                            </div>
+                                        <?php endif; ?>
                                         <span class="text-muted extra-small">Source Table:
                                             <code><?= htmlspecialchars($req['source_table']) ?></code></span>
                                     </td>
@@ -685,6 +873,52 @@
                 language: {
                     search: "_INPUT_",
                     searchPlaceholder: "Search approval requests..."
+                }
+            });
+
+            // Dynamically update top mini card counts when searching or filtering
+            approvalTable.on('search.dt draw.dt', function () {
+                const searchVal = approvalTable.search();
+                if (!searchVal || searchVal.trim() === '') {
+                    // Restore original counts
+                    $('.module-mini-card').each(function() {
+                        const origCount = parseInt($(this).attr('data-pending-count')) || 0;
+                        const $badge = $(this).find('.mod-badge-count');
+                        if (origCount > 0) {
+                            $badge.removeClass('bg-light text-muted border bg-primary text-white')
+                                  .addClass('bg-warning text-dark')
+                                  .text(origCount + ' Req');
+                        } else {
+                            $badge.removeClass('bg-warning text-dark bg-primary text-white')
+                                  .addClass('bg-light text-muted border')
+                                  .text('0');
+                        }
+                    });
+                } else {
+                    // Count matching rows per module
+                    const moduleCounts = {};
+                    approvalTable.rows({ search: 'applied' }).every(function () {
+                        const node = this.node();
+                        const srcTable = $(node).attr('data-source-table') || '';
+                        if (srcTable) {
+                            moduleCounts[srcTable] = (moduleCounts[srcTable] || 0) + 1;
+                        }
+                    });
+
+                    $('.module-mini-card').each(function() {
+                        const modKey = $(this).attr('data-mod-key');
+                        const count = moduleCounts[modKey] || 0;
+                        const $badge = $(this).find('.mod-badge-count');
+                        if (count > 0) {
+                            $badge.removeClass('bg-light text-muted border bg-warning text-dark')
+                                  .addClass('bg-primary text-white')
+                                  .text(count + ' found');
+                        } else {
+                            $badge.removeClass('bg-warning text-dark bg-primary text-white')
+                                  .addClass('bg-light text-muted border')
+                                  .text('0');
+                        }
+                    });
                 }
             });
         }

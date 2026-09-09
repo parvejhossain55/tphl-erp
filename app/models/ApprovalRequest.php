@@ -585,6 +585,27 @@ class ApprovalRequest extends Model
             return true;
         }
 
+        if ($sourceTable === 'project_other_costs') {
+            $pocStatus = ($status === 'approved') ? 'management_approved' : 'rejected';
+            $pocAppAmt = ($status === 'approved') ? ($approvedAmount !== null && $approvedAmount > 0 ? (float)$approvedAmount : (float)($request['request_amount'] ?? 0)) : null;
+            $stmtPoc = $this->db->prepare(
+                "UPDATE project_other_costs 
+                 SET status = ?, 
+                     management_apporved_by_id = ?, 
+                     management_apporved_at = NOW(), 
+                     approved_amount = COALESCE(?, approved_amount, request_amount), 
+                     management_apporved_note = ?,
+                     updated_at = NOW() 
+                 WHERE id = ?"
+            );
+            if ($stmtPoc) {
+                $stmtPoc->bind_param('sidsi', $pocStatus, $approvedBy, $pocAppAmt, $approvalNote, $sourceId);
+                $stmtPoc->execute();
+                $stmtPoc->close();
+            }
+            return true;
+        }
+
         if ($sourceTable === 'project_extra_assets') {
             $mgmtStatus = ($status === 'approved') ? 'approved' : 'rejected';
             $overallStatus = ($status === 'approved') ? 'approved' : 'rejected';
@@ -812,6 +833,400 @@ class ApprovalRequest extends Model
             'rejected_count' => (int) ($row['rejected_count'] ?? 0),
             'total_disbursed' => $totalDisbursed
         ];
+    }
+
+    /**
+     * Get Module-Wise Expense & Requisition Metrics (Contractor, Vendor, Fund Req, Labor, Procurement, etc.)
+     */
+    public function getModuleExpenseBreakdown($filters = [])
+    {
+        $this->syncMissingFundRequisitions();
+        $this->syncMissingOfficeProcurements();
+        $this->syncMissingLaborRequisitions();
+        $this->syncMissingProjectOtherCosts();
+        $this->syncMissingVendorPaymentRequests();
+        $this->syncMissingAdvanceSalaries();
+        $this->syncMissingCashoutRequests();
+
+        $moduleDefs = [
+            'contractor_bill_requests' => [
+                'key'         => 'contractor_bill_requests',
+                'name'        => 'Contractor Bills',
+                'dept'        => 'Construction',
+                'icon'        => 'fa-solid fa-hard-hat',
+                'badge_color' => 'warning',
+                'accent_hex'  => '#f59e0b',
+                'portal_url'  => 'contractor-bills',
+                'portal_name' => 'Contractor Bills'
+            ],
+            'vendor_payment_requests' => [
+                'key'         => 'vendor_payment_requests',
+                'name'        => 'Vendor Payments',
+                'dept'        => 'Procurement',
+                'icon'        => 'fa-solid fa-truck-ramp-box',
+                'badge_color' => 'primary',
+                'accent_hex'  => '#3b82f6',
+                'portal_url'  => 'vendor-payment-requests',
+                'portal_name' => 'Vendor Payments'
+            ],
+            'fund_requisitions' => [
+                'key'         => 'fund_requisitions',
+                'name'        => 'Fund Requisitions',
+                'dept'        => 'Accounts & Ops',
+                'icon'        => 'fa-solid fa-hand-holding-dollar',
+                'badge_color' => 'success',
+                'accent_hex'  => '#10b981',
+                'portal_url'  => 'fund-requisitions',
+                'portal_name' => 'Fund Requisitions'
+            ],
+            'con_labor_requisitions' => [
+                'key'         => 'con_labor_requisitions',
+                'name'        => 'SE Labor Bills',
+                'dept'        => 'Construction',
+                'icon'        => 'fa-solid fa-users-gear',
+                'badge_color' => 'info',
+                'accent_hex'  => '#06b6d4',
+                'portal_url'  => 'con-labor-requisitions',
+                'portal_name' => 'Labor Bills'
+            ],
+            'project_extra_assets' => [
+                'key'         => 'project_extra_assets',
+                'name'        => 'Office Procurement',
+                'dept'        => 'Procurement',
+                'icon'        => 'fa-solid fa-boxes-stacked',
+                'badge_color' => 'purple',
+                'accent_hex'  => '#8b5cf6',
+                'portal_url'  => 'office-procurement',
+                'portal_name' => 'Procurement'
+            ],
+            'project_other_costs' => [
+                'key'         => 'project_other_costs',
+                'name'        => 'Project Other Costs',
+                'dept'        => 'Construction',
+                'icon'        => 'fa-solid fa-receipt',
+                'badge_color' => 'warning',
+                'accent_hex'  => '#d97706',
+                'portal_url'  => 'project-other-costs',
+                'portal_name' => 'Other Costs'
+            ],
+            'cashout_requests' => [
+                'key'         => 'cashout_requests',
+                'name'        => 'Cashout Requests',
+                'dept'        => 'Accounts',
+                'icon'        => 'fa-solid fa-money-bill-transfer',
+                'badge_color' => 'danger',
+                'accent_hex'  => '#ef4444',
+                'portal_url'  => 'cashout-requests',
+                'portal_name' => 'Cashout'
+            ],
+            'payslips' => [
+                'key'         => 'payslips',
+                'name'        => 'Payslips & Salary',
+                'dept'        => 'HR & Accounts',
+                'icon'        => 'fa-solid fa-file-invoice-dollar',
+                'badge_color' => 'dark',
+                'accent_hex'  => '#374151',
+                'portal_url'  => 'payslip-generate',
+                'portal_name' => 'Payroll'
+            ],
+            'advance_salaries' => [
+                'key'         => 'advance_salaries',
+                'name'        => 'Advance Salary',
+                'dept'        => 'HR & Accounts',
+                'icon'        => 'fa-solid fa-wallet',
+                'badge_color' => 'indigo',
+                'accent_hex'  => '#6366f1',
+                'portal_url'  => 'advance-salaries',
+                'portal_name' => 'Advance Salary'
+            ],
+            'project_incentive_claims' => [
+                'key'         => 'project_incentive_claims',
+                'name'        => 'Sales Incentives',
+                'dept'        => 'Sales',
+                'icon'        => 'fa-solid fa-award',
+                'badge_color' => 'secondary',
+                'accent_hex'  => '#eab308',
+                'portal_url'  => 'incentive-management',
+                'portal_name' => 'Incentives'
+            ],
+        ];
+
+        // 1. Grouped approval_requests stats
+        $sqlAR = "SELECT 
+                    CASE WHEN source_table = 'purchase_requests' THEN 'project_extra_assets' ELSE source_table END as mod_key,
+                    COUNT(*) AS total_requests,
+                    SUM(request_amount) AS total_amount,
+                    SUM(CASE WHEN status IN ('pending', 'partially_approved', '') THEN 1 ELSE 0 END) AS pending_count,
+                    SUM(CASE WHEN status IN ('pending', 'partially_approved', '') THEN IFNULL(request_amount, 0) ELSE 0 END) AS pending_amount,
+                    SUM(CASE WHEN status IN ('approved', 'paid') THEN 1 ELSE 0 END) AS approved_count,
+                    SUM(CASE WHEN status IN ('approved', 'paid') THEN IFNULL(approved_amount, request_amount) ELSE 0 END) AS approved_amount,
+                    SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected_count
+                FROM approval_requests
+                GROUP BY mod_key";
+
+        $resAR = $this->db->query($sqlAR);
+        $arData = [];
+        if ($resAR) {
+            while ($r = $resAR->fetch_assoc()) {
+                $arData[$r['mod_key']] = $r;
+            }
+        }
+
+        // 2. Paid and Due calculations across source tables
+        $paidData = [];
+        $dueData = [];
+
+        // Vendor Payments
+        $vRes = $this->db->query("SELECT 
+            SUM(CASE WHEN status IN ('Paid', 'Fully_Paid') THEN approved_amount WHEN status = 'Partially_Paid' THEN (approved_amount - due_amount) ELSE 0 END) as paid,
+            SUM(CASE WHEN status IN ('Approved', 'QC Approved', 'Partially_Paid') THEN due_amount ELSE 0 END) as due
+        FROM vendor_payment_requests");
+        if ($vRes && $row = $vRes->fetch_assoc()) {
+            $paidData['vendor_payment_requests'] = (float)($row['paid'] ?? 0);
+            $dueData['vendor_payment_requests'] = (float)($row['due'] ?? 0);
+        }
+
+        // Contractor Bills
+        $cRes = $this->db->query("SELECT 
+            SUM(CASE WHEN status IN ('paid', 'fully_paid') THEN COALESCE(approved_amount, bill_amount) WHEN status = 'partially_paid' THEN (COALESCE(approved_amount, bill_amount) - due_amount) ELSE 0 END) as paid,
+            SUM(CASE WHEN status = 'approved' THEN COALESCE(approved_amount, bill_amount) WHEN status = 'partially_paid' THEN due_amount ELSE 0 END) as due
+        FROM contractor_bill_requests");
+        if ($cRes && $row = $cRes->fetch_assoc()) {
+            $paidData['contractor_bill_requests'] = (float)($row['paid'] ?? 0);
+            $dueData['contractor_bill_requests'] = (float)($row['due'] ?? 0);
+        }
+
+        // Fund Requisitions
+        $frRes = $this->db->query("SELECT 
+            SUM(paid_amount) as paid,
+            SUM(CASE WHEN status IN ('approved', 'partially_approved') THEN (amount - IFNULL(paid_amount, 0)) ELSE 0 END) as due
+        FROM fund_requisitions");
+        if ($frRes && $row = $frRes->fetch_assoc()) {
+            $paidData['fund_requisitions'] = (float)($row['paid'] ?? 0);
+            $dueData['fund_requisitions'] = (float)($row['due'] ?? 0);
+        }
+
+        // Labor Requisitions
+        $lrRes = $this->db->query("SELECT 
+            SUM(total_paid) as paid,
+            SUM(CASE WHEN status IN ('management_approved', 'partially_paid') THEN (COALESCE(approved_amount, total_amount) - IFNULL(total_paid, 0)) ELSE 0 END) as due
+        FROM con_labor_requisitions");
+        if ($lrRes && $row = $lrRes->fetch_assoc()) {
+            $paidData['con_labor_requisitions'] = (float)($row['paid'] ?? 0);
+            $dueData['con_labor_requisitions'] = (float)($row['due'] ?? 0);
+        }
+
+        // Project Extra Assets (Office Procurement)
+        $peaRes = $this->db->query("SELECT 
+            SUM(CASE WHEN payment_status = 'paid' THEN IFNULL(paid_amount, total_price) ELSE 0 END) as paid,
+            SUM(CASE WHEN mgmt_status = 'approved' AND payment_status != 'paid' THEN total_price ELSE 0 END) as due
+        FROM project_extra_assets");
+        if ($peaRes && $row = $peaRes->fetch_assoc()) {
+            $paidData['project_extra_assets'] = (float)($row['paid'] ?? 0);
+            $dueData['project_extra_assets'] = (float)($row['due'] ?? 0);
+        }
+
+        // Project Other Costs
+        $pocRes = $this->db->query("SELECT 
+            SUM(CASE WHEN status = 'paid' THEN COALESCE(payment_amount, approved_amount, request_amount) ELSE 0 END) as paid,
+            SUM(CASE WHEN status = 'management_approved' THEN COALESCE(approved_amount, request_amount) ELSE 0 END) as due
+        FROM project_other_costs");
+        if ($pocRes && $row = $pocRes->fetch_assoc()) {
+            $paidData['project_other_costs'] = (float)($row['paid'] ?? 0);
+            $dueData['project_other_costs'] = (float)($row['due'] ?? 0);
+        }
+
+        // Cashout Requests
+        $coRes = $this->db->query("SELECT 
+            SUM(CASE WHEN status = 'fully_paid' THEN COALESCE(approved_amount, amount) WHEN status = 'partially_paid' THEN (COALESCE(approved_amount, amount) - due_amount) ELSE 0 END) as paid,
+            SUM(CASE WHEN status IN ('approved', 'partially_paid') THEN due_amount ELSE 0 END) as due
+        FROM cashout_requests");
+        if ($coRes && $row = $coRes->fetch_assoc()) {
+            $paidData['cashout_requests'] = (float)($row['paid'] ?? 0);
+            $dueData['cashout_requests'] = (float)($row['due'] ?? 0);
+        }
+
+        // Payslips
+        $psRes = $this->db->query("SELECT 
+            SUM(CASE WHEN status = 'paid' OR payment_status = 'paid' THEN net_salary ELSE 0 END) as paid,
+            SUM(CASE WHEN status = 'approved' AND (payment_status IS NULL OR payment_status != 'paid') THEN net_salary ELSE 0 END) as due
+        FROM payslips");
+        if ($psRes && $row = $psRes->fetch_assoc()) {
+            $paidData['payslips'] = (float)($row['paid'] ?? 0);
+            $dueData['payslips'] = (float)($row['due'] ?? 0);
+        }
+
+        // Advance Salaries
+        $asRes = $this->db->query("SELECT 
+            SUM(CASE WHEN status IN ('paid', 'deducted') THEN amount ELSE 0 END) as paid,
+            SUM(CASE WHEN status = 'approved' THEN amount ELSE 0 END) as due
+        FROM advance_salaries");
+        if ($asRes && $row = $asRes->fetch_assoc()) {
+            $paidData['advance_salaries'] = (float)($row['paid'] ?? 0);
+            $dueData['advance_salaries'] = (float)($row['due'] ?? 0);
+        }
+
+        // Sales Incentive Claims
+        $picRes = $this->db->query("SELECT 
+            (SELECT IFNULL(SUM(payment_amount), 0) FROM project_incentive_payments) as paid,
+            (SELECT IFNULL(SUM(incentive_amount), 0) FROM project_incentive_claims WHERE claim_status = 'approved') as due");
+        if ($picRes && $row = $picRes->fetch_assoc()) {
+            $paidData['project_incentive_claims'] = (float)($row['paid'] ?? 0);
+            $dueData['project_incentive_claims'] = (float)($row['due'] ?? 0);
+        }
+
+        // 3. Dynamic Pending Calculations: Actionable for Current User vs All Department Pending
+        $statusFilter = strtolower(trim($filters['status'] ?? ''));
+        $deptFilter = strtolower(trim($filters['department'] ?? ''));
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        $isFullManagement = in_array($userRoleId, [1, 3, 33], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+        $isRole20 = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
+        $isAccounts = in_array($userRoleId, [6, 30], true) || strpos($sessionRoleName, 'account') !== false;
+        $isHR = ($userRoleId === 4) || strpos($sessionRoleName, 'hr') !== false;
+        $isQC = in_array($userRoleId, [13, 24, 25], true) || strpos($sessionRoleName, 'qc') !== false || strpos($sessionRoleName, 'audit') !== false;
+        $isPurchase = in_array($userRoleId, [17, 23, 31], true) || strpos($sessionRoleName, 'purchase') !== false;
+        $isDeptHead = in_array($userRoleId, [8, 9, 10, 11, 12, 14, 15, 16, 18, 19], true) || strpos($sessionRoleName, 'head') !== false || strpos($sessionRoleName, 'manager') !== false;
+
+        $pSql = "SELECT 
+                    id,
+                    CASE WHEN source_table = 'purchase_requests' THEN 'project_extra_assets' ELSE source_table END as mod_key,
+                    source_table,
+                    request_amount,
+                    approve_role,
+                    status,
+                    department,
+                    requested_by
+                 FROM approval_requests
+                 WHERE status IN ('pending', 'partially_approved', '')";
+        $pRes = $this->db->query($pSql);
+        $myPendingData = [];
+        $allPendingData = [];
+
+        if ($pRes) {
+            while ($pRow = $pRes->fetch_assoc()) {
+                $mKey = $pRow['mod_key'];
+                $srcTbl = $pRow['source_table'];
+                $amt = (float)($pRow['request_amount'] ?? 0);
+                $appRole = strtolower($pRow['approve_role'] ?? 'management');
+                if (empty($appRole)) $appRole = 'management';
+                $rowDept = strtolower($pRow['department'] ?? '');
+
+                if (!empty($deptFilter) && strpos($rowDept, $deptFilter) === false) {
+                    continue;
+                }
+
+                if (!isset($allPendingData[$mKey])) {
+                    $allPendingData[$mKey] = ['count' => 0, 'amount' => 0.0];
+                }
+                $allPendingData[$mKey]['count']++;
+                $allPendingData[$mKey]['amount'] += $amt;
+
+                // Actionable pending check for current user
+                $isActionable = false;
+                if ($isAccounts) {
+                    if ($appRole === 'accounts') $isActionable = true;
+                } elseif ($isRole20) {
+                    if ($srcTbl === 'project_other_costs') {
+                        $isActionable = true;
+                    } elseif (in_array($appRole, ['management', '']) && $amt <= 100000.01) {
+                        $isActionable = true;
+                    }
+                } elseif ($isFullManagement) {
+                    if ($srcTbl === 'project_other_costs') {
+                        $isActionable = true;
+                    } elseif (in_array($appRole, ['management', ''])) {
+                        $isActionable = true;
+                    }
+                } elseif ($isQC) {
+                    if (in_array($appRole, ['qc', 'qc_head'])) $isActionable = true;
+                } elseif ($isPurchase) {
+                    if (in_array($appRole, ['purchase team leader', 'purchase', 'purchase_lead'])) $isActionable = true;
+                } elseif ($isHR) {
+                    if (in_array($appRole, ['hr', 'hr_head'])) $isActionable = true;
+                } elseif ($isDeptHead) {
+                    if ($appRole === 'dept_head' || $appRole === 'dept_head_' . $userId) $isActionable = true;
+                }
+
+                if ($isActionable) {
+                    if (!isset($myPendingData[$mKey])) {
+                        $myPendingData[$mKey] = ['count' => 0, 'amount' => 0.0];
+                    }
+                    $myPendingData[$mKey]['count']++;
+                    $myPendingData[$mKey]['amount'] += $amt;
+                }
+            }
+        }
+
+        // Combine into final list
+        $result = [];
+        foreach ($moduleDefs as $key => $meta) {
+            $ar = $arData[$key] ?? [];
+            $totalRequests = (int)($ar['total_requests'] ?? 0);
+            $totalAmount = (float)($ar['total_amount'] ?? 0);
+            $approvedCount = (int)($ar['approved_count'] ?? 0);
+            $approvedAmount = (float)($ar['approved_amount'] ?? 0);
+            $rejectedCount = (int)($ar['rejected_count'] ?? 0);
+            $paidAmount = (float)($paidData[$key] ?? 0);
+            $dueAmount = (float)($dueData[$key] ?? 0);
+
+            $myCount = (int)($myPendingData[$key]['count'] ?? 0);
+            $myAmount = (float)($myPendingData[$key]['amount'] ?? 0.0);
+            $allCount = (int)($allPendingData[$key]['count'] ?? 0);
+            $allAmount = (float)($allPendingData[$key]['amount'] ?? 0.0);
+
+            // Active display count & amount based on current status filter
+            if ($statusFilter === 'all_pending') {
+                $displayPendingCount = $allCount;
+                $displayPendingAmount = $allAmount;
+                $activeMode = 'all_pending';
+            } elseif (empty($statusFilter) || $statusFilter === 'pending' || $statusFilter === 'my_pending') {
+                $displayPendingCount = $myCount;
+                $displayPendingAmount = $myAmount;
+                $activeMode = 'my_pending';
+            } elseif ($statusFilter === 'approved') {
+                $displayPendingCount = $approvedCount;
+                $displayPendingAmount = $approvedAmount;
+                $activeMode = 'approved';
+            } elseif ($statusFilter === 'rejected') {
+                $displayPendingCount = $rejectedCount;
+                $displayPendingAmount = 0.0;
+                $activeMode = 'rejected';
+            } else {
+                $displayPendingCount = $allCount;
+                $displayPendingAmount = $allAmount;
+                $activeMode = 'all';
+            }
+
+            // Fallback calculation for due: if due is 0 but approved > paid, compute due
+            if ($dueAmount <= 0 && $approvedAmount > $paidAmount) {
+                $dueAmount = $approvedAmount - $paidAmount;
+            }
+
+            $result[$key] = array_merge($meta, [
+                'total_requests'    => $totalRequests,
+                'total_amount'      => $totalAmount,
+                'pending_count'     => $displayPendingCount,
+                'pending_amount'    => $displayPendingAmount,
+                'my_pending_count'  => $myCount,
+                'my_pending_amount' => $myAmount,
+                'all_pending_count' => $allCount,
+                'all_pending_amount'=> $allAmount,
+                'active_mode'       => $activeMode,
+                'approved_count'    => $approvedCount,
+                'approved_amount'   => $approvedAmount,
+                'paid_amount'       => $paidAmount,
+                'due_amount'        => $dueAmount,
+            ]);
+        }
+
+        return $result;
     }
 
     public function getAllApprovalHistory($filters = [])
@@ -1080,12 +1495,14 @@ class ApprovalRequest extends Model
                 }
             } else if ($sourceTable === 'project_other_costs') {
                 $pocSql = "SELECT poc.*, 
+                                  p.name as project_name,
                                   e.reporting_user_id, 
                                   u_dh.full_name as dh_boss_name,
                                   u_mgmt.full_name as mgmt_approver_name,
                                   des_mgmt.name as mgmt_approver_des,
                                   u_payer.full_name as payer_name
                            FROM project_other_costs poc 
+                           LEFT JOIN projects p ON p.id = poc.project_id
                            LEFT JOIN employees e ON e.user_id = poc.created_by_id AND e.deleted_at IS NULL
                            LEFT JOIN users u_dh ON u_dh.id = e.reporting_user_id
                            LEFT JOIN users u_mgmt ON u_mgmt.id = poc.management_apporved_by_id
@@ -1100,6 +1517,10 @@ class ApprovalRequest extends Model
                     $pocRow = $pocStmt->get_result()->fetch_assoc();
                     $pocStmt->close();
                     if ($pocRow) {
+                        $row['project_name'] = $pocRow['project_name'] ?? null;
+                        if (!empty($pocRow['project_name']) && strpos($row['title'], $pocRow['project_name']) === false) {
+                            $row['title'] .= ' | ' . $pocRow['project_name'];
+                        }
                         if (!empty($pocRow['mgmt_approver_name'])) {
                             $row['approver_name'] = $pocRow['mgmt_approver_name'];
                             $row['approver_designation'] = $pocRow['mgmt_approver_des'] ?? 'Management';
@@ -1450,16 +1871,19 @@ class ApprovalRequest extends Model
                 return false;
             }
 
-            // 2. Role 20 (DGM / Operation Head): Only items pending Management approval AND amount <= 100,000!
-            // Items waiting on QC, Dept Head, or >100k are NOT actionable for Role 20!
+            // 2. Role 20 (DGM / Operation Head):
             if ($isRole20) {
+                if (($item['source_table'] ?? '') === 'project_other_costs' && $isPending) {
+                    return true;
+                }
                 return ($isPending && in_array($approveRole, ['management', '']) && $amount <= 100000.01);
             }
 
             // 3. Full Management (Super Admin 3, Admin 1, Chief Officer 33):
-            // Only items pending Management approval!
-            // Items waiting on QC or Dept Head are NOT actionable for Management!
             if ($isFullManagement) {
+                if (($item['source_table'] ?? '') === 'project_other_costs' && $isPending) {
+                    return true;
+                }
                 return ($isPending && in_array($approveRole, ['management', '']));
             }
 
@@ -1839,7 +2263,8 @@ class ApprovalRequest extends Model
                 $deptName    = 'Construction';
                 $requestType = !empty($row['rcost_type']) ? $row['rcost_type'] : 'electricity_bill';
                 $purpose     = !empty($row['purpose']) ? $row['purpose'] : ($row['project_name'] ?? 'Other Cost');
-                $title       = "Project Other Cost: " . (mb_strlen($purpose) > 80 ? mb_substr($purpose, 0, 80) . '...' : $purpose);
+                $projPart    = !empty($row['project_name']) ? ' | ' . $row['project_name'] : '';
+                $title       = "Project Other Cost: " . (mb_strlen($purpose) > 70 ? mb_substr($purpose, 0, 70) . '...' : $purpose) . $projPart;
                 $amount      = (float) $row['request_amount'];
                 $requestedBy = (int) $row['created_by_id'];
 

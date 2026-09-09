@@ -191,7 +191,21 @@ class TrackerCalculationService
                 COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0), 0) as team_id,
                 COALESCE(t.name, 'General Team') as team_name,
                 e.reporting_user_id,
-                COALESCE(st.sales_role, r.name, 'Sales Exec') as level_designation,
+                r.name as role_name,
+                u.role_id,
+                st.sales_role,
+                CASE 
+                    WHEN LOWER(COALESCE(r.name, '')) LIKE '%manager%' OR LOWER(COALESCE(r.name, '')) LIKE '%head%' OR u.role_id IN (5, 9) THEN
+                        CASE 
+                            WHEN st.sales_role IS NOT NULL AND st.sales_role != '' THEN CONCAT('Sales Team Leader (', st.sales_role, ')')
+                            ELSE 'Sales Team Leader'
+                        END
+                    ELSE
+                        CASE 
+                            WHEN st.sales_role IS NOT NULL AND st.sales_role != '' THEN CONCAT('Sales Executive (', st.sales_role, ')')
+                            ELSE 'Sales Executive'
+                        END
+                END as level_designation,
                 COALESCE(st.booking_target, 0) as unit_target,
                 COALESCE(st.booking_value_target, 0) as volume_target,
                 COALESCE(st.site_visit_target, 0) as visit_target,
@@ -224,7 +238,21 @@ class TrackerCalculationService
                     e.team_id,
                     'Team ' as team_name,
                     e.reporting_user_id,
-                    st.sales_role as level_designation,
+                    r.name as role_name,
+                    u.role_id,
+                    st.sales_role,
+                    CASE 
+                        WHEN LOWER(COALESCE(r.name, '')) LIKE '%manager%' OR LOWER(COALESCE(r.name, '')) LIKE '%head%' OR u.role_id IN (5, 9) THEN
+                            CASE 
+                                WHEN st.sales_role IS NOT NULL AND st.sales_role != '' THEN CONCAT('Sales Team Leader (', st.sales_role, ')')
+                                ELSE 'Sales Team Leader'
+                            END
+                        ELSE
+                            CASE 
+                                WHEN st.sales_role IS NOT NULL AND st.sales_role != '' THEN CONCAT('Sales Executive (', st.sales_role, ')')
+                                ELSE 'Sales Executive'
+                            END
+                    END as level_designation,
                     COALESCE(st.booking_target, 0) as unit_target,
                     COALESCE(st.booking_value_target, 0) as volume_target,
                     COALESCE(st.site_visit_target, 0) as visit_target,
@@ -233,6 +261,7 @@ class TrackerCalculationService
                     st.category_ids
                 FROM employees e
                 INNER JOIN users u ON e.user_id = u.id
+                LEFT JOIN roles r ON u.role_id = r.id
                 LEFT JOIN sales_targets st ON e.user_id = st.sales_user_id AND st.month = '$monthString'
                 WHERE $empCondition
             ";
@@ -256,12 +285,21 @@ class TrackerCalculationService
                     $categoryProjectsCache
                 );
 
+                // Format level designation with Sales Team Leader / Sales Executive and (KAM)/(KAE)
+                $isLeader = (
+                    (!empty($row['role_name']) && (stripos($row['role_name'], 'manager') !== false || stripos($row['role_name'], 'head') !== false || stripos($row['role_name'], 'lead') !== false))
+                    || (!empty($row['role_id']) && in_array((int)$row['role_id'], [5, 9]))
+                );
+                $baseRole = $isLeader ? 'Sales Team Leader' : 'Sales Executive';
+                $targetRole = !empty($row['sales_role']) ? strtoupper(trim($row['sales_role'])) : '';
+                $levelDesignation = !empty($targetRole) ? "{$baseRole} ({$targetRole})" : $baseRole;
+
                 $employees[$row['user_id']] = [
                     'user_id' => (int)$row['user_id'],
                     'member_name' => $row['member_name'],
                     'team_name' => $row['team_name'] ?: 'General Team',
                     'team_id' => !empty($row['team_id']) ? (int)$row['team_id'] : 0,
-                    'level_designation' => $row['level_designation'] ?: 'Sales Exec',
+                    'level_designation' => $levelDesignation,
                     'unit_target' => (int)$row['unit_target'],
                     'volume_target' => (float)$row['volume_target'],
                     'visit_target' => (int)$row['visit_target'],
@@ -869,7 +907,21 @@ class TrackerCalculationService
                 e.user_id, e.full_name as member_name, 
                 COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0), 0) as team_id,
                 COALESCE(t.name, 'General Team') as team_name,
-                COALESCE(st.sales_role, r.name, 'Sales Exec') as level_designation,
+                r.name as role_name,
+                u.role_id,
+                st.sales_role,
+                CASE 
+                    WHEN LOWER(COALESCE(r.name, '')) LIKE '%manager%' OR LOWER(COALESCE(r.name, '')) LIKE '%head%' OR u.role_id IN (5, 9) THEN
+                        CASE 
+                            WHEN st.sales_role IS NOT NULL AND st.sales_role != '' THEN CONCAT('Sales Team Leader (', st.sales_role, ')')
+                            ELSE 'Sales Team Leader'
+                        END
+                    ELSE
+                        CASE 
+                            WHEN st.sales_role IS NOT NULL AND st.sales_role != '' THEN CONCAT('Sales Executive (', st.sales_role, ')')
+                            ELSE 'Sales Executive'
+                        END
+                END as level_designation,
                 COALESCE(st.booking_target, 0) as unit_target,
                 COALESCE(st.booking_value_target, 0) as volume_target,
                 COALESCE(st.site_visit_target, 0) as visit_target,
@@ -897,7 +949,21 @@ class TrackerCalculationService
                 SELECT 
                     e.user_id, e.full_name as member_name, e.team_id,
                     'Team ' as team_name,
-                    st.sales_role as level_designation,
+                    r.name as role_name,
+                    u.role_id,
+                    st.sales_role,
+                    CASE 
+                        WHEN LOWER(COALESCE(r.name, '')) LIKE '%manager%' OR LOWER(COALESCE(r.name, '')) LIKE '%head%' OR u.role_id IN (5, 9) THEN
+                            CASE 
+                                WHEN st.sales_role IS NOT NULL AND st.sales_role != '' THEN CONCAT('Sales Team Leader (', st.sales_role, ')')
+                                ELSE 'Sales Team Leader'
+                            END
+                        ELSE
+                            CASE 
+                                WHEN st.sales_role IS NOT NULL AND st.sales_role != '' THEN CONCAT('Sales Executive (', st.sales_role, ')')
+                                ELSE 'Sales Executive'
+                            END
+                    END as level_designation,
                     COALESCE(st.booking_target, 0) as unit_target,
                     COALESCE(st.booking_value_target, 0) as volume_target,
                     COALESCE(st.site_visit_target, 0) as visit_target,
@@ -906,6 +972,7 @@ class TrackerCalculationService
                     st.category_ids
                 FROM employees e
                 INNER JOIN users u ON e.user_id = u.id
+                LEFT JOIN roles r ON u.role_id = r.id
                 LEFT JOIN sales_targets st ON e.user_id = st.sales_user_id AND st.month = '$monthString'
                 WHERE $empCondition
             ";
@@ -929,12 +996,21 @@ class TrackerCalculationService
                     $categoryProjectsCache
                 );
 
+                // Format level designation consistently
+                $isLeader = (
+                    (!empty($row['role_name']) && (stripos($row['role_name'], 'manager') !== false || stripos($row['role_name'], 'head') !== false || stripos($row['role_name'], 'lead') !== false))
+                    || (!empty($row['role_id']) && in_array((int)$row['role_id'], [5, 9]))
+                );
+                $baseRole = $isLeader ? 'Sales Team Leader' : 'Sales Executive';
+                $targetRole = !empty($row['sales_role']) ? strtoupper(trim($row['sales_role'])) : '';
+                $levelDesignation = !empty($targetRole) ? "{$baseRole} ({$targetRole})" : $baseRole;
+
                 $employees[$row['user_id']] = [
                     'user_id' => (int)$row['user_id'],
                     'member_name' => $row['member_name'],
                     'team_name' => $row['team_name'] ?: 'General Team',
                     'team_id' => !empty($row['team_id']) ? (int)$row['team_id'] : 0,
-                    'level_designation' => $row['level_designation'] ?: 'Sales Exec',
+                    'level_designation' => $levelDesignation,
                     'unit_target' => (int)$row['unit_target'],
                     'volume_target' => (float)$row['volume_target'],
                     'visit_target' => (int)$row['visit_target'],

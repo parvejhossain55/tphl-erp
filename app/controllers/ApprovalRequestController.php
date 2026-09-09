@@ -84,12 +84,14 @@ class ApprovalRequestController extends Controller
         }
 
         $metrics = $this->approvalModel->getApprovalDashboardMetrics();
+        $moduleMetrics = $this->approvalModel->getModuleExpenseBreakdown($filters);
         $history = $this->approvalModel->getAllApprovalHistory($filters);
 
         $this->view("approvals/all-approval-requests", [
             "current_route"   => "all-approval-requests",
             "page_title"      => "All System Approval Requests & Payout Tracking",
             "companyMetrics"  => $metrics,
+            "moduleMetrics"   => $moduleMetrics,
             "approvalHistory" => $history,
             "departmentsList" => $departmentsList,
             "filters"         => $filters
@@ -130,12 +132,13 @@ class ApprovalRequestController extends Controller
         foreach ($requestIds as $id) {
             try {
                 $req = $this->approvalModel->find($id);
+                $sourceTable = $req['source_table'] ?? '';
                 if ($isSiteOperator && !$isManagement) {
-                    if (($req['request_amount'] ?? 0) > 100000) {
+                    if (($req['request_amount'] ?? 0) > 100000 && $sourceTable !== 'project_other_costs') {
                         $failedCount++;
-                        continue; // Site operator cannot approve amounts > 100000
+                        continue; // Site operator cannot approve amounts > 100000 (except other costs which they manage)
                     }
-                } elseif ($req && ($req['approve_role'] ?? 'management') === 'management' && !$isManagement) {
+                } elseif ($req && ($req['approve_role'] ?? 'management') === 'management' && !$isManagement && !$isSiteOperator) {
                     $failedCount++;
                     continue; // Accounts/non-management users cannot approve Management requests
                 }

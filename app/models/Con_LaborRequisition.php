@@ -395,21 +395,41 @@ class Con_LaborRequisition extends Model
             $paidAmt        = (float)$data['paid_amount'];
             $paidBy         = (int)$data['paid_by'];
 
-            // 2. Insert into payment log
-            $stmt = $this->db->prepare(
-                "INSERT INTO con_labor_payment_logs
-                 (requisition_id, amount, paid_by, payment_date, payment_method,
-                  reference, note, proof_image)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-            );
-            if (!$stmt) {
-                throw new \Exception("Prepare failed for payment log: " . $this->db->error);
+            // 2. Insert into payment log (check if proof_image column exists in table)
+            $colCheck = $this->db->query("SHOW COLUMNS FROM con_labor_payment_logs LIKE 'proof_image'");
+            $hasProofCol = ($colCheck && $colCheck->num_rows > 0);
+
+            if ($hasProofCol) {
+                $stmt = $this->db->prepare(
+                    "INSERT INTO con_labor_payment_logs
+                     (requisition_id, amount, paid_by, payment_date, payment_method,
+                      reference, note, proof_image)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                );
+                if (!$stmt) {
+                    throw new \Exception("Prepare failed for payment log: " . $this->db->error);
+                }
+                $stmt->bind_param('idisssss',
+                    $id, $paidAmt, $paidBy,
+                    $data['payment_date'], $data['payment_method'],
+                    $data['payment_reference'], $data['payment_note'], $proofImage
+                );
+            } else {
+                $stmt = $this->db->prepare(
+                    "INSERT INTO con_labor_payment_logs
+                     (requisition_id, amount, paid_by, payment_date, payment_method,
+                      reference, note)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)"
+                );
+                if (!$stmt) {
+                    throw new \Exception("Prepare failed for payment log: " . $this->db->error);
+                }
+                $stmt->bind_param('idissss',
+                    $id, $paidAmt, $paidBy,
+                    $data['payment_date'], $data['payment_method'],
+                    $data['payment_reference'], $data['payment_note']
+                );
             }
-            $stmt->bind_param('idisssss',
-                $id, $paidAmt, $paidBy,
-                $data['payment_date'], $data['payment_method'],
-                $data['payment_reference'], $data['payment_note'], $proofImage
-            );
             $stmt->execute();
 
             // 3. Update main requisition

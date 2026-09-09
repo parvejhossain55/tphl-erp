@@ -42,9 +42,9 @@ class ProjectOtherCostController extends Controller
         $userRole = $roleId;
         
         // Allowed roles to see all under_construction projects (including Employee role 2):
-        // 1(Admin), 2(Employee), 3(Management), 33(Chief Officer), 17(Purchase Head), 22(PM Head), 23(Purchase Exec), 31(Sr Purchase Exec), 
+        // 1(Admin), 2(Employee), 3(Management), 20(Operation Head), 33(Chief Officer), 17(Purchase Head), 22(PM Head), 23(Purchase Exec), 31(Sr Purchase Exec), 
         // 6(Accounts), 30(Accounts Head), 24(QC Head), 25(QC Exec), 32(Admin Operation)
-        if (in_array($userRole, [1, 2, 3, 33, 17, 22, 23, 31, 6, 30, 24, 25, 32])) {
+        if (in_array($userRole, [1, 2, 3, 20, 33, 17, 22, 23, 31, 6, 30, 24, 25, 32])) {
             $pResult  = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL AND (under_construction = 1 OR is_common = 1) ORDER BY name ASC");
             if (!$pResult || $pResult->num_rows === 0) {
                 $pResult = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
@@ -96,7 +96,7 @@ class ProjectOtherCostController extends Controller
         $userId = $_SESSION['user']['id'];
         $userRole = (int)$_SESSION['user']['role_id'];
         
-        if (in_array($userRole, [1, 2, 3, 33, 17, 22, 23, 31, 6, 30, 24, 25, 32])) {
+        if (in_array($userRole, [1, 2, 3, 20, 33, 17, 22, 23, 31, 6, 30, 24, 25, 32])) {
             $pResult  = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL AND (under_construction = 1 OR is_common = 1) ORDER BY name ASC");
             if (!$pResult || $pResult->num_rows === 0) {
                 $pResult = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
@@ -364,9 +364,9 @@ class ProjectOtherCostController extends Controller
 
         $check = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'project_other_costs' AND source_id = $reqId");
         
-        $deptName = 'construction';
-        $requestType = $row['rcost_type'];
-        $title = "Project Other Cost: " . (mb_strlen($row['purpose']) > 80 ? mb_substr($row['purpose'], 0, 80) . '...' : $row['purpose']);
+        $purpose = $row['purpose'] ?? 'Other Cost';
+        $projPart = !empty($row['project_name']) ? ' | ' . $row['project_name'] : '';
+        $title = "Project Other Cost: " . (mb_strlen($purpose) > 70 ? mb_substr($purpose, 0, 70) . '...' : $purpose) . $projPart;
         $amount = (float)$row['request_amount'];
         
         $approvedAmount = !empty($row['approved_amount']) ? (float)$row['approved_amount'] : null;
