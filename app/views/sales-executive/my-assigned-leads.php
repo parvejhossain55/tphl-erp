@@ -649,7 +649,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                 <tr id="lead-<?= $lead['id'] ?>" data-id="<?= $lead['id'] ?>" data-is-duplicate="<?= $isDup ? '1' : '0' ?>">
                                     <td>
                                         <input type="checkbox" class="me-2 selectedId" data-id="<?= $lead['id'] ?>">
-                                        <?= $key + 1 ?>
+                                        <?= (($currentPage - 1) * (($limit ?? 25) === -1 ? 0 : ($limit ?? 25))) + $key + 1 ?>
                                     </td>
                                     <?php
                                     $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
@@ -847,7 +847,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                 
                 <?php if (isset($totalPages) && $totalPages > 1): ?>
                 <div class="d-flex justify-content-end mt-3 mb-2">
-                    <?= paginateLinksSecondary($base_url . "/my-all-assigned-leads", $currentPage, $totalPages); ?>
+                    <?= paginateLinksSecondary($paginationRoute ?? ($base_url . "/my-all-assigned-leads"), $currentPage, $totalPages); ?>
                 </div>
                 <?php endif; ?>
             </div>
@@ -1135,7 +1135,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 
         <?php if (isset($totalPages) && $totalPages > 1): ?>
         <div class="d-flex justify-content-center mt-3 mb-2">
-            <?= paginateLinksSecondary($base_url . "/my-all-assigned-leads", $currentPage, $totalPages); ?>
+            <?= paginateLinksSecondary($paginationRoute ?? ($base_url . "/my-all-assigned-leads"), $currentPage, $totalPages); ?>
         </div>
         <?php endif; ?>
 

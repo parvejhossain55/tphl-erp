@@ -606,6 +606,12 @@ class UserDashboardController extends Controller
         $totalTableLeads = $this->leadModel->getAllMyLeadsCount($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours);
         $totalPages = ceil($totalTableLeads / $sqlLimit);
 
+        // Build pagination route query string (excluding 'page' and routing 'url')
+        $queryArr = $_GET;
+        unset($queryArr['page'], $queryArr['url']);
+        $queryString = http_build_query($queryArr);
+        $paginationRoute = $GLOBALS['base_url'] . '/my-all-assigned-leads' . ($queryString ? '?' . $queryString : '');
+
         // Fetch assigned leads for the user (PAGINATED)
         $myAssignedClients = $this->leadModel
             ->getAllMyLeads($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $sqlLimit, $offset);
@@ -846,6 +852,7 @@ class UserDashboardController extends Controller
             'filterCard'          => $filterCard,
             'currentPage'         => $currentPage,
             'totalPages'          => $totalPages,
+            'paginationRoute'     => $paginationRoute,
             'limit'               => $limit,
             'page_script'         => "
                 $('#assignedLeadsTable').DataTable().destroy();
