@@ -345,7 +345,7 @@
             <!-- 7. Total EMI Due -->
             <div class="col-xl col-md-4 col-sm-6">
                 <div class="kpi-card">
-                    <div class="kpi-icon-wrapper">
+                    <div class="kpi-icon-wrapper" style="background: #fee2e2; color: #dc2626;">
                         <i class="fa-solid fa-triangle-exclamation"></i>
                     </div>
                     <div class="kpi-content">
