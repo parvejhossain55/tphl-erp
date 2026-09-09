@@ -484,4 +484,164 @@ class SalesActivityReportController extends Controller
         $dompdf->stream($filename, ["Attachment" => true]);
         exit;
     }
+
+    /**
+     * Dedicated Team Performance Action
+     */
+    public function teamPerformance()
+    {
+        $loggedInUser = $_SESSION['user'];
+
+        // Get filter inputs
+        $year     = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+        $month    = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
+        $dateFrom = !empty($_GET['date_from']) ? trim($_GET['date_from']) : null;
+        $dateTo   = !empty($_GET['date_to']) ? trim($_GET['date_to']) : null;
+
+        // Check if export requested
+        if (isset($_GET['export']) && strtolower(trim($_GET['export'])) === 'excel') {
+            $this->exportTeamPerformanceExcel($year, $month, $loggedInUser, $dateFrom, $dateTo);
+            return;
+        }
+
+        // Fetch Team Performance Data
+        $reportData = $this->trackerService->getTeamPerformanceReport($year, $month, $loggedInUser, $dateFrom, $dateTo);
+
+        $this->view('sales-activity-report/team-performance', [
+            'current_route' => 'team-performance',
+            'reportData'    => $reportData,
+            'teams'         => $reportData['teams'] ?? [],
+            'kpis'          => $reportData['kpis'] ?? [],
+            'period'        => $reportData['period'] ?? [],
+            'year'          => $year,
+            'month'         => $month,
+            'dateFrom'      => $dateFrom,
+            'dateTo'        => $dateTo,
+            'loggedInUser'  => $loggedInUser
+        ]);
+    }
+
+    /**
+     * Export Team Performance to Excel
+     */
+    public function exportTeamPerformanceExcel($year, $month, $loggedInUser, $dateFrom = null, $dateTo = null)
+    {
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        $reportData = $this->trackerService->getTeamPerformanceReport($year, $month, $loggedInUser, $dateFrom, $dateTo);
+        $teams = $reportData['teams'] ?? [];
+        $period = $reportData['period'] ?? [];
+
+        $periodText = !empty($period['start']) && !empty($period['end']) 
+            ? "{$period['start']} to {$period['end']}"
+            : "Month: {$month}, Year: {$year}";
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Company Title
+        $sheet->setCellValue('A1', 'THE PREMIUM HOMES LTD');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16)->getColor()->setRGB('166534');
+
+        $sheet->setCellValue('A2', 'Sales Department - Team Performance Summary Report');
+        $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(12);
+
+        $sheet->setCellValue('A3', 'Period: ' . $periodText . ' | Exported on: ' . date('d M Y, h:i A'));
+        $sheet->getStyle('A3')->getFont()->setItalic(true)->setSize(10)->getColor()->setRGB('555555');
+
+        $headers = [
+            'Rank',
+            'Team Name',
+            'Members',
+            'Assigned Leads',
+            'Total Calls',
+            'Contacted',
+            'Not Contacted',
+            'Contacted %',
+            'Visit Target',
+            'Visited Ach.',
+            'Visit Ach %',
+            'Unit Target',
+            'Units Booked',
+            'Unit Ach %',
+            'Volume Target (Tk)',
+            'Volume Achieved (Tk)',
+            'Volume Ach %',
+            'Performance Score'
+        ];
+
+        $headerRow = 5;
+        $totalCols = count($headers);
+        for ($i = 0; $i < $totalCols; $i++) {
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
+            $sheet->setCellValue($colLetter . $headerRow, $headers[$i]);
+        }
+
+        $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
+        $headerRange = 'A5:' . $lastColLetter . '5';
+        $sheet->getStyle($headerRange)->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 10],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '16A34A']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+        ]);
+        $sheet->getRowDimension(5)->setRowHeight(26);
+
+        $currentRow = 6;
+        foreach ($teams as $t) {
+            $rowVals = [
+                '#' . ($t['rank'] ?? '-'),
+                $t['team_name'] ?? '',
+                $t['member_count'] ?? 0,
+                $t['total_leads'] ?? 0,
+                $t['total_follow_up_calls'] ?? 0,
+                $t['total_contacted'] ?? 0,
+                $t['total_not_contacted'] ?? 0,
+                ($t['contacted_pct'] ?? 0) . '%',
+                $t['visit_target'] ?? 0,
+                $t['visited'] ?? 0,
+                ($t['visit_ach_pct'] ?? 0) . '%',
+                $t['unit_target'] ?? 0,
+                $t['units_sold'] ?? 0,
+                ($t['unit_ach_pct'] ?? 0) . '%',
+                number_format((float)($t['volume_target'] ?? 0), 2),
+                number_format((float)($t['total_volume_achieved'] ?? 0), 2),
+                ($t['volume_ach_pct'] ?? 0) . '%',
+                number_format((float)($t['performance_score'] ?? 0), 2)
+            ];
+
+            $colIdx = 1;
+            foreach ($rowVals as $val) {
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
+                $sheet->setCellValue($colLetter . $currentRow, $val);
+                $colIdx++;
+            }
+
+            if ($currentRow % 2 == 0) {
+                $rowRange = 'A' . $currentRow . ':' . $lastColLetter . $currentRow;
+                $sheet->getStyle($rowRange)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F0FDF4');
+            }
+            $currentRow++;
+        }
+
+        $lastDataRow = $currentRow - 1;
+        if (!empty($teams)) {
+            $fullTableRange = 'A5:' . $lastColLetter . $lastDataRow;
+            $sheet->getStyle($fullTableRange)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)->getColor()->setRGB('D9D9D9');
+        }
+
+        for ($c = 1; $c <= $totalCols; $c++) {
+            $colString = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c);
+            $sheet->getColumnDimension($colString)->setAutoSize(true);
+        }
+
+        $filename = "Team_Performance_Report_{$year}_{$month}_" . date('Ymd_His') . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
 }

@@ -31,6 +31,14 @@ class EmployeeTask extends Model
 
     public function getTasksByEmployeeAndMonth($employee_id, $month)
     {
+        if (empty($month) || $month === 'all') {
+            return $this->getTasksByEmployee($employee_id, ['year' => 'all', 'month' => 'all']);
+        }
+        return $this->getTasksByEmployee($employee_id, ['month' => $month]);
+    }
+
+    public function getTasksByEmployee($employee_id, array $filters = [])
+    {
         $ids = is_array($employee_id) ? array_filter($employee_id) : [$employee_id];
 
         if (!empty($ids)) {
@@ -56,17 +64,71 @@ class EmployeeTask extends Model
         }
 
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $sql = "SELECT * FROM employee_tasks 
-                WHERE employee_id IN ($placeholders) 
-                  AND DATE_FORMAT(work_date, '%Y-%m') = ?
-                ORDER BY work_date DESC, id DESC";
+        $sql = "SELECT * FROM employee_tasks WHERE employee_id IN ($placeholders)";
+        $types = str_repeat('s', count($ids));
+        $params = $ids;
+
+        // 1. Date Range filter
+        if (!empty($filters['date_from']) || !empty($filters['date_to'])) {
+            if (!empty($filters['date_from'])) {
+                $sql .= " AND work_date >= ?";
+                $types .= "s";
+                $params[] = $filters['date_from'];
+            }
+            if (!empty($filters['date_to'])) {
+                $sql .= " AND work_date <= ?";
+                $types .= "s";
+                $params[] = $filters['date_to'];
+            }
+        } else {
+            // 2. Month and Year filter
+            $month = $filters['month'] ?? null;
+            $year = $filters['year'] ?? null;
+
+            // Legacy 'YYYY-MM' format in month
+            if ($month && preg_match('/^\d{4}-\d{2}$/', $month)) {
+                $sql .= " AND DATE_FORMAT(work_date, '%Y-%m') = ?";
+                $types .= "s";
+                $params[] = $month;
+            } else {
+                $hasYear = !empty($year) && $year !== 'all';
+                $hasMonth = !empty($month) && $month !== 'all';
+
+                if ($hasYear && $hasMonth) {
+                    $ym = sprintf('%04d-%02d', (int)$year, (int)$month);
+                    $sql .= " AND DATE_FORMAT(work_date, '%Y-%m') = ?";
+                    $types .= "s";
+                    $params[] = $ym;
+                } elseif ($hasYear && !$hasMonth) {
+                    $sql .= " AND YEAR(work_date) = ?";
+                    $types .= "i";
+                    $params[] = (int)$year;
+                } elseif (!$hasYear && $hasMonth) {
+                    $sql .= " AND MONTH(work_date) = ?";
+                    $types .= "i";
+                    $params[] = (int)$month;
+                }
+                // If both are 'all' or empty, no date constraint is added (returns all tasks)
+            }
+        }
+
+        if (!empty($filters['status'])) {
+            $sql .= " AND LOWER(status) = ?";
+            $types .= "s";
+            $params[] = strtolower(trim($filters['status']));
+        }
+
+        $sql .= " ORDER BY work_date DESC, id DESC";
+
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
             return [];
         }
-        $types = str_repeat('s', count($ids)) . 's';
-        $params = array_merge($ids, [$month]);
-        $stmt->bind_param($types, ...$params);
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
         $stmt->execute();
         $result = $stmt->get_result();
         return $result->fetch_all(MYSQLI_ASSOC);
@@ -222,6 +284,159 @@ public function getAllEmployees() {
         $stmt->execute();
         $result = $stmt->get_result();
 
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get active employees with valid employee_id (excluding inactive, resigned, terminated)
+     */
+    public function getActiveEmployeesForFilter($department_id = null)
+    {
+        $sql = "SELECT e.id, e.full_name, e.employee_id, e.department_id, d.name AS department_name
+                FROM employees e
+                LEFT JOIN departments d ON e.department_id = d.id
+                WHERE e.deleted_at IS NULL
+                  AND (e.employee_status IS NULL OR LOWER(e.employee_status) NOT IN ('inactive', 'resigned', 'terminated'))
+                  AND e.employee_id IS NOT NULL 
+                  AND TRIM(e.employee_id) != ''";
+
+        $types = "";
+        $params = [];
+
+        if (!empty($department_id) && $department_id !== 'all') {
+            $sql .= " AND e.department_id = ?";
+            $types .= "i";
+            $params[] = (int)$department_id;
+        }
+
+        $sql .= " ORDER BY e.full_name ASC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get all active departments ordered alphabetically
+     */
+    public function getAllActiveDepartments()
+    {
+        $res = $this->db->query("SELECT id, name FROM departments ORDER BY name ASC");
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /**
+     * Get tasks for all employees matching the filter criteria
+     */
+    public function getAllEmployeesTasks(array $filters = [])
+    {
+        $sql = "SELECT 
+                    t.*,
+                    e.id AS emp_db_id,
+                    e.employee_id AS emp_code,
+                    e.full_name AS emp_name,
+                    d.id AS dept_id,
+                    d.name AS department_name,
+                    des.name AS designation_name
+                FROM employee_tasks t
+                JOIN employees e ON (t.employee_id = e.id OR (e.employee_id != '' AND t.employee_id = e.employee_id))
+                LEFT JOIN departments d ON e.department_id = d.id
+                LEFT JOIN designations des ON e.designation_id = des.id
+                WHERE e.deleted_at IS NULL";
+
+        $types = "";
+        $params = [];
+
+        // Exclude inactive employees if configured
+        $sql .= " AND (e.employee_status IS NULL OR LOWER(e.employee_status) NOT IN ('inactive', 'resigned', 'terminated'))";
+        $sql .= " AND e.employee_id IS NOT NULL AND TRIM(e.employee_id) != ''";
+
+        // Filter by Department
+        if (!empty($filters['department_id']) && $filters['department_id'] !== 'all') {
+            $sql .= " AND e.department_id = ?";
+            $types .= "i";
+            $params[] = (int)$filters['department_id'];
+        }
+
+        // Filter by Employee
+        if (!empty($filters['employee_id']) && $filters['employee_id'] !== 'all') {
+            $empVal = trim($filters['employee_id']);
+            $sql .= " AND (e.id = ? OR e.employee_id = ?)";
+            $types .= "ss";
+            $params[] = $empVal;
+            $params[] = $empVal;
+        }
+
+        // Filter by Date Range
+        if (!empty($filters['date_from']) || !empty($filters['date_to'])) {
+            if (!empty($filters['date_from'])) {
+                $sql .= " AND t.work_date >= ?";
+                $types .= "s";
+                $params[] = $filters['date_from'];
+            }
+            if (!empty($filters['date_to'])) {
+                $sql .= " AND t.work_date <= ?";
+                $types .= "s";
+                $params[] = $filters['date_to'];
+            }
+        } else {
+            // Month and Year filter
+            $month = $filters['month'] ?? null;
+            $year = $filters['year'] ?? null;
+
+            if ($month && preg_match('/^\d{4}-\d{2}$/', $month)) {
+                $sql .= " AND DATE_FORMAT(t.work_date, '%Y-%m') = ?";
+                $types .= "s";
+                $params[] = $month;
+            } else {
+                $hasYear = !empty($year) && $year !== 'all';
+                $hasMonth = !empty($month) && $month !== 'all';
+
+                if ($hasYear && $hasMonth) {
+                    $ym = sprintf('%04d-%02d', (int)$year, (int)$month);
+                    $sql .= " AND DATE_FORMAT(t.work_date, '%Y-%m') = ?";
+                    $types .= "s";
+                    $params[] = $ym;
+                } elseif ($hasYear && !$hasMonth) {
+                    $sql .= " AND YEAR(t.work_date) = ?";
+                    $types .= "i";
+                    $params[] = (int)$year;
+                } elseif (!$hasYear && $hasMonth) {
+                    $sql .= " AND MONTH(t.work_date) = ?";
+                    $types .= "i";
+                    $params[] = (int)$month;
+                }
+            }
+        }
+
+        if (!empty($filters['status'])) {
+            $sql .= " AND LOWER(t.status) = ?";
+            $types .= "s";
+            $params[] = strtolower(trim($filters['status']));
+        }
+
+        $sql .= " ORDER BY t.work_date DESC, t.id DESC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
         return $result->fetch_all(MYSQLI_ASSOC);
     }
 }

@@ -10,10 +10,19 @@ class TrackerCalculationService
     }
 
     /**
-     * Determine the exact date range for a given month/year (26th of previous month to 25th of current month)
+     * Determine the date range for a given month/year or custom range
+     * Default: 26th of previous month to 25th of current month
      */
-    public function getDateRange($year, $month)
+    public function getDateRange($year, $month, $customStart = null, $customEnd = null)
     {
+        if (!empty($customStart) && !empty($customEnd)) {
+            return [
+                'start' => date('Y-m-d 00:00:00', strtotime($customStart)),
+                'end'   => date('Y-m-d 23:59:59', strtotime($customEnd)),
+                'is_custom' => true
+            ];
+        }
+
         $year = (int)$year;
         $month = (int)$month;
         
@@ -28,7 +37,11 @@ class TrackerCalculationService
         $startDate = sprintf('%04d-%02d-26 00:00:00', $prevYear, $prevMonth);
         $endDate   = sprintf('%04d-%02d-25 23:59:59', $year, $month);
 
-        return ['start' => $startDate, 'end' => $endDate];
+        return [
+            'start' => $startDate, 
+            'end'   => $endDate,
+            'is_custom' => false
+        ];
     }
 
     /**
@@ -36,36 +49,70 @@ class TrackerCalculationService
      */
     public function getVisibilityScope($user)
     {
-        $roleId = (int)$user['role_id'];
+        $roleId = (int)($user['role_id'] ?? 0);
         $teamId = !empty($user['team_id']) ? (int)$user['team_id'] : null;
+        $roleName = strtolower($user['role_name'] ?? '');
+        $userName = strtolower($user['full_name'] ?? ($user['user_name'] ?? ''));
+
+        // Check if employee record has team_id
+        $empId = null;
+        if (!empty($user['id'])) {
+            $empCheck = $this->db->query("SELECT id, team_id FROM employees WHERE user_id = " . (int)$user['id'] . " LIMIT 1");
+            if ($empCheck && $row = $empCheck->fetch_assoc()) {
+                $empId = (int)$row['id'];
+                if (empty($teamId) && !empty($row['team_id'])) {
+                    $teamId = (int)$row['team_id'];
+                }
+            }
+        }
         
-        // Roles: Chief Officer (33), Admin (1, 3), Sales Head (9) - assuming these roles from previous context
-        if (in_array($roleId, [1, 3, 33]) || (in_array($roleId, [9, 5, 2, 6]) && empty($teamId))) {
+        // 1. Management, Directors, Super Admins, System Admins, HR
+        // (Roles: Super Admin (3), Admin (1), HR (4), Admin & Operation head (20), Admin Operation (32), Chief Officer (33))
+        // Or if role_name or username contains 'admin', 'chief', 'director', 'management'
+        if (in_array($roleId, [1, 3, 4, 20, 32, 33])
+            || str_contains($roleName, 'admin') 
+            || str_contains($roleName, 'chief') 
+            || str_contains($roleName, 'director')
+            || str_contains($roleName, 'management')
+            || str_contains($userName, 'admin')) {
             return ['type' => 'ALL', 'team_id' => null];
         }
 
+        // 2. Sales Leadership: Sales Manager (Role 5), Sales Team Head (Role 9)
+        // If they don't have a specific team assigned, they oversee all sales teams
+        if ((in_array($roleId, [5, 9]) || str_contains($roleName, 'manager') || str_contains($roleName, 'head')) && empty($teamId)) {
+            return ['type' => 'ALL', 'team_id' => null];
+        }
+
+        // 3. Fallback: If user has no employee record (e.g. administrative accounts), show ALL so it doesn't return empty
+        if (empty($empId) && empty($teamId)) {
+            return ['type' => 'ALL', 'team_id' => null];
+        }
+
+        // 4. Team-level scope: Team Leader or Member assigned to a specific team
         if (!empty($teamId)) {
             return ['type' => 'TEAM', 'team_id' => $teamId];
         }
 
-        return ['type' => 'SELF', 'user_id' => $user['id']];
+        // 5. Individual Sales Executive without team
+        return ['type' => 'SELF', 'user_id' => (int)($user['id'] ?? 0)];
     }
 
     /**
-     * Get Tracker Data for the specific month/year
+     * Get Tracker Data for the specific month/year or custom range
      */
-    public function getTrackerReport($year, $month, $loggedInUser)
+    public function getTrackerReport($year, $month, $loggedInUser, $customStart = null, $customEnd = null)
     {
-        $dateRange = $this->getDateRange($year, $month);
+        $dateRange = $this->getDateRange($year, $month, $customStart, $customEnd);
         $start = $dateRange['start'];
         $end = $dateRange['end'];
 
         $scope = $this->getVisibilityScope($loggedInUser);
 
         // Build the base condition for employees
-        $empCondition = "e.employee_status = 'active' AND u.role_id IN (5, 8, 9)";
+        $empCondition = "e.employee_status = 'active' AND (u.role_id IN (5, 8, 9, 2, 6) OR st.id IS NOT NULL OR e.team_id IS NOT NULL)";
         if ($scope['type'] === 'TEAM') {
-            $empCondition .= " AND e.team_id = " . $scope['team_id'];
+            $empCondition .= " AND e.team_id = " . (int)$scope['team_id'];
         } elseif ($scope['type'] === 'SELF') {
             $empCondition .= " AND e.user_id = " . (int)$scope['user_id'];
         }
@@ -91,12 +138,16 @@ class TrackerCalculationService
             WHERE $empCondition
         ";
 
-        $employeesResult = $this->db->query($query);
+        try {
+            $employeesResult = $this->db->query($query);
+        } catch (Exception $ex) {
+            $employeesResult = false;
+        }
+
         $employees = [];
         
-        // If teams table doesn't exist, we might get an error. Let's handle it gracefully.
+        // Fallback without teams table if needed
         if (!$employeesResult) {
-            // Fallback without teams
             $query = "
                 SELECT 
                     e.user_id,
@@ -114,75 +165,125 @@ class TrackerCalculationService
                 LEFT JOIN sales_targets st ON e.user_id = st.sales_user_id AND st.month = '$monthString'
                 WHERE $empCondition
             ";
-            $employeesResult = $this->db->query($query);
+            try {
+                $employeesResult = $this->db->query($query);
+            } catch (Exception $ex) {
+                $employeesResult = false;
+            }
         }
 
         if ($employeesResult) {
             while ($row = $employeesResult->fetch_assoc()) {
-                if(empty($row['team_name']) && !empty($row['team_id'])) $row['team_name'] = 'Team ' . $row['team_id'];
+                if (empty($row['team_name']) && !empty($row['team_id'])) {
+                    $row['team_name'] = 'Team ' . $row['team_id'];
+                }
                 $employees[$row['user_id']] = [
+                    'user_id' => (int)$row['user_id'],
                     'member_name' => $row['member_name'],
-                    'team_name' => $row['team_name'],
-                    'team_id' => $row['team_id'],
+                    'team_name' => $row['team_name'] ?: 'General Team',
+                    'team_id' => !empty($row['team_id']) ? (int)$row['team_id'] : 0,
                     'level_designation' => $row['level_designation'] ?: 'Sales Exec',
                     'unit_target' => (int)$row['unit_target'],
                     'volume_target' => (float)$row['volume_target'],
                     'visit_target' => (int)$row['visit_target'],
-                    'assigned_project_ids' => $row['assigned_project_ids'] ? explode(',', $row['assigned_project_ids']) : [],
+                    'assigned_project_ids' => !empty($row['assigned_project_ids']) ? explode(',', $row['assigned_project_ids']) : [],
                     'assigned_leads' => 0,
-                    'total_follow_up' => 0,
+                    'total_follow_up_calls' => 0,
+                    'unique_leads_followed' => 0,
                     'total_contacted' => 0,
+                    'total_not_contacted' => 0,
                     'interested' => 0,
                     'not_interested' => 0,
                     'will_visit' => 0,
                     'visited' => 0,
                     'units_sold' => 0,
                     'volume_assigned' => 0,
-                    'volume_unassigned' => 0
+                    'volume_unassigned' => 0,
+                    'total_volume_achieved' => 0,
+                    'performance_score' => 0
                 ];
             }
         }
 
         if (empty($employees)) {
-            return [];
+            return [
+                'period' => [
+                    'start' => date('d M, Y', strtotime($start)),
+                    'end'   => date('d M, Y', strtotime($end)),
+                    'is_custom' => $dateRange['is_custom']
+                ],
+                'individuals' => [],
+                'teams' => [],
+                'kpis' => []
+            ];
         }
 
         $userIdsArr = array_filter(array_keys($employees));
         if (empty($userIdsArr)) {
-            return [];
+            return [
+                'period' => [
+                    'start' => date('d M, Y', strtotime($start)),
+                    'end'   => date('d M, Y', strtotime($end)),
+                    'is_custom' => $dateRange['is_custom']
+                ],
+                'individuals' => [],
+                'teams' => [],
+                'kpis' => []
+            ];
         }
         $userIds = implode(',', $userIdsArr);
 
-        // 1. Assigned Leads
-        $leadsQ = "SELECT assigned_id, COUNT(*) as cnt FROM leads WHERE created_at BETWEEN '$start' AND '$end' AND assigned_id IN ($userIds) GROUP BY assigned_id";
+        // 1. Assigned Leads: includes assigned_at within period, created_at within period, or actively worked leads
+        $leadsQ = "
+            SELECT assigned_id, COUNT(DISTINCT id) as cnt 
+            FROM leads 
+            WHERE assigned_id IN ($userIds)
+              AND (
+                  (assigned_at IS NOT NULL AND assigned_at BETWEEN '$start' AND '$end')
+                  OR (assigned_at IS NULL AND created_at BETWEEN '$start' AND '$end')
+                  OR (id IN (
+                      SELECT DISTINCT lead_id 
+                      FROM lead_follow_ups 
+                      WHERE created_by IN ($userIds) AND created_at BETWEEN '$start' AND '$end'
+                  ))
+              )
+            GROUP BY assigned_id
+        ";
         $leadsRes = $this->db->query($leadsQ);
         if ($leadsRes) {
-            while($row = $leadsRes->fetch_assoc()) {
-                if(isset($employees[$row['assigned_id']])) {
+            while ($row = $leadsRes->fetch_assoc()) {
+                if (isset($employees[$row['assigned_id']])) {
                     $employees[$row['assigned_id']]['assigned_leads'] = (int)$row['cnt'];
                 }
             }
         }
 
-        // 2. Total Follow Up & Contacted
-        // Get the list of leads followed up in this period
-        $fuQ = "SELECT lead_id, created_by, follow_up_type, lead_status, next_action, next_follow_up_date, created_at 
-                FROM lead_follow_ups 
-                WHERE created_at BETWEEN '$start' AND '$end' AND created_by IN ($userIds)
-                ORDER BY created_at ASC"; // Order ASC so we can overwrite to get the LATEST status
+        // 2. Follow Ups, Contacted, Interested, Visits
+        $fuQ = "
+            SELECT lead_id, created_by, follow_up_type, lead_status, next_action, next_follow_up_date, created_at 
+            FROM lead_follow_ups 
+            WHERE created_at BETWEEN '$start' AND '$end' AND created_by IN ($userIds)
+            ORDER BY created_at ASC
+        ";
         $fuRes = $this->db->query($fuQ);
         
-        $leadLatestState = []; // user_id => [lead_id => state_data]
+        $leadLatestState = []; // user_id => [lead_id => state]
 
         if ($fuRes) {
-            while($row = $fuRes->fetch_assoc()) {
-                $uid = $row['created_by'];
-                $lid = $row['lead_id'];
-                if(!isset($leadLatestState[$uid])) $leadLatestState[$uid] = [];
+            while ($row = $fuRes->fetch_assoc()) {
+                $uid = (int)$row['created_by'];
+                $lid = (int)$row['lead_id'];
+
+                if (!isset($employees[$uid])) continue;
+
+                $employees[$uid]['total_follow_up_calls']++;
+
+                if (!isset($leadLatestState[$uid])) {
+                    $leadLatestState[$uid] = [];
+                }
                 
-                if(!isset($leadLatestState[$uid][$lid])) {
+                if (!isset($leadLatestState[$uid][$lid])) {
                     $leadLatestState[$uid][$lid] = [
-                        'followed_up' => true,
                         'contacted' => false,
                         'latest_status' => '',
                         'is_visited' => false,
@@ -191,21 +292,22 @@ class TrackerCalculationService
                     ];
                 }
 
-                // If any follow up in this period was NOT number off/wrong/invalid, it's considered contacted
                 $invalidTypes = ['Number Off', 'Wrong Number', 'Invalid Number'];
                 if (!in_array($row['follow_up_type'], $invalidTypes)) {
                     $leadLatestState[$uid][$lid]['contacted'] = true;
                 }
 
-                // Overwrite with the latest status
+                // Overwrite with latest status
                 $leadLatestState[$uid][$lid]['latest_status'] = $row['lead_status'];
                 
-                // Track Visited vs Will Visit logic based on latest state
-                if ($row['lead_status'] === 'Visited') {
+                $statusLower = strtolower(trim($row['lead_status'] ?? ''));
+                $actionLower = strtolower(trim($row['next_action'] ?? ''));
+
+                if ($statusLower === 'visited' || $actionLower === 'visited') {
                     $leadLatestState[$uid][$lid]['is_visited'] = true;
                     $leadLatestState[$uid][$lid]['is_will_visit'] = false;
-                } elseif ($row['next_action'] === 'Will Visit' || $row['lead_status'] === 'Will Visit') {
-                    if (!$leadLatestState[$uid][$lid]['is_visited']) { // Only if not already visited
+                } elseif ($actionLower === 'site visit' || $actionLower === 'will visit' || $statusLower === 'will visit') {
+                    if (!$leadLatestState[$uid][$lid]['is_visited']) {
                         $leadLatestState[$uid][$lid]['is_will_visit'] = true;
                         $leadLatestState[$uid][$lid]['will_visit_date'] = $row['next_follow_up_date'];
                     }
@@ -213,73 +315,111 @@ class TrackerCalculationService
             }
         }
 
-        // Process aggregated latest states for Follow Ups, Contacted, Interested, Visits
-        $interestedStatuses = ['Prospect', 'High Prospect', 'Future', 'Cold', 'Hot', 'Warm'];
-        $notInterestedStatuses = ['Not Interested', 'Don\'t Call Again', 'Refund'];
+        // Process latest states per distinct lead
+        $interestedStatuses = ['prospect', 'high prospect', 'future', 'cold', 'hot', 'warm'];
+        $notInterestedStatuses = ['not interested', "don't call again", 'refund'];
 
         foreach ($leadLatestState as $uid => $leadsData) {
-            foreach ($leadsData as $lid => $data) {
-                $employees[$uid]['total_follow_up']++;
-                if ($data['contacted']) $employees[$uid]['total_contacted']++;
+            if (!isset($employees[$uid])) continue;
 
-                if (in_array($data['latest_status'], $interestedStatuses)) {
+            foreach ($leadsData as $lid => $data) {
+                $employees[$uid]['unique_leads_followed']++;
+                if ($data['contacted']) {
+                    $employees[$uid]['total_contacted']++;
+                }
+
+                $curStatus = strtolower(trim($data['latest_status']));
+                if (in_array($curStatus, $interestedStatuses)) {
                     $employees[$uid]['interested']++;
-                } elseif (in_array($data['latest_status'], $notInterestedStatuses)) {
+                } elseif (in_array($curStatus, $notInterestedStatuses)) {
                     $employees[$uid]['not_interested']++;
                 }
 
                 if ($data['is_visited']) {
                     $employees[$uid]['visited']++;
                 } elseif ($data['is_will_visit']) {
-                    // Check if the scheduled date is today (for daily report logic, or within range)
-                    // For monthly aggregate, if it's will visit, we count it as scheduled
                     $employees[$uid]['will_visit']++;
                 }
             }
         }
 
-        // 3. Bookings and Volumes
+        // 3. Bookings and Sales Volume
         $bkQ = "
-            SELECT b.sales_by_id, b.project_id, b.agreement_value, f.land_share_value 
+            SELECT b.sales_by_id, b.project_id, b.agreement_value, 
+                   COALESCE(NULLIF(f.land_share_value, 0), b.agreement_value, 0) as land_share_val 
             FROM lead_bookings b
             LEFT JOIN flats f ON b.flat_id = f.id
             WHERE b.booking_status IN ('booked', 'completed') 
-            AND b.booking_date BETWEEN DATE('$start') AND DATE('$end')
-            AND b.sales_by_id IN ($userIds)
+              AND b.booking_date BETWEEN DATE('$start') AND DATE('$end')
+              AND b.sales_by_id IN ($userIds)
         ";
         $bkRes = $this->db->query($bkQ);
         if ($bkRes) {
             while ($row = $bkRes->fetch_assoc()) {
-                $uid = $row['sales_by_id'];
-                if(isset($employees[$uid])) {
+                $uid = (int)$row['sales_by_id'];
+                if (isset($employees[$uid])) {
                     $employees[$uid]['units_sold']++;
                     
                     $assignedProjects = $employees[$uid]['assigned_project_ids'];
-                    if (in_array($row['project_id'], $assignedProjects)) {
+                    if (!empty($assignedProjects) && in_array($row['project_id'], $assignedProjects)) {
                         $employees[$uid]['volume_assigned'] += (float)$row['agreement_value'];
                     } else {
-                        $employees[$uid]['volume_unassigned'] += (float)$row['land_share_value'];
+                        $employees[$uid]['volume_unassigned'] += (float)$row['land_share_val'];
                     }
                 }
             }
         }
 
-        // Calculate Percentages & Metrics
+        // Calculate Percentages and Weighted Ranking Score
         foreach ($employees as $uid => &$emp) {
             $emp['total_volume_achieved'] = $emp['volume_assigned'] + $emp['volume_unassigned'];
             
-            $emp['follow_up_pct'] = $emp['assigned_leads'] > 0 ? round(($emp['total_follow_up'] / $emp['assigned_leads']) * 100, 2) : 0;
-            $emp['contacted_pct'] = $emp['total_follow_up'] > 0 ? round(($emp['total_contacted'] / $emp['total_follow_up']) * 100, 2) : 0;
-            $emp['interested_pct'] = $emp['total_contacted'] > 0 ? round(($emp['interested'] / $emp['total_contacted']) * 100, 2) : 0;
-            
-            $emp['unit_ach_pct'] = $emp['unit_target'] > 0 ? round(($emp['units_sold'] / $emp['unit_target']) * 100, 2) : 0;
-            $emp['visit_ach_pct'] = $emp['visit_target'] > 0 ? round(($emp['visited'] / $emp['visit_target']) * 100, 2) : 0;
-            $emp['volume_ach_pct'] = $emp['volume_target'] > 0 ? round(($emp['total_volume_achieved'] / $emp['volume_target']) * 100, 2) : 0;
+            // Normalize assigned leads so coverage cannot be less than unique leads touched
+            if ($emp['assigned_leads'] < $emp['unique_leads_followed']) {
+                $emp['assigned_leads'] = $emp['unique_leads_followed'];
+            }
 
-            // Simplified ranking score: Weighted sum of percentages
-            $emp['performance_score'] = ($emp['follow_up_pct'] * 0.2) + ($emp['contacted_pct'] * 0.2) + ($emp['visit_ach_pct'] * 0.2) + ($emp['volume_ach_pct'] * 0.4);
+            $emp['total_not_contacted'] = max(0, $emp['assigned_leads'] - $emp['total_contacted']);
+
+            $emp['follow_up_pct'] = $emp['assigned_leads'] > 0 
+                ? min(100, round(($emp['unique_leads_followed'] / $emp['assigned_leads']) * 100, 2)) 
+                : 0;
+
+            $emp['contacted_pct'] = $emp['unique_leads_followed'] > 0 
+                ? min(100, round(($emp['total_contacted'] / $emp['unique_leads_followed']) * 100, 2)) 
+                : 0;
+
+            $emp['interested_pct'] = $emp['total_contacted'] > 0 
+                ? min(100, round(($emp['interested'] / $emp['total_contacted']) * 100, 2)) 
+                : 0;
+
+            $emp['unit_ach_pct'] = $emp['unit_target'] > 0 
+                ? round(($emp['units_sold'] / $emp['unit_target']) * 100, 2) 
+                : ($emp['units_sold'] > 0 ? 100 : 0);
+
+            $emp['visit_ach_pct'] = $emp['visit_target'] > 0 
+                ? round(($emp['visited'] / $emp['visit_target']) * 100, 2) 
+                : ($emp['visited'] > 0 ? 100 : 0);
+
+            $emp['volume_ach_pct'] = $emp['volume_target'] > 0 
+                ? round(($emp['total_volume_achieved'] / $emp['volume_target']) * 100, 2) 
+                : ($emp['total_volume_achieved'] > 0 ? 100 : 0);
+
+            // Backwards compatibility alias for older views
+            $emp['total_follow_up'] = $emp['unique_leads_followed'];
+
+            // Weighted Analytical Performance Score:
+            // 45% Volume Achievement + 20% Unit Achievement + 15% Site Visits + 10% Contacted Rate + 10% Lead Coverage
+            $emp['performance_score'] = round(
+                ($emp['volume_ach_pct'] * 0.45) + 
+                ($emp['unit_ach_pct'] * 0.20) + 
+                ($emp['visit_ach_pct'] * 0.15) + 
+                ($emp['contacted_pct'] * 0.10) + 
+                ($emp['follow_up_pct'] * 0.10),
+                2
+            );
         }
-        unset($emp); // break reference
+        unset($emp);
 
         // Sort for Individual Ranking
         uasort($employees, function($a, $b) {
@@ -296,46 +436,90 @@ class TrackerCalculationService
         $teams = [];
         foreach ($employees as $emp) {
             $tid = $emp['team_id'] ?: 0;
-            if(!isset($teams[$tid])) {
+            if (!isset($teams[$tid])) {
                 $teams[$tid] = [
                     'team_id' => $tid,
-                    'team_name' => $emp['team_name'],
+                    'team_name' => $emp['team_name'] ?: ('Team ' . ($tid ?: 'Unassigned')),
+                    'member_count' => 0,
+                    'members' => [],
                     'total_leads' => 0,
-                    'total_follow_up' => 0,
+                    'total_follow_up_calls' => 0,
+                    'unique_leads_followed' => 0,
                     'total_contacted' => 0,
                     'total_not_contacted' => 0,
                     'visit_target' => 0,
                     'visited' => 0,
+                    'will_visit' => 0,
+                    'unit_target' => 0,
                     'units_sold' => 0,
                     'interested' => 0,
                     'not_interested' => 0,
                     'volume_target' => 0,
+                    'volume_assigned' => 0,
+                    'volume_unassigned' => 0,
                     'total_volume_achieved' => 0,
                     'performance_score' => 0
                 ];
             }
-            $t = &$teams[$tid];
-            $t['total_leads'] += $emp['assigned_leads'];
-            $t['total_follow_up'] += $emp['total_follow_up'];
-            $t['total_contacted'] += $emp['total_contacted'];
-            $t['visit_target'] += $emp['visit_target'];
-            $t['visited'] += $emp['visited'];
-            $t['units_sold'] += $emp['units_sold'];
-            $t['interested'] += $emp['interested'];
-            $t['not_interested'] += $emp['not_interested'];
-            $t['volume_target'] += $emp['volume_target'];
-            $t['total_volume_achieved'] += $emp['total_volume_achieved'];
+
+            $teams[$tid]['member_count']++;
+            $teams[$tid]['members'][] = $emp;
+            $teams[$tid]['total_leads'] += $emp['assigned_leads'];
+            $teams[$tid]['total_follow_up_calls'] += $emp['total_follow_up_calls'];
+            $teams[$tid]['unique_leads_followed'] += $emp['unique_leads_followed'];
+            $teams[$tid]['total_contacted'] += $emp['total_contacted'];
+            $teams[$tid]['visit_target'] += $emp['visit_target'];
+            $teams[$tid]['visited'] += $emp['visited'];
+            $teams[$tid]['will_visit'] += $emp['will_visit'];
+            $teams[$tid]['unit_target'] += $emp['unit_target'];
+            $teams[$tid]['units_sold'] += $emp['units_sold'];
+            $teams[$tid]['interested'] += $emp['interested'];
+            $teams[$tid]['not_interested'] += $emp['not_interested'];
+            $teams[$tid]['volume_target'] += $emp['volume_target'];
+            $teams[$tid]['volume_assigned'] += $emp['volume_assigned'];
+            $teams[$tid]['volume_unassigned'] += $emp['volume_unassigned'];
+            $teams[$tid]['total_volume_achieved'] += $emp['total_volume_achieved'];
         }
 
         foreach ($teams as &$t) {
-            $t['total_not_contacted'] = $t['total_follow_up'] - $t['total_contacted'];
+            $t['total_not_contacted'] = max(0, $t['total_leads'] - $t['total_contacted']);
             
-            $t['follow_up_pct'] = $t['total_leads'] > 0 ? round(($t['total_follow_up'] / $t['total_leads']) * 100, 2) : 0;
-            $t['contacted_pct'] = $t['total_follow_up'] > 0 ? round(($t['total_contacted'] / $t['total_follow_up']) * 100, 2) : 0;
-            $t['visit_ach_pct'] = $t['visit_target'] > 0 ? round(($t['visited'] / $t['visit_target']) * 100, 2) : 0;
-            $t['volume_ach_pct'] = $t['volume_target'] > 0 ? round(($t['total_volume_achieved'] / $t['volume_target']) * 100, 2) : 0;
+            $t['follow_up_pct'] = $t['total_leads'] > 0 
+                ? min(100, round(($t['unique_leads_followed'] / $t['total_leads']) * 100, 2)) 
+                : 0;
 
-            $t['performance_score'] = ($t['follow_up_pct'] * 0.2) + ($t['contacted_pct'] * 0.2) + ($t['visit_ach_pct'] * 0.2) + ($t['volume_ach_pct'] * 0.4);
+            $t['contacted_pct'] = $t['unique_leads_followed'] > 0 
+                ? min(100, round(($t['total_contacted'] / $t['unique_leads_followed']) * 100, 2)) 
+                : 0;
+
+            $t['interested_pct'] = $t['total_contacted'] > 0 
+                ? min(100, round(($t['interested'] / $t['total_contacted']) * 100, 2)) 
+                : 0;
+
+            $t['visit_ach_pct'] = $t['visit_target'] > 0 
+                ? round(($t['visited'] / $t['visit_target']) * 100, 2) 
+                : ($t['visited'] > 0 ? 100 : 0);
+
+            $t['unit_ach_pct'] = $t['unit_target'] > 0 
+                ? round(($t['units_sold'] / $t['unit_target']) * 100, 2) 
+                : ($t['units_sold'] > 0 ? 100 : 0);
+
+            $t['volume_ach_pct'] = $t['volume_target'] > 0 
+                ? round(($t['total_volume_achieved'] / $t['volume_target']) * 100, 2) 
+                : ($t['total_volume_achieved'] > 0 ? 100 : 0);
+
+            // Backward compatibility alias
+            $t['total_follow_up'] = $t['unique_leads_followed'];
+
+            // Weighted analytical performance score for teams
+            $t['performance_score'] = round(
+                ($t['volume_ach_pct'] * 0.45) + 
+                ($t['unit_ach_pct'] * 0.20) + 
+                ($t['visit_ach_pct'] * 0.15) + 
+                ($t['contacted_pct'] * 0.10) + 
+                ($t['follow_up_pct'] * 0.10),
+                2
+            );
         }
         unset($t);
 
@@ -350,32 +534,58 @@ class TrackerCalculationService
         }
         unset($t);
 
+        // Overall KPIs Summary
+        $kpis = [
+            'total_teams' => count($teams),
+            'total_members' => count($employees),
+            'total_leads' => array_sum(array_column($teams, 'total_leads')),
+            'total_follow_up_calls' => array_sum(array_column($teams, 'total_follow_up_calls')),
+            'total_contacted' => array_sum(array_column($teams, 'total_contacted')),
+            'total_volume_achieved' => array_sum(array_column($teams, 'total_volume_achieved')),
+            'total_volume_target' => array_sum(array_column($teams, 'volume_target')),
+            'total_units_sold' => array_sum(array_column($teams, 'units_sold')),
+            'total_units_target' => array_sum(array_column($teams, 'unit_target')),
+            'total_visited' => array_sum(array_column($teams, 'visited')),
+            'total_visit_target' => array_sum(array_column($teams, 'visit_target')),
+            'top_team' => !empty($teams) ? reset($teams) : null
+        ];
+
         return [
             'period' => [
                 'start' => date('d M, Y', strtotime($start)),
-                'end' => date('d M, Y', strtotime($end))
+                'end'   => date('d M, Y', strtotime($end)),
+                'is_custom' => $dateRange['is_custom']
             ],
             'individuals' => $employees,
-            'teams' => $teams
+            'teams' => $teams,
+            'kpis' => $kpis
         ];
+    }
+
+    /**
+     * Dedicated Team Performance Report Service Method
+     */
+    public function getTeamPerformanceReport($year, $month, $loggedInUser, $customStart = null, $customEnd = null)
+    {
+        return $this->getTrackerReport($year, $month, $loggedInUser, $customStart, $customEnd);
     }
     
     /**
      * Daily Report (Dynamic date aggregation)
      */
-    public function getDailyReport($date, $loggedInUser) {
+    public function getDailyReport($date, $loggedInUser) 
+    {
         $year = date('Y', strtotime($date));
         $month = date('m', strtotime($date));
         
         $scope = $this->getVisibilityScope($loggedInUser);
         
         $start = date('Y-m-d 00:00:00', strtotime($date));
-        $end = date('Y-m-d 23:59:59', strtotime($date));
+        $end   = date('Y-m-d 23:59:59', strtotime($date));
 
-        // Use same base condition
-        $empCondition = "e.employee_status = 'active' AND u.role_id IN (5, 8, 9)";
+        $empCondition = "e.employee_status = 'active' AND (u.role_id IN (5, 8, 9, 2, 6) OR st.id IS NOT NULL OR e.team_id IS NOT NULL)";
         if ($scope['type'] === 'TEAM') {
-            $empCondition .= " AND e.team_id = " . $scope['team_id'];
+            $empCondition .= " AND e.team_id = " . (int)$scope['team_id'];
         } elseif ($scope['type'] === 'SELF') {
             $empCondition .= " AND e.user_id = " . (int)$scope['user_id'];
         }
@@ -406,7 +616,6 @@ class TrackerCalculationService
         $employees = [];
         
         if (!$employeesResult) {
-            // Fallback without teams
             $query = "
                 SELECT 
                     e.user_id, e.full_name as member_name, e.team_id,
@@ -430,62 +639,94 @@ class TrackerCalculationService
 
         if ($employeesResult) {
             while ($row = $employeesResult->fetch_assoc()) {
-                if(empty($row['team_name']) && !empty($row['team_id'])) $row['team_name'] = 'Team ' . $row['team_id'];
+                if (empty($row['team_name']) && !empty($row['team_id'])) {
+                    $row['team_name'] = 'Team ' . $row['team_id'];
+                }
                 $employees[$row['user_id']] = [
+                    'user_id' => (int)$row['user_id'],
                     'member_name' => $row['member_name'],
-                    'team_name' => $row['team_name'],
-                    'team_id' => $row['team_id'],
+                    'team_name' => $row['team_name'] ?: 'General Team',
+                    'team_id' => !empty($row['team_id']) ? (int)$row['team_id'] : 0,
                     'level_designation' => $row['level_designation'] ?: 'Sales Exec',
                     'unit_target' => (int)$row['unit_target'],
                     'volume_target' => (float)$row['volume_target'],
                     'visit_target' => (int)$row['visit_target'],
-                    'assigned_project_ids' => $row['assigned_project_ids'] ? explode(',', $row['assigned_project_ids']) : [],
+                    'assigned_project_ids' => !empty($row['assigned_project_ids']) ? explode(',', $row['assigned_project_ids']) : [],
                     'assigned_leads' => 0,
+                    'total_follow_up_calls' => 0,
+                    'unique_leads_followed' => 0,
                     'total_follow_up' => 0,
                     'total_contacted' => 0,
+                    'total_not_contacted' => 0,
                     'interested' => 0,
                     'not_interested' => 0,
                     'will_visit' => 0,
                     'visited' => 0,
                     'units_sold' => 0,
                     'volume_assigned' => 0,
-                    'volume_unassigned' => 0
+                    'volume_unassigned' => 0,
+                    'total_volume_achieved' => 0,
+                    'performance_score' => 0
                 ];
             }
         }
 
         if (empty($employees)) return [];
         $userIdsArr = array_filter(array_keys($employees));
-        if (empty($userIdsArr)) {
-            return [];
-        }
+        if (empty($userIdsArr)) return [];
         $userIds = implode(',', $userIdsArr);
 
-        // 1. Assigned Leads Today
-        $leadsQ = "SELECT assigned_id, COUNT(*) as cnt FROM leads WHERE created_at BETWEEN '$start' AND '$end' AND assigned_id IN ($userIds) GROUP BY assigned_id";
+        // Daily Assigned Leads
+        $leadsQ = "
+            SELECT assigned_id, COUNT(DISTINCT id) as cnt 
+            FROM leads 
+            WHERE assigned_id IN ($userIds)
+              AND (
+                  (assigned_at IS NOT NULL AND assigned_at BETWEEN '$start' AND '$end')
+                  OR (assigned_at IS NULL AND created_at BETWEEN '$start' AND '$end')
+                  OR (id IN (
+                      SELECT DISTINCT lead_id 
+                      FROM lead_follow_ups 
+                      WHERE created_by IN ($userIds) AND created_at BETWEEN '$start' AND '$end'
+                  ))
+              )
+            GROUP BY assigned_id
+        ";
         $leadsRes = $this->db->query($leadsQ);
         if ($leadsRes) {
-            while($row = $leadsRes->fetch_assoc()) {
-                if(isset($employees[$row['assigned_id']])) $employees[$row['assigned_id']]['assigned_leads'] = (int)$row['cnt'];
+            while ($row = $leadsRes->fetch_assoc()) {
+                if (isset($employees[$row['assigned_id']])) {
+                    $employees[$row['assigned_id']]['assigned_leads'] = (int)$row['cnt'];
+                }
             }
         }
 
         // Daily Follow up logic
-        $fuQ = "SELECT lead_id, created_by, follow_up_type, lead_status, next_action, next_follow_up_date 
-                FROM lead_follow_ups 
-                WHERE created_at BETWEEN '$start' AND '$end' AND created_by IN ($userIds)
-                ORDER BY created_at ASC";
+        $fuQ = "
+            SELECT lead_id, created_by, follow_up_type, lead_status, next_action, next_follow_up_date 
+            FROM lead_follow_ups 
+            WHERE created_at BETWEEN '$start' AND '$end' AND created_by IN ($userIds)
+            ORDER BY created_at ASC
+        ";
         $fuRes = $this->db->query($fuQ);
         
         $leadLatestState = [];
         if ($fuRes) {
-            while($row = $fuRes->fetch_assoc()) {
-                $uid = $row['created_by'];
-                $lid = $row['lead_id'];
-                if(!isset($leadLatestState[$uid])) $leadLatestState[$uid] = [];
-                if(!isset($leadLatestState[$uid][$lid])) {
+            while ($row = $fuRes->fetch_assoc()) {
+                $uid = (int)$row['created_by'];
+                $lid = (int)$row['lead_id'];
+
+                if (!isset($employees[$uid])) continue;
+
+                $employees[$uid]['total_follow_up_calls']++;
+
+                if (!isset($leadLatestState[$uid])) $leadLatestState[$uid] = [];
+                if (!isset($leadLatestState[$uid][$lid])) {
                     $leadLatestState[$uid][$lid] = [
-                        'contacted' => false, 'latest_status' => '', 'is_visited' => false, 'is_will_visit' => false
+                        'contacted' => false, 
+                        'latest_status' => '', 
+                        'is_visited' => false, 
+                        'is_will_visit' => false
                     ];
                 }
                 
@@ -495,10 +736,13 @@ class TrackerCalculationService
                 }
                 $leadLatestState[$uid][$lid]['latest_status'] = $row['lead_status'];
                 
-                if ($row['lead_status'] === 'Visited') {
+                $statusLower = strtolower(trim($row['lead_status'] ?? ''));
+                $actionLower = strtolower(trim($row['next_action'] ?? ''));
+
+                if ($statusLower === 'visited' || $actionLower === 'visited') {
                     $leadLatestState[$uid][$lid]['is_visited'] = true;
                     $leadLatestState[$uid][$lid]['is_will_visit'] = false;
-                } elseif ($row['next_action'] === 'Will Visit' || $row['lead_status'] === 'Will Visit') {
+                } elseif ($actionLower === 'site visit' || $actionLower === 'will visit' || $statusLower === 'will visit') {
                     if (!$leadLatestState[$uid][$lid]['is_visited']) {
                         $leadLatestState[$uid][$lid]['is_will_visit'] = true;
                     }
@@ -506,15 +750,19 @@ class TrackerCalculationService
             }
         }
 
-        $interestedStatuses = ['Prospect', 'High Prospect', 'Future', 'Cold', 'Hot', 'Warm'];
-        $notInterestedStatuses = ['Not Interested', 'Don\'t Call Again', 'Refund'];
+        $interestedStatuses = ['prospect', 'high prospect', 'future', 'cold', 'hot', 'warm'];
+        $notInterestedStatuses = ['not interested', "don't call again", 'refund'];
 
         foreach ($leadLatestState as $uid => $leadsData) {
+            if (!isset($employees[$uid])) continue;
+
             foreach ($leadsData as $lid => $data) {
-                $employees[$uid]['total_follow_up']++;
+                $employees[$uid]['unique_leads_followed']++;
                 if ($data['contacted']) $employees[$uid]['total_contacted']++;
-                if (in_array($data['latest_status'], $interestedStatuses)) $employees[$uid]['interested']++;
-                elseif (in_array($data['latest_status'], $notInterestedStatuses)) $employees[$uid]['not_interested']++;
+
+                $curStatus = strtolower(trim($data['latest_status']));
+                if (in_array($curStatus, $interestedStatuses)) $employees[$uid]['interested']++;
+                elseif (in_array($curStatus, $notInterestedStatuses)) $employees[$uid]['not_interested']++;
                 
                 if ($data['is_visited']) $employees[$uid]['visited']++;
                 elseif ($data['is_will_visit']) $employees[$uid]['will_visit']++;
@@ -523,33 +771,43 @@ class TrackerCalculationService
 
         // Daily Bookings
         $bkQ = "
-            SELECT b.sales_by_id, b.project_id, b.agreement_value, f.land_share_value 
+            SELECT b.sales_by_id, b.project_id, b.agreement_value, 
+                   COALESCE(NULLIF(f.land_share_value, 0), b.agreement_value, 0) as land_share_val 
             FROM lead_bookings b
             LEFT JOIN flats f ON b.flat_id = f.id
             WHERE b.booking_status IN ('booked', 'completed') 
-            AND b.booking_date BETWEEN DATE('$start') AND DATE('$end')
-            AND b.sales_by_id IN ($userIds)
+              AND b.booking_date BETWEEN DATE('$start') AND DATE('$end')
+              AND b.sales_by_id IN ($userIds)
         ";
         $bkRes = $this->db->query($bkQ);
         if ($bkRes) {
             while ($row = $bkRes->fetch_assoc()) {
-                $uid = $row['sales_by_id'];
-                if(isset($employees[$uid])) {
+                $uid = (int)$row['sales_by_id'];
+                if (isset($employees[$uid])) {
                     $employees[$uid]['units_sold']++;
                     $assignedProjects = $employees[$uid]['assigned_project_ids'];
-                    if (in_array($row['project_id'], $assignedProjects)) {
+                    if (!empty($assignedProjects) && in_array($row['project_id'], $assignedProjects)) {
                         $employees[$uid]['volume_assigned'] += (float)$row['agreement_value'];
                     } else {
-                        $employees[$uid]['volume_unassigned'] += (float)$row['land_share_value'];
+                        $employees[$uid]['volume_unassigned'] += (float)$row['land_share_val'];
                     }
                 }
             }
         }
 
-        // Percentages and Ranking for daily
+        // Daily Percentages and Score
         foreach ($employees as $uid => &$emp) {
             $emp['total_volume_achieved'] = $emp['volume_assigned'] + $emp['volume_unassigned'];
-            $emp['performance_score'] = ($emp['total_follow_up'] * 0.3) + ($emp['total_contacted'] * 0.3) + ($emp['units_sold'] * 0.4);
+            $emp['total_follow_up'] = $emp['unique_leads_followed'];
+            $emp['total_not_contacted'] = max(0, $emp['assigned_leads'] - $emp['total_contacted']);
+
+            $emp['performance_score'] = round(
+                ($emp['units_sold'] * 40) + 
+                ($emp['visited'] * 20) + 
+                ($emp['total_contacted'] * 2) + 
+                ($emp['unique_leads_followed'] * 1), 
+                2
+            );
         }
         unset($emp);
 

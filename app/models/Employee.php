@@ -316,9 +316,9 @@ class Employee extends Model
         $this->ensureOfficeBranchSchema();
         $stmt = $this->db->prepare("SELECT 
     e.*,
-    u.id as user_id,
-    u.role_id as role_id, 
-    u.secondary_role_id as secondary_role_id,
+    COALESCE(u.id, u_by_emp.id) as user_id,
+    COALESCE(u.role_id, u_by_emp.role_id) as role_id, 
+    COALESCE(u.secondary_role_id, u_by_emp.secondary_role_id) as secondary_role_id,
     desg.name AS designation_name, 
     dept.name AS department_name,
     t.name AS team_name,
@@ -330,6 +330,7 @@ LEFT JOIN departments AS dept ON e.department_id = dept.id
 LEFT JOIN teams AS t ON e.team_id = t.id
 LEFT JOIN office_branches AS ob ON ob.id = e.office_branch_id
 LEFT JOIN users AS u ON u.id = e.user_id
+LEFT JOIN users AS u_by_emp ON (u_by_emp.employee_id = e.id AND e.user_id IS NULL)
 LEFT JOIN users AS rb ON rb.id = e.reporting_user_id
 WHERE e.id = ?
 ");

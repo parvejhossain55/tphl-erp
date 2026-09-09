@@ -122,7 +122,12 @@
                         <option value="" <?= empty($filters['status']) || $filters['status'] === 'pending' || $filters['status'] === 'my_pending' ? 'selected' : '' ?>>My Actionable Pending (Default)</option>
                         <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>Approved & Paid History</option>
                         <option value="rejected" <?= ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' ?>>Rejected History</option>
-                        <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 30, 33])): ?>
+                        <?php 
+                        $canAuditAll = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 20, 30, 32, 33]) 
+                            || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false 
+                            || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false;
+                        if ($canAuditAll): 
+                        ?>
                             <option value="all_pending" <?= ($filters['status'] ?? '') === 'all_pending' ? 'selected' : '' ?>>All Departments Pending (Audit)</option>
                             <option value="all" <?= ($filters['status'] ?? '') === 'all' ? 'selected' : '' ?>>All Company Requests (Complete Audit)</option>
                         <?php endif; ?>
@@ -191,7 +196,7 @@
                 </select>
             </div>
         </div>
-
+        
         <!-- Approval History Table -->
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -350,7 +355,12 @@
                                     <td>
                                         <?php if (!empty($targetUrl)): ?>
                                             <a href="<?= $targetUrl ?>" class="text-decoration-none d-block">
-                                                <?php if ($sourceTable === 'vendor_payment_requests' && !empty($req['po_number'])): ?>
+                                                <?php if ($sourceTable === 'vendor_payment_requests'): ?>
+                                                    <span class="fw-bold text-dark">VPR-<?= (int)$req['source_id'] ?></span>
+                                                    <?php if (!empty($req['po_number'])): ?>
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded px-1 ms-1 extra-small">PO-<?= htmlspecialchars($req['po_number']) ?></span>
+                                                    <?php endif; ?>
+                                                <?php elseif (!empty($req['po_number'])): ?>
                                                     <span class="fw-bold text-success">PO-
                                                         <?= htmlspecialchars($req['po_number']) ?>
                                                     </span>
@@ -361,7 +371,12 @@
                                                 <?php endif; ?>
                                             </a>
                                         <?php else: ?>
-                                            <?php if ($sourceTable === 'vendor_payment_requests' && !empty($req['po_number'])): ?>
+                                            <?php if ($sourceTable === 'vendor_payment_requests'): ?>
+                                                <span class="fw-bold text-dark">VPR-<?= (int)$req['source_id'] ?></span>
+                                                <?php if (!empty($req['po_number'])): ?>
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded px-1 ms-1 extra-small">PO-<?= htmlspecialchars($req['po_number']) ?></span>
+                                                <?php endif; ?>
+                                            <?php elseif (!empty($req['po_number'])): ?>
                                                 <span class="fw-bold text-success d-block">PO-
                                                     <?= htmlspecialchars($req['po_number']) ?>
                                                 </span>

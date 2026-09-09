@@ -228,6 +228,10 @@ return [
     // Controller: SalesActivityReportController
     // =========================================================================
     'sales-activity-report' => ['controller' => 'SalesActivityReportController', 'method' => 'index'],
+    'team-performance' => ['controller' => 'SalesActivityReportController', 'method' => 'teamPerformance'],
+    'team-performance-export' => ['controller' => 'SalesActivityReportController', 'method' => 'exportTeamPerformanceExcel'],
+    'team-performance/export' => ['controller' => 'SalesActivityReportController', 'method' => 'exportTeamPerformanceExcel'],
 ];
+
 
 

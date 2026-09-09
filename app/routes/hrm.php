@@ -185,6 +185,11 @@ return [
     // =========================================================================
     'store-update-task' => ['controller' => 'EmployeeTaskController', 'method' => 'save'],
     'task-sheets' => ['controller' => 'EmployeeTaskController', 'method' => 'index'],
+    'task-sheets-export' => ['controller' => 'EmployeeTaskController', 'method' => 'exportExcel'],
+    'task-sheets/export' => ['controller' => 'EmployeeTaskController', 'method' => 'exportExcel'],
+    'all-employee-tasks' => ['controller' => 'EmployeeTaskController', 'method' => 'allEmployeesTask'],
+    'all-employee-tasks-export' => ['controller' => 'EmployeeTaskController', 'method' => 'exportAllEmployeesExcel'],
+    'all-employee-tasks/export' => ['controller' => 'EmployeeTaskController', 'method' => 'exportAllEmployeesExcel'],
 
     // =========================================================================
     // Controller: Leaves\LeaveTypeController

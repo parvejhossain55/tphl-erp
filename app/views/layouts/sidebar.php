@@ -42,14 +42,11 @@
     $pendingApprovalCount = 0;
     if (isset($db)) {
         $loggedUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if ($loggedUserRoleId === 1) {
-            // Super Admin sees all pending
-            $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending'");
-        } elseif (in_array($loggedUserRoleId, [3, 33])) {
-            // Top Management: all pending management approvals
+        if (in_array($loggedUserRoleId, [1, 3, 33])) {
+            // Full Management: all pending management approvals
             $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role = 'management'");
-        } elseif ($loggedUserRoleId === 20) {
-            // Role 20 (Site Operator / Operation Head): management approvals with amount <= 100,000
+        } elseif ($loggedUserRoleId === 20 || $loggedUserRoleId === 32) {
+            // Role 20 / 32 (Site Operator / Operation Head): management approvals with amount <= 100,000
             $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role = 'management' AND (request_amount <= 100000 OR request_amount IS NULL OR request_amount = 0)");
         } elseif (in_array($loggedUserRoleId, [6, 30])) {
             // Accounts
@@ -641,6 +638,15 @@
                             </a>
                         </li>
 
+                        <!-- Team Performance -->
+                        <li class="slide">
+                            <a href="<?= $base_url ?>/team-performance"
+                                class="sidebar__menu-item <?= isActive('team-performance', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-users-viewfinder"></i></div>
+                                <span class="sidebar__menu-label">Team Performance</span>
+                            </a>
+                        </li>
+
                         <!-- Incentives Module -->
                         <li
                             class="slide has-sub <?= isActive(['my-incentives', 'incentive-management', 'incentive-config', 'my-team-incentives'], $current_route) ? 'active' : '' ?>">
@@ -1145,6 +1151,13 @@
                             <div class="side-menu__icon"><i class="fa-solid fa-users"></i>
                             </div>
                             <span class="sidebar__menu-label">Employee Manage</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/all-employee-tasks"
+                            class="sidebar__menu-item <?= isActive('all-employee-tasks', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
+                            <span class="sidebar__menu-label">All Employees Task</span>
                         </a>
                     </li>
 
@@ -3327,6 +3340,15 @@
                             <span class="sidebar__menu-label">My Task Sheets</span>
                         </a>
                     </li>
+                    <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 4, 33]) || hasPermission("Hr Manage") || hasPermission("HRM Management") || (stripos($_SESSION['user']['role_name'] ?? '', 'hr') !== false) || (stripos($_SESSION['user']['role_name'] ?? '', 'admin') !== false)): ?>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/all-employee-tasks"
+                            class="sidebar__menu-item <?= isActive('all-employee-tasks', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-users-viewfinder"></i></div>
+                            <span class="sidebar__menu-label">All Employees Task</span>
+                        </a>
+                    </li>
+                    <?php endif; ?>
                     <?php if (hasPermission("task manage")): ?>
 
                         <li

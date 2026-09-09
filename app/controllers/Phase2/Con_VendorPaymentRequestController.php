@@ -375,8 +375,8 @@ class Con_VendorPaymentRequestController extends Controller
             $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)$data['project_id'])->fetch_assoc();
             $vendor  = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)$vendorId)->fetch_assoc();
 
-            // Set approve_role: management if created by Purchase Head (role 17), else purchase team leader
-            $approveRole = ($this->userRole === 17) ? 'management' : 'purchase team leader';
+            // Set approve_role: 'qc' for Step 1 verification (QC & Audit)
+            $approveRole = 'qc';
 
             // Now create the approval_request for management immediately
             $this->approvalModel->create([
@@ -670,8 +670,8 @@ class Con_VendorPaymentRequestController extends Controller
                 $stmt->bind_param('si', $mgtNote, $id);
                 $stmt->execute();
                 
-                // Sync approval_requests table
-                $this->syncApprovalRequest($id, 'approved');
+                // Sync approval_requests table (moves to accounts for payout)
+                $this->syncApprovalRequest($id, 'approved', $approvedAmount);
 
                 // AUTO-GENERATE ACCRUAL JOURNAL
                 try {
@@ -764,6 +764,43 @@ class Con_VendorPaymentRequestController extends Controller
         }
 
         if ($this->model->approveQC($id, $this->userId, $qcNote, $qcApprovedAmount)) {
+            // Forward linked approval_request to management
+            $qcNoteFull = "Audited & Approved by QC. " . ($qcNote ? "Note: {$qcNote}" : "");
+            $stmtAr = $this->db->prepare(
+                "UPDATE approval_requests 
+                 SET approve_role = 'management', 
+                     status = 'pending',
+                     request_amount = ?,
+                     approved_by = ?,
+                     approved_at = NOW(),
+                     approval_note = ?
+                 WHERE source_table = 'vendor_payment_requests' AND source_id = ?"
+            );
+            if ($stmtAr) {
+                $stmtAr->bind_param('disi', $qcApprovedAmount, $this->userId, $qcNoteFull, $id);
+                $stmtAr->execute();
+                if ($stmtAr->affected_rows === 0) {
+                    $checkAr = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'vendor_payment_requests' AND source_id = " . (int)$id)->fetch_assoc();
+                    if (!$checkAr) {
+                        $vendor = $this->db->query("SELECT name FROM vendors WHERE id = " . (int)($request['vendor_id'] ?? 0))->fetch_assoc();
+                        $project = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($request['project_id'] ?? 0))->fetch_assoc();
+                        $this->approvalModel->create([
+                            'department'     => 'construction',
+                            'request_type'   => 'vendor_payment',
+                            'title'          => 'Vendor Payment — ' . ($vendor['name'] ?? '') . ' | ' . ($project['name'] ?? ''),
+                            'source_table'   => 'vendor_payment_requests',
+                            'source_id'      => $id,
+                            'requested_days' => 0,
+                            'requested_by'   => $request['created_by'] ?? $this->userId,
+                            'approve_role'   => 'management',
+                            'meta_data'      => null,
+                            'request_amount' => $qcApprovedAmount,
+                        ]);
+                    }
+                }
+                $stmtAr->close();
+            }
+
             // Notify Management roles [1, 3, 33]
             try {
                 $updatedRequest = $this->model->find($id);
@@ -1120,17 +1157,25 @@ class Con_VendorPaymentRequestController extends Controller
     }
 
     /** Sync approval_requests status when approving/rejecting from this page */
-    private function syncApprovalRequest($requestId, $newStatus)
+    private function syncApprovalRequest($requestId, $newStatus, $approvedAmount = null)
     {
         $arStatus = ($newStatus === 'approved') ? 'approved' : 'rejected';
+        $approveRole = ($newStatus === 'approved') ? 'accounts' : 'rejected';
 
         $stmt = $this->db->prepare(
             "UPDATE approval_requests
-             SET status = ?, approved_by = ?, approved_at = NOW()
-             WHERE source_table = 'vendor_payment_requests' AND source_id = ? AND status = 'pending'"
+             SET status = ?, 
+                 approve_role = ?,
+                 approved_amount = COALESCE(?, approved_amount, request_amount),
+                 approved_by = ?, 
+                 approved_at = NOW()
+             WHERE source_table = 'vendor_payment_requests' AND source_id = ?"
         );
-        $stmt->bind_param('sii', $arStatus, $this->userId, $requestId);
-        $stmt->execute();
+        if ($stmt) {
+            $stmt->bind_param('ssdii', $arStatus, $approveRole, $approvedAmount, $this->userId, $requestId);
+            $stmt->execute();
+            $stmt->close();
+        }
     }
 
     /** File upload handler */
