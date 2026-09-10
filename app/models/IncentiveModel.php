@@ -491,7 +491,7 @@ class IncentiveModel
     /**
      * Get Team Sales Breakdown for a specific manager and month
      */
-    public function getTeamSalesBreakdown($managerId, $month)
+    public function getTeamSalesBreakdown($managerId, $month, $filterTeamId = null)
     {
         $managerId = (int)$managerId;
         
@@ -516,33 +516,56 @@ class IncentiveModel
         
         $teamId = $resTeam ? (int)$resTeam['team_id'] : 0;
         
-        if ($roleId != 6 && $roleId != 9 && $teamId == 0) {
-            // Not sales head, not management, and no team ID
+        if ($roleId != 1 && $roleId != 3 && $roleId != 6 && $roleId != 9 && $teamId == 0 && empty($filterTeamId)) {
+            // Not sales head, not admin, and no team ID
             return [];
         }
 
-        // If sales head (role 6) or management (role 9), they see ALL team sales
-        if ($roleId == 6 || $roleId == 9) {
-            $sql = "SELECT 
-                        lb.id, lb.booking_date, 
-                        u.full_name as sales_person, 
-                        p.name as project_name, 
-                        f.flat_name, 
-                        IFNULL(f.land_share_value, 0.00) as land_share_value,
-                        lb.booking_status
-                    FROM lead_bookings lb
-                    JOIN users u ON lb.sales_by_id = u.id
-                    JOIN projects p ON lb.project_id = p.id
-                    JOIN flats f ON lb.flat_id = f.id
-                    WHERE DATE_FORMAT(lb.booking_date, '%Y-%m') = ?
-                    AND lb.deleted_at IS NULL
-                    AND lb.booking_status != 'Cancelled'
-                    ORDER BY lb.booking_date DESC";
-            
-            $stmt = $this->db->prepare($sql);
-            $stmt->bind_param("s", $month);
+        // If sales head (role 9) or admin (1, 3) or management (6)
+        if ($roleId == 1 || $roleId == 3 || $roleId == 6 || $roleId == 9) {
+            if (!empty($filterTeamId) && (int)$filterTeamId > 0) {
+                $sql = "SELECT 
+                            lb.id, lb.booking_date, 
+                            u.full_name as sales_person, 
+                            p.name as project_name, 
+                            f.flat_name, 
+                            IFNULL(f.land_share_value, 0.00) as land_share_value,
+                            lb.booking_status
+                        FROM lead_bookings lb
+                        JOIN users u ON lb.sales_by_id = u.id
+                        JOIN projects p ON lb.project_id = p.id
+                        JOIN flats f ON lb.flat_id = f.id
+                        WHERE u.id IN (SELECT user_id FROM employees WHERE team_id = ?)
+                        AND DATE_FORMAT(lb.booking_date, '%Y-%m') = ?
+                        AND lb.deleted_at IS NULL
+                        AND lb.booking_status != 'Cancelled'
+                        ORDER BY lb.booking_date DESC";
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->bind_param("is", $filterTeamId, $month);
+            } else {
+                $sql = "SELECT 
+                            lb.id, lb.booking_date, 
+                            u.full_name as sales_person, 
+                            p.name as project_name, 
+                            f.flat_name, 
+                            IFNULL(f.land_share_value, 0.00) as land_share_value,
+                            lb.booking_status
+                        FROM lead_bookings lb
+                        JOIN users u ON lb.sales_by_id = u.id
+                        JOIN projects p ON lb.project_id = p.id
+                        JOIN flats f ON lb.flat_id = f.id
+                        WHERE DATE_FORMAT(lb.booking_date, '%Y-%m') = ?
+                        AND lb.deleted_at IS NULL
+                        AND lb.booking_status != 'Cancelled'
+                        ORDER BY lb.booking_date DESC";
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->bind_param("s", $month);
+            }
         } else {
-            // Normal Team Leader sees only their team members
+            $effectiveTeamId = (!empty($filterTeamId) && (int)$filterTeamId > 0) ? (int)$filterTeamId : $teamId;
+            // Normal Team Leader sees their team members
             $sql = "SELECT 
                         lb.id, lb.booking_date, 
                         u.full_name as sales_person, 
@@ -561,7 +584,7 @@ class IncentiveModel
                     ORDER BY lb.booking_date DESC";
             
             $stmt = $this->db->prepare($sql);
-            $stmt->bind_param("is", $teamId, $month);
+            $stmt->bind_param("is", $effectiveTeamId, $month);
         }
         
         $stmt->execute();

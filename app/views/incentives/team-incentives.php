@@ -19,6 +19,43 @@ $show_breadcrumb = true;
         </div>
     </div>
 
+    <!-- Filter Bar (Month & Team) -->
+    <div class="card border-0 shadow-sm rounded-3 mb-4 bg-white">
+        <div class="card-body p-3">
+            <form method="GET" action="<?= $GLOBALS['base_url'] ?>/my-team-incentives" class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold text-muted mb-1"><i class="fa-regular fa-calendar-days me-1 text-primary"></i>Month</label>
+                    <input type="month" name="month" class="form-control form-control-sm" value="<?= htmlspecialchars($selectedMonth ?? date('Y-m')) ?>">
+                </div>
+                <?php if (!empty($isSalesHead) || !empty($teams)): ?>
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold text-muted mb-1"><i class="fa-solid fa-users me-1 text-primary"></i>Team Filter</label>
+                    <select name="team_id" class="form-select form-select-sm">
+                        <option value="">All Teams (Company-Wide)</option>
+                        <?php foreach ($teams as $t): ?>
+                            <option value="<?= $t['id'] ?>" <?= (!empty($selectedTeamId) && (int)$selectedTeamId === (int)$t['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($t['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary btn-sm w-100 fw-semibold">
+                        <i class="fa-solid fa-filter me-1"></i> Filter
+                    </button>
+                </div>
+                <?php if (!empty($selectedTeamId) || (!empty($selectedMonth) && $selectedMonth !== date('Y-m'))): ?>
+                <div class="col-md-2">
+                    <a href="<?= $GLOBALS['base_url'] ?>/my-team-incentives" class="btn btn-outline-secondary btn-sm w-100">
+                        <i class="fa-solid fa-rotate-left me-1"></i> Reset
+                    </a>
+                </div>
+                <?php endif; ?>
+            </form>
+        </div>
+    </div>
+
     <div class="row mb-4">
         <div class="col-xl-4 col-md-6 mb-4">
             <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-success">

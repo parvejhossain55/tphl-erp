@@ -68,9 +68,8 @@ class IncentiveController extends Controller
         $userId = (int)$_SESSION['user']['id'];
         $roleId = (int)$_SESSION['user']['role_id'];
 
-        // Only allow Manager (5) or Sales Head (9) or Coordinator (is_sales_co_leader)
-        if (!in_array($roleId, [5, 9, 1, 3])) { // 1, 3 are admin
-            // check if co-leader
+        // Only allow Manager (5) or Sales Head (9) or Coordinator (is_sales_co_leader) or Admin (1, 3)
+        if (!in_array($roleId, [5, 9, 1, 3])) {
             $emp = $this->db->query("SELECT is_sales_co_leader FROM employees WHERE user_id = {$userId}")->fetch_assoc();
             if (empty($emp) || $emp['is_sales_co_leader'] != 1) {
                 header("Location: {$GLOBALS['base_url']}/my-incentives");
@@ -78,14 +77,24 @@ class IncentiveController extends Controller
             }
         }
 
-        $teamMetrics = $this->engine->getTeamMonthlyStats($userId, date('Y-m'));
-        $teamSalesBreakdown = $this->incentiveModel->getTeamSalesBreakdown($userId, date('Y-m'));
+        $month = $_GET['month'] ?? date('Y-m');
+        $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' && $_GET['team_id'] !== 'all' ? (int)$_GET['team_id'] : null;
+
+        $teamMetrics = $this->engine->getTeamMonthlyStats($userId, $month, $filterTeamId);
+        $teamSalesBreakdown = $this->incentiveModel->getTeamSalesBreakdown($userId, $month, $filterTeamId);
+
+        $teamsRes = $this->db->query("SELECT id, name FROM teams ORDER BY name ASC");
+        $teams = $teamsRes ? $teamsRes->fetch_all(MYSQLI_ASSOC) : [];
 
         $this->view("incentives/team-incentives", [
             "current_route"      => "my-team-incentives",
             "page_title"         => "Team Sales Incentives",
             "teamMetrics"        => $teamMetrics,
-            "teamSalesBreakdown" => $teamSalesBreakdown
+            "teamSalesBreakdown" => $teamSalesBreakdown,
+            "teams"              => $teams,
+            "selectedTeamId"     => $filterTeamId,
+            "selectedMonth"      => $month,
+            "isSalesHead"        => ($roleId == 9 || in_array($roleId, [1, 3]))
         ]);
     }
 

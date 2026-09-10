@@ -25,14 +25,19 @@ class SalesActivityReportController extends Controller
         $year = isset($_GET['year']) ? (int)$_GET['year'] : date('Y');
         $month = isset($_GET['month']) ? (int)$_GET['month'] : date('m');
         $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+        $teamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' && $_GET['team_id'] !== 'all' ? (int)$_GET['team_id'] : null;
         
         $activeTab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
 
-        // Monthly Data
-        $monthlyData = $this->trackerService->getTrackerReport($year, $month, $loggedInUser);
+        // Monthly Data (pass teamId for filtering)
+        $monthlyData = $this->trackerService->getTrackerReport($year, $month, $loggedInUser, null, null, $teamId);
         
-        // Daily Data
-        $dailyData = $this->trackerService->getDailyReport($date, $loggedInUser);
+        // Daily Data (pass teamId for filtering)
+        $dailyData = $this->trackerService->getDailyReport($date, $loggedInUser, $teamId);
+
+        // Fetch all active teams for dropdown filter
+        $teamsRes = $this->db->query("SELECT id, name FROM teams ORDER BY name ASC");
+        $teams = $teamsRes ? $teamsRes->fetch_all(MYSQLI_ASSOC) : [];
 
         // Check if Export requested
         if (isset($_GET['export'])) {
@@ -45,12 +50,14 @@ class SalesActivityReportController extends Controller
         }
 
         $this->view('sales-activity-report/index', [
-            'monthlyData' => $monthlyData,
-            'dailyData' => $dailyData,
-            'year' => $year,
-            'month' => $month,
-            'date' => $date,
-            'activeTab' => $activeTab
+            'monthlyData'    => $monthlyData,
+            'dailyData'      => $dailyData,
+            'year'           => $year,
+            'month'          => $month,
+            'date'           => $date,
+            'selectedTeamId' => $teamId,
+            'teams'          => $teams,
+            'activeTab'      => $activeTab
         ]);
     }
 
@@ -601,20 +608,26 @@ class SalesActivityReportController extends Controller
         $month    = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
         $dateFrom = !empty($_GET['date_from']) ? trim($_GET['date_from']) : null;
         $dateTo   = !empty($_GET['date_to']) ? trim($_GET['date_to']) : null;
+        $teamId   = isset($_GET['team_id']) && $_GET['team_id'] !== '' && $_GET['team_id'] !== 'all' ? (int)$_GET['team_id'] : null;
 
         // Check if export requested
         if (isset($_GET['export']) && strtolower(trim($_GET['export'])) === 'excel') {
-            $this->exportTeamPerformanceExcel($year, $month, $loggedInUser, $dateFrom, $dateTo);
+            $this->exportTeamPerformanceExcel($year, $month, $loggedInUser, $dateFrom, $dateTo, $teamId);
             return;
         }
 
-        // Fetch Team Performance Data
-        $reportData = $this->trackerService->getTeamPerformanceReport($year, $month, $loggedInUser, $dateFrom, $dateTo);
+        // Fetch Team Performance Data (with teamId filter)
+        $reportData = $this->trackerService->getTeamPerformanceReport($year, $month, $loggedInUser, $dateFrom, $dateTo, $teamId);
+
+        $teamsRes = $this->db->query("SELECT id, name FROM teams ORDER BY name ASC");
+        $teamsList = $teamsRes ? $teamsRes->fetch_all(MYSQLI_ASSOC) : [];
 
         $this->view('sales-activity-report/team-performance', [
             'current_route' => 'team-performance',
             'reportData'    => $reportData,
             'teams'         => $reportData['teams'] ?? [],
+            'allTeams'      => $teamsList,
+            'selectedTeamId'=> $teamId,
             'kpis'          => $reportData['kpis'] ?? [],
             'period'        => $reportData['period'] ?? [],
             'year'          => $year,
@@ -628,13 +641,13 @@ class SalesActivityReportController extends Controller
     /**
      * Export Team Performance to Excel
      */
-    public function exportTeamPerformanceExcel($year, $month, $loggedInUser, $dateFrom = null, $dateTo = null)
+    public function exportTeamPerformanceExcel($year, $month, $loggedInUser, $dateFrom = null, $dateTo = null, $teamId = null)
     {
         if (ob_get_level()) {
             ob_end_clean();
         }
 
-        $reportData = $this->trackerService->getTeamPerformanceReport($year, $month, $loggedInUser, $dateFrom, $dateTo);
+        $reportData = $this->trackerService->getTeamPerformanceReport($year, $month, $loggedInUser, $dateFrom, $dateTo, $teamId);
         $teams = $reportData['teams'] ?? [];
         $period = $reportData['period'] ?? [];
 

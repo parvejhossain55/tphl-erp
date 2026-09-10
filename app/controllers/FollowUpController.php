@@ -202,49 +202,109 @@ public function store()
 
     public function update()
     {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $isAjax = !empty($_POST['is_ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+
         $flatId = $_POST['flat_id'] ?? null;
         $flatId = ($flatId === '' || $flatId === '0') ? null : (int)$flatId;
 
+        $projectId = $_POST['project_id'] ?? null;
+        $projectId = ($projectId === '' || $projectId === '0') ? null : (int)$projectId;
+
+        $followUpId = (int)($_POST['id'] ?? 0);
+        $leadId = (int)($_POST['lead_id'] ?? 0);
+
+        // Security check: Only creator or Admin (role_id 1) can edit
+        $currentUserId = $_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? null;
+        $currentRole = $_SESSION['user']['role_id'] ?? null;
+
+        $existing = $this->followUpModel->getById($followUpId);
+        if (!$existing) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'Follow-up not found!']);
+                exit;
+            }
+            setError('Follow-up not found!');
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/my-assigned-leads"));
+            exit;
+        }
+
+        if ($currentRole != 1 && (int)$existing['created_by'] !== (int)$currentUserId) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => 'You can only edit follow-ups created by you!']);
+                exit;
+            }
+            setError('You can only edit follow-ups created by you!');
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/my-assigned-leads"));
+            exit;
+        }
+
+        $allowedNextActions = ['site visit', 'booking', 'call_back', 'take_time'];
+        $next_action = $_POST['next_action'] ?? null;
+        if (!in_array($next_action, $allowedNextActions)) {
+            $next_action = null;
+        }
+
         $followUpData = [
-            'id' => (int)$_POST['id'],
-            'lead_id' => (int)$_POST['lead_id'],
+            'id' => $followUpId,
+            'lead_id' => $leadId,
+            'project_id' => $projectId,
             'flat_id' => $flatId,   // ✅ NULL or flats.id only
-            'follow_up_date' => $_POST['follow_up_date'],
+            'follow_up_date' => $_POST['follow_up_date'] ?? date('Y-m-d'),
             'follow_up_time' => !empty($_POST['follow_up_time']) ? $_POST['follow_up_time'] : null,
             'follow_up_type' => !empty($_POST['follow_up_type']) ? $_POST['follow_up_type'] : null,
             'status' => $_POST['status'] ?? 'pending',
             'discussion_note' => $_POST['discussion_note'] ?? null,
             'next_follow_up_date' => $_POST['next_follow_up_date'] ?: null,
-            'next_action' => $_POST['next_action'] ?? null,
+            'next_action' => $next_action,
             'follow_up_agent_id' => !empty($_POST['follow_up_agent_id']) ? (int)$_POST['follow_up_agent_id'] : null,
             'lead_status' => $_POST['lead_status'] ?? null,
             'next_follow_up_plan_notes' => $_POST['next_follow_up_plan_notes'] ?? null,
         ];
 
+        // Update Lead Transferred if provided
+        if (($followUpData['lead_status'] ?? '') === 'Lead Transferred' && !empty($_POST['team_id'])) {
+            $team_id = (int)$_POST['team_id'];
+            $updateTeam = $this->db->prepare("UPDATE leads SET team_id = ? WHERE id = ?");
+            if ($updateTeam) {
+                $updateTeam->bind_param("ii", $team_id, $leadId);
+                $updateTeam->execute();
+            }
+        }
+
         // Update Lead Type if provided
         if (!empty($followUpData['lead_status'])) {
             $lead_status = $followUpData['lead_status'];
-            $lead_id = $followUpData['lead_id'];
             $updateLeadType = $this->db->prepare("UPDATE leads SET lead_type = ? WHERE id = ?");
             if ($updateLeadType) {
-                $updateLeadType->bind_param("si", $lead_status, $lead_id);
+                $updateLeadType->bind_param("si", $lead_status, $leadId);
                 $updateLeadType->execute();
             }
         }
 
+        $updated = $this->followUpModel->update($followUpData);
 
-        if ($this->followUpModel->update($followUpData)) {
+        if ($updated) {
             setSuccess("Follow-up updated successfully!");
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'success', 'message' => 'Follow-up updated successfully!']);
+                exit;
+            }
         } else {
             $dbError = $_SESSION['flash_error'] ?? '';
-            if (!empty($dbError)) {
-                setError("Failed to update follow-up! DB Error: " . $dbError);
-            } else {
-                setError("Failed to update follow-up!");
+            $errorMsg = !empty($dbError) ? "Failed to update follow-up! DB Error: " . $dbError : "Failed to update follow-up!";
+            setError($errorMsg);
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['status' => 'error', 'message' => $errorMsg]);
+                exit;
             }
         }
-        $leadId = $_POST['lead_id'];
-        header("Location: {$GLOBALS['base_url']}/follow-up-leads/{$leadId}");
+
+        header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/follow-up-leads/{$leadId}"));
         exit;
     }
 

@@ -177,11 +177,13 @@ class FollowUp extends Model
         $allowedStatuses = ['pending', 'completed', 'missed', 'canceled'];
         $status = in_array($data['status'] ?? '', $allowedStatuses) ? $data['status'] : 'pending';
 
-        $follow_up_time = !empty($data['follow_up_time']) ? $data['follow_up_time'] : null;
+        $projectId = !empty($data['project_id']) ? (int)$data['project_id'] : null;
+        $flatId = !empty($data['flat_id']) ? (int)$data['flat_id'] : null;
 
         $stmt = $this->db->prepare("
         UPDATE lead_follow_ups SET
             lead_id = ?,
+            project_id = ?,
             flat_id = ?,
             follow_up_date = ?,
             follow_up_time = ?,
@@ -204,9 +206,10 @@ class FollowUp extends Model
         $norm_next_follow_up_date = !empty($data['next_follow_up_date']) ? normalizeDateYear($data['next_follow_up_date']) : null;
 
         $stmt->bind_param(
-            "iisssssssissi",
+            "iiisssssssissi",
             $data['lead_id'],
-            $data['flat_id'],   // NULL or valid flats.id
+            $projectId,
+            $flatId,   // NULL or valid flats.id
             $norm_follow_up_date,
             $follow_up_time,
             $follow_up_type,
@@ -219,7 +222,6 @@ class FollowUp extends Model
             $data['next_follow_up_plan_notes'],
             $data['id']
         );
-
 
         return $stmt->execute();
     }

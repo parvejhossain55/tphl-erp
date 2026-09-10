@@ -189,11 +189,12 @@
                                 <th>Discussion Note</th>
                                 <th>Next Follow Up</th>
                                 <th>Next Action</th>
+                                <th class="text-center" style="min-width: 80px;">Action</th>
                             </tr>
                         </thead>
                         <tbody id="followUpHistoryBody">
                             <tr>
-                                <td colspan="10" class="text-center text-muted">Loading history...</td>
+                                <td colspan="11" class="text-center text-muted">Loading history...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -211,14 +212,27 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i> Create Follow Up</h5>
+                <h5 class="modal-title" id="createFollowUpModalTitle"><i class="bi bi-calendar-plus me-2"></i> Create Follow Up</h5>
                 <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
                     <i class="fa-solid fa-xmark-large"></i>
                 </button>
             </div>
             <div class="modal-body">
+                <!-- Edit mode notification banner -->
+                <div id="followUpEditModeAlert" class="alert alert-warning py-2 px-3 mb-3 align-items-center justify-content-between" style="display: none;">
+                    <div>
+                        <i class="fa-solid fa-pen-to-square me-2 text-warning-emphasis"></i>
+                        <strong>Editing Follow Up #<span id="followUpEditIdDisplay"></span></strong>
+                        <span class="text-muted ms-2 fs-12">(Created by: <span id="followUpEditCreatorDisplay"></span>)</span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-dark py-0 px-2" id="cancelFollowUpEditBtn">
+                        <i class="fa-solid fa-xmark me-1"></i> Cancel Edit
+                    </button>
+                </div>
+
                 <form id="createFollowUpForm" action="<?= $GLOBALS['base_url'] ?>/store-follow-up" method="POST">
                     <input type="hidden" name="lead_id" id="createFollowUpLeadId" value="">
+                    <input type="hidden" name="id" id="createFollowUpEditId" value="">
                     <input type="hidden" name="is_ajax" value="1">
                     <input type="hidden" name="assigned_with" value="<?= $_SESSION['user']['id'] ?? 1 ?>">
                     <input type="hidden" name="created_by" value="<?= $_SESSION['user_id'] ?? 1 ?>">
@@ -397,11 +411,12 @@
                                 <th>Next Follow Up</th>
                                 <th>Next Action</th>
                                 <th>Follow Up With</th>
+                                <th class="text-center" style="min-width: 80px;">Action</th>
                             </tr>
                         </thead>
                         <tbody id="createModalHistoryBody">
                             <tr>
-                                <td colspan="11" class="text-center text-muted">Loading history...</td>
+                                <td colspan="12" class="text-center text-muted">Loading history...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -414,69 +429,22 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    function loadModalHistory(leadId) {
-        let tbody = $('#createModalHistoryBody');
-        tbody.html('<tr><td colspan="11" class="text-center text-muted">Loading history...</td></tr>');
-        
-        fetch(`<?= $GLOBALS['base_url'] ?>/get-follow-up-history/${leadId}`)
-            .then(res => res.json())
-            .then(data => {
-                let html = '';
-                if (Array.isArray(data) && data.length > 0) {
-                    data.forEach(item => {
-                        html += `<tr>
-                            <td>${item.id || ''}</td>
-                            <td>${item.lead_name || ''}</td>
-                            <td>${item.project_name || ''}</td>
-                            <td>${item.flat_name || ''}</td>
-                            <td>${item.follow_up_date || ''}</td>
-                            <td>${item.follow_up_time || ''}</td>
-                            <td>${item.follow_up_type || ''}</td>
-                            <td>${item.discussion_note || ''}</td>
-                            <td>${item.next_follow_up_date || ''}</td>
-                            <td>${item.next_action || ''}</td>
-                            <td>${item.agent_name || ''}</td>
-                        </tr>`;
-                    });
-                    
-                    // Update the badge count on the main page silently
-                    let badge = $(`.create-followup-btn[data-lead-id="${leadId}"] .action-badge`);
-                    if(badge.length > 0) {
-                        badge.text(data.length);
-                    } else {
-                        $(`.create-followup-btn[data-lead-id="${leadId}"]`).append(`<span class="action-badge">${data.length}</span>`);
-                    }
-                } else {
-                    html = '<tr><td colspan="11" class="text-center text-muted">No history found.</td></tr>';
-                }
-                tbody.html(html);
-            })
-            .catch(err => {
-                console.error("Failed to load history", err);
-                tbody.html('<tr><td colspan="11" class="text-center text-danger">Failed to load history</td></tr>');
-            });
+    const currentUserId = <?= (int)($_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? 0) ?>;
+    const currentUserRole = <?= (int)($_SESSION['user']['role_id'] ?? 0) ?>;
+    let modalHistoryData = [];
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
-    // Inject lead ID when opening the Create Follow Up Modal
-    $('#createFollowUpModal').on('show.bs.modal', function (event) {
-        let button = $(event.relatedTarget);
-        let leadId = button.attr('data-lead-id');
-        $('#createFollowUpLeadId').val(leadId);
-        
-        // reset form on open
-        $('#createFollowUpForm')[0].reset();
-        $('#createModalReassignTeamDiv').hide();
-        $('#createFollowUpFlatSelect').html('<option value="">Select Flat</option>');
-        
-        loadModalHistory(leadId);
-    });
-
-    
-    // Handle project change to load flats
-    $('#createFollowUpProjectSelect').on('change', function() {
-        let projectId = $(this).val();
+    function loadFlatsForProject(projectId, selectedFlatId = null) {
         let flatSel = $('#createFollowUpFlatSelect');
-        
         if (projectId) {
             flatSel.html('<option value="">Loading...</option>');
             fetch(`<?= $GLOBALS['base_url'] ?>/get-flats/${projectId}`)
@@ -489,15 +457,24 @@ document.addEventListener('DOMContentLoaded', function() {
                         
                         let option = document.createElement('option');
                         option.value = flatId;
-                        if (flat.is_booked == 1) {
+                        if (flat.is_booked == 1 && (!selectedFlatId || flatId != selectedFlatId)) {
                             option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
                             option.classList.add('booked-option');
                             option.disabled = true;
                         } else {
                             option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
                         }
+                        if (selectedFlatId && Number(flatId) === Number(selectedFlatId)) {
+                            option.selected = true;
+                        }
                         flatSel.append(option);
                     });
+                    if (selectedFlatId) {
+                        flatSel.val(selectedFlatId);
+                    }
+                    if (flatSel.hasClass('select2-hidden-accessible')) {
+                        flatSel.trigger('change.select2');
+                    }
                 })
                 .catch(err => {
                     console.error('Failed to load flats', err);
@@ -506,6 +483,96 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             flatSel.html('<option value="">Select Flat</option>');
         }
+    }
+
+    function resetFormToCreateMode() {
+        $('#createFollowUpForm').attr('action', '<?= $GLOBALS['base_url'] ?>/store-follow-up');
+        $('#createFollowUpEditId').val('');
+        $('#followUpEditModeAlert').hide().removeClass('d-flex').addClass('d-none');
+        $('#createFollowUpModalTitle').html('<i class="bi bi-calendar-plus me-2"></i> Create Follow Up');
+        $('#saveFollowUpBtn').removeClass('btn-warning').addClass('btn-primary').html('Save Follow Up');
+        
+        let leadId = $('#createFollowUpLeadId').val();
+        $('#createFollowUpForm')[0].reset();
+        $('#createFollowUpLeadId').val(leadId);
+        $('#createModalReassignTeamDiv').hide();
+        $('#createFollowUpFlatSelect').html('<option value="">Select Flat</option>');
+        $('#createFollowUpProjectSelect').val('');
+        if ($('#createFollowUpProjectSelect').hasClass('select2-hidden-accessible')) {
+            $('#createFollowUpProjectSelect').trigger('change.select2');
+        }
+    }
+
+    function loadModalHistory(leadId) {
+        let tbody = $('#createModalHistoryBody');
+        tbody.html('<tr><td colspan="12" class="text-center text-muted">Loading history...</td></tr>');
+        modalHistoryData = [];
+        
+        fetch(`<?= $GLOBALS['base_url'] ?>/get-follow-up-history/${leadId}`)
+            .then(res => res.json())
+            .then(data => {
+                let html = '';
+                if (Array.isArray(data) && data.length > 0) {
+                    modalHistoryData = data;
+                    data.forEach(item => {
+                        const canEdit = (currentUserId && Number(item.created_by) === Number(currentUserId)) || (currentUserRole === 1);
+                        let actionHtml = '';
+                        if (canEdit) {
+                            actionHtml = `<button type="button" class="btn btn-xs btn-outline-primary py-0 px-2 edit-modal-followup-btn" data-fuid="${item.id}" title="Edit this follow up">
+                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit
+                            </button>`;
+                        } else {
+                            actionHtml = `<span class="badge bg-light text-muted border py-1 px-2" title="Only the creator can edit this follow up"><i class="fa-solid fa-lock me-1"></i> No Access</span>`;
+                        }
+
+                        html += `<tr>
+                            <td>${item.id || ''}</td>
+                            <td>${escapeHtml(item.lead_name || '')}</td>
+                            <td>${escapeHtml(item.project_name || '')}</td>
+                            <td>${escapeHtml(item.flat_name || '')}</td>
+                            <td>${item.follow_up_date || ''}</td>
+                            <td>${item.follow_up_time || ''}</td>
+                            <td>${escapeHtml(item.follow_up_type || '')}</td>
+                            <td title="${escapeHtml(item.discussion_note || '')}">${escapeHtml(item.discussion_note || '')}</td>
+                            <td>${item.next_follow_up_date || ''}</td>
+                            <td>${escapeHtml(item.next_action || '')}</td>
+                            <td>${escapeHtml(item.agent_name || '')}</td>
+                            <td class="text-center">${actionHtml}</td>
+                        </tr>`;
+                    });
+                    
+                    // Update the badge count on the main page silently
+                    let badge = $(`.create-followup-btn[data-lead-id="${leadId}"] .action-badge`);
+                    if(badge.length > 0) {
+                        badge.text(data.length);
+                    } else {
+                        $(`.create-followup-btn[data-lead-id="${leadId}"]`).append(`<span class="action-badge">${data.length}</span>`);
+                    }
+                } else {
+                    html = '<tr><td colspan="12" class="text-center text-muted">No history found.</td></tr>';
+                }
+                tbody.html(html);
+            })
+            .catch(err => {
+                console.error("Failed to load history", err);
+                tbody.html('<tr><td colspan="12" class="text-center text-danger">Failed to load history</td></tr>');
+            });
+    }
+
+    // Inject lead ID when opening the Create Follow Up Modal
+    $('#createFollowUpModal').on('show.bs.modal', function (event) {
+        let button = $(event.relatedTarget);
+        let leadId = button.attr('data-lead-id') || $('#createFollowUpLeadId').val();
+        $('#createFollowUpLeadId').val(leadId);
+        
+        resetFormToCreateMode();
+        loadModalHistory(leadId);
+    });
+
+    // Handle project change to load flats
+    $('#createFollowUpProjectSelect').on('change', function() {
+        let projectId = $(this).val();
+        loadFlatsForProject(projectId, null);
     });
 
     // Handle Lead Transferred toggle
@@ -519,15 +586,71 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Handle AJAX form submission
+    // Edit button click in modal history table
+    $(document).on('click', '.edit-modal-followup-btn', function() {
+        const fuid = $(this).data('fuid');
+        const item = modalHistoryData.find(x => Number(x.id) === Number(fuid));
+        if (!item) return;
+
+        // Switch form to Edit mode
+        $('#createFollowUpForm').attr('action', '<?= $GLOBALS['base_url'] ?>/update-follow-up');
+        $('#createFollowUpEditId').val(item.id);
+        $('#followUpEditIdDisplay').text(item.id);
+        $('#followUpEditCreatorDisplay').text(item.agent_name || 'You');
+        $('#followUpEditModeAlert').removeClass('d-none').addClass('d-flex').show();
+        $('#createFollowUpModalTitle').html('<i class="fa-solid fa-pen-to-square me-2 text-warning"></i> Edit Follow Up #' + item.id);
+        $('#saveFollowUpBtn').removeClass('btn-primary').addClass('btn-warning').html('<i class="fa-solid fa-check me-1"></i> Update Follow Up');
+
+        // Populate fields
+        $('#createFollowUpProjectSelect').val(item.project_id || '');
+        if ($('#createFollowUpProjectSelect').hasClass('select2-hidden-accessible')) {
+            $('#createFollowUpProjectSelect').trigger('change.select2');
+        }
+        loadFlatsForProject(item.project_id, item.flat_id);
+
+        let fDate = item.follow_up_date ? item.follow_up_date.split(' ')[0] : '';
+        let fTime = item.follow_up_time ? item.follow_up_time.substring(0, 5) : '';
+        let nextDate = (item.next_follow_up_date && item.next_follow_up_date !== '0000-00-00') ? item.next_follow_up_date.split(' ')[0] : '';
+
+        $('#createFollowUpForm input[name="follow_up_date"]').val(fDate);
+        $('#createFollowUpForm input[name="follow_up_time"]').val(fTime);
+        $('#createFollowUpForm select[name="follow_up_type"]').val(item.follow_up_type || '');
+        $('#createModalLeadStatus').val(item.lead_status || '');
+
+        if (item.lead_status === 'Lead Transferred') {
+            $('#createModalReassignTeamDiv').show();
+            $('#createModalReassignTeamId').prop('required', true).val(item.team_id || '');
+        } else {
+            $('#createModalReassignTeamDiv').hide();
+            $('#createModalReassignTeamId').prop('required', false).val('');
+        }
+
+        $('#createFollowUpForm select[name="status"]').val(item.status || 'pending');
+        $('#createFollowUpForm select[name="follow_up_agent_id"]').val(item.follow_up_agent_id || '');
+        $('#createFollowUpForm textarea[name="discussion_note"]').val(item.discussion_note || '');
+        $('#createFollowUpForm input[name="next_follow_up_date"]').val(nextDate);
+        $('#createFollowUpForm select[name="next_action"]').val(item.next_action || '');
+        $('#createFollowUpForm textarea[name="next_follow_up_plan_notes"]').val(item.next_follow_up_plan_notes || '');
+
+        // Scroll to form top inside modal
+        $('#createFollowUpModal .modal-body').animate({ scrollTop: 0 }, 300);
+    });
+
+    // Cancel edit button click
+    $(document).on('click', '#cancelFollowUpEditBtn', function() {
+        resetFormToCreateMode();
+    });
+
+    // Handle AJAX form submission (Create or Update)
     $('#createFollowUpForm').on('submit', function(e) {
         e.preventDefault();
         let form = $(this);
         let submitBtn = $('#saveFollowUpBtn');
-        let originalText = submitBtn.text();
+        let isEditMode = Boolean($('#createFollowUpEditId').val());
+        let originalHtml = submitBtn.html();
         let leadId = $('#createFollowUpLeadId').val();
         
-        submitBtn.prop('disabled', true).text('Saving...');
+        submitBtn.prop('disabled', true).html(isEditMode ? '<i class="fa-solid fa-spinner fa-spin me-1"></i> Updating...' : '<i class="fa-solid fa-spinner fa-spin me-1"></i> Saving...');
         
         $.ajax({
             url: form.attr('action'),
@@ -535,7 +658,7 @@ document.addEventListener('DOMContentLoaded', function() {
             data: form.serialize(),
             dataType: 'json',
             success: function(response) {
-                submitBtn.prop('disabled', false).text(originalText);
+                submitBtn.prop('disabled', false).html(originalHtml);
                 if (response.status === 'success') {
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
@@ -547,16 +670,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             timer: 3000,
                             showConfirmButton: false
                         });
+                    } else {
+                        alert(response.message);
                     }
                     
-                    // Reset the form so they can add another if they want
-                    form[0].reset();
-                    $('#createModalReassignTeamDiv').hide();
-                    $('#createFollowUpFlatSelect').html('<option value="">Select Flat</option>');
-                    
-                    // Reload the history list directly inside the modal
+                    resetFormToCreateMode();
                     loadModalHistory(leadId);
-                    
                 } else {
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
@@ -570,19 +689,90 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             },
             error: function(xhr, status, error) {
-                submitBtn.prop('disabled', false).text(originalText);
-                console.error('AJAX Error:', error);
+                submitBtn.prop('disabled', false).html(originalHtml);
+                console.error('AJAX Error:', error, xhr.responseText);
+                let errMsg = 'Failed to submit follow up.';
+                try {
+                    let jsonResp = JSON.parse(xhr.responseText);
+                    if (jsonResp && jsonResp.message) errMsg = jsonResp.message;
+                } catch(e) {}
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
-                        text: 'Failed to submit follow up. Please check console.'
+                        text: errMsg
                     });
                 } else {
-                    alert('Failed to submit follow up.');
+                    alert(errMsg);
                 }
             }
         });
+    });
+
+    // History Modal Show handler
+    $('#followupHistoryModal').on('show.bs.modal', function(event) {
+        const button = $(event.relatedTarget);
+        const tbody = $('#followUpHistoryBody');
+        let historyDataRaw = button.attr('data-history');
+        let historyData = [];
+        if (historyDataRaw) {
+            try { historyData = JSON.parse(historyDataRaw); } catch(e) { console.error("Failed to parse history JSON", e); }
+        }
+        
+        let html = '';
+        if (Array.isArray(historyData) && historyData.length > 0) {
+            const currentLeadId = button.attr('data-lead-id');
+            historyData.forEach(function(item, index) {
+                const canEdit = (currentUserId && Number(item.created_by) === Number(currentUserId)) || (currentUserRole === 1);
+                let actionHtml = '';
+                if (canEdit) {
+                    actionHtml = `<button type="button" class="btn btn-xs btn-outline-primary py-0 px-2 history-modal-edit-btn" data-fuid="${item.id}" data-lead-id="${item.lead_id || currentLeadId}" title="Edit this follow up">
+                        <i class="fa-solid fa-pen-to-square me-1"></i> Edit
+                    </button>`;
+                } else {
+                    actionHtml = `<span class="badge bg-light text-muted border py-1 px-2" title="Only creator can edit"><i class="fa-solid fa-lock me-1"></i> No Access</span>`;
+                }
+
+                html += `<tr>
+                    <td>${index + 1}</td>
+                    <td>${escapeHtml(item.full_name || '')}</td>
+                    <td>${escapeHtml(item.project_name || '')}</td>
+                    <td>${escapeHtml(item.flat_name || '')}</td>
+                    <td>${item.follow_up_date || ''}</td>
+                    <td>${item.follow_up_time || ''}</td>
+                    <td>${escapeHtml(item.follow_up_type || '')}</td>
+                    <td>${escapeHtml(item.discussion_note || '')}</td>
+                    <td>${item.next_follow_up_date || ''}</td>
+                    <td>${escapeHtml(item.next_action || '')}</td>
+                    <td class="text-center">${actionHtml}</td>
+                </tr>`;
+            });
+        } else {
+            html = '<tr><td colspan="11" class="text-center text-danger">No follow-ups found for this lead.</td></tr>';
+        }
+        tbody.html(html);
+    });
+
+    // Edit button click inside Follow Up History Modal
+    $(document).on('click', '.history-modal-edit-btn', function() {
+        const fuid = $(this).data('fuid');
+        const leadId = $(this).data('lead-id');
+        $('#followupHistoryModal').modal('hide');
+        setTimeout(function() {
+            $('#createFollowUpLeadId').val(leadId);
+            $('#createFollowUpModal').modal('show');
+            let attempts = 0;
+            let checkInterval = setInterval(function() {
+                attempts++;
+                let btn = $(`.edit-modal-followup-btn[data-fuid="${fuid}"]`);
+                if (btn.length > 0) {
+                    clearInterval(checkInterval);
+                    btn.trigger('click');
+                    return;
+                }
+                if (attempts > 30) clearInterval(checkInterval);
+            }, 100);
+        }, 400);
     });
 });
 </script>
