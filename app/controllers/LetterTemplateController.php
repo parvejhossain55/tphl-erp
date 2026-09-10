@@ -292,8 +292,8 @@ class LetterTemplateController extends Controller
             ], JSON_UNESCAPED_UNICODE);
         }
 
-        $letterDate = !empty($data['letter_date']) ? $data['letter_date'] : (!empty($data['sc_letter_date']) ? $data['sc_letter_date'] : date('Y-m-d'));
-        $refNumber = !empty($data['ref_number']) ? $data['ref_number'] : (!empty($data['sc_ref_number']) ? $data['sc_ref_number'] : null);
+        $letterDate = !empty($data['letter_date']) ? $data['letter_date'] : ($isSalaryCertificate && !empty($data['sc_letter_date']) ? $data['sc_letter_date'] : date('Y-m-d'));
+        $refNumber = !empty($data['ref_number']) ? $data['ref_number'] : ($isSalaryCertificate && !empty($data['sc_ref_number']) ? $data['sc_ref_number'] : null);
 
         // Process signature choice
         $customSignaturePath = null;
@@ -636,6 +636,34 @@ class LetterTemplateController extends Controller
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
+        // For non-salary certificate letters, inject official letterhead background on all pages
+        if ($letter['letter_type'] !== 'salary_certificate' && $bgPath && file_exists($bgPath)) {
+            $canvas = $dompdf->getCanvas();
+            $w = $canvas->get_width();
+            $h = $canvas->get_height();
+
+            $bgId = $canvas->open_object();
+            $canvas->image($bgPath, 0, 0, $w, $h);
+            $canvas->close_object();
+
+            $cpdf = $canvas->get_cpdf();
+            if ($cpdf && isset($cpdf->objects)) {
+                foreach ($cpdf->objects as $objId => &$obj) {
+                    if (isset($obj['t']) && $obj['t'] === 'page' && isset($obj['info']['contents'])) {
+                        array_unshift($obj['info']['contents'], $bgId);
+                    }
+                }
+            }
+
+            // If multi-page, add page numbering at bottom right
+            $pageCount = $canvas->get_page_count();
+            if ($pageCount > 1) {
+                $fontMetrics = $dompdf->getFontMetrics();
+                $font = $fontMetrics->get_font('Helvetica', 'normal');
+                $canvas->page_text(485, 808, "Page {PAGE_NUM} of {PAGE_COUNT}", $font, 8, [0.4, 0.4, 0.4]);
+            }
+        }
+
         $code = !empty($letter['employee_code']) ? $letter['employee_code'] : $letter['id'];
         $filename = str_replace([' ', '/'], '_', $letter['letter_type']) . '_' . $code . '.pdf';
 
@@ -835,9 +863,10 @@ class LetterTemplateController extends Controller
             ], JSON_UNESCAPED_UNICODE);
         }
 
-        $letterDate = !empty($data['letter_date']) ? $data['letter_date'] : (!empty($data['sc_letter_date']) ? $data['sc_letter_date'] : date('Y-m-d'));
-        $refNumber = !empty($data['ref_number']) ? $data['ref_number'] : (!empty($data['sc_ref_number']) ? $data['sc_ref_number'] : null);
-        $subject = !empty($data['subject']) ? $data['subject'] : ($data['sc_subject'] ?? 'Salary Certificate');
+        $isSalaryCertificate = ($data['letter_type'] ?? '') === 'salary_certificate';
+        $letterDate = !empty($data['letter_date']) ? $data['letter_date'] : ($isSalaryCertificate && !empty($data['sc_letter_date']) ? $data['sc_letter_date'] : date('Y-m-d'));
+        $refNumber = !empty($data['ref_number']) ? $data['ref_number'] : ($isSalaryCertificate && !empty($data['sc_ref_number']) ? $data['sc_ref_number'] : null);
+        $subject = !empty($data['subject']) ? $data['subject'] : ($isSalaryCertificate ? ($data['sc_subject'] ?? 'Salary Certificate') : '');
 
         $currentLetter = $this->letterModel->find($id);
         $customSignaturePath = $currentLetter['custom_signature'] ?? null;

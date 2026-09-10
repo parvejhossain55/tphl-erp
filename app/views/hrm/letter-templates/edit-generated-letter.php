@@ -278,10 +278,16 @@
                         </div>
 
                         <div class="col-md-12">
-                            <label>Letter Body *</label>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="mb-0">Letter Body *</label>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" onclick="insertPageBreak()" title="Insert page break to split into Page 2, Page 3, etc.">
+                                    <i class="fa-solid fa-file-circle-plus me-1"></i> 📄 Insert Page Break (পৃষ্ঠা বিভাজন)
+                                </button>
+                            </div>
                             <div class="from__input-box">
                                 <textarea class="form-control" id="tinymce_simple_textarea" name="letter_body" rows="4" placeholder="Enter letter content..."><?= htmlspecialchars((string)($letter['body'] ?? '')) ?></textarea>
                             </div>
+                            <small class="text-muted"><i class="fa-solid fa-circle-info me-1"></i>টিপস: দুই বা ততোধিক পেজের লেটার তৈরি করতে যেখানে পেজ ভাগ করতে চান সেখানে কার্সর রেখে <strong>"Insert Page Break"</strong> বাটনে ক্লিক করুন।</small>
                         </div>
 
                     </div>
@@ -1118,6 +1124,20 @@
             };
             reader.readAsDataURL(file);
         });
+    }
+
+    function insertPageBreak() {
+        var breakHtml = '<div class="page-break" style="page-break-after: always;"></div><p><br></p>';
+        if (typeof tinymce !== 'undefined' && tinymce.get('tinymce_simple_textarea')) {
+            tinymce.get('tinymce_simple_textarea').insertContent(breakHtml);
+            tinymce.get('tinymce_simple_textarea').focus();
+        } else {
+            var el = document.getElementById('tinymce_simple_textarea');
+            if (el) {
+                el.value += '\n' + breakHtml + '\n';
+                el.focus();
+            }
+        }
     }
 </script>
 

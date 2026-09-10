@@ -72,15 +72,19 @@
 
                         <div class="col-md-12">
                             <div class="from__input-box">
-                                <div class="form__input-title">
-                                    <label>Letter Body <span>*</span></label>
-                                    <small class="text-muted d-block mb-2">Available Variables: {{employee_name}},
-                                        {{designation}}, {{department}}, {{joining_date}}, {{responsibilities}}</small>
+                                <div class="form__input-title d-flex justify-content-between align-items-center mb-1">
+                                    <label class="mb-0">Letter Body <span>*</span></label>
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" onclick="insertPageBreak()" title="Insert page break">
+                                        <i class="fa-solid fa-file-circle-plus me-1"></i> 📄 Insert Page Break (পৃষ্ঠা বিভাজন)
+                                    </button>
                                 </div>
+                                <small class="text-muted d-block mb-2">Available Variables: {{employee_name}},
+                                    {{designation}}, {{department}}, {{joining_date}}, {{responsibilities}}</small>
                                 <div class="from__input-box">
                                     <textarea id="tinymce_simple_textarea" name="body"
                                         required><?= htmlspecialchars($template['body']) ?></textarea>
                                 </div>
+                                <small class="text-muted"><i class="fa-solid fa-circle-info me-1"></i>টিপস: দুই বা ততোধিক পেজের টেমপ্লেট তৈরি করতে যেখানে পেজ ভাগ করতে চান সেখানে <strong>"Insert Page Break"</strong> বাটনে ক্লিক করুন।</small>
                             </div>
                         </div>
 
@@ -95,3 +99,19 @@
         </div>
     </div>
 </div>
+
+<script>
+function insertPageBreak() {
+    var breakHtml = '<div class="page-break" style="page-break-after: always;"></div><p><br></p>';
+    if (typeof tinymce !== 'undefined' && tinymce.get('tinymce_simple_textarea')) {
+        tinymce.get('tinymce_simple_textarea').insertContent(breakHtml);
+        tinymce.get('tinymce_simple_textarea').focus();
+    } else {
+        var el = document.getElementById('tinymce_simple_textarea');
+        if (el) {
+            el.value += '\n' + breakHtml + '\n';
+            el.focus();
+        }
+    }
+}
+</script>

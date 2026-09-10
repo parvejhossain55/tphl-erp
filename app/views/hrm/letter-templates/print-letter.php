@@ -20,8 +20,20 @@ $isExperience = ($letter['letter_type'] === 'experience');
 if ($isExperience) {
     $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/Experience Certificate/' . date('M-Y', strtotime($letter['letter_date'])));
 } else {
-    $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/' . date('Y') . '/' . str_pad($letter['id'], 4, '0', STR_PAD_LEFT));
+    $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/' . date('Y', strtotime($letter['letter_date'])) . '/' . str_pad($letter['id'], 4, '0', STR_PAD_LEFT));
 }
+
+// Ensure non-salary-certificate letters never display salary certificate ref numbers
+if ($letter['letter_type'] !== 'salary_certificate' && !empty($refNum) && stripos($refNum, 'Salary Certificate') !== false) {
+    $refNum = 'TPHL/HR/' . date('Y', strtotime($letter['letter_date'])) . '/' . str_pad($letter['id'], 4, '0', STR_PAD_LEFT);
+}
+
+// Address sanitization: avoid literal 'N/A', 'NA', 'None', etc.
+$cleanAddress = trim($letter['address'] ?? '');
+$hasAddress = !empty($cleanAddress) && !in_array(strtoupper($cleanAddress), ['N/A', 'NA', 'NONE', 'NULL', '-']);
+
+$printBody = $letter['body'] ?? '';
+
 
 $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 4);
 $sigUrl = '';
@@ -49,7 +61,7 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
     <title>Official Letter - <?= htmlspecialchars($letter['subject']) ?></title>
     <style>
         @page {
-            size: A4;
+            size: A4 portrait;
             margin: 0;
         }
 
@@ -68,55 +80,109 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
             font-size: 13px;
             line-height: 1.7;
             color: #111827;
-            width: 210mm;
-            height: 297mm;
             background: #fff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
-        /* Full-page wrapper */
-        .page-wrapper {
-            width: 210mm;
-            height: 297mm;
-            position: relative;
-        }
-
-        /* Letterhead image — reliably prints in all browsers */
+        /* Letterhead image — reliably repeats across all pages in print via position: fixed */
         .bg-letterhead {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 210mm;
             height: 297mm;
-            z-index: 0;
+            z-index: -1000;
         }
 
-        /* Letter content overlay within the safe zone */
+        /* Printable Table Architecture: thead and tfoot reserve safe zone space on every page */
+        .print-layout-table {
+            width: 210mm;
+            border-collapse: collapse;
+            margin: 0 auto;
+            border: none;
+        }
+
+        .print-header-space {
+            height: 35mm;
+            border: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .print-footer-space {
+            height: 35mm;
+            border: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .print-content-cell {
+            border: none;
+            padding: 0 20mm;
+            vertical-align: top;
+        }
+
+        /* Letter content container */
         .letter-content {
-            position: absolute;
-            top: 32mm;
-            left: 20mm;
-            right: 20mm;
-            bottom: 35mm;
-            overflow: hidden;
-            z-index: 1;
-            display: flex;
-            flex-direction: column;
+            width: 100%;
+            display: block;
+            position: relative;
+        }
+
+        /* Page break support */
+        .page-break {
+            page-break-before: always;
+            break-before: page;
+            height: 0;
+            line-height: 0;
+            font-size: 0;
+            margin: 0;
+            padding: 0;
+            border: none;
+            display: block;
+            clear: both;
+        }
+
+        /* Avoid breaking critical blocks across page boundaries */
+        .letter-meta,
+        .letter-recipient,
+        .letter-subject,
+        .caution-header-title,
+        .caution-date,
+        .caution-recipient-block,
+        .caution-subject,
+        .caution-salutation,
+        .caution-signoff,
+        .cert-meta-stacked,
+        .cert-title-centered,
+        .experience-signoff,
+        .letter-extra-box,
+        .table-extra-details,
+        .letter-signature-section,
+        .signature-block {
+            page-break-inside: avoid;
+            break-inside: avoid;
         }
 
         @media print {
             body {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+                background: transparent;
             }
 
             .no-print {
-                display: none;
+                display: none !important;
             }
 
-            body,
-            .page-wrapper {
+            .bg-letterhead {
+                position: fixed;
+                top: 0;
+                left: 0;
                 width: 210mm;
                 height: 297mm;
+                z-index: -1000;
             }
         }
 
@@ -214,7 +280,7 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
 
         .letter-body {
             font-size: 13px;
-            line-height: 1.75;
+            line-height: 1.55;
             color: #111827;
             text-align: justify;
             text-justify: inter-word;
@@ -222,16 +288,22 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
         }
 
         .letter-body p {
-            margin-bottom: 12px;
+            margin-bottom: 7px;
+        }
+
+        .letter-body h1, .letter-body h2, .letter-body h3, .letter-body h4 {
+            margin: 8px 0 3px 0;
+            font-size: 13.5px;
+            color: #0f172a;
         }
 
         .letter-body ul, .letter-body ol {
-            margin-bottom: 12px;
-            padding-left: 24px;
+            margin-bottom: 8px;
+            padding-left: 20px;
         }
 
         .letter-body li {
-            margin-bottom: 5px;
+            margin-bottom: 3px;
         }
 
         /* ═══ Caution Letter Specific Styling ═══ */
@@ -391,7 +463,7 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
 
         /* Signatory Section */
         .letter-signature-section {
-            margin-top: 24px;
+            margin-top: 14px;
             font-size: 13px;
             color: #1e293b;
         }
@@ -402,7 +474,7 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
         }
 
         .signature-block {
-            margin-top: 36px;
+            margin-top: 12px;
             display: inline-block;
         }
 
@@ -443,12 +515,18 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
         <button class="btn-close" onclick="window.close()">Close</button>
     </div>
 
-    <div class="page-wrapper">
-        <!-- Letterhead background image -->
-        <img src="<?= $GLOBALS['base_url'] ?>/assets/email-template/new-letter-template.jpeg" class="bg-letterhead"
-            alt="Letterhead">
+    <!-- Letterhead background image (fixed on all printed pages) -->
+    <img src="<?= $GLOBALS['base_url'] ?>/assets/email-template/new-letter-template.jpeg" class="bg-letterhead"
+        alt="Letterhead">
 
-        <div class="letter-content">
+    <table class="print-layout-table">
+        <thead>
+            <tr><th class="print-header-space">&nbsp;</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="print-content-cell">
+                    <div class="letter-content">
 
             <?php if ($isCaution): ?>
                 <!-- ═══════════════════ CAUTION LETTER FORMAT ═══════════════════ -->
@@ -475,7 +553,7 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
                 <?php endif; ?>
 
                 <div class="letter-body caution-body">
-                    <?= $letter['body'] ?>
+                    <?= $printBody ?>
                 </div>
 
                 <?php if (stripos($letter['body'], 'Head of HR') === false): ?>
@@ -494,7 +572,7 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
                 <div class="cert-title-centered">TO WHOM IT MAY CONCERN</div>
 
                 <div class="letter-body experience-body">
-                    <?= $letter['body'] ?>
+                    <?= $printBody ?>
                 </div>
 
                 <?php if (stripos($letter['body'], 'Human Resources Department') === false): ?>
@@ -537,8 +615,8 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
                     <div class="recipient-detail"><?= htmlspecialchars($letter['designation_name'] ?? 'N/A') ?></div>
                     <div class="recipient-detail"><?= htmlspecialchars($letter['department_name'] ?? 'N/A') ?></div>
                     <div class="recipient-id"><strong>Employee ID:</strong> <?= htmlspecialchars($letter['employee_code']) ?></div>
-                    <?php if (!empty($letter['address'])): ?>
-                        <div class="recipient-address"><?= nl2br(htmlspecialchars($letter['address'])) ?></div>
+                    <?php if ($hasAddress): ?>
+                        <div class="recipient-address"><?= nl2br(htmlspecialchars($cleanAddress)) ?></div>
                     <?php endif; ?>
                 </div>
 
@@ -551,7 +629,7 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
 
                 <!-- Main Letter Body -->
                 <div class="letter-body">
-                    <?= $letter['body'] ?>
+                    <?= $printBody ?>
                 </div>
 
                 <!-- Extra Details (Promotion, Increment, Designation changes) -->
@@ -611,8 +689,16 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
                 </div>
             <?php endif; ?>
 
-        </div>
-    </div>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td class="print-footer-space">&nbsp;</td>
+            </tr>
+        </tfoot>
+    </table>
 
     <script>
         window.onload = function () {
