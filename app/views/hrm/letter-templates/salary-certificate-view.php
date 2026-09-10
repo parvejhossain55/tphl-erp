@@ -45,6 +45,16 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
     $sigUrl = $GLOBALS['base_url'] . '/' . ltrim($letter['custom_signature'], '/\\');
 } elseif (file_exists($baseDir . '/public/assets/images/hrm/hr_signature.png')) {
     $sigUrl = $GLOBALS['base_url'] . '/public/assets/images/hrm/hr_signature.png';
+} else {
+    $dbConn = $GLOBALS['db'] ?? ($this->db ?? null);
+    if ($dbConn) {
+        $defRes = $dbConn->query("SELECT signature_path FROM hr_signatures WHERE status = 'active' ORDER BY is_default DESC, id DESC LIMIT 1");
+        if ($defRes && $row = $defRes->fetch_assoc()) {
+            if (file_exists($baseDir . '/' . ltrim($row['signature_path'], '/\\'))) {
+                $sigUrl = $GLOBALS['base_url'] . '/' . ltrim($row['signature_path'], '/\\');
+            }
+        }
+    }
 }
 if (stripos($companyFullName, 'Limited') === false) {
     $companyFullName = str_ireplace('Ltd.', 'Limited', $companyFullName);
@@ -274,14 +284,35 @@ if (strtolower($purposeText) === 'personal use') {
                         <!-- Title -->
                         <div class="sc-title-centered">TO WHOM IT MAY CONCERN</div>
 
-                        <!-- Opening paragraph -->
-                        <p class="sc-text">
-                            This is to certify that <strong><?= htmlspecialchars($rawName) ?></strong> (Employee ID: <?= htmlspecialchars($letter['employee_code']) ?>) was a <?= htmlspecialchars($empType) ?> employee of <strong><?= htmlspecialchars($companyName) ?></strong> and <?= $sheHe ?> was employed as <strong><?= htmlspecialchars($letter['designation_name'] ?? 'N/A') ?></strong> <?= $periodText ?>.
-                        </p>
+                        <?php
+                        $scBodyData = json_decode($letter['body'] ?? '', true);
+                        $hasCustomOpening = !empty($scBodyData['opening']);
+                        $hasCustomClosing = !empty($scBodyData['closing']);
 
-                        <p class="sc-text">
-                            According to our records, <?= $herHis ?> monthly salary breakdown was as follows:
-                        </p>
+                        $renderMarkdownText = function ($text) {
+                            $paragraphs = preg_split('/\r\n\r\n|\n\n/', trim($text));
+                            foreach ($paragraphs as $para) {
+                                if (trim($para) !== '') {
+                                    $escaped = htmlspecialchars(trim($para));
+                                    $withBold = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $escaped);
+                                    echo '<p class="sc-text">' . nl2br($withBold) . '</p>';
+                                }
+                            }
+                        };
+                        ?>
+
+                        <!-- Opening paragraph -->
+                        <?php if ($hasCustomOpening): ?>
+                            <?php $renderMarkdownText($scBodyData['opening']); ?>
+                        <?php else: ?>
+                            <p class="sc-text">
+                                This is to certify that <strong><?= htmlspecialchars($rawName) ?></strong> (Employee ID: <?= htmlspecialchars($letter['employee_code']) ?>) was a <?= htmlspecialchars($empType) ?> employee of <strong><?= htmlspecialchars($companyName) ?></strong> and <?= $sheHe ?> was employed as <strong><?= htmlspecialchars($letter['designation_name'] ?? 'N/A') ?></strong> <?= $periodText ?>.
+                            </p>
+
+                            <p class="sc-text">
+                                According to our records, <?= $herHis ?> monthly salary breakdown was as follows:
+                            </p>
+                        <?php endif; ?>
 
                         <!-- Salary Table -->
                         <table class="sc-table">
@@ -310,10 +341,16 @@ if (strtolower($purposeText) === 'personal use') {
                         </table>
 
                         <!-- Closing paragraph -->
-                        <p class="sc-text mt-3">
-                            This certificate is issued upon <?= $herHis ?> request for <?= htmlspecialchars($purposeText) ?> without any liability on the part of this company.
-                        </p>
-                        <p class="sc-text">We wish <?= $herHim ?> all the very best.</p>
+                        <?php if ($hasCustomClosing): ?>
+                            <div class="mt-3">
+                                <?php $renderMarkdownText($scBodyData['closing']); ?>
+                            </div>
+                        <?php else: ?>
+                            <p class="sc-text mt-3">
+                                This certificate is issued upon <?= $herHis ?> request for <?= htmlspecialchars($purposeText) ?> without any liability on the part of this company.
+                            </p>
+                            <p class="sc-text">We wish <?= $herHim ?> all the very best.</p>
+                        <?php endif; ?>
 
                         <!-- Signature Block -->
                         <div class="sc-signature-block">

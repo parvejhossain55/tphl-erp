@@ -422,6 +422,33 @@
                     <input type="hidden" name="gross_salary" id="gross_salary_hidden">
                     <input type="hidden" name="net_salary" id="net_salary_hidden">
 
+                    <!-- ── Editable Certificate Body Paragraphs ── -->
+                    <div class="mt-20 pt-20 border-top">
+                        <div class="d-flex justify-content-between align-items-center mb-10">
+                            <div class="section-label mb-0">📝 Certificate Body Paragraphs <small class="text-muted fw-normal">(Editable)</small></div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetSalaryCertParagraphs(true)">
+                                <i class="fa-solid fa-rotate-left me-1"></i> Reset to Default Text
+                            </button>
+                        </div>
+                        <p class="text-muted small mb-15">
+                            The opening and closing paragraphs are auto-generated from employee and company records. You can customize or edit any wording directly below:
+                        </p>
+
+                        <div class="row g-15">
+                            <div class="col-12">
+                                <label class="form-label fw-bold text-dark small mb-1">Opening Paragraph (Above Salary Table)</label>
+                                <textarea class="form-control" name="sc_opening_paragraph" id="sc_opening_paragraph" rows="4" placeholder="Auto-generated opening paragraph..."></textarea>
+                                <div class="form-text small text-muted">This text appears before the salary breakdown table. Supports Markdown bold <code>**text**</code>.</div>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-bold text-dark small mb-1">Closing Paragraph (Below Salary Table)</label>
+                                <textarea class="form-control" name="sc_closing_paragraph" id="sc_closing_paragraph" rows="3" placeholder="Auto-generated closing paragraph..."></textarea>
+                                <div class="form-text small text-muted">This text appears after the salary table and before the signature. Supports Markdown bold <code>**text**</code>.</div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- ═══ Section: Signatory ═══════════════════════════════════ -->
@@ -452,24 +479,34 @@
 
                         <?php
                         $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 4);
-                        $hasOfficialSig = file_exists($baseDir . '/public/assets/images/hrm/hr_signature.png');
+                        $hasSignatures = !empty($officialSignatures) || file_exists($baseDir . '/public/assets/images/hrm/hr_signature.png');
                         ?>
                         <div class="col-lg-4">
                             <div class="from__input-box">
-                                <div class="form__input-title"><label for="signature_choice">Digital Seal & Signature</label></div>
+                                <div class="form__input-title d-flex justify-content-between align-items-center">
+                                    <label for="signature_choice">Digital Seal & Signature</label>
+                                    <a href="javascript:void(0)" class="text-primary small fw-semibold text-decoration-none" data-bs-toggle="modal" data-bs-target="#officialSignatureModal">
+                                        <i class="fa-solid fa-gear me-1"></i> Manage
+                                    </a>
+                                </div>
                                 <div class="form__input">
                                     <select class="form-control" name="signature_choice" id="signature_choice" onchange="handleSignatureChoice(this.value)">
-                                        <?php if ($hasOfficialSig): ?>
-                                            <option value="official" selected>Yes — Include Official HR Signature</option>
-                                            <option value="custom">🖊️ Upload Custom Signature (Paper Photo/Scan)</option>
-                                            <option value="none">No — Leave Blank (Physical Sign)</option>
-                                        <?php else: ?>
-                                            <option value="none" selected>No — Leave Blank (Physical Sign)</option>
-                                            <option value="custom">🖊️ Upload Custom Signature (Paper Photo/Scan)</option>
-                                            <option value="official" disabled>Official HR Signature (Not uploaded yet)</option>
+                                        <?php if (!empty($officialSignatures)): ?>
+                                            <?php foreach ($officialSignatures as $sig): ?>
+                                                <option value="official_<?= $sig['id'] ?>" 
+                                                        data-name="<?= htmlspecialchars($sig['signatory_name']) ?>" 
+                                                        data-title="<?= htmlspecialchars($sig['signatory_title']) ?>"
+                                                        <?= ($sig['is_default'] == 1) ? 'selected' : '' ?>>
+                                                    Official: <?= htmlspecialchars($sig['signatory_name']) ?> (<?= htmlspecialchars($sig['signatory_title']) ?>)<?= ($sig['is_default'] == 1) ? ' [Default]' : '' ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        <?php elseif (file_exists($baseDir . '/public/assets/images/hrm/hr_signature.png')): ?>
+                                            <option value="official" selected>Official HR Signature (Default)</option>
                                         <?php endif; ?>
+                                        <option value="custom">🖊️ Upload Custom Signature (Paper Photo/Scan)</option>
+                                        <option value="none" <?= !$hasSignatures ? 'selected' : '' ?>>No — Leave Blank (Physical Sign)</option>
                                     </select>
-                                    <input type="hidden" name="include_signature" id="include_signature" value="<?= $hasOfficialSig ? '1' : '0' ?>">
+                                    <input type="hidden" name="include_signature" id="include_signature" value="<?= $hasSignatures ? '1' : '0' ?>">
                                 </div>
                             </div>
                         </div>
@@ -720,6 +757,7 @@
         var letterType = document.getElementById('letter_type').value;
         if (letterType === 'salary_certificate') {
             fetchEmployeeSalary(opt.value);
+            generateSalaryCertParagraphs(false);
         }
     }
 
@@ -760,9 +798,95 @@
                     }
 
                     recalcTotals();
+                    generateSalaryCertParagraphs(false);
                 }
             })
             .catch(error => console.error('Error fetching employee salary:', error));
+    }
+
+    // ─── Salary Certificate Paragraphs Auto-generation ──────────────────────────
+    var scOpeningEdited = false;
+    var scClosingEdited = false;
+
+    var scOpeningEl = document.getElementById('sc_opening_paragraph');
+    var scClosingEl = document.getElementById('sc_closing_paragraph');
+
+    if (scOpeningEl) {
+        scOpeningEl.addEventListener('input', function () {
+            scOpeningEdited = true;
+        });
+    }
+    if (scClosingEl) {
+        scClosingEl.addEventListener('input', function () {
+            scClosingEdited = true;
+        });
+    }
+
+    function resetSalaryCertParagraphs(force) {
+        scOpeningEdited = false;
+        scClosingEdited = false;
+        generateSalaryCertParagraphs(true);
+    }
+
+    function generateSalaryCertParagraphs(force) {
+        var empSel = document.getElementById('employee_id');
+        if (!empSel || empSel.selectedIndex < 0) return;
+        var opt = empSel.options[empSel.selectedIndex];
+        if (!opt || !opt.value) return;
+
+        var rawName = opt.dataset.fullname || (opt.text ? opt.text.split('(')[0].trim() : '');
+        var empCode = opt.dataset.code || opt.dataset.employeeId || '';
+        var gender = (opt.dataset.gender || '').toLowerCase();
+        var sheHe = (gender === 'female') ? 'she' : 'he';
+        var herHis = (gender === 'female') ? 'her' : 'his';
+        var herHim = (gender === 'female') ? 'her' : 'him';
+
+        var desigSel = document.getElementById('designation_id');
+        var desigName = (desigSel && desigSel.selectedIndex >= 0 && desigSel.options[desigSel.selectedIndex].text) 
+            ? desigSel.options[desigSel.selectedIndex].text.replace(/\s*\(.*?\)\s*/, '').trim() 
+            : 'N/A';
+
+        var companyName = '<?= htmlspecialchars(function_exists("getSetting") ? getSetting("website_title", "The Premium Homes Limited") : "The Premium Homes Limited") ?>';
+
+        var joinVal = document.getElementById('sc_joining_date') ? document.getElementById('sc_joining_date').value : (opt.dataset.joining || '');
+        var effVal = document.getElementById('sc_effective_date') ? document.getElementById('sc_effective_date').value : (opt.dataset.resign || '');
+
+        var startDate = joinVal ? formatDateLong(joinVal) : 'N/A';
+        var endDate = effVal ? formatDateLong(effVal) : '';
+        var periodText = endDate ? ('from ' + startDate + ' to ' + endDate) : ('from ' + startDate + ' to present');
+
+        var purposeSel = document.getElementById('purpose');
+        var purposeVal = 'final settlement';
+        if (purposeSel) {
+            if (purposeSel.value === 'Other') {
+                var otherText = document.getElementById('purpose_other_text');
+                purposeVal = (otherText && otherText.value.trim()) ? otherText.value.trim() : 'personal use';
+            } else if (purposeSel.value) {
+                purposeVal = purposeSel.value.toLowerCase();
+            }
+        }
+
+        var defaultOpening = 'This is to certify that **' + rawName + '** (Employee ID: ' + empCode + ') was a Permanent employee of **' + companyName + '** and ' + sheHe + ' was employed as **' + desigName + '** ' + periodText + '.\n\nAccording to our records, ' + herHis + ' monthly salary breakdown was as follows:';
+
+        var defaultClosing = 'This certificate is issued upon ' + herHis + ' request for ' + purposeVal + ' without any liability on the part of this company.\n\nWe wish ' + herHim + ' all the very best.';
+
+        if (scOpeningEl && (!scOpeningEl.value.trim() || force || !scOpeningEdited)) {
+            scOpeningEl.value = defaultOpening;
+        }
+        if (scClosingEl && (!scClosingEl.value.trim() || force || !scClosingEdited)) {
+            scClosingEl.value = defaultClosing;
+        }
+    }
+
+    function formatDateLong(dateStr) {
+        if (!dateStr) return '';
+        var parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        if (isNaN(d.getTime())) return dateStr;
+        var day = ('0' + d.getDate()).slice(-2);
+        var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        return day + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
     }
 
     // ─── Letter Type Change ─────────────────────────────────────────────────────
@@ -998,6 +1122,10 @@
     function handleSignatureChoice(choice) {
         var wrapper = document.getElementById('custom_sig_wrapper');
         var hiddenInc = document.getElementById('include_signature');
+        var sigSelect = document.getElementById('signature_choice');
+        var nameInput = document.getElementById('signatory_name');
+        var titleInput = document.getElementById('signatory_title');
+
         if (choice === 'custom') {
             if (wrapper) wrapper.style.display = 'block';
             if (hiddenInc) hiddenInc.value = '1';
@@ -1007,6 +1135,15 @@
         } else {
             if (wrapper) wrapper.style.display = 'none';
             if (hiddenInc) hiddenInc.value = '1';
+
+            // Auto-populate signatory name & designation from selected official signature
+            if (sigSelect && sigSelect.selectedIndex >= 0) {
+                var selectedOption = sigSelect.options[sigSelect.selectedIndex];
+                var optName = selectedOption.getAttribute('data-name');
+                var optTitle = selectedOption.getAttribute('data-title');
+                if (optName && nameInput) nameInput.value = optName;
+                if (optTitle && titleInput) titleInput.value = optTitle;
+            }
         }
     }
 
@@ -1102,4 +1239,22 @@
             reader.readAsDataURL(file);
         });
     }
+
+    // Auto-populate default official signature on page load
+    var initSigChoice = document.getElementById('signature_choice');
+    if (initSigChoice) {
+        handleSignatureChoice(initSigChoice.value);
+    }
+
+    // Salary Certificate paragraph change listeners
+    var purposeSel = document.getElementById('purpose');
+    if (purposeSel) purposeSel.addEventListener('change', function () { generateSalaryCertParagraphs(false); });
+    var otherPText = document.getElementById('purpose_other_text');
+    if (otherPText) otherPText.addEventListener('input', function () { generateSalaryCertParagraphs(false); });
+    var scJoin = document.getElementById('sc_joining_date');
+    if (scJoin) scJoin.addEventListener('change', function () { generateSalaryCertParagraphs(false); });
+    var scEff = document.getElementById('sc_effective_date');
+    if (scEff) scEff.addEventListener('change', function () { generateSalaryCertParagraphs(false); });
 </script>
+
+<?php include __DIR__ . '/modal-signatures-manager.php'; ?>

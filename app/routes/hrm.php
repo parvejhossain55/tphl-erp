@@ -153,6 +153,10 @@ return [
     'edit-letter/(\d+)' => ['controller' => 'LetterTemplateController', 'method' => 'editLetter'],
     'update-letter/(\d+)' => ['controller' => 'LetterTemplateController', 'method' => 'updateLetter'],
     'update-hr-signature' => ['controller' => 'LetterTemplateController', 'method' => 'updateOfficialSignature'],
+    'save-hr-signature' => ['controller' => 'LetterTemplateController', 'method' => 'saveOfficialSignature'],
+    'delete-hr-signature' => ['controller' => 'LetterTemplateController', 'method' => 'deleteOfficialSignature'],
+    'set-default-hr-signature' => ['controller' => 'LetterTemplateController', 'method' => 'setDefaultOfficialSignature'],
+    'get-hr-signatures' => ['controller' => 'LetterTemplateController', 'method' => 'getOfficialSignaturesAjax'],
 
     // =========================================================================
     // Controller: LeaveController

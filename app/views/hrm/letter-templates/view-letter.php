@@ -29,6 +29,16 @@
                 $sigUrl = $GLOBALS['base_url'] . '/' . ltrim($letter['custom_signature'], '/\\');
             } elseif (file_exists($baseDir . '/public/assets/images/hrm/hr_signature.png')) {
                 $sigUrl = $GLOBALS['base_url'] . '/public/assets/images/hrm/hr_signature.png';
+            } else {
+                $dbConn = $GLOBALS['db'] ?? ($this->db ?? null);
+                if ($dbConn) {
+                    $defRes = $dbConn->query("SELECT signature_path FROM hr_signatures WHERE status = 'active' ORDER BY is_default DESC, id DESC LIMIT 1");
+                    if ($defRes && $row = $defRes->fetch_assoc()) {
+                        if (file_exists($baseDir . '/' . ltrim($row['signature_path'], '/\\'))) {
+                            $sigUrl = $GLOBALS['base_url'] . '/' . ltrim($row['signature_path'], '/\\');
+                        }
+                    }
+                }
             }
 
             $rawName = trim($letter['full_name'] ?? '');
