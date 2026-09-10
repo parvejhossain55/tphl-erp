@@ -713,7 +713,9 @@ class PayrollController extends Controller
                    p.salary_hold,
                    p.net_salary,
                    p.total_earning,
-                   p.total_deduction
+                   p.total_deduction,
+                   p.remarks,
+                   p.attendance_remarks
             FROM payslips p
             JOIN employees e ON p.employee_id = e.id
             LEFT JOIN designations desg ON e.designation_id = desg.id
@@ -848,6 +850,8 @@ class PayrollController extends Controller
                 $arrearsEarning = (float) ($empData['arrears_earning'] ?? 0);
                 $dutyAllowance = (float) ($empData['duty_allowance'] ?? 0);
                 $tax = (float) ($empData['tax'] ?? 0);
+                $remarks = trim((string) ($empData['remarks'] ?? ''));
+                $attRemarks = trim((string) ($empData['attendance_remarks'] ?? ''));
 
                 if ($exists) {
                     $payslipId = (int) $exists['id'];
@@ -864,6 +868,8 @@ class PayrollController extends Controller
                             bank_amount = ?,
                             cash_amount = ?,
                             late_unpaid_absent_days = ?,
+                            remarks = ?,
+                            attendance_remarks = ?,
                             recreation_allowance = ?,
                             conveyance_allowance = ?,
                             medical_allowance = ?,
@@ -886,7 +892,7 @@ class PayrollController extends Controller
                         throw new Exception("Prepare update failed: " . $this->db->error);
                     }
                     $stmtUp->bind_param(
-                        "isdddsddddddddddddddddddii",
+                        "isdddsdddssddddddddddddddddii",
                         $designationId,
                         $payslipMonth,
                         $totalEarning,
@@ -896,6 +902,8 @@ class PayrollController extends Controller
                         $bankAmount,
                         $cashAmount,
                         $lateUnpaidAbsentDays,
+                        $remarks,
+                        $attRemarks,
                         $recreationAllowance,
                         $conveyanceAllowance,
                         $medicalAllowance,
@@ -923,6 +931,7 @@ class PayrollController extends Controller
                             status, is_excluded, upload_by, created_by,
                             total_earning, total_deduction, net_salary,
                             salary_hold, bank_amount, cash_amount, late_unpaid_absent_days,
+                            remarks, attendance_remarks,
                             recreation_allowance, conveyance_allowance, medical_allowance, house_rent_allowance,
                             advance_salary, meal_count, subsidized_lunch, unpaid_absent_amount,
                             arrears_deduction, others_deduction,
@@ -933,6 +942,7 @@ class PayrollController extends Controller
                             'pending', 0, 'manual', ?,
                             ?, ?, ?,
                             ?, ?, ?, ?,
+                            ?, ?,
                             ?, ?, ?, ?,
                             ?, ?, ?, ?,
                             ?, ?,
@@ -944,7 +954,7 @@ class PayrollController extends Controller
                         throw new Exception("Prepare insert failed: " . $this->db->error);
                     }
                     $stmtIns->bind_param(
-                        "iiisidddsdddddddddddddddddd",
+                        "iiisidddsdddssdddddddddddddddd",
                         $employeeId,
                         $payrollProjectId,
                         $designationId,
@@ -957,6 +967,8 @@ class PayrollController extends Controller
                         $bankAmount,
                         $cashAmount,
                         $lateUnpaidAbsentDays,
+                        $remarks,
+                        $attRemarks,
                         $recreationAllowance,
                         $conveyanceAllowance,
                         $medicalAllowance,
