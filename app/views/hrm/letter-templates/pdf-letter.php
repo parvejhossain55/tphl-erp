@@ -20,8 +20,19 @@ $isExperience = ($letter['letter_type'] === 'experience');
 if ($isExperience) {
     $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/Experience Certificate/' . date('M-Y', strtotime($letter['letter_date'])));
 } else {
-    $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/' . date('Y') . '/' . str_pad($letter['id'], 4, '0', STR_PAD_LEFT));
+    $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/' . date('Y', strtotime($letter['letter_date'])) . '/' . str_pad($letter['id'], 4, '0', STR_PAD_LEFT));
 }
+
+// Ensure non-salary-certificate letters never display salary certificate ref numbers
+if ($letter['letter_type'] !== 'salary_certificate' && !empty($refNum) && stripos($refNum, 'Salary Certificate') !== false) {
+    $refNum = 'TPHL/HR/' . date('Y', strtotime($letter['letter_date'])) . '/' . str_pad($letter['id'], 4, '0', STR_PAD_LEFT);
+}
+
+// Address sanitization: avoid literal 'N/A', 'NA', 'None', etc.
+$cleanAddress = trim($letter['address'] ?? '');
+$hasAddress = !empty($cleanAddress) && !in_array(strtoupper($cleanAddress), ['N/A', 'NA', 'NONE', 'NULL', '-']);
+
+$pdfBody = $letter['body'] ?? '';
 ?>
 <!DOCTYPE html>
 <html>
@@ -31,36 +42,57 @@ if ($isExperience) {
 <style>
     @page {
         size: 210mm 297mm;
-        margin: 0;
+        margin-top: 33mm;
+        margin-bottom: 33mm;
+        margin-left: 20mm;
+        margin-right: 20mm;
     }
     * {
         box-sizing: border-box;
+    }
+    body {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 13px;
+        line-height: 1.55;
+        color: #111827;
         margin: 0;
         padding: 0;
     }
-    body {
-        width: 210mm;
-        height: 297mm;
-        font-family: Arial, Helvetica, sans-serif;
-        font-size: 13px;
-        line-height: 1.7;
-        color: #111827;
-        position: relative;
-    }
-    .bg-letterhead {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 210mm;
-        height: 297mm;
-        z-index: -1;
+    .page-break {
+        page-break-after: always;
+        break-after: page;
+        height: 0;
+        line-height: 0;
+        font-size: 0;
+        margin: 0;
+        padding: 0;
+        border: none;
+        display: block;
+        clear: both;
     }
     .letter-content {
-        position: absolute;
-        top: 32mm;
-        left: 20mm;
-        right: 20mm;
-        bottom: 35mm;
+        width: 100%;
+    }
+
+    /* ═══ Prevent Awkward Page Splitting ═══ */
+    .letter-meta,
+    .letter-recipient,
+    .letter-subject,
+    .caution-header-title,
+    .caution-date,
+    .caution-recipient-block,
+    .caution-subject,
+    .caution-salutation,
+    .caution-signoff,
+    .cert-meta-stacked,
+    .cert-title-centered,
+    .experience-signoff,
+    .letter-extra-box,
+    .table-extra-details,
+    .letter-signature-section,
+    .signature-block {
+        page-break-inside: avoid;
+        break-inside: avoid;
     }
 
     /* ═══ Standard Letter Styling ═══ */
@@ -111,19 +143,28 @@ if ($isExperience) {
     }
     .letter-body {
         font-size: 12.5px;
-        line-height: 1.75;
+        line-height: 1.55;
         color: #111827;
         text-align: justify;
     }
     .letter-body p {
-        margin-bottom: 12px;
+        margin-top: 0;
+        margin-bottom: 7px;
+    }
+    .letter-body h1, .letter-body h2, .letter-body h3, .letter-body h4 {
+        margin-top: 8px;
+        margin-bottom: 3px;
+        font-size: 13px;
+        color: #0f172a;
+        page-break-after: avoid;
     }
     .letter-body ul, .letter-body ol {
-        margin-bottom: 12px;
-        padding-left: 24px;
+        margin-top: 0;
+        margin-bottom: 7px;
+        padding-left: 20px;
     }
     .letter-body li {
-        margin-bottom: 5px;
+        margin-bottom: 3px;
     }
 
     /* ═══ Caution Letter Specific Styling ═══ */
@@ -261,16 +302,18 @@ if ($isExperience) {
 
     /* Signatory Section */
     .letter-signature-section {
-        margin-top: 24px;
+        margin-top: 14px;
         font-size: 12.5px;
         color: #1e293b;
+        page-break-inside: avoid;
     }
     .company-sign-for {
         margin-bottom: 0;
         color: #334155;
     }
     .signature-block {
-        margin-top: 36px;
+        margin-top: 10px;
+        page-break-inside: avoid;
     }
     .sign-line {
         border-top: 1.5px solid #1e293b;
@@ -297,10 +340,6 @@ if ($isExperience) {
 </style>
 </head>
 <body>
-    <?php if (!empty($bgBase64)): ?>
-        <img src="<?= $bgBase64 ?>" class="bg-letterhead" alt="">
-    <?php endif; ?>
-
     <div class="letter-content">
 
         <?php if ($isCaution): ?>
@@ -328,7 +367,7 @@ if ($isExperience) {
             <?php endif; ?>
 
             <div class="letter-body caution-body">
-                <?= $letter['body'] ?>
+                <?= $pdfBody ?>
             </div>
 
             <?php if (stripos($letter['body'], 'Head of HR') === false): ?>
@@ -347,7 +386,7 @@ if ($isExperience) {
             <div class="cert-title-centered">TO WHOM IT MAY CONCERN</div>
 
             <div class="letter-body experience-body">
-                <?= $letter['body'] ?>
+                <?= $pdfBody ?>
             </div>
 
             <?php if (stripos($letter['body'], 'Human Resources Department') === false): ?>
@@ -388,8 +427,8 @@ if ($isExperience) {
                 <div class="recipient-detail"><?= htmlspecialchars($letter['designation_name'] ?? 'N/A') ?></div>
                 <div class="recipient-detail"><?= htmlspecialchars($letter['department_name'] ?? 'N/A') ?></div>
                 <div class="recipient-id"><strong>Employee ID:</strong> <?= htmlspecialchars($letter['employee_code']) ?></div>
-                <?php if (!empty($letter['address'])): ?>
-                    <div class="recipient-address"><?= nl2br(htmlspecialchars($letter['address'])) ?></div>
+                <?php if ($hasAddress): ?>
+                    <div class="recipient-address"><?= nl2br(htmlspecialchars($cleanAddress)) ?></div>
                 <?php endif; ?>
             </div>
 
@@ -402,7 +441,7 @@ if ($isExperience) {
 
             <!-- Main Letter Body -->
             <div class="letter-body">
-                <?= $letter['body'] ?>
+                <?= $pdfBody ?>
             </div>
 
             <!-- Extra Details -->

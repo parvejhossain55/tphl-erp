@@ -62,179 +62,232 @@
             if ($isExperience) {
                 $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/Experience Certificate/' . date('M-Y', strtotime($letter['letter_date'])));
             } else {
-                $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/' . date('Y') . '/' . str_pad($letter['id'], 4, '0', STR_PAD_LEFT));
+                $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/' . date('Y', strtotime($letter['letter_date'])) . '/' . str_pad($letter['id'], 4, '0', STR_PAD_LEFT));
             }
+
+            // Ensure non-salary-certificate letters never display salary certificate ref numbers
+            if ($letter['letter_type'] !== 'salary_certificate' && !empty($refNum) && stripos($refNum, 'Salary Certificate') !== false) {
+                $refNum = 'TPHL/HR/' . date('Y', strtotime($letter['letter_date'])) . '/' . str_pad($letter['id'], 4, '0', STR_PAD_LEFT);
+            }
+
+            // Address sanitization: avoid literal 'N/A', 'NA', 'None', etc.
+            $cleanAddress = trim($letter['address'] ?? '');
+            $hasAddress = !empty($cleanAddress) && !in_array(strtoupper($cleanAddress), ['N/A', 'NA', 'NONE', 'NULL', '-']);
+
+            // Split letter body into page chunks if page breaks are present
+            $pageBreakPattern = '/(<div[^>]*class=["\'][^"\']*page-break[^"\']*["\'][^>]*>.*?<\/div>|<!--\s*pagebreak\s*-->|<hr[^>]*class=["\'][^"\']*page-break[^"\']*["\'][^>]*>)/is';
+            $rawChunks = preg_split($pageBreakPattern, (string)($letter['body'] ?? ''));
+            $bodyChunks = [];
+            if (is_array($rawChunks)) {
+                foreach ($rawChunks as $chunk) {
+                    if (trim(strip_tags($chunk)) !== '' || strpos($chunk, '<img') !== false || strpos($chunk, '<table') !== false) {
+                        $bodyChunks[] = $chunk;
+                    }
+                }
+            }
+            if (empty($bodyChunks)) {
+                $bodyChunks = [$letter['body'] ?? ''];
+            }
+            $totalPages = count($bodyChunks);
             ?>
 
             <!-- Professional Paper Layout with Letterhead Background -->
             <div class="letter-container">
-                <div class="letter-paper" id="printableArea">
-                    <!-- Content overlay positioned precisely within the safe zone of the letterhead -->
-                    <div class="letter-content-overlay">
-
-                        <?php if ($isCaution): ?>
-                            <!-- ═══════════════════ CAUTION LETTER FORMAT ═══════════════════ -->
-                            <div class="caution-header-title">CAUTION LETTER</div>
-
-                            <div class="caution-date">Date: <?= date('F d, Y', strtotime($letter['letter_date'])) ?></div>
-
-                            <div class="caution-recipient-block">
-                                <div class="caution-to">To,</div>
-                                <div class="caution-emp-name"><?= htmlspecialchars($rawName) ?></div>
-                                <div class="caution-line">Emp ID: <?= htmlspecialchars($letter['employee_code']) ?></div>
-                                <div class="caution-line">Designation: <?= htmlspecialchars($letter['designation_name'] ?? 'N/A') ?></div>
-                                <div class="caution-line">Department: <?= htmlspecialchars($letter['department_name'] ?? 'N/A') ?></div>
-                            </div>
-
-                            <div class="caution-subject">
-                                <strong>Subject:</strong> <?= htmlspecialchars($letter['subject']) ?>
-                            </div>
-
-                            <?php if (stripos(trim(strip_tags($letter['body'])), 'Dear ') !== 0): ?>
-                                <div class="caution-salutation">
-                                    Dear <?= htmlspecialchars($rawName) ?>,
-                                </div>
-                            <?php endif; ?>
-
-                            <div class="letter-body caution-body">
-                                <?= $letter['body'] ?>
-                            </div>
-
-                            <?php if (stripos($letter['body'], 'Head of HR') === false): ?>
-                                <div class="caution-signoff">
-                                    Head of HR | <?= htmlspecialchars($companyName) ?>
-                                </div>
-                            <?php endif; ?>
-
-                        <?php elseif ($isExperience): ?>
-                            <!-- ═══════════════════ EXPERIENCE CERTIFICATE FORMAT ═══════════════════ -->
-                            <div class="cert-meta-stacked">
-                                <div class="meta-line"><strong>Ref:</strong> <?= htmlspecialchars($refNum) ?></div>
-                                <div class="meta-line"><strong>Date:</strong> <?= date('F d, Y', strtotime($letter['letter_date'])) ?></div>
-                            </div>
-
-                            <div class="cert-title-centered">TO WHOM IT MAY CONCERN</div>
-
-                            <div class="letter-body experience-body">
-                                <?= $letter['body'] ?>
-                            </div>
-
-                            <?php if (stripos($letter['body'], 'Human Resources Department') === false): ?>
-                                <div class="experience-signoff">
-                                    <div class="signoff-closing">Sincerely,</div>
-                                    <div class="signoff-company" style="margin-bottom: 5px;">For <strong><?= htmlspecialchars($companyName) ?></strong></div>
-                                    <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
-                                        <div style="height: 50px; margin-bottom: -10px;">
-                                            <img src="<?= $sigUrl ?>" alt="Signature" style="height: 45px; max-width: 170px; object-fit: contain;">
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="signoff-spacer"></div>
-                                    <?php endif; ?>
-                                    <?php if (!empty($letter['signatory_name'])): ?>
-                                        <div style="font-weight: 700;"><?= htmlspecialchars($letter['signatory_name']) ?></div>
-                                        <?php if (!empty($letter['signatory_title'])): ?>
-                                            <div style="color: #475569;"><?= htmlspecialchars($letter['signatory_title']) ?></div>
-                                        <?php endif; ?>
-                                    <?php endif; ?>
-                                    <div class="signoff-dept">Human Resources Department</div>
-                                </div>
-                            <?php endif; ?>
-
-                        <?php else: ?>
-                            <!-- ═══════════════════ STANDARD / OTHER LETTER FORMAT ═══════════════════ -->
-                            <!-- Reference Number & Date -->
-                            <div class="letter-meta">
-                                <div class="ref-no">
-                                    <strong>Ref:</strong> <?= htmlspecialchars($refNum) ?>
-                                </div>
-                                <div class="date-issued">
-                                    <strong>Date:</strong> <?= date('d F, Y', strtotime($letter['letter_date'])) ?>
-                                </div>
-                            </div>
-
-                            <!-- Recipient Address Block -->
-                            <div class="letter-recipient">
-                                <div class="recipient-to">To,</div>
-                                <div class="recipient-name"><?= $recipientName ?></div>
-                                <div class="recipient-detail"><?= htmlspecialchars($letter['designation_name'] ?? 'N/A') ?></div>
-                                <div class="recipient-detail"><?= htmlspecialchars($letter['department_name'] ?? 'N/A') ?></div>
-                                <div class="recipient-id"><strong>Employee ID:</strong> <?= htmlspecialchars($letter['employee_code']) ?></div>
-                                <?php if (!empty($letter['address'])): ?>
-                                    <div class="recipient-address"><?= nl2br(htmlspecialchars($letter['address'])) ?></div>
-                                <?php endif; ?>
-                            </div>
-
-                            <!-- Subject Line -->
-                            <div class="letter-subject">
-                                <span class="subject-text">
-                                    <strong>Subject:</strong> <?= htmlspecialchars($letter['subject']) ?>
-                                </span>
-                            </div>
-
-                            <!-- Main Letter Body -->
-                            <div class="letter-body">
-                                <?= $letter['body'] ?>
-                            </div>
-
-                            <!-- Extra Details (Promotion, Increment, Designation changes) -->
-                            <?php
-                            $hasExtra = !empty($letter['effective_date']) || !empty($letter['new_designation']) || (!empty($letter['current_salary']) && (float)$letter['current_salary'] > 0) || (!empty($letter['revised_salary']) && (float)$letter['revised_salary'] > 0);
-                            ?>
-                            <?php if ($hasExtra): ?>
-                                <div class="letter-extra-box">
-                                    <table class="table-extra-details">
-                                        <?php if (!empty($letter['effective_date'])): ?>
-                                            <tr>
-                                                <td class="extra-label">Effective Date</td>
-                                                <td class="extra-sep">:</td>
-                                                <td class="extra-val"><?= date('d F, Y', strtotime($letter['effective_date'])) ?></td>
-                                            </tr>
-                                        <?php endif; ?>
-                                        <?php if (!empty($letter['new_designation'])): ?>
-                                            <tr>
-                                                <td class="extra-label">New Position / Designation</td>
-                                                <td class="extra-sep">:</td>
-                                                <td class="extra-val"><strong><?= htmlspecialchars($letter['new_designation']) ?></strong></td>
-                                            </tr>
-                                        <?php endif; ?>
-                                        <?php if (!empty($letter['current_salary']) && (float)$letter['current_salary'] > 0): ?>
-                                            <tr>
-                                                <td class="extra-label">Current Gross Salary</td>
-                                                <td class="extra-sep">:</td>
-                                                <td class="extra-val">BDT <?= number_format((float)$letter['current_salary'], 2) ?></td>
-                                            </tr>
-                                        <?php endif; ?>
-                                        <?php if (!empty($letter['revised_salary']) && (float)$letter['revised_salary'] > 0): ?>
-                                            <tr>
-                                                <td class="extra-label">Revised Gross Salary</td>
-                                                <td class="extra-sep">:</td>
-                                                <td class="extra-val"><strong>BDT <?= number_format((float)$letter['revised_salary'], 2) ?></strong></td>
-                                            </tr>
-                                        <?php endif; ?>
-                                    </table>
-                                </div>
-                            <?php endif; ?>
-
-                            <!-- Official Signatory Block -->
-                            <div class="letter-signature-section">
-                                <p class="mb-1">Sincerely,</p>
-                                <p class="company-sign-for">For <strong><?= htmlspecialchars($companyName) ?></strong></p>
-                                <div class="signature-block">
-                                    <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
-                                        <div style="height: 50px; margin-bottom: -15px;">
-                                            <img src="<?= $sigUrl ?>" alt="Signature" style="height: 45px; max-width: 170px; object-fit: contain;">
-                                        </div>
-                                    <?php endif; ?>
-                                    <div class="sign-line"></div>
-                                    <span class="signatory-name"><?= htmlspecialchars($letter['signatory_name']) ?></span>
-                                    <span class="signatory-title"><?= htmlspecialchars($letter['signatory_title']) ?></span>
-                                    <span class="signatory-dept">Human Resources Department</span>
-                                </div>
+                <?php foreach ($bodyChunks as $pageIdx => $chunkContent): ?>
+                    <?php
+                    $pageNumber = $pageIdx + 1;
+                    $isFirstPage = ($pageNumber === 1);
+                    $isLastPage = ($pageNumber === $totalPages);
+                    ?>
+                    <div class="letter-paper-wrapper">
+                        <?php if ($totalPages > 1): ?>
+                            <div class="page-sheet-badge">
+                                <i class="fa-regular fa-file-lines me-1"></i> Page <?= $pageNumber ?> of <?= $totalPages ?>
                             </div>
                         <?php endif; ?>
 
-                    </div><!-- /.letter-content-overlay -->
-                </div><!-- /.letter-paper -->
+                        <div class="letter-paper" <?= ($pageIdx === 0 ? 'id="printableArea"' : '') ?>>
+                            <!-- Content overlay positioned precisely within the safe zone of the letterhead -->
+                            <div class="letter-content-overlay">
+
+                                <?php if ($isCaution): ?>
+                                    <!-- ═══════════════════ CAUTION LETTER FORMAT ═══════════════════ -->
+                                    <?php if ($isFirstPage): ?>
+                                        <div class="caution-header-title">CAUTION LETTER</div>
+
+                                        <div class="caution-date">Date: <?= date('F d, Y', strtotime($letter['letter_date'])) ?></div>
+
+                                        <div class="caution-recipient-block">
+                                            <div class="caution-to">To,</div>
+                                            <div class="caution-emp-name"><?= htmlspecialchars($rawName) ?></div>
+                                            <div class="caution-line">Emp ID: <?= htmlspecialchars($letter['employee_code']) ?></div>
+                                            <div class="caution-line">Designation: <?= htmlspecialchars($letter['designation_name'] ?? 'N/A') ?></div>
+                                            <div class="caution-line">Department: <?= htmlspecialchars($letter['department_name'] ?? 'N/A') ?></div>
+                                        </div>
+
+                                        <div class="caution-subject">
+                                            <strong>Subject:</strong> <?= htmlspecialchars($letter['subject']) ?>
+                                        </div>
+
+                                        <?php if (stripos(trim(strip_tags($letter['body'])), 'Dear ') !== 0): ?>
+                                            <div class="caution-salutation">
+                                                Dear <?= htmlspecialchars($rawName) ?>,
+                                            </div>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+
+                                    <div class="letter-body caution-body">
+                                        <?= $chunkContent ?>
+                                    </div>
+
+                                    <?php if ($isLastPage): ?>
+                                        <?php if (stripos($letter['body'], 'Head of HR') === false): ?>
+                                            <div class="caution-signoff">
+                                                Head of HR | <?= htmlspecialchars($companyName) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+
+                                <?php elseif ($isExperience): ?>
+                                    <!-- ═══════════════════ EXPERIENCE CERTIFICATE FORMAT ═══════════════════ -->
+                                    <?php if ($isFirstPage): ?>
+                                        <div class="cert-meta-stacked">
+                                            <div class="meta-line"><strong>Ref:</strong> <?= htmlspecialchars($refNum) ?></div>
+                                            <div class="meta-line"><strong>Date:</strong> <?= date('F d, Y', strtotime($letter['letter_date'])) ?></div>
+                                        </div>
+
+                                        <div class="cert-title-centered">TO WHOM IT MAY CONCERN</div>
+                                    <?php endif; ?>
+
+                                    <div class="letter-body experience-body">
+                                        <?= $chunkContent ?>
+                                    </div>
+
+                                    <?php if ($isLastPage): ?>
+                                        <?php if (stripos($letter['body'], 'Human Resources Department') === false): ?>
+                                            <div class="experience-signoff">
+                                                <div class="signoff-closing">Sincerely,</div>
+                                                <div class="signoff-company" style="margin-bottom: 5px;">For <strong><?= htmlspecialchars($companyName) ?></strong></div>
+                                                <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
+                                                    <div style="height: 50px; margin-bottom: -10px;">
+                                                        <img src="<?= $sigUrl ?>" alt="Signature" style="height: 45px; max-width: 170px; object-fit: contain;">
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div class="signoff-spacer"></div>
+                                                <?php endif; ?>
+                                                <?php if (!empty($letter['signatory_name'])): ?>
+                                                    <div style="font-weight: 700;"><?= htmlspecialchars($letter['signatory_name']) ?></div>
+                                                    <?php if (!empty($letter['signatory_title'])): ?>
+                                                        <div style="color: #475569;"><?= htmlspecialchars($letter['signatory_title']) ?></div>
+                                                    <?php endif; ?>
+                                                <?php endif; ?>
+                                                <div class="signoff-dept">Human Resources Department</div>
+                                            </div>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+
+                                <?php else: ?>
+                                    <!-- ═══════════════════ STANDARD / OTHER LETTER FORMAT ═══════════════════ -->
+                                    <?php if ($isFirstPage): ?>
+                                        <!-- Reference Number & Date -->
+                                        <div class="letter-meta">
+                                            <div class="ref-no">
+                                                <strong>Ref:</strong> <?= htmlspecialchars($refNum) ?>
+                                            </div>
+                                            <div class="date-issued">
+                                                <strong>Date:</strong> <?= date('d F, Y', strtotime($letter['letter_date'])) ?>
+                                            </div>
+                                        </div>
+
+                                        <!-- Recipient Address Block -->
+                                        <div class="letter-recipient">
+                                            <div class="recipient-to">To,</div>
+                                            <div class="recipient-name"><?= $recipientName ?></div>
+                                            <div class="recipient-detail"><?= htmlspecialchars($letter['designation_name'] ?? 'N/A') ?></div>
+                                            <div class="recipient-detail"><?= htmlspecialchars($letter['department_name'] ?? 'N/A') ?></div>
+                                            <div class="recipient-id"><strong>Employee ID:</strong> <?= htmlspecialchars($letter['employee_code']) ?></div>
+                                            <?php if ($hasAddress): ?>
+                                                <div class="recipient-address"><?= nl2br(htmlspecialchars($cleanAddress)) ?></div>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <!-- Subject Line -->
+                                        <div class="letter-subject">
+                                            <span class="subject-text">
+                                                <strong>Subject:</strong> <?= htmlspecialchars($letter['subject']) ?>
+                                            </span>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <!-- Main Letter Body Chunk -->
+                                    <div class="letter-body">
+                                        <?= $chunkContent ?>
+                                    </div>
+
+                                    <?php if ($isLastPage): ?>
+                                        <!-- Extra Details (Promotion, Increment, Designation changes) -->
+                                        <?php
+                                        $hasExtra = !empty($letter['effective_date']) || !empty($letter['new_designation']) || (!empty($letter['current_salary']) && (float)$letter['current_salary'] > 0) || (!empty($letter['revised_salary']) && (float)$letter['revised_salary'] > 0);
+                                        ?>
+                                        <?php if ($hasExtra): ?>
+                                            <div class="letter-extra-box">
+                                                <table class="table-extra-details">
+                                                    <?php if (!empty($letter['effective_date'])): ?>
+                                                        <tr>
+                                                            <td class="extra-label">Effective Date</td>
+                                                            <td class="extra-sep">:</td>
+                                                            <td class="extra-val"><?= date('d F, Y', strtotime($letter['effective_date'])) ?></td>
+                                                        </tr>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($letter['new_designation'])): ?>
+                                                        <tr>
+                                                            <td class="extra-label">New Position / Designation</td>
+                                                            <td class="extra-sep">:</td>
+                                                            <td class="extra-val"><strong><?= htmlspecialchars($letter['new_designation']) ?></strong></td>
+                                                        </tr>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($letter['current_salary']) && (float)$letter['current_salary'] > 0): ?>
+                                                        <tr>
+                                                            <td class="extra-label">Current Gross Salary</td>
+                                                            <td class="extra-sep">:</td>
+                                                            <td class="extra-val">BDT <?= number_format((float)$letter['current_salary'], 2) ?></td>
+                                                        </tr>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($letter['revised_salary']) && (float)$letter['revised_salary'] > 0): ?>
+                                                        <tr>
+                                                            <td class="extra-label">Revised Gross Salary</td>
+                                                            <td class="extra-sep">:</td>
+                                                            <td class="extra-val"><strong>BDT <?= number_format((float)$letter['revised_salary'], 2) ?></strong></td>
+                                                        </tr>
+                                                    <?php endif; ?>
+                                                </table>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <!-- Official Signatory Block -->
+                                        <div class="letter-signature-section">
+                                            <p class="mb-1">Sincerely,</p>
+                                            <p class="company-sign-for">For <strong><?= htmlspecialchars($companyName) ?></strong></p>
+                                            <div class="signature-block">
+                                                <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
+                                                    <div style="height: 50px; margin-bottom: -15px;">
+                                                        <img src="<?= $sigUrl ?>" alt="Signature" style="height: 45px; max-width: 170px; object-fit: contain;">
+                                                    </div>
+                                                <?php endif; ?>
+                                                <div class="sign-line"></div>
+                                                <span class="signatory-name"><?= htmlspecialchars($letter['signatory_name']) ?></span>
+                                                <span class="signatory-title"><?= htmlspecialchars($letter['signatory_title']) ?></span>
+                                                <span class="signatory-dept">Human Resources Department</span>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+
+                                <?php endif; ?>
+
+                            </div><!-- /.letter-content-overlay -->
+                        </div><!-- /.letter-paper -->
+                    </div><!-- /.letter-paper-wrapper -->
+                <?php endforeach; ?>
             </div><!-- /.letter-container -->
 
         </div>
@@ -246,14 +299,39 @@
     .letter-container {
         padding: 30px 15px;
         display: flex;
-        justify-content: center;
+        flex-direction: column;
+        align-items: center;
+        gap: 25px;
         background-color: #f1f5f9;
+    }
+
+    .letter-paper-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 210mm;
+    }
+
+    .page-sheet-badge {
+        align-self: flex-end;
+        background: #334155;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        display: inline-flex;
+        align-items: center;
+        letter-spacing: 0.5px;
     }
 
     /* Standard A4 Paper Layout (210mm x 297mm) */
     .letter-paper {
         width: 210mm;
-        min-height: 297mm;
+        height: 297mm;
+        max-height: 297mm;
         position: relative;
         background-color: #ffffff;
         background-image: url('<?= $GLOBALS['base_url'] ?>/assets/email-template/new-letter-template.jpeg');
@@ -264,15 +342,16 @@
         font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
         color: #111827;
         box-sizing: border-box;
+        overflow: hidden;
     }
 
-    /* Safe-zone overlay: clears header graphic at 32mm, footer at 35mm, margins at 20mm */
+    /* Safe-zone overlay: clears header graphic at 32mm, footer at 32mm, margins at 20mm */
     .letter-content-overlay {
         position: absolute;
         top: 32mm;
         left: 20mm;
         right: 20mm;
-        bottom: 35mm;
+        bottom: 32mm;
         overflow: hidden;
         display: flex;
         flex-direction: column;
@@ -340,7 +419,7 @@
     /* Letter Body Typography */
     .letter-body {
         font-size: 13px;
-        line-height: 1.75;
+        line-height: 1.55;
         color: #111827;
         text-align: justify;
         text-justify: inter-word;
@@ -348,16 +427,22 @@
     }
 
     .letter-body p {
-        margin-bottom: 12px;
+        margin-bottom: 7px;
+    }
+
+    .letter-body h1, .letter-body h2, .letter-body h3, .letter-body h4 {
+        margin: 8px 0 3px 0;
+        font-size: 13.5px;
+        color: #0f172a;
     }
 
     .letter-body ul, .letter-body ol {
-        margin-bottom: 12px;
-        padding-left: 24px;
+        margin-bottom: 8px;
+        padding-left: 20px;
     }
 
     .letter-body li {
-        margin-bottom: 5px;
+        margin-bottom: 3px;
     }
 
     /* ═══ Caution Letter Specific Styling ═══ */
@@ -521,7 +606,7 @@
 
     /* Signature Section */
     .letter-signature-section {
-        margin-top: 24px;
+        margin-top: 14px;
         font-size: 13px;
         color: #1e293b;
     }
@@ -532,7 +617,7 @@
     }
 
     .signature-block {
-        margin-top: 36px;
+        margin-top: 12px;
         display: inline-block;
     }
 
@@ -569,19 +654,40 @@
             visibility: hidden;
         }
 
-        #printableArea,
-        #printableArea * {
+        .letter-container,
+        .letter-container * {
             visibility: visible;
         }
 
-        #printableArea {
+        .page-sheet-badge,
+        .card__title-wrap,
+        .btn {
+            display: none !important;
+        }
+
+        .letter-container {
             position: absolute;
             left: 0;
             top: 0;
             width: 210mm;
+            padding: 0;
+            margin: 0;
+            background: none;
+            gap: 0;
+        }
+
+        .letter-paper-wrapper {
+            width: 210mm;
+            margin: 0;
+            padding: 0;
+            page-break-after: always;
+            break-after: page;
+        }
+
+        .letter-paper {
+            width: 210mm;
             height: 297mm;
             box-shadow: none;
-            background-color: #fff;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
