@@ -289,7 +289,7 @@ class Con_ContractorBillController extends Controller
                 'source_id'     => $billId,
                 'requested_days'=> 0,
                 'requested_by'  => $this->userId,
-                'approve_role'  => 'management',
+                'approve_role'  => 'qc',
                 'meta_data'     => null,
                 'request_amount'=> $data['bill_amount'],
             ]);
@@ -597,6 +597,21 @@ class Con_ContractorBillController extends Controller
             if ($approvedAmount <= 0) $approvedAmount = (float)$bill['bill_amount'];
 
             if ($this->billModel->updateQCStatus($id, $this->userId, $qcNote, $approvedAmount)) {
+                // Forward approval request to Management
+                $stmtAr = $this->db->prepare("
+                    UPDATE approval_requests 
+                    SET approve_role = 'management', 
+                        status = 'pending', 
+                        request_amount = ?, 
+                        approval_note = ?
+                    WHERE source_table = 'contractor_bill_requests' AND source_id = ?
+                ");
+                if ($stmtAr) {
+                    $forwardNote = "QC Approved (৳" . number_format($approvedAmount, 2) . ")" . (!empty($qcNote) ? " Note: {$qcNote}" : '');
+                    $stmtAr->bind_param('dsi', $approvedAmount, $forwardNote, $id);
+                    $stmtAr->execute();
+                    $stmtAr->close();
+                }
                 setSuccess('Bill QC Approved successfully.');
             } else {
                 setError('Failed to QC approve bill.');
@@ -622,7 +637,7 @@ class Con_ContractorBillController extends Controller
             $managementNote = trim($_POST['management_note'] ?? '');
 
             if ($this->billModel->approve($id, $this->userId, $approvedAmount, $managementNote)) {
-                $this->syncApprovalRequest($id, 'approved');
+                $this->syncApprovalRequest($id, 'approved', $approvedAmount);
 
                 // AUTO-GENERATE ACCRUAL JOURNAL
                 try {
@@ -822,17 +837,21 @@ class Con_ContractorBillController extends Controller
         return $stmt->get_result()->fetch_assoc();
     }
 
-    private function syncApprovalRequest($billId, $newStatus)
+    private function syncApprovalRequest($billId, $newStatus, $approvedAmount = null)
     {
         $arStatus = ($newStatus === 'approved') ? 'approved' : 'rejected';
+        $approveRole = ($newStatus === 'approved') ? 'accounts' : 'rejected';
 
         $stmt = $this->db->prepare(
             "UPDATE approval_requests
-             SET status = ?, approved_by = ?, approved_at = NOW()
-             WHERE source_table = 'contractor_bill_requests' AND source_id = ? AND status = 'pending'"
+             SET status = ?, approve_role = ?, approved_by = ?, approved_amount = COALESCE(?, approved_amount, request_amount), approved_at = NOW()
+             WHERE source_table = 'contractor_bill_requests' AND source_id = ?"
         );
-        $stmt->bind_param('sii', $arStatus, $this->userId, $billId);
-        $stmt->execute();
+        if ($stmt) {
+            $stmt->bind_param('ssidi', $arStatus, $approveRole, $this->userId, $approvedAmount, $billId);
+            $stmt->execute();
+            $stmt->close();
+        }
     }
 
     private function handleFileUpload($file)

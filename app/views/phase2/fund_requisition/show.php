@@ -9,6 +9,14 @@ $isAdmin    = in_array($sessionRoleId, [1, 3]);
 $canApprove = in_array($sessionRoleId, [1, 3, 33]) || (in_array($sessionRoleId, [20, 32]) && $req['amount'] <= 100000);
 $isVerified = !empty($req['accounts_settlement_verified']);
 
+$effectiveApprovedAmount = (!empty($req['approved_amount']) && (float)$req['approved_amount'] > 0)
+    ? (float)$req['approved_amount']
+    : ((!empty($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0)
+        ? (float)$req['qc_approved_amount']
+        : (float)$req['amount']);
+
+$dueToPay = max(0, $effectiveApprovedAmount - (float)($req['paid_amount'] ?? 0));
+
 $statusColors = [
     'pending_dept' => 'bg-warning text-dark',
     'pending'      => 'bg-info text-white',
@@ -145,7 +153,7 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                         <?php if (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0): ?>
                             <div class="fs-11 text-info mt-0 fw-medium">QC: &#2547; <?php echo number_format((float)$req['qc_approved_amount'], 2); ?></div>
                         <?php endif; ?>
-                        <div class="fs-12 text-muted mt-1 fw-medium">App: &#2547; <?php echo number_format($req['approved_amount'] ?? (in_array($req['status'], ['approved','paid']) ? ($req['qc_approved_amount'] ?? $req['amount']) : 0), 2); ?></div>
+                        <div class="fs-12 text-muted mt-1 fw-medium">App: &#2547; <?php echo number_format($effectiveApprovedAmount, 2); ?></div>
                     </div>
                     <div class="avatar avatar-md bg-primary-transparent rounded-circle fs-18">
                         <i class="fa-solid fa-wallet text-primary"></i>
@@ -159,7 +167,7 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                 <div class="card-body p-3 d-flex align-items-center justify-content-between">
                     <div>
                         <span class="text-muted fs-11 text-uppercase fw-bold d-block">Paid / Spent</span>
-                        <div class="fw-extrabold text-success mt-1 fs-15">&#2547; <?php echo number_format($req['paid_amount'] ?? ($req['status'] === 'paid' ? ($req['approved_amount'] ?? $req['amount']) : 0), 2); ?></div>
+                        <div class="fw-extrabold text-success mt-1 fs-15">&#2547; <?php echo number_format($req['paid_amount'] ?? ($req['status'] === 'paid' ? $effectiveApprovedAmount : 0), 2); ?></div>
                         <div class="fs-12 text-muted mt-1 fw-medium">Spent: &#2547; <?php echo number_format($totalSpent, 2); ?></div>
                     </div>
                     <div class="avatar avatar-md bg-success-transparent rounded-circle fs-18">
@@ -604,7 +612,7 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                                         </div>
                                     <?php endif; ?>
 
-                                    <?php if ($isAccounts && (($req['approved_amount'] ?? $req['amount']) - ($req['paid_amount'] ?? 0)) > 0): ?>
+                                    <?php if ($isAccounts && $dueToPay > 0): ?>
                                     <button class="btn btn-sm btn-success mt-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#payModal">
                                         <i class="fa-solid fa-file-invoice-dollar me-1"></i> Process Payment Now
                                     </button>
@@ -891,7 +899,6 @@ if (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']
 <?php endif; ?>
 
 <?php 
-$dueToPay = ($req['approved_amount'] ?? $req['amount']) - ($req['paid_amount'] ?? 0);
 if (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid']) && $isAccounts && $dueToPay > 0): ?>
 <div class="modal fade" id="payModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/pay" method="POST" enctype="multipart/form-data">

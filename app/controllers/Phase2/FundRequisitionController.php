@@ -330,6 +330,15 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
+        // Auto-heal if approved but approved_amount is 0 or null
+        if (in_array($req['status'], ['approved', 'paid']) && (empty($req['approved_amount']) || (float)$req['approved_amount'] <= 0)) {
+            $effectiveAmt = (!empty($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0)
+                ? (float)$req['qc_approved_amount']
+                : (float)$req['amount'];
+            $this->db->query("UPDATE fund_requisitions SET approved_amount = {$effectiveAmt} WHERE id = {$id} AND (approved_amount IS NULL OR approved_amount = 0)");
+            $req['approved_amount'] = $effectiveAmt;
+        }
+
         // Expenses
         $expenses = $this->db->query("
             SELECT fre.*, p.name AS project_name, u.full_name AS creator_name
@@ -961,21 +970,27 @@ class FundRequisitionController extends Controller {
         $cumulative_paid_amount = (float)($frData['paid_amount'] ?? 0);
         $posted_amount = 0;
 
+        $targetApprovedAmount = (!empty($frData['approved_amount']) && (float)$frData['approved_amount'] > 0)
+            ? (float)$frData['approved_amount']
+            : ((!empty($frData['qc_approved_amount']) && (float)$frData['qc_approved_amount'] > 0)
+                ? (float)$frData['qc_approved_amount']
+                : (float)$frData['amount']);
+
         if ($status === 'paid') {
-            $posted_amount = $frData['approved_amount'] - $cumulative_paid_amount;
-            $cumulative_paid_amount = $frData['approved_amount'];
-            if ($cumulative_paid_amount < $frData['amount']) {
+            $posted_amount = $targetApprovedAmount - $cumulative_paid_amount;
+            $cumulative_paid_amount = $targetApprovedAmount;
+            if ($cumulative_paid_amount < (float)$frData['amount'] && $cumulative_paid_amount < $targetApprovedAmount) {
                 $status = 'partially_paid';
             }
         } elseif ($status === 'partially_paid') {
-            if ($new_paid_amount <= 0 || ($cumulative_paid_amount + $new_paid_amount) > $frData['approved_amount']) {
+            if ($new_paid_amount <= 0 || ($cumulative_paid_amount + $new_paid_amount) > $targetApprovedAmount) {
                 setError('Invalid paid amount.');
                 header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
                 exit;
             }
             $cumulative_paid_amount += $new_paid_amount;
             $posted_amount = $new_paid_amount;
-            if ($cumulative_paid_amount >= $frData['amount']) {
+            if ($cumulative_paid_amount >= $targetApprovedAmount) {
                 $status = 'paid';
             }
         }
@@ -997,17 +1012,17 @@ class FundRequisitionController extends Controller {
         if ($payment_attachment_path) {
             $stmt = $this->db->prepare("
                 UPDATE fund_requisitions 
-                SET status = ?, paid_by = ?, payment_method = ?, accounts_note = ?, payment_attachment_path = ?, paid_at = CURRENT_TIMESTAMP, paid_amount = ?
+                SET status = ?, paid_by = ?, payment_method = ?, accounts_note = ?, payment_attachment_path = ?, paid_at = CURRENT_TIMESTAMP, paid_amount = ?, approved_amount = GREATEST(COALESCE(approved_amount, 0), ?)
                 WHERE id = ?
             ");
-            $stmt->bind_param("sisssdi", $status, $paid_by, $payment_method, $accounts_note, $payment_attachment_path, $cumulative_paid_amount, $id);
+            $stmt->bind_param("sisssddi", $status, $paid_by, $payment_method, $accounts_note, $payment_attachment_path, $cumulative_paid_amount, $targetApprovedAmount, $id);
         } else {
             $stmt = $this->db->prepare("
                 UPDATE fund_requisitions 
-                SET status = ?, paid_by = ?, payment_method = ?, accounts_note = ?, paid_at = CURRENT_TIMESTAMP, paid_amount = ?
+                SET status = ?, paid_by = ?, payment_method = ?, accounts_note = ?, paid_at = CURRENT_TIMESTAMP, paid_amount = ?, approved_amount = GREATEST(COALESCE(approved_amount, 0), ?)
                 WHERE id = ?
             ");
-            $stmt->bind_param("sissdi", $status, $paid_by, $payment_method, $accounts_note, $cumulative_paid_amount, $id);
+            $stmt->bind_param("sissddi", $status, $paid_by, $payment_method, $accounts_note, $cumulative_paid_amount, $targetApprovedAmount, $id);
         }
 
         if ($stmt->execute()) {
