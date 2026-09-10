@@ -337,6 +337,36 @@
                 $knownPurposes = ['Bank Loan', 'Visa Application', 'Tenancy / House Rent', 'Personal Use'];
                 $currPurpose = $letter['purpose'] ?? '';
                 $isOtherPurpose = (!empty($currPurpose) && !in_array($currPurpose, $knownPurposes));
+
+                $scBodyData = json_decode($letter['body'] ?? '', true);
+                $scOpening = $scBodyData['opening'] ?? '';
+                $scClosing = $scBodyData['closing'] ?? '';
+
+                if (empty($scOpening)) {
+                    $rawName = trim($letter['full_name'] ?? '');
+                    $empCode = $letter['employee_code'] ?? ($letter['employee_id'] ?? '');
+                    $desigName = $letter['designation_name'] ?? 'N/A';
+                    $gender = strtolower($letter['gender'] ?? '');
+                    $sheHe = ($gender === 'female') ? 'she' : 'he';
+                    $herHis = ($gender === 'female') ? 'her' : 'his';
+                    $herHim = ($gender === 'female') ? 'her' : 'him';
+                    $empType = !empty($letter['employee_type']) ? ucfirst($letter['employee_type']) : 'Permanent';
+                    $companyName = function_exists('getSetting') ? getSetting('website_title', 'The Premium Homes Limited') : 'The Premium Homes Limited';
+
+                    $startDate = !empty($letter['joining_date']) ? date('d F Y', strtotime($letter['joining_date'])) : 'N/A';
+                    $endDate = !empty($letter['effective_date']) ? date('d F Y', strtotime($letter['effective_date'])) : '';
+                    $periodText = !empty($endDate) ? ('from ' . $startDate . ' to ' . $endDate) : ('from ' . $startDate . ' to present');
+
+                    $scOpening = "This is to certify that **" . $rawName . "** (Employee ID: " . $empCode . ") was a " . $empType . " employee of **" . $companyName . "** and " . $sheHe . " was employed as **" . $desigName . "** " . $periodText . ".\n\nAccording to our records, " . $herHis . " monthly salary breakdown was as follows:";
+                }
+
+                if (empty($scClosing)) {
+                    $gender = strtolower($letter['gender'] ?? '');
+                    $herHis = ($gender === 'female') ? 'her' : 'his';
+                    $herHim = ($gender === 'female') ? 'her' : 'him';
+                    $purposeText = !empty($letter['purpose']) ? strtolower($letter['purpose']) : 'final settlement';
+                    $scClosing = "This certificate is issued upon " . $herHis . " request for " . $purposeText . " without any liability on the part of this company.\n\nWe wish " . $herHim . " all the very best.";
+                }
                 ?>
                 <div id="section_salary_cert" class="card__wrapper mb-20" style="<?= $isSalaryCert ? '' : 'display:none;' ?>">
                     <div class="card__title-wrap mb-15">
@@ -485,6 +515,33 @@
                     <input type="hidden" name="gross_salary" id="gross_salary_hidden" value="<?= (float)($letter['gross_salary'] ?? 0) ?>">
                     <input type="hidden" name="net_salary" id="net_salary_hidden" value="<?= (float)($letter['net_salary'] ?? 0) ?>">
 
+                    <!-- ── Editable Certificate Body Paragraphs ── -->
+                    <div class="mt-20 pt-20 border-top">
+                        <div class="d-flex justify-content-between align-items-center mb-10">
+                            <div class="section-label mb-0">📝 Certificate Body Paragraphs <small class="text-muted fw-normal">(Editable)</small></div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetSalaryCertParagraphs(true)">
+                                <i class="fa-solid fa-rotate-left me-1"></i> Reset to Default Text
+                            </button>
+                        </div>
+                        <p class="text-muted small mb-15">
+                            You can customize or edit the certificate opening and closing paragraphs directly below:
+                        </p>
+
+                        <div class="row g-15">
+                            <div class="col-12">
+                                <label class="form-label fw-bold text-dark small mb-1">Opening Paragraph (Above Salary Table)</label>
+                                <textarea class="form-control" name="sc_opening_paragraph" id="sc_opening_paragraph" rows="4" placeholder="Opening paragraph..."><?= htmlspecialchars($scOpening) ?></textarea>
+                                <div class="form-text small text-muted">This text appears before the salary breakdown table. Supports Markdown bold <code>**text**</code>.</div>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-bold text-dark small mb-1">Closing Paragraph (Below Salary Table)</label>
+                                <textarea class="form-control" name="sc_closing_paragraph" id="sc_closing_paragraph" rows="3" placeholder="Closing paragraph..."><?= htmlspecialchars($scClosing) ?></textarea>
+                                <div class="form-text small text-muted">This text appears after the salary table and before the signature. Supports Markdown bold <code>**text**</code>.</div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- Section: Signatory -->
@@ -521,28 +578,43 @@
                         $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 4);
                         $hasCustomSig = !empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($letter['custom_signature'], '/\\'));
                         $hasOfficialSig = file_exists($baseDir . '/public/assets/images/hrm/hr_signature.png');
-
-                        $sigChoice = 'none';
-                        if ($hasCustomSig) {
-                            $sigChoice = 'custom';
-                        } elseif ($hasOfficialSig && (!isset($letter['include_signature']) || $letter['include_signature'] == 1)) {
-                            $sigChoice = 'official';
-                        }
+                        $isIncluded = (!isset($letter['include_signature']) || $letter['include_signature'] == 1);
                         ?>
                         <div class="col-lg-4">
                             <div class="from__input-box">
-                                <div class="form__input-title"><label for="signature_choice">Digital Seal & Signature</label></div>
+                                <div class="form__input-title d-flex justify-content-between align-items-center">
+                                    <label for="signature_choice">Digital Seal & Signature</label>
+                                    <a href="javascript:void(0)" class="text-primary small fw-semibold text-decoration-none" data-bs-toggle="modal" data-bs-target="#officialSignatureModal">
+                                        <i class="fa-solid fa-gear me-1"></i> Manage
+                                    </a>
+                                </div>
                                 <div class="form__input">
                                     <select class="form-control" name="signature_choice" id="signature_choice" onchange="handleSignatureChoice(this.value)">
-                                        <?php if ($hasOfficialSig): ?>
-                                            <option value="official" <?= ($sigChoice === 'official') ? 'selected' : '' ?>>Yes — Include Official HR Signature</option>
-                                        <?php else: ?>
-                                            <option value="official" disabled>Official HR Signature (Not uploaded yet)</option>
+                                        <?php if ($hasCustomSig): ?>
+                                            <option value="keep_current" <?= $isIncluded ? 'selected' : '' ?>>Keep Current Attached Signature</option>
                                         <?php endif; ?>
-                                        <option value="custom" <?= ($sigChoice === 'custom') ? 'selected' : '' ?>>🖊️ Upload Custom Signature (Paper Photo/Scan)</option>
-                                        <option value="none" <?= ($sigChoice === 'none') ? 'selected' : '' ?>>No — Leave Blank (Physical Sign)</option>
+
+                                        <?php if (!empty($officialSignatures)): ?>
+                                            <?php foreach ($officialSignatures as $sig): ?>
+                                                <?php 
+                                                $isThisSig = ($hasCustomSig && $letter['custom_signature'] === $sig['signature_path']);
+                                                $isSelected = (!$hasCustomSig && $isIncluded && $sig['is_default'] == 1);
+                                                ?>
+                                                <option value="official_<?= $sig['id'] ?>" 
+                                                        data-name="<?= htmlspecialchars($sig['signatory_name']) ?>" 
+                                                        data-title="<?= htmlspecialchars($sig['signatory_title']) ?>"
+                                                        <?= ($isThisSig || $isSelected) ? 'selected' : '' ?>>
+                                                    Official: <?= htmlspecialchars($sig['signatory_name']) ?> (<?= htmlspecialchars($sig['signatory_title']) ?>)<?= ($sig['is_default'] == 1) ? ' [Default]' : '' ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        <?php elseif ($hasOfficialSig): ?>
+                                            <option value="official" <?= (!$hasCustomSig && $isIncluded) ? 'selected' : '' ?>>Yes — Include Official HR Signature</option>
+                                        <?php endif; ?>
+
+                                        <option value="custom">🖊️ Upload New Custom Signature (Photo/Scan)</option>
+                                        <option value="none" <?= !$isIncluded ? 'selected' : '' ?>>No — Leave Blank (Physical Sign)</option>
                                     </select>
-                                    <input type="hidden" name="include_signature" id="include_signature" value="<?= ($sigChoice === 'none') ? '0' : '1' ?>">
+                                    <input type="hidden" name="include_signature" id="include_signature" value="<?= $isIncluded ? '1' : '0' ?>">
                                 </div>
                             </div>
                         </div>
@@ -819,6 +891,68 @@
         recalcTotals();
     });
 
+    function resetSalaryCertParagraphs(force) {
+        var empSel = document.getElementById('employee_id');
+        var opt = (empSel && empSel.selectedIndex >= 0) ? empSel.options[empSel.selectedIndex] : null;
+
+        var rawName = '<?= htmlspecialchars(trim($letter["full_name"] ?? "")) ?>';
+        if (opt && opt.dataset && opt.dataset.fullname) rawName = opt.dataset.fullname;
+
+        var empCode = '<?= htmlspecialchars($letter["employee_code"] ?? ($letter["employee_id"] ?? "")) ?>';
+        if (opt && opt.dataset && opt.dataset.code) empCode = opt.dataset.code;
+
+        var gender = '<?= strtolower($letter["gender"] ?? "") ?>';
+        if (opt && opt.dataset && opt.dataset.gender) gender = opt.dataset.gender.toLowerCase();
+        var sheHe = (gender === 'female') ? 'she' : 'he';
+        var herHis = (gender === 'female') ? 'her' : 'his';
+        var herHim = (gender === 'female') ? 'her' : 'him';
+
+        var desigSel = document.getElementById('designation_id');
+        var desigName = (desigSel && desigSel.selectedIndex >= 0 && desigSel.options[desigSel.selectedIndex].text)
+            ? desigSel.options[desigSel.selectedIndex].text.replace(/\s*\(.*?\)\s*/, '').trim()
+            : '<?= htmlspecialchars($letter["designation_name"] ?? "N/A") ?>';
+
+        var companyName = '<?= htmlspecialchars(function_exists("getSetting") ? getSetting("website_title", "The Premium Homes Limited") : "The Premium Homes Limited") ?>';
+
+        var joinVal = document.getElementById('sc_joining_date') ? document.getElementById('sc_joining_date').value : '<?= $letter["joining_date"] ?? "" ?>';
+        var effVal = document.getElementById('sc_effective_date') ? document.getElementById('sc_effective_date').value : '<?= $letter["effective_date"] ?? "" ?>';
+
+        var startDate = joinVal ? formatDateLong(joinVal) : 'N/A';
+        var endDate = effVal ? formatDateLong(effVal) : '';
+        var periodText = endDate ? ('from ' + startDate + ' to ' + endDate) : ('from ' + startDate + ' to present');
+
+        var purposeSel = document.getElementById('purpose');
+        var purposeVal = 'final settlement';
+        if (purposeSel) {
+            if (purposeSel.value === 'Other') {
+                var otherText = document.getElementById('purpose_other_text');
+                purposeVal = (otherText && otherText.value.trim()) ? otherText.value.trim() : 'personal use';
+            } else if (purposeSel.value) {
+                purposeVal = purposeSel.value.toLowerCase();
+            }
+        }
+
+        var defaultOpening = 'This is to certify that **' + rawName + '** (Employee ID: ' + empCode + ') was a Permanent employee of **' + companyName + '** and ' + sheHe + ' was employed as **' + desigName + '** ' + periodText + '.\n\nAccording to our records, ' + herHis + ' monthly salary breakdown was as follows:';
+
+        var defaultClosing = 'This certificate is issued upon ' + herHis + ' request for ' + purposeVal + ' without any liability on the part of this company.\n\nWe wish ' + herHim + ' all the very best.';
+
+        var scOpEl = document.getElementById('sc_opening_paragraph');
+        var scClEl = document.getElementById('sc_closing_paragraph');
+        if (scOpEl) scOpEl.value = defaultOpening;
+        if (scClEl) scClEl.value = defaultClosing;
+    }
+
+    function formatDateLong(dateStr) {
+        if (!dateStr) return '';
+        var parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        if (isNaN(d.getTime())) return dateStr;
+        var day = ('0' + d.getDate()).slice(-2);
+        var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        return day + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+    }
+
     function loadTemplatesForType() {
         var letterType = document.getElementById('letter_type').value;
         var templateSelect = document.getElementById('template_id');
@@ -869,6 +1003,10 @@
     function handleSignatureChoice(choice) {
         var wrapper = document.getElementById('custom_sig_wrapper');
         var hiddenInc = document.getElementById('include_signature');
+        var sigSelect = document.getElementById('signature_choice');
+        var nameInput = document.getElementById('signatory_name');
+        var titleInput = document.getElementById('signatory_title');
+
         if (choice === 'custom') {
             if (wrapper) wrapper.style.display = 'block';
             if (hiddenInc) hiddenInc.value = '1';
@@ -878,6 +1016,14 @@
         } else {
             if (wrapper) wrapper.style.display = 'none';
             if (hiddenInc) hiddenInc.value = '1';
+
+            if (choice !== 'keep_current' && sigSelect && sigSelect.selectedIndex >= 0) {
+                var selectedOption = sigSelect.options[sigSelect.selectedIndex];
+                var optName = selectedOption.getAttribute('data-name');
+                var optTitle = selectedOption.getAttribute('data-title');
+                if (optName && nameInput) nameInput.value = optName;
+                if (optTitle && titleInput) titleInput.value = optTitle;
+            }
         }
     }
 
@@ -974,3 +1120,5 @@
         });
     }
 </script>
+
+<?php include __DIR__ . '/modal-signatures-manager.php'; ?>

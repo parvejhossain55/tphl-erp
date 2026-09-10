@@ -6,6 +6,7 @@ class LetterTemplateController extends Controller
     protected $employeeModel;
     protected $templateModel;
     protected $letterModel;
+    protected $hrSignatureModel;
 
     public function __construct($db)
     {
@@ -13,6 +14,9 @@ class LetterTemplateController extends Controller
         $this->employeeModel = new Employee($this->db);
         $this->templateModel = new LetterTemplate($this->db);
         $this->letterModel = new Letter($this->db);
+        require_once __DIR__ . '/../models/HrSignature.php';
+        $this->hrSignatureModel = new HrSignature($this->db);
+        $this->hrSignatureModel->seedLegacyIfEmpty();
     }
 
     // ─── AJAX: Get Employee basic info ────────────────────────────────────────
@@ -206,6 +210,7 @@ class LetterTemplateController extends Controller
             "search" => $search,
             "designation_id" => $designation_id,
             "letter_type" => $letter_type,
+            "officialSignatures" => $this->hrSignatureModel->getAllActive(),
         ]);
     }
 
@@ -228,6 +233,7 @@ class LetterTemplateController extends Controller
             "templates" => $templates,
             "departments" => $departments,
             "designations" => $designations,
+            "officialSignatures" => $this->hrSignatureModel->getAllActive(),
         ]);
     }
 
@@ -278,40 +284,66 @@ class LetterTemplateController extends Controller
             }
             $data['gross_salary'] = $gross;
             $data['net_salary'] = $gross - $deduction;
-            $body = ''; // No free-text body for salary certificate
+            $scOpening = trim($data['sc_opening_paragraph'] ?? '');
+            $scClosing = trim($data['sc_closing_paragraph'] ?? '');
+            $body = json_encode([
+                'opening' => $scOpening,
+                'closing' => $scClosing
+            ], JSON_UNESCAPED_UNICODE);
         }
 
         $letterDate = !empty($data['letter_date']) ? $data['letter_date'] : (!empty($data['sc_letter_date']) ? $data['sc_letter_date'] : date('Y-m-d'));
         $refNumber = !empty($data['ref_number']) ? $data['ref_number'] : (!empty($data['sc_ref_number']) ? $data['sc_ref_number'] : null);
 
-        // Process custom signature upload if provided
+        // Process signature choice
         $customSignaturePath = null;
+        $includeSignature = 1;
         $sigChoice = $data['signature_choice'] ?? ($data['include_signature'] ?? '1');
 
-        if ($sigChoice === 'custom' && !empty($_FILES['custom_signature_file']['tmp_name']) && is_uploaded_file($_FILES['custom_signature_file']['tmp_name'])) {
-            $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
-            $sigDir = $baseDir . '/public/assets/images/hrm/signatures';
-            if (!is_dir($sigDir)) {
-                mkdir($sigDir, 0777, true);
-            }
-            $filename = 'sig_' . time() . '_' . mt_rand(1000, 9999) . '.png';
-            $destPath = $sigDir . '/' . $filename;
-            $threshold = isset($data['sig_threshold']) ? (int)$data['sig_threshold'] : 205;
-            $extractResult = SignatureExtractor::extractAndSave($_FILES['custom_signature_file']['tmp_name'], $destPath, $threshold);
-            if ($extractResult['success']) {
-                $customSignaturePath = 'public/assets/images/hrm/signatures/' . $filename;
-            }
-        }
-
-        $includeSignature = 1;
         if ($sigChoice === '0' || $sigChoice === 'none') {
             $includeSignature = 0;
             $customSignaturePath = null;
+        } elseif (strpos($sigChoice, 'official_') === 0) {
+            $includeSignature = 1;
+            $sigId = (int) str_replace('official_', '', $sigChoice);
+            $sigObj = $this->hrSignatureModel->find($sigId);
+            if ($sigObj) {
+                $customSignaturePath = $sigObj['signature_path'];
+                if (empty($data['signatory_name'])) {
+                    $data['signatory_name'] = $sigObj['signatory_name'];
+                }
+                if (empty($data['signatory_title'])) {
+                    $data['signatory_title'] = $sigObj['signatory_title'];
+                }
+            }
         } elseif ($sigChoice === '1' || $sigChoice === 'official') {
             $includeSignature = 1;
-            $customSignaturePath = null;
+            $defaultSig = $this->hrSignatureModel->getDefault();
+            if ($defaultSig) {
+                $customSignaturePath = $defaultSig['signature_path'];
+                if (empty($data['signatory_name'])) {
+                    $data['signatory_name'] = $defaultSig['signatory_name'];
+                }
+                if (empty($data['signatory_title'])) {
+                    $data['signatory_title'] = $defaultSig['signatory_title'];
+                }
+            }
         } elseif ($sigChoice === 'custom') {
             $includeSignature = 1;
+            if (!empty($_FILES['custom_signature_file']['tmp_name']) && is_uploaded_file($_FILES['custom_signature_file']['tmp_name'])) {
+                $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
+                $sigDir = $baseDir . '/public/assets/images/hrm/signatures';
+                if (!is_dir($sigDir)) {
+                    mkdir($sigDir, 0777, true);
+                }
+                $filename = 'sig_' . time() . '_' . mt_rand(1000, 9999) . '.png';
+                $destPath = $sigDir . '/' . $filename;
+                $threshold = isset($data['sig_threshold']) ? (int)$data['sig_threshold'] : 205;
+                $extractResult = SignatureExtractor::extractAndSave($_FILES['custom_signature_file']['tmp_name'], $destPath, $threshold);
+                if ($extractResult['success']) {
+                    $customSignaturePath = 'public/assets/images/hrm/signatures/' . $filename;
+                }
+            }
         }
 
         $saveData = [
@@ -564,7 +596,17 @@ class LetterTemplateController extends Controller
             }
         }
         if (!$sigPath) {
-            $sigPath = realpath(__DIR__ . '/../../public/assets/images/hrm/hr_signature.png');
+            $defaultSig = $this->hrSignatureModel->getDefault();
+            if ($defaultSig && !empty($defaultSig['signature_path'])) {
+                $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
+                $candidate = $baseDir . '/' . ltrim($defaultSig['signature_path'], '/\\');
+                if (file_exists($candidate)) {
+                    $sigPath = realpath($candidate);
+                }
+            }
+            if (!$sigPath) {
+                $sigPath = realpath(__DIR__ . '/../../public/assets/images/hrm/hr_signature.png');
+            }
         }
         $sigBase64 = ($sigPath && file_exists($sigPath)) ? ('data:image/png;base64,' . base64_encode(file_get_contents($sigPath))) : '';
 
@@ -732,6 +774,7 @@ class LetterTemplateController extends Controller
                 "departments" => $departments,
                 "designations" => $designations,
                 "salaryItems" => $salaryItems,
+                "officialSignatures" => $this->hrSignatureModel->getAllActive(),
             ]);
         } else {
             $this->view("hrm/letter-templates/edit-generated-letter", [
@@ -741,6 +784,7 @@ class LetterTemplateController extends Controller
                 "departments" => $departments,
                 "designations" => $designations,
                 "salaryItems" => [],
+                "officialSignatures" => $this->hrSignatureModel->getAllActive(),
             ]);
         }
     }
@@ -783,7 +827,12 @@ class LetterTemplateController extends Controller
             }
             $data['gross_salary'] = $gross;
             $data['net_salary'] = $gross - $deduction;
-            $body = '';
+            $scOpening = trim($data['sc_opening_paragraph'] ?? '');
+            $scClosing = trim($data['sc_closing_paragraph'] ?? '');
+            $body = json_encode([
+                'opening' => $scOpening,
+                'closing' => $scClosing
+            ], JSON_UNESCAPED_UNICODE);
         }
 
         $letterDate = !empty($data['letter_date']) ? $data['letter_date'] : (!empty($data['sc_letter_date']) ? $data['sc_letter_date'] : date('Y-m-d'));
@@ -798,9 +847,34 @@ class LetterTemplateController extends Controller
         if ($sigChoice === '0' || $sigChoice === 'none') {
             $includeSignature = 0;
             $customSignaturePath = null;
+        } elseif (strpos($sigChoice, 'official_') === 0) {
+            $includeSignature = 1;
+            $sigId = (int) str_replace('official_', '', $sigChoice);
+            $sigObj = $this->hrSignatureModel->find($sigId);
+            if ($sigObj) {
+                $customSignaturePath = $sigObj['signature_path'];
+                if (empty($data['signatory_name'])) {
+                    $data['signatory_name'] = $sigObj['signatory_name'];
+                }
+                if (empty($data['signatory_title'])) {
+                    $data['signatory_title'] = $sigObj['signatory_title'];
+                }
+            }
         } elseif ($sigChoice === '1' || $sigChoice === 'official') {
             $includeSignature = 1;
-            $customSignaturePath = null;
+            $defaultSig = $this->hrSignatureModel->getDefault();
+            if ($defaultSig) {
+                $customSignaturePath = $defaultSig['signature_path'];
+                if (empty($data['signatory_name'])) {
+                    $data['signatory_name'] = $defaultSig['signatory_name'];
+                }
+                if (empty($data['signatory_title'])) {
+                    $data['signatory_title'] = $defaultSig['signatory_title'];
+                }
+            }
+        } elseif ($sigChoice === 'keep_current') {
+            // Keep existing signature path as is
+            $includeSignature = 1;
         } elseif ($sigChoice === 'custom') {
             $includeSignature = 1;
             if (!empty($_FILES['custom_signature_file']['tmp_name']) && is_uploaded_file($_FILES['custom_signature_file']['tmp_name'])) {
@@ -816,7 +890,7 @@ class LetterTemplateController extends Controller
                 if ($extractResult['success']) {
                     if (!empty($currentLetter['custom_signature'])) {
                         $oldFile = $baseDir . '/' . ltrim($currentLetter['custom_signature'], '/\\');
-                        if (file_exists($oldFile) && strpos($oldFile, 'signatures') !== false) {
+                        if (file_exists($oldFile) && strpos($oldFile, 'signatures/sig_custom_') !== false) {
                             @unlink($oldFile);
                         }
                     }
@@ -873,9 +947,153 @@ class LetterTemplateController extends Controller
         header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
     }
 
-    // ─── Update Default Official HR Signature ─────────────────────────────────
+    // ─── Multi-Signature Management: Save New Official Signature ──────────────
+    public function saveOfficialSignature()
+    {
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || isset($_POST['is_ajax']);
+
+        $name = trim($_POST['signatory_name'] ?? '');
+        $title = trim($_POST['signatory_title'] ?? '');
+        $isDefault = !empty($_POST['is_default']) ? 1 : 0;
+
+        if (empty($name) || empty($title)) {
+            if ($isAjax) {
+                echo json_encode(['success' => false, 'message' => 'Please provide signatory name and designation/title.']);
+                return;
+            }
+            $_SESSION['error'] = 'Please provide signatory name and designation/title.';
+            header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
+            return;
+        }
+
+        if (empty($_FILES['official_signature']['tmp_name']) || !is_uploaded_file($_FILES['official_signature']['tmp_name'])) {
+            if ($isAjax) {
+                echo json_encode(['success' => false, 'message' => 'No signature file was selected.']);
+                return;
+            }
+            $_SESSION['error'] = 'No signature file was selected.';
+            header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
+            return;
+        }
+
+        $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
+        $targetDir = $baseDir . '/public/assets/images/hrm/signatures';
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0777, true);
+        }
+
+        $safeName = preg_replace('/[^a-zA-Z0-9_-]/', '_', strtolower($name));
+        $filename = 'sig_official_' . $safeName . '_' . time() . '.png';
+        $targetFile = $targetDir . '/' . $filename;
+        $relPath = 'public/assets/images/hrm/signatures/' . $filename;
+
+        $threshold = isset($_POST['sig_threshold']) ? (int)$_POST['sig_threshold'] : 205;
+        $result = SignatureExtractor::extractAndSave(
+            $_FILES['official_signature']['tmp_name'],
+            $targetFile,
+            $threshold
+        );
+
+        if ($result['success']) {
+            $createdId = $this->hrSignatureModel->create([
+                'signatory_name' => $name,
+                'signatory_title' => $title,
+                'signature_path' => $relPath,
+                'is_default' => $isDefault
+            ]);
+
+            if ($createdId) {
+                if ($isAjax) {
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Official HR signature added successfully!',
+                        'id' => $createdId,
+                        'signatures' => $this->hrSignatureModel->getAllActive(),
+                        'base_url' => $GLOBALS['base_url']
+                    ]);
+                    return;
+                }
+                $_SESSION['success'] = 'Official HR signature added successfully!';
+            } else {
+                if ($isAjax) {
+                    echo json_encode(['success' => false, 'message' => 'Failed to save signature in database.']);
+                    return;
+                }
+                $_SESSION['error'] = 'Failed to save signature in database.';
+            }
+        } else {
+            if ($isAjax) {
+                echo json_encode(['success' => false, 'message' => $result['message']]);
+                return;
+            }
+            $_SESSION['error'] = 'Failed to extract signature: ' . $result['message'];
+        }
+
+        header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
+    }
+
+    // ─── Multi-Signature Management: Delete Signature ─────────────────────────
+    public function deleteOfficialSignature()
+    {
+        $id = (int)($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid signature ID.']);
+            return;
+        }
+
+        $deleted = $this->hrSignatureModel->delete($id);
+        if ($deleted) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Official signature deleted successfully.',
+                'signatures' => $this->hrSignatureModel->getAllActive(),
+                'base_url' => $GLOBALS['base_url']
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to delete signature.']);
+        }
+    }
+
+    // ─── Multi-Signature Management: Set Default Signature ────────────────────
+    public function setDefaultOfficialSignature()
+    {
+        $id = (int)($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid signature ID.']);
+            return;
+        }
+
+        $ok = $this->hrSignatureModel->setDefault($id);
+        if ($ok) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Default signatory updated successfully.',
+                'signatures' => $this->hrSignatureModel->getAllActive(),
+                'base_url' => $GLOBALS['base_url']
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to update default signature.']);
+        }
+    }
+
+    // ─── Multi-Signature Management: Get All Active Signatures (AJAX) ─────────
+    public function getOfficialSignaturesAjax()
+    {
+        $signatures = $this->hrSignatureModel->getAllActive();
+        echo json_encode([
+            'success' => true,
+            'signatures' => $signatures,
+            'base_url' => $GLOBALS['base_url']
+        ]);
+    }
+
+    // ─── Backwards Compatibility: Update Legacy hr_signature.png ─────────────
     public function updateOfficialSignature()
     {
+        if (!empty($_POST['signatory_name'])) {
+            return $this->saveOfficialSignature();
+        }
+
         $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || isset($_POST['is_ajax']);
 
         if (empty($_FILES['official_signature']['tmp_name']) || !is_uploaded_file($_FILES['official_signature']['tmp_name'])) {
@@ -889,11 +1107,13 @@ class LetterTemplateController extends Controller
         }
 
         $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
-        $targetDir = $baseDir . '/public/assets/images/hrm';
+        $targetDir = $baseDir . '/public/assets/images/hrm/signatures';
         if (!is_dir($targetDir)) {
             mkdir($targetDir, 0777, true);
         }
-        $targetFile = $targetDir . '/hr_signature.png';
+        $filename = 'sig_official_default_' . time() . '.png';
+        $targetFile = $targetDir . '/' . $filename;
+        $relPath = 'public/assets/images/hrm/signatures/' . $filename;
 
         $threshold = isset($_POST['sig_threshold']) ? (int)$_POST['sig_threshold'] : 205;
         $result = SignatureExtractor::extractAndSave(
@@ -903,11 +1123,20 @@ class LetterTemplateController extends Controller
         );
 
         if ($result['success']) {
+            $createdId = $this->hrSignatureModel->create([
+                'signatory_name' => 'HR Department',
+                'signatory_title' => 'Authorized Official',
+                'signature_path' => $relPath,
+                'is_default' => 1
+            ]);
+
             if ($isAjax) {
                 echo json_encode([
                     'success' => true,
                     'message' => 'Official HR signature updated successfully!',
-                    'url' => $GLOBALS['base_url'] . '/public/assets/images/hrm/hr_signature.png?v=' . time()
+                    'url' => $GLOBALS['base_url'] . '/' . $relPath . '?v=' . time(),
+                    'signatures' => $this->hrSignatureModel->getAllActive(),
+                    'base_url' => $GLOBALS['base_url']
                 ]);
                 return;
             }
