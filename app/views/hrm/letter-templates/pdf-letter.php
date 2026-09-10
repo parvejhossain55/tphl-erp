@@ -394,7 +394,7 @@ $pdfBody = $letter['body'] ?? '';
                     <div class="signoff-closing">Sincerely,</div>
                     <div class="signoff-company" style="margin-bottom: 5px;">For <strong><?= htmlspecialchars($companyName) ?></strong></div>
                     <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigBase64)): ?>
-                        <div style="height: 48px; margin-bottom: -10px;">
+                        <div style="height: 48px; margin-bottom: 5px;">
                             <img src="<?= $sigBase64 ?>" style="height: 45px; max-width: 170px;">
                         </div>
                     <?php else: ?>
@@ -489,9 +489,11 @@ $pdfBody = $letter['body'] ?? '';
                 <p class="company-sign-for">For <strong><?= htmlspecialchars($companyName) ?></strong></p>
                 <div class="signature-block">
                     <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigBase64)): ?>
-                        <div style="height: 48px; margin-bottom: -15px;">
+                        <div style="height: 48px; margin-bottom: 5px;">
                             <img src="<?= $sigBase64 ?>" style="height: 45px; max-width: 170px;">
                         </div>
+                    <?php else: ?>
+                        <div style="height: 48px; margin-bottom: 5px;"></div>
                     <?php endif; ?>
                     <div class="sign-line"></div>
                     <span class="signatory-name"><?= htmlspecialchars($letter['signatory_name']) ?></span>
