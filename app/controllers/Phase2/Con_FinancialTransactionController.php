@@ -47,16 +47,56 @@ class Con_FinancialTransactionController extends Controller
     }
 
     /* =====================
-       Ledger — All Transactions
+       Ledger — All Transactions (Unified Expense Multi-Module)
     ====================== */
     public function index()
     {
-        $transactions = $this->txnModel->getAll();
+        $filters = [
+            'module'         => trim($_GET['module'] ?? ''),
+            'project_id'     => trim($_GET['project_id'] ?? ''),
+            'start_date'     => trim($_GET['start_date'] ?? ''),
+            'end_date'       => trim($_GET['end_date'] ?? ''),
+            'payment_method' => trim($_GET['payment_method'] ?? ''),
+            'search'         => trim($_GET['search'] ?? ''),
+        ];
+
+        // Fetch projects for filter dropdown
+        $projectsRes = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
+        $projects = $projectsRes ? $projectsRes->fetch_all(MYSQLI_ASSOC) : [];
+
+        $modulesList = $this->txnModel->getExpenseModulesList();
+        $transactions = $this->txnModel->getAllExpenseTransactions($filters);
+
+        $totalPaid  = array_sum(array_column($transactions, 'amount_paid'));
+        $totalCount = count($transactions);
+
+        // Group counts by module for quick summary
+        $moduleStats = [];
+        foreach ($transactions as $t) {
+            $mk = $t['module_key'] ?? 'other';
+            if (!isset($moduleStats[$mk])) {
+                $moduleStats[$mk] = [
+                    'count'  => 0,
+                    'amount' => 0.0,
+                    'label'  => $t['module_label'] ?? $mk,
+                    'badge'  => $t['module_badge'] ?? 'secondary',
+                    'icon'   => $t['module_icon']  ?? 'bi bi-cash',
+                ];
+            }
+            $moduleStats[$mk]['count']++;
+            $moduleStats[$mk]['amount'] += (float)($t['amount_paid'] ?? 0);
+        }
 
         $this->view('phase2/financial-transactions/transaction-lists', [
-            'current_route' => 'con-transactions',
-            'page_title'    => 'Financial Transactions Ledger',
-            'transactions'  => $transactions,
+            'current_route'   => 'con-transactions',
+            'page_title'      => 'Financial Transactions Ledger',
+            'transactions'    => $transactions,
+            'filters'         => $filters,
+            'projects'        => $projects,
+            'modulesList'     => $modulesList,
+            'totalPaid'       => $totalPaid,
+            'totalCount'      => $totalCount,
+            'moduleStats'     => $moduleStats,
         ]);
     }
 

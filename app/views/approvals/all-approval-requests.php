@@ -483,18 +483,12 @@
                                         $canUserApprove = true;
                                     }
                                 } elseif ($isSiteOperator) {
-                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', '']) && $reqAmount <= 100000.01) {
-                                        $isActionableByMe = true;
-                                        $canUserApprove = true;
-                                    } elseif ($isPendingStatus && $sourceTable === 'project_other_costs') {
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', '']) && ($reqAmount <= 100000.01 || $sourceTable === 'project_other_costs')) {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
                                     }
                                 } elseif ($isManagementUser) {
                                     if ($isPendingStatus && in_array($reqApproveRole, ['management', ''])) {
-                                        $isActionableByMe = true;
-                                        $canUserApprove = true;
-                                    } elseif ($isPendingStatus && $sourceTable === 'project_other_costs') {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
                                     }

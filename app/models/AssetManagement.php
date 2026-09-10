@@ -593,7 +593,8 @@ class AssetManagement
         $colsToAdd = [
             'request_type'      => "ENUM('Purchase', 'Servicing') DEFAULT 'Purchase' AFTER `item_category_id`",
             'department_id'     => "INT NULL DEFAULT NULL AFTER `project_id`",
-            'asset_location'    => "VARCHAR(255) NULL DEFAULT 'Head Office' AFTER `department_id`",
+            'office_branch_id'  => "INT NULL DEFAULT NULL AFTER `department_id`",
+            'asset_location'    => "VARCHAR(255) NULL DEFAULT 'Head Office' AFTER `office_branch_id`",
             'assigned_to'       => "INT NULL DEFAULT NULL AFTER `asset_location`",
             'item_category_id'  => "INT NULL DEFAULT 1 AFTER `assigned_to`",
             'operations_status' => "ENUM('pending','approved','rejected') DEFAULT 'approved' AFTER `attachment`",
@@ -620,7 +621,8 @@ class AssetManagement
         $sql = "SELECT pea.*, 
                        p.name AS project_name,
                        d.name AS department_name,
-                       COALESCE(NULLIF(e_req.workplace, ''), pea.asset_location) AS workplace_name,
+                       ob.name AS branch_name,
+                       COALESCE(ob.name, pea.asset_location, NULLIF(e_req.workplace, ''), 'Head Office') AS workplace_name,
                        COALESCE(NULLIF(u_req.full_name, ''), u_req.email, 'System Admin') AS requested_by_name,
                        u_op.full_name AS operations_by_name,
                        u_ph.full_name AS purchase_head_by_name,
@@ -631,6 +633,7 @@ class AssetManagement
                        u_assign.full_name AS assigned_to_name,
                        cat.name AS category_name
                 FROM project_extra_assets pea
+                LEFT JOIN office_branches ob ON ob.id = pea.office_branch_id
                 LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
                 LEFT JOIN projects p ON p.id = pea.project_id
                 LEFT JOIN users u_req ON u_req.id = pea.requested_by
@@ -654,11 +657,22 @@ class AssetManagement
             $types .= 'i';
         }
 
-        if (!empty($filters['workplace'])) {
-            $sql .= " AND (e_req.workplace = ? OR pea.asset_location = ?)";
-            $params[] = $filters['workplace'];
-            $params[] = $filters['workplace'];
-            $types .= 'ss';
+        if (!empty($filters['office_branch_id'])) {
+            $sql .= " AND pea.office_branch_id = ?";
+            $params[] = (int)$filters['office_branch_id'];
+            $types .= 'i';
+        } elseif (!empty($filters['workplace'])) {
+            if (is_numeric($filters['workplace'])) {
+                $sql .= " AND pea.office_branch_id = ?";
+                $params[] = (int)$filters['workplace'];
+                $types .= 'i';
+            } else {
+                $sql .= " AND (ob.name = ? OR pea.asset_location = ? OR e_req.workplace = ?)";
+                $params[] = $filters['workplace'];
+                $params[] = $filters['workplace'];
+                $params[] = $filters['workplace'];
+                $types .= 'sss';
+            }
         }
 
         if (!empty($filters['project_id'])) {
@@ -762,7 +776,8 @@ class AssetManagement
             "SELECT pea.*, 
                     p.name AS project_name,
                     d.name AS department_name,
-                    COALESCE(NULLIF(e_req.workplace, ''), pea.asset_location) AS workplace_name,
+                    ob.name AS branch_name,
+                    COALESCE(ob.name, pea.asset_location, NULLIF(e_req.workplace, ''), 'Head Office') AS workplace_name,
                     e_req.reporting_user_id AS requester_reporting_boss_id,
                     COALESCE(NULLIF(u_req.full_name, ''), u_req.email, 'System Admin') AS requested_by_name,
                     u_op.full_name AS operations_by_name,
@@ -774,6 +789,7 @@ class AssetManagement
                     u_assign.full_name AS assigned_to_name,
                     cat.name AS category_name
              FROM project_extra_assets pea
+             LEFT JOIN office_branches ob ON ob.id = pea.office_branch_id
              LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
              LEFT JOIN projects p ON p.id = pea.project_id
              LEFT JOIN users u_req ON u_req.id = pea.requested_by
@@ -802,7 +818,25 @@ class AssetManagement
 
         $projectId = !empty($data['project_id']) ? (int)$data['project_id'] : null;
         $departmentId = !empty($data['department_id']) ? (int)$data['department_id'] : null;
-        $assetLocation = !empty($data['asset_location']) ? $data['asset_location'] : 'Head Office';
+        $officeBranchId = !empty($data['office_branch_id']) ? (int)$data['office_branch_id'] : null;
+
+        $assetLocation = !empty($data['asset_location']) ? trim($data['asset_location']) : null;
+        if ($officeBranchId && empty($assetLocation)) {
+            $bRes = $this->db->query("SELECT name FROM office_branches WHERE id = {$officeBranchId} LIMIT 1");
+            if ($bRes && $bRow = $bRes->fetch_assoc()) {
+                $assetLocation = $bRow['name'];
+            }
+        } elseif (!$officeBranchId && !empty($assetLocation)) {
+            $escLoc = $this->db->real_escape_string($assetLocation);
+            $bRes = $this->db->query("SELECT id FROM office_branches WHERE name = '{$escLoc}' LIMIT 1");
+            if ($bRes && $bRow = $bRes->fetch_assoc()) {
+                $officeBranchId = (int)$bRow['id'];
+            }
+        }
+        if (empty($assetLocation)) {
+            $assetLocation = 'Head Office';
+        }
+
         $assignedTo = !empty($data['assigned_to']) ? (int)$data['assigned_to'] : null;
         $itemCategoryId = !empty($data['item_category_id']) ? (int)$data['item_category_id'] : 1;
         $itemName = $data['item_name'] ?? 'Procurement Item';
@@ -817,8 +851,8 @@ class AssetManagement
 
         $stmt = $this->db->prepare(
             "INSERT INTO project_extra_assets 
-            (project_id, department_id, asset_location, assigned_to, item_category_id, request_type, item_name, quantity, unit_price, total_price, justification, attachment, requested_by, operations_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')"
+            (project_id, department_id, office_branch_id, asset_location, assigned_to, item_category_id, request_type, item_name, quantity, unit_price, total_price, justification, attachment, requested_by, operations_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')"
         );
 
         if (!$stmt) {
@@ -827,9 +861,10 @@ class AssetManagement
         }
 
         $stmt->bind_param(
-            'iisissiddssi',
+            'iiisissiddsssi',
             $projectId,
             $departmentId,
+            $officeBranchId,
             $assetLocation,
             $assignedTo,
             $itemCategoryId,

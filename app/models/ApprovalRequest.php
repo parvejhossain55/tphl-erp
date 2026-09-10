@@ -836,6 +836,55 @@ class ApprovalRequest extends Model
     }
 
     /**
+     * Build SQL condition for requests that are actionable by the logged-in user / role
+     */
+    public function buildActionableCondition($filters = [], $tableAlias = 'ar')
+    {
+        $prefix = !empty($tableAlias) ? $tableAlias . '.' : '';
+        $userRoleId = (int)($filters['role_id'] ?? ($_SESSION['user']['role_id'] ?? 0));
+        $userId = (int)($filters['user_id'] ?? ($_SESSION['user']['id'] ?? 0));
+        $roleName = strtolower(trim($filters['role_name'] ?? ($_SESSION['user']['role_name'] ?? '')));
+
+        $isManagement = in_array($userRoleId, [1, 3, 33], true) || in_array($roleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+        $isSiteOperator = in_array($userRoleId, [20, 32], true) || strpos($roleName, 'operation head') !== false || strpos($roleName, 'admin & operation') !== false;
+        $isAccounts = in_array($userRoleId, [6, 30], true) || strpos($roleName, 'account') !== false;
+        $isQc = in_array($userRoleId, [13, 24, 25], true) || strpos($roleName, 'qc') !== false || strpos($roleName, 'audit') !== false;
+        $isPurchase = in_array($userRoleId, [17, 23, 31], true) || strpos($roleName, 'purchase') !== false;
+        $isHr = ($userRoleId === 4) || strpos($roleName, 'hr') !== false;
+        $isDeptHead = in_array($userRoleId, [8, 9, 10, 11, 12, 14, 15, 16, 18, 19], true) || strpos($roleName, 'head') !== false || strpos($roleName, 'manager') !== false;
+
+        if ($isAccounts) {
+            return "(
+                ({$prefix}status IN ('pending', 'partially_approved', '') AND LOWER({$prefix}approve_role) = 'accounts')
+                OR ({$prefix}status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets')))
+            )";
+        } elseif ($isSiteOperator && !$isManagement) {
+            return "({$prefix}status IN ('pending', 'partially_approved', '') 
+                    AND (LOWER({$prefix}approve_role) = 'management' OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') 
+                    AND ({$prefix}request_amount <= 100000 OR {$prefix}request_amount IS NULL OR {$prefix}request_amount = 0 OR {$prefix}source_table = 'project_other_costs'))";
+        } elseif ($isManagement) {
+            return "({$prefix}status IN ('pending', 'partially_approved', '') 
+                    AND (LOWER({$prefix}approve_role) = 'management' OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = ''))";
+        } elseif ($isQc) {
+            return "({$prefix}status IN ('pending', 'partially_approved', '') 
+                    AND LOWER({$prefix}approve_role) IN ('qc', 'qc_head'))";
+        } elseif ($isPurchase) {
+            return "({$prefix}status IN ('pending', 'partially_approved', '') 
+                    AND LOWER({$prefix}approve_role) IN ('purchase', 'purchase team leader', 'purchase_lead'))";
+        } elseif ($isHr) {
+            return "({$prefix}status IN ('pending', 'partially_approved', '') 
+                    AND LOWER({$prefix}approve_role) IN ('hr', 'hr_head'))";
+        } elseif ($isDeptHead) {
+            return "({$prefix}status IN ('pending', 'partially_approved', '') 
+                    AND ({$prefix}approve_role = 'dept_head' OR {$prefix}approve_role = 'dept_head_" . $userId . "'))";
+        } else {
+            $escapedRole = $this->db->real_escape_string($roleName);
+            return "({$prefix}status IN ('pending', 'partially_approved', '') 
+                    AND LOWER({$prefix}approve_role) = '{$escapedRole}')";
+        }
+    }
+
+    /**
      * Get Module-Wise Expense & Requisition Metrics (Contractor, Vendor, Fund Req, Labor, Procurement, etc.)
      */
     public function getModuleExpenseBreakdown($filters = [])
@@ -952,12 +1001,18 @@ class ApprovalRequest extends Model
         ];
 
         // 1. Grouped approval_requests stats
+        $statusParam = strtolower(trim($filters['status'] ?? ''));
+        $isAllPendingMode = ($statusParam === 'all_pending');
+        $pendingCondition = $isAllPendingMode 
+            ? "status IN ('pending', 'partially_approved', '')" 
+            : $this->buildActionableCondition($filters, '');
+
         $sqlAR = "SELECT 
                     CASE WHEN source_table = 'purchase_requests' THEN 'project_extra_assets' ELSE source_table END as mod_key,
                     COUNT(*) AS total_requests,
                     SUM(request_amount) AS total_amount,
-                    SUM(CASE WHEN status IN ('pending', 'partially_approved', '') THEN 1 ELSE 0 END) AS pending_count,
-                    SUM(CASE WHEN status IN ('pending', 'partially_approved', '') THEN IFNULL(request_amount, 0) ELSE 0 END) AS pending_amount,
+                    SUM(CASE WHEN {$pendingCondition} THEN 1 ELSE 0 END) AS pending_count,
+                    SUM(CASE WHEN {$pendingCondition} THEN IFNULL(request_amount, 0) ELSE 0 END) AS pending_amount,
                     SUM(CASE WHEN status IN ('approved', 'paid') THEN 1 ELSE 0 END) AS approved_count,
                     SUM(CASE WHEN status IN ('approved', 'paid') THEN IFNULL(approved_amount, request_amount) ELSE 0 END) AS approved_amount,
                     SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected_count
@@ -1082,9 +1137,9 @@ class ApprovalRequest extends Model
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $userId = (int)($_SESSION['user']['id'] ?? 0);
-        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $userRoleId = (int)($filters['role_id'] ?? ($_SESSION['user']['role_id'] ?? 0));
+        $userId = (int)($filters['user_id'] ?? ($_SESSION['user']['id'] ?? 0));
+        $sessionRoleName = strtolower(trim($filters['role_name'] ?? ($_SESSION['user']['role_name'] ?? '')));
 
         $isFullManagement = in_array($userRoleId, [1, 3, 33], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
         $isRole20 = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
@@ -1133,13 +1188,13 @@ class ApprovalRequest extends Model
                 if ($isAccounts) {
                     if ($appRole === 'accounts') $isActionable = true;
                 } elseif ($isRole20) {
-                    if ($srcTbl === 'project_other_costs') {
+                    if ($srcTbl === 'project_other_costs' && in_array($appRole, ['management', ''])) {
                         $isActionable = true;
                     } elseif (in_array($appRole, ['management', '']) && $amt <= 100000.01) {
                         $isActionable = true;
                     }
                 } elseif ($isFullManagement) {
-                    if ($srcTbl === 'project_other_costs') {
+                    if ($srcTbl === 'project_other_costs' && in_array($appRole, ['management', ''])) {
                         $isActionable = true;
                     } elseif (in_array($appRole, ['management', ''])) {
                         $isActionable = true;
@@ -1243,21 +1298,23 @@ class ApprovalRequest extends Model
         $params = [];
         $types = "";
 
-        if (!empty($filters['status'])) {
-            $stLower = strtolower(trim($filters['status']));
-            if (!in_array($stLower, ['all', 'all_pending'])) {
-                if ($stLower === 'approved') {
-                    $where[] = "(ar.status IN ('approved', 'paid') OR ar.approve_role = 'completed')";
-                } elseif ($stLower === 'pending' || $stLower === 'my_pending') {
-                    $where[] = "ar.status IN ('pending', 'partially_approved', '')";
-                } elseif ($stLower === 'rejected') {
-                    $where[] = "ar.status = 'rejected'";
-                } else {
-                    $where[] = "ar.status = ?";
-                    $params[] = $filters['status'];
-                    $types .= "s";
-                }
-            }
+        $statusParam = strtolower(trim($filters['status'] ?? ''));
+        $isMyPending = (empty($statusParam) || $statusParam === 'pending' || $statusParam === 'my_pending');
+
+        if ($isMyPending) {
+            $where[] = $this->buildActionableCondition($filters, 'ar');
+        } elseif ($statusParam === 'approved') {
+            $where[] = "(ar.status IN ('approved', 'paid') OR ar.approve_role = 'completed')";
+        } elseif ($statusParam === 'rejected') {
+            $where[] = "ar.status = 'rejected'";
+        } elseif ($statusParam === 'all_pending') {
+            $where[] = "ar.status IN ('pending', 'partially_approved', '')";
+        } elseif ($statusParam === 'all') {
+            // All company requests: complete audit without status filter
+        } else {
+            $where[] = "ar.status = ?";
+            $params[] = $filters['status'];
+            $types .= "s";
         }
 
         if (!empty($filters['department'])) {
@@ -1822,9 +1879,9 @@ class ApprovalRequest extends Model
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $userId = (int)($_SESSION['user']['id'] ?? 0);
-        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $userRoleId = (int)($filters['role_id'] ?? ($_SESSION['user']['role_id'] ?? 0));
+        $userId = (int)($filters['user_id'] ?? ($_SESSION['user']['id'] ?? 0));
+        $sessionRoleName = strtolower(trim($filters['role_name'] ?? ($_SESSION['user']['role_name'] ?? '')));
 
         // Full Management: Super Admin (3), Admin (1), Chief Officer (33)
         $isFullManagement = in_array($userRoleId, [1, 3, 33], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
@@ -1873,7 +1930,7 @@ class ApprovalRequest extends Model
 
             // 2. Role 20 (DGM / Operation Head):
             if ($isRole20) {
-                if (($item['source_table'] ?? '') === 'project_other_costs' && $isPending) {
+                if (($item['source_table'] ?? '') === 'project_other_costs' && $isPending && in_array($approveRole, ['management', ''])) {
                     return true;
                 }
                 return ($isPending && in_array($approveRole, ['management', '']) && $amount <= 100000.01);
@@ -1881,7 +1938,7 @@ class ApprovalRequest extends Model
 
             // 3. Full Management (Super Admin 3, Admin 1, Chief Officer 33):
             if ($isFullManagement) {
-                if (($item['source_table'] ?? '') === 'project_other_costs' && $isPending) {
+                if (($item['source_table'] ?? '') === 'project_other_costs' && $isPending && in_array($approveRole, ['management', ''])) {
                     return true;
                 }
                 return ($isPending && in_array($approveRole, ['management', '']));
