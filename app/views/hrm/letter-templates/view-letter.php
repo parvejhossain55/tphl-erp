@@ -100,11 +100,9 @@
                     $isLastPage = ($pageNumber === $totalPages);
                     ?>
                     <div class="letter-paper-wrapper">
-                        <?php if ($totalPages > 1): ?>
-                            <div class="page-sheet-badge">
-                                <i class="fa-regular fa-file-lines me-1"></i> Page <?= $pageNumber ?> of <?= $totalPages ?>
-                            </div>
-                        <?php endif; ?>
+                        <div class="page-sheet-badge" style="display: <?= $totalPages > 1 ? 'inline-flex' : 'none' ?>;">
+                            <i class="fa-regular fa-file-lines me-1"></i> Page <?= $pageNumber ?> of <?= $totalPages ?>
+                        </div>
 
                         <div class="letter-paper" <?= ($pageIdx === 0 ? 'id="printableArea"' : '') ?>>
                             <!-- Content overlay positioned precisely within the safe zone of the letterhead -->
@@ -169,7 +167,7 @@
                                                 <div class="signoff-closing">Sincerely,</div>
                                                 <div class="signoff-company" style="margin-bottom: 5px;">For <strong><?= htmlspecialchars($companyName) ?></strong></div>
                                                 <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
-                                                    <div style="height: 50px; margin-bottom: -10px;">
+                                                    <div style="height: 48px; margin-bottom: 5px;">
                                                         <img src="<?= $sigUrl ?>" alt="Signature" style="height: 45px; max-width: 170px; object-fit: contain;">
                                                     </div>
                                                 <?php else: ?>
@@ -270,9 +268,11 @@
                                             <p class="company-sign-for">For <strong><?= htmlspecialchars($companyName) ?></strong></p>
                                             <div class="signature-block">
                                                 <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
-                                                    <div style="height: 50px; margin-bottom: -15px;">
+                                                    <div style="height: 48px; margin-bottom: 5px;">
                                                         <img src="<?= $sigUrl ?>" alt="Signature" style="height: 45px; max-width: 170px; object-fit: contain;">
                                                     </div>
+                                                <?php else: ?>
+                                                    <div style="height: 48px; margin-bottom: 5px;"></div>
                                                 <?php endif; ?>
                                                 <div class="sign-line"></div>
                                                 <span class="signatory-name"><?= htmlspecialchars($letter['signatory_name']) ?></span>
@@ -698,3 +698,143 @@
         }
     }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(autoPaginateLetter, 50);
+});
+window.addEventListener('load', function () {
+    setTimeout(autoPaginateLetter, 120);
+});
+
+function autoPaginateLetter() {
+    const container = document.querySelector('.letter-container');
+    if (!container) return;
+
+    let wrappers = Array.from(container.querySelectorAll('.letter-paper-wrapper'));
+    const maxPages = 15;
+    let didPaginate = false;
+
+    for (let i = 0; i < wrappers.length && wrappers.length < maxPages; i++) {
+        const currentWrapper = wrappers[i];
+        const overlay = currentWrapper.querySelector('.letter-content-overlay');
+        if (!overlay) continue;
+
+        const currentBody = overlay.querySelector('.letter-body');
+        if (!currentBody) continue;
+
+        // Tolerance of 4px for sub-pixel rendering differences
+        if (overlay.scrollHeight <= overlay.clientHeight + 4) {
+            continue;
+        }
+
+        didPaginate = true;
+
+        let nextWrapper = wrappers[i + 1];
+        let nextOverlay, nextBody;
+
+        if (!nextWrapper) {
+            nextWrapper = document.createElement('div');
+            nextWrapper.className = 'letter-paper-wrapper';
+            nextWrapper.innerHTML = `
+                <div class="page-sheet-badge" style="display: inline-flex;">
+                    <i class="fa-regular fa-file-lines me-1"></i> Page
+                </div>
+                <div class="letter-paper">
+                    <div class="letter-content-overlay">
+                        <div class="${currentBody.className}"></div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(nextWrapper);
+            wrappers.push(nextWrapper);
+        }
+
+        nextOverlay = nextWrapper.querySelector('.letter-content-overlay');
+        nextBody = nextWrapper.querySelector('.letter-body');
+
+        // Move trailing blocks to next page first (signature & extra details belong at the very end)
+        const trailingElements = overlay.querySelectorAll('.letter-signature-section, .caution-signoff, .experience-signoff, .letter-extra-box');
+        trailingElements.forEach(el => {
+            nextOverlay.appendChild(el);
+        });
+
+        // Check overflowing body elements
+        const overlayRect = overlay.getBoundingClientRect();
+        const safeBottom = overlayRect.bottom - 4;
+
+        let children = Array.from(currentBody.children);
+        let splitIndex = -1;
+
+        for (let c = 0; c < children.length; c++) {
+            const child = children[c];
+            const rect = child.getBoundingClientRect();
+            if (rect.bottom > safeBottom) {
+                splitIndex = c;
+                break;
+            }
+        }
+
+        // If no single child went past safeBottom, but overlay still overflows (due to margins)
+        if (splitIndex === -1 && overlay.scrollHeight > overlay.clientHeight + 4) {
+            splitIndex = Math.max(0, children.length - 1);
+        }
+
+        if (splitIndex !== -1 && splitIndex < children.length) {
+            // Prevent orphan headings at the bottom of the page
+            if (splitIndex > 0) {
+                const prevChild = children[splitIndex - 1];
+                if (/^H[1-6]$/i.test(prevChild.tagName)) {
+                    splitIndex = splitIndex - 1;
+                }
+            }
+
+            const toMove = children.slice(splitIndex);
+            if (toMove.length > 0) {
+                const frag = document.createDocumentFragment();
+                toMove.forEach(el => frag.appendChild(el));
+                if (nextBody.firstChild) {
+                    nextBody.insertBefore(frag, nextBody.firstChild);
+                } else {
+                    nextBody.appendChild(frag);
+                }
+            }
+        }
+    }
+
+    // Update badges
+    const finalWrappers = Array.from(container.querySelectorAll('.letter-paper-wrapper'));
+    const total = finalWrappers.length;
+    finalWrappers.forEach((w, idx) => {
+        const badge = w.querySelector('.page-sheet-badge');
+        if (badge) {
+            badge.innerHTML = `<i class="fa-regular fa-file-lines me-1"></i> Page ${idx + 1} of ${total}`;
+            badge.style.display = total > 1 ? 'inline-flex' : 'none';
+        }
+    });
+
+    // Show smart notice when auto-paginated
+    if (didPaginate) {
+        let alertBox = document.getElementById('autoPaginationNotice');
+        if (!alertBox) {
+            alertBox = document.createElement('div');
+            alertBox.id = 'autoPaginationNotice';
+            alertBox.className = 'alert alert-info alert-dismissible fade show';
+            alertBox.setAttribute('role', 'alert');
+            alertBox.style.maxWidth = '210mm';
+            alertBox.style.margin = '0 auto 15px auto';
+            alertBox.style.fontSize = '12.5px';
+            alertBox.innerHTML = `
+                <i class="fa-solid fa-wand-magic-sparkles me-2 text-primary"></i>
+                <strong>স্মার্ট অটো-পেজিনেশন:</strong> লেটারটি দীর্ঘ হওয়ায় এবং কোনো ম্যানুয়াল পেজ ব্রেক না থাকায় সিস্টেম স্বয়ংক্রিয়ভাবে বিষয়বস্তু <strong>${total}টি পেজে</strong> সাজিয়ে দিয়েছে।
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            const cardWrap = document.querySelector('.card__wrapper');
+            if (cardWrap) {
+                const containerEl = document.querySelector('.letter-container');
+                cardWrap.insertBefore(alertBox, containerEl);
+            }
+        }
+    }
+}
+</script>

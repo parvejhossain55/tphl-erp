@@ -387,7 +387,7 @@ if (strtolower($purposeText) === 'personal use') {
             <!-- Signature Block -->
             <div class="sc-signature-block">
                 <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
-                    <div style="height: 48px; margin-bottom: -15px;">
+                    <div style="height: 48px; margin-bottom: 5px;">
                         <img src="<?= $sigUrl ?>" alt="Signature" style="height: 45px; max-width: 170px; object-fit: contain;">
                     </div>
                 <?php else: ?>
