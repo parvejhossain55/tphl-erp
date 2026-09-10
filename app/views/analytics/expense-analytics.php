@@ -102,6 +102,7 @@
             <?php
             $exportParams = http_build_query([
                 'project_id' => $filters['project_id'] ?? '',
+                'branch_id'  => $filters['branch_id'] ?? '',
                 'from_date'  => $filters['from_date'] ?? '',
                 'to_date'    => $filters['to_date'] ?? '',
                 'module'     => $filters['module'] ?? '',
@@ -126,7 +127,7 @@
             <form method="GET" action="<?= $base_url ?>/expense-analytics" id="analyticsFilterForm">
                 <div class="d-flex align-items-end gap-2 flex-nowrap" style="overflow-x: auto; padding-bottom: 2px;">
                     <!-- Project Filter -->
-                    <div style="flex: 1.3; min-width: 145px;">
+                    <div style="flex: 1.2; min-width: 140px;">
                         <label class="form-label stat-label mb-1 text-nowrap extra-small text-uppercase fw-bold text-secondary">
                             <i class="fa-solid fa-building text-primary me-1"></i> Project Scope
                         </label>
@@ -142,6 +143,21 @@
                                     </option>
                                 <?php endforeach; ?>
                             </optgroup>
+                        </select>
+                    </div>
+
+                    <!-- Office Branch Filter (for non-project overhead) -->
+                    <div style="flex: 1.1; min-width: 130px;">
+                        <label class="form-label stat-label mb-1 text-nowrap extra-small text-uppercase fw-bold text-secondary">
+                            <i class="fa-solid fa-location-dot text-primary me-1"></i> Office Branch
+                        </label>
+                        <select name="branch_id" class="form-select form-select-sm" onchange="this.form.submit()" style="font-size: 12px; height: 34px;">
+                            <option value="">🏢 All Office Branches</option>
+                            <?php foreach ($officeBranchesList ?? [] as $b): ?>
+                                <option value="<?= $b['id'] ?>" <?= ((string)($filters['branch_id'] ?? '') === (string)$b['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($b['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
 
@@ -181,10 +197,10 @@
                     <!-- Search Input -->
                     <div style="flex: 1.25; min-width: 135px;">
                         <label class="form-label stat-label mb-1 text-nowrap extra-small text-uppercase fw-bold text-secondary">
-                            <i class="fa-solid fa-magnifying-glass text-muted me-1"></i> Vendor / Contractor
+                            <i class="fa-solid fa-magnifying-glass text-muted me-1"></i> Payee / Vendor / Branch
                         </label>
                         <input type="text" name="search" class="form-control form-control-sm" 
-                               placeholder="Search payee or title..." value="<?= htmlspecialchars($filters['search']) ?>" style="font-size: 12px; height: 34px;">
+                               placeholder="Search payee, branch..." value="<?= htmlspecialchars($filters['search']) ?>" style="font-size: 12px; height: 34px;">
                     </div>
 
                     <!-- Submit & Reset Action Buttons -->
@@ -192,7 +208,7 @@
                         <button type="submit" class="btn btn-primary btn-sm px-3 shadow-sm fw-semibold text-nowrap" style="height: 34px;">
                             <i class="fa-solid fa-filter me-1"></i> Filter
                         </button>
-                        <?php if (!empty($filters['project_id']) || !empty($filters['module']) || !empty($filters['from_date']) || !empty($filters['to_date']) || !empty($filters['search'])): ?>
+                        <?php if (!empty($filters['project_id']) || !empty($filters['branch_id']) || !empty($filters['module']) || !empty($filters['from_date']) || !empty($filters['to_date']) || !empty($filters['search'])): ?>
                             <a href="<?= $base_url ?>/expense-analytics" class="btn btn-outline-secondary btn-sm px-2 text-nowrap" title="Reset Filters" style="height: 34px;">
                                 <i class="fa-solid fa-arrows-rotate"></i>
                             </a>
@@ -326,6 +342,117 @@
                     <?php endif; ?>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Office Branch Cost Intelligence Section (Non-Project Overhead) -->
+    <div class="mb-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <div>
+                <h6 class="fw-bold text-dark mb-0 d-flex align-items-center">
+                    <i class="fa-solid fa-location-dot text-primary me-2"></i>
+                    Office Branch Cost Intelligence (General & Non-Project Overhead)
+                </h6>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge bg-light text-dark border rounded-pill px-3 py-1.5 extra-small fw-bold">
+                    Total Overhead: ৳ <?= number_format($branchSummary['grand_total'], 0) ?>
+                </span>
+                <span class="badge bg-success text-white shadow-sm rounded-pill px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1">
+                    <i class="fa-solid fa-circle-check"></i> Total Paid: ৳ <?= number_format($branchSummary['grand_paid'], 0) ?>
+                </span>
+                <?php if (!empty($branchSummary['grand_due']) && $branchSummary['grand_due'] > 0): ?>
+                    <span class="badge bg-danger text-white shadow-sm rounded-pill px-3 py-1.5 extra-small fw-bold d-inline-flex align-items-center gap-1">
+                        <i class="fa-solid fa-clock"></i> Due: ৳ <?= number_format($branchSummary['grand_due'], 0) ?>
+                    </span>
+                <?php endif; ?>
+                <?php if (!empty($filters['branch_id'])): ?>
+                    <a href="<?= $base_url ?>/expense-analytics?<?= http_build_query(array_merge($filters, ['branch_id' => ''])) ?>" 
+                       class="badge bg-danger-subtle text-danger border border-danger-subtle text-decoration-none rounded-pill px-2 py-1 extra-small">
+                        <i class="fa-solid fa-xmark me-1"></i> Clear Branch Filter
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="row g-2">
+            <?php 
+            $branchIcons = [
+                1 => ['icon' => 'fa-solid fa-building-user', 'color' => '#3b82f6', 'bg' => '#eff6ff'], // Gulshan
+                2 => ['icon' => 'fa-solid fa-industry', 'color' => '#10b981', 'bg' => '#ecfdf5'],      // Ashulia
+                3 => ['icon' => 'fa-solid fa-city', 'color' => '#f59e0b', 'bg' => '#fffbeb'],          // Ati
+                4 => ['icon' => 'fa-solid fa-map-location-dot', 'color' => '#8b5cf6', 'bg' => '#f5f3ff'], // Shyamoli
+            ];
+            foreach ($branchSummary['branches'] as $b): 
+                if (empty($b['branch_id']) || (int)$b['branch_id'] <= 0) continue;
+                $isBranchActive = ((string)($filters['branch_id'] ?? '') === (string)$b['branch_id']);
+                $bFilterUrl = $isBranchActive 
+                    ? $base_url . '/expense-analytics?' . http_build_query(array_merge($filters, ['branch_id' => ''])) . '#ledgerTable'
+                    : $base_url . '/expense-analytics?' . http_build_query(array_merge($filters, ['branch_id' => $b['branch_id']])) . '#ledgerTable';
+                $iconMeta = $branchIcons[$b['branch_id']] ?? ['icon' => 'fa-solid fa-building', 'color' => '#64748b', 'bg' => '#f1f5f9'];
+            ?>
+                <div class="col-xl-3 col-md-6">
+                    <div class="expense-card p-3 h-100 <?= $isBranchActive ? 'active-module' : '' ?>" 
+                         onclick="window.location.href='<?= $bFilterUrl ?>'"
+                         title="Click to <?= $isBranchActive ? 'clear filter' : 'filter by ' . htmlspecialchars($b['branch_name']) ?>"
+                         style="border-top: 3px solid <?= $iconMeta['color'] ?>;">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="d-flex align-items-center gap-2 text-truncate me-1">
+                                <div class="avatar avatar-sm rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                                     style="background: <?= $iconMeta['bg'] ?>; color: <?= $iconMeta['color'] ?>; width: 34px; height: 34px;">
+                                    <i class="<?= $iconMeta['icon'] ?> fs-6"></i>
+                                </div>
+                                <div class="text-truncate">
+                                    <span class="fw-bold text-dark text-truncate d-block" style="font-size: 13px;" title="<?= htmlspecialchars($b['branch_name']) ?>">
+                                        <?= htmlspecialchars($b['branch_name']) ?>
+                                    </span>
+                                    <span class="text-muted extra-small"><?= number_format($b['total_records']) ?> records</span>
+                                </div>
+                            </div>
+                            <span class="badge bg-light text-dark border extra-small rounded-pill fw-bold"><?= $b['percentage'] ?>%</span>
+                        </div>
+
+                        <!-- Total Requisition Amount -->
+                        <div class="d-flex align-items-center justify-content-between py-1 border-bottom mb-2" style="font-size: 11px;">
+                            <span class="text-muted">Total Overhead:</span>
+                            <span class="fw-bold text-dark fs-12">৳ <?= number_format($b['total_amount'], 0) ?></span>
+                        </div>
+
+                        <!-- Highlighted Total Paid & Due Box -->
+                        <div class="p-2 mb-2 rounded-2 d-flex align-items-center justify-content-between <?= $b['total_paid'] > 0 ? 'bg-success-subtle border border-success-subtle' : 'bg-light border' ?>">
+                            <div>
+                                <span class="d-block text-uppercase fw-bold text-success" style="font-size: 9.5px; letter-spacing: 0.5px;">
+                                    <i class="fa-solid fa-circle-check me-1"></i>Total Paid
+                                </span>
+                                <span class="fw-bold text-success" style="font-size: 14px; line-height: 1.2;">
+                                    ৳ <?= number_format($b['total_paid'], 0) ?>
+                                </span>
+                            </div>
+                            <div class="text-end border-start ps-2" style="border-color: rgba(0,0,0,0.08) !important;">
+                                <span class="d-block text-uppercase fw-bold text-muted" style="font-size: 9.5px; letter-spacing: 0.5px;">
+                                    <i class="fa-solid fa-clock me-1"></i>Due
+                                </span>
+                                <span class="fw-bold <?= $b['total_due'] > 0 ? 'text-danger' : 'text-secondary' ?>" style="font-size: 12px; line-height: 1.2;">
+                                    ৳ <?= number_format($b['total_due'], 0) ?>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Module Breakdown Pills -->
+                        <div class="d-flex flex-wrap gap-1 pt-1">
+                            <?php if (!empty($b['modules'])): ?>
+                                <?php foreach ($b['modules'] as $mName => $mInfo): ?>
+                                    <span class="badge bg-light text-secondary border extra-small" style="font-size: 9.5px; padding: 2px 5px;">
+                                        <?= htmlspecialchars($mName) ?>: ৳<?= number_format($mInfo['amount'], 0) ?>
+                                    </span>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <span class="text-muted extra-small fst-italic">No overhead expenses</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
         </div>
     </div>
 
@@ -480,9 +607,14 @@
                                 </td>
                                 <td>
                                     <?php if ($isWithoutProj): ?>
-                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle extra-small">
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle extra-small d-block mb-1">
                                             <i class="fa-solid fa-layer-group me-1"></i> Without Project / General
                                         </span>
+                                        <?php if (!empty($r['branch_name']) && $r['branch_name'] !== 'Unassigned / Central'): ?>
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle extra-small fw-semibold d-inline-block">
+                                                <i class="fa-solid fa-location-dot me-1"></i> <?= htmlspecialchars($r['branch_name']) ?>
+                                            </span>
+                                        <?php endif; ?>
                                     <?php else: ?>
                                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle extra-small fw-semibold">
                                             <i class="fa-solid fa-building me-1"></i> <?= htmlspecialchars($projName) ?>
@@ -554,6 +686,9 @@
                             <button type="button" class="btn btn-outline-primary btn-xs fw-semibold" id="btnDonutModeProject" onclick="switchDonutMode('project')">
                                 <i class="fa-solid fa-building me-1"></i> By Project
                             </button>
+                            <button type="button" class="btn btn-outline-primary btn-xs fw-semibold" id="btnDonutModeBranch" onclick="switchDonutMode('branch')">
+                                <i class="fa-solid fa-location-dot me-1"></i> By Branch
+                            </button>
                         </div>
                         <div class="btn-group btn-group-sm ms-1" role="group">
                             <button type="button" class="btn btn-outline-secondary btn-xs active" id="btnDonutMetricAmount" onclick="switchDonutMetric('amount')">
@@ -614,7 +749,7 @@
 <script>
     // Global chart instance & state for Donut Chart
     let expenseDonutChartInstance = null;
-    let currentDonutMode = 'module';   // 'module' or 'project'
+    let currentDonutMode = 'module';   // 'module', 'project', or 'branch'
     let currentDonutMetric = 'amount'; // 'amount' or 'count'
 
     // Server-supplied datasets
@@ -628,6 +763,11 @@
             labels: <?= json_encode($chartData['project_labels']) ?>,
             amounts: <?= json_encode($chartData['project_series']) ?>,
             counts: <?= json_encode($chartData['project_counts']) ?>
+        },
+        branch: {
+            labels: <?= json_encode($chartData['branch_labels'] ?? []) ?>,
+            amounts: <?= json_encode($chartData['branch_series'] ?? []) ?>,
+            counts: <?= json_encode($chartData['branch_counts'] ?? []) ?>
         }
     };
 
@@ -644,11 +784,14 @@
         return Number(val).toLocaleString('en-IN', { maximumFractionDigits: 0 });
     }
 
-    // Switch Donut Mode: 'module' vs 'project'
+    // Switch Donut Mode: 'module' vs 'project' vs 'branch'
     function switchDonutMode(mode) {
         currentDonutMode = mode;
         document.getElementById('btnDonutModeModule').classList.toggle('active', mode === 'module');
         document.getElementById('btnDonutModeProject').classList.toggle('active', mode === 'project');
+        if (document.getElementById('btnDonutModeBranch')) {
+            document.getElementById('btnDonutModeBranch').classList.toggle('active', mode === 'branch');
+        }
         updateDonutChart();
     }
 
@@ -686,6 +829,8 @@
 
         if (currentDonutMode === 'module') {
             descFooter.innerHTML = '<i class="fa-solid fa-boxes-stacked text-primary me-1"></i> Showing module-wise expense volume breakdown';
+        } else if (currentDonutMode === 'branch') {
+            descFooter.innerHTML = '<i class="fa-solid fa-location-dot text-primary me-1"></i> Showing office branch overhead expense distribution';
         } else {
             descFooter.innerHTML = '<i class="fa-solid fa-building text-primary me-1"></i> Showing project-wise expense distribution';
         }

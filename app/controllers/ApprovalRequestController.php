@@ -68,10 +68,17 @@ class ApprovalRequestController extends Controller
         $department = $_GET['department'] ?? '';
         $sourceTable = $_GET['source_table'] ?? '';
 
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
         $filters = [
             'status'       => $status,
             'department'   => $department,
-            'source_table' => $sourceTable
+            'source_table' => $sourceTable,
+            'user_id'      => $userId,
+            'role_id'      => $userRoleId,
+            'role_name'    => $sessionRoleName
         ];
 
         // Fetch dynamic list of departments from departments table

@@ -415,6 +415,7 @@ class AssetManagementController extends Controller
 
         $filters = [
             'department_id'    => $_GET['department_id'] ?? '',
+            'office_branch_id' => $_GET['office_branch_id'] ?? '',
             'workplace'        => $_GET['workplace'] ?? '',
             'project_id'       => $_GET['project_id'] ?? '',
             'overall_status'   => $_GET['status'] ?? '',
@@ -455,10 +456,10 @@ class AssetManagementController extends Controller
             $departments = $dRes->fetch_all(MYSQLI_ASSOC);
         }
 
+        $officeBranches = $this->model->getAllOfficeBranches('active');
         $workplaces = [];
-        $wRes = $this->db->query("SELECT DISTINCT workplace FROM employees WHERE workplace IS NOT NULL AND workplace != '' ORDER BY workplace ASC");
-        if ($wRes) {
-            $workplaces = $wRes->fetch_all(MYSQLI_ASSOC);
+        foreach ($officeBranches as $ob) {
+            $workplaces[] = ['workplace' => $ob['name'], 'id' => $ob['id']];
         }
 
         $projects = [];
@@ -514,6 +515,7 @@ class AssetManagementController extends Controller
             'requests'         => $requests,
             'categories'       => $categories,
             'departments'      => $departments,
+            'officeBranches'   => $officeBranches,
             'workplaces'       => $workplaces,
             'projects'         => $projects,
             'users'            => $users,

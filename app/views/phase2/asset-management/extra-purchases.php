@@ -116,12 +116,12 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label fs-11 fw-semibold mb-1">Workplace</label>
-                    <select name="workplace" class="form-select form-select-sm">
-                        <option value="">All Workplaces</option>
-                        <?php foreach ($workplaces ?? [] as $wp): ?>
-                            <option value="<?= htmlspecialchars($wp['workplace']) ?>" <?= ($_GET['workplace'] ?? '') === $wp['workplace'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($wp['workplace']) ?>
+                    <label class="form-label fs-11 fw-semibold mb-1">Branch / Location</label>
+                    <select name="office_branch_id" class="form-select form-select-sm">
+                        <option value="">All Branches</option>
+                        <?php foreach ($officeBranches ?? [] as $b): ?>
+                            <option value="<?= $b['id'] ?>" <?= ((string)($_GET['office_branch_id'] ?? '') === (string)$b['id'] || ($_GET['workplace'] ?? '') === $b['name']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($b['name']) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -405,7 +405,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-3">
+                    <div class="row ">
                         <div class="col-md-12">
                             <label class="form-label">Department</label>
                             <select name="department_id" class="form-select">
@@ -416,20 +416,14 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Location</label>
-                            <select name="asset_location" class="form-select">
-                                <option value="">-- Select Location --</option>
-                                <?php if (!empty($workplaces)): ?>
-                                    <?php foreach ($workplaces as $wp): ?>
-                                        <option value="<?= htmlspecialchars($wp['workplace']) ?>"><?= htmlspecialchars($wp['workplace']) ?></option>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <option value="Corporate Office">Corporate Office</option>
-                                    <option value="Site Office">Site Office</option>
-                                    <option value="Site Office 2">Site Office 2</option>
-                                    <option value="Zonal Office">Zonal Office</option>
-                                <?php endif; ?>
+                            <label class="form-label">Branch / Location <span class="text-danger">*</span></label>
+                            <select name="office_branch_id" id="new_request_branch_id" class="form-select" required onchange="var opt = this.options[this.selectedIndex]; document.getElementById('new_request_asset_location').value = (opt && opt.value) ? opt.text : '';">
+                                <option value="">-- Select Office Branch --</option>
+                                <?php foreach ($officeBranches ?? [] as $b): ?>
+                                    <option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?></option>
+                                <?php endforeach; ?>
                             </select>
+                            <input type="hidden" name="asset_location" id="new_request_asset_location" value="">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Assign To (Person)</label>
@@ -910,7 +904,7 @@ function renderDetailModal(data) {
                 </div>
                 <div class="col-md-4">
                     <div class="detail-label">Location</div>
-                    <div class="detail-value"><i class="fa-solid fa-location-dot text-info me-1 fs-11"></i>${data.asset_location || '—'}</div>
+                    <div class="detail-value"><i class="fa-solid fa-location-dot text-info me-1 fs-11"></i>${data.branch_name || data.asset_location || '—'}</div>
                 </div>
                 <div class="col-md-4">
                     <div class="detail-label">Requested By</div>

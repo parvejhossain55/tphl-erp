@@ -213,7 +213,7 @@ class Con_QuotationController extends Controller
     public function edit($id)
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
-        if (!in_array($_SESSION['user']['role_id'] ?? 0, [17, 23])) {
+        if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 17, 23, 31])) {
             setError('You do not have permission to edit records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -234,13 +234,13 @@ class Con_QuotationController extends Controller
             exit;
         }
 
-        // Check if PO is already generated and approved
+        // Check if PO items are already received
         $poCheck = $this->db->query("SELECT status FROM purchase_orders WHERE request_id = {$requestId} ORDER BY id DESC LIMIT 1");
         if ($poCheck && $poCheck->num_rows > 0) {
             $poStatus = $poCheck->fetch_assoc()['status'];
-            if (in_array($poStatus, ['Approved', 'Purchase Head Approved', 'Fully Received', 'Partially Received'])) {
-                setError('Purchase Order is already approved or processed. You cannot edit this quotation anymore.');
-                header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$requestId}");
+            if (in_array($poStatus, ['Fully Received', 'Partially Received'])) {
+                setError('Purchase Order items have already been received. You cannot edit this quotation anymore.');
+                header("Location: {$GLOBALS['base_url']}/con-quotation-create/{$requestId}");
                 exit;
             }
         }
@@ -270,7 +270,7 @@ class Con_QuotationController extends Controller
     public function update($quotationId)
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
-        if (!in_array($_SESSION['user']['role_id'] ?? 0, [17, 23])) {
+        if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 17, 23, 31])) {
             setError('You do not have permission to edit records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -291,13 +291,13 @@ class Con_QuotationController extends Controller
             exit;
         }
 
-        // Check if PO is already generated and approved
+        // Check if PO items are already received
         $poCheck = $this->db->query("SELECT status FROM purchase_orders WHERE request_id = {$requestId} ORDER BY id DESC LIMIT 1");
         if ($poCheck && $poCheck->num_rows > 0) {
             $poStatus = $poCheck->fetch_assoc()['status'];
-            if (in_array($poStatus, ['Approved', 'Purchase Head Approved', 'Fully Received', 'Partially Received'])) {
-                setError('Purchase Order is already approved or processed. You cannot edit this quotation anymore.');
-                header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$requestId}");
+            if (in_array($poStatus, ['Fully Received', 'Partially Received'])) {
+                setError('Purchase Order items have already been received. You cannot edit this quotation anymore.');
+                header("Location: {$GLOBALS['base_url']}/con-quotation-create/{$requestId}");
                 exit;
             }
         }
@@ -340,7 +340,7 @@ class Con_QuotationController extends Controller
         $success = $this->quotModel->update($quotationId, $data, $items);
         if ($success) {
             setSuccess('Vendor quotation updated successfully.');
-            header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$requestId}");
+            header("Location: {$GLOBALS['base_url']}/con-quotation-create/{$requestId}");
         } else {
             $errDetail = $this->quotModel->lastError ?? 'Unknown error';
             setError('Failed to update quotation. DB Error: ' . $errDetail);
@@ -356,7 +356,7 @@ class Con_QuotationController extends Controller
     public function delete($id)
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
-        if (!in_array($_SESSION['user']['role_id'] ?? 0, [17, 23])) {
+        if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 17, 23, 31])) {
             setError('You do not have permission to delete records in Construction Phase 2.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
@@ -377,13 +377,13 @@ class Con_QuotationController extends Controller
             exit;
         }
 
-        // Check if PO is already generated and approved
+        // Check if PO items are already received
         $poCheck = $this->db->query("SELECT status FROM purchase_orders WHERE request_id = {$requestId} ORDER BY id DESC LIMIT 1");
         if ($poCheck && $poCheck->num_rows > 0) {
             $poStatus = $poCheck->fetch_assoc()['status'];
-            if (in_array($poStatus, ['Approved', 'Purchase Head Approved', 'Fully Received', 'Partially Received'])) {
-                setError('Purchase Order is already approved or processed. You cannot delete this quotation anymore.');
-                header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$requestId}");
+            if (in_array($poStatus, ['Fully Received', 'Partially Received'])) {
+                setError('Purchase Order items have already been received. You cannot delete this quotation anymore.');
+                header("Location: {$GLOBALS['base_url']}/con-quotation-create/{$requestId}");
                 exit;
             }
         }

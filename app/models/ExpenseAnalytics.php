@@ -128,6 +128,215 @@ class ExpenseAnalytics
     }
 
     /**
+     * All active office branches list for filter dropdown & analytics
+     */
+    public function getOfficeBranchesList()
+    {
+        $branches = [];
+        $res = $this->db->query("SELECT id, name, status FROM office_branches WHERE status = 'active' ORDER BY id ASC");
+        if ($res) {
+            while ($r = $res->fetch_assoc()) {
+                $branches[] = $r;
+            }
+        }
+        return $branches;
+    }
+
+    /**
+     * Office Branch-wise Cost Summary for non-project / general overhead expenses
+     * Only covers office overhead (Office Procurement, Fund Requisitions, Cashout Requests, Advance Salaries)
+     * Strictly EXCLUDES project costs like project_other_costs, contractor bills, labor bills, vendor payments.
+     */
+    public function getOfficeBranchCostSummary($dateFrom = null, $dateTo = null, $branchId = null)
+    {
+        $branches = $this->getOfficeBranchesList();
+        
+        $dateCondition = function($col = 'created_at') use ($dateFrom, $dateTo) {
+            if (!empty($dateFrom) && !empty($dateTo)) {
+                $f = $this->db->real_escape_string($dateFrom . ' 00:00:00');
+                $t = $this->db->real_escape_string($dateTo . ' 23:59:59');
+                return " AND ({$col} BETWEEN '{$f}' AND '{$t}')";
+            } elseif (!empty($dateFrom)) {
+                $f = $this->db->real_escape_string($dateFrom . ' 00:00:00');
+                return " AND ({$col} >= '{$f}')";
+            } elseif (!empty($dateTo)) {
+                $t = $this->db->real_escape_string($dateTo . ' 23:59:59');
+                return " AND ({$col} <= '{$t}')";
+            }
+            return "";
+        };
+
+        $branchCondition = "";
+        if (!empty($branchId) && is_numeric($branchId)) {
+            $bId = (int)$branchId;
+            $branchCondition = " AND t.branch_id = {$bId}";
+        }
+
+        $peaDate = $dateCondition('pea.created_at');
+        $frDate  = $dateCondition('fr.created_at');
+        $crDate  = $dateCondition('cr.created_at');
+        $aslDate = $dateCondition('asl.created_at');
+
+        $sql = "
+            SELECT 
+                t.branch_id,
+                ob.name as branch_name,
+                t.module_name,
+                COUNT(*) as total_records,
+                SUM(t.req_amount) as total_req_amount,
+                SUM(t.paid_amount) as total_paid_amount,
+                SUM(t.due_amount) as total_due_amount,
+                SUM(t.pending_amount) as total_pending_amount
+            FROM (
+                -- 1. Office Procurement (Direct office_branch_id, fallback to requester's branch)
+                SELECT 
+                    COALESCE(pea.office_branch_id, e.office_branch_id) as branch_id,
+                    'Office Procurement' as module_name,
+                    pea.total_price as req_amount,
+                    CASE WHEN pea.payment_status = 'paid' THEN IFNULL(pea.paid_amount, pea.total_price) ELSE 0 END as paid_amount,
+                    CASE WHEN pea.mgmt_status = 'approved' AND pea.payment_status != 'paid' THEN pea.total_price ELSE 0 END as due_amount,
+                    CASE WHEN (pea.mgmt_status = 'pending' OR pea.operations_status = 'pending') AND pea.overall_status != 'rejected' THEN pea.total_price ELSE 0 END as pending_amount
+                FROM project_extra_assets pea
+                LEFT JOIN employees e ON e.user_id = pea.requested_by
+                WHERE (pea.project_id IS NULL OR pea.project_id = 0) {$peaDate}
+
+                UNION ALL
+
+                -- 2. Fund Requisitions without Project (Requester employee office_branch_id)
+                SELECT 
+                    e.office_branch_id as branch_id,
+                    'Fund Requisitions' as module_name,
+                    fr.amount as req_amount,
+                    IFNULL(fr.paid_amount, 0) as paid_amount,
+                    CASE WHEN fr.status IN ('approved', 'partially_approved') THEN (fr.amount - IFNULL(fr.paid_amount, 0)) ELSE 0 END as due_amount,
+                    CASE WHEN fr.status IN ('pending', 'pending_dept', 'pending_qc') THEN fr.amount ELSE 0 END as pending_amount
+                FROM fund_requisitions fr
+                LEFT JOIN employees e ON e.user_id = fr.requested_by
+                WHERE (fr.project_id IS NULL OR fr.project_id = 0) {$frDate}
+
+                UNION ALL
+
+                -- 3. Cashout Requests without Project (Requester employee office_branch_id)
+                SELECT 
+                    e.office_branch_id as branch_id,
+                    'Cashout Requests' as module_name,
+                    cr.amount as req_amount,
+                    CASE 
+                        WHEN cr.status IN ('fully_paid', 'paid') THEN COALESCE(cr.approved_amount, cr.amount) 
+                        WHEN cr.status = 'partially_paid' THEN (COALESCE(cr.approved_amount, cr.amount) - cr.due_amount) 
+                        ELSE 0 
+                    END as paid_amount,
+                    CASE 
+                        WHEN cr.status IN ('approved', 'partially_paid') THEN cr.due_amount 
+                        ELSE 0 
+                    END as due_amount,
+                    CASE WHEN cr.status IN ('pending', 'qc_approved') THEN cr.amount ELSE 0 END as pending_amount
+                FROM cashout_requests cr
+                LEFT JOIN employees e ON e.user_id = cr.requested_by
+                WHERE (cr.project_id IS NULL OR cr.project_id = 0 OR cr.project_id = '') {$crDate}
+
+                UNION ALL
+
+                -- 4. Advance Salaries (Employee office_branch_id)
+                SELECT 
+                    e.office_branch_id as branch_id,
+                    'Advance Salary' as module_name,
+                    asl.amount as req_amount,
+                    CASE WHEN asl.status IN ('paid', 'deducted') THEN asl.amount ELSE 0 END as paid_amount,
+                    CASE WHEN asl.status = 'approved' THEN asl.amount ELSE 0 END as due_amount,
+                    CASE WHEN asl.status IN ('pending', 'pending_hr', 'pending_accounts') THEN asl.amount ELSE 0 END as pending_amount
+                FROM advance_salaries asl
+                LEFT JOIN employees e ON e.id = asl.employee_id
+                WHERE 1=1 {$aslDate}
+            ) t
+            JOIN office_branches ob ON ob.id = t.branch_id
+            WHERE ob.status = 'active' {$branchCondition}
+            GROUP BY t.branch_id, ob.name, t.module_name
+        ";
+
+        $summaryByBranch = [];
+        // Pre-populate with canonical active branches
+        foreach ($branches as $b) {
+            $summaryByBranch[$b['id']] = [
+                'branch_id'       => (int)$b['id'],
+                'branch_name'     => $b['name'],
+                'total_records'   => 0,
+                'total_amount'    => 0,
+                'total_paid'      => 0,
+                'total_due'       => 0,
+                'total_pending'   => 0,
+                'modules'         => [],
+                'percentage'      => 0
+            ];
+        }
+
+        $res = $this->db->query($sql);
+        $grandTotal = 0;
+        $grandPaid = 0;
+        $grandDue = 0;
+        $grandRequests = 0;
+
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $bId = !empty($row['branch_id']) ? (int)$row['branch_id'] : 0;
+                if (!isset($summaryByBranch[$bId])) {
+                    continue; // Strictly skip unassigned or non-active branches
+                }
+
+                $amt = (float)$row['total_req_amount'];
+                $paid = (float)$row['total_paid_amount'];
+                $due = (float)$row['total_due_amount'];
+                $pending = (float)$row['total_pending_amount'];
+                $cnt = (int)$row['total_records'];
+
+                $summaryByBranch[$bId]['total_records']   += $cnt;
+                $summaryByBranch[$bId]['total_amount']    += $amt;
+                $summaryByBranch[$bId]['total_paid']      += $paid;
+                $summaryByBranch[$bId]['total_due']       += $due;
+                $summaryByBranch[$bId]['total_pending']   += $pending;
+                
+                if (!isset($summaryByBranch[$bId]['modules'][$row['module_name']])) {
+                    $summaryByBranch[$bId]['modules'][$row['module_name']] = [
+                        'amount' => 0,
+                        'count'  => 0
+                    ];
+                }
+                $summaryByBranch[$bId]['modules'][$row['module_name']]['amount'] += $amt;
+                $summaryByBranch[$bId]['modules'][$row['module_name']]['count']  += $cnt;
+
+                $grandTotal    += $amt;
+                $grandPaid     += $paid;
+                $grandDue      += $due;
+                $grandRequests += $cnt;
+            }
+        }
+
+        // Calculate percentage share
+        foreach ($summaryByBranch as &$bData) {
+            $bData['percentage'] = ($grandTotal > 0) ? round(($bData['total_amount'] / $grandTotal) * 100, 1) : 0;
+        }
+
+        // Filter if specific branch requested
+        if (!empty($branchId) && is_numeric($branchId)) {
+            $filtered = [];
+            if (isset($summaryByBranch[(int)$branchId])) {
+                $filtered[] = $summaryByBranch[(int)$branchId];
+            }
+            $branchesList = $filtered;
+        } else {
+            $branchesList = array_values($summaryByBranch);
+        }
+
+        return [
+            'branches'       => $branchesList,
+            'grand_total'    => $grandTotal,
+            'grand_paid'     => $grandPaid,
+            'grand_due'      => $grandDue,
+            'grand_requests' => $grandRequests
+        ];
+    }
+
+    /**
      * Get Module Expense Cards (Total Request, Total Pending [Count & Amount], Total Amount, Total Paid, Total Due)
      */
     public function getModuleExpenseCards($dateFrom = null, $dateTo = null, $projectId = null)
@@ -572,6 +781,7 @@ class ExpenseAnalytics
     public function getExpenseLedgerRecords($filters = [])
     {
         $projectId = $filters['project_id'] ?? '';
+        $branchId  = $filters['branch_id'] ?? '';
         $dateFrom  = $filters['from_date'] ?? '';
         $dateTo    = $filters['to_date'] ?? '';
         $moduleKey = $filters['module'] ?? '';
@@ -594,8 +804,8 @@ class ExpenseAnalytics
 
         $queries = [];
 
-        // 1. Vendor Payments
-        if (empty($moduleKey) || $moduleKey === 'vendor_payment_requests') {
+        // 1. Vendor Payments (Project only — excluded when filtering by branch)
+        if ((empty($moduleKey) || $moduleKey === 'vendor_payment_requests') && empty($branchId)) {
             $dFilter = $makeDateFilter('vpr.created_at');
             $pFilter = "";
             if ($projectId === 'none' || $projectId === 'without_project') {
@@ -611,6 +821,8 @@ class ExpenseAnalytics
                     vpr.id as record_id,
                     vpr.project_id,
                     p.name as project_name,
+                    NULL as branch_id,
+                    NULL as branch_name,
                     IFNULL(v.name, 'Vendor') as payee_name,
                     'Vendor' as payee_type,
                     CONCAT('Vendor Payment — ', IFNULL(v.name, 'Vendor'), ' (Inv: ', IFNULL(vpr.invoice_number, '-'), ')') as purpose_title,
@@ -635,8 +847,8 @@ class ExpenseAnalytics
             ";
         }
 
-        // 2. Contractor Bills
-        if (empty($moduleKey) || $moduleKey === 'contractor_bill_requests') {
+        // 2. Contractor Bills (Project only — excluded when filtering by branch)
+        if ((empty($moduleKey) || $moduleKey === 'contractor_bill_requests') && empty($branchId)) {
             $dFilter = $makeDateFilter('cbr.created_at');
             $pFilter = "";
             if ($projectId === 'none' || $projectId === 'without_project') {
@@ -652,6 +864,8 @@ class ExpenseAnalytics
                     cbr.id as record_id,
                     cbr.project_id,
                     p.name as project_name,
+                    NULL as branch_id,
+                    NULL as branch_name,
                     IFNULL(c.name, 'Contractor') as payee_name,
                     'Contractor' as payee_type,
                     CONCAT('Contractor Bill — ', IFNULL(c.name, 'Contractor'), ' (', IFNULL(cbr.bill_type, 'Bill'), ')') as purpose_title,
@@ -677,8 +891,8 @@ class ExpenseAnalytics
             ";
         }
 
-        // 3. Project Other Costs
-        if (empty($moduleKey) || $moduleKey === 'project_other_costs') {
+        // 3. Project Other Costs (Strictly Project Cost — excluded when filtering by branch)
+        if ((empty($moduleKey) || $moduleKey === 'project_other_costs') && empty($branchId)) {
             $dFilter = $makeDateFilter('poc.created_at');
             $pFilter = "";
             if ($projectId === 'none' || $projectId === 'without_project') {
@@ -694,6 +908,8 @@ class ExpenseAnalytics
                     poc.id as record_id,
                     poc.project_id,
                     p.name as project_name,
+                    NULL as branch_id,
+                    NULL as branch_name,
                     IFNULL(COALESCE(u.full_name, u.user_name), 'Staff') as payee_name,
                     'Staff / Project' as payee_type,
                     CONCAT('Other Cost: ', IFNULL(poc.purpose, poc.rcost_type)) as purpose_title,
@@ -711,14 +927,18 @@ class ExpenseAnalytics
             ";
         }
 
-        // 4. Cashout Requests
+        // 4. Cashout Requests (Branch mapped from requester's employee record)
         if (empty($moduleKey) || $moduleKey === 'cashout_requests') {
             $dFilter = $makeDateFilter('cr.created_at');
             $pFilter = "";
             if ($projectId === 'none' || $projectId === 'without_project') {
-                $pFilter = " AND (cr.project_id IS NULL OR cr.project_id = 0)";
+                $pFilter = " AND (cr.project_id IS NULL OR cr.project_id = 0 OR cr.project_id = '')";
             } elseif (!empty($projectId) && is_numeric($projectId)) {
                 $pFilter = " AND (cr.project_id = " . (int)$projectId . ")";
+            }
+            $bFilter = "";
+            if (!empty($branchId) && is_numeric($branchId)) {
+                $bFilter = " AND e_cr.office_branch_id = " . (int)$branchId;
             }
 
             $queries[] = "
@@ -728,6 +948,8 @@ class ExpenseAnalytics
                     cr.id as record_id,
                     cr.project_id,
                     p.name as project_name,
+                    e_cr.office_branch_id as branch_id,
+                    ob_cr.name as branch_name,
                     IFNULL(cr.purpose_paid_to, IFNULL(COALESCE(u.full_name, u.user_name), 'Accounts')) as payee_name,
                     'Payee / Vendor' as payee_type,
                     CONCAT('Cashout: ', IFNULL(cr.purpose_paid_to, 'Office / Site')) as purpose_title,
@@ -748,11 +970,13 @@ class ExpenseAnalytics
                 FROM cashout_requests cr
                 LEFT JOIN projects p ON p.id = cr.project_id
                 LEFT JOIN users u ON u.id = cr.requested_by
-                WHERE 1=1 {$dFilter} {$pFilter}
+                LEFT JOIN employees e_cr ON e_cr.user_id = cr.requested_by
+                LEFT JOIN office_branches ob_cr ON ob_cr.id = e_cr.office_branch_id
+                WHERE 1=1 {$dFilter} {$pFilter} {$bFilter}
             ";
         }
 
-        // 5. Fund Requisitions
+        // 5. Fund Requisitions (Branch mapped from requester's employee record)
         if (empty($moduleKey) || $moduleKey === 'fund_requisitions') {
             $dFilter = $makeDateFilter('fr.created_at');
             $pFilter = "";
@@ -760,6 +984,10 @@ class ExpenseAnalytics
                 $pFilter = " AND (fr.project_id IS NULL OR fr.project_id = 0)";
             } elseif (!empty($projectId) && is_numeric($projectId)) {
                 $pFilter = " AND (fr.project_id = " . (int)$projectId . ")";
+            }
+            $bFilter = "";
+            if (!empty($branchId) && is_numeric($branchId)) {
+                $bFilter = " AND e_fr.office_branch_id = " . (int)$branchId;
             }
 
             $queries[] = "
@@ -769,6 +997,8 @@ class ExpenseAnalytics
                     fr.id as record_id,
                     fr.project_id,
                     p.name as project_name,
+                    e_fr.office_branch_id as branch_id,
+                    ob_fr.name as branch_name,
                     IFNULL(COALESCE(u.full_name, u.user_name), d.name) as payee_name,
                     'Employee / Dept' as payee_type,
                     CONCAT('Fund Req: ', IFNULL(fr.purpose, fr.requisition_type)) as purpose_title,
@@ -783,12 +1013,14 @@ class ExpenseAnalytics
                 LEFT JOIN projects p ON p.id = fr.project_id
                 LEFT JOIN users u ON u.id = fr.requested_by
                 LEFT JOIN departments d ON d.id = fr.department_id
-                WHERE 1=1 {$dFilter} {$pFilter}
+                LEFT JOIN employees e_fr ON e_fr.user_id = fr.requested_by
+                LEFT JOIN office_branches ob_fr ON ob_fr.id = e_fr.office_branch_id
+                WHERE 1=1 {$dFilter} {$pFilter} {$bFilter}
             ";
         }
 
-        // 6. Labor Bills
-        if (empty($moduleKey) || $moduleKey === 'con_labor_requisitions') {
+        // 6. Labor Bills (Project only — excluded when filtering by branch)
+        if ((empty($moduleKey) || $moduleKey === 'con_labor_requisitions') && empty($branchId)) {
             $dFilter = $makeDateFilter('lr.created_at');
             $pFilter = "";
             if ($projectId === 'none' || $projectId === 'without_project') {
@@ -804,6 +1036,8 @@ class ExpenseAnalytics
                     lr.id as record_id,
                     lr.project_id,
                     p.name as project_name,
+                    NULL as branch_id,
+                    NULL as branch_name,
                     IFNULL(COALESCE(u.full_name, u.user_name), 'Site Engineer') as payee_name,
                     'Labor Team / SE' as payee_type,
                     CONCAT('Labor Bill: ', IFNULL(lr.requisition_no, 'Bill'), ' (', lr.labor_count, ' Labors)') as purpose_title,
@@ -821,7 +1055,7 @@ class ExpenseAnalytics
             ";
         }
 
-        // 7. Office Procurement
+        // 7. Office Procurement (Direct office_branch_id from project_extra_assets)
         if (empty($moduleKey) || $moduleKey === 'project_extra_assets') {
             $dFilter = $makeDateFilter('pea.created_at');
             $pFilter = "";
@@ -829,6 +1063,11 @@ class ExpenseAnalytics
                 $pFilter = " AND (pea.project_id IS NULL OR pea.project_id = 0)";
             } elseif (!empty($projectId) && is_numeric($projectId)) {
                 $pFilter = " AND (pea.project_id = " . (int)$projectId . ")";
+            }
+            $bFilter = "";
+            if (!empty($branchId) && is_numeric($branchId)) {
+                $bId = (int)$branchId;
+                $bFilter = " AND (pea.office_branch_id = {$bId} OR (pea.office_branch_id IS NULL AND e_pea.office_branch_id = {$bId}))";
             }
 
             $queries[] = "
@@ -838,6 +1077,8 @@ class ExpenseAnalytics
                     pea.id as record_id,
                     pea.project_id,
                     p.name as project_name,
+                    COALESCE(pea.office_branch_id, e_pea.office_branch_id) as branch_id,
+                    COALESCE(ob.name, ob_pea.name) as branch_name,
                     IFNULL(pea.vendor_name, IFNULL(COALESCE(u.full_name, u.user_name), 'Procurement')) as payee_name,
                     'Vendor / Staff' as payee_type,
                     CONCAT('Procurement: ', IFNULL(pea.item_name, 'Assets'), ' (Qty: ', pea.quantity, ')') as purpose_title,
@@ -851,7 +1092,44 @@ class ExpenseAnalytics
                 FROM project_extra_assets pea
                 LEFT JOIN projects p ON p.id = pea.project_id
                 LEFT JOIN users u ON u.id = pea.requested_by
-                WHERE 1=1 {$dFilter} {$pFilter}
+                LEFT JOIN office_branches ob ON ob.id = pea.office_branch_id
+                LEFT JOIN employees e_pea ON e_pea.user_id = pea.requested_by
+                LEFT JOIN office_branches ob_pea ON ob_pea.id = e_pea.office_branch_id
+                WHERE 1=1 {$dFilter} {$pFilter} {$bFilter}
+            ";
+        }
+
+        // 8. Advance Salaries (General office overhead)
+        if ((empty($moduleKey) || $moduleKey === 'advance_salaries') && (empty($projectId) || $projectId === 'none' || $projectId === 'without_project')) {
+            $dFilter = $makeDateFilter('asl.created_at');
+            $bFilter = "";
+            if (!empty($branchId) && is_numeric($branchId)) {
+                $bFilter = " AND e_asl.office_branch_id = " . (int)$branchId;
+            }
+            $queries[] = "
+                SELECT 
+                    'advance_salaries' as module_key,
+                    'Advance Salary' as module_name,
+                    asl.id as record_id,
+                    NULL as project_id,
+                    'Without Project / General' as project_name,
+                    e_asl.office_branch_id as branch_id,
+                    ob_asl.name as branch_name,
+                    IFNULL(COALESCE(u_asl.full_name, u_asl.user_name), 'Employee') as payee_name,
+                    'Employee' as payee_type,
+                    CONCAT('Advance Salary: ', IFNULL(asl.reason, 'Employee Advance')) as purpose_title,
+                    asl.amount as req_amount,
+                    asl.amount as approved_amount,
+                    CASE WHEN asl.status IN ('paid', 'deducted') THEN asl.amount ELSE 0 END as paid_amount,
+                    CASE WHEN asl.status = 'approved' THEN asl.amount ELSE 0 END as due_amount,
+                    asl.status,
+                    asl.created_at,
+                    CONCAT('advance-salaries') as view_url
+                FROM advance_salaries asl
+                LEFT JOIN employees e_asl ON e_asl.id = asl.employee_id
+                LEFT JOIN users u_asl ON u_asl.id = e_asl.user_id
+                LEFT JOIN office_branches ob_asl ON ob_asl.id = e_asl.office_branch_id
+                WHERE 1=1 {$dFilter} {$bFilter}
             ";
         }
 
@@ -965,6 +1243,22 @@ class ExpenseAnalytics
             }
         }
 
+        // Office Branch breakdown for non-project expenses
+        $branchSummary = $this->getOfficeBranchCostSummary($dateFrom, $dateTo);
+        $branchLabels = [];
+        $branchSeries = [];
+        $branchCounts = [];
+        if (!empty($branchSummary['branches'])) {
+            foreach ($branchSummary['branches'] as $b) {
+                $bAmt = (float)$b['total_amount'];
+                if ($bAmt > 0) {
+                    $branchLabels[] = $b['branch_name'];
+                    $branchSeries[] = round($bAmt, 2);
+                    $branchCounts[] = (int)($b['total_records'] ?? 0);
+                }
+            }
+        }
+
         return [
             'labels'         => $labels,
             'paid_series'    => $paidSeries,
@@ -978,6 +1272,9 @@ class ExpenseAnalytics
             'project_labels' => $projectLabels,
             'project_series' => $projectSeries,
             'project_counts' => $projectCounts,
+            'branch_labels'  => $branchLabels,
+            'branch_series'  => $branchSeries,
+            'branch_counts'  => $branchCounts,
         ];
     }
 }

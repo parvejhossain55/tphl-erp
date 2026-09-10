@@ -19,7 +19,13 @@ class Con_VendorPaymentRequest extends Model
      * @param int|null $userId  If set, only show requests created by this user or for projects they are assigned to
      * @param array $assignedProjectIds  List of project IDs assigned to the user
      */
-    public function getAll($userId = null, $assignedProjectIds = [])
+    /**
+     * Get all vendor payment requests with relations + approved_by/payment_by names
+     * @param int|null $userId  If set, only show requests created by this user or for projects they are assigned to
+     * @param array $assignedProjectIds  List of project IDs assigned to the user
+     * @param array $filters  Optional search/filter parameters: project_id, vendor_id, category_id, status, search
+     */
+    public function getAll($userId = null, $assignedProjectIds = [], $filters = [])
     {
         $sql = "SELECT pr.*,
                        v.name       AS vendor_name,
@@ -70,6 +76,64 @@ class Con_VendorPaymentRequest extends Model
             }
         }
 
+        // 1. Project filter
+        if (!empty($filters['project_id']) && is_numeric($filters['project_id'])) {
+            $whereClauses[] = "pr.project_id = " . (int)$filters['project_id'];
+        }
+
+        // 2. Vendor filter
+        if (!empty($filters['vendor_id']) && is_numeric($filters['vendor_id'])) {
+            $whereClauses[] = "pr.vendor_id = " . (int)$filters['vendor_id'];
+        }
+
+        // 3. Material Category filter (through PO items & materials)
+        if (!empty($filters['category_id']) && is_numeric($filters['category_id'])) {
+            $catId = (int)$filters['category_id'];
+            $whereClauses[] = "pr.purchase_order_id IN (
+                SELECT poi.purchase_order_id 
+                FROM purchase_order_items poi 
+                JOIN con_materials m ON m.id = poi.material_id 
+                WHERE m.category_id = {$catId}
+            )";
+        }
+
+        // 4. Status / Workflow Stage filter (Pending, Apex Approved, Payment done)
+        if (!empty($filters['status'])) {
+            $st = trim($filters['status']);
+            if ($st === 'pending' || $st === 'all_pending') {
+                $whereClauses[] = "pr.status IN ('Submitted', 'QC Approved')";
+            } elseif ($st === 'pending_qc') {
+                $whereClauses[] = "pr.status = 'Submitted'";
+            } elseif ($st === 'pending_apex' || $st === 'pending_mgmt') {
+                $whereClauses[] = "pr.status = 'QC Approved'";
+            } elseif ($st === 'ready_to_pay' || $st === 'partially_paid') {
+                $whereClauses[] = "pr.status = 'Partially_Paid'";
+            } elseif ($st === 'apex_approved' || $st === 'approved' || $st === 'newly_approved') {
+                $whereClauses[] = "pr.status = 'Approved'";
+            } elseif ($st === 'fully_paid') {
+                $whereClauses[] = "pr.status IN ('Fully_Paid', 'Paid')";
+            } elseif ($st === 'all_paid') {
+                $whereClauses[] = "pr.status IN ('Partially_Paid', 'Fully_Paid', 'Paid')";
+            } elseif ($st === 'rejected') {
+                $whereClauses[] = "pr.status = 'Rejected'";
+            } else {
+                $escSt = $this->db->real_escape_string($st);
+                $whereClauses[] = "pr.status = '{$escSt}'";
+            }
+        }
+
+        // 5. Keyword search filter
+        if (!empty($filters['search'])) {
+            $kw = $this->db->real_escape_string(trim($filters['search']));
+            $whereClauses[] = "(
+                pr.id LIKE '%{$kw}%' 
+                OR pr.invoice_number LIKE '%{$kw}%' 
+                OR v.name LIKE '%{$kw}%' 
+                OR p.name LIKE '%{$kw}%' 
+                OR po.id LIKE '%{$kw}%'
+            )";
+        }
+
         if (!empty($whereClauses)) {
             $sql .= " WHERE " . implode(" AND ", $whereClauses);
         }
@@ -88,7 +152,98 @@ class Con_VendorPaymentRequest extends Model
             pr.id DESC";
 
         $result = $this->db->query($sql);
-        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+        $records = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Attach Material Categories and Material items map
+        if (!empty($records)) {
+            $poIds = array_unique(array_filter(array_column($records, 'purchase_order_id')));
+            if (!empty($poIds)) {
+                $poIdList = implode(',', array_map('intval', $poIds));
+                $poCats = [];
+                $resMat = $this->db->query("
+                    SELECT poi.purchase_order_id, 
+                           GROUP_CONCAT(DISTINCT mc.id) as category_ids,
+                           GROUP_CONCAT(DISTINCT mc.name SEPARATOR ', ') as category_names,
+                           GROUP_CONCAT(DISTINCT m.name SEPARATOR ', ') as material_names
+                    FROM purchase_order_items poi
+                    JOIN con_materials m ON m.id = poi.material_id
+                    JOIN con_material_categories mc ON mc.id = m.category_id
+                    WHERE poi.purchase_order_id IN ({$poIdList})
+                    GROUP BY poi.purchase_order_id
+                ");
+                if ($resMat) {
+                    while ($r = $resMat->fetch_assoc()) {
+                        $poCats[$r['purchase_order_id']] = $r;
+                    }
+                }
+
+                foreach ($records as &$rec) {
+                    $pId = $rec['purchase_order_id'] ?? null;
+                    $rec['category_names'] = $poCats[$pId]['category_names'] ?? null;
+                    $rec['category_ids']   = $poCats[$pId]['category_ids'] ?? null;
+                    $rec['material_names'] = $poCats[$pId]['material_names'] ?? null;
+                }
+            }
+        }
+
+        return $records;
+    }
+
+    /**
+     * Get counts for quick filter KPI pills
+     */
+    public function getFilterCounts($userId = null, $assignedProjectIds = [])
+    {
+        $whereUser = "";
+        if ($userId !== null) {
+            $userCond = "created_by = " . (int)$userId;
+            if (!empty($assignedProjectIds)) {
+                $idList = implode(',', array_map('intval', $assignedProjectIds));
+                $whereUser = " WHERE ($userCond OR project_id IN ($idList))";
+            } else {
+                $whereUser = " WHERE $userCond";
+            }
+        }
+
+        $sql = "SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status = 'Submitted' THEN 1 ELSE 0 END) as pending_qc,
+                    SUM(CASE WHEN status = 'QC Approved' THEN 1 ELSE 0 END) as pending_apex,
+                    SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as apex_approved,
+                    SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as newly_approved,
+                    SUM(CASE WHEN status = 'Partially_Paid' THEN 1 ELSE 0 END) as ready_to_pay,
+                    SUM(CASE WHEN status = 'Partially_Paid' THEN 1 ELSE 0 END) as partially_paid,
+                    SUM(CASE WHEN status IN ('Fully_Paid', 'Paid') THEN 1 ELSE 0 END) as fully_paid,
+                    SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejected
+                FROM {$this->table} {$whereUser}";
+
+        $res = $this->db->query($sql);
+        return $res ? $res->fetch_assoc() : [
+            'total'          => 0,
+            'pending_qc'     => 0,
+            'pending_apex'   => 0,
+            'newly_approved' => 0,
+            'apex_approved'  => 0,
+            'ready_to_pay'   => 0,
+            'partially_paid' => 0,
+            'fully_paid'     => 0,
+            'rejected'       => 0
+        ];
+    }
+
+    /**
+     * Get all active material categories for filter dropdown
+     */
+    public function getMaterialCategories()
+    {
+        $categories = [];
+        $res = $this->db->query("SELECT id, name FROM con_material_categories ORDER BY name ASC");
+        if ($res) {
+            while ($r = $res->fetch_assoc()) {
+                $categories[] = $r;
+            }
+        }
+        return $categories;
     }
 
     public function find($id)

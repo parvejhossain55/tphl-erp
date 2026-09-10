@@ -49,6 +49,7 @@ class ExpenseAnalyticsController extends Controller
     public function index()
     {
         $projectId = $_GET['project_id'] ?? '';
+        $branchId  = $_GET['branch_id'] ?? '';
         $fromDate  = $_GET['from_date'] ?? '';
         $toDate    = $_GET['to_date'] ?? '';
         $moduleKey = $_GET['module'] ?? '';
@@ -56,6 +57,7 @@ class ExpenseAnalyticsController extends Controller
 
         $filters = [
             'project_id' => $projectId,
+            'branch_id'  => $branchId,
             'from_date'  => $fromDate,
             'to_date'    => $toDate,
             'module'     => $moduleKey,
@@ -71,25 +73,31 @@ class ExpenseAnalyticsController extends Controller
         // 3. Highest Cost Project Highlight & Leaderboard
         $topProjectsData = $this->model->getTopExpenseProjects(5, $fromDate, $toDate);
 
-        // 4. Detailed Expense Ledger Table
+        // 4. Office Branch Cost Summary (for non-project overhead)
+        $officeBranchesList = $this->model->getOfficeBranchesList();
+        $branchSummary      = $this->model->getOfficeBranchCostSummary($fromDate, $toDate, $branchId);
+
+        // 5. Detailed Expense Ledger Table
         $ledgerRecords = $this->model->getExpenseLedgerRecords($filters);
 
-        // 5. Dropdown Projects List
+        // 6. Dropdown Projects List
         $projectsList = $this->model->getAllProjectsList();
 
-        // 6. ApexCharts Paid vs Due Data
+        // 7. ApexCharts Paid vs Due Data
         $chartData = $this->model->getChartPaidVsDueData($fromDate, $toDate, $projectId);
 
         $this->view("analytics/expense-analytics", [
-            "current_route"   => "expense-analytics",
-            "page_title"      => "Expense Analytics Dashboard",
-            "filters"         => $filters,
-            "moduleCards"     => $moduleCards,
-            "projectSummary"  => $projectSummary,
-            "topProjectsData" => $topProjectsData,
-            "ledgerRecords"   => $ledgerRecords,
-            "projectsList"    => $projectsList,
-            "chartData"       => $chartData
+            "current_route"      => "expense-analytics",
+            "page_title"         => "Expense Analytics Dashboard",
+            "filters"            => $filters,
+            "moduleCards"        => $moduleCards,
+            "projectSummary"     => $projectSummary,
+            "topProjectsData"    => $topProjectsData,
+            "officeBranchesList" => $officeBranchesList,
+            "branchSummary"      => $branchSummary,
+            "ledgerRecords"      => $ledgerRecords,
+            "projectsList"       => $projectsList,
+            "chartData"          => $chartData
         ]);
     }
 
@@ -103,6 +111,7 @@ class ExpenseAnalyticsController extends Controller
         }
 
         $projectId = $_GET['project_id'] ?? '';
+        $branchId  = $_GET['branch_id'] ?? '';
         $fromDate  = $_GET['from_date'] ?? '';
         $toDate    = $_GET['to_date'] ?? '';
         $moduleKey = $_GET['module'] ?? '';
@@ -110,6 +119,7 @@ class ExpenseAnalyticsController extends Controller
 
         $filters = [
             'project_id' => $projectId,
+            'branch_id'  => $branchId,
             'from_date'  => $fromDate,
             'to_date'    => $toDate,
             'module'     => $moduleKey,
@@ -138,6 +148,9 @@ class ExpenseAnalyticsController extends Controller
         if (!empty($moduleKey)) {
             $projText .= " | Module: " . ucwords(str_replace('_', ' ', $moduleKey));
         }
+        if (!empty($branchId)) {
+            $projText .= " | Branch ID: " . $branchId;
+        }
 
         $sheet->setCellValue('A3', "{$periodText} | {$projText} | Exported on: " . date('d M Y, h:i A'));
         $sheet->getStyle('A3')->getFont()->setItalic(true)->setSize(10)->getColor()->setRGB('64748B');
@@ -147,24 +160,25 @@ class ExpenseAnalyticsController extends Controller
             'A5' => 'SL',
             'B5' => 'Date',
             'C5' => 'Expense Module',
-            'D5' => 'Project / General',
-            'E5' => 'Payee / Contractor / Vendor',
-            'F5' => 'Payee Type',
-            'G5' => 'Purpose / Invoice / Description',
-            'H5' => 'Requisition Amount (৳)',
-            'I5' => 'Approved Amount (৳)',
-            'J5' => 'Paid Amount (৳)',
-            'K5' => 'Due Amount (৳)',
-            'L5' => 'Status'
+            'D5' => 'Project Scope',
+            'E5' => 'Office Branch',
+            'F5' => 'Payee / Contractor / Vendor',
+            'G5' => 'Payee Type',
+            'H5' => 'Purpose / Invoice / Description',
+            'I5' => 'Requisition Amount (৳)',
+            'J5' => 'Approved Amount (৳)',
+            'K5' => 'Paid Amount (৳)',
+            'L5' => 'Due Amount (৳)',
+            'M5' => 'Status'
         ];
 
         foreach ($headers as $cell => $text) {
             $sheet->setCellValue($cell, $text);
         }
 
-        $sheet->getStyle('A5:L5')->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
-        $sheet->getStyle('A5:L5')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('1E3A8A');
-        $sheet->getStyle('A5:L5')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('A5:M5')->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
+        $sheet->getStyle('A5:M5')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('1E3A8A');
+        $sheet->getStyle('A5:M5')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
         // Data Rows
         $rowNum = 6;
@@ -175,7 +189,8 @@ class ExpenseAnalyticsController extends Controller
         $totDue = 0;
 
         foreach ($records as $r) {
-            $projLabel = !empty($r['project_name']) ? $r['project_name'] : 'Without Project / General';
+            $projLabel   = !empty($r['project_name']) ? $r['project_name'] : 'Without Project / General';
+            $branchLabel = !empty($r['branch_name']) ? $r['branch_name'] : '-';
             $reqAmt = (float)$r['req_amount'];
             $appAmt = (float)$r['approved_amount'];
             $paidAmt = (float)$r['paid_amount'];
@@ -190,20 +205,21 @@ class ExpenseAnalyticsController extends Controller
             $sheet->setCellValue('B' . $rowNum, !empty($r['created_at']) ? date('d-m-Y', strtotime($r['created_at'])) : '-');
             $sheet->setCellValue('C' . $rowNum, $r['module_name'] ?? '');
             $sheet->setCellValue('D' . $rowNum, $projLabel);
-            $sheet->setCellValue('E' . $rowNum, $r['payee_name'] ?? '-');
-            $sheet->setCellValue('F' . $rowNum, $r['payee_type'] ?? '-');
-            $sheet->setCellValue('G' . $rowNum, $r['purpose_title'] ?? '-');
-            $sheet->setCellValue('H' . $rowNum, $reqAmt);
-            $sheet->setCellValue('I' . $rowNum, $appAmt);
-            $sheet->setCellValue('J' . $rowNum, $paidAmt);
-            $sheet->setCellValue('K' . $rowNum, $dueAmt);
-            $sheet->setCellValue('L' . $rowNum, ucfirst(str_replace('_', ' ', $r['status'] ?? '')));
+            $sheet->setCellValue('E' . $rowNum, $branchLabel);
+            $sheet->setCellValue('F' . $rowNum, $r['payee_name'] ?? '-');
+            $sheet->setCellValue('G' . $rowNum, $r['payee_type'] ?? '-');
+            $sheet->setCellValue('H' . $rowNum, $r['purpose_title'] ?? '-');
+            $sheet->setCellValue('I' . $rowNum, $reqAmt);
+            $sheet->setCellValue('J' . $rowNum, $appAmt);
+            $sheet->setCellValue('K' . $rowNum, $paidAmt);
+            $sheet->setCellValue('L' . $rowNum, $dueAmt);
+            $sheet->setCellValue('M' . $rowNum, ucfirst(str_replace('_', ' ', $r['status'] ?? '')));
 
             // Number formatting
-            $sheet->getStyle("H{$rowNum}:K{$rowNum}")->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet->getStyle("I{$rowNum}:L{$rowNum}")->getNumberFormat()->setFormatCode('#,##0.00');
 
             if ($rowNum % 2 === 0) {
-                $sheet->getStyle("A{$rowNum}:L{$rowNum}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F8FAFC');
+                $sheet->getStyle("A{$rowNum}:M{$rowNum}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F8FAFC');
             }
 
             $rowNum++;
@@ -211,16 +227,16 @@ class ExpenseAnalyticsController extends Controller
 
         // Summary Total Row
         $sheet->setCellValue('A' . $rowNum, 'TOTAL');
-        $sheet->mergeCells("A{$rowNum}:G{$rowNum}");
-        $sheet->setCellValue('H' . $rowNum, "=SUM(H6:H" . ($rowNum - 1) . ")");
+        $sheet->mergeCells("A{$rowNum}:H{$rowNum}");
         $sheet->setCellValue('I' . $rowNum, "=SUM(I6:I" . ($rowNum - 1) . ")");
         $sheet->setCellValue('J' . $rowNum, "=SUM(J6:J" . ($rowNum - 1) . ")");
         $sheet->setCellValue('K' . $rowNum, "=SUM(K6:K" . ($rowNum - 1) . ")");
-        $sheet->setCellValue('L' . $rowNum, count($records) . ' Records');
+        $sheet->setCellValue('L' . $rowNum, "=SUM(L6:L" . ($rowNum - 1) . ")");
+        $sheet->setCellValue('M' . $rowNum, count($records) . ' Records');
 
-        $sheet->getStyle("A{$rowNum}:L{$rowNum}")->getFont()->setBold(true);
-        $sheet->getStyle("A{$rowNum}:L{$rowNum}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('E2E8F0');
-        $sheet->getStyle("H{$rowNum}:K{$rowNum}")->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle("A{$rowNum}:M{$rowNum}")->getFont()->setBold(true);
+        $sheet->getStyle("A{$rowNum}:M{$rowNum}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('E2E8F0');
+        $sheet->getStyle("I{$rowNum}:L{$rowNum}")->getNumberFormat()->setFormatCode('#,##0.00');
         $sheet->getStyle("A{$rowNum}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
 
         // Auto-fit Column Widths

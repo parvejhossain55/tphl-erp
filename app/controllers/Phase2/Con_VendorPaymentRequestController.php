@@ -239,7 +239,37 @@ class Con_VendorPaymentRequestController extends Controller
             exit;
         }
 
-        $requests = $this->model->getAll($filterUserId, $assignedProjectIds);
+        $filters = [
+            'project_id'  => $_GET['project_id'] ?? '',
+            'vendor_id'   => $_GET['vendor_id'] ?? '',
+            'category_id' => $_GET['category_id'] ?? '',
+            'status'      => $_GET['status'] ?? '',
+            'search'      => $_GET['search'] ?? ''
+        ];
+
+        $requests = $this->model->getAll($filterUserId, $assignedProjectIds, $filters);
+        $filterCounts = $this->model->getFilterCounts($filterUserId, $assignedProjectIds);
+        $materialCategories = $this->model->getMaterialCategories();
+
+        $projectsList = [];
+        $resProj = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
+        if ($resProj && $resProj->num_rows > 0) {
+            while ($row = $resProj->fetch_assoc()) {
+                $projectsList[] = $row;
+            }
+        } else {
+            $projectsList = $this->projectModel->getAll();
+        }
+
+        $vendorsList = [];
+        $resVend = $this->db->query("SELECT id, name, company_name FROM vendors ORDER BY name ASC");
+        if ($resVend && $resVend->num_rows > 0) {
+            while ($row = $resVend->fetch_assoc()) {
+                $vendorsList[] = $row;
+            }
+        } else {
+            $vendorsList = $this->vendorModel->getAll();
+        }
 
         // Fetch QC Audited/Approved POs (having qc_approved_by_id)
         $qcApprovedPOs = [];
@@ -276,13 +306,18 @@ class Con_VendorPaymentRequestController extends Controller
         }
 
         $this->view('phase2/vendor-payment-requests/payment-lists', [
-            'current_route'     => 'con-vendor-payment-requests',
-            'page_title'        => 'Vendor Payment Requests',
-            'requests'          => $requests,
-            'qc_approved_pos'   => $qcApprovedPOs,
-            'userRole'          => $this->userRole,
-            'canProcessPayment' => $this->canProcessPayment(),
-            'canApprove'        => $this->canApprove(),
+            'current_route'       => 'con-vendor-payment-requests',
+            'page_title'          => 'Vendor Payment Requests',
+            'requests'            => $requests,
+            'qc_approved_pos'     => $qcApprovedPOs,
+            'userRole'            => $this->userRole,
+            'canProcessPayment'   => $this->canProcessPayment(),
+            'canApprove'          => $this->canApprove(),
+            'filters'             => $filters,
+            'filterCounts'        => $filterCounts,
+            'projectsList'        => $projectsList,
+            'vendorsList'         => $vendorsList,
+            'materialCategories'  => $materialCategories,
         ]);
     }
 
