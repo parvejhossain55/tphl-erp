@@ -351,6 +351,7 @@ class ApprovalRequest extends Model
         $this->syncMissingOfficeProcurements();
         $this->syncMissingLaborRequisitions();
         $this->syncMissingVendorPaymentRequests();
+        $this->syncMissingContractorBills();
 
         $roles = array_map('strtolower', $roles);
 
@@ -470,6 +471,39 @@ class ApprovalRequest extends Model
             $qcNote = "Audited & Approved by QC. Note: " . ($approvalNote ?? '');
             $stmtForward->bind_param('dsi', $qcApprovedAmt, $qcNote, $id);
             return $stmtForward->execute();
+        }
+
+        if ($sourceTable === 'contractor_bill_requests' && strtolower($request['approve_role'] ?? '') === 'qc' && $status === 'approved') {
+            // Update source table to QC Approved
+            $qcApprovedAmt = ($approvedAmount !== null && $approvedAmount > 0) ? (float)$approvedAmount : (float)($request['request_amount'] ?? 0);
+            $stmtCb = $this->db->prepare("UPDATE contractor_bill_requests SET status = 'qc_approved', qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ?, approved_amount = ?, due_amount = ? WHERE id = ?");
+            if ($stmtCb) {
+                $stmtCb->bind_param('isddi', $approvedBy, $approvalNote, $qcApprovedAmt, $qcApprovedAmt, $sourceId);
+                $stmtCb->execute();
+                $stmtCb->close();
+            }
+
+            // Forward to management instead of marking as completed
+            $sqlForward = "UPDATE {$this->table}
+                SET 
+                    approve_role = 'management',
+                    status = 'pending',
+                    request_amount = ?,
+                    approved_amount = NULL,
+                    approved_by = NULL,
+                    approval_note = ?,
+                    approved_at = NULL
+                WHERE id = ?";
+            $stmtForward = $this->db->prepare($sqlForward);
+            $qcNote = "Audited & Approved by QC. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('dsi', $qcApprovedAmt, $qcNote, $id);
+            return $stmtForward->execute();
+        }
+
+        if ($status === 'approved' && ($approvedAmount === null || (float)$approvedAmount <= 0)) {
+            $approvedAmount = (!empty($request['approved_amount']) && (float)$request['approved_amount'] > 0)
+                ? (float)$request['approved_amount']
+                : (float)($request['request_amount'] ?? 0);
         }
 
         $sql = "UPDATE {$this->table}
@@ -602,6 +636,96 @@ class ApprovalRequest extends Model
                 $stmtPoc->bind_param('sidsi', $pocStatus, $approvedBy, $pocAppAmt, $approvalNote, $sourceId);
                 $stmtPoc->execute();
                 $stmtPoc->close();
+            }
+            return true;
+        }
+
+        if ($sourceTable === 'fund_requisitions') {
+            $frStatus = ($status === 'approved') ? 'approved' : 'rejected';
+            $frAppAmt = ($status === 'approved') 
+                ? ($approvedAmount !== null && (float)$approvedAmount > 0 ? (float)$approvedAmount : null) 
+                : null;
+            
+            $stmtFr = $this->db->prepare(
+                "UPDATE fund_requisitions 
+                 SET status = ?, 
+                     approved_by = ?, 
+                     approved_at = NOW(), 
+                     approved_amount = COALESCE(?, NULLIF(qc_approved_amount, 0), amount), 
+                     approval_note = ?,
+                     updated_at = NOW() 
+                 WHERE id = ?"
+            );
+            if ($stmtFr) {
+                $stmtFr->bind_param('sidsi', $frStatus, $approvedBy, $frAppAmt, $approvalNote, $sourceId);
+                $stmtFr->execute();
+                $stmtFr->close();
+            }
+
+            if ($status === 'approved') {
+                try {
+                    require_once dirname(__DIR__) . '/services/AutoPostingService.php';
+                    $autoService = new \AutoPostingService($this->db);
+                    $officeExpenseAccId = $autoService->getAccountIdByCode('5220');
+                    $salaryPayableAccId = $autoService->getAccountIdByCode('2130');
+                    
+                    $frData = $this->db->query("SELECT * FROM fund_requisitions WHERE id = {$sourceId} LIMIT 1")->fetch_assoc();
+                    if ($frData) {
+                        $postedAmount = (float)($frData['approved_amount'] ?? 0);
+                        if ($postedAmount > 0) {
+                            $autoService->postAccrualEntry(
+                                'fund_requisition',
+                                $sourceId,
+                                $officeExpenseAccId,
+                                $salaryPayableAccId,
+                                $postedAmount,
+                                "Fund Requisition (FR-{$sourceId}): " . ($frData['purpose'] ?: 'Operational Expense'),
+                                $frData['project_id'],
+                                'employee',
+                                $frData['requested_by'],
+                                $approvedBy
+                            );
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    error_log("AutoPosting Exception (Fund Requisition via Central Approval): " . $e->getMessage());
+                }
+            }
+            return true;
+        }
+
+        if ($sourceTable === 'contractor_bill_requests') {
+            $cbStatus = ($status === 'approved') ? 'approved' : 'rejected';
+            $cbAppAmt = ($status === 'approved') 
+                ? ($approvedAmount !== null && (float)$approvedAmount > 0 ? (float)$approvedAmount : (float)($request['request_amount'] ?? 0)) 
+                : null;
+            
+            $stmtCb = $this->db->prepare(
+                "UPDATE contractor_bill_requests 
+                 SET status = ?, 
+                     approved_by = ?, 
+                     approved_amount = ?, 
+                     due_amount = ?,
+                     management_note = ?,
+                     updated_at = NOW() 
+                 WHERE id = ?"
+            );
+            if ($stmtCb) {
+                $stmtCb->bind_param('siddsi', $cbStatus, $approvedBy, $cbAppAmt, $cbAppAmt, $approvalNote, $sourceId);
+                $stmtCb->execute();
+                $stmtCb->close();
+            }
+
+            if ($status === 'approved') {
+                $this->db->query("UPDATE approval_requests SET approve_role = 'accounts' WHERE id = " . (int)$id);
+
+                try {
+                    require_once dirname(__DIR__) . '/services/JournalIntegrationService.php';
+                    $journalService = new \Services\JournalIntegrationService($this->db);
+                    $journalService->generateContractorAccrual($sourceId, $approvedBy);
+                } catch (\Throwable $e) {
+                    error_log("Failed to auto-generate contractor accrual journal via Central Approval: " . $e->getMessage());
+                }
             }
             return true;
         }
@@ -798,6 +922,7 @@ class ApprovalRequest extends Model
         $this->syncMissingLaborRequisitions();
         $this->syncMissingProjectOtherCosts();
         $this->syncMissingVendorPaymentRequests();
+        $this->syncMissingContractorBills();
         $this->syncMissingAdvanceSalaries();
         $this->syncMissingCashoutRequests();
 
@@ -894,6 +1019,7 @@ class ApprovalRequest extends Model
         $this->syncMissingLaborRequisitions();
         $this->syncMissingProjectOtherCosts();
         $this->syncMissingVendorPaymentRequests();
+        $this->syncMissingContractorBills();
         $this->syncMissingAdvanceSalaries();
         $this->syncMissingCashoutRequests();
 
@@ -1291,6 +1417,7 @@ class ApprovalRequest extends Model
         $this->syncMissingLaborRequisitions();
         $this->syncMissingProjectOtherCosts();
         $this->syncMissingVendorPaymentRequests();
+        $this->syncMissingContractorBills();
         $this->syncMissingAdvanceSalaries();
         $this->syncMissingCashoutRequests();
 
@@ -1750,6 +1877,11 @@ class ApprovalRequest extends Model
                     if ($cbRow) {
                         $cbStatus = strtolower($cbRow['status'] ?? '');
                         if (in_array($cbStatus, ['pending', 'submitted', 'verified'])) {
+                            $row['approve_role'] = 'qc';
+                            $row['status'] = 'pending';
+                            $pendingStageLabel = 'Pending QC \u0026 Audit';
+                            $pendingForText = 'QC \u0026 Internal Audit Head (Role 24)';
+                        } elseif ($cbStatus === 'qc_approved') {
                             $row['approve_role'] = 'management';
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending Management';
@@ -2572,6 +2704,156 @@ class ApprovalRequest extends Model
                 OR (vpr.status = 'Rejected' AND ar.status != 'rejected')
                 -- Items submitted but stuck in purchase team leader
                 OR (vpr.status IN ('Submitted', 'Draft') AND ar.approve_role = 'purchase team leader')
+                -- Empty status
+                OR ar.status = '' OR ar.status IS NULL
+        ";
+        @$this->db->query($syncSql);
+    }
+
+    public function syncMissingContractorBills()
+    {
+        // 1. Insert missing contractor_bill_requests into approval_requests
+        $sql = "
+            SELECT cbr.*, p.name AS project_name, c.name AS contractor_name
+            FROM contractor_bill_requests cbr
+            LEFT JOIN projects p ON cbr.project_id = p.id
+            LEFT JOIN contractors c ON cbr.operator_id = c.id
+            LEFT JOIN approval_requests ar ON (ar.source_table = 'contractor_bill_requests' AND ar.source_id = cbr.id)
+            WHERE ar.id IS NULL
+        ";
+        $res = $this->db->query($sql);
+        if ($res && $res->num_rows > 0) {
+            while ($row = $res->fetch_assoc()) {
+                $sourceId    = (int) $row['id'];
+                $deptName    = 'Construction';
+                $requestType = 'contractor_bill';
+                $contractorName = !empty($row['contractor_name']) ? $row['contractor_name'] : 'Contractor';
+                $projectName    = !empty($row['project_name']) ? $row['project_name'] : 'Project';
+                $title       = "Contractor Bill — {$contractorName} | {$projectName}";
+                $billAmount  = (float) ($row['bill_amount'] ?? 0);
+                $approvedAmt = (isset($row['approved_amount']) && (float)$row['approved_amount'] > 0) ? (float)$row['approved_amount'] : $billAmount;
+                $requestedBy = (int) ($row['created_by'] ?? 1);
+
+                $cbStatus = strtolower(trim($row['status'] ?? ''));
+
+                $status = 'pending';
+                $approveRole = 'qc';
+                $requestAmount = $billAmount;
+                $approvedAmount = null;
+                $approvedBy = null;
+                $approvedAt = null;
+                $approvalNote = null;
+
+                if ($cbStatus === 'rejected') {
+                    $status = 'rejected';
+                    $approveRole = 'rejected';
+                    $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
+                    $approvedAt = !empty($row['updated_at']) ? $row['updated_at'] : null;
+                } elseif (in_array($cbStatus, ['submitted', 'verified', 'pending', 'draft', ''])) {
+                    $status = 'pending';
+                    $approveRole = 'qc';
+                } elseif ($cbStatus === 'qc_approved') {
+                    $status = 'pending';
+                    $approveRole = 'management';
+                    $requestAmount = $approvedAmt;
+                    $approvedBy = !empty($row['qc_approved_by_id']) ? (int)$row['qc_approved_by_id'] : null;
+                    $approvedAt = !empty($row['qc_approved_at']) ? $row['qc_approved_at'] : (!empty($row['updated_at']) ? $row['updated_at'] : null);
+                    $approvalNote = !empty($row['qc_note']) ? $row['qc_note'] : null;
+                } elseif ($cbStatus === 'approved') {
+                    $status = 'approved';
+                    $approveRole = 'accounts';
+                    $requestAmount = $billAmount;
+                    $approvedAmount = $approvedAmt;
+                    $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
+                    $approvedAt = !empty($row['updated_at']) ? $row['updated_at'] : null;
+                    $approvalNote = !empty($row['management_note']) ? $row['management_note'] : null;
+                } elseif (in_array($cbStatus, ['paid', 'fully_paid', 'partially_paid'])) {
+                    $status = 'approved';
+                    $approveRole = 'completed';
+                    $requestAmount = $billAmount;
+                    $approvedAmount = $approvedAmt;
+                    $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
+                    $approvedAt = !empty($row['updated_at']) ? $row['updated_at'] : null;
+                    $approvalNote = !empty($row['management_note']) ? $row['management_note'] : null;
+                }
+
+                $metaData = json_encode([
+                    'contractor_id'   => $row['operator_id'],
+                    'contractor_name' => $contractorName,
+                    'project_id'      => $row['project_id'],
+                    'project_name'    => $projectName,
+                    'work_order_id'   => $row['work_order_id'],
+                    'target_id'       => $row['target_id'],
+                    'bill_date'       => $row['bill_date']
+                ]);
+                $createdAt = !empty($row['created_at']) ? $row['created_at'] : date('Y-m-d H:i:s');
+
+                $stmt = $this->db->prepare("
+                    INSERT INTO approval_requests 
+                    (department, request_type, title, source_table, source_id, request_amount, approved_amount, requested_by, approve_role, status, approved_by, approved_at, approval_note, meta_data, created_at)
+                    VALUES (?, ?, ?, 'contractor_bill_requests', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                if ($stmt) {
+                    $stmt->bind_param("sssiddississss", $deptName, $requestType, $title, $sourceId, $requestAmount, $approvedAmount, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+            }
+        }
+
+        // 2. Synchronize existing approval_requests with contractor_bill_requests state
+        $syncSql = "
+            UPDATE approval_requests ar
+            INNER JOIN contractor_bill_requests cbr ON (ar.source_table = 'contractor_bill_requests' AND ar.source_id = cbr.id)
+            SET 
+                ar.approve_role = CASE
+                    WHEN cbr.status IN ('submitted', 'verified', 'pending') AND cbr.qc_approved_at IS NULL THEN 'qc'
+                    WHEN cbr.status = 'qc_approved' THEN 'management'
+                    WHEN cbr.status = 'approved' THEN 'accounts'
+                    WHEN cbr.status IN ('paid', 'fully_paid', 'partially_paid') THEN 'completed'
+                    WHEN cbr.status = 'rejected' THEN 'rejected'
+                    ELSE ar.approve_role
+                END,
+                ar.status = CASE
+                    WHEN cbr.status = 'rejected' THEN 'rejected'
+                    WHEN cbr.status IN ('approved', 'paid', 'fully_paid', 'partially_paid') THEN 'approved'
+                    ELSE 'pending'
+                END,
+                ar.request_amount = CASE
+                    WHEN cbr.qc_approved_at IS NOT NULL AND cbr.approved_amount IS NOT NULL AND cbr.approved_amount > 0 THEN cbr.approved_amount
+                    WHEN cbr.bill_amount IS NOT NULL AND cbr.bill_amount > 0 THEN cbr.bill_amount
+                    ELSE ar.request_amount
+                END,
+                ar.approved_amount = CASE
+                    WHEN cbr.status IN ('approved', 'paid', 'fully_paid', 'partially_paid') THEN COALESCE(cbr.approved_amount, cbr.bill_amount, ar.request_amount)
+                    ELSE ar.approved_amount
+                END,
+                ar.approved_by = CASE
+                    WHEN cbr.status IN ('approved', 'paid', 'fully_paid', 'partially_paid') THEN COALESCE(cbr.approved_by, ar.approved_by)
+                    WHEN cbr.status = 'qc_approved' THEN COALESCE(cbr.qc_approved_by_id, ar.approved_by)
+                    ELSE ar.approved_by
+                END,
+                ar.approved_at = CASE
+                    WHEN cbr.status IN ('approved', 'paid', 'fully_paid', 'partially_paid') THEN COALESCE(cbr.updated_at, ar.approved_at)
+                    WHEN cbr.status = 'qc_approved' THEN COALESCE(cbr.qc_approved_at, ar.approved_at)
+                    ELSE ar.approved_at
+                END,
+                ar.approval_note = CASE
+                    WHEN cbr.status = 'qc_approved' AND cbr.qc_note IS NOT NULL AND cbr.qc_note != '' THEN cbr.qc_note
+                    WHEN cbr.status = 'approved' AND cbr.management_note IS NOT NULL AND cbr.management_note != '' THEN cbr.management_note
+                    ELSE ar.approval_note
+                END
+            WHERE 
+                -- Items where QC has not approved yet, but approval_request is set to 'management'
+                (cbr.status IN ('submitted', 'verified', 'pending') AND cbr.qc_approved_at IS NULL AND ar.approve_role != 'qc')
+                -- Items where QC has approved, but approval_request is not in management
+                OR (cbr.status = 'qc_approved' AND ar.approve_role != 'management')
+                -- Items where Management has approved, but approval_request is not in accounts / approved
+                OR (cbr.status = 'approved' AND (ar.approve_role != 'accounts' OR ar.status != 'approved'))
+                -- Items paid
+                OR (cbr.status IN ('paid', 'fully_paid', 'partially_paid') AND ar.approve_role != 'completed')
+                -- Items rejected
+                OR (cbr.status = 'rejected' AND ar.status != 'rejected')
                 -- Empty status
                 OR ar.status = '' OR ar.status IS NULL
         ";
