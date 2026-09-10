@@ -110,7 +110,7 @@ class IncentiveCalculationEngine
     /**
      * Calculates the Team Leader / Manager / Sales Head incentive for a month (Tier 2 - Team)
      */
-    public function getTeamMonthlyStats($userId, $yearMonth)
+    public function getTeamMonthlyStats($userId, $yearMonth, $filterTeamId = null)
     {
         // 1. Identify User Role and Team scope
         $empStmt = $this->db->prepare("
@@ -135,23 +135,30 @@ class IncentiveCalculationEngine
         else if ($isCoordinator == 1) $roleType = 'coordinator';
         else if ($roleId == 5 || $roleId == 6 || $roleId == 7) $roleType = 'team_leader'; // Assuming 5,6,7 are manager roles
 
+        if (!$roleType && in_array($roleId, [1, 3])) {
+            $roleType = 'sales_head'; // Admin sees same as sales_head
+        }
+
         if (!$roleType) {
             return ['eligible' => false, 'message' => 'Not a team leader role.'];
         }
 
         // If they are a team leader but have no team assigned, they cannot get team incentives!
-        if ($roleType != 'sales_head' && $teamId == 0) {
+        if ($roleType != 'sales_head' && $teamId == 0 && empty($filterTeamId)) {
             return ['eligible' => false, 'message' => 'No team assigned.'];
         }
 
-        // 2. Get the TEAM Target (Sum of individual targets in the team, or global if Sales Head)
+        $targetTeamId = (!empty($filterTeamId) && (int)$filterTeamId > 0) ? (int)$filterTeamId : $teamId;
+        $isFiltered = (!empty($filterTeamId) && (int)$filterTeamId > 0);
+
+        // 2. Get the TEAM Target (Sum of individual targets in the team, or global if Sales Head without filter)
         $targetSql = "SELECT SUM(booking_value_target) as total_team_target 
                       FROM sales_targets st 
                       WHERE DATE_FORMAT(st.month, '%Y-%m') = ?";
-        if ($roleType != 'sales_head') {
+        if ($roleType != 'sales_head' || $isFiltered) {
             $targetSql .= " AND st.sales_user_id IN (SELECT user_id FROM employees WHERE team_id = ?)";
             $stmt = $this->db->prepare($targetSql);
-            $stmt->bind_param("si", $yearMonth, $teamId);
+            $stmt->bind_param("si", $yearMonth, $targetTeamId);
         } else {
             $stmt = $this->db->prepare($targetSql);
             $stmt->bind_param("s", $yearMonth);
@@ -168,10 +175,10 @@ class IncentiveCalculationEngine
                        WHERE DATE_FORMAT(lb.booking_date, '%Y-%m') = ?
                        AND lb.deleted_at IS NULL
                        AND lb.booking_status != 'cancelled'";
-        if ($roleType != 'sales_head') {
+        if ($roleType != 'sales_head' || $isFiltered) {
             $achieveSql .= " AND lb.sales_by_id IN (SELECT user_id FROM employees WHERE team_id = ?)";
             $stmt = $this->db->prepare($achieveSql);
-            $stmt->bind_param("si", $yearMonth, $teamId);
+            $stmt->bind_param("si", $yearMonth, $targetTeamId);
         } else {
             $stmt = $this->db->prepare($achieveSql);
             $stmt->bind_param("s", $yearMonth);
@@ -222,11 +229,23 @@ class IncentiveCalculationEngine
             }
         }
 
+        // Determine Team Name display
+        $displayTeamName = $emp ? $emp['team_name'] : 'Sales Team';
+        if ($isFiltered) {
+            $tQ = $this->db->query("SELECT name FROM teams WHERE id = " . $targetTeamId);
+            if ($tQ && $tRow = $tQ->fetch_assoc()) {
+                $displayTeamName = $tRow['name'];
+            }
+        } elseif ($roleType == 'sales_head') {
+            $displayTeamName = 'Company-Wide (All Teams)';
+        }
+
         return [
             'eligible' => true,
             'role_type' => $roleType,
-            'team_id' => $teamId,
-            'team_name' => $emp ? $emp['team_name'] : null,
+            'team_id' => $targetTeamId,
+            'team_name' => $displayTeamName,
+            'is_filtered' => $isFiltered,
             'team_target' => $teamTarget,
             'team_achieved' => $teamAchieved,
             'team_achievement_pct' => $teamAchievementPct,

@@ -21,18 +21,18 @@
             <div class="card-body">
                 <form method="GET" action="<?= $base_url ?>/sales-activity-report">
                     <input type="hidden" name="tab" value="<?= htmlspecialchars($activeTab) ?>">
-                    <div class="row align-items-end">
-                        <div class="col-md-3">
-                            <label class="form-label">Year</label>
-                            <select name="year" class="form-select">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold">Year</label>
+                            <select name="year" class="form-select form-select-sm">
                                 <?php for($y = 2024; $y <= date('Y')+1; $y++): ?>
                                     <option value="<?= $y ?>" <?= $y == $year ? 'selected' : '' ?>><?= $y ?></option>
                                 <?php endfor; ?>
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Month</label>
-                            <select name="month" class="form-select">
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold">Month</label>
+                            <select name="month" class="form-select form-select-sm">
                                 <?php 
                                 $months = ['1'=>'Jan', '2'=>'Feb', '3'=>'Mar', '4'=>'Apr', '5'=>'May', '6'=>'Jun', '7'=>'Jul', '8'=>'Aug', '9'=>'Sep', '10'=>'Oct', '11'=>'Nov', '12'=>'Dec'];
                                 foreach($months as $m => $mName): 
@@ -42,24 +42,66 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Specific Date (For Daily Report)</label>
-                            <input type="date" name="date" class="form-control" value="<?= htmlspecialchars($date) ?>">
+                            <label class="form-label fw-semibold">
+                                <i class="fa-solid fa-users text-primary me-1"></i>Team
+                            </label>
+                            <select name="team_id" class="form-select form-select-sm">
+                                <option value="">All Teams (Company-Wide)</option>
+                                <?php if(!empty($teams)): foreach($teams as $t): ?>
+                                    <option value="<?= $t['id'] ?>" <?= (!empty($selectedTeamId) && (int)$selectedTeamId === (int)$t['id']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($t['name']) ?>
+                                    </option>
+                                <?php endforeach; endif; ?>
+                            </select>
                         </div>
                         <div class="col-md-3">
-                            <button type="submit" class="btn btn-primary w-100">Filter Data</button>
+                            <label class="form-label fw-semibold">Specific Date (Daily)</label>
+                            <input type="date" name="date" class="form-control form-control-sm" value="<?= htmlspecialchars($date) ?>">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">
+                                <i class="fa-solid fa-filter me-1"></i> Filter Data
+                            </button>
                         </div>
                     </div>
                 </form>
-                <?php if(!empty($monthlyData['period'])): ?>
-                <div class="mt-3 text-muted">
-                    Showing data for period: <strong><?= $monthlyData['period']['start'] ?></strong> to <strong><?= $monthlyData['period']['end'] ?></strong>
+                <div class="mt-3 text-muted d-flex align-items-center justify-content-between flex-wrap gap-2 fs-12">
+                    <?php if(!empty($monthlyData['period'])): ?>
+                    <div>
+                        <i class="fa-regular fa-calendar me-1 text-primary"></i>
+                        Showing data for period: <strong><?= $monthlyData['period']['start'] ?></strong> to <strong><?= $monthlyData['period']['end'] ?></strong>
+                    </div>
+                    <?php endif; ?>
+                    <?php if(!empty($selectedTeamId)): ?>
+                        <?php 
+                            $selTeamName = '';
+                            if(!empty($teams)) {
+                                foreach ($teams as $t) {
+                                    if ((int)$t['id'] === (int)$selectedTeamId) {
+                                        $selTeamName = $t['name'];
+                                        break;
+                                    }
+                                }
+                            }
+                        ?>
+                        <div class="badge bg-primary-transparent text-primary fs-12 px-3 py-2 border border-primary-subtle">
+                            <i class="fa-solid fa-filter me-1"></i> Filtered Team: <strong><?= htmlspecialchars($selTeamName ?: 'Team #' . $selectedTeamId) ?></strong>
+                            <a href="?tab=<?= htmlspecialchars($activeTab) ?>&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?>" class="text-danger ms-2" title="Clear Team Filter">
+                                <i class="fa-solid fa-circle-xmark"></i>
+                            </a>
+                        </div>
+                    <?php else: ?>
+                        <div class="badge bg-success-transparent text-success fs-12 px-3 py-2 border border-success-subtle">
+                            <i class="fa-solid fa-layer-group me-1"></i> Scope: <strong>All Teams (Company-Wide)</strong>
+                        </div>
+                    <?php endif; ?>
                 </div>
-                <?php endif; ?>
             </div>
         </div>
 
         <!-- Tabs Navigation -->
         <?php
+        $teamParam = !empty($selectedTeamId) ? '&team_id=' . urlencode($selectedTeamId) : '';
         $excelExportUrl = '?' . http_build_query(array_merge($_GET, ['tab' => $activeTab, 'year' => $year, 'month' => $month, 'date' => $date, 'export' => 'excel']));
         $pdfExportUrl = '?' . http_build_query(array_merge($_GET, ['tab' => $activeTab, 'year' => $year, 'month' => $month, 'date' => $date, 'export' => 'pdf']));
         ?>
@@ -68,21 +110,21 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2 border-bottom pb-2">
                     <ul class="nav nav-tabs tab-style-1 d-sm-flex d-block border-bottom-0 mb-0" role="tablist">
                         <li class="nav-item">
-                            <a class="nav-link <?= $activeTab == 'dashboard' ? 'active' : '' ?>" href="?tab=dashboard&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?>">Ranking Dashboard</a>
+                            <a class="nav-link <?= $activeTab == 'dashboard' ? 'active' : '' ?>" href="?tab=dashboard&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?><?= $teamParam ?>">Ranking Dashboard</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?= $activeTab == 'target-vs-achievement' ? 'active' : '' ?>" href="?tab=target-vs-achievement&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?>">
+                            <a class="nav-link <?= $activeTab == 'target-vs-achievement' ? 'active' : '' ?>" href="?tab=target-vs-achievement&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?><?= $teamParam ?>">
                                 <i class="fa-solid fa-bullseye me-1 text-success"></i> Target Vs Achievement
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?= $activeTab == 'monthly' ? 'active' : '' ?>" href="?tab=monthly&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?>">Monthly Team Summary</a>
+                            <a class="nav-link <?= $activeTab == 'monthly' ? 'active' : '' ?>" href="?tab=monthly&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?><?= $teamParam ?>">Monthly Team Summary</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?= $activeTab == 'all-team' ? 'active' : '' ?>" href="?tab=all-team&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?>">All Team Report</a>
+                            <a class="nav-link <?= $activeTab == 'all-team' ? 'active' : '' ?>" href="?tab=all-team&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?><?= $teamParam ?>">All Team Report</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?= $activeTab == 'daily' ? 'active' : '' ?>" href="?tab=daily&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?>">Daily Report</a>
+                            <a class="nav-link <?= $activeTab == 'daily' ? 'active' : '' ?>" href="?tab=daily&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?><?= $teamParam ?>">Daily Report</a>
                         </li>
                     </ul>
                     <div class="d-flex gap-2">
@@ -119,28 +161,46 @@
                                 $badgeColor = $count == 0 ? 'bg-warning' : ($count == 1 ? 'bg-secondary' : 'bg-primary');
                             ?>
                             <div class="col-md-4 mb-3">
-                                <div class="card border border-primary">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <h5 class="mb-0 fw-bold"><?= htmlspecialchars($emp['member_name']) ?></h5>
-                                            <span class="badge <?= $badgeColor ?> fs-5">#<?= $emp['rank'] ?></span>
+                                <div class="card border border-primary shadow-sm h-100 ranking-performer-card" 
+                                     style="transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;"
+                                     data-bs-toggle="modal"
+                                     data-bs-target="#rankingBreakdownModal"
+                                     data-emp='<?= htmlspecialchars(json_encode($emp), ENT_QUOTES, 'UTF-8') ?>'
+                                     title="Click card to view ranking breakdown">
+                                    <div class="card-body d-flex flex-column justify-content-between">
+                                        <div>
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <h5 class="mb-0 fw-bold text-dark"><?= htmlspecialchars($emp['member_name']) ?></h5>
+                                                <span class="badge <?= $badgeColor ?> fs-6 px-3 py-1">#<?= $emp['rank'] ?></span>
+                                            </div>
+                                            <p class="text-muted fs-12 mb-3"><?= htmlspecialchars($emp['level_designation']) ?> &bull; <?= htmlspecialchars($emp['team_name']) ?></p>
+                                            
+                                            <div class="p-2 bg-light rounded border mb-3">
+                                                <div class="d-flex justify-content-between mb-1 fs-13">
+                                                    <span class="text-muted">Total Performance Score:</span>
+                                                    <span class="fw-bold text-success fs-14"><?= number_format($emp['performance_score'], 2) ?>%</span>
+                                                </div>
+                                                <div class="d-flex justify-content-between mb-1 fs-13">
+                                                    <span class="text-muted">Achieved Volume:</span>
+                                                    <span class="fw-bold text-dark">Tk <?= number_format($emp['total_volume_achieved'], 2) ?></span>
+                                                </div>
+                                                <div class="d-flex justify-content-between mb-1 fs-13">
+                                                    <span class="text-muted">Units Sold:</span>
+                                                    <span class="fw-bold text-primary"><?= $emp['units_sold'] ?> unit(s)</span>
+                                                </div>
+                                                <div class="d-flex justify-content-between fs-13">
+                                                    <span class="text-muted">Follow Up Rate:</span>
+                                                    <span class="fw-bold"><?= $emp['follow_up_pct'] ?>%</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <p class="text-muted mb-2"><?= htmlspecialchars($emp['level_designation']) ?> | <?= htmlspecialchars($emp['team_name']) ?></p>
-                                        
-                                        <div class="mt-3">
-                                            <div class="d-flex justify-content-between mb-1">
-                                                <span>Total Score:</span>
-                                                <span class="fw-bold"><?= number_format($emp['performance_score'], 2) ?></span>
-                                            </div>
-                                            <div class="d-flex justify-content-between mb-1">
-                                                <span>Total Achieved Volume:</span>
-                                                <span class="fw-bold"><?= number_format($emp['total_volume_achieved'], 2) ?></span>
-                                            </div>
-                                            <div class="d-flex justify-content-between mb-1">
-                                                <span>Follow Up Rate:</span>
-                                                <span class="fw-bold"><?= $emp['follow_up_pct'] ?>%</span>
-                                            </div>
-                                        </div>
+
+                                        <button type="button" class="btn btn-sm btn-outline-primary w-100 fw-semibold view-ranking-breakdown-btn mt-2" 
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#rankingBreakdownModal"
+                                                data-emp="<?= htmlspecialchars(json_encode($emp), ENT_QUOTES, 'UTF-8') ?>">
+                                            <i class="fa-solid fa-chart-line me-1"></i> View Ranking Breakdown
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -178,6 +238,7 @@
                                         <th colspan="2">Visits</th>
                                         <th colspan="3">Sales / Volume</th>
                                         <th rowspan="2">Perf. Score</th>
+                                        <th rowspan="2">Action</th>
                                     </tr>
                                     <tr>
                                         <th>Unit</th>
@@ -217,11 +278,34 @@
                                         <td><?= $emp['visited'] ?></td>
                                         <td><?= $emp['visit_ach_pct'] ?>%</td>
                                         
-                                        <td><?= $emp['units_sold'] ?> (<?= $emp['unit_ach_pct'] ?>%)</td>
+                                        <td>
+                                            <?php if(!empty($emp['units_sold']) && $emp['units_sold'] > 0): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-success fw-bold px-2 py-0 view-sold-units-btn" 
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#soldUnitsModal"
+                                                        data-title="Sold Units Breakdown - <?= htmlspecialchars($emp['member_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-name="<?= htmlspecialchars($emp['member_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-role="<?= htmlspecialchars($emp['level_designation'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars($emp['team_name'], ENT_QUOTES, 'UTF-8') ?>)"
+                                                        data-units="<?= htmlspecialchars(json_encode($emp['sold_units_details'] ?? []), ENT_QUOTES, 'UTF-8') ?>">
+                                                    <i class="fa-solid fa-house-chimney me-1"></i><?= $emp['units_sold'] ?> (<?= $emp['unit_ach_pct'] ?>%)
+                                                </button>
+                                            <?php else: ?>
+                                                <span class="text-muted">0 (0%)</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?= number_format($emp['volume_assigned'], 2) ?></td>
                                         <td><?= number_format($emp['volume_unassigned'], 2) ?></td>
                                         
-                                        <td class="fw-bold"><?= number_format($emp['performance_score'], 2) ?></td>
+                                        <td class="fw-bold text-success"><?= number_format($emp['performance_score'], 2) ?></td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-outline-primary px-2 py-0 view-ranking-breakdown-btn" 
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#rankingBreakdownModal"
+                                                    data-emp="<?= htmlspecialchars(json_encode($emp), ENT_QUOTES, 'UTF-8') ?>" 
+                                                    title="View Score & Activity Breakdown">
+                                                <i class="fa-solid fa-circle-info me-1"></i> Breakdown
+                                            </button>
+                                        </td>
                                     </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -259,12 +343,31 @@
                                         <th>Volume Target</th>
                                         <th>Volume Achieved</th>
                                         <th>Score</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php 
                                     $teams = $monthlyData['teams'] ?? [];
                                     foreach($teams as $t): 
+                                        $teamMembersPayload = [];
+                                        if (!empty($t['members'])) {
+                                            foreach ($t['members'] as $tm) {
+                                                $teamMembersPayload[] = [
+                                                    'rank' => $tm['rank'] ?? '-',
+                                                    'member_name' => $tm['member_name'] ?? '',
+                                                    'level_designation' => $tm['level_designation'] ?? '',
+                                                    'assigned_leads' => $tm['assigned_leads'] ?? 0,
+                                                    'follow_up_pct' => $tm['follow_up_pct'] ?? 0,
+                                                    'contacted_pct' => $tm['contacted_pct'] ?? 0,
+                                                    'visited' => $tm['visited'] ?? 0,
+                                                    'visit_target' => $tm['visit_target'] ?? 0,
+                                                    'units_sold' => $tm['units_sold'] ?? 0,
+                                                    'total_volume_achieved' => $tm['total_volume_achieved'] ?? 0,
+                                                    'performance_score' => $tm['performance_score'] ?? 0
+                                                ];
+                                            }
+                                        }
                                     ?>
                                     <tr class="text-center">
                                         <td><span class="badge bg-info text-dark">#<?= $t['rank'] ?></span></td>
@@ -276,14 +379,45 @@
                                         <td><?= $t['interested'] ?></td>
                                         <td><?= $t['not_interested'] ?></td>
                                         <td><?= $t['visited'] ?> / <?= $t['visit_target'] ?> (<?= $t['visit_ach_pct'] ?>%)</td>
-                                        <td><?= $t['units_sold'] ?></td>
+                                        <td>
+                                            <?php if (!empty($t['units_sold']) && $t['units_sold'] > 0): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-success fw-bold px-2 py-0 view-sold-units-btn" 
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#soldUnitsModal"
+                                                        data-title="Sold Units Breakdown - <?= htmlspecialchars($t['team_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-name="<?= htmlspecialchars($t['team_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-role="Company Team"
+                                                        data-units="<?= htmlspecialchars(json_encode($t['sold_units_details'] ?? []), ENT_QUOTES, 'UTF-8') ?>">
+                                                    <i class="fa-solid fa-building me-1"></i><?= $t['units_sold'] ?> Units
+                                                </button>
+                                            <?php else: ?>
+                                                <span class="text-muted">0</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?= number_format($t['volume_target']) ?></td>
                                         <td class="fw-bold text-success"><?= number_format($t['total_volume_achieved'], 2) ?> (<?= $t['volume_ach_pct'] ?>%)</td>
                                         <td class="fw-bold"><?= number_format($t['performance_score'], 2) ?></td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-info px-2 py-0 view-team-members-btn" 
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#teamMembersBreakdownModal"
+                                                    data-team="<?= htmlspecialchars(json_encode([
+                                                        'team_name' => $t['team_name'],
+                                                        'rank' => $t['rank'],
+                                                        'performance_score' => $t['performance_score'],
+                                                        'total_leads' => $t['total_leads'],
+                                                        'total_volume_achieved' => $t['total_volume_achieved'],
+                                                        'units_sold' => $t['units_sold'],
+                                                        'members' => $teamMembersPayload
+                                                    ]), ENT_QUOTES, 'UTF-8') ?>" 
+                                                    title="View Members Contribution Breakdown">
+                                                <i class="fa-solid fa-eye me-1"></i> View Breakdown
+                                            </button>
+                                        </td>
                                     </tr>
                                     <?php endforeach; ?>
                                     <?php if(empty($teams)): ?>
-                                        <tr><td colspan="13" class="text-center">No team data found</td></tr>
+                                        <tr><td colspan="14" class="text-center">No team data found</td></tr>
                                     <?php endif; ?>
                                 </tbody>
                             </table>
@@ -321,6 +455,7 @@
                                         <th>Visited Today</th>
                                         <th>Units Sold Today</th>
                                         <th>Volume Achieved Today</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -339,12 +474,52 @@
                                         <td><?= $emp['not_interested'] ?></td>
                                         <td><?= $emp['will_visit'] ?></td>
                                         <td><?= $emp['visited'] ?></td>
-                                        <td><?= $emp['units_sold'] ?></td>
+                                        <td>
+                                            <?php if (!empty($emp['units_sold']) && $emp['units_sold'] > 0): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-success fw-bold px-2 py-0 view-sold-units-btn" 
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#soldUnitsModal"
+                                                        data-title="Units Sold Today - <?= htmlspecialchars($emp['member_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-name="<?= htmlspecialchars($emp['member_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-role="<?= htmlspecialchars($emp['level_designation'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars($emp['team_name'], ENT_QUOTES, 'UTF-8') ?>)"
+                                                        data-units="<?= htmlspecialchars(json_encode($emp['sold_units_details'] ?? []), ENT_QUOTES, 'UTF-8') ?>">
+                                                    <i class="fa-solid fa-house-chimney me-1"></i><?= $emp['units_sold'] ?>
+                                                </button>
+                                            <?php else: ?>
+                                                <span class="text-muted">0</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="text-success fw-bold"><?= number_format($emp['total_volume_achieved'], 2) ?></td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-primary px-2 py-0 view-daily-details-btn" 
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#dailyActivityModal"
+                                                    data-daily="<?= htmlspecialchars(json_encode([
+                                                        'member_name' => $emp['member_name'],
+                                                        'level_designation' => $emp['level_designation'],
+                                                        'team_name' => $emp['team_name'],
+                                                        'assigned_leads' => $emp['assigned_leads'],
+                                                        'total_follow_up' => $emp['total_follow_up'],
+                                                        'total_contacted' => $emp['total_contacted'],
+                                                        'total_not_contacted' => $emp['total_not_contacted'],
+                                                        'interested' => $emp['interested'],
+                                                        'not_interested' => $emp['not_interested'],
+                                                        'will_visit' => $emp['will_visit'],
+                                                        'visited' => $emp['visited'],
+                                                        'units_sold' => $emp['units_sold'],
+                                                        'total_volume_achieved' => $emp['total_volume_achieved'],
+                                                        'daily_follow_ups' => $emp['daily_follow_ups'] ?? [],
+                                                        'daily_visits' => $emp['daily_visits'] ?? [],
+                                                        'sold_units_details' => $emp['sold_units_details'] ?? []
+                                                    ]), ENT_QUOTES, 'UTF-8') ?>" 
+                                                    title="View Today's Follow-ups, Contacts, Visits & Sold Units">
+                                                <i class="fa-solid fa-eye me-1"></i> View Activity Details
+                                            </button>
+                                        </td>
                                     </tr>
                                     <?php endforeach; ?>
                                     <?php if(empty($daily)): ?>
-                                        <tr><td colspan="12" class="text-center">No daily activity data found</td></tr>
+                                        <tr><td colspan="13" class="text-center">No daily activity data found</td></tr>
                                     <?php endif; ?>
                                 </tbody>
                             </table>
@@ -382,7 +557,7 @@
                         </div>
 
                         <!-- Top KPI Cards -->
-                        <div class="row g-3 mb-4">
+                        <div class="row  mb-4">
                             <!-- Card 1: Volume -->
                             <div class="col-xxl-3 col-xl-6 col-lg-6 col-md-6">
                                 <div class="card custom-card border-start border-4 border-success shadow-sm h-100 mb-0">
@@ -450,22 +625,22 @@
                             <!-- Card 5: Top #1 Scorecard Performer -->
                             <div class="col-xxl-3 col-xl-12 col-lg-12 col-md-12">
                                 <?php $topP = $scKpis['top_scorer'] ?? null; ?>
-                                <div class="card custom-card text-white shadow-sm h-100 mb-0" style="background: linear-gradient(135deg, #166534 0%, #15803d 100%);">
+                                <div class="card custom-card  shadow-sm h-100 mb-0" style="background: linear-gradient(135deg, #166534 0%, #15803d 100%);">
                                     <div class="card-body">
                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                             <span class="badge bg-warning text-dark fw-bold"><i class="fa-solid fa-crown me-1"></i> #1 Rank Scorecard</span>
                                             <span class="badge bg-light text-dark"><?= $topP['scorecard']['grade'] ?? 'Platinum' ?></span>
                                         </div>
-                                        <h5 class="fw-bold text-white mb-0 mt-2"><?= htmlspecialchars($topP['member_name'] ?? 'N/A') ?></h5>
-                                        <div class="text-white-50 fs-12 mb-2"><?= htmlspecialchars($topP['level_designation'] ?? '') ?> | <?= htmlspecialchars($topP['team_name'] ?? '') ?></div>
+                                        <h5 class="fw-bold  mb-0 mt-2"><?= htmlspecialchars($topP['member_name'] ?? 'N/A') ?></h5>
+                                        <div class="-50 fs-12 mb-2"><?= htmlspecialchars($topP['level_designation'] ?? '') ?> | <?= htmlspecialchars($topP['team_name'] ?? '') ?></div>
                                         <div class="d-flex justify-content-between align-items-end mt-2 pt-2 border-top border-white-20">
                                             <div>
-                                                <div class="fs-11 text-white-50 text-uppercase">Total Score</div>
-                                                <div class="fs-18 fw-bold text-white"><?= number_format($topP['scorecard']['total_score'] ?? 0, 2) ?> / 100</div>
+                                                <div class="fs-11 -50 text-uppercase">Total Score</div>
+                                                <div class="fs-18 fw-bold "><?= number_format($topP['scorecard']['total_score'] ?? 0, 2) ?> / 100</div>
                                             </div>
                                             <div class="text-end">
-                                                <div class="fs-11 text-white-50 text-uppercase">Volume Achieved</div>
-                                                <div class="fs-13 fw-semibold text-white">Tk <?= number_format($topP['total_volume_achieved'] ?? 0, 0) ?></div>
+                                                <div class="fs-11 -50 text-uppercase">Volume Achieved</div>
+                                                <div class="fs-13 fw-semibold ">Tk <?= number_format($topP['total_volume_achieved'] ?? 0, 0) ?></div>
                                             </div>
                                         </div>
                                     </div>
@@ -476,12 +651,12 @@
                         <!-- Calculation Explainer Banner (Collapsible) -->
                         <div class="collapse mb-4" id="scoringFormulaGuide">
                             <div class="card border border-success shadow-sm bg-light">
-                                <div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">
+                                <div class="card-header bg-success  py-2 d-flex justify-content-between align-items-center">
                                     <span class="fw-bold fs-14"><i class="fa-solid fa-square-root-variable me-2"></i>How Calculation Works (8-Pillar Scoring Weights & Formulae)</span>
                                     <span class="badge bg-white text-success fw-bold">Total: 100% Score</span>
                                 </div>
                                 <div class="card-body">
-                                    <div class="row g-3">
+                                    <div class="row ">
                                         <!-- 1 -->
                                         <div class="col-md-3">
                                             <div class="p-3 bg-white border rounded h-100">
@@ -655,7 +830,23 @@
                                         </td>
                                         <td class="fw-bold text-primary bg-primary-transparent"><?= number_format($sc['pillar2_score'] ?? 0, 2) ?></td>
                                         <!-- 3. Units 10% -->
-                                        <td><?= $emp['unit_target'] ?> / <strong><?= $emp['units_sold'] ?></strong></td>
+                                        <td>
+                                            <?= $emp['unit_target'] ?> / 
+                                            <?php if(!empty($emp['units_sold']) && $emp['units_sold'] > 0): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-success fw-bold px-1 py-0 view-sold-units-btn" 
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#soldUnitsModal"
+                                                        data-title="Sold Units Breakdown - <?= htmlspecialchars($emp['member_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-name="<?= htmlspecialchars($emp['member_name'], ENT_QUOTES, 'UTF-8') ?>"
+                                                        data-role="<?= htmlspecialchars($emp['level_designation'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars($emp['team_name'], ENT_QUOTES, 'UTF-8') ?>)"
+                                                        data-units="<?= htmlspecialchars(json_encode($emp['sold_units_details'] ?? []), ENT_QUOTES, 'UTF-8') ?>"
+                                                        title="View Sold Units Breakdown">
+                                                    <?= $emp['units_sold'] ?>
+                                                </button>
+                                            <?php else: ?>
+                                                <strong>0</strong>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="fw-bold text-info bg-info-transparent"><?= number_format($sc['pillar3_score'] ?? 0, 2) ?></td>
                                         <!-- 4. Visits 10% -->
                                         <td><?= $emp['visit_target'] ?> / <strong><?= $emp['visited'] ?></strong></td>
@@ -689,6 +880,8 @@
                                         <!-- Action -->
                                         <td>
                                             <button type="button" class="btn btn-sm btn-icon btn-outline-success view-calc-btn" 
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#scorecardBreakdownModal"
                                                     title="View Step-by-Step Calculation"
                                                     data-scorecard="<?= htmlspecialchars(json_encode($emp), ENT_QUOTES, 'UTF-8') ?>">
                                                 <i class="fa-solid fa-calculator"></i>
@@ -712,21 +905,27 @@
     </div>
 </div>
 
+<style>
+.modal.custom-modal .modal-body {
+    max-height: calc(85vh - 120px);
+    overflow-y: auto;
+}
+</style>
+
 <!-- Scorecard Calculation Breakdown Modal -->
-<div class="modal fade" id="scorecardBreakdownModal" tabindex="-1" aria-labelledby="scorecardModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+<div class="modal custom-modal fade" id="scorecardBreakdownModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content">
-            <div class="modal-header bg-success text-white py-3">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="fa-solid fa-calculator fs-18"></i>
-                    <div>
-                        <h5 class="modal-title text-white fw-bold mb-0" id="modalMemberName">Member Calculation Breakdown</h5>
-                        <small class="text-white-50" id="modalMemberSub">Designation & Team</small>
-                    </div>
-                </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header">
+                <h5 class="modal-title text-success"><i class="fa-solid fa-calculator me-2"></i> <span id="modalMemberName">Member Calculation Breakdown</span></h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
-            <div class="modal-body p-4 bg-light">
+            <div class="modal-body">
+                <div class="mb-3">
+                    <span class="text-muted fs-13" id="modalMemberSub">Designation & Team</span>
+                </div>
                 <!-- Summary Card -->
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-body p-3">
@@ -751,7 +950,330 @@
                     <!-- Dynamic cards injected via JS -->
                 </div>
             </div>
-            <div class="modal-footer bg-white py-2">
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ranking Breakdown Modal -->
+<div class="modal custom-modal fade" id="rankingBreakdownModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-primary"><i class="fa-solid fa-trophy me-2 text-warning"></i> <span id="rbMemberName">Member Ranking Breakdown</span></h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <span class="text-muted fs-13" id="rbMemberSub">Role & Team</span>
+                </div>
+                <!-- Summary Card -->
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-body p-3">
+                        <div class="row align-items-center text-center">
+                            <div class="col-4 border-end">
+                                <div class="text-muted fs-11 text-uppercase fw-semibold">Current Ranking</div>
+                                <div class="fs-22 fw-bold text-primary" id="rbRankBadge">#1</div>
+                            </div>
+                            <div class="col-4 border-end">
+                                <div class="text-muted fs-11 text-uppercase fw-semibold">Overall Performance Score</div>
+                                <div class="fs-22 fw-bold text-success" id="rbTotalScore">0.00%</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-muted fs-11 text-uppercase fw-semibold">Achieved Volume</div>
+                                <div class="fs-16 fw-bold text-dark" id="rbTotalVolume">Tk 0.00</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5 Weighted Scoring Formula Cards -->
+                <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-calculator text-primary me-1"></i> How This Rank Was Achieved (5 Weighted Performance Pillars):</h6>
+                <div class="row g-2 mb-3" id="rbPillarsContainer">
+                    <!-- Dynamic -->
+                </div>
+
+                <!-- Sold Units in Period Section -->
+                <div class="card border shadow-sm mt-3" id="rbSoldUnitsCard">
+                    <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-bold text-success"><i class="fa-solid fa-house-chimney me-1"></i> Sold Units in this Cycle (<span id="rbSoldUnitsCount">0</span>)</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered table-striped mb-0 fs-12 align-middle">
+                                <thead class="table-light text-center">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Project</th>
+                                        <th>Unit / Flat</th>
+                                        <th>Client</th>
+                                        <th>Agreement Val</th>
+                                        <th>Land Share Val</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rbSoldUnitsTbody">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sold Units Breakdown Modal -->
+<div class="modal custom-modal fade" id="soldUnitsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-success"><i class="fa-solid fa-house-chimney me-2"></i> <span id="suModalTitle">Sold Units Breakdown</span></h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <span class="text-muted fs-13" id="suModalSub">Details</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded border shadow-sm mb-3">
+                    <div>
+                        <span class="text-muted fs-12 fw-semibold text-uppercase">Total Units Sold:</span>
+                        <h4 class="mb-0 fw-bold text-primary" id="suTotalUnits">0</h4>
+                    </div>
+                    <div class="text-end">
+                        <span class="text-muted fs-12 fw-semibold text-uppercase">Total Volume Realized:</span>
+                        <h4 class="mb-0 fw-bold text-success" id="suTotalVolume">Tk 0.00</h4>
+                    </div>
+                </div>
+
+                <div class="table-responsive bg-white rounded border shadow-sm">
+                    <table class="table table-hover table-striped align-middle mb-0 text-nowrap">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th>#</th>
+                                <th>Booking Date</th>
+                                <th>Project Name</th>
+                                <th>Unit / Flat No</th>
+                                <th>Size (Sqft)</th>
+                                <th>Client / Lead Name</th>
+                                <th>Client Phone</th>
+                                <th>Agreement Value (Tk)</th>
+                                <th>Land Share Value (Tk)</th>
+                                <th>Effective Volume (Tk)</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suTableBody">
+                            <!-- Dynamic -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Team Members Breakdown Modal -->
+<div class="modal custom-modal fade" id="teamMembersBreakdownModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-info"><i class="fa-solid fa-users me-2"></i> <span id="tbModalTitle">Team Performance Breakdown</span></h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <span class="text-muted fs-13" id="tbModalSub">All Member Contributions</span>
+                </div>
+                <div class="table-responsive bg-white rounded border shadow-sm">
+                    <table class="table table-hover table-striped align-middle mb-0 text-nowrap">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th>Rank</th>
+                                <th>Member Name</th>
+                                <th>Designation</th>
+                                <th>Assigned Leads</th>
+                                <th>Follow-up (%)</th>
+                                <th>Contacted (%)</th>
+                                <th>Visits Done</th>
+                                <th>Units Sold</th>
+                                <th>Volume Achieved (Tk)</th>
+                                <th>Perf Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbTableBody">
+                            <!-- Dynamic -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Daily Activity Drilldown Modal -->
+<div class="modal custom-modal fade" id="dailyActivityModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-primary"><i class="fa-solid fa-calendar-day me-2"></i> <span id="daModalTitle">Daily Activity Details</span></h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <span class="text-muted fs-13" id="daModalSub">Member Activity</span>
+                </div>
+                <!-- Daily Quick KPI cards -->
+                <div class="row g-2 mb-3 text-center">
+                    <div class="col-md-2 col-4">
+                        <div class="bg-light p-2 rounded border shadow-sm">
+                            <span class="text-muted fs-11 text-uppercase fw-semibold">Assigned Today</span>
+                            <h5 class="fw-bold mb-0 text-primary" id="daKpiAssigned">0</h5>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <div class="bg-light p-2 rounded border shadow-sm">
+                            <span class="text-muted fs-11 text-uppercase fw-semibold">Follow-ups Today</span>
+                            <h5 class="fw-bold mb-0 text-dark" id="daKpiFollowUps">0</h5>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <div class="bg-light p-2 rounded border shadow-sm">
+                            <span class="text-muted fs-11 text-uppercase fw-semibold">Contacted Today</span>
+                            <h5 class="fw-bold mb-0 text-success" id="daKpiContacted">0</h5>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <div class="bg-light p-2 rounded border shadow-sm">
+                            <span class="text-muted fs-11 text-uppercase fw-semibold">Not Contacted</span>
+                            <h5 class="fw-bold mb-0 text-danger" id="daKpiNotContacted">0</h5>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <div class="bg-light p-2 rounded border shadow-sm">
+                            <span class="text-muted fs-11 text-uppercase fw-semibold">Visits Today</span>
+                            <h5 class="fw-bold mb-0 text-info" id="daKpiVisits">0</h5>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-4">
+                        <div class="bg-light p-2 rounded border shadow-sm">
+                            <span class="text-muted fs-11 text-uppercase fw-semibold">Units Sold Today</span>
+                            <h5 class="fw-bold mb-0 text-warning" id="daKpiUnits">0</h5>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Tabs -->
+                <ul class="nav nav-pills mb-3 gap-2" id="dailyPillsTab" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active btn-sm" id="pills-fu-tab" data-bs-toggle="pill" data-bs-target="#pills-fu" type="button" role="tab">
+                            <i class="fa-solid fa-phone me-1"></i> Follow-ups & Contact History (<span id="daFuTabCount">0</span>)
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link btn-sm" id="pills-visits-tab" data-bs-toggle="pill" data-bs-target="#pills-visits" type="button" role="tab">
+                            <i class="fa-solid fa-location-dot me-1"></i> Site Visits Today (<span id="daVisitTabCount">0</span>)
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link btn-sm" id="pills-sold-tab" data-bs-toggle="pill" data-bs-target="#pills-sold" type="button" role="tab">
+                            <i class="fa-solid fa-house-chimney me-1"></i> Units Sold Today (<span id="daSoldTabCount">0</span>)
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <!-- Tab 1: Follow-ups -->
+                    <div class="tab-pane fade show active" id="pills-fu" role="tabpanel">
+                        <div class="table-responsive bg-white rounded border shadow-sm">
+                            <table class="table table-hover table-striped align-middle mb-0 fs-12">
+                                <thead class="table-light text-center">
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Lead Name</th>
+                                        <th>Phone</th>
+                                        <th>Project</th>
+                                        <th>Type</th>
+                                        <th>Contacted?</th>
+                                        <th>Status</th>
+                                        <th>Discussion / Notes</th>
+                                        <th>Next Action & Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="daFuTableBody">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Visits -->
+                    <div class="tab-pane fade" id="pills-visits" role="tabpanel">
+                        <div class="table-responsive bg-white rounded border shadow-sm">
+                            <table class="table table-hover table-striped align-middle mb-0 fs-12">
+                                <thead class="table-light text-center">
+                                    <tr>
+                                        <th>Lead / Client Name</th>
+                                        <th>Phone Number</th>
+                                        <th>Project</th>
+                                        <th>Visit Status</th>
+                                        <th>Follow-up Date</th>
+                                        <th>Discussion / Next Plan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="daVisitTableBody">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Units Sold -->
+                    <div class="tab-pane fade" id="pills-sold" role="tabpanel">
+                        <div class="table-responsive bg-white rounded border shadow-sm">
+                            <table class="table table-hover table-striped align-middle mb-0 fs-12">
+                                <thead class="table-light text-center">
+                                    <tr>
+                                        <th>Booking Date</th>
+                                        <th>Project Name</th>
+                                        <th>Unit / Flat</th>
+                                        <th>Size (Sqft)</th>
+                                        <th>Client Name</th>
+                                        <th>Phone</th>
+                                        <th>Agreement Val</th>
+                                        <th>Land Share Val</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="daSoldTableBody">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
@@ -759,164 +1281,512 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // 1. Live Table Search
-    const searchInput = document.getElementById('scorecardTableSearch');
-    if (searchInput) {
-        searchInput.addEventListener('keyup', function() {
-            const filter = this.value.toLowerCase();
-            const rows = document.querySelectorAll('#scorecardDataTable tbody tr');
-            rows.forEach(row => {
-                const text = row.innerText.toLowerCase();
-                row.style.display = text.includes(filter) ? '' : 'none';
-            });
-        });
-    }
+(function() {
+    function initSalesActivityScripts() {
+        if (typeof jQuery === 'undefined' || typeof $ === 'undefined') {
+            setTimeout(initSalesActivityScripts, 40);
+            return;
+        }
 
-    // 2. Scorecard Calculation Breakdown Modal Populator
-    const modalEl = document.getElementById('scorecardBreakdownModal');
-    if (modalEl) {
-        const modal = new bootstrap.Modal(modalEl);
-        document.querySelectorAll('.view-calc-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
+        $(function() {
+            // Helper to get parsed data safely from element or closest container
+            function getElementData(btn, attr) {
+                if (!btn || !btn.length) return null;
+                var raw = btn.attr(attr) || btn.closest('[' + attr + ']').attr(attr);
+                if (!raw) return null;
                 try {
-                    const raw = this.getAttribute('data-scorecard');
-                    if (!raw) return;
-                    const emp = JSON.parse(raw);
-                    const sc = emp.scorecard || {};
-
-                    document.getElementById('modalMemberName').textContent = emp.member_name || 'Member Details';
-                    document.getElementById('modalMemberSub').textContent = (emp.level_designation || '') + ' | ' + (emp.team_name || '');
-                    document.getElementById('modalTotalScore').textContent = (sc.total_score || 0).toFixed(2) + '%';
-                    
-                    const gradeBadge = document.getElementById('modalGradeBadge');
-                    gradeBadge.textContent = sc.grade || 'N/A';
-                    gradeBadge.className = 'badge bg-' + (sc.grade_class || 'success');
-
-                    document.getElementById('modalRankText').textContent = 'Scorecard Rank: #' + (sc.rank || '-');
-
-                    const container = document.getElementById('modalPillarsContainer');
-                    container.innerHTML = `
-                        <!-- 1. Volume Target -->
-                        <div class="col-md-6">
-                            <div class="card border rounded p-3 h-100 bg-white">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="fw-bold text-success fs-13">1. Land Share Revenue (30%)</span>
-                                    <span class="badge bg-success-transparent text-success fw-bold">${(sc.pillar1_score || 0).toFixed(2)} / 30.00</span>
-                                </div>
-                                <div class="fs-12 text-muted mb-2">Target: Tk ${Number(emp.volume_target || 0).toLocaleString()} &bull; Achieved: Tk ${Number(emp.total_volume_achieved || 0).toLocaleString()}</div>
-                                <div class="fs-11 bg-light p-2 rounded border font-monospace">
-                                    (${Number(emp.total_volume_achieved || 0).toLocaleString()} / ${Number(emp.volume_target || 0).toLocaleString()}) × 30% = ${(sc.pillar1_score || 0).toFixed(2)}%
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 2. Value Realization -->
-                        <div class="col-md-6">
-                            <div class="card border rounded p-3 h-100 bg-white">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="fw-bold text-primary fs-13">2. Target vs Achieved Value (20%)</span>
-                                    <span class="badge bg-primary-transparent text-primary fw-bold">${(sc.pillar2_score || 0).toFixed(2)} / 20.00</span>
-                                </div>
-                                <div class="fs-12 text-muted mb-2">Achievement: ${emp.volume_ach_pct || 0}% &bull; Benchmark (Min 20%): <span class="badge ${sc.min_20_met ? 'bg-success' : 'bg-danger'}">${sc.min_20_met ? 'Met' : 'Not Met'}</span></div>
-                                <div class="fs-11 bg-light p-2 rounded border font-monospace">
-                                    (${Number(emp.total_volume_achieved || 0).toLocaleString()} / ${Number(emp.volume_target || 0).toLocaleString()}) × 20% = ${(sc.pillar2_score || 0).toFixed(2)}%
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 3. Units Sold -->
-                        <div class="col-md-6">
-                            <div class="card border rounded p-3 h-100 bg-white">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="fw-bold text-info fs-13">3. No. of Units Sold (10%)</span>
-                                    <span class="badge bg-info-transparent text-info fw-bold">${(sc.pillar3_score || 0).toFixed(2)} / 10.00</span>
-                                </div>
-                                <div class="fs-12 text-muted mb-2">Target Units: ${emp.unit_target || 0} &bull; Units Sold: ${emp.units_sold || 0}</div>
-                                <div class="fs-11 bg-light p-2 rounded border font-monospace">
-                                    (${emp.units_sold || 0} / ${emp.unit_target || 0}) × 10% = ${(sc.pillar3_score || 0).toFixed(2)}%
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 4. Site Visits -->
-                        <div class="col-md-6">
-                            <div class="card border rounded p-3 h-100 bg-white">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="fw-bold text-dark fs-13">4. Site Visits Completed (10%)</span>
-                                    <span class="badge bg-dark-transparent text-dark fw-bold">${(sc.pillar4_score || 0).toFixed(2)} / 10.00</span>
-                                </div>
-                                <div class="fs-12 text-muted mb-2">Target Visits: ${emp.visit_target || 0} &bull; Visits Done: ${emp.visited || 0}</div>
-                                <div class="fs-11 bg-light p-2 rounded border font-monospace">
-                                    (${emp.visited || 0} / ${emp.visit_target || 0}) × 10% = ${(sc.pillar4_score || 0).toFixed(2)}%
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 5. Sales CVR -->
-                        <div class="col-md-6">
-                            <div class="card border rounded p-3 h-100 bg-white">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="fw-bold text-warning fs-13">5. Sales CVR Conversion Rate (10%)</span>
-                                    <span class="badge bg-warning-transparent text-warning fw-bold">${(sc.pillar5_score || 0).toFixed(2)} / 10.00</span>
-                                </div>
-                                <div class="fs-12 text-muted mb-2">Assigned Leads: ${emp.assigned_leads || 0} &bull; Deals Closed: ${emp.units_sold || 0} &bull; CVR: ${sc.cvr_pct || 0}%</div>
-                                <div class="fs-11 bg-light p-2 rounded border font-monospace">
-                                    CVR ${sc.cvr_pct || 0}% (Min 1.0% Benchmark: ${sc.cvr_min_1_met ? 'Met' : 'Not Met'}) = ${(sc.pillar5_score || 0).toFixed(2)}%
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 6. Connected & Follow-up -->
-                        <div class="col-md-6">
-                            <div class="card border rounded p-3 h-100 bg-white">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="fw-bold text-secondary fs-13">6. Leads Connected & Follow-up (10%)</span>
-                                    <span class="badge bg-secondary-transparent text-secondary fw-bold">${(sc.pillar6_score || 0).toFixed(2)} / 10.00</span>
-                                </div>
-                                <div class="fs-12 text-muted mb-2">Contacted: ${sc.contacted_ratio_pct || 0}% &bull; Followed: ${sc.followed_ratio_pct || 0}%</div>
-                                <div class="fs-11 bg-light p-2 rounded border font-monospace">
-                                    (${sc.contacted_ratio_pct || 0}% × 5%) + (${sc.followed_ratio_pct || 0}% × 5%) = ${(sc.pillar6_score || 0).toFixed(2)}%
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 7. Data Quality -->
-                        <div class="col-md-6">
-                            <div class="card border rounded p-3 h-100 bg-white">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="fw-bold text-danger fs-13">7. Data Quality & Timeliness (5%)</span>
-                                    <span class="badge bg-danger-transparent text-danger fw-bold">${(sc.pillar7_score || 0).toFixed(2)} / 5.00</span>
-                                </div>
-                                <div class="fs-12 text-muted mb-2">Hot / High Prospect: ${sc.quality_leads || 0} (${sc.quality_pct || 0}%)</div>
-                                <div class="fs-11 bg-light p-2 rounded border font-monospace">
-                                    (${sc.quality_leads || 0} / (10% of ${emp.assigned_leads || 0})) × 5% = ${(sc.pillar7_score || 0).toFixed(2)}%
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 8. HR -->
-                        <div class="col-md-6">
-                            <div class="card border rounded p-3 h-100 bg-white">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="fw-bold text-secondary fs-13">8. HR Compliance & Discipline (5%)</span>
-                                    <span class="badge bg-secondary-transparent text-secondary fw-bold">${(sc.pillar8_score || 0).toFixed(2)} / 5.00</span>
-                                </div>
-                                <div class="fs-12 text-muted mb-2">Attendance, CRM updates & Employment Status</div>
-                                <div class="fs-11 bg-light p-2 rounded border font-monospace">
-                                    Standard Active Compliance Score: ${(sc.pillar8_score || 0).toFixed(2)} / 5.00
-                                </div>
-                            </div>
-                        </div>
-                    `;
-
-                    modal.show();
+                    return typeof raw === 'object' ? raw : JSON.parse(raw);
                 } catch(e) {
-                    console.error("Error opening breakdown modal", e);
+                    console.error('Error parsing ' + attr, e, raw);
+                    return null;
                 }
+            }
+
+            // 1. Live Table Search (Target Vs Achievement Tab)
+            $('#scorecardTableSearch').on('keyup', function() {
+                var filter = $(this).val().toLowerCase();
+                $('#scorecardDataTable tbody tr').each(function() {
+                    var text = $(this).text().toLowerCase();
+                    $(this).toggle(text.indexOf(filter) > -1);
+                });
+            });
+
+            // 2. Scorecard Modal Populator
+            function populateScorecardModal(btn) {
+                var emp = getElementData(btn, 'data-scorecard');
+                if (!emp) return;
+                var sc = emp.scorecard || {};
+
+                $('#modalMemberName').text(emp.member_name || 'Member Details');
+                $('#modalMemberSub').text((emp.level_designation || '') + ' | ' + (emp.team_name || ''));
+                $('#modalTotalScore').text((sc.total_score || 0).toFixed(2) + '%');
+                
+                var gradeBadge = $('#modalGradeBadge');
+                gradeBadge.text(sc.grade || 'N/A');
+                gradeBadge.attr('class', 'badge bg-' + (sc.grade_class || 'success'));
+
+                $('#modalRankText').text('Scorecard Rank: #' + (sc.rank || '-'));
+
+                $('#modalPillarsContainer').html(`
+                    <!-- 1. Volume Target -->
+                    <div class="col-md-6">
+                        <div class="card border rounded p-3 h-100 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-success fs-13">1. Land Share Revenue (30%)</span>
+                                <span class="badge bg-success-transparent text-success fw-bold">${(sc.pillar1_score || 0).toFixed(2)} / 30.00</span>
+                            </div>
+                            <div class="fs-12 text-muted mb-2">Target: Tk ${Number(emp.volume_target || 0).toLocaleString()} &bull; Achieved: Tk ${Number(emp.total_volume_achieved || 0).toLocaleString()}</div>
+                            <div class="fs-11 bg-light p-2 rounded border font-monospace">
+                                (${Number(emp.total_volume_achieved || 0).toLocaleString()} / ${Number(emp.volume_target || 0).toLocaleString()}) × 30% = ${(sc.pillar1_score || 0).toFixed(2)}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Value Realization -->
+                    <div class="col-md-6">
+                        <div class="card border rounded p-3 h-100 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-primary fs-13">2. Target vs Achieved Value (20%)</span>
+                                <span class="badge bg-primary-transparent text-primary fw-bold">${(sc.pillar2_score || 0).toFixed(2)} / 20.00</span>
+                            </div>
+                            <div class="fs-12 text-muted mb-2">Achievement: ${emp.volume_ach_pct || 0}% &bull; Benchmark (Min 20%): <span class="badge ${sc.min_20_met ? 'bg-success' : 'bg-danger'}">${sc.min_20_met ? 'Met' : 'Not Met'}</span></div>
+                            <div class="fs-11 bg-light p-2 rounded border font-monospace">
+                                (${Number(emp.total_volume_achieved || 0).toLocaleString()} / ${Number(emp.volume_target || 0).toLocaleString()}) × 20% = ${(sc.pillar2_score || 0).toFixed(2)}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Units Sold -->
+                    <div class="col-md-6">
+                        <div class="card border rounded p-3 h-100 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-info fs-13">3. No. of Units Sold (10%)</span>
+                                <span class="badge bg-info-transparent text-info fw-bold">${(sc.pillar3_score || 0).toFixed(2)} / 10.00</span>
+                            </div>
+                            <div class="fs-12 text-muted mb-2">Target Units: ${emp.unit_target || 0} &bull; Units Sold: ${emp.units_sold || 0}</div>
+                            <div class="fs-11 bg-light p-2 rounded border font-monospace">
+                                (${emp.units_sold || 0} / ${emp.unit_target || 0}) × 10% = ${(sc.pillar3_score || 0).toFixed(2)}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Site Visits -->
+                    <div class="col-md-6">
+                        <div class="card border rounded p-3 h-100 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-dark fs-13">4. Site Visits Completed (10%)</span>
+                                <span class="badge bg-dark-transparent text-dark fw-bold">${(sc.pillar4_score || 0).toFixed(2)} / 10.00</span>
+                            </div>
+                            <div class="fs-12 text-muted mb-2">Target Visits: ${emp.visit_target || 0} &bull; Visits Done: ${emp.visited || 0}</div>
+                            <div class="fs-11 bg-light p-2 rounded border font-monospace">
+                                (${emp.visited || 0} / ${emp.visit_target || 0}) × 10% = ${(sc.pillar4_score || 0).toFixed(2)}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Sales CVR -->
+                    <div class="col-md-6">
+                        <div class="card border rounded p-3 h-100 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-warning fs-13">5. Sales CVR Conversion Rate (10%)</span>
+                                <span class="badge bg-warning-transparent text-warning fw-bold">${(sc.pillar5_score || 0).toFixed(2)} / 10.00</span>
+                            </div>
+                            <div class="fs-12 text-muted mb-2">Assigned Leads: ${emp.assigned_leads || 0} &bull; Deals Closed: ${emp.units_sold || 0} &bull; CVR: ${sc.cvr_pct || 0}%</div>
+                            <div class="fs-11 bg-light p-2 rounded border font-monospace">
+                                CVR ${sc.cvr_pct || 0}% (Min 1.0% Benchmark: ${sc.cvr_min_1_met ? 'Met' : 'Not Met'}) = ${(sc.pillar5_score || 0).toFixed(2)}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. Connected & Follow-up -->
+                    <div class="col-md-6">
+                        <div class="card border rounded p-3 h-100 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-secondary fs-13">6. Leads Connected & Follow-up (10%)</span>
+                                <span class="badge bg-secondary-transparent text-secondary fw-bold">${(sc.pillar6_score || 0).toFixed(2)} / 10.00</span>
+                            </div>
+                            <div class="fs-12 text-muted mb-2">Contacted: ${sc.contacted_ratio_pct || 0}% &bull; Followed: ${sc.followed_ratio_pct || 0}%</div>
+                            <div class="fs-11 bg-light p-2 rounded border font-monospace">
+                                (${sc.contacted_ratio_pct || 0}% × 5%) + (${sc.followed_ratio_pct || 0}% × 5%) = ${(sc.pillar6_score || 0).toFixed(2)}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 7. Data Quality -->
+                    <div class="col-md-6">
+                        <div class="card border rounded p-3 h-100 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-danger fs-13">7. Data Quality & Timeliness (5%)</span>
+                                <span class="badge bg-danger-transparent text-danger fw-bold">${(sc.pillar7_score || 0).toFixed(2)} / 5.00</span>
+                            </div>
+                            <div class="fs-12 text-muted mb-2">Hot / High Prospect: ${sc.quality_leads || 0} (${sc.quality_pct || 0}%)</div>
+                            <div class="fs-11 bg-light p-2 rounded border font-monospace">
+                                (${sc.quality_leads || 0} / (10% of ${emp.assigned_leads || 0})) × 5% = ${(sc.pillar7_score || 0).toFixed(2)}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 8. HR -->
+                    <div class="col-md-6">
+                        <div class="card border rounded p-3 h-100 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-secondary fs-13">8. HR Compliance & Discipline (5%)</span>
+                                <span class="badge bg-secondary-transparent text-secondary fw-bold">${(sc.pillar8_score || 0).toFixed(2)} / 5.00</span>
+                            </div>
+                            <div class="fs-12 text-muted mb-2">Attendance, CRM updates & Employment Status</div>
+                            <div class="fs-11 bg-light p-2 rounded border font-monospace">
+                                Standard Active Compliance Score: ${(sc.pillar8_score || 0).toFixed(2)} / 5.00
+                            </div>
+                        </div>
+                    </div>
+                `);
+            }
+
+            // 3. Ranking Breakdown Modal Populator
+            function populateRankingBreakdownModal(btn) {
+                var emp = getElementData(btn, 'data-emp');
+                if (!emp) return;
+
+                $('#rbMemberName').text(emp.member_name || 'Member Details');
+                $('#rbMemberSub').text((emp.level_designation || '') + ' • ' + (emp.team_name || ''));
+                $('#rbRankBadge').text('#' + (emp.rank || '-'));
+                $('#rbTotalScore').text(Number(emp.performance_score || 0).toFixed(2) + '%');
+                $('#rbTotalVolume').text('Tk ' + Number(emp.total_volume_achieved || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+
+                var volAchPct = Number(emp.volume_ach_pct || 0);
+                var volScore = Number((volAchPct * 0.45).toFixed(2));
+                
+                var unitAchPct = Number(emp.unit_ach_pct || 0);
+                var unitScore = Number((unitAchPct * 0.20).toFixed(2));
+                
+                var visitAchPct = Number(emp.visit_ach_pct || 0);
+                var visitScore = Number((visitAchPct * 0.15).toFixed(2));
+
+                var contactedPct = Number(emp.contacted_pct || 0);
+                var contactedScore = Number((contactedPct * 0.10).toFixed(2));
+
+                var followUpPct = Number(emp.follow_up_pct || 0);
+                var followUpScore = Number((followUpPct * 0.10).toFixed(2));
+
+                $('#rbPillarsContainer').html(`
+                    <!-- Pillar 1: Volume 45% -->
+                    <div class="col-md-6">
+                        <div class="card border rounded p-3 h-100 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-success fs-13">1. Sales Volume Achieved (45% Weight)</span>
+                                <span class="badge bg-success-transparent text-success fw-bold">${volScore.toFixed(2)} pts</span>
+                            </div>
+                            <div class="fs-12 text-muted mb-2">Target: Tk ${Number(emp.volume_target || 0).toLocaleString()} &bull; Achieved: Tk ${Number(emp.total_volume_achieved || 0).toLocaleString()} (${volAchPct}%)</div>
+                            <div class="progress progress-xs mb-2">
+                                <div class="progress-bar bg-success" style="width: ${Math.min(100, volAchPct)}%"></div>
+                            </div>
+                            <div class="fs-11 bg-light p-2 rounded border font-monospace">
+                                ${volAchPct}% × 45% = ${volScore.toFixed(2)} points
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pillar 2: Unit 20% -->
+                    <div class="col-md-6">
+                        <div class="card border rounded p-3 h-100 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-primary fs-13">2. Unit Sold Achievement (20% Weight)</span>
+                                <span class="badge bg-primary-transparent text-primary fw-bold">${unitScore.toFixed(2)} pts</span>
+                            </div>
+                            <div class="fs-12 text-muted mb-2">Target: ${emp.unit_target || 0} &bull; Sold: ${emp.units_sold || 0} (${unitAchPct}%)</div>
+                            <div class="progress progress-xs mb-2">
+                                <div class="progress-bar bg-primary" style="width: ${Math.min(100, unitAchPct)}%"></div>
+                            </div>
+                            <div class="fs-11 bg-light p-2 rounded border font-monospace">
+                                ${unitAchPct}% × 20% = ${unitScore.toFixed(2)} points
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pillar 3: Visits 15% -->
+                    <div class="col-md-4">
+                        <div class="card border rounded p-3 h-100 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-info fs-13">3. Site Visits (15%)</span>
+                                <span class="badge bg-info-transparent text-info fw-bold">${visitScore.toFixed(2)} pts</span>
+                            </div>
+                            <div class="fs-12 text-muted mb-2">Visits: ${emp.visited || 0} / Target: ${emp.visit_target || 0} (${visitAchPct}%)</div>
+                            <div class="fs-11 bg-light p-2 rounded border font-monospace">
+                                ${visitAchPct}% × 15% = ${visitScore.toFixed(2)} pts
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pillar 4: Contacted 10% -->
+                    <div class="col-md-4">
+                        <div class="card border rounded p-3 h-100 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-warning fs-13">4. Contacted Rate (10%)</span>
+                                <span class="badge bg-warning-transparent text-warning fw-bold">${contactedScore.toFixed(2)} pts</span>
+                            </div>
+                            <div class="fs-12 text-muted mb-2">Contacted: ${emp.total_contacted || 0} / Followed: ${emp.unique_leads_followed || 0} (${contactedPct}%)</div>
+                            <div class="fs-11 bg-light p-2 rounded border font-monospace">
+                                ${contactedPct}% × 10% = ${contactedScore.toFixed(2)} pts
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pillar 5: Follow Up 10% -->
+                    <div class="col-md-4">
+                        <div class="card border rounded p-3 h-100 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-secondary fs-13">5. Lead Coverage (10%)</span>
+                                <span class="badge bg-secondary-transparent text-secondary fw-bold">${followUpScore.toFixed(2)} pts</span>
+                            </div>
+                            <div class="fs-12 text-muted mb-2">Followed: ${emp.unique_leads_followed || 0} / Assigned: ${emp.assigned_leads || 0} (${followUpPct}%)</div>
+                            <div class="fs-11 bg-light p-2 rounded border font-monospace">
+                                ${followUpPct}% × 10% = ${followUpScore.toFixed(2)} pts
+                            </div>
+                        </div>
+                    </div>
+                `);
+
+                // Sold Units Table
+                var soldUnits = emp.sold_units_details || [];
+                $('#rbSoldUnitsCount').text(soldUnits.length);
+                var tbody = $('#rbSoldUnitsTbody');
+                if (soldUnits.length > 0) {
+                    tbody.html(soldUnits.map(function(u) {
+                        return `
+                            <tr>
+                                <td class="text-center">${u.booking_date || '-'}</td>
+                                <td class="fw-semibold text-primary">${u.project_name || '-'}</td>
+                                <td>${u.unit_label || '-'}</td>
+                                <td>${u.client_name || '-'}<br><small class="text-muted">${u.client_phone || ''}</small></td>
+                                <td class="text-end">Tk ${Number(u.agreement_value || 0).toLocaleString()}</td>
+                                <td class="text-end fw-bold text-success">Tk ${Number(u.land_share_value || 0).toLocaleString()}</td>
+                                <td class="text-center"><span class="badge bg-success-transparent text-success">${u.booking_status || 'Booked'}</span></td>
+                            </tr>
+                        `;
+                    }).join(''));
+                    $('#rbSoldUnitsCard').show();
+                } else {
+                    tbody.html(`<tr><td colspan="7" class="text-center text-muted py-3">No units sold in this period.</td></tr>`);
+                }
+            }
+
+            // 4. Sold Units Modal Populator
+            function populateSoldUnitsModal(btn) {
+                var units = getElementData(btn, 'data-units') || [];
+                var title = btn.attr('data-title') || btn.closest('[data-title]').attr('data-title') || 'Sold Units Breakdown';
+                var name = btn.attr('data-name') || btn.closest('[data-name]').attr('data-name') || '';
+                var role = btn.attr('data-role') || btn.closest('[data-role]').attr('data-role') || '';
+
+                $('#suModalTitle').text(title);
+                $('#suModalSub').text(name + (role ? ' • ' + role : ''));
+                $('#suTotalUnits').text(units.length);
+
+                var totalVol = 0;
+                var tbody = $('#suTableBody');
+                if (units.length > 0) {
+                    tbody.html(units.map(function(u, i) {
+                        var effVal = Number(u.effective_volume || u.land_share_value || u.agreement_value || 0);
+                        totalVol += effVal;
+                        return `
+                            <tr>
+                                <td class="text-center fw-bold">${i + 1}</td>
+                                <td class="text-center">${u.booking_date || '-'}</td>
+                                <td class="fw-bold text-primary">${u.project_name || '-'}</td>
+                                <td class="fw-semibold">${u.unit_label || '-'}</td>
+                                <td class="text-center">${u.sqft || '-'}</td>
+                                <td>${u.client_name || '-'}</td>
+                                <td>${u.client_phone || '-'}</td>
+                                <td class="text-end">Tk ${Number(u.agreement_value || 0).toLocaleString()}</td>
+                                <td class="text-end">Tk ${Number(u.land_share_value || 0).toLocaleString()}</td>
+                                <td class="text-end fw-bold text-success">Tk ${effVal.toLocaleString()}</td>
+                                <td class="text-center"><span class="badge bg-success-transparent text-success">${u.booking_status || 'Booked'}</span></td>
+                            </tr>
+                        `;
+                    }).join(''));
+                } else {
+                    tbody.html(`<tr><td colspan="11" class="text-center text-muted py-4">No units sold records found.</td></tr>`);
+                }
+
+                $('#suTotalVolume').text('Tk ' + totalVol.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            }
+
+            // 5. Team Members Breakdown Modal Populator
+            function populateTeamMembersModal(btn) {
+                var team = getElementData(btn, 'data-team');
+                if (!team) return;
+
+                $('#tbModalTitle').text((team.team_name || '') + ' - Member Contributions');
+                $('#tbModalSub').text('Rank #' + (team.rank || '-') + ' • Score: ' + Number(team.performance_score || 0).toFixed(2) + '% • Volume: Tk ' + Number(team.total_volume_achieved || 0).toLocaleString());
+
+                var members = team.members || [];
+                var tbody = $('#tbTableBody');
+                if (members.length > 0) {
+                    tbody.html(members.map(function(m) {
+                        return `
+                            <tr class="text-center">
+                                <td><span class="badge bg-primary">#${m.rank || '-'}</span></td>
+                                <td class="text-start fw-bold">${m.member_name || '-'}</td>
+                                <td>${m.level_designation || '-'}</td>
+                                <td>${m.assigned_leads || 0}</td>
+                                <td>${m.follow_up_pct || 0}%</td>
+                                <td>${m.contacted_pct || 0}%</td>
+                                <td>${m.visited || 0} / ${m.visit_target || 0}</td>
+                                <td class="fw-bold ${m.units_sold > 0 ? 'text-success' : 'text-muted'}">${m.units_sold || 0} Units</td>
+                                <td class="text-end fw-bold text-dark">Tk ${Number(m.total_volume_achieved || 0).toLocaleString()}</td>
+                                <td class="fw-bold text-success">${Number(m.performance_score || 0).toFixed(2)}%</td>
+                            </tr>
+                        `;
+                    }).join(''));
+                } else {
+                    tbody.html(`<tr><td colspan="10" class="text-center text-muted py-4">No team member records found.</td></tr>`);
+                }
+            }
+
+            // 6. Daily Activity Drilldown Modal Populator
+            function populateDailyActivityModal(btn) {
+                var daily = getElementData(btn, 'data-daily');
+                if (!daily) return;
+
+                $('#daModalTitle').text((daily.member_name || '') + " - Today's Activity Drilldown");
+                $('#daModalSub').text((daily.level_designation || '') + ' • ' + (daily.team_name || ''));
+
+                // KPIs
+                $('#daKpiAssigned').text(daily.assigned_leads || 0);
+                $('#daKpiFollowUps').text(daily.total_follow_up || 0);
+                $('#daKpiContacted').text(daily.total_contacted || 0);
+                $('#daKpiNotContacted').text(daily.total_not_contacted || 0);
+                $('#daKpiVisits').text(daily.visited || 0);
+                $('#daKpiUnits').text(daily.units_sold || 0);
+
+                // Follow-ups Tab
+                var fuList = daily.daily_follow_ups || [];
+                $('#daFuTabCount').text(fuList.length);
+                var fuTbody = $('#daFuTableBody');
+                if (fuList.length > 0) {
+                    fuTbody.html(fuList.map(function(f) {
+                        return `
+                            <tr>
+                                <td class="text-center fw-semibold text-muted">${f.created_time || '-'}</td>
+                                <td class="fw-bold text-dark">${f.lead_name || '-'}</td>
+                                <td>${f.lead_phone || '-'}</td>
+                                <td><span class="badge bg-primary-transparent text-primary">${f.project_name || '-'}</span></td>
+                                <td>${f.follow_up_type || '-'}</td>
+                                <td class="text-center">
+                                    <span class="badge ${f.is_contacted ? 'bg-success' : 'bg-danger'}">
+                                        ${f.is_contacted ? 'Contacted' : 'Not Contacted'}
+                                    </span>
+                                </td>
+                                <td><span class="badge bg-light text-dark border">${f.lead_status || 'Pending'}</span></td>
+                                <td class="text-wrap" style="max-width: 250px;">${f.discussion_note || '-'}</td>
+                                <td>${f.next_action || '-'}<br><small class="text-muted">${f.next_follow_up_date || ''}</small></td>
+                            </tr>
+                        `;
+                    }).join(''));
+                } else {
+                    fuTbody.html(`<tr><td colspan="9" class="text-center text-muted py-4">No follow-ups recorded for today.</td></tr>`);
+                }
+
+                // Visits Tab
+                var visits = daily.daily_visits || [];
+                $('#daVisitTabCount').text(visits.length);
+                var visitTbody = $('#daVisitTableBody');
+                if (visits.length > 0) {
+                    visitTbody.html(visits.map(function(v) {
+                        return `
+                            <tr>
+                                <td class="fw-bold text-dark">${v.lead_name || '-'}</td>
+                                <td>${v.lead_phone || '-'}</td>
+                                <td class="fw-semibold text-primary">${v.project_name || '-'}</td>
+                                <td class="text-center"><span class="badge ${v.visit_badge || 'bg-info'}">${v.visit_status || 'Visited'}</span></td>
+                                <td class="text-center">${v.next_follow_up_date || '-'}</td>
+                                <td class="text-wrap">${v.notes || '-'}</td>
+                            </tr>
+                        `;
+                    }).join(''));
+                } else {
+                    visitTbody.html(`<tr><td colspan="6" class="text-center text-muted py-4">No site visits recorded for today.</td></tr>`);
+                }
+
+                // Sold Units Tab
+                var soldUnits = daily.sold_units_details || [];
+                $('#daSoldTabCount').text(soldUnits.length);
+                var soldTbody = $('#daSoldTableBody');
+                if (soldUnits.length > 0) {
+                    soldTbody.html(soldUnits.map(function(s) {
+                        return `
+                            <tr>
+                                <td class="text-center">${s.booking_date || '-'}</td>
+                                <td class="fw-bold text-primary">${s.project_name || '-'}</td>
+                                <td>${s.unit_label || '-'}</td>
+                                <td class="text-center">${s.sqft || '-'}</td>
+                                <td class="fw-semibold">${s.client_name || '-'}</td>
+                                <td>${s.client_phone || '-'}</td>
+                                <td class="text-end">Tk ${Number(s.agreement_value || 0).toLocaleString()}</td>
+                                <td class="text-end fw-bold text-success">Tk ${Number(s.land_share_value || 0).toLocaleString()}</td>
+                                <td class="text-center"><span class="badge bg-success-transparent text-success">${s.booking_status || 'Booked'}</span></td>
+                            </tr>
+                        `;
+                    }).join(''));
+                } else {
+                    soldTbody.html(`<tr><td colspan="9" class="text-center text-muted py-4">No units sold recorded for today.</td></tr>`);
+                }
+
+                // Smart Tab Selection: if no followups but has units sold, auto show Units Sold tab!
+                var targetTabId = 'pills-fu-tab';
+                if (fuList.length === 0 && soldUnits.length > 0) {
+                    targetTabId = 'pills-sold-tab';
+                } else if (fuList.length === 0 && visits.length > 0) {
+                    targetTabId = 'pills-visits-tab';
+                }
+                var targetTabBtn = document.getElementById(targetTabId);
+                if (targetTabBtn && typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+                    bootstrap.Tab.getOrCreateInstance(targetTabBtn).show();
+                }
+            }
+
+            // Dual Binding: Bootstrap modal events AND Direct Delegated clicks
+            $('#scorecardBreakdownModal').on('show.bs.modal', function(e) {
+                if (e.relatedTarget) populateScorecardModal($(e.relatedTarget));
+            });
+            $(document).on('click', '.view-calc-btn', function() {
+                populateScorecardModal($(this));
+            });
+
+            $('#rankingBreakdownModal').on('show.bs.modal', function(e) {
+                if (e.relatedTarget) populateRankingBreakdownModal($(e.relatedTarget));
+            });
+            $(document).on('click', '.view-ranking-breakdown-btn', function() {
+                populateRankingBreakdownModal($(this));
+            });
+
+            $('#soldUnitsModal').on('show.bs.modal', function(e) {
+                if (e.relatedTarget) populateSoldUnitsModal($(e.relatedTarget));
+            });
+            $(document).on('click', '.view-sold-units-btn', function() {
+                populateSoldUnitsModal($(this));
+            });
+
+            $('#teamMembersBreakdownModal').on('show.bs.modal', function(e) {
+                if (e.relatedTarget) populateTeamMembersModal($(e.relatedTarget));
+            });
+            $(document).on('click', '.view-team-members-btn', function() {
+                populateTeamMembersModal($(this));
+            });
+
+            $('#dailyActivityModal').on('show.bs.modal', function(e) {
+                if (e.relatedTarget) populateDailyActivityModal($(e.relatedTarget));
+            });
+            $(document).on('click', '.view-daily-details-btn', function() {
+                populateDailyActivityModal($(this));
             });
         });
     }
-});
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSalesActivityScripts);
+    } else {
+        initSalesActivityScripts();
+    }
+})();
 </script>
 <!-- main-content-end -->

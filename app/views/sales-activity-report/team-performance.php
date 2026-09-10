@@ -664,6 +664,19 @@
                 </select>
             </div>
 
+            <!-- Team Filter -->
+            <div class="tp-form-group">
+                <label for="fTeam"><i class="fa-solid fa-users me-1"></i> Team</label>
+                <select name="team_id" id="fTeam" class="tp-input" style="min-width: 160px;">
+                    <option value="">All Teams (Company-Wide)</option>
+                    <?php if (!empty($allTeams)): foreach ($allTeams as $t): ?>
+                        <option value="<?= $t['id'] ?>" <?= (!empty($selectedTeamId) && (int)$selectedTeamId === (int)$t['id']) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($t['name']) ?>
+                        </option>
+                    <?php endforeach; endif; ?>
+                </select>
+            </div>
+
             <!-- Custom Date Range -->
             <div class="tp-form-group">
                 <label for="dateFrom"><i class="fa-regular fa-calendar-check me-1"></i> From Date</label>

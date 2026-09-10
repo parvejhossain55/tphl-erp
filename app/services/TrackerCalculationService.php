@@ -112,7 +112,7 @@ class TrackerCalculationService
     /**
      * Get the visibility scope for a given user
      */
-    public function getVisibilityScope($user)
+    public function getVisibilityScope($user, $filterTeamId = null)
     {
         $roleId = (int)($user['role_id'] ?? 0);
         $teamId = !empty($user['team_id']) ? (int)$user['team_id'] : null;
@@ -134,45 +134,67 @@ class TrackerCalculationService
         // 1. Management, Directors, Super Admins, System Admins, HR
         // (Roles: Super Admin (3), Admin (1), HR (4), Admin & Operation head (20), Admin Operation (32), Chief Officer (33))
         // Or if role_name or username contains 'admin', 'chief', 'director', 'management'
-        if (in_array($roleId, [1, 3, 4, 20, 32, 33])
+        $isGlobalAdmin = (
+            in_array($roleId, [1, 3, 4, 20, 32, 33])
             || str_contains($roleName, 'admin') 
             || str_contains($roleName, 'chief') 
             || str_contains($roleName, 'director')
             || str_contains($roleName, 'management')
-            || str_contains($userName, 'admin')) {
+            || str_contains($userName, 'admin')
+        );
+
+        // 2. Sales Head (Role 9, or role_name contains 'sales team head', 'sales head', or 'head of sales'):
+        // Must ALWAYS oversee all sales teams and all members across the company by default,
+        // even if they have a team_id assigned in employees or users table.
+        $isSalesHead = (
+            $roleId === 9 
+            || str_contains($roleName, 'sales team head') 
+            || str_contains($roleName, 'sales head')
+            || (str_contains($roleName, 'head') && str_contains($roleName, 'sales'))
+        );
+
+        if ($isGlobalAdmin || $isSalesHead) {
+            if (!empty($filterTeamId) && (int)$filterTeamId > 0) {
+                return ['type' => 'TEAM', 'team_id' => (int)$filterTeamId];
+            }
             return ['type' => 'ALL', 'team_id' => null];
         }
 
-        // 2. Sales Leadership: Sales Manager (Role 5), Sales Team Head (Role 9)
-        // If they don't have a specific team assigned, they oversee all sales teams
-        if ((in_array($roleId, [5, 9]) || str_contains($roleName, 'manager') || str_contains($roleName, 'head')) && empty($teamId)) {
+        // 3. Sales Manager (Role 5): If they don't have a specific team assigned, they oversee all sales teams
+        if ((in_array($roleId, [5]) || str_contains($roleName, 'manager')) && empty($teamId)) {
+            if (!empty($filterTeamId) && (int)$filterTeamId > 0) {
+                return ['type' => 'TEAM', 'team_id' => (int)$filterTeamId];
+            }
             return ['type' => 'ALL', 'team_id' => null];
         }
 
-        // 3. Fallback: If user has no employee record (e.g. administrative accounts), show ALL so it doesn't return empty
+        // 4. Fallback: If user has no employee record (e.g. administrative accounts), show ALL so it doesn't return empty
         if (empty($empId) && empty($teamId)) {
+            if (!empty($filterTeamId) && (int)$filterTeamId > 0) {
+                return ['type' => 'TEAM', 'team_id' => (int)$filterTeamId];
+            }
             return ['type' => 'ALL', 'team_id' => null];
         }
 
-        // 4. Team-level scope: Team Leader or Member assigned to a specific team
+        // 5. Team-level scope: Team Leader or Member assigned to a specific team
         if (!empty($teamId)) {
             return ['type' => 'TEAM', 'team_id' => $teamId];
         }
 
-        // 5. Individual Sales Executive without team
+        // 6. Individual Sales Executive without team
         return ['type' => 'SELF', 'user_id' => (int)($user['id'] ?? 0)];
     }
 
     /**
      * Get Tracker Data for the specific month/year or custom range
      */
-    public function getTrackerReport($year, $month, $loggedInUser, $customStart = null, $customEnd = null)
+    public function getTrackerReport($year, $month, $loggedInUser, $customStart = null, $customEnd = null, $filterTeamId = null)
     {
         $dateRange = $this->getDateRange($year, $month, $customStart, $customEnd);
         $start = $dateRange['start'];
         $end = $dateRange['end'];
 
-        $scope = $this->getVisibilityScope($loggedInUser);
+        $scope = $this->getVisibilityScope($loggedInUser, $filterTeamId);
 
         // Build the base condition for employees: only active sales department employees
         $empCondition = "e.department_id = 1 AND LOWER(e.employee_status) = 'active'";
@@ -317,7 +339,8 @@ class TrackerCalculationService
                     'volume_assigned' => 0,
                     'volume_unassigned' => 0,
                     'total_volume_achieved' => 0,
-                    'performance_score' => 0
+                    'performance_score' => 0,
+                    'sold_units_details' => []
                 ];
             }
         }
@@ -462,10 +485,15 @@ class TrackerCalculationService
 
         // 3. Bookings and Sales Volume
         $bkQ = "
-            SELECT b.sales_by_id, b.project_id, b.agreement_value, 
-                   COALESCE(NULLIF(f.land_share_value, 0), b.agreement_value, 0) as land_share_val 
+            SELECT b.id as booking_id, b.sales_by_id, b.project_id, b.flat_id, b.agreement_value, b.booking_date, b.booking_status,
+                   p.name as project_name, f.flat_name, f.floor_no, f.sqft,
+                   COALESCE(NULLIF(f.land_share_value, 0), b.agreement_value, 0) as land_share_val,
+                   COALESCE(NULLIF(l.full_name, ''), NULLIF(l.lead_name, ''), 'N/A') as lead_name,
+                   COALESCE(NULLIF(l.phone, ''), NULLIF(l.phone_number, '')) as lead_phone
             FROM lead_bookings b
             LEFT JOIN flats f ON b.flat_id = f.id
+            LEFT JOIN projects p ON b.project_id = p.id
+            LEFT JOIN leads l ON b.lead_id = l.id
             WHERE b.booking_status IN ('booked', 'completed') 
               AND b.booking_date BETWEEN DATE('$start') AND DATE('$end')
               AND b.sales_by_id IN ($userIds)
@@ -478,11 +506,34 @@ class TrackerCalculationService
                     $employees[$uid]['units_sold']++;
                     
                     $assignedProjects = $employees[$uid]['assigned_project_ids'];
-                    if (!empty($assignedProjects) && in_array($row['project_id'], $assignedProjects)) {
+                    $isAssigned = (!empty($assignedProjects) && in_array($row['project_id'], $assignedProjects));
+                    $effVal = $isAssigned ? (float)$row['agreement_value'] : (float)$row['land_share_val'];
+
+                    if ($isAssigned) {
                         $employees[$uid]['volume_assigned'] += (float)$row['agreement_value'];
                     } else {
                         $employees[$uid]['volume_unassigned'] += (float)$row['land_share_val'];
                     }
+
+                    $unitLabel = trim(($row['floor_no'] ? 'Floor ' . $row['floor_no'] . ', ' : '') . ($row['flat_name'] ?: 'Unit #' . $row['flat_id']));
+                    if (empty($unitLabel)) {
+                        $unitLabel = 'Unit #' . $row['flat_id'];
+                    }
+
+                    $employees[$uid]['sold_units_details'][] = [
+                        'booking_id' => (int)$row['booking_id'],
+                        'booking_date' => $row['booking_date'],
+                        'booking_status' => ucfirst($row['booking_status']),
+                        'project_name' => $row['project_name'] ?: 'Project #' . $row['project_id'],
+                        'unit_label' => $unitLabel,
+                        'sqft' => $row['sqft'] ?: '-',
+                        'client_name' => $row['lead_name'],
+                        'client_phone' => $row['lead_phone'] ?: '-',
+                        'agreement_value' => (float)$row['agreement_value'],
+                        'land_share_value' => (float)$row['land_share_val'],
+                        'effective_volume' => $effVal,
+                        'is_assigned' => $isAssigned
+                    ];
                 }
             }
         }
@@ -726,12 +777,21 @@ class TrackerCalculationService
                     'volume_assigned' => 0,
                     'volume_unassigned' => 0,
                     'total_volume_achieved' => 0,
-                    'performance_score' => 0
+                    'performance_score' => 0,
+                    'sold_units_details' => []
                 ];
             }
 
             $teams[$tid]['member_count']++;
             $teams[$tid]['members'][] = $emp;
+            if (!empty($emp['sold_units_details'])) {
+                foreach ($emp['sold_units_details'] as $unit) {
+                    $teams[$tid]['sold_units_details'][] = array_merge($unit, [
+                        'member_name' => $emp['member_name'],
+                        'level_designation' => $emp['level_designation']
+                    ]);
+                }
+            }
             $teams[$tid]['total_leads'] += $emp['assigned_leads'];
             $teams[$tid]['total_follow_up_calls'] += $emp['total_follow_up_calls'];
             $teams[$tid]['unique_leads_followed'] += $emp['unique_leads_followed'];
@@ -866,28 +926,28 @@ class TrackerCalculationService
     /**
      * Dedicated Target Vs Achievement Report Service Method
      */
-    public function getTargetVsAchievementReport($year, $month, $loggedInUser)
+    public function getTargetVsAchievementReport($year, $month, $loggedInUser, $filterTeamId = null)
     {
-        return $this->getTrackerReport($year, $month, $loggedInUser);
+        return $this->getTrackerReport($year, $month, $loggedInUser, null, null, $filterTeamId);
     }
 
     /**
      * Dedicated Team Performance Report Service Method
      */
-    public function getTeamPerformanceReport($year, $month, $loggedInUser, $customStart = null, $customEnd = null)
+    public function getTeamPerformanceReport($year, $month, $loggedInUser, $customStart = null, $customEnd = null, $filterTeamId = null)
     {
-        return $this->getTrackerReport($year, $month, $loggedInUser, $customStart, $customEnd);
+        return $this->getTrackerReport($year, $month, $loggedInUser, $customStart, $customEnd, $filterTeamId);
     }
     
     /**
      * Daily Report (Dynamic date aggregation)
      */
-    public function getDailyReport($date, $loggedInUser) 
+    public function getDailyReport($date, $loggedInUser, $filterTeamId = null) 
     {
         $year = date('Y', strtotime($date));
         $month = date('m', strtotime($date));
         
-        $scope = $this->getVisibilityScope($loggedInUser);
+        $scope = $this->getVisibilityScope($loggedInUser, $filterTeamId);
         
         $start = date('Y-m-d 00:00:00', strtotime($date));
         $end   = date('Y-m-d 23:59:59', strtotime($date));
@@ -1029,7 +1089,10 @@ class TrackerCalculationService
                     'volume_assigned' => 0,
                     'volume_unassigned' => 0,
                     'total_volume_achieved' => 0,
-                    'performance_score' => 0
+                    'performance_score' => 0,
+                    'daily_follow_ups' => [],
+                    'daily_visits' => [],
+                    'sold_units_details' => []
                 ];
             }
         }
@@ -1066,10 +1129,16 @@ class TrackerCalculationService
 
         // Daily Follow up logic
         $fuQ = "
-            SELECT lead_id, created_by, follow_up_type, lead_status, next_action, next_follow_up_date 
-            FROM lead_follow_ups 
-            WHERE created_at BETWEEN '$start' AND '$end' AND created_by IN ($userIds)
-            ORDER BY created_at ASC
+            SELECT fu.id, fu.lead_id, fu.created_by, fu.follow_up_type, fu.lead_status, fu.next_action, fu.next_follow_up_date,
+                   fu.discussion_note, fu.created_at,
+                   COALESCE(NULLIF(l.full_name, ''), NULLIF(l.lead_name, ''), 'N/A') as lead_name,
+                   COALESCE(NULLIF(l.phone, ''), NULLIF(l.phone_number, '')) as lead_phone,
+                   p.name as project_name
+            FROM lead_follow_ups fu
+            LEFT JOIN leads l ON fu.lead_id = l.id
+            LEFT JOIN projects p ON fu.project_id = p.id
+            WHERE fu.created_at BETWEEN '$start' AND '$end' AND fu.created_by IN ($userIds)
+            ORDER BY fu.created_at ASC
         ";
         $fuRes = $this->db->query($fuQ);
         
@@ -1094,7 +1163,8 @@ class TrackerCalculationService
                 }
                 
                 $invalidTypes = ['Number Off', 'Wrong Number', 'Invalid Number'];
-                if (!in_array($row['follow_up_type'], $invalidTypes)) {
+                $isContacted = !in_array($row['follow_up_type'], $invalidTypes);
+                if ($isContacted) {
                     $leadLatestState[$uid][$lid]['contacted'] = true;
                 }
                 $leadLatestState[$uid][$lid]['latest_status'] = $row['lead_status'];
@@ -1102,13 +1172,44 @@ class TrackerCalculationService
                 $statusLower = strtolower(trim($row['lead_status'] ?? ''));
                 $actionLower = strtolower(trim($row['next_action'] ?? ''));
 
-                if ($statusLower === 'visited' || $actionLower === 'visited') {
+                $isVisited = ($statusLower === 'visited' || $actionLower === 'visited');
+                $isWillVisit = ($actionLower === 'site visit' || $actionLower === 'will visit' || $statusLower === 'will visit');
+
+                if ($isVisited) {
                     $leadLatestState[$uid][$lid]['is_visited'] = true;
                     $leadLatestState[$uid][$lid]['is_will_visit'] = false;
-                } elseif ($actionLower === 'site visit' || $actionLower === 'will visit' || $statusLower === 'will visit') {
+                } elseif ($isWillVisit) {
                     if (!$leadLatestState[$uid][$lid]['is_visited']) {
                         $leadLatestState[$uid][$lid]['is_will_visit'] = true;
                     }
+                }
+
+                // Activity breakdown detail for modal drilldown
+                $employees[$uid]['daily_follow_ups'][] = [
+                    'id' => (int)$row['id'],
+                    'lead_id' => (int)$row['lead_id'],
+                    'lead_name' => $row['lead_name'],
+                    'lead_phone' => $row['lead_phone'] ?: '-',
+                    'project_name' => $row['project_name'] ?: '-',
+                    'follow_up_type' => $row['follow_up_type'],
+                    'lead_status' => $row['lead_status'] ?: 'Pending',
+                    'next_action' => $row['next_action'] ?: '-',
+                    'next_follow_up_date' => $row['next_follow_up_date'] ?: '-',
+                    'discussion_note' => $row['discussion_note'] ?: '-',
+                    'is_contacted' => $isContacted,
+                    'created_time' => date('h:i A', strtotime($row['created_at']))
+                ];
+
+                if ($isVisited || $isWillVisit) {
+                    $employees[$uid]['daily_visits'][] = [
+                        'lead_name' => $row['lead_name'],
+                        'lead_phone' => $row['lead_phone'] ?: '-',
+                        'project_name' => $row['project_name'] ?: 'Site Visit',
+                        'visit_status' => $isVisited ? 'Visited (Completed)' : 'Will Visit (Scheduled)',
+                        'visit_badge' => $isVisited ? 'bg-success' : 'bg-warning',
+                        'next_follow_up_date' => $row['next_follow_up_date'] ?: '-',
+                        'notes' => $row['discussion_note'] ?: '-'
+                    ];
                 }
             }
         }
@@ -1134,10 +1235,15 @@ class TrackerCalculationService
 
         // Daily Bookings
         $bkQ = "
-            SELECT b.sales_by_id, b.project_id, b.agreement_value, 
-                   COALESCE(NULLIF(f.land_share_value, 0), b.agreement_value, 0) as land_share_val 
+            SELECT b.id as booking_id, b.sales_by_id, b.project_id, b.flat_id, b.agreement_value, b.booking_date, b.booking_status,
+                   p.name as project_name, f.flat_name, f.floor_no, f.sqft,
+                   COALESCE(NULLIF(f.land_share_value, 0), b.agreement_value, 0) as land_share_val,
+                   COALESCE(NULLIF(l.full_name, ''), NULLIF(l.lead_name, ''), 'N/A') as lead_name,
+                   COALESCE(NULLIF(l.phone, ''), NULLIF(l.phone_number, '')) as lead_phone
             FROM lead_bookings b
             LEFT JOIN flats f ON b.flat_id = f.id
+            LEFT JOIN projects p ON b.project_id = p.id
+            LEFT JOIN leads l ON b.lead_id = l.id
             WHERE b.booking_status IN ('booked', 'completed') 
               AND b.booking_date BETWEEN DATE('$start') AND DATE('$end')
               AND b.sales_by_id IN ($userIds)
@@ -1149,11 +1255,34 @@ class TrackerCalculationService
                 if (isset($employees[$uid])) {
                     $employees[$uid]['units_sold']++;
                     $assignedProjects = $employees[$uid]['assigned_project_ids'];
-                    if (!empty($assignedProjects) && in_array($row['project_id'], $assignedProjects)) {
+                    $isAssigned = (!empty($assignedProjects) && in_array($row['project_id'], $assignedProjects));
+                    $effVal = $isAssigned ? (float)$row['agreement_value'] : (float)$row['land_share_val'];
+
+                    if ($isAssigned) {
                         $employees[$uid]['volume_assigned'] += (float)$row['agreement_value'];
                     } else {
                         $employees[$uid]['volume_unassigned'] += (float)$row['land_share_val'];
                     }
+
+                    $unitLabel = trim(($row['floor_no'] ? 'Floor ' . $row['floor_no'] . ', ' : '') . ($row['flat_name'] ?: 'Unit #' . $row['flat_id']));
+                    if (empty($unitLabel)) {
+                        $unitLabel = 'Unit #' . $row['flat_id'];
+                    }
+
+                    $employees[$uid]['sold_units_details'][] = [
+                        'booking_id' => (int)$row['booking_id'],
+                        'booking_date' => $row['booking_date'],
+                        'booking_status' => ucfirst($row['booking_status']),
+                        'project_name' => $row['project_name'] ?: 'Project #' . $row['project_id'],
+                        'unit_label' => $unitLabel,
+                        'sqft' => $row['sqft'] ?: '-',
+                        'client_name' => $row['lead_name'],
+                        'client_phone' => $row['lead_phone'] ?: '-',
+                        'agreement_value' => (float)$row['agreement_value'],
+                        'land_share_value' => (float)$row['land_share_val'],
+                        'effective_volume' => $effVal,
+                        'is_assigned' => $isAssigned
+                    ];
                 }
             }
         }
