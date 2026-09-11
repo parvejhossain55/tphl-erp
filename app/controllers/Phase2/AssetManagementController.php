@@ -437,6 +437,15 @@ class AssetManagementController extends Controller
             $filters['restrict_user'] = true;
         }
 
+        // Sync with central approval_requests so DB statuses and approve_roles stay fresh
+        try {
+            require_once dirname(dirname(__DIR__)) . '/models/ApprovalRequest.php';
+            $appModel = new \ApprovalRequest($this->db);
+            $appModel->syncMissingOfficeProcurements();
+        } catch (\Throwable $e) {
+            error_log('Sync office procurement to approval_requests failed: ' . $e->getMessage());
+        }
+
         $requests = $this->model->getExtraPurchases($filters);
 
         $pendingCount = 0;
@@ -486,7 +495,7 @@ class AssetManagementController extends Controller
             $autoOpenRequest = $this->model->findExtraPurchase($viewId);
             if ($autoOpenRequest) {
                 $reqTotal = (float)($autoOpenRequest['total_price'] ?? 0);
-                $isRole20Eligible = ($roleId === 20 && $reqTotal <= 100000);
+                $isRole20Eligible = (in_array($roleId, [20, 32]) && $reqTotal <= 100000);
                 $isCreator = (int)$autoOpenRequest['requested_by'] === $userId;
                 $isReporterBoss = !empty($autoOpenRequest['requester_reporting_boss_id']) && (int)$autoOpenRequest['requester_reporting_boss_id'] === $userId;
 
@@ -497,12 +506,10 @@ class AssetManagementController extends Controller
                         $canApprove = true; $step = 'operations';
                     } elseif ($isPurchaseHead && $autoOpenRequest['operations_status'] === 'approved' && $autoOpenRequest['purchase_head_status'] === 'pending') {
                         $canApprove = true; $step = 'purchase_head';
-                    } elseif (($isQcAudit || $isRole20Eligible) && $autoOpenRequest['purchase_head_status'] === 'approved' && $autoOpenRequest['qc_audit_status'] === 'pending') {
+                    } elseif ($isQcAudit && $autoOpenRequest['purchase_head_status'] === 'approved' && $autoOpenRequest['qc_audit_status'] === 'pending') {
                         $canApprove = true; $step = 'qc_audit';
                     } elseif (($isManagement || $isRole20Eligible) && $autoOpenRequest['qc_audit_status'] === 'approved' && $autoOpenRequest['mgmt_status'] === 'pending') {
                         $canApprove = true; $step = 'mgmt';
-                    } elseif (($isManagement || $isRole20Eligible) && $autoOpenRequest['purchase_head_status'] === 'approved' && ($autoOpenRequest['qc_audit_status'] === 'pending' || $autoOpenRequest['mgmt_status'] === 'pending')) {
-                        $canApprove = true; $step = ($autoOpenRequest['qc_audit_status'] === 'pending') ? 'qc_audit' : 'mgmt';
                     }
                 }
                 $autoOpenRequest['can_approve'] = $canApprove;
@@ -644,10 +651,6 @@ class AssetManagementController extends Controller
             }
 
             if ($this->model->approveStep($id, $step, $status, $userId, $note, $document)) {
-                if ($status === 'approved' && in_array($roleId, [1, 3, 20]) && $step === 'qc_audit') {
-                    $this->model->approveStep($id, 'mgmt', 'approved', $userId, $note ? "Management: " . $note : "Approved");
-                    $step = 'mgmt';
-                }
                 if ($status === 'approved') {
                     try {
                         $updatedRequest = $this->model->findExtraPurchase($id);
@@ -702,14 +705,9 @@ class AssetManagementController extends Controller
 
                 // Sync with central approval_requests
                 try {
-                    $idInt = (int)$id;
-                    $userIdInt = (int)$userId;
-                    if ($status === 'approved') {
-                        $amt = !empty($req['total_price']) ? (float)$req['total_price'] : 0.00;
-                        $this->db->query("UPDATE approval_requests SET status = 'approved', approved_amount = {$amt}, approved_by = {$userIdInt}, approved_at = NOW() WHERE source_table = 'project_extra_assets' AND source_id = {$idInt}");
-                    } elseif ($status === 'rejected') {
-                        $this->db->query("UPDATE approval_requests SET status = 'rejected', approved_by = {$userIdInt}, approved_at = NOW() WHERE source_table = 'project_extra_assets' AND source_id = {$idInt}");
-                    }
+                    require_once dirname(dirname(__DIR__)) . '/models/ApprovalRequest.php';
+                    $appModel = new \ApprovalRequest($this->db);
+                    $appModel->syncMissingOfficeProcurements();
                 } catch (\Throwable $e) {
                     error_log("Failed syncing approval_requests on extra purchase approval: " . $e->getMessage());
                 }

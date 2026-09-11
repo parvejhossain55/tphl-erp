@@ -505,12 +505,14 @@ class Con_VendorPaymentRequestController extends Controller
         $banks = $this->db->query("SELECT id, bank_name, branch_name FROM banks WHERE status = 'active' ORDER BY bank_name")->fetch_all(MYSQLI_ASSOC);
 
         // Fetch extra documents/notes added post-approval
+        $this->model->ensureDocumentsTable();
         $documents = [];
         $stmtDoc = $this->db->prepare("SELECT d.*, u.full_name as uploaded_by_name FROM vendor_payment_request_documents d LEFT JOIN users u ON u.id = d.uploaded_by WHERE d.vendor_payment_request_id = ? ORDER BY d.id ASC");
         if ($stmtDoc) {
             $stmtDoc->bind_param('i', $id);
             $stmtDoc->execute();
             $documents = $stmtDoc->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmtDoc->close();
         }
 
         // Fetch PO related stock for QC verification
@@ -619,15 +621,21 @@ class Con_VendorPaymentRequestController extends Controller
             exit;
         }
 
+        $this->model->ensureDocumentsTable();
+
         $stmt = $this->db->prepare(
             "INSERT INTO vendor_payment_request_documents (vendor_payment_request_id, document_path, note, uploaded_by, created_at) VALUES (?, ?, ?, ?, NOW())"
         );
-        $stmt->bind_param('issi', $id, $documentPath, $note, $userId);
-        
-        if ($stmt->execute()) {
-            setSuccess('Document/Note added successfully.');
+        if ($stmt) {
+            $stmt->bind_param('issi', $id, $documentPath, $note, $userId);
+            if ($stmt->execute()) {
+                setSuccess('Document/Note added successfully.');
+            } else {
+                setError('Failed to add document: ' . $stmt->error);
+            }
+            $stmt->close();
         } else {
-            setError('Failed to add document.');
+            setError('Failed to save document. Database error: ' . $this->db->error);
         }
 
         header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");

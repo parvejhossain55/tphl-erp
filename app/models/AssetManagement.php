@@ -719,11 +719,11 @@ class AssetManagement
                         $conds[] = "(pea.purchase_head_status = 'approved' AND pea.qc_audit_status = 'pending')";
                     }
                     if (!empty($filters['is_management'])) {
-                        $conds[] = "(pea.purchase_head_status = 'approved' AND (pea.qc_audit_status = 'pending' OR pea.mgmt_status = 'pending'))";
+                        $conds[] = "(pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending')";
                     }
                     $roleId = (int)($filters['role_id'] ?? 0);
-                    if ($roleId === 20) {
-                        $conds[] = "(pea.total_price <= 100000 AND pea.purchase_head_status = 'approved' AND (pea.qc_audit_status = 'pending' OR pea.mgmt_status = 'pending'))";
+                    if ($roleId === 20 || $roleId === 32) {
+                        $conds[] = "(pea.total_price <= 100000 AND pea.qc_audit_status = 'approved' AND pea.mgmt_status = 'pending')";
                     }
                     if (!empty($filters['is_accounts'])) {
                         $conds[] = "(pea.mgmt_status = 'approved' AND pea.payment_status = 'unpaid')";

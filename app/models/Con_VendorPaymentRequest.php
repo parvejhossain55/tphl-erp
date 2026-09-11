@@ -8,6 +8,24 @@ class Con_VendorPaymentRequest extends Model
     {
         parent::__construct($db);
         $this->db = $db ?? $GLOBALS['db'];
+        $this->ensureDocumentsTable();
+    }
+
+    /**
+     * Ensure vendor_payment_request_documents table exists
+     */
+    public function ensureDocumentsTable()
+    {
+        $sql = "CREATE TABLE IF NOT EXISTS `vendor_payment_request_documents` (
+            `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            `vendor_payment_request_id` INT UNSIGNED NOT NULL,
+            `document_path` VARCHAR(255) DEFAULT NULL,
+            `note` TEXT DEFAULT NULL,
+            `uploaded_by` INT DEFAULT NULL,
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            KEY `idx_vpr_id` (`vendor_payment_request_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+        @$this->db->query($sql);
     }
 
     // =========================================================================

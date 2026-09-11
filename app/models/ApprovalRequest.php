@@ -1826,7 +1826,7 @@ class ApprovalRequest extends Model
                     $pendingForText = 'Management Approved';
                 }
             } else if ($sourceTable === 'project_extra_assets') {
-                $peaSql = "SELECT payment_status, paid_amount, paid_at, mgmt_status, overall_status FROM project_extra_assets WHERE id = ? LIMIT 1";
+                $peaSql = "SELECT payment_status, paid_amount, paid_at, operations_status, purchase_head_status, qc_audit_status, mgmt_status, overall_status FROM project_extra_assets WHERE id = ? LIMIT 1";
                 $peaStmt = $this->db->prepare($peaSql);
                 if ($peaStmt) {
                     $peaStmt->bind_param("i", $sourceId);
@@ -1834,11 +1834,16 @@ class ApprovalRequest extends Model
                     $peaRow = $peaStmt->get_result()->fetch_assoc();
                     $peaStmt->close();
                     if ($peaRow) {
-                        $peaMgmtStatus = strtolower($peaRow['mgmt_status'] ?? '');
-                        $peaOverall = strtolower($peaRow['overall_status'] ?? '');
-                        $peaPayStatus = strtolower($peaRow['payment_status'] ?? '');
-                        if ($peaPayStatus === 'paid') {
+                        $opStatus = strtolower($peaRow['operations_status'] ?? 'pending');
+                        $phStatus = strtolower($peaRow['purchase_head_status'] ?? 'pending');
+                        $qcStatus = strtolower($peaRow['qc_audit_status'] ?? 'pending');
+                        $peaMgmtStatus = strtolower($peaRow['mgmt_status'] ?? 'pending');
+                        $peaOverall = strtolower($peaRow['overall_status'] ?? 'pending');
+                        $peaPayStatus = strtolower($peaRow['payment_status'] ?? 'unpaid');
+
+                        if ($peaPayStatus === 'paid' || $peaOverall === 'purchased') {
                             $row['status'] = 'approved';
+                            $row['approve_role'] = 'completed';
                             $pendingStageLabel = 'Paid & Settled';
                             $pendingForText = 'Settled';
                         } elseif ($peaMgmtStatus === 'approved') {
@@ -1846,10 +1851,26 @@ class ApprovalRequest extends Model
                             $row['status'] = 'approved';
                             $pendingStageLabel = 'Pending Accounts Payout';
                             $pendingForText = 'Accounts & Finance';
-                        } elseif ($peaMgmtStatus === 'rejected' || $peaOverall === 'rejected') {
+                        } elseif ($peaMgmtStatus === 'rejected' || $peaOverall === 'rejected' || $qcStatus === 'rejected' || $phStatus === 'rejected' || $opStatus === 'rejected') {
                             $row['status'] = 'rejected';
+                            $row['approve_role'] = 'rejected';
                             $pendingStageLabel = 'Rejected';
                             $pendingForText = 'Rejected';
+                        } elseif ($opStatus === 'pending') {
+                            $row['approve_role'] = 'dept_head';
+                            $row['status'] = 'pending';
+                            $pendingStageLabel = 'Pending Dept Head';
+                            $pendingForText = 'Operations / Dept Head';
+                        } elseif ($phStatus === 'pending') {
+                            $row['approve_role'] = 'purchase';
+                            $row['status'] = 'pending';
+                            $pendingStageLabel = 'Pending Purchase Head';
+                            $pendingForText = 'Purchase Team / Head';
+                        } elseif ($qcStatus === 'pending') {
+                            $row['approve_role'] = 'qc';
+                            $row['status'] = 'pending';
+                            $pendingStageLabel = 'Pending QC & Audit';
+                            $pendingForText = 'QC & Internal Audit Head (Role 24)';
                         } else {
                             $row['approve_role'] = 'management';
                             $row['status'] = 'pending';
@@ -1861,7 +1882,7 @@ class ApprovalRequest extends Model
                             $payoutStatus = 'Paid & Settled';
                             $payoutAmount = (float) (!empty($peaRow['paid_amount']) ? $peaRow['paid_amount'] : $row['request_amount']);
                             $payoutDate = $peaRow['paid_at'];
-                        } else if ($row['status'] === 'approved' || $peaRow['mgmt_status'] === 'approved') {
+                        } else if ($row['status'] === 'approved' || $peaMgmtStatus === 'approved') {
                             $payoutStatus = 'Pending Accounts Payout';
                         }
                     }
@@ -2269,11 +2290,13 @@ class ApprovalRequest extends Model
                 
                 if ($row['mgmt_status'] === 'approved') {
                     $status = 'approved';
+                    $approveRole = 'accounts';
                     $approvedAmount = $amount;
                     $approvedBy = !empty($row['mgmt_by']) ? (int)$row['mgmt_by'] : null;
                     $approvedAt = !empty($row['mgmt_at']) ? $row['mgmt_at'] : null;
                 } elseif ($row['mgmt_status'] === 'rejected' || $row['overall_status'] === 'rejected') {
                     $status = 'rejected';
+                    $approveRole = 'management';
                     $approvedAmount = null;
                     $approvedBy = !empty($row['mgmt_by']) ? (int)$row['mgmt_by'] : null;
                     $approvedAt = !empty($row['mgmt_at']) ? $row['mgmt_at'] : null;
@@ -2282,6 +2305,16 @@ class ApprovalRequest extends Model
                     $approvedAmount = null;
                     $approvedBy = null;
                     $approvedAt = null;
+                    
+                    if (($row['operations_status'] ?? 'pending') === 'pending') {
+                        $approveRole = 'dept_head';
+                    } elseif (($row['purchase_head_status'] ?? 'pending') === 'pending') {
+                        $approveRole = 'purchase';
+                    } elseif (($row['qc_audit_status'] ?? 'pending') === 'pending') {
+                        $approveRole = 'qc';
+                    } else {
+                        $approveRole = 'management';
+                    }
                 }
 
                 $approvalNote = !empty($row['mgmt_note']) ? $row['mgmt_note'] : null;
@@ -2296,10 +2329,10 @@ class ApprovalRequest extends Model
                 $stmt = $this->db->prepare("
                     INSERT INTO approval_requests 
                     (department, request_type, title, source_table, source_id, request_amount, approved_amount, requested_by, approve_role, status, approved_by, approved_at, approval_note, meta_data, created_at)
-                    VALUES (?, ?, ?, 'project_extra_assets', ?, ?, ?, ?, 'management', ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, 'project_extra_assets', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if ($stmt) {
-                    $stmt->bind_param("sssiddisissss", $deptName, $requestType, $title, $sourceId, $amount, $approvedAmount, $requestedBy, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                    $stmt->bind_param("sssiddisisssss", $deptName, $requestType, $title, $sourceId, $amount, $approvedAmount, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
                     $stmt->execute();
                     $stmt->close();
                 }
@@ -2311,21 +2344,25 @@ class ApprovalRequest extends Model
             UPDATE approval_requests ar
             INNER JOIN project_extra_assets pea ON (ar.source_table = 'project_extra_assets' AND ar.source_id = pea.id)
             SET ar.status = CASE 
+                    WHEN pea.payment_status = 'paid' OR pea.overall_status = 'purchased' THEN 'approved'
                     WHEN pea.mgmt_status = 'approved' THEN 'approved' 
-                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' THEN 'rejected' 
+                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' THEN 'rejected' 
                     ELSE 'pending' 
+                END,
+                ar.approve_role = CASE
+                    WHEN pea.payment_status = 'paid' OR pea.overall_status = 'purchased' THEN 'completed'
+                    WHEN pea.mgmt_status = 'approved' THEN 'accounts'
+                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' THEN 'management'
+                    WHEN pea.operations_status = 'pending' THEN 'dept_head'
+                    WHEN pea.purchase_head_status = 'pending' THEN 'purchase'
+                    WHEN pea.qc_audit_status = 'pending' THEN 'qc'
+                    ELSE 'management'
                 END,
                 ar.approved_by = pea.mgmt_by,
                 ar.approved_at = pea.mgmt_at,
                 ar.approval_note = pea.mgmt_note,
                 ar.request_amount = pea.total_price,
                 ar.approved_amount = CASE WHEN pea.mgmt_status = 'approved' THEN pea.total_price ELSE ar.approved_amount END
-            WHERE ar.status != CASE 
-                    WHEN pea.mgmt_status = 'approved' THEN 'approved' 
-                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' THEN 'rejected' 
-                    ELSE 'pending' 
-                END
-               OR (ar.approved_by IS NULL AND pea.mgmt_by IS NOT NULL)
         ";
         @$this->db->query($syncSql);
     }

@@ -41,6 +41,33 @@
     // Calculate pending system approval requests count for Management & Accounts badge
     $pendingApprovalCount = 0;
     if (isset($db)) {
+        // Fast self-sync for office procurements so pending QC/Operations/Purchase items are never counted for Management/Role 20
+        @$db->query("
+            UPDATE approval_requests ar
+            INNER JOIN project_extra_assets pea ON (ar.source_table = 'project_extra_assets' AND ar.source_id = pea.id)
+            SET ar.approve_role = CASE
+                    WHEN pea.payment_status = 'paid' OR pea.overall_status = 'purchased' THEN 'completed'
+                    WHEN pea.mgmt_status = 'approved' THEN 'accounts'
+                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' THEN 'management'
+                    WHEN pea.operations_status = 'pending' THEN 'dept_head'
+                    WHEN pea.purchase_head_status = 'pending' THEN 'purchase'
+                    WHEN pea.qc_audit_status = 'pending' THEN 'qc'
+                    ELSE 'management'
+                END,
+                ar.status = CASE
+                    WHEN pea.payment_status = 'paid' OR pea.overall_status = 'purchased' THEN 'approved'
+                    WHEN pea.mgmt_status = 'approved' THEN 'approved' 
+                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' THEN 'rejected' 
+                    ELSE 'pending' 
+                END
+            WHERE ar.status = 'pending' AND (
+                (pea.qc_audit_status = 'pending' AND ar.approve_role != 'qc')
+                OR (pea.purchase_head_status = 'pending' AND ar.approve_role != 'purchase')
+                OR (pea.operations_status = 'pending' AND ar.approve_role != 'dept_head')
+                OR (pea.mgmt_status = 'approved' AND ar.approve_role != 'accounts')
+            )
+        ");
+
         $loggedUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         if (in_array($loggedUserRoleId, [1, 3, 33])) {
             // Full Management: all pending management approvals

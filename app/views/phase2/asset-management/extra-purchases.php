@@ -317,19 +317,17 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         $canApprove = false;
                                         $step = '';
                                         $reqTotal = (float)($r['total_price'] ?? 0);
-                                        $isRole20Eligible = ($roleId === 20 && $reqTotal <= 100000);
+                                        $isRole20Eligible = (in_array($roleId, [20, 32]) && $reqTotal <= 100000);
                                         
                                         if (!$isCreator) {
                                             if (($isOperations || $isReporterBoss) && $r['operations_status'] === 'pending') {
                                                 $canApprove = true; $step = 'operations';
                                             } elseif ($isPurchaseHead && $r['operations_status'] === 'approved' && $r['purchase_head_status'] === 'pending') {
                                                 $canApprove = true; $step = 'purchase_head';
-                                            } elseif (($isQcAudit || $isRole20Eligible) && $r['purchase_head_status'] === 'approved' && $r['qc_audit_status'] === 'pending') {
+                                            } elseif ($isQcAudit && $r['purchase_head_status'] === 'approved' && $r['qc_audit_status'] === 'pending') {
                                                 $canApprove = true; $step = 'qc_audit';
                                             } elseif (($isManagement || $isRole20Eligible) && $r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending') {
                                                 $canApprove = true; $step = 'mgmt';
-                                            } elseif (($isManagement || $isRole20Eligible) && $r['purchase_head_status'] === 'approved' && ($r['qc_audit_status'] === 'pending' || $r['mgmt_status'] === 'pending')) {
-                                                $canApprove = true; $step = ($r['qc_audit_status'] === 'pending') ? 'qc_audit' : 'mgmt';
                                             }
                                         }
                                         
@@ -840,6 +838,7 @@ function formatDate(dateStr) {
 function getNextStep(data) {
     if (data.overall_status === 'rejected') return { text: 'Request was rejected', color: 'danger', icon: 'fa-circle-xmark' };
     if (data.overall_status === 'purchased') return { text: 'Completed — Payment processed & assets registered', color: 'success', icon: 'fa-circle-check' };
+    if (data.operations_status === 'pending') return { text: 'Waiting for Operations / Dept Head approval', color: 'secondary', icon: 'fa-hourglass-half' };
     if (data.purchase_head_status === 'pending') return { text: 'Waiting for Purchase Head approval', color: 'primary', icon: 'fa-hourglass-half' };
     if (data.qc_audit_status === 'pending') return { text: 'Waiting for QC & Internal Audit review', color: 'info', icon: 'fa-hourglass-half' };
     if (data.mgmt_status === 'pending') return { text: 'Waiting for Management approval', color: 'warning', icon: 'fa-hourglass-half' };
