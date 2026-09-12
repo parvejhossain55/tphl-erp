@@ -3,8 +3,8 @@ $page_title = "Leads Page";
 $page = 'My Onboarding Projects';
 $show_breadcrumb = true;
 ?>
-
-<div class="row lead-select align-items-stretch">
+<!-- lead-select -->
+<div class="row  align-items-stretch">
     <div class="desktop-only">
         <form action="" method="get">
             <div class="row  mb-3 align-items-end">

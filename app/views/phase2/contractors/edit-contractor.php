@@ -58,7 +58,7 @@ $show_breadcrumb = true;
 
                 <div class="col-12 text-center mt-4">
                     <button type="submit" class="btn btn-primary px-5">Update Operator</button>
-                    <a href="<?= $GLOBALS['base_url'] ?>/con-operators" class="btn btn-secondary ms-2">Cancel</a>
+                    <a href="<?= $GLOBALS['base_url'] ?>/con-contractors" class="btn btn-secondary ms-2">Cancel</a>
                 </div>
 
             </div>

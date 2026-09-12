@@ -227,6 +227,96 @@ class Lead extends Model
     }
 
 
+    /**
+     * Return known campaign keywords for a project ID
+     */
+    public function getProjectKeywords(int $projectId): array
+    {
+        $map = [
+            6  => ['Maple', 'Mapple'],
+            9  => ['Crown Pavilion', 'Crown Leads'],
+            50 => ['Noble Court'],
+            51 => ['Velvet Heights'],
+            62 => ['TPSC_Commercial'],
+            63 => ['Amberleaf'],
+            5  => ['Legacy Residence'],
+            68 => ['Smart City'],
+            55 => ['Canvas of Happiness', 'Canvas of Happness', 'Canvass'],
+            57 => ['Horizon'],
+            64 => ['Pearl'],
+            67 => ['Lumina'],
+            14 => ['Velinor'],
+            19 => ['Armonia'],
+            16 => ['Ariston'],
+            49 => ['Prestige Heights'],
+            60 => ['Florence'],
+            69 => ['Novus'],
+            70 => ['Zenith Heights'],
+            61 => ['Serenity'],
+            37 => ['Studio Suite 7', 'Studio 7'],
+            38 => ['Studio Suite 6'],
+            41 => ['Studio Suite 5'],
+            42 => ['Studio Suite 4'],
+            15 => ['Studio Suite 3'],
+            39 => ['Studio Suite 2'],
+            40 => ['Studio Suite 1'],
+            43 => ['Sunleaf'],
+            45 => ['Floral Heaven'],
+            46 => ['Green Heaven'],
+            47 => ['Harmony Residence'],
+            48 => ['Glory Garden'],
+            52 => ['Monarch Residence'],
+            53 => ['Orchid Residence'],
+            54 => ['Green Valley'],
+            56 => ['Elite Garden'],
+            58 => ['Azure Residence'],
+            59 => ['Vertex Garden'],
+            65 => ['Green Paradise'],
+            27 => ['Sky Point', 'Skypoint'],
+            17 => ['South Point', 'Southpoint'],
+            21 => ['Dream Palace'],
+            22 => ['Lake View Terrace'],
+            31 => ['Fortune Residence'],
+            32 => ['Luxoria Residence'],
+            33 => ['Aurora View'],
+            34 => ['Southern Residence'],
+            35 => ['Breeze Residence'],
+            36 => ['Urban Residence'],
+            44 => ['Classic Residence'],
+            12 => ['Crown Tower'],
+            28 => ['Majesty Tower'],
+            29 => ['Imperial Tower'],
+            66 => ['TPRC Commercial', 'Royel City Commercial', 'Free Motion'],
+        ];
+
+        return $map[$projectId] ?? [];
+    }
+
+    /**
+     * Build SQL condition for project filtering with fallback to campaign_name keywords
+     */
+    protected function buildProjectFilterClause(int $projectId, string $tablePrefix = 'l.'): array
+    {
+        $keywords = $this->getProjectKeywords($projectId);
+        $clauses = ["{$tablePrefix}project_id = ?"];
+        $params = [$projectId];
+        $types = "i";
+
+        if (!empty($keywords)) {
+            foreach ($keywords as $kw) {
+                $clauses[] = "(({$tablePrefix}project_id IS NULL OR {$tablePrefix}project_id = 0) AND {$tablePrefix}campaign_name LIKE ?)";
+                $params[] = "%" . $kw . "%";
+                $types .= "s";
+            }
+        }
+
+        return [
+            'sql' => " AND (" . implode(" OR ", $clauses) . ")",
+            'params' => $params,
+            'types' => $types
+        ];
+    }
+
     public function countAllWithFilter($year = null, $month = null, $lastAction = null, $roleId = null, $teamId = null, $assigned = null, $assigned_user = null, $date = null, $search = null, $from_date = null, $to_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null)
     {
         $sql = "SELECT COUNT(l.id) AS total_count FROM leads AS l 
@@ -419,14 +509,21 @@ class Lead extends Model
         }
 
         if (!empty($projectId)) {
-            $sql .= " AND l.project_id = ?";
-            $params[] = $projectId;
-            $types .= "i";
+            $projClause = $this->buildProjectFilterClause((int)$projectId, 'l.');
+            $sql .= $projClause['sql'];
+            foreach ($projClause['params'] as $pVal) {
+                $params[] = $pVal;
+            }
+            $types .= $projClause['types'];
         }
         if (!empty($projectCategoryId)) {
-            $sql .= " AND l.project_category_id = ?";
-            $params[] = $projectCategoryId;
+            $sql .= " AND (l.project_category_id = ?" . (!empty($projectId) ? " OR l.project_id = ?" : "") . ")";
+            $params[] = (int)$projectCategoryId;
             $types .= "i";
+            if (!empty($projectId)) {
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
         if (!empty($country)) {
             $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
@@ -703,14 +800,21 @@ class Lead extends Model
 
 
         if (!empty($projectId)) {
-            $sql .= " AND l.project_id = ?";
-            $params[] = $projectId;
-            $types .= "i";
+            $projClause = $this->buildProjectFilterClause((int)$projectId, 'l.');
+            $sql .= $projClause['sql'];
+            foreach ($projClause['params'] as $pVal) {
+                $params[] = $pVal;
+            }
+            $types .= $projClause['types'];
         }
         if (!empty($projectCategoryId)) {
-            $sql .= " AND l.project_category_id = ?";
-            $params[] = $projectCategoryId;
+            $sql .= " AND (l.project_category_id = ?" . (!empty($projectId) ? " OR l.project_id = ?" : "") . ")";
+            $params[] = (int)$projectCategoryId;
             $types .= "i";
+            if (!empty($projectId)) {
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
         if (!empty($country)) {
             $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
@@ -999,14 +1103,21 @@ class Lead extends Model
         }
 
         if (!empty($projectId)) {
-            $sql .= " AND l.project_id = ?";
-            $params[] = (int)$projectId;
-            $types .= "i";
+            $projClause = $this->buildProjectFilterClause((int)$projectId, 'l.');
+            $sql .= $projClause['sql'];
+            foreach ($projClause['params'] as $pVal) {
+                $params[] = $pVal;
+            }
+            $types .= $projClause['types'];
         }
         if (!empty($projectCategoryId)) {
-            $sql .= " AND l.project_category_id = ?";
+            $sql .= " AND (l.project_category_id = ?" . (!empty($projectId) ? " OR l.project_id = ?" : "") . ")";
             $params[] = (int)$projectCategoryId;
             $types .= "i";
+            if (!empty($projectId)) {
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
         if (!empty($country)) {
             $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
@@ -1150,14 +1261,21 @@ class Lead extends Model
         }
 
         if (!empty($projectId)) {
-            $sql .= " AND leads.project_id = ?";
-            $params[] = (int)$projectId;
-            $types .= "i";
+            $projClause = $this->buildProjectFilterClause((int)$projectId, 'leads.');
+            $sql .= $projClause['sql'];
+            foreach ($projClause['params'] as $pVal) {
+                $params[] = $pVal;
+            }
+            $types .= $projClause['types'];
         }
         if (!empty($projectCategoryId)) {
-            $sql .= " AND leads.project_category_id = ?";
+            $sql .= " AND (leads.project_category_id = ?" . (!empty($projectId) ? " OR leads.project_id = ?" : "") . ")";
             $params[] = (int)$projectCategoryId;
             $types .= "i";
+            if (!empty($projectId)) {
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
         if (!empty($country)) {
             $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
@@ -1340,14 +1458,21 @@ class Lead extends Model
         }
 
         if (!empty($projectId)) {
-            $sql .= " AND leads.project_id = ?";
-            $params[] = (int)$projectId;
-            $types .= "i";
+            $projClause = $this->buildProjectFilterClause((int)$projectId, 'leads.');
+            $sql .= $projClause['sql'];
+            foreach ($projClause['params'] as $pVal) {
+                $params[] = $pVal;
+            }
+            $types .= $projClause['types'];
         }
         if (!empty($projectCategoryId)) {
-            $sql .= " AND leads.project_category_id = ?";
+            $sql .= " AND (leads.project_category_id = ?" . (!empty($projectId) ? " OR leads.project_id = ?" : "") . ")";
             $params[] = (int)$projectCategoryId;
             $types .= "i";
+            if (!empty($projectId)) {
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
         if (!empty($country)) {
             $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
@@ -1500,14 +1625,21 @@ class Lead extends Model
         }
 
         if (!empty($projectId)) {
-            $sql .= " AND leads.project_id = ?";
-            $params[] = (int)$projectId;
-            $types .= "i";
+            $projClause = $this->buildProjectFilterClause((int)$projectId, 'leads.');
+            $sql .= $projClause['sql'];
+            foreach ($projClause['params'] as $pVal) {
+                $params[] = $pVal;
+            }
+            $types .= $projClause['types'];
         }
         if (!empty($projectCategoryId)) {
-            $sql .= " AND leads.project_category_id = ?";
+            $sql .= " AND (leads.project_category_id = ?" . (!empty($projectId) ? " OR leads.project_id = ?" : "") . ")";
             $params[] = (int)$projectCategoryId;
             $types .= "i";
+            if (!empty($projectId)) {
+                $params[] = (int)$projectId;
+                $types .= "i";
+            }
         }
         if (!empty($country)) {
             $countryList = is_array($country) ? array_filter($country, fn($val) => trim($val) !== '') : [trim((string)$country)];
@@ -2498,9 +2630,12 @@ class Lead extends Model
         }
 
         if ($projectId) {
-            $sql .= " AND l.project_id = ?";
-            $params[] = $projectId;
-            $types   .= "i";
+            $projClause = $this->buildProjectFilterClause((int)$projectId, 'l.');
+            $sql .= $projClause['sql'];
+            foreach ($projClause['params'] as $pVal) {
+                $params[] = $pVal;
+            }
+            $types   .= $projClause['types'];
         }
 
         if (!empty($platform)) {
@@ -2641,9 +2776,12 @@ class Lead extends Model
         }
 
         if ($projectId) {
-            $sql .= " AND l.project_id = ?";
-            $params[] = $projectId;
-            $types   .= "i";
+            $projClause = $this->buildProjectFilterClause((int)$projectId, 'l.');
+            $sql .= $projClause['sql'];
+            foreach ($projClause['params'] as $pVal) {
+                $params[] = $pVal;
+            }
+            $types   .= $projClause['types'];
         }
 
         if (!empty($platform)) {

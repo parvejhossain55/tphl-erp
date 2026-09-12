@@ -2997,7 +2997,18 @@
                     <?php endif; ?>
 
                     <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
-                    <?php if (hasPermission('Operation manage')): ?>
+                    <?php 
+                    $contractorAllowedRoles = [1, 3, 15, 17, 20, 22, 23, 31, 32];
+                    $userRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+                    $userSecRoleId = (int) ($_SESSION['user']['secondary_role_id'] ?? 0);
+                    $userRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
+                    $isContractorRole = in_array($userRoleId, $contractorAllowedRoles) 
+                        || in_array($userSecRoleId, $contractorAllowedRoles)
+                        || strpos($userRoleName, 'purchase') !== false
+                        || strpos($userRoleName, 'project manager') !== false;
+
+                    if (hasPermission('Operation manage') || $isContractorRole): 
+                    ?>
                         <!-- Module 2: Operators / Contractors -->
                         <li
                             class="slide has-sub <?= isActive(['con-contractors', 'con-contractor-create'], $current_route) ? 'active' : '' ?>">
@@ -3010,7 +3021,7 @@
                             <ul class="sidebar-menu child2" style="display:block;">
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/con-contractors"
-                                        class="sidebar__menu-item <?= isActive('con-contractors', $current_route) ?>">Constractor
+                                        class="sidebar__menu-item <?= isActive('con-contractors', $current_route) ?>">Contractor
                                         List</a>
                                 </li>
                                 <li class="slide">
