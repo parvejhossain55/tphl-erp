@@ -16,15 +16,73 @@ if (stripos($companyName, 'Limited') === false && stripos($companyName, 'Ltd') =
 
 $isCaution = ($letter['letter_type'] === 'caution');
 $isExperience = ($letter['letter_type'] === 'experience');
+$isSalaryCert = ($letter['letter_type'] === 'salary_certificate');
 
 if ($isExperience) {
     $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/Experience Certificate/' . date('M-Y', strtotime($letter['letter_date'])));
+} elseif ($isSalaryCert) {
+    $certMonth = !empty($letter['certificate_month']) ? date('F-Y', strtotime($letter['certificate_month'] . '-01')) : date('F-Y', strtotime($letter['letter_date']));
+    $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/Salary Certificate/' . $certMonth);
 } else {
     $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/' . date('Y', strtotime($letter['letter_date'])) . '/' . str_pad($letter['id'], 4, '0', STR_PAD_LEFT));
 }
 
+if ($isSalaryCert) {
+    if (empty($salaryItems) && !empty($letter['id'])) {
+        $db = $GLOBALS['db'] ?? null;
+        if ($db) {
+            $sRes = $db->query("SELECT * FROM letter_salary_items WHERE letter_id = " . (int)$letter['id'] . " ORDER BY item_type DESC, sort_order ASC");
+            $salaryItems = ['earning' => [], 'deduction' => []];
+            if ($sRes) {
+                while ($sRow = $sRes->fetch_assoc()) {
+                    $salaryItems[$sRow['item_type']][] = $sRow;
+                }
+            }
+        }
+    }
+
+    $empTypeLabel = [
+        'permanent' => 'permanent',
+        'contract' => 'contractual',
+        'director' => 'director',
+        'intern' => 'intern',
+        'remote' => 'remote',
+        'probation' => 'probationary',
+        'management' => 'management',
+    ];
+    $empType = $empTypeLabel[$letter['employee_type'] ?? 'permanent'] ?? 'permanent';
+
+    $isFemale = false;
+    $nameLower = strtolower($rawName);
+    $femaleKeywords = ['ms.', 'mrs.', 'miss', 'khatun', 'begum', 'akter', 'akther', 'sultana', 'jahan', 'nahar', 'parvin', 'nasrin', 'farzana', 'roksana', 'shammi', 'bornali'];
+    foreach ($femaleKeywords as $kw) {
+        if (strpos($nameLower, $kw) !== false) {
+            $isFemale = true;
+            break;
+        }
+    }
+    $herHis = $isFemale ? 'her' : 'his';
+    $sheHe = $isFemale ? 'she' : 'he';
+    $herHim = $isFemale ? 'her' : 'him';
+
+    $startDate = !empty($letter['joining_date']) ? date('d F Y', strtotime($letter['joining_date'])) : (!empty($letter['emp_joining_date']) ? date('d F Y', strtotime($letter['emp_joining_date'])) : 'N/A');
+    $endDate = !empty($letter['effective_date']) ? date('d F Y', strtotime($letter['effective_date'])) : (!empty($letter['emp_resign_date']) ? date('d F Y', strtotime($letter['emp_resign_date'])) : '');
+
+    $periodText = $startDate;
+    if (!empty($endDate)) {
+        $periodText = "from " . $startDate . " to " . $endDate;
+    } else {
+        $periodText = "from " . $startDate . " to present";
+    }
+
+    $purposeText = !empty($letter['purpose']) ? $letter['purpose'] : 'final settlement';
+    if (strtolower($purposeText) === 'personal use') {
+        $purposeText = 'personal use';
+    }
+}
+
 // Ensure non-salary-certificate letters never display salary certificate ref numbers
-if ($letter['letter_type'] !== 'salary_certificate' && !empty($refNum) && stripos($refNum, 'Salary Certificate') !== false) {
+if (!$isSalaryCert && !empty($refNum) && stripos($refNum, 'Salary Certificate') !== false) {
     $refNum = 'TPHL/HR/' . date('Y', strtotime($letter['letter_date'])) . '/' . str_pad($letter['id'], 4, '0', STR_PAD_LEFT);
 }
 
@@ -59,7 +117,7 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
 } elseif (file_exists($baseDir . '/public/assets/images/hrm/hr_signature.png')) {
     $sigUrl = $GLOBALS['base_url'] . '/public/assets/images/hrm/hr_signature.png';
 } else {
-    $dbConn = $GLOBALS['db'] ?? ($this->db ?? null);
+    $dbConn = (isset($this) && isset($this->db)) ? $this->db : ($GLOBALS['db'] ?? null);
     if ($dbConn) {
         $defRes = $dbConn->query("SELECT signature_path FROM hr_signatures WHERE status = 'active' ORDER BY is_default DESC, id DESC LIMIT 1");
         if ($defRes && $row = $defRes->fetch_assoc()) {
@@ -75,7 +133,7 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
 
 <head>
     <meta charset="UTF-8">
-    <title>Official Letter - <?= htmlspecialchars($letter['subject']) ?></title>
+    <title>Official Letter - <?= htmlspecialchars($letter['subject'] ?? 'Letter') ?></title>
     <style>
         @page {
             size: A4 portrait;
@@ -1089,6 +1147,105 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
                     </div>
                 <?php endif; ?>
 
+            <?php elseif ($isSalaryCert): ?>
+                <!-- ═══════════════════ SALARY CERTIFICATE FORMAT ═══════════════════ -->
+                <div class="cert-meta-stacked">
+                    <div class="meta-line"><strong>Ref:</strong> <?= htmlspecialchars($refNum) ?></div>
+                    <div class="meta-line"><strong>Date:</strong> <?= date('d F, Y', strtotime($letter['letter_date'])) ?></div>
+                </div>
+
+                <div class="cert-title-centered">TO WHOM IT MAY CONCERN</div>
+
+                <?php
+                $scBodyData = json_decode($letter['body'] ?? '', true);
+                $hasCustomOpening = !empty($scBodyData['opening']);
+                $hasCustomClosing = !empty($scBodyData['closing']);
+
+                $renderMarkdownText = function ($text) {
+                    $paragraphs = preg_split('/\r\n\r\n|\n\n/', trim($text));
+                    foreach ($paragraphs as $para) {
+                        if (trim($para) !== '') {
+                            $escaped = htmlspecialchars(trim($para));
+                            $withBold = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $escaped);
+                            echo '<p style="margin-bottom: 8px;">' . nl2br($withBold) . '</p>';
+                        }
+                    }
+                };
+                ?>
+
+                <div class="letter-body">
+                    <?php if ($hasCustomOpening): ?>
+                        <?php $renderMarkdownText($scBodyData['opening']); ?>
+                    <?php else: ?>
+                        <p>
+                            This is to certify that <strong><?= htmlspecialchars($rawName) ?></strong> (Employee ID: <?= htmlspecialchars($letter['employee_code']) ?>) was a <?= htmlspecialchars($empType) ?> employee of <strong><?= htmlspecialchars($companyName) ?></strong> and <?= $sheHe ?> was employed as <strong><?= htmlspecialchars($letter['designation_name'] ?? 'N/A') ?></strong> <?= $periodText ?>.
+                        </p>
+                        <p>
+                            According to our records, <?= $herHis ?> monthly salary breakdown was as follows:
+                        </p>
+                    <?php endif; ?>
+
+                    <!-- Salary Table -->
+                    <table class="sc-table" style="width: 100%; border-collapse: collapse; margin: 14px 0 16px; font-size: 12.5px; border: 1px solid #334155;">
+                        <thead>
+                            <tr style="background-color: #f8fafc;">
+                                <th style="width:60%; border: 1px solid #334155; padding: 6px 12px; text-align: center; font-weight: 700;">Earning</th>
+                                <th style="width:40%; border: 1px solid #334155; padding: 6px 12px; text-align: center; font-weight: 700;">Amount (BDT)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php $totalEarning = 0;
+                            if (!empty($salaryItems['earning'])):
+                                foreach ($salaryItems['earning'] as $item):
+                                    $totalEarning += (float) $item['amount']; ?>
+                                    <tr>
+                                        <td style="border: 1px solid #334155; padding: 5px 14px;"><?= htmlspecialchars($item['label']) ?></td>
+                                        <td style="border: 1px solid #334155; padding: 5px 14px; text-align: right;"><?= number_format((float) $item['amount']) ?></td>
+                                    </tr>
+                                <?php endforeach;
+                            endif; ?>
+                            <tr style="background-color: #f8fafc; font-weight: 700; border-top: 2px solid #334155;">
+                                <td style="border: 1px solid #334155; padding: 6px 14px;"><strong>Gross Salary</strong></td>
+                                <td style="border: 1px solid #334155; padding: 6px 14px; text-align: right;">
+                                    <strong><?= number_format((float) ($letter['gross_salary'] ?? $totalEarning)) ?> (BDT)</strong>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <?php if ($hasCustomClosing): ?>
+                        <div style="margin-top: 10px;">
+                            <?php $renderMarkdownText($scBodyData['closing']); ?>
+                        </div>
+                    <?php else: ?>
+                        <p style="margin-top: 10px;">
+                            This certificate is issued upon <?= $herHis ?> request for <?= htmlspecialchars($purposeText) ?> without any liability on the part of this company.
+                        </p>
+                        <p>We wish <?= $herHim ?> all the very best.</p>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Official HR Signoff -->
+                <div class="experience-signoff" style="margin-top: 22px;">
+                    <div class="signoff-closing" style="margin-bottom: 2px;">Sincerely,</div>
+                    <div class="signoff-company" style="margin-bottom: 5px;">For <strong><?= htmlspecialchars($companyName) ?></strong></div>
+                    <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
+                        <div class="sig-img-container" style="height: 48px; margin-bottom: 5px;">
+                            <img src="<?= $sigUrl ?>" alt="Signature" style="height: 45px; max-width: 170px; object-fit: contain;">
+                        </div>
+                    <?php else: ?>
+                        <div class="signoff-spacer sig-img-container" style="height: 40px;"></div>
+                    <?php endif; ?>
+                    <div style="width: 170px; border-top: 1px solid #475569; margin-bottom: 4px;"></div>
+                    <?php if (!empty($letter['signatory_name'])): ?>
+                        <div style="font-weight: 700;"><?= htmlspecialchars($letter['signatory_name']) ?></div>
+                        <?php if (!empty($letter['signatory_title'])): ?>
+                            <div style="color: #475569;"><?= htmlspecialchars($letter['signatory_title']) ?></div>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                    <div class="signoff-dept" style="font-weight: 600; color: #475569; font-size: 12px;">Human Resources Department</div>
+                </div>
+
             <?php else: ?>
                 <!-- ═══════════════════ STANDARD / OTHER LETTER FORMAT ═══════════════════ -->
                 <!-- Reference Number & Date -->
@@ -1116,7 +1273,7 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
                 <!-- Subject Line -->
                 <div class="letter-subject">
                     <span class="subject-text">
-                        <strong>Subject:</strong> <?= htmlspecialchars($letter['subject']) ?>
+                        <strong>Subject:</strong> <?= htmlspecialchars($letter['subject'] ?? '') ?>
                     </span>
                 </div>
 
@@ -1177,8 +1334,8 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
                             <div class="sig-img-container" style="height: 48px; margin-bottom: 5px;"></div>
                         <?php endif; ?>
                         <div class="sign-line"></div>
-                        <span class="signatory-name"><?= htmlspecialchars($letter['signatory_name']) ?></span>
-                        <span class="signatory-title"><?= htmlspecialchars($letter['signatory_title']) ?></span>
+                        <span class="signatory-name"><?= htmlspecialchars($letter['signatory_name'] ?? '') ?></span>
+                        <span class="signatory-title"><?= htmlspecialchars($letter['signatory_title'] ?? '') ?></span>
                         <span class="signatory-dept">Human Resources Department</span>
                     </div>
                 </div>

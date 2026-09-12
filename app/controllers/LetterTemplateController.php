@@ -537,37 +537,34 @@ class LetterTemplateController extends Controller
     public function viewLetter($id)
     {
         $letter = $this->letterModel->find($id);
-
-        if ($letter['letter_type'] === 'salary_certificate') {
-            $salaryItems = $this->letterModel->getSalaryItems((int) $id);
-            $this->view("hrm/letter-templates/salary-certificate-view", [
-                "letter" => $letter,
-                "salaryItems" => $salaryItems,
-            ]);
-        } else {
-            $this->view("hrm/letter-templates/view-letter", ["letter" => $letter]);
+        if (!$letter) {
+            header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
+            exit;
         }
+
+        $salaryItems = ($letter['letter_type'] === 'salary_certificate') ? $this->letterModel->getSalaryItems((int) $id) : [];
+        $this->view("hrm/letter-templates/view-letter", [
+            "letter" => $letter,
+            "salaryItems" => $salaryItems,
+        ]);
     }
 
     // ─── Print a letter ───────────────────────────────────────────────────────
     public function printLetter($id)
     {
         $letter = $this->letterModel->find($id);
-        $fitMode = isset($_GET['fit']) ? trim($_GET['fit']) : null;
-
-        if ($letter['letter_type'] === 'salary_certificate') {
-            $salaryItems = $this->letterModel->getSalaryItems((int) $id);
-            $this->view("hrm/letter-templates/salary-certificate-print", [
-                "letter" => $letter,
-                "salaryItems" => $salaryItems,
-                "fitMode" => $fitMode,
-            ], false);
-        } else {
-            $this->view("hrm/letter-templates/print-letter", [
-                "letter" => $letter,
-                "fitMode" => $fitMode,
-            ], false);
+        if (!$letter) {
+            header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
+            exit;
         }
+
+        $fitMode = isset($_GET['fit']) ? trim($_GET['fit']) : null;
+        $salaryItems = ($letter['letter_type'] === 'salary_certificate') ? $this->letterModel->getSalaryItems((int) $id) : [];
+        $this->view("hrm/letter-templates/print-letter", [
+            "letter" => $letter,
+            "fitMode" => $fitMode,
+            "salaryItems" => $salaryItems,
+        ], false);
     }
 
     // ─── Delete a letter ──────────────────────────────────────────────────────
