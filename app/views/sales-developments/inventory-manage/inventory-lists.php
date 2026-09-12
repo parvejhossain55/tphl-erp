@@ -228,6 +228,11 @@ $show_breadcrumb = false;
                                 <span class="project-badge bg-danger bg-opacity-10 text-light border border-danger border-opacity-25">
                                     <i class="fa-solid fa-lock me-1"></i> Booked: <?= $row['booked_flats'] ?>
                                 </span>
+                                <?php if (!empty($row['sold_flats']) && $row['sold_flats'] > 0): ?>
+                                    <span class="project-badge bg-dark bg-opacity-10 text-light border border-secondary border-opacity-25">
+                                        <i class="fa-solid fa-handshake me-1"></i> Sold: <?= $row['sold_flats'] ?>
+                                    </span>
+                                <?php endif; ?>
                                 <span class="project-badge bg-primary bg-opacity-10 text-light border border-primary border-opacity-25 ms-lg-2">
                                     <i class="fa-solid fa-sack-dollar me-1"></i> Value: <?= format_bdt($row['total_flat_value']) ?> ৳
                                 </span>
@@ -278,13 +283,19 @@ $show_breadcrumb = false;
                                                     <span class="price-tag"><?= format_bdt($flat['price_value']) ?> ৳</span>
                                                 </div>
                                                 
-                                                <?php if(isset($flat['agreement_value']) && $flat['agreement_value'] > 0): ?>
-                                                    <div class="booking-money-tag mt-3 w-100 text-center">
-                                                        <i class="fa-solid fa-money-check-dollar me-1"></i> Booking: <?= format_bdt($flat['agreement_value']) ?> ৳
-                                                    </div>
+                                                <?php if ($flatStatus === 'booked' || $flatStatus === 'sold'): ?>
+                                                    <?php if (isset($flat['agreement_value']) && (float)$flat['agreement_value'] > 0): ?>
+                                                        <div class="booking-money-tag mt-3 w-100 text-center">
+                                                            <i class="fa-solid fa-money-check-dollar me-1"></i> Booking: <?= format_bdt($flat['agreement_value']) ?> ৳
+                                                        </div>
+                                                    <?php else: ?>
+                                                        <div class="booking-money-tag mt-3 w-100 text-center">
+                                                            <i class="fa-solid fa-lock me-1"></i> <?= ucfirst($flatStatus) ?>
+                                                        </div>
+                                                    <?php endif; ?>
                                                 <?php else: ?>
                                                     <div class="text-muted mt-3 fs-13 w-100 text-center py-1 opacity-75">
-                                                        <i class="fa-solid fa-info-circle me-1"></i> Not Yet Booked
+                                                        <i class="fa-solid fa-circle-check me-1"></i> Available for Booking
                                                     </div>
                                                 <?php endif; ?>
                                             </div>
