@@ -352,10 +352,20 @@
 
             document.getElementById('totalSubsidiaryLunch').value = subsidiaryLunch.toFixed(2);
 
+            // Sync with Subsidized Lunch deduction input if present
+            const lunchDeductInp = document.querySelector('input[data-item-name="subsidized lunch"]');
+            if (lunchDeductInp) {
+                if (subsidiaryLunch > 0 || (mealCount > 0 && perMealAmount > 0)) {
+                    lunchDeductInp.value = subsidiaryLunch.toFixed(2);
+                }
+            }
+
             document.querySelectorAll('.earning').forEach(inp => totalEarning += Number(inp.value || 0));
             document.querySelectorAll('.deduction').forEach(inp => totalDeduction += Number(inp.value || 0));
 
-            totalDeduction += subsidiaryLunch;
+            if (!lunchDeductInp && subsidiaryLunch > 0) {
+                totalDeduction += subsidiaryLunch;
+            }
 
             document.getElementById('totalEarningInput').value = totalEarning.toFixed(2);
             document.getElementById('totalDeductionInput').value = totalDeduction.toFixed(2);

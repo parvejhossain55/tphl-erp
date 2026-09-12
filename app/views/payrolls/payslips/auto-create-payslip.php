@@ -304,6 +304,7 @@
                     if (res && res.success) {
                         payslipItems = res.payslip_items || [];
                         employeeDataList = res.employees || [];
+                        populateItemMap();
 
                         if (employeeDataList.length === 0) {
                             tipsoiStatusCard.className = 'card__wrapper mb-25 p-20 border-start border-4 border-danger shadow-sm';
@@ -348,28 +349,37 @@
             houserent: 0.50
         };
 
-        payslipItems.forEach(x => {
-            const name = (x.name || '').toLowerCase();
-            if (name.includes('advance')) itemMap.advance = x.id;
-            else if (name.includes('lunch') || name.includes('meal')) itemMap.lunch = x.id;
-            else if (name.includes('absent') || name.includes('lwp')) itemMap.absent = x.id;
-            else if (name.includes('punctuality')) itemMap.punctuality = x.id;
-            else if (name.includes('overtime')) itemMap.overtime = x.id;
-            else if (name.includes('arrear') && x.type === 'earning') itemMap.arrear = x.id;
-            else if (name.includes('arrear') && x.type === 'deduction') itemMap.arrear_deduct = x.id;
-            else if (name.includes('tax')) itemMap.tax = x.id;
-            else if (name.includes('duty') || name.includes('food') || name.includes('car')) itemMap.duty = x.id;
-            else if (name.includes('recreation')) itemMap.recreation = x.id;
-            else if (name.includes('conveyance')) itemMap.conveyance = x.id;
-            else if (name.includes('medical')) itemMap.medical = x.id;
-            else if (name.includes('house rent')) itemMap.houserent = x.id;
-            else if (name.includes('other')) itemMap.other = x.id;
+        function populateItemMap() {
+            itemMap = {};
+            itemPercents = {
+                recreation: 0.10,
+                conveyance: 0.10,
+                medical: 0.30,
+                houserent: 0.50
+            };
+            payslipItems.forEach(x => {
+                const name = (x.name || '').toLowerCase();
+                if (name.includes('advance')) itemMap.advance = x.id;
+                else if (name.includes('lunch') || name.includes('meal')) itemMap.lunch = x.id;
+                else if (name.includes('absent') || name.includes('lwp')) itemMap.absent = x.id;
+                else if (name.includes('punctuality')) itemMap.punctuality = x.id;
+                else if (name.includes('overtime')) itemMap.overtime = x.id;
+                else if (name.includes('arrear') && x.type === 'earning') itemMap.arrear = x.id;
+                else if (name.includes('arrear') && x.type === 'deduction') itemMap.arrear_deduct = x.id;
+                else if (name.includes('tax')) itemMap.tax = x.id;
+                else if (name.includes('duty') || name.includes('food') || name.includes('car')) itemMap.duty = x.id;
+                else if (name.includes('recreation')) itemMap.recreation = x.id;
+                else if (name.includes('conveyance')) itemMap.conveyance = x.id;
+                else if (name.includes('medical')) itemMap.medical = x.id;
+                else if (name.includes('house rent')) itemMap.houserent = x.id;
+                else if (name.includes('other')) itemMap.other = x.id;
 
-            if (name.includes('recreation') && x.percentage) itemPercents.recreation = parseFloat(x.percentage) / 100;
-            if (name.includes('conveyance') && x.percentage) itemPercents.conveyance = parseFloat(x.percentage) / 100;
-            if (name.includes('medical') && x.percentage) itemPercents.medical = parseFloat(x.percentage) / 100;
-            if (name.includes('house rent') && x.percentage) itemPercents.houserent = parseFloat(x.percentage) / 100;
-        });
+                if (name.includes('recreation') && x.percentage) itemPercents.recreation = parseFloat(x.percentage) / 100;
+                if (name.includes('conveyance') && x.percentage) itemPercents.conveyance = parseFloat(x.percentage) / 100;
+                if (name.includes('medical') && x.percentage) itemPercents.medical = parseFloat(x.percentage) / 100;
+                if (name.includes('house rent') && x.percentage) itemPercents.houserent = parseFloat(x.percentage) / 100;
+            });
+        }
 
         // Render Table Rows
         function renderTableRows() {
