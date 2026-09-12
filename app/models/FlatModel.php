@@ -66,8 +66,8 @@ class FlatModel extends Model
     {
         $sql = $this->db->prepare("
         SELECT 
-            SUM(CASE WHEN is_booked = 1 THEN 1 ELSE 0 END) AS booked,
-            SUM(CASE WHEN is_booked = 0 THEN 1 ELSE 0 END) AS available
+            SUM(CASE WHEN (is_booked = 1 OR status = 'booked') AND status != 'sold' THEN 1 ELSE 0 END) AS booked,
+            SUM(CASE WHEN is_booked = 0 AND status != 'booked' AND status != 'sold' THEN 1 ELSE 0 END) AS available
         FROM flats
         WHERE flats.deleted_at IS NULL
     ");

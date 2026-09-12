@@ -318,7 +318,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
     {
         $sqlQuery = "SELECT COUNT(*) AS onboarded 
                  FROM lead_bookings 
-                 WHERE booking_status = 'booked' 
+                 WHERE booking_status IN ('booked', 'completed') 
                  AND deleted_at IS NULL";
 
         if ($period) {

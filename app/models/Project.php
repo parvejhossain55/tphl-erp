@@ -495,15 +495,14 @@ class Project extends Model
             p.id AS project_id,
             p.name AS project_name,
             COUNT(f.id) AS total_flats,
-            SUM(f.is_booked = 0 AND f.status != 'booked' AND f.status != 'sold') AS available_flats,
-            SUM((f.is_booked = 1 OR f.status = 'booked') AND f.status != 'sold') AS booked_flats,
-            SUM(f.status = 'sold') AS sold_flats,
-            SUM(f.status = 'cancelled') AS cancelled_flats,
-            SUM(f.price_value) AS total_flat_value
+            SUM(CASE WHEN f.id IS NOT NULL AND f.is_booked = 0 AND f.status != 'booked' AND f.status != 'sold' THEN 1 ELSE 0 END) AS available_flats,
+            SUM(CASE WHEN f.id IS NOT NULL AND (f.is_booked = 1 OR f.status = 'booked') AND f.status != 'sold' THEN 1 ELSE 0 END) AS booked_flats,
+            SUM(CASE WHEN f.id IS NOT NULL AND f.status = 'sold' THEN 1 ELSE 0 END) AS sold_flats,
+            SUM(CASE WHEN f.id IS NOT NULL AND f.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_flats,
+            COALESCE(SUM(f.price_value), 0) AS total_flat_value
         FROM projects p
-        LEFT JOIN flats f ON f.project_id = p.id
+        LEFT JOIN flats f ON f.project_id = p.id AND f.deleted_at IS NULL
         WHERE p.deleted_at IS NULL
-        AND f.deleted_at IS NULL 
         GROUP BY p.id
     ");
 
@@ -514,28 +513,34 @@ class Project extends Model
             $projects[$row['project_id']] = $row;
         }
 
-        // 2. Fetch all flats grouped by project
+        // 2. Fetch all flats grouped by project with safely scoped latest booking agreement value
         $stmt2 = $this->db->prepare("
-    SELECT 
-        f.id,
-        f.project_id,
-        f.flat_name,
-        f.sqft,
-        f.bhk,
-        f.price_value,
-        f.is_booked,
-        f.status,
-        CASE 
-            WHEN f.is_booked = 1 OR f.status = 'booked' 
-            THEN lb.agreement_value
-            ELSE NULL
-        END AS agreement_value
-    FROM flats f
-    LEFT JOIN lead_bookings lb 
-        ON lb.flat_id = f.id
+        SELECT 
+            f.id,
+            f.project_id,
+            f.flat_name,
+            f.sqft,
+            f.bhk,
+            f.price_value,
+            f.is_booked,
+            f.status,
+            CASE 
+                WHEN f.is_booked = 1 OR f.status = 'booked' 
+                THEN (
+                    SELECT lb.agreement_value 
+                    FROM lead_bookings lb 
+                    WHERE lb.flat_id = f.id 
+                      AND lb.deleted_at IS NULL 
+                      AND lb.booking_status IN ('booked', 'completed')
+                    ORDER BY lb.id DESC 
+                    LIMIT 1
+                )
+                ELSE NULL
+            END AS agreement_value
+        FROM flats f
         WHERE f.deleted_at IS NULL
-    ORDER BY f.project_id, f.flat_name
-");
+        ORDER BY f.project_id, f.flat_name
+    ");
 
 
         $stmt2->execute();
