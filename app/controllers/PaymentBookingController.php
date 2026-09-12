@@ -477,8 +477,9 @@ class PaymentBookingController extends Controller
                 } else {
                     $stmt = $this->db->prepare("
                         SELECT id FROM projects 
-                        WHERE name = ? 
-                           OR REPLACE(REPLACE(name, '  ', ' '), '  ', ' ') = ? 
+                        WHERE (name = ? 
+                           OR REPLACE(REPLACE(name, '  ', ' '), '  ', ' ') = ?)
+                          AND deleted_at IS NULL
                         LIMIT 1
                     ");
                     $stmt->bind_param("ss", $projectName, $cleanProjectName);
@@ -502,25 +503,38 @@ class PaymentBookingController extends Controller
                 $rowIssues[] = "flat_name is empty";
             } else {
                 if ($projectId) {
-                    $superCleanFlatName = str_replace([' ', '-'], '', $flatName);
-                    $flatCacheKey = $projectId . '_' . $superCleanFlatName;
+                    $flatCacheKey = $projectId . '_' . strtolower(trim($flatName));
                     if (isset($flatsCache[$flatCacheKey])) {
                         $flatId = $flatsCache[$flatCacheKey];
                     } else {
-                        $stmt = $this->db->prepare("
-                            SELECT id FROM flats 
-                            WHERE project_id = ? 
-                              AND (flat_name = ? OR REPLACE(REPLACE(flat_name, '  ', ' '), '  ', ' ') = ? OR REPLACE(REPLACE(flat_name, ' ', ''), '-', '') = ?) 
-                            LIMIT 1
-                        ");
-                        $stmt->bind_param("isss", $projectId, $flatName, $cleanFlatName, $superCleanFlatName);
+                        // 1. Try exact match on active flats first
+                        $stmt = $this->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? AND deleted_at IS NULL LIMIT 1");
+                        $stmt->bind_param("is", $projectId, $flatName);
                         $stmt->execute();
                         $res = $stmt->get_result()->fetch_assoc();
                         if ($res) {
                             $flatId = $res['id'];
                             $flatsCache[$flatCacheKey] = $flatId;
                         } else {
-                            $rowIssues[] = "Flat not found '$flatName' in project '$projectName'";
+                            // 2. Fallback to relaxed / cleaned match on active flats
+                            $superCleanFlatName = str_replace([' ', '-'], '', $flatName);
+                            $stmtLike = $this->db->prepare("
+                                SELECT id FROM flats 
+                                WHERE project_id = ? 
+                                  AND (flat_name = ? OR REPLACE(REPLACE(flat_name, '  ', ' '), '  ', ' ') = ? OR REPLACE(REPLACE(flat_name, ' ', ''), '-', '') = ?) 
+                                  AND deleted_at IS NULL
+                                ORDER BY (flat_name = ?) DESC, id DESC
+                                LIMIT 1
+                            ");
+                            $stmtLike->bind_param("issss", $projectId, $flatName, $cleanFlatName, $superCleanFlatName, $flatName);
+                            $stmtLike->execute();
+                            $resLike = $stmtLike->get_result()->fetch_assoc();
+                            if ($resLike) {
+                                $flatId = $resLike['id'];
+                                $flatsCache[$flatCacheKey] = $flatId;
+                            } else {
+                                $rowIssues[] = "Flat not found '$flatName' in project '$projectName'";
+                            }
                         }
                     }
                 } else {
@@ -537,7 +551,7 @@ class PaymentBookingController extends Controller
                 } else {
                     $placeholders = implode(',', array_fill(0, count($candidateLeadIds), '?'));
                     $types = str_repeat('i', count($candidateLeadIds)) . 'ii';
-                    $query = "SELECT lead_id FROM lead_bookings WHERE lead_id IN ($placeholders) AND project_id = ? AND flat_id = ? LIMIT 1";
+                    $query = "SELECT lead_id FROM lead_bookings WHERE lead_id IN ($placeholders) AND project_id = ? AND flat_id = ? AND deleted_at IS NULL LIMIT 1";
                     $stmt = $this->db->prepare($query);
                     $bindParams = array_merge($candidateLeadIds, [$projectId, $flatId]);
                     $stmt->bind_param($types, ...$bindParams);
@@ -550,7 +564,7 @@ class PaymentBookingController extends Controller
                     }
                 }
 
-                $stmt = $this->db->prepare("SELECT id FROM lead_bookings WHERE lead_id = ? AND project_id = ? AND flat_id = ? LIMIT 1");
+                $stmt = $this->db->prepare("SELECT id FROM lead_bookings WHERE lead_id = ? AND project_id = ? AND flat_id = ? AND deleted_at IS NULL LIMIT 1");
                 $stmt->bind_param("iii", $leadId, $projectId, $flatId);
                 $stmt->execute();
                 $bRes = $stmt->get_result()->fetch_assoc();
@@ -753,93 +767,107 @@ class PaymentBookingController extends Controller
                             $projectId = $projectsCache[$projectName];
                         } else {
                             $stmt = $this->db->prepare("
-                                SELECT id FROM projects 
-                                WHERE name = ? 
-                                   OR REPLACE(REPLACE(name, '  ', ' '), '  ', ' ') = ? 
+                        SELECT id FROM projects 
+                        WHERE (name = ? 
+                           OR REPLACE(REPLACE(name, '  ', ' '), '  ', ' ') = ?)
+                          AND deleted_at IS NULL
+                        LIMIT 1
+                    ");
+                    $stmt->bind_param("ss", $projectName, $cleanProjectName);
+                    $stmt->execute();
+                    $res = $stmt->get_result()->fetch_assoc();
+                    if ($res) {
+                        $projectId = $res['id'];
+                        $projectsCache[$cleanProjectName] = $projectId;
+                        $projectsCache[$projectName] = $projectId;
+                    } else {
+                        $rowIssues[] = "Project not found '$projectName'";
+                    }
+                }
+            }
+
+            // 3. Resolve flat_id
+            $flatName = trim($data['flat_name'] ?? '');
+            $cleanFlatName = preg_replace('/\s+/', ' ', $flatName);
+            $flatId = null;
+            if (empty($flatName)) {
+                $rowIssues[] = "flat_name is empty";
+            } else {
+                if ($projectId) {
+                    $flatCacheKey = $projectId . '_' . strtolower(trim($flatName));
+                    if (isset($flatsCache[$flatCacheKey])) {
+                        $flatId = $flatsCache[$flatCacheKey];
+                    } else {
+                        // 1. Try exact match on active flats first
+                        $stmt = $this->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? AND deleted_at IS NULL LIMIT 1");
+                        $stmt->bind_param("is", $projectId, $flatName);
+                        $stmt->execute();
+                        $res = $stmt->get_result()->fetch_assoc();
+                        if ($res) {
+                            $flatId = $res['id'];
+                            $flatsCache[$flatCacheKey] = $flatId;
+                        } else {
+                            // 2. Fallback to relaxed / cleaned match on active flats
+                            $superCleanFlatName = str_replace([' ', '-'], '', $flatName);
+                            $stmtLike = $this->db->prepare("
+                                SELECT id FROM flats 
+                                WHERE project_id = ? 
+                                  AND (flat_name = ? OR REPLACE(REPLACE(flat_name, '  ', ' '), '  ', ' ') = ? OR REPLACE(REPLACE(flat_name, ' ', ''), '-', '') = ?) 
+                                  AND deleted_at IS NULL
+                                ORDER BY (flat_name = ?) DESC, id DESC
                                 LIMIT 1
                             ");
-                            $stmt->bind_param("ss", $projectName, $cleanProjectName);
-                            $stmt->execute();
-                            $res = $stmt->get_result()->fetch_assoc();
-                            if ($res) {
-                                $projectId = $res['id'];
-                                $projectsCache[$cleanProjectName] = $projectId;
-                                $projectsCache[$projectName] = $projectId;
+                            $stmtLike->bind_param("issss", $projectId, $flatName, $cleanFlatName, $superCleanFlatName, $flatName);
+                            $stmtLike->execute();
+                            $resLike = $stmtLike->get_result()->fetch_assoc();
+                            if ($resLike) {
+                                $flatId = $resLike['id'];
+                                $flatsCache[$flatCacheKey] = $flatId;
                             } else {
-                                $rowIssues[] = "Project not found '$projectName'";
+                                $rowIssues[] = "Flat not found '$flatName' in project '$projectName'";
                             }
                         }
                     }
+                } else {
+                    $rowIssues[] = "Cannot lookup flat — project not resolved";
+                }
+            }
 
-                    // 3. Resolve flat_id
-                    $flatName = trim($data['flat_name'] ?? '');
-                    $cleanFlatName = preg_replace('/\s+/', ' ', $flatName);
-                    $flatId = null;
-                    if (empty($flatName)) {
-                        $rowIssues[] = "flat_name is empty";
+            // 4. Resolve booking_id
+            $bookingId = null;
+            $leadId = null;
+            if (!empty($candidateLeadIds) && $projectId && $flatId) {
+                if (count($candidateLeadIds) === 1) {
+                    $leadId = $candidateLeadIds[0];
+                } else {
+                    $placeholders = implode(',', array_fill(0, count($candidateLeadIds), '?'));
+                    $types = str_repeat('i', count($candidateLeadIds)) . 'ii';
+                    $query = "SELECT lead_id FROM lead_bookings WHERE lead_id IN ($placeholders) AND project_id = ? AND flat_id = ? AND deleted_at IS NULL LIMIT 1";
+                    $stmt = $this->db->prepare($query);
+                    $bindParams = array_merge($candidateLeadIds, [$projectId, $flatId]);
+                    $stmt->bind_param($types, ...$bindParams);
+                    $stmt->execute();
+                    $bRes = $stmt->get_result()->fetch_assoc();
+                    if ($bRes) {
+                        $leadId = (int)$bRes['lead_id'];
                     } else {
-                        if ($projectId) {
-                            $superCleanFlatName = str_replace([' ', '-'], '', $flatName);
-                            $flatCacheKey = $projectId . '_' . $superCleanFlatName;
-                            if (isset($flatsCache[$flatCacheKey])) {
-                                $flatId = $flatsCache[$flatCacheKey];
-                            } else {
-                                $stmt = $this->db->prepare("
-                                    SELECT id FROM flats 
-                                    WHERE project_id = ? 
-                                      AND (flat_name = ? OR REPLACE(REPLACE(flat_name, '  ', ' '), '  ', ' ') = ? OR REPLACE(REPLACE(flat_name, ' ', ''), '-', '') = ?) 
-                                    LIMIT 1
-                                ");
-                                $stmt->bind_param("isss", $projectId, $flatName, $cleanFlatName, $superCleanFlatName);
-                                $stmt->execute();
-                                $res = $stmt->get_result()->fetch_assoc();
-                                if ($res) {
-                                    $flatId = $res['id'];
-                                    $flatsCache[$flatCacheKey] = $flatId;
-                                } else {
-                                    $rowIssues[] = "Flat not found '$flatName' in project '$projectName'";
-                                }
-                            }
-                        } else {
-                            $rowIssues[] = "Cannot lookup flat — project not resolved";
-                        }
+                        $leadId = $candidateLeadIds[0];
                     }
+                }
 
-                    // 4. Resolve booking_id
-                    $bookingId = null;
-                    $leadId = null;
-                    if (!empty($candidateLeadIds) && $projectId && $flatId) {
-                        if (count($candidateLeadIds) === 1) {
-                            $leadId = $candidateLeadIds[0];
-                        } else {
-                            $placeholders = implode(',', array_fill(0, count($candidateLeadIds), '?'));
-                            $types = str_repeat('i', count($candidateLeadIds)) . 'ii';
-                            $query = "SELECT lead_id FROM lead_bookings WHERE lead_id IN ($placeholders) AND project_id = ? AND flat_id = ? LIMIT 1";
-                            $stmt = $this->db->prepare($query);
-                            $bindParams = array_merge($candidateLeadIds, [$projectId, $flatId]);
-                            $stmt->bind_param($types, ...$bindParams);
-                            $stmt->execute();
-                            $bRes = $stmt->get_result()->fetch_assoc();
-                            if ($bRes) {
-                                $leadId = (int)$bRes['lead_id'];
-                            } else {
-                                $leadId = $candidateLeadIds[0];
-                            }
-                        }
-
-                        $stmt = $this->db->prepare("SELECT id FROM lead_bookings WHERE lead_id = ? AND project_id = ? AND flat_id = ? LIMIT 1");
-                        $stmt->bind_param("iii", $leadId, $projectId, $flatId);
-                        $stmt->execute();
-                        $bRes = $stmt->get_result()->fetch_assoc();
-                        
-                        if ($bRes) {
-                            $bookingId = $bRes['id'];
-                        } else {
-                            $rowIssues[] = "Booking not found for this Lead, Project, and Flat";
-                        }
-                    } else {
-                        $rowIssues[] = "Cannot lookup booking — missing lead, project, or flat";
-                    }
+                $stmt = $this->db->prepare("SELECT id FROM lead_bookings WHERE lead_id = ? AND project_id = ? AND flat_id = ? AND deleted_at IS NULL LIMIT 1");
+                $stmt->bind_param("iii", $leadId, $projectId, $flatId);
+                $stmt->execute();
+                $bRes = $stmt->get_result()->fetch_assoc();
+                
+                if ($bRes) {
+                    $bookingId = $bRes['id'];
+                } else {
+                    $rowIssues[] = "Booking not found for this Lead, Project, and Flat";
+                }
+            } else {
+                $rowIssues[] = "Cannot lookup booking — missing lead, project, or flat";
+            }
 
                     // Log details for debugging
                     $debugLogPath = dirname(dirname(__DIR__)) . '/app/logs/import_debug.log';

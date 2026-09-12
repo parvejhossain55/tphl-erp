@@ -282,6 +282,7 @@ return [
     // Controller: Phase2\Con_ContractorController
     // =========================================================================
     'con-contractors' => ['controller' => 'Phase2\Con_ContractorController', 'method' => 'index'],
+    'con-operators' => ['controller' => 'Phase2\Con_ContractorController', 'method' => 'index'],
     'con-contractor-create' => ['controller' => 'Phase2\Con_ContractorController', 'method' => 'create'],
     'con-contractor-store' => ['controller' => 'Phase2\Con_ContractorController', 'method' => 'store'],
     'con-contractor-edit/(\d+)' => ['controller' => 'Phase2\Con_ContractorController', 'method' => 'edit'],

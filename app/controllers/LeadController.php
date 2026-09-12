@@ -371,8 +371,10 @@ class LeadController extends Controller
         }
 
         $userRoleId = $_SESSION['user']['role_id'] ?? null;
+        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
         $userTeamId = $_SESSION['user']['team_id'] ?? null;
         $isCoLeader = isSalesCoLeader();
+        $isManagement = in_array((int)$userRoleId, [1, 3, 33], true) || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
 
         // Block Sales Executives (role 8) who are not co-leaders from fetching lead data via AJAX
         if ($userRoleId === 8 && !$isCoLeader) {
@@ -582,10 +584,25 @@ class LeadController extends Controller
             $row[] = '<span class="bd-badge bg-secondary text-truncate" style="max-width: 150px;"><i class="bi bi-person-check me-1"></i>' . $assignedByStr . '</span>';
 
             $actionHtml = '';
-            if ((isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 33])) || isSalesCoLeader()) {
+            if ((isset($_SESSION['user']['role_id']) && (in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 33]) || $isManagement)) || isSalesCoLeader()) {
                 $fu_count = !empty($followUpCounts[$lead['id']]) ? '<span class="action-badge">' . $followUpCounts[$lead['id']] . '</span>' : '';
                 $bk_count = !empty($bookingCount[$lead['id']]) ? '<span class="action-badge">' . $bookingCount[$lead['id']] . '</span>' : '';
                 $bk_text = !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking';
+
+                $deleteOptionHtml = '';
+                if ($isManagement) {
+                    $leadNameEscaped = htmlspecialchars($lead['full_name'] ?? 'Lead', ENT_QUOTES, 'UTF-8');
+                    $deleteOptionHtml = '
+                            <li>
+                                <a class="dropdown__item removeBtnCust" href="javascript:void(0);"
+                                    data-id="' . $lead['id'] . '"
+                                    data-name="' . $leadNameEscaped . '"
+                                    data-action="lead-delete"
+                                    style="cursor:pointer;">
+                                    <i class="bi bi-trash3 me-2 text-danger"></i> Delete
+                                </a>
+                            </li>';
+                }
 
                 $actionHtml = '
                 <div class="d-flex align-items-center gap-1">
@@ -595,7 +612,8 @@ class LeadController extends Controller
                         <button class="action-dot-btn btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
                         <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
                             <li><a class="dropdown__item" href="' . $base_url . '/edit-lead/' . $lead['id'] . '"><i class="bi bi-pencil-square me-2 text-primary"></i> Edit</a></li>
-                            <li><a class="dropdown__item" href="' . $base_url . '/view-lead/' . $lead['id'] . '"><i class="bi bi-eye me-2 text-success"></i> View</a></li>
+                            <li><a class="dropdown__item" href="' . $base_url . '/view-lead/' . $lead['id'] . '"><i class="bi bi-eye me-2 text-success"></i> View</a></li>'
+                            . $deleteOptionHtml . '
                         </ul>
                     </div>
                 </div>';
@@ -1282,8 +1300,23 @@ class LeadController extends Controller
                 $data['status'] = 'active';
                 $data['visibility'] = $data['visibility'] ?? 'public';
                 $data['team_id'] = (int)$team_id;
-                $data['project_category_id'] = $project_category_id;
-                $data['project_id'] = $project_id ? (int)$project_id : (!empty($data['project_id']) ? (int)$data['project_id'] : null);
+
+                $rowProjectId = $project_id ? (int)$project_id : (!empty($data['project_id']) ? (int)$data['project_id'] : null);
+                $rowCategoryId = $project_category_id ? (int)$project_category_id : (!empty($data['project_category_id']) ? (int)$data['project_category_id'] : null);
+
+                // Auto-detect project and category from campaign_name if project_id is not explicitly set
+                if (empty($rowProjectId) && !empty($data['campaign_name'])) {
+                    $detected = $this->detectProjectFromCampaign($data['campaign_name']);
+                    if ($detected) {
+                        $rowProjectId = $detected['project_id'];
+                        if (empty($rowCategoryId)) {
+                            $rowCategoryId = $detected['category_id'];
+                        }
+                    }
+                }
+
+                $data['project_category_id'] = $rowCategoryId;
+                $data['project_id'] = $rowProjectId;
                 $data['created_by'] = $_SESSION['user']['id'] ?? null;
                 $data['country'] = $data['country'] ?? null;
 
@@ -1296,6 +1329,105 @@ class LeadController extends Controller
             }
             fclose($handle);
         }
+    }
+
+    /**
+     * Auto-detect project_id and project_category_id from campaign_name
+     */
+    public function detectProjectFromCampaign($campaignName)
+    {
+        if (empty($campaignName)) {
+            return null;
+        }
+
+        $norm = strtolower(trim($campaignName));
+
+        // Keyword to [project_id, category_id] mappings
+        $mappings = [
+            // Project 6: The Maple Heights (Category 5: The Premium Smart city)
+            ['keywords' => ['maple', 'mapple'], 'project_id' => 6, 'category_id' => 5],
+            // Project 9: The Crown Pavilion (Category 5)
+            ['keywords' => ['crown pavilion', 'crown leads'], 'project_id' => 9, 'category_id' => 5],
+            // Project 50: The Noble Court (Category 5)
+            ['keywords' => ['noble court'], 'project_id' => 50, 'category_id' => 5],
+            // Project 51: The Premium Velvet Heights (Category 5)
+            ['keywords' => ['velvet heights'], 'project_id' => 51, 'category_id' => 5],
+            // Project 62: The Premium Smart City (TPSC_Commercial) (Category 5)
+            ['keywords' => ['tpsc_commercial'], 'project_id' => 62, 'category_id' => 5],
+            // Project 63: The Amberleaf Estate (Category 5)
+            ['keywords' => ['amberleaf'], 'project_id' => 63, 'category_id' => 5],
+            // Project 5: The Legacy Residence (Category 5)
+            ['keywords' => ['legacy residence'], 'project_id' => 5, 'category_id' => 5],
+            // Project 68: The Smart city (Common Project) (Category 5)
+            ['keywords' => ['smart city', 'tpsc'], 'project_id' => 68, 'category_id' => 5],
+
+            // Category 1: Bashundhara
+            ['keywords' => ['canvas of happiness', 'canvas of happness', 'canvass'], 'project_id' => 55, 'category_id' => 1],
+            ['keywords' => ['horizon'], 'project_id' => 57, 'category_id' => 1],
+            ['keywords' => ['pearl'], 'project_id' => 64, 'category_id' => 1],
+            ['keywords' => ['lumina'], 'project_id' => 67, 'category_id' => 1],
+            ['keywords' => ['velinor'], 'project_id' => 14, 'category_id' => 1],
+            ['keywords' => ['armonia'], 'project_id' => 19, 'category_id' => 1],
+            ['keywords' => ['ariston'], 'project_id' => 16, 'category_id' => 1],
+            ['keywords' => ['prestige heights'], 'project_id' => 49, 'category_id' => 1],
+            ['keywords' => ['florence'], 'project_id' => 60, 'category_id' => 1],
+            ['keywords' => ['novus'], 'project_id' => 69, 'category_id' => 1],
+            ['keywords' => ['zenith heights'], 'project_id' => 70, 'category_id' => 1],
+
+            // Category 7: Jolshiri
+            ['keywords' => ['serenity'], 'project_id' => 61, 'category_id' => 7],
+
+            // Category 3: Single & Studio
+            ['keywords' => ['studio suite 7', 'studio 7'], 'project_id' => 37, 'category_id' => 3],
+            ['keywords' => ['studio suite 6', 'studio 6'], 'project_id' => 38, 'category_id' => 3],
+            ['keywords' => ['studio suite 5', 'studio 5'], 'project_id' => 41, 'category_id' => 3],
+            ['keywords' => ['studio suite 4', 'studio 4'], 'project_id' => 42, 'category_id' => 3],
+            ['keywords' => ['studio suite 3', 'studio 3'], 'project_id' => 15, 'category_id' => 3],
+            ['keywords' => ['studio suite 2', 'studio 2'], 'project_id' => 39, 'category_id' => 3],
+            ['keywords' => ['studio suite 1', 'studio 1'], 'project_id' => 40, 'category_id' => 3],
+            ['keywords' => ['sunleaf'], 'project_id' => 43, 'category_id' => 3],
+            ['keywords' => ['floral heaven'], 'project_id' => 45, 'category_id' => 3],
+            ['keywords' => ['green heaven'], 'project_id' => 46, 'category_id' => 3],
+            ['keywords' => ['harmony residence'], 'project_id' => 47, 'category_id' => 3],
+            ['keywords' => ['glory garden'], 'project_id' => 48, 'category_id' => 3],
+            ['keywords' => ['monarch residence'], 'project_id' => 52, 'category_id' => 3],
+            ['keywords' => ['orchid residence'], 'project_id' => 53, 'category_id' => 3],
+            ['keywords' => ['green valley'], 'project_id' => 54, 'category_id' => 3],
+            ['keywords' => ['elite garden'], 'project_id' => 56, 'category_id' => 3],
+            ['keywords' => ['azure residence'], 'project_id' => 58, 'category_id' => 3],
+            ['keywords' => ['vertex garden'], 'project_id' => 59, 'category_id' => 3],
+            ['keywords' => ['green paradise'], 'project_id' => 65, 'category_id' => 3],
+            ['keywords' => ['skypoint', 'sky point'], 'project_id' => 27, 'category_id' => 3],
+            ['keywords' => ['southpoint', 'south point'], 'project_id' => 17, 'category_id' => 3],
+            ['keywords' => ['dream palace'], 'project_id' => 21, 'category_id' => 3],
+            ['keywords' => ['lake view terrace'], 'project_id' => 22, 'category_id' => 3],
+            ['keywords' => ['fortune residence'], 'project_id' => 31, 'category_id' => 3],
+            ['keywords' => ['luxoria residence'], 'project_id' => 32, 'category_id' => 3],
+            ['keywords' => ['aurora view'], 'project_id' => 33, 'category_id' => 3],
+            ['keywords' => ['southern residence'], 'project_id' => 34, 'category_id' => 3],
+            ['keywords' => ['breeze residence'], 'project_id' => 35, 'category_id' => 3],
+            ['keywords' => ['urban residence'], 'project_id' => 36, 'category_id' => 3],
+            ['keywords' => ['classic residence'], 'project_id' => 44, 'category_id' => 3],
+
+            // Category 6: Royel City
+            ['keywords' => ['crown tower'], 'project_id' => 12, 'category_id' => 6],
+            ['keywords' => ['majesty tower'], 'project_id' => 28, 'category_id' => 6],
+            ['keywords' => ['imperial tower'], 'project_id' => 29, 'category_id' => 6],
+            ['keywords' => ['tprc commercial', 'royel city commercial', 'free motion', 'royel city'], 'project_id' => 66, 'category_id' => 6],
+        ];
+
+        foreach ($mappings as $map) {
+            foreach ($map['keywords'] as $kw) {
+                if (strpos($norm, $kw) !== false) {
+                    return [
+                        'project_id' => $map['project_id'],
+                        'category_id' => $map['category_id']
+                    ];
+                }
+            }
+        }
+
+        return null;
     }
 
     public function confirmImportCsv()
@@ -1629,12 +1761,28 @@ class LeadController extends Controller
         header("Location: {$GLOBALS['base_url']}/create-lead");
         exit;
     }
-    // Delete Employee
+    // Delete Lead
     public function delete()
     {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isManagement = in_array($userRoleId, [1, 3, 33], true) || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+
+        $redirectUrl = !empty($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ($GLOBALS['base_url'] . "/lead-lists");
+
+        if (!$isManagement) {
+            setError("You do not have permission to delete leads.");
+            header("Location: " . $redirectUrl);
+            exit;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             setError("Invalid Request");
-            header("Location:{$GLOBALS['base_url']}/lead-lists");
+            header("Location: " . $redirectUrl);
             exit;
         }
 
@@ -1642,7 +1790,7 @@ class LeadController extends Controller
 
         if ($id <= 0) {
             setError("Invalid Lead ID");
-            header("Location:{$GLOBALS['base_url']}/lead-lists");
+            header("Location: " . $redirectUrl);
             exit;
         }
 
@@ -1658,7 +1806,7 @@ class LeadController extends Controller
             setError("Error: " . $th->getMessage());
         }
 
-        header("Location:{$GLOBALS['base_url']}/lead-lists");
+        header("Location: " . $redirectUrl);
         exit;
     }
 

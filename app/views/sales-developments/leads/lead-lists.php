@@ -2,6 +2,11 @@
 $page = "Lead & Booking Management";
 $show_breadcrumb = true;
 
+$sessionUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+$sessionUserRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+$isManagement = in_array($sessionUserRoleId, [1, 3, 33], true) || in_array($sessionUserRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+?>
+<?php
 // ── Booking CSV import skipped-row report ────────────────────────
 $bookingCsvSkipped = $_SESSION['booking_csv_import_skipped'] ?? [];
 unset($_SESSION['booking_csv_import_skipped']); // clear after reading
@@ -810,6 +815,17 @@ $activeCard = $_GET['filter_card'] ?? '';
                                             <i class="bi bi-eye me-2 text-success"></i> View
                                         </a>
                                     </li>
+                                    <?php if ($isManagement): ?>
+                                    <li>
+                                        <a class="dropdown__item removeBtnCust" href="javascript:void(0);"
+                                            data-id="<?= $lead['id'] ?>"
+                                            data-name="<?= htmlspecialchars($lead['full_name'] ?? 'Lead', ENT_QUOTES, 'UTF-8') ?>"
+                                            data-action="lead-delete"
+                                            style="cursor:pointer;">
+                                            <i class="bi bi-trash3 me-2 text-danger"></i> Delete
+                                        </a>
+                                    </li>
+                                    <?php endif; ?>
                                 </ul>
                             </div>
                         </div>
@@ -1079,6 +1095,7 @@ $activeCard = $_GET['filter_card'] ?? '';
 // Global so mobile Load More cards can also trigger these
 let selectedLeadsSet = new Set();
 let updateAssignUIData;
+const isManagementUser = <?= $isManagement ? 'true' : 'false' ?>;
 
 document.addEventListener('DOMContentLoaded', function () {
 
@@ -1361,7 +1378,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 // Re-bind delete buttons (Bootstrap dropdown blocks event delegation)
-                $('#serverSideLeadTable .removeBtnCust').off('click.leadDelete').on('click.leadDelete', function (e) {
+                function handleLeadDeleteClick(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     const itemId    = $(this).data('id');
@@ -1375,6 +1392,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             text: `You are about to delete "${itemName}". This action cannot be undone!`,
                             icon: 'warning',
                             showCancelButton: true,
+                            confirmButtonColor: '#d33',
+                            cancelButtonColor: '#6c757d',
                             confirmButtonText: 'Yes, delete it!'
                         }).then(function (result) {
                             if (result.isConfirmed) {
@@ -1388,7 +1407,10 @@ document.addEventListener('DOMContentLoaded', function () {
                             }
                         });
                     }, 200);
-                });
+                }
+
+                $('#serverSideLeadTable .removeBtnCust, #mobileLeadCards .removeBtnCust').off('click.leadDelete').on('click.leadDelete', handleLeadDeleteClick);
+                $(document).off('click.leadDeleteDoc', '.removeBtnCust').on('click.leadDeleteDoc', '.removeBtnCust', handleLeadDeleteClick);
             }
         });
 
@@ -1498,6 +1520,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
                   <li><a class="dropdown__item" href="${base_url}/edit-lead/${lead.id}"><i class="bi bi-pencil-square me-2 text-primary"></i>Edit</a></li>
                   <li><a class="dropdown__item" href="${base_url}/view-lead/${lead.id}"><i class="bi bi-eye me-2 text-success"></i>View</a></li>
+                  ${isManagementUser ? `
+                  <li><a class="dropdown__item removeBtnCust" href="javascript:void(0);" data-id="${lead.id}" data-name="${(name || 'Lead').replace(/"/g, '&quot;')}" data-action="lead-delete" style="cursor:pointer;"><i class="bi bi-trash3 me-2 text-danger"></i>Delete</a></li>
+                  ` : ''}
                 </ul>
               </div>
             </div>
