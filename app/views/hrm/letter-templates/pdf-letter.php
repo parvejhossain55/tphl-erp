@@ -433,8 +433,6 @@ $signLineWidth = $isUltra ? '140px' : ($isCompact ? '160px' : '180px');
 
             <?php if (stripos($letter['body'], 'Human Resources Department') === false): ?>
                 <div class="experience-signoff" style="page-break-inside: avoid;">
-                    <div class="signoff-closing">Sincerely,</div>
-                    <div class="signoff-company" style="margin-bottom: 5px;">For <strong><?= htmlspecialchars($companyName) ?></strong></div>
                     <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigBase64)): ?>
                         <div style="height: <?= $sigBoxHeight ?>; margin-bottom: <?= $isCompact ? '3px' : '5px' ?>;">
                             <img src="<?= $sigBase64 ?>" style="height: <?= $sigImgHeight ?>; max-width: 170px;">
@@ -527,8 +525,6 @@ $signLineWidth = $isUltra ? '140px' : ($isCompact ? '160px' : '180px');
 
             <!-- Official Signatory Block -->
             <div class="letter-signature-section" style="page-break-inside: avoid;">
-                <p class="mb-1">Sincerely,</p>
-                <p class="company-sign-for">For <strong><?= htmlspecialchars($companyName) ?></strong></p>
                 <div class="signature-block">
                     <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigBase64)): ?>
                         <div style="height: <?= $sigBoxHeight ?>; margin-bottom: <?= $isCompact ? '3px' : '5px' ?>;">
@@ -538,8 +534,8 @@ $signLineWidth = $isUltra ? '140px' : ($isCompact ? '160px' : '180px');
                         <div style="height: <?= $sigBoxHeight ?>; margin-bottom: <?= $isCompact ? '3px' : '5px' ?>;"></div>
                     <?php endif; ?>
                     <div class="sign-line"></div>
-                    <span class="signatory-name"><?= htmlspecialchars($letter['signatory_name']) ?></span>
-                    <span class="signatory-title"><?= htmlspecialchars($letter['signatory_title']) ?></span>
+                    <span class="signatory-name"><?= htmlspecialchars($letter['signatory_name'] ?? '') ?></span>
+                    <span class="signatory-title"><?= htmlspecialchars($letter['signatory_title'] ?? '') ?></span>
                     <span class="signatory-dept">Human Resources Department</span>
                 </div>
             </div>

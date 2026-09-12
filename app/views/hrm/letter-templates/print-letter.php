@@ -1128,8 +1128,6 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
 
                 <?php if (stripos($letter['body'], 'Human Resources Department') === false): ?>
                     <div class="experience-signoff">
-                        <div class="signoff-closing">Sincerely,</div>
-                        <div class="signoff-company" style="margin-bottom: 5px;">For <strong><?= htmlspecialchars($companyName) ?></strong></div>
                         <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
                             <div class="sig-img-container" style="height: 48px; margin-bottom: 5px;">
                                 <img src="<?= $sigUrl ?>" alt="Signature" style="height: 45px; max-width: 170px; object-fit: contain;">
@@ -1227,8 +1225,6 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
 
                 <!-- Official HR Signoff -->
                 <div class="experience-signoff" style="margin-top: 22px;">
-                    <div class="signoff-closing" style="margin-bottom: 2px;">Sincerely,</div>
-                    <div class="signoff-company" style="margin-bottom: 5px;">For <strong><?= htmlspecialchars($companyName) ?></strong></div>
                     <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
                         <div class="sig-img-container" style="height: 48px; margin-bottom: 5px;">
                             <img src="<?= $sigUrl ?>" alt="Signature" style="height: 45px; max-width: 170px; object-fit: contain;">
@@ -1323,8 +1319,6 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
 
                 <!-- Official Signatory Block -->
                 <div class="letter-signature-section">
-                    <p class="mb-1">Sincerely,</p>
-                    <p class="company-sign-for">For <strong><?= htmlspecialchars($companyName) ?></strong></p>
                     <div class="signature-block">
                         <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
                             <div class="sig-img-container" style="height: 48px; margin-bottom: 5px;">

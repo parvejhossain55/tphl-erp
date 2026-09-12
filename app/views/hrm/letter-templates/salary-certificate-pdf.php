@@ -296,7 +296,6 @@ if (strtolower($purposeText) === 'personal use') {
             <?php endif; ?>
             <div class="sc-sign-line">______________________________</div>
             <div class="sc-sign-dept">Human Resources Department</div>
-            <div class="sc-sign-company"><?= htmlspecialchars($companyFullName) ?></div>
         </div>
 
     </div>
