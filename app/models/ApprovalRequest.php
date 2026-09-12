@@ -641,10 +641,16 @@ class ApprovalRequest extends Model
         }
 
         if ($sourceTable === 'fund_requisitions') {
+            $frData = $this->db->query("SELECT * FROM fund_requisitions WHERE id = {$sourceId} LIMIT 1")->fetch_assoc();
             $frStatus = ($status === 'approved') ? 'approved' : 'rejected';
             $frAppAmt = ($status === 'approved') 
                 ? ($approvedAmount !== null && (float)$approvedAmount > 0 ? (float)$approvedAmount : null) 
                 : null;
+            
+            $targetAmt = $frAppAmt ?? (!empty($frData['qc_approved_amount']) && (float)$frData['qc_approved_amount'] > 0 ? (float)$frData['qc_approved_amount'] : (float)($frData['amount'] ?? 0));
+            if ($frStatus === 'approved' && !empty($frData['paid_at']) && (float)($frData['paid_amount'] ?? 0) >= $targetAmt) {
+                $frStatus = 'paid';
+            }
             
             $stmtFr = $this->db->prepare(
                 "UPDATE fund_requisitions 

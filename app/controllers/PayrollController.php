@@ -1470,7 +1470,7 @@ class PayrollController extends Controller
                e.joining_date, e.account_holder_name, e.account_number, e.bank_name,
                e.gross_salary as emp_gross, e.basic_salary as emp_basic,
                e.deleted_at,
-               e.per_meal_amount,
+               e.per_meal_amount, e.is_meal_deduction, e.per_meal_percentage,
                dept.name as department_name, desg.name as designation_name,
                override_att.tipsoi_present, override_att.tipsoi_absent, override_att.tipsoi_leave, override_att.tipsoi_late, override_att.late_unpaid_absent_days
         FROM employees e
@@ -1493,6 +1493,26 @@ class PayrollController extends Controller
           )
         ORDER BY e.employee_id ASC 
     ";
+
+        // Pre-fetch tracked meal counts from meal_records for this date range
+        $mealCountsByEmp = [];
+        $mealStmt = $this->db->prepare("
+            SELECT employee_id, COUNT(*) as meal_count 
+            FROM meal_records 
+            WHERE meal_date BETWEEN ? AND ? AND is_consumed = 1 
+            GROUP BY employee_id
+        ");
+        if ($mealStmt) {
+            $mealStmt->bind_param("ss", $targetStartDate, $targetEndDate);
+            $mealStmt->execute();
+            $mealRes = $mealStmt->get_result();
+            if ($mealRes) {
+                while ($mRow = $mealRes->fetch_assoc()) {
+                    $mealCountsByEmp[(int)$mRow['employee_id']] = (int)$mRow['meal_count'];
+                }
+            }
+            $mealStmt->close();
+        }
 
         $res = $this->db->query($query);
         $payslips = [];
@@ -1564,7 +1584,8 @@ class PayrollController extends Controller
             "items" => $items,
             "selectedYear" => $selectedYear,
             "selectedMonth" => $selectedMonth,
-            "payroll_projects" => $payroll_projects
+            "payroll_projects" => $payroll_projects,
+            "mealCountsByEmp" => $mealCountsByEmp
         ]);
     }
 

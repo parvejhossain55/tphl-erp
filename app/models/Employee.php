@@ -202,7 +202,7 @@ class Employee extends Model
 
         $stmt = $this->db->prepare("
         INSERT INTO employees (
-            employee_id, full_name, gross_salary, basic_salary, per_meal_amount, username, email,
+            employee_id, full_name, gross_salary, basic_salary, per_meal_amount, is_meal_deduction, per_meal_percentage, username, email,
             father_name, phone, emergency_contact, qualification,
             experience, address, pass_num, nid,
             department_id, designation_id, dob, joining_date, resign_date,
@@ -211,7 +211,7 @@ class Employee extends Model
             photo, make_user, password, created_by,
             employee_type, employee_status, workplace, office_branch_id, responsibilities, team_id, is_sales_co_leader,
             is_dept_head, reporting_user_id
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ");
 
         $dob = !empty($data['dob']) ? $data['dob'] : null;
@@ -222,18 +222,23 @@ class Employee extends Model
             ? password_hash($data['password'], PASSWORD_DEFAULT)
             : '';
 
+        $isMealDeduction = isset($data['is_meal_deduction']) ? (int)$data['is_meal_deduction'] : 0;
+        $perMealPercentage = (isset($data['per_meal_percentage']) && $data['per_meal_percentage'] !== '') ? (float)$data['per_meal_percentage'] : 100.00;
+
         $is_dept_head = (int) ($data['is_dept_head'] ?? 0);
         $reporting_user_id = ($is_dept_head == 1) ? null : (!empty($data['reporting_user_id']) ? (int) $data['reporting_user_id'] : null);
         $workplace = !empty($data['workplace']) ? $data['workplace'] : null;
         $office_branch_id = !empty($data['office_branch_id']) ? (int) $data['office_branch_id'] : 2;
 
         $stmt->bind_param(
-            "ssdddssssssssssiisssssssssssssisssisiiii",
+            "ssdddidssssssssssiisssssssssssisisssisiiii",
             $data['employee_id'],
             $data['full_name'],
             $data['gross_salary'],
             $data['basic_salary'],
             $data['per_meal_amount'],
+            $isMealDeduction,
+            $perMealPercentage,
             $data['username'],
             $data['email'],
             $data['father_name'],
@@ -377,6 +382,8 @@ WHERE e.id = ?
         gross_salary = ?,
         basic_salary = ?, 
         per_meal_amount = ?,
+        is_meal_deduction = ?,
+        per_meal_percentage = ?,
         username = ?, 
         email = ?, 
         father_name = ?, 
@@ -420,53 +427,58 @@ WHERE e.id = ?
             return false;
         }
 
+        $isMealDeduction = isset($data['is_meal_deduction']) ? (int)$data['is_meal_deduction'] : 0;
+        $perMealPercentage = (isset($data['per_meal_percentage']) && $data['per_meal_percentage'] !== '') ? (float)$data['per_meal_percentage'] : 100.00;
+
         $is_dept_head = (int) ($data['is_dept_head'] ?? 0);
         $reporting_user_id = ($is_dept_head == 1) ? null : (!empty($data['reporting_user_id']) ? (int) $data['reporting_user_id'] : null);
         $workplace = !empty($data['workplace']) ? $data['workplace'] : null;
         $office_branch_id = !empty($data['office_branch_id']) ? (int) $data['office_branch_id'] : 2;
 
         $stmt->bind_param(
-            "ssdddsssssssssiisssssssssssssisssisiiiii",
+            "ssdddidsssssssssiisssssssssssisisssisiiiii",
             $data['employee_id'],         // s  1
             $data['full_name'],           // s  2
             $data['gross_salary'],        // d  3
             $data['basic_salary'],        // d  4
-            $data['per_meal_amount'],     // d
-            $data['username'],            // s  5
-            $data['email'],               // s  6
-            $data['father_name'],         // s  7
-            $data['phone'],               // s  8
-            $data['emergency_contact'],   // s  9
-            $data['qualification'],       // s  10
-            $data['experience'],          // s  11
-            $data['address'],             // s  12
-            $data['pass_num'],            // s  13
-            $data['department_id'],       // i  14
-            $data['designation_id'],      // i  15
-            $data['dob'],                 // s  16
-            $data['joining_date'],        // s  17
-            $data['resign_date'],         // s
-            $data['account_holder_name'], // s  18
-            $data['account_number'],      // s  19
-            $data['bank_name'],           // s  20
-            $data['branch_name'],         // s  21
-            $data['social_media1'],       // s  22
-            $data['social_media2'],       // s  23
-            $data['social_media3'],       // s  24
-            $finalPhoto,                  // s  25
-            $data['make_user'],           // s  26
-            $data['password'],            // s  27
-            $data['created_by'],          // i  28
-            $data['employee_type'],       // s  29
-            $data['employee_status'],     // s  30
-            $workplace,                   // s  31
-            $office_branch_id,            // i  32
-            $data['responsibilities'],    // s  33
-            $data['team_id'],             // i  34
-            $data['is_sales_co_leader'],  // i  35
-            $is_dept_head,                // i  36
-            $reporting_user_id,           // i  37
-            $id                           // i  38
+            $data['per_meal_amount'],     // d  5
+            $isMealDeduction,             // i  6
+            $perMealPercentage,           // d  7
+            $data['username'],            // s  8
+            $data['email'],               // s  9
+            $data['father_name'],         // s  10
+            $data['phone'],               // s  11
+            $data['emergency_contact'],   // s  12
+            $data['qualification'],       // s  13
+            $data['experience'],          // s  14
+            $data['address'],             // s  15
+            $data['pass_num'],            // s  16
+            $data['department_id'],       // i  17
+            $data['designation_id'],      // i  18
+            $data['dob'],                 // s  19
+            $data['joining_date'],        // s  20
+            $data['resign_date'],         // s  21
+            $data['account_holder_name'], // s  22
+            $data['account_number'],      // s  23
+            $data['bank_name'],           // s  24
+            $data['branch_name'],         // s  25
+            $data['social_media1'],       // s  26
+            $data['social_media2'],       // s  27
+            $data['social_media3'],       // s  28
+            $finalPhoto,                  // s  29
+            $data['make_user'],           // s  30
+            $data['password'],            // s  31
+            $data['created_by'],          // i  32
+            $data['employee_type'],       // s  33
+            $data['employee_status'],     // s  34
+            $workplace,                   // s  35
+            $office_branch_id,            // i  36
+            $data['responsibilities'],    // s  37
+            $data['team_id'],             // i  38
+            $data['is_sales_co_leader'],  // i  39
+            $is_dept_head,                // i  40
+            $reporting_user_id,           // i  41
+            $id                           // i  42
         );
 
 
@@ -683,4 +695,130 @@ WHERE e.id = ?
         $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
+
+    /**
+     * Get active employees for Meal Tracker filtered by branch and is_meal_deduction = 1
+     */
+    public function getActiveMealEmployeesByBranch($branchId)
+    {
+        $sql = "SELECT e.id, e.employee_id, e.full_name, e.department_id, e.designation_id, 
+                       e.per_meal_amount, e.is_meal_deduction, e.per_meal_percentage,
+                       e.office_branch_id,
+                       d.name AS department_name, des.name AS designation_name
+                FROM employees e
+                LEFT JOIN departments d ON e.department_id = d.id
+                LEFT JOIN designations des ON e.designation_id = des.id
+                WHERE e.employee_status = 'active'
+                  AND e.deleted_at IS NULL
+                  AND e.is_meal_deduction = 1
+                  AND e.office_branch_id = ?
+                ORDER BY CAST(e.employee_id AS UNSIGNED) ASC, e.employee_id ASC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+        $branchId = (int)$branchId;
+        $stmt->bind_param("i", $branchId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $employees = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+        $stmt->close();
+        return $employees;
+    }
+
+    /**
+     * Get today's meal context for a specific employee
+     * Checks enrollment, attendance, 12:00 PM cutoff, and opt-out status
+     */
+    public function getTodayMealContext($employeeId, $date = null)
+    {
+        $employeeId = (int)$employeeId;
+        $date = $date ? trim($date) : date('Y-m-d');
+        // TEMPORARY TESTING MODE: Full day enabled so Mam can test right now
+        $isBefore12 = true; // (date('H:i') < '12:00');
+
+        // 1. Employee meal enrollment
+        $empSql = "SELECT id, full_name, employee_id, is_meal_deduction, per_meal_percentage, office_branch_id FROM employees WHERE id = ? LIMIT 1";
+        $stmt = $this->db->prepare($empSql);
+        if (!$stmt) return null;
+        $stmt->bind_param("i", $employeeId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $employee = $res ? $res->fetch_assoc() : null;
+        $stmt->close();
+
+        if (!$employee) return null;
+
+        $isEnrolled = ((int)($employee['is_meal_deduction'] ?? 0) === 1);
+
+        // 2. Opt-out status for today
+        $optSql = "SELECT status, opt_out_time FROM employee_meal_opt_outs WHERE employee_id = ? AND opt_out_date = ? LIMIT 1";
+        $optStmt = $this->db->prepare($optSql);
+        $isOptedOut = false;
+        $optOutTime = null;
+        if ($optStmt) {
+            $optStmt->bind_param("is", $employeeId, $date);
+            $optStmt->execute();
+            $optRes = $optStmt->get_result();
+            if ($optRes && $row = $optRes->fetch_assoc()) {
+                $isOptedOut = ($row['status'] === 'opt_out');
+                $optOutTime = $row['opt_out_time'];
+            }
+            $optStmt->close();
+        }
+
+        // 3. Attendance for today
+        $attSql = "
+            SELECT today_status, punch_in_time 
+            FROM emp_attendances 
+            WHERE employee_id = ? AND attendance_date = ? AND deleted_at IS NULL 
+            LIMIT 1
+        ";
+        $attStmt = $this->db->prepare($attSql);
+        $isPresent = false;
+        $todayStatus = 'Absent';
+        if ($attStmt) {
+            $attStmt->bind_param("is", $employeeId, $date);
+            $attStmt->execute();
+            $attRes = $attStmt->get_result();
+            if ($attRes && $arow = $attRes->fetch_assoc()) {
+                $todayStatus = $arow['today_status'] ?? 'Absent';
+                $isPresent = in_array($todayStatus, ['Present', 'Late', 'Half-Day']);
+            }
+            $attStmt->close();
+        }
+
+        // 4. Effective meal count for today:
+        // If enrolled + present + NOT opted out => 1; if opted out => 0
+        $mealActive = ($isEnrolled && !$isOptedOut && $isPresent);
+
+        // Auto-sync meal record for today if enrolled
+        if ($isEnrolled) {
+            try {
+                require_once __DIR__ . '/MealRecord.php';
+                $mealModel = new MealRecord($this->db);
+                $mealModel->syncSingleAttendanceRecord($employeeId, $date, $todayStatus);
+            } catch (\Throwable $mErr) {
+                // Silent catch
+            }
+        }
+
+        return [
+            'employee_id' => $employeeId,
+            'office_id' => $employee['employee_id'],
+            'full_name' => $employee['full_name'],
+            'branch_id' => (int)($employee['office_branch_id'] ?? 1),
+            'is_enrolled' => $isEnrolled,
+            'is_opted_out' => $isOptedOut,
+            'opt_out_time' => $optOutTime,
+            'is_present' => $isPresent,
+            'today_status' => $todayStatus,
+            'is_before_12' => $isBefore12,
+            'meal_active' => $mealActive,
+            'date' => $date
+        ];
+    }
 }
+
+

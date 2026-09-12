@@ -1486,6 +1486,40 @@
                     </li>
                 <?php endif; ?>
 
+                <!-- Meal Tracker Menu (Accessible to Admin, Operation, and HR roles) -->
+                <?php
+                $mealUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+                $mealUserRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
+                $canAccessMealTracker = in_array($mealUserRoleId, [1, 3, 4, 20, 32])
+                    || (strpos($mealUserRoleName, 'admin') !== false)
+                    || (strpos($mealUserRoleName, 'operation') !== false)
+                    || (strpos($mealUserRoleName, 'hr') !== false)
+                    || hasPermission(['Hr Manage', 'HRM Management', 'Operation manage']);
+                ?>
+                <?php if ($canAccessMealTracker): ?>
+                    <li class="sidebar__menu-category ">
+                        <span class="category-name">Meal Management</span>
+                    </li>
+                    <li class="slide has-sub <?= isActive(['meal-tracker', 'meal-tracker-history'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['meal-tracker', 'meal-tracker-history'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-utensils"></i></div>
+                            <span class="sidebar__menu-label">Meal Tracker</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/meal-tracker"
+                                    class="sidebar__menu-item <?= isActive('meal-tracker', $current_route) ?>">Meal Workspace</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/meal-tracker-history"
+                                    class="sidebar__menu-item <?= isActive('meal-tracker-history', $current_route) ?>">Meal History</a>
+                            </li>
+                        </ul>
+                    </li>
+                <?php endif; ?>
+
                 <!--Payroll CATEGORY -->
                 <?php if (hasPermission("Payroll Manage") && !in_array($_SESSION['user']['role_id'] ?? 0, [9, 33])): ?>
                     <li class="sidebar__menu-category ">
@@ -1728,7 +1762,7 @@
                         <a href="<?= $base_url ?>/ced-report"
                             class="sidebar__menu-item <?= isActive('ced-report', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-file-earmark-bar-graph"></i></div>
-                            <span class="sidebar__menu-label">CED Report</span>
+                            <span class="sidebar__menu-label">CED Team Report</span>
                         </a>
                     </li>
                     <li class="slide ">

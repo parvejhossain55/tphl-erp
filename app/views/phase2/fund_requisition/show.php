@@ -570,7 +570,7 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
 
                         <!-- Step 4: Accounts Disbursement -->
                         <div class="d-flex gap-3 mb-4 position-relative align-items-start">
-                            <?php if ($req['status'] === 'paid'): ?>
+                            <?php if ($req['status'] === 'paid' || (!empty($req['paid_at']) && $dueToPay <= 0)): ?>
                                 <div class="avatar avatar-sm bg-success text-white rounded-circle flex-shrink-0 z-1 fs-12">
                                     <i class="fa-solid fa-building-columns"></i>
                                 </div>
@@ -648,7 +648,7 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                                         on <strong><?php echo date('d M Y, h:i A', strtotime($req['received_at'])); ?></strong>
                                     </p>
                                 </div>
-                            <?php elseif (in_array($req['status'], ['paid', 'partially_paid'])): ?>
+                            <?php elseif (in_array($req['status'], ['paid', 'partially_paid']) || (!empty($req['paid_at']) && $dueToPay <= 0)): ?>
                                 <div class="avatar avatar-sm bg-warning text-white rounded-circle flex-shrink-0 z-1 fs-12">
                                     <i class="fa-solid fa-spinner fa-spin"></i>
                                 </div>

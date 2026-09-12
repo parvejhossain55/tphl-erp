@@ -401,8 +401,34 @@ $_selectedMonth = $selectedMonth   ?? date('m');
 
                                 $isExisting = !empty($p['id']);
                                 $advanceSalary = $isExisting ? (float)($p['advance_salary'] ?? 0) : 0;
-                                $mealCount = $isExisting ? (float)($p['meal_count'] ?? 0) : (isset($p['tipsoi_present']) ? (float) $p['tipsoi_present'] : 0);
-                                $subsidizeLunch = $isExisting ? (float)($p['subsidized_lunch'] ?? 0) : 0;
+
+                                $empIdFk = (int)($p['real_emp_id_fk'] ?? $p['id'] ?? 0);
+                                $isMealDeductible = isset($p['is_meal_deduction']) ? (int)$p['is_meal_deduction'] : 1;
+                                $mealPct = isset($p['per_meal_percentage']) ? (float)$p['per_meal_percentage'] : 100.00;
+                                $effectiveMealRate = ($isMealDeductible == 1) 
+                                    ? (!empty($p['per_meal_amount']) && $p['per_meal_amount'] > 0 ? (float)$p['per_meal_amount'] : round(120.00 * ($mealPct / 100), 2))
+                                    : 0.00;
+
+                                $mealCount = 0;
+                                if ($isMealDeductible == 1) {
+                                    if ($isExisting && isset($p['meal_count'])) {
+                                        $mealCount = (float)$p['meal_count'];
+                                    } elseif (isset($mealCountsByEmp[$empIdFk])) {
+                                        $mealCount = (float)$mealCountsByEmp[$empIdFk];
+                                    } elseif (isset($p['tipsoi_present'])) {
+                                        $mealCount = (float)$p['tipsoi_present'];
+                                    }
+                                }
+
+                                $subsidizeLunch = 0;
+                                if ($isMealDeductible == 1) {
+                                    if ($isExisting && isset($p['subsidized_lunch']) && $p['subsidized_lunch'] > 0) {
+                                        $subsidizeLunch = (float)$p['subsidized_lunch'];
+                                    } else {
+                                        $subsidizeLunch = round($mealCount * $effectiveMealRate, 2);
+                                    }
+                                }
+
                                 $unpaidAbsentsDays = isset($p['late_unpaid_absent_days']) ? (float)$p['late_unpaid_absent_days'] : (isset($p['tipsoi_absent']) ? (float) $p['tipsoi_absent'] : 0);
                                 $unpaidAbsentsAmount = $isExisting ? (float)($p['unpaid_absent_amount'] ?? 0) : 0;
                                 $punctBonus = $isExisting ? (float)($p['punctuality_bonus'] ?? 0) : 0;
@@ -439,7 +465,7 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                             <td class="cell-daily text-nowrap" data-val="<?= $daily ?>"><?= number_format($daily, 2) ?>
                                             </td>
                                             <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-advance" value="<?= round($advanceSalary, 2) ?>" style="min-width: 80px;"></td>
-                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-mealcount" data-permeal="<?= $p['per_meal_amount'] ?? 0 ?>" value="<?= $mealCount ?>" style="width: 60px;"></td>
+                                            <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-mealcount" data-permeal="<?= $effectiveMealRate ?>" value="<?= $mealCount ?>" style="width: 60px;"></td>
                                             <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-sublunch" value="<?= round($subsidizeLunch, 2) ?>" style="min-width: 80px;"></td>
                                             <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-absent-days" value="<?= $unpaidAbsentsDays ?>" style="width: 60px;"></td>
                                             <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-unpaid" value="<?= round($unpaidAbsentsAmount, 2) ?>" style="min-width: 80px;"></td>

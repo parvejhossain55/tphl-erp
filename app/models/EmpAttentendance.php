@@ -82,6 +82,13 @@ class EmpAttentendance extends Model
     );
 
     if ($stmt->execute()) {
+        try {
+            require_once __DIR__ . '/MealRecord.php';
+            $mealRecordModel = new MealRecord($this->db);
+            $mealRecordModel->syncSingleAttendanceRecord($data['employee_id'], $data['attendance_date'], $status);
+        } catch (\Throwable $mErr) {
+            error_log("Meal sync on attendance create error: " . $mErr->getMessage());
+        }
         return true;
     } else {
         echo "Execute error: " . $stmt->error;
@@ -134,7 +141,17 @@ class EmpAttentendance extends Model
             $id
         );
 
-        return $stmt->execute();
+        $success = $stmt->execute();
+        if ($success) {
+            try {
+                require_once __DIR__ . '/MealRecord.php';
+                $mealRecordModel = new MealRecord($this->db);
+                $mealRecordModel->syncSingleAttendanceRecord($employeeId, $attendanceDate, $todayStatus);
+            } catch (\Throwable $mErr) {
+                error_log("Meal sync on attendance update error: " . $mErr->getMessage());
+            }
+        }
+        return $success;
     }
 
 

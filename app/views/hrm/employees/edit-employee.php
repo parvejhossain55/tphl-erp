@@ -145,6 +145,17 @@
                  <!-- Designation -->
                  <div class="col-lg-6"><label>Gross Salary <span>*</span></label><input class="form-control" name="gross_salary" id="gross_salary" type="number" value="<?= $employee['gross_salary'] ?>"></div>
                  <div class="col-lg-6"><label>Per Meal Amount</label><input class="form-control" name="per_meal_amount" id="per_meal_amount" type="number" step="0.01" value="<?= $employee['per_meal_amount'] ?? '' ?>"></div>
+                 <div class="col-lg-6">
+                     <label>Meal Deduction Service</label>
+                     <select class="form-control" name="is_meal_deduction" id="is_meal_deduction">
+                         <option value="1" <?= ((int)($employee['is_meal_deduction'] ?? 0) === 1) ? 'selected' : '' ?>>Enabled (চালু - মিল ট্র্যাকারে অন্তর্ভুক্ত)</option>
+                         <option value="0" <?= ((int)($employee['is_meal_deduction'] ?? 0) === 0) ? 'selected' : '' ?>>Disabled (বন্ধ - মিল ট্র্যাকারে অন্তর্ভুক্ত নয়)</option>
+                     </select>
+                 </div>
+                 <div class="col-lg-6">
+                     <label>Per Meal Rate Percentage (%)</label>
+                     <input class="form-control" name="per_meal_percentage" id="per_meal_percentage" type="number" step="0.01" min="0" max="100" value="<?= $employee['per_meal_percentage'] ?? '100.00' ?>" placeholder="e.g. 100.00">
+                 </div>
                  <div class="col-lg-6"><label>Basic Salary <span>*</span></label>
                      <input class="form-control" name="basic_salary" id="basic_salary" type="number"
                          value="<?= $employee['basic_salary'] ?>">
@@ -539,6 +550,7 @@
           });
       }
 
+      
       const grossSalaryInput = document.getElementById("gross_salary");
       const basicSalaryInput = document.getElementById("basic_salary");
       if (grossSalaryInput) {

@@ -92,10 +92,11 @@ class LoginController extends Controller
 
                             $empDbId = $user['employee_db_id'] ?? null;
                             if (!$empDbId && !empty($user['id'])) {
-                                $stmtEmp = $this->db->prepare("SELECT id FROM employees WHERE user_id = ? OR (employee_id != '' AND employee_id = ?) LIMIT 1");
+                                $uEmpId = (int)($user['employee_id'] ?? 0);
+                                $userEmpIdStr = trim((string)($user['employee_id'] ?? ''));
+                                $stmtEmp = $this->db->prepare("SELECT id FROM employees WHERE user_id = ? OR (id > 0 AND id = ?) OR (employee_id != '' AND employee_id = ?) LIMIT 1");
                                 if ($stmtEmp) {
-                                    $userEmpIdStr = (string)($user['employee_id'] ?? '');
-                                    $stmtEmp->bind_param("is", $user['id'], $userEmpIdStr);
+                                    $stmtEmp->bind_param("iis", $user['id'], $uEmpId, $userEmpIdStr);
                                     $stmtEmp->execute();
                                     $empRow = $stmtEmp->get_result()->fetch_assoc();
                                     if ($empRow) {
