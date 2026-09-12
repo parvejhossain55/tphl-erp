@@ -11,14 +11,303 @@
                     <a href="<?= $GLOBALS['base_url'] ?>/edit-letter/<?= $letter['id'] ?>" class="btn btn-primary btn-sm">
                         <i class="fa fa-edit me-1"></i> Edit Letter
                     </a>
-                    <a href="<?= $GLOBALS['base_url'] ?>/pdf-letter/<?= $letter['id'] ?>" class="btn btn-danger btn-sm"
-                        target="_blank">
+                    <a href="<?= $GLOBALS['base_url'] ?>/pdf-letter/<?= $letter['id'] ?>?fit=1" class="btn btn-danger btn-sm"
+                        target="_blank" title="Download PDF formatted to strictly fit on 1 page">
                         <i class="fa fa-file-pdf me-1"></i> Download PDF
                     </a>
-                    <a href="<?= $GLOBALS['base_url'] ?>/print-letter/<?= $letter['id'] ?>"
-                        class="btn btn-info btn-sm text-white" target="_blank">
-                        <i class="fa fa-print me-1"></i> Print Letter
-                    </a>
+<style>
+/* ═══ Solid, Premium Print & PDF Dropdown ═══ */
+.print-dropdown-menu {
+    min-width: 300px !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 14px 35px -4px rgba(15, 23, 42, 0.22), 0 4px 14px -2px rgba(15, 23, 42, 0.1) !important;
+    padding: 8px !important;
+    margin-top: 6px !important;
+    z-index: 1060 !important;
+    animation: printDropdownFadeIn 0.15s ease-out;
+}
+
+@keyframes printDropdownFadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+[bd-theme="bd-theme-dark"] .print-dropdown-menu {
+    background: #1e293b !important;
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    box-shadow: 0 14px 35px -4px rgba(0, 0, 0, 0.55) !important;
+}
+
+.print-dropdown-header {
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.6px !important;
+    padding: 6px 10px 4px 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+[bd-theme="bd-theme-dark"] .print-dropdown-header {
+    color: #94a3b8 !important;
+}
+
+.print-dropdown-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 8px 10px !important;
+    color: #1e293b !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    border-radius: 8px !important;
+    transition: all 0.15s ease !important;
+    text-decoration: none !important;
+    margin-bottom: 2px !important;
+    background: transparent !important;
+}
+
+[bd-theme="bd-theme-dark"] .print-dropdown-item {
+    color: #f1f5f9 !important;
+}
+
+.print-dropdown-item:hover, 
+.print-dropdown-item:focus {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    transform: translateX(3px) !important;
+}
+
+[bd-theme="bd-theme-dark"] .print-dropdown-item:hover,
+[bd-theme="bd-theme-dark"] .print-dropdown-item:focus {
+    background-color: #334155 !important;
+    color: #ffffff !important;
+}
+
+.print-dropdown-item.active {
+    background-color: #ecfdf5 !important;
+    color: #065f46 !important;
+}
+
+[bd-theme="bd-theme-dark"] .print-dropdown-item.active {
+    background-color: #064e3b !important;
+    color: #a7f3d0 !important;
+}
+
+.print-dropdown-item .item-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+.print-dropdown-item .item-icon {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+    flex-shrink: 0 !important;
+}
+
+.item-icon-compact {
+    background: #ecfdf5 !important;
+    color: #059669 !important;
+}
+
+.item-icon-normal {
+    background: #eff6ff !important;
+    color: #2563eb !important;
+}
+
+.item-icon-ultra {
+    background: #fffbeb !important;
+    color: #d97706 !important;
+}
+
+.item-icon-pdf {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+}
+
+.item-icon-pdf-multi {
+    background: #f1f5f9 !important;
+    color: #64748b !important;
+}
+
+.print-dropdown-item .item-title {
+    font-weight: 600 !important;
+    line-height: 1.25 !important;
+    font-size: 12.5px !important;
+}
+
+.print-dropdown-item .item-desc {
+    color: #64748b !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    margin-top: 1px !important;
+}
+
+[bd-theme="bd-theme-dark"] .print-dropdown-item .item-desc {
+    color: #94a3b8 !important;
+}
+
+.print-dropdown-badge {
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    padding: 2px 7px !important;
+    border-radius: 6px !important;
+    letter-spacing: 0.2px !important;
+    flex-shrink: 0 !important;
+}
+
+.badge-compact {
+    background-color: #d1fae5 !important;
+    color: #065f46 !important;
+}
+
+.badge-normal {
+    background-color: #f1f5f9 !important;
+    color: #475569 !important;
+}
+
+.badge-ultra {
+    background-color: #fef3c7 !important;
+    color: #92400e !important;
+}
+
+.badge-pdf {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+}
+
+.print-dropdown-divider {
+    height: 1px !important;
+    background-color: #e2e8f0 !important;
+    border: none !important;
+    margin: 6px 4px !important;
+}
+
+[bd-theme="bd-theme-dark"] .print-dropdown-divider {
+    background-color: #334155 !important;
+}
+
+/* Split Button Styling */
+.btn-print-group {
+    box-shadow: 0 1px 3px rgba(2, 132, 199, 0.35) !important;
+    border-radius: 6px !important;
+}
+
+.btn-print-main {
+    background-color: #0284c7 !important;
+    border-color: #0284c7 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    font-size: 12.5px !important;
+    padding: 6px 14px !important;
+}
+
+.btn-print-main:hover {
+    background-color: #0369a1 !important;
+    border-color: #0369a1 !important;
+    color: #ffffff !important;
+}
+
+.btn-print-toggle {
+    background-color: #0284c7 !important;
+    border-color: #0284c7 !important;
+    color: #ffffff !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.3) !important;
+    padding-left: 9px !important;
+    padding-right: 9px !important;
+}
+
+.btn-print-toggle:hover,
+.btn-print-toggle:focus,
+.btn-print-group.show .btn-print-toggle {
+    background-color: #0369a1 !important;
+    border-color: #0369a1 !important;
+    color: #ffffff !important;
+}
+</style>
+
+                    <div class="btn-group btn-print-group">
+                        <a href="<?= $GLOBALS['base_url'] ?>/print-letter/<?= $letter['id'] ?>?fit=1"
+                            class="btn btn-sm btn-print-main" target="_blank" title="Print Letter (Auto-scaled to 1 Page)">
+                            <i class="fa fa-print me-1"></i> Print (Fit to 1 Page)
+                        </a>
+                        <button type="button" class="btn btn-sm btn-print-toggle dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" title="More Print & PDF Options">
+                            <span class="visually-hidden">Toggle Dropdown</span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end print-dropdown-menu">
+                            <div class="print-dropdown-header">
+                                <i class="fa fa-sliders-h me-1"></i> PRINT MODES
+                            </div>
+                            <a class="dropdown-item print-dropdown-item active" href="<?= $GLOBALS['base_url'] ?>/print-letter/<?= $letter['id'] ?>?fit=1" target="_blank">
+                                <div class="item-left">
+                                    <span class="item-icon item-icon-compact"><i class="fa fa-compress-alt"></i></span>
+                                    <div>
+                                        <div class="item-title">Fit to 1 Page</div>
+                                        <div class="item-desc">Compact & Auto-scaled (Recommended)</div>
+                                    </div>
+                                </div>
+                                <span class="print-dropdown-badge badge-compact">1 Page</span>
+                            </a>
+                            <a class="dropdown-item print-dropdown-item" href="<?= $GLOBALS['base_url'] ?>/print-letter/<?= $letter['id'] ?>?fit=normal" target="_blank">
+                                <div class="item-left">
+                                    <span class="item-icon item-icon-normal"><i class="fa fa-file-alt"></i></span>
+                                    <div>
+                                        <div class="item-title">Standard Spacing</div>
+                                        <div class="item-desc">Normal margins (Multi-page allowed)</div>
+                                    </div>
+                                </div>
+                                <span class="print-dropdown-badge badge-normal">Original</span>
+                            </a>
+                            <a class="dropdown-item print-dropdown-item" href="<?= $GLOBALS['base_url'] ?>/print-letter/<?= $letter['id'] ?>?fit=ultra" target="_blank">
+                                <div class="item-left">
+                                    <span class="item-icon item-icon-ultra"><i class="fa fa-compress"></i></span>
+                                    <div>
+                                        <div class="item-title">Ultra Compact</div>
+                                        <div class="item-desc">For extra long 5+ clause letters</div>
+                                    </div>
+                                </div>
+                                <span class="print-dropdown-badge badge-ultra">Tight</span>
+                            </a>
+
+                            <div class="print-dropdown-divider"></div>
+
+                            <div class="print-dropdown-header">
+                                <i class="fa fa-file-pdf me-1"></i> PDF EXPORT
+                            </div>
+                            <a class="dropdown-item print-dropdown-item" href="<?= $GLOBALS['base_url'] ?>/pdf-letter/<?= $letter['id'] ?>?fit=1" target="_blank">
+                                <div class="item-left">
+                                    <span class="item-icon item-icon-pdf"><i class="fa fa-file-pdf"></i></span>
+                                    <div>
+                                        <div class="item-title">PDF (Fit to 1 Page)</div>
+                                        <div class="item-desc">Single-page PDF download</div>
+                                    </div>
+                                </div>
+                                <span class="print-dropdown-badge badge-pdf">1 Page</span>
+                            </a>
+                            <a class="dropdown-item print-dropdown-item" href="<?= $GLOBALS['base_url'] ?>/pdf-letter/<?= $letter['id'] ?>?fit=0" target="_blank">
+                                <div class="item-left">
+                                    <span class="item-icon item-icon-pdf-multi"><i class="fa fa-file-pdf"></i></span>
+                                    <div>
+                                        <div class="item-title">PDF (Standard)</div>
+                                        <div class="item-desc">Multi-page standard PDF</div>
+                                    </div>
+                                </div>
+                                <span class="print-dropdown-badge badge-normal">Multi</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
 

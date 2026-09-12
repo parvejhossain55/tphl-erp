@@ -47,7 +47,7 @@ class FormatHelper
     }
 
     /**
-     * Formats integer amount in words.
+     * Formats number to words in Bangladeshi / South Asian numbering format (Crore, Lakh, Thousand, Hundred).
      */
     public static function amountInWords($amount)
     {
@@ -55,16 +55,63 @@ class FormatHelper
             return '';
         }
 
-        $amount = round((float)$amount);
-
-        if (!class_exists('NumberFormatter')) {
-            return '';
+        $amount = round((float)$amount, 2);
+        if ($amount <= 0) {
+            return 'Zero Taka Only';
         }
 
-        $formatter = new NumberFormatter("en", NumberFormatter::SPELLOUT);
-        $words = ucwords($formatter->format($amount));
+        $intPart = (int) floor($amount);
+        $fraction = (int) round(($amount - $intPart) * 100);
 
-        return $words . " Taka Only";
+        $words = self::convertNumberToWords($intPart) . ' Taka';
+        if ($fraction > 0) {
+            $words .= ' and ' . self::convertNumberToWords($fraction) . ' Paisa';
+        }
+
+        return $words . ' Only';
+    }
+
+    private static function convertNumberToWords($number)
+    {
+        $dictionary = [
+            0 => 'Zero', 1 => 'One', 2 => 'Two', 3 => 'Three', 4 => 'Four',
+            5 => 'Five', 6 => 'Six', 7 => 'Seven', 8 => 'Eight', 9 => 'Nine',
+            10 => 'Ten', 11 => 'Eleven', 12 => 'Twelve', 13 => 'Thirteen', 14 => 'Fourteen',
+            15 => 'Fifteen', 16 => 'Sixteen', 17 => 'Seventeen', 18 => 'Eighteen', 19 => 'Nineteen',
+            20 => 'Twenty', 30 => 'Thirty', 40 => 'Forty', 50 => 'Fifty',
+            60 => 'Sixty', 70 => 'Seventy', 80 => 'Eighty', 90 => 'Ninety',
+            100 => 'Hundred', 1000 => 'Thousand', 100000 => 'Lakh', 10000000 => 'Crore'
+        ];
+
+        $number = (int) $number;
+        if ($number < 0) {
+            return 'Negative ' . self::convertNumberToWords(abs($number));
+        }
+
+        switch (true) {
+            case $number < 21:
+                return $dictionary[$number];
+            case $number < 100:
+                $tens = ((int) ($number / 10)) * 10;
+                $units = $number % 10;
+                return $dictionary[$tens] . ($units ? ' ' . $dictionary[$units] : '');
+            case $number < 1000:
+                $hundreds = (int) ($number / 100);
+                $remainder = $number % 100;
+                return $dictionary[$hundreds] . ' Hundred' . ($remainder ? ' ' . self::convertNumberToWords($remainder) : '');
+            case $number < 100000:
+                $thousands = (int) ($number / 1000);
+                $remainder = $number % 1000;
+                return self::convertNumberToWords($thousands) . ' Thousand' . ($remainder ? ' ' . self::convertNumberToWords($remainder) : '');
+            case $number < 10000000:
+                $lakhs = (int) ($number / 100000);
+                $remainder = $number % 100000;
+                return self::convertNumberToWords($lakhs) . ' Lakh' . ($remainder ? ' ' . self::convertNumberToWords($remainder) : '');
+            default:
+                $crores = (int) ($number / 10000000);
+                $remainder = $number % 10000000;
+                return self::convertNumberToWords($crores) . ' Crore' . ($remainder ? ' ' . self::convertNumberToWords($remainder) : '');
+        }
     }
 
     /**

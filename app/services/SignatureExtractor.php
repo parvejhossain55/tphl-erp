@@ -63,9 +63,17 @@ class SignatureExtractor
         for ($y = 0; $y < $origHeight; $y++) {
             for ($x = 0; $x < $origWidth; $x++) {
                 $rgba = imagecolorat($srcImg, $x, $y);
+                $srcAlpha = ($rgba >> 24) & 0x7F; // 0 = fully opaque, 127 = fully transparent in GD
                 $r = ($rgba >> 16) & 0xFF;
                 $g = ($rgba >> 8) & 0xFF;
                 $b = $rgba & 0xFF;
+
+                // 1. If pixel is already transparent in the source PNG (transparent background)
+                if ($srcAlpha >= 115) {
+                    $color = imagecolorallocatealpha($outImg, 255, 255, 255, 127);
+                    imagesetpixel($outImg, $x, $y, $color);
+                    continue;
+                }
 
                 // Standard perceptual luminance
                 $luminance = (int) (0.299 * $r + 0.587 * $g + 0.114 * $b);
@@ -74,11 +82,12 @@ class SignatureExtractor
                     // Paper / White / Gray background -> 100% transparent
                     $color = imagecolorallocatealpha($outImg, 255, 255, 255, 127);
                 } elseif ($luminance <= $lowerThreshold) {
-                    // Solid dark ink stroke -> Opaque (alpha = 0), slightly darken for crispness
+                    // Solid dark ink stroke -> Opaque (or preserve source alpha if it had transparency)
+                    $outAlpha = max(0, $srcAlpha);
                     $darkR = (int) max(0, $r * 0.7);
                     $darkG = (int) max(0, $g * 0.7);
                     $darkB = (int) max(0, $b * 0.7);
-                    $color = imagecolorallocatealpha($outImg, $darkR, $darkG, $darkB, 0);
+                    $color = imagecolorallocatealpha($outImg, $darkR, $darkG, $darkB, $outAlpha);
 
                     // Track bounding box
                     if ($x < $minX) $minX = $x;
@@ -89,10 +98,11 @@ class SignatureExtractor
                 } else {
                     // Transition zone: smooth anti-aliased gradient
                     $ratio = ($luminance - $lowerThreshold) / ($threshold - $lowerThreshold);
-                    $alpha = (int) round($ratio * 127); // 0 to 127 in GD
-                    $color = imagecolorallocatealpha($outImg, $r, $g, $b, $alpha);
+                    $calculatedAlpha = (int) round($ratio * 127); // 0 to 127 in GD
+                    $finalAlpha = max($srcAlpha, $calculatedAlpha);
+                    $color = imagecolorallocatealpha($outImg, $r, $g, $b, $finalAlpha);
 
-                    if ($alpha < 100) {
+                    if ($finalAlpha < 100) {
                         if ($x < $minX) $minX = $x;
                         if ($x > $maxX) $maxX = $x;
                         if ($y < $minY) $minY = $y;

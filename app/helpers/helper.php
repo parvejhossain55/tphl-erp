@@ -741,6 +741,10 @@ function getFlatRulesArray()
 
     return $rulesCache; // array return
 }
+if (!class_exists('FormatHelper')) {
+    require_once __DIR__ . '/FormatHelper.php';
+}
+
 if (!function_exists('amountInWords')) {
     function amountInWords($amount)
     {
