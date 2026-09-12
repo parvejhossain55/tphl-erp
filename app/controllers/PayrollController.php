@@ -1229,8 +1229,7 @@ class PayrollController extends Controller
             // 3. Update payslips status to PAID & link journal_voucher_id
             $stmtUpd = $this->db->prepare("
                 UPDATE payslips 
-                SET status = 'paid', paid_via_account_id = ?, disbursed_by = ?, disbursed_at = NOW(), journal_id = ?
-                    bank_account_id = ?, disbursed_by = ?, disbursed_at = NOW(), journal_voucher_id = ?
+                SET status = 'paid', payment_status = 'paid', bank_account_id = ?, disbursed_by = ?, disbursed_at = NOW(), journal_voucher_id = ?
                 WHERE id = ?
             ");
             foreach ($payslipsToPay as $p) {

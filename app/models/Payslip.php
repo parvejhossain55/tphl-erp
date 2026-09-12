@@ -213,8 +213,11 @@ class Payslip extends Model
     {
         //  Get main payslip
         $stmt = $this->db->prepare("
-        SELECT p.*, cb.bank_name, cb.account_name, cb.account_number,e.employee_id,e.full_name AS employee_name, e.email,e.joining_date,e.phone,e.basic_salary,
-        d.name AS designation_name ,dept.name AS department_name
+        SELECT p.*, cb.bank_name, cb.account_name, cb.account_number,
+               e.id AS emp_table_id, e.employee_id AS employee_office_id, e.full_name AS employee_name, 
+               e.email, e.joining_date, e.phone, e.basic_salary, e.gross_salary,
+               e.bank_name AS emp_bank_name, e.account_number AS emp_account_number, e.account_holder_name AS emp_account_name,
+               d.name AS designation_name, dept.name AS department_name
         FROM payslips AS p
         LEFT JOIN company_bank_accounts AS cb ON p.company_bank_id = cb.id
         LEFT JOIN employees AS e ON p.employee_id = e.id
@@ -252,79 +255,77 @@ class Payslip extends Model
         $items = $itemsResult->fetch_all(MYSQLI_ASSOC);
         $stmt2->close();
 
-        // 3 If items are empty or missing standard allowances, synthesize from payslips columns & rules
-        $hasEarningItems = false;
-        $hasDeductionItems = false;
-        foreach ($items as $it) {
-            if (($it['item_type'] ?? '') === 'earning') $hasEarningItems = true;
-            if (($it['item_type'] ?? '') === 'deduction') $hasDeductionItems = true;
-        }
-
-        if (!$hasEarningItems) {
-            $hr = (float) ($payslip['house_rent_allowance'] ?? 0);
-            $med = (float) ($payslip['medical_allowance'] ?? 0);
-            $conv = (float) ($payslip['conveyance_allowance'] ?? 0);
-            $rec = (float) ($payslip['recreation_allowance'] ?? 0);
-            $punc = (float) ($payslip['punctuality_bonus'] ?? 0);
-            $ot = (float) ($payslip['overtime'] ?? 0);
-            $arr = (float) ($payslip['arrears_earning'] ?? 0);
-            $duty = (float) ($payslip['duty_allowance'] ?? 0);
-
-            $sumColAllowances = $hr + $med + $conv + $rec + $punc + $ot + $arr + $duty;
-
-            // If columns had no allowances, use 50% basic and 50/30/10/10 of basic
-            if ($sumColAllowances <= 0 && $totalEarning > 0) {
-                $basicSalary = round($totalEarning * 0.50, 2);
-                $hr = round($basicSalary * 0.50, 2);
-                $med = round($basicSalary * 0.30, 2);
-                $conv = round($basicSalary * 0.10, 2);
-                $rec = round($basicSalary * 0.10, 2);
-            } elseif ($sumColAllowances > 0 && $totalEarning > $sumColAllowances) {
-                // Ensure basic_salary harmonizes with actual total_earning
-                $basicSalary = round($totalEarning - $sumColAllowances, 2);
-            }
-            $payslip['basic_salary'] = $basicSalary;
-
-            if ($hr > 0) $items[] = ['item_name' => 'House Rent Allowance', 'item_type' => 'earning', 'amount' => $hr];
-            if ($med > 0) $items[] = ['item_name' => 'Medical Allowance', 'item_type' => 'earning', 'amount' => $med];
-            if ($conv > 0) $items[] = ['item_name' => 'Conveyance Allowance', 'item_type' => 'earning', 'amount' => $conv];
-            if ($rec > 0) $items[] = ['item_name' => 'Recreation Allowance', 'item_type' => 'earning', 'amount' => $rec];
-            if ($punc > 0) $items[] = ['item_name' => 'Punctuality Bonus', 'item_type' => 'earning', 'amount' => $punc];
-            if ($ot > 0) $items[] = ['item_name' => 'Overtime', 'item_type' => 'earning', 'amount' => $ot];
-            if ($arr > 0) $items[] = ['item_name' => 'Arrears', 'item_type' => 'earning', 'amount' => $arr];
-            if ($duty > 0) $items[] = ['item_name' => 'Duty Allowance', 'item_type' => 'earning', 'amount' => $duty];
-        } else {
-            // If items exist, verify basic salary
-            $itemEarningsSum = 0;
+        // Helper to check if item is already present
+        $hasItemLike = function ($keyword, $type = null) use ($items) {
             foreach ($items as $it) {
-                if (($it['item_type'] ?? '') === 'earning') {
-                    $itemEarningsSum += (float)($it['amount'] ?? 0);
-                }
+                if ($type && ($it['item_type'] ?? '') !== $type) continue;
+                if (stripos($it['item_name'] ?? '', $keyword) !== false) return true;
             }
-            if ($totalEarning > $itemEarningsSum) {
-                $payslip['basic_salary'] = round($totalEarning - $itemEarningsSum, 2);
-            }
+            return false;
+        };
+
+        // 3 If core allowances are missing, add from payslip columns or calculate standard 50/30/10/10 of basic
+        $hasHouseRent = $hasItemLike('house rent', 'earning');
+        $hasMed = $hasItemLike('medical', 'earning');
+        $hasConv = $hasItemLike('conveyance', 'earning');
+        $hasRec = $hasItemLike('recreation', 'earning');
+
+        if (!$hasHouseRent && (float)($payslip['house_rent_allowance'] ?? 0) > 0) {
+            $items[] = ['item_name' => 'House Rent Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['house_rent_allowance']];
+        } elseif (!$hasHouseRent && $basicSalary > 0) {
+            $items[] = ['item_name' => 'House Rent Allowance', 'item_type' => 'earning', 'amount' => round($basicSalary * 0.50, 2)];
         }
 
-        if (!$hasDeductionItems) {
-            if ((float)($payslip['advance_salary'] ?? 0) > 0) {
-                $items[] = ['item_name' => 'Advance Salary', 'item_type' => 'deduction', 'amount' => (float)$payslip['advance_salary']];
-            }
-            if ((float)($payslip['subsidized_lunch'] ?? 0) > 0) {
-                $items[] = ['item_name' => 'Subsidized Lunch', 'item_type' => 'deduction', 'amount' => (float)$payslip['subsidized_lunch']];
-            }
-            if ((float)($payslip['unpaid_absent_amount'] ?? 0) > 0) {
-                $items[] = ['item_name' => 'Unpaid Absent', 'item_type' => 'deduction', 'amount' => (float)$payslip['unpaid_absent_amount']];
-            }
-            if ((float)($payslip['arrears_deduction'] ?? 0) > 0) {
-                $items[] = ['item_name' => 'Arrears Deduction', 'item_type' => 'deduction', 'amount' => (float)$payslip['arrears_deduction']];
-            }
-            if ((float)($payslip['others_deduction'] ?? 0) > 0) {
-                $items[] = ['item_name' => 'Others Deduction', 'item_type' => 'deduction', 'amount' => (float)$payslip['others_deduction']];
-            }
-            if ((float)($payslip['tax'] ?? 0) > 0) {
-                $items[] = ['item_name' => 'Tax', 'item_type' => 'deduction', 'amount' => (float)$payslip['tax']];
-            }
+        if (!$hasMed && (float)($payslip['medical_allowance'] ?? 0) > 0) {
+            $items[] = ['item_name' => 'Medical Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['medical_allowance']];
+        } elseif (!$hasMed && $basicSalary > 0) {
+            $items[] = ['item_name' => 'Medical Allowance', 'item_type' => 'earning', 'amount' => round($basicSalary * 0.30, 2)];
+        }
+
+        if (!$hasConv && (float)($payslip['conveyance_allowance'] ?? 0) > 0) {
+            $items[] = ['item_name' => 'Conveyance Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['conveyance_allowance']];
+        } elseif (!$hasConv && $basicSalary > 0) {
+            $items[] = ['item_name' => 'Conveyance Allowance', 'item_type' => 'earning', 'amount' => round($basicSalary * 0.10, 2)];
+        }
+
+        if (!$hasRec && (float)($payslip['recreation_allowance'] ?? 0) > 0) {
+            $items[] = ['item_name' => 'Recreation Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['recreation_allowance']];
+        } elseif (!$hasRec && $basicSalary > 0) {
+            $items[] = ['item_name' => 'Recreation Allowance', 'item_type' => 'earning', 'amount' => round($basicSalary * 0.10, 2)];
+        }
+
+        // Additional earnings from payslip columns
+        if (!$hasItemLike('punctual', 'earning') && (float)($payslip['punctuality_bonus'] ?? 0) > 0) {
+            $items[] = ['item_name' => 'Punctuality Bonus', 'item_type' => 'earning', 'amount' => (float)$payslip['punctuality_bonus']];
+        }
+        if (!$hasItemLike('overtime', 'earning') && (float)($payslip['overtime'] ?? 0) > 0) {
+            $items[] = ['item_name' => 'Overtime', 'item_type' => 'earning', 'amount' => (float)$payslip['overtime']];
+        }
+        if (!$hasItemLike('arrear', 'earning') && (float)($payslip['arrears_earning'] ?? 0) > 0) {
+            $items[] = ['item_name' => 'Arrears', 'item_type' => 'earning', 'amount' => (float)$payslip['arrears_earning']];
+        }
+        if (!$hasItemLike('duty', 'earning') && !$hasItemLike('special', 'earning') && (float)($payslip['duty_allowance'] ?? 0) > 0) {
+            $items[] = ['item_name' => 'Duty Allowance', 'item_type' => 'earning', 'amount' => (float)$payslip['duty_allowance']];
+        }
+
+        // Deductions from payslip columns
+        if (!$hasItemLike('advance', 'deduction') && (float)($payslip['advance_salary'] ?? 0) > 0) {
+            $items[] = ['item_name' => 'Advance Salary', 'item_type' => 'deduction', 'amount' => (float)$payslip['advance_salary']];
+        }
+        if (!$hasItemLike('lunch', 'deduction') && !$hasItemLike('meal', 'deduction') && (float)($payslip['subsidized_lunch'] ?? 0) > 0) {
+            $items[] = ['item_name' => 'Subsidized Lunch', 'item_type' => 'deduction', 'amount' => (float)$payslip['subsidized_lunch']];
+        }
+        if (!$hasItemLike('absent', 'deduction') && !$hasItemLike('lwp', 'deduction') && (float)($payslip['unpaid_absent_amount'] ?? 0) > 0) {
+            $items[] = ['item_name' => 'Unpaid Absent', 'item_type' => 'deduction', 'amount' => (float)$payslip['unpaid_absent_amount']];
+        }
+        if (!$hasItemLike('arrear', 'deduction') && (float)($payslip['arrears_deduction'] ?? 0) > 0) {
+            $items[] = ['item_name' => 'Arrears Deduction', 'item_type' => 'deduction', 'amount' => (float)$payslip['arrears_deduction']];
+        }
+        if (!$hasItemLike('other', 'deduction') && (float)($payslip['others_deduction'] ?? 0) > 0) {
+            $items[] = ['item_name' => 'Others Deduction', 'item_type' => 'deduction', 'amount' => (float)$payslip['others_deduction']];
+        }
+        if (!$hasItemLike('tax', 'deduction') && (float)($payslip['tax'] ?? 0) > 0) {
+            $items[] = ['item_name' => 'Tax Deduction', 'item_type' => 'deduction', 'amount' => (float)$payslip['tax']];
         }
 
         // 4 Attach items to payslip array

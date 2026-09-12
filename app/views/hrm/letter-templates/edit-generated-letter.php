@@ -87,9 +87,17 @@
 
             <div class="card__title-wrap mb-20 d-flex align-items-center justify-content-between">
                 <h5 class="card__heading-title">Edit Generated Letter</h5>
-                <a href="<?= $GLOBALS['base_url'] ?>/generate-letter" class="btn btn-secondary btn-sm">
-                    <i class="fa fa-arrow-left me-1"></i> Back to List
-                </a>
+                <div class="d-flex gap-2">
+                    <a href="<?= $GLOBALS['base_url'] ?>/view-letter/<?= $letter['id'] ?>" class="btn btn-info btn-sm text-white" title="View Preview">
+                        <i class="fa fa-eye me-1"></i> View Preview
+                    </a>
+                    <a href="<?= $GLOBALS['base_url'] ?>/print-letter/<?= $letter['id'] ?>?fit=1" class="btn btn-success btn-sm text-white" target="_blank" title="Print Letter (Fit to 1 Page)">
+                        <i class="fa fa-print me-1"></i> Print (Fit to 1 Page)
+                    </a>
+                    <a href="<?= $GLOBALS['base_url'] ?>/generate-letter" class="btn btn-secondary btn-sm">
+                        <i class="fa fa-arrow-left me-1"></i> Back to List
+                    </a>
+                </div>
             </div>
 
             <form action="<?= $GLOBALS['base_url'] ?>/update-letter/<?= $letter['id'] ?>" method="POST" enctype="multipart/form-data" id="editLetterForm">
@@ -1071,6 +1079,14 @@
                     for (var y = 0; y < h; y++) {
                         for (var x = 0; x < w; x++) {
                             var idx = (y * w + x) * 4;
+                            var srcA = data[idx + 3];
+
+                            // If pixel is already transparent in source PNG (transparent background)
+                            if (srcA <= 20) {
+                                data[idx + 3] = 0;
+                                continue;
+                            }
+
                             var r = data[idx];
                             var g = data[idx + 1];
                             var b = data[idx + 2];
@@ -1080,16 +1096,19 @@
                                 data[idx + 3] = 0;
                             } else {
                                 var alphaRatio = (threshold - lum) / threshold;
-                                var alpha = Math.min(255, Math.floor(alphaRatio * 255 * 1.5));
-                                data[idx + 3] = alpha;
+                                var calculatedAlpha = Math.min(255, Math.floor(alphaRatio * 255 * 1.5));
+                                var finalAlpha = (srcA < 255) ? Math.min(srcA, calculatedAlpha) : calculatedAlpha;
+                                data[idx + 3] = finalAlpha;
                                 data[idx] = Math.max(0, r - 50);
                                 data[idx + 1] = Math.max(0, g - 50);
                                 data[idx + 2] = Math.max(0, b - 40);
 
-                                if (x < minX) minX = x;
-                                if (x > maxX) maxX = x;
-                                if (y < minY) minY = y;
-                                if (y > maxY) maxY = y;
+                                if (finalAlpha > 30) {
+                                    if (x < minX) minX = x;
+                                    if (x > maxX) maxX = x;
+                                    if (y < minY) minY = y;
+                                    if (y > maxY) maxY = y;
+                                }
                             }
                         }
                     }

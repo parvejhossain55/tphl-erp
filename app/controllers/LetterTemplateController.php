@@ -537,32 +537,34 @@ class LetterTemplateController extends Controller
     public function viewLetter($id)
     {
         $letter = $this->letterModel->find($id);
-
-        if ($letter['letter_type'] === 'salary_certificate') {
-            $salaryItems = $this->letterModel->getSalaryItems((int) $id);
-            $this->view("hrm/letter-templates/salary-certificate-view", [
-                "letter" => $letter,
-                "salaryItems" => $salaryItems,
-            ]);
-        } else {
-            $this->view("hrm/letter-templates/view-letter", ["letter" => $letter]);
+        if (!$letter) {
+            header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
+            exit;
         }
+
+        $salaryItems = ($letter['letter_type'] === 'salary_certificate') ? $this->letterModel->getSalaryItems((int) $id) : [];
+        $this->view("hrm/letter-templates/view-letter", [
+            "letter" => $letter,
+            "salaryItems" => $salaryItems,
+        ]);
     }
 
     // ─── Print a letter ───────────────────────────────────────────────────────
     public function printLetter($id)
     {
         $letter = $this->letterModel->find($id);
-
-        if ($letter['letter_type'] === 'salary_certificate') {
-            $salaryItems = $this->letterModel->getSalaryItems((int) $id);
-            $this->view("hrm/letter-templates/salary-certificate-print", [
-                "letter" => $letter,
-                "salaryItems" => $salaryItems,
-            ], false);
-        } else {
-            $this->view("hrm/letter-templates/print-letter", ["letter" => $letter], false);
+        if (!$letter) {
+            header("Location: " . $GLOBALS['base_url'] . "/generate-letter");
+            exit;
         }
+
+        $fitMode = isset($_GET['fit']) ? trim($_GET['fit']) : null;
+        $salaryItems = ($letter['letter_type'] === 'salary_certificate') ? $this->letterModel->getSalaryItems((int) $id) : [];
+        $this->view("hrm/letter-templates/print-letter", [
+            "letter" => $letter,
+            "fitMode" => $fitMode,
+            "salaryItems" => $salaryItems,
+        ], false);
     }
 
     // ─── Delete a letter ──────────────────────────────────────────────────────
@@ -573,13 +575,17 @@ class LetterTemplateController extends Controller
     }
 
     // ─── Render Letter to Dompdf Instance ─────────────────────────────────────
-    public function renderLetterPDF($id)
+    public function renderLetterPDF($id, $fitMode = null)
     {
         ini_set('memory_limit', '512M');
 
         $letter = $this->letterModel->find($id);
         if (!$letter) {
             return null;
+        }
+
+        if ($fitMode === null && isset($_GET['fit'])) {
+            $fitMode = trim($_GET['fit']);
         }
 
         // Base64 encode the letterhead background image for 100% reliable Dompdf rendering
@@ -612,7 +618,7 @@ class LetterTemplateController extends Controller
 
         // Render HTML
         ob_start();
-        extract(['letter' => $letter, 'bgBase64' => $bgBase64, 'sigBase64' => $sigBase64]);
+        extract(['letter' => $letter, 'bgBase64' => $bgBase64, 'sigBase64' => $sigBase64, 'fitMode' => $fitMode]);
 
         if ($letter['letter_type'] === 'salary_certificate') {
             $salaryItems = $this->letterModel->getSalaryItems((int) $id);

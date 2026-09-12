@@ -16,15 +16,73 @@ if (stripos($companyName, 'Limited') === false && stripos($companyName, 'Ltd') =
 
 $isCaution = ($letter['letter_type'] === 'caution');
 $isExperience = ($letter['letter_type'] === 'experience');
+$isSalaryCert = ($letter['letter_type'] === 'salary_certificate');
 
 if ($isExperience) {
     $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/Experience Certificate/' . date('M-Y', strtotime($letter['letter_date'])));
+} elseif ($isSalaryCert) {
+    $certMonth = !empty($letter['certificate_month']) ? date('F-Y', strtotime($letter['certificate_month'] . '-01')) : date('F-Y', strtotime($letter['letter_date']));
+    $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/Salary Certificate/' . $certMonth);
 } else {
     $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/' . date('Y', strtotime($letter['letter_date'])) . '/' . str_pad($letter['id'], 4, '0', STR_PAD_LEFT));
 }
 
+if ($isSalaryCert) {
+    if (empty($salaryItems) && !empty($letter['id'])) {
+        $db = $GLOBALS['db'] ?? null;
+        if ($db) {
+            $sRes = $db->query("SELECT * FROM letter_salary_items WHERE letter_id = " . (int)$letter['id'] . " ORDER BY item_type DESC, sort_order ASC");
+            $salaryItems = ['earning' => [], 'deduction' => []];
+            if ($sRes) {
+                while ($sRow = $sRes->fetch_assoc()) {
+                    $salaryItems[$sRow['item_type']][] = $sRow;
+                }
+            }
+        }
+    }
+
+    $empTypeLabel = [
+        'permanent' => 'permanent',
+        'contract' => 'contractual',
+        'director' => 'director',
+        'intern' => 'intern',
+        'remote' => 'remote',
+        'probation' => 'probationary',
+        'management' => 'management',
+    ];
+    $empType = $empTypeLabel[$letter['employee_type'] ?? 'permanent'] ?? 'permanent';
+
+    $isFemale = false;
+    $nameLower = strtolower($rawName);
+    $femaleKeywords = ['ms.', 'mrs.', 'miss', 'khatun', 'begum', 'akter', 'akther', 'sultana', 'jahan', 'nahar', 'parvin', 'nasrin', 'farzana', 'roksana', 'shammi', 'bornali'];
+    foreach ($femaleKeywords as $kw) {
+        if (strpos($nameLower, $kw) !== false) {
+            $isFemale = true;
+            break;
+        }
+    }
+    $herHis = $isFemale ? 'her' : 'his';
+    $sheHe = $isFemale ? 'she' : 'he';
+    $herHim = $isFemale ? 'her' : 'him';
+
+    $startDate = !empty($letter['joining_date']) ? date('d F Y', strtotime($letter['joining_date'])) : (!empty($letter['emp_joining_date']) ? date('d F Y', strtotime($letter['emp_joining_date'])) : 'N/A');
+    $endDate = !empty($letter['effective_date']) ? date('d F Y', strtotime($letter['effective_date'])) : (!empty($letter['emp_resign_date']) ? date('d F Y', strtotime($letter['emp_resign_date'])) : '');
+
+    $periodText = $startDate;
+    if (!empty($endDate)) {
+        $periodText = "from " . $startDate . " to " . $endDate;
+    } else {
+        $periodText = "from " . $startDate . " to present";
+    }
+
+    $purposeText = !empty($letter['purpose']) ? $letter['purpose'] : 'final settlement';
+    if (strtolower($purposeText) === 'personal use') {
+        $purposeText = 'personal use';
+    }
+}
+
 // Ensure non-salary-certificate letters never display salary certificate ref numbers
-if ($letter['letter_type'] !== 'salary_certificate' && !empty($refNum) && stripos($refNum, 'Salary Certificate') !== false) {
+if (!$isSalaryCert && !empty($refNum) && stripos($refNum, 'Salary Certificate') !== false) {
     $refNum = 'TPHL/HR/' . date('Y', strtotime($letter['letter_date'])) . '/' . str_pad($letter['id'], 4, '0', STR_PAD_LEFT);
 }
 
@@ -33,6 +91,23 @@ $cleanAddress = trim($letter['address'] ?? '');
 $hasAddress = !empty($cleanAddress) && !in_array(strtoupper($cleanAddress), ['N/A', 'NA', 'NONE', 'NULL', '-']);
 
 $printBody = $letter['body'] ?? '';
+// Clean trailing empty paragraphs & excessive breaks to prevent accidental page spill
+$printBody = preg_replace('/(<p[^>]*>(\s|&nbsp;|<br\s*\/?>)*<\/p>\s*)+$/i', '', trim($printBody));
+
+// Detect manual page breaks
+$hasExplicitPageBreak = (bool) preg_match('/(<div[^>]*class=["\'][^"\']*page-break[^"\']*["\'][^>]*>|<!--\s*pagebreak\s*-->|<hr[^>]*class=["\'][^"\']*page-break[^"\']*["\'][^>]*>)/i', $printBody);
+
+$fitParam = isset($_GET['fit']) ? trim($_GET['fit']) : ($fitMode ?? '');
+$initialDensity = 'compact';
+if ($fitParam === '0' || $fitParam === 'normal') {
+    $initialDensity = 'normal';
+} elseif ($fitParam === 'ultra') {
+    $initialDensity = 'ultra';
+} elseif ($fitParam === '1' || $fitParam === 'compact') {
+    $initialDensity = 'compact';
+} elseif ($hasExplicitPageBreak) {
+    $initialDensity = 'normal';
+}
 
 
 $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 4);
@@ -42,7 +117,7 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
 } elseif (file_exists($baseDir . '/public/assets/images/hrm/hr_signature.png')) {
     $sigUrl = $GLOBALS['base_url'] . '/public/assets/images/hrm/hr_signature.png';
 } else {
-    $dbConn = $GLOBALS['db'] ?? ($this->db ?? null);
+    $dbConn = (isset($this) && isset($this->db)) ? $this->db : ($GLOBALS['db'] ?? null);
     if ($dbConn) {
         $defRes = $dbConn->query("SELECT signature_path FROM hr_signatures WHERE status = 'active' ORDER BY is_default DESC, id DESC LIMIT 1");
         if ($defRes && $row = $defRes->fetch_assoc()) {
@@ -58,7 +133,7 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
 
 <head>
     <meta charset="UTF-8">
-    <title>Official Letter - <?= htmlspecialchars($letter['subject']) ?></title>
+    <title>Official Letter - <?= htmlspecialchars($letter['subject'] ?? 'Letter') ?></title>
     <style>
         @page {
             size: A4 portrait;
@@ -78,24 +153,94 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
             padding: 0;
             font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
             font-size: 13px;
-            line-height: 1.7;
+            line-height: 1.65;
             color: #111827;
-            background: #fff;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
 
-        /* Letterhead image — reliably repeats across all pages in print via position: fixed */
-        .bg-letterhead {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 210mm;
-            height: 297mm;
-            z-index: -1000;
+        /* ═══ Screen Presentation (Realistic Centered A4 Sheet) ═══ */
+        @media screen {
+            body {
+                background-color: #525659;
+                min-height: 100vh;
+                padding: 24px 0 60px 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .sheet-container {
+                position: relative;
+                width: 210mm;
+                height: 297mm;
+                min-height: 297mm;
+                max-height: 297mm;
+                background-color: #ffffff;
+                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.15);
+                border-radius: 2px;
+                margin: 0 auto 25px auto;
+                overflow: hidden;
+                box-sizing: border-box;
+            }
+
+            .bg-letterhead {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 210mm;
+                height: 297mm;
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            .print-layout-table {
+                position: relative;
+                z-index: 1;
+                width: 210mm;
+                border-collapse: collapse;
+                margin: 0 auto;
+                border: none;
+                background: transparent;
+            }
+
+            .page-divider {
+                position: static !important;
+                text-align: center;
+                margin: 10px auto 25px auto;
+                width: 210mm;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 14px;
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                user-select: none;
+            }
+
+            .page-divider::before,
+            .page-divider::after {
+                content: "";
+                flex: 1;
+                border-top: 1.5px dashed #94a3b8;
+            }
+
+            .page-badge {
+                background: #334155;
+                color: #f8fafc;
+                font-size: 11px;
+                font-weight: 700;
+                padding: 4px 14px;
+                border-radius: 9999px;
+                letter-spacing: 0.6px;
+                text-transform: uppercase;
+                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+            }
         }
 
-        /* Printable Table Architecture: thead and tfoot reserve safe zone space on every page */
+        /* ═══ Printable Table Architecture: thead and tfoot reserve safe zones ═══ */
         .print-layout-table {
             width: 210mm;
             border-collapse: collapse;
@@ -123,11 +268,12 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
             vertical-align: top;
         }
 
-        /* Letter content container */
+        /* Letter content container with zoom support */
         .letter-content {
             width: 100%;
             display: block;
             position: relative;
+            transform-origin: top center;
         }
 
         /* Page break support */
@@ -165,60 +311,445 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
             break-inside: avoid;
         }
 
+        /* ═══ Physical Print Presentation ═══ */
         @media print {
-            body {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-                background: transparent;
+            html, body {
+                background: transparent !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 210mm !important;
+                display: block !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
 
             .no-print {
                 display: none !important;
             }
 
+            .sheet-container {
+                position: static !important;
+                width: 210mm !important;
+                min-height: 297mm !important;
+                max-height: 297mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: transparent !important;
+                box-shadow: none !important;
+                border: none !important;
+                border-radius: 0 !important;
+                overflow: hidden !important;
+                page-break-after: always !important;
+                break-after: page !important;
+            }
+
+            .sheet-container:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
+            }
+
+            .page-divider {
+                display: none !important;
+            }
+
             .bg-letterhead {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 210mm;
-                height: 297mm;
-                z-index: -1000;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 210mm !important;
+                height: 297mm !important;
+                z-index: -1000 !important;
+                pointer-events: none !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .print-layout-table {
+                position: relative !important;
+                width: 210mm !important;
+                margin: 0 !important;
+                border: none !important;
+                background: transparent !important;
             }
         }
 
-        /* Floating print toolbar */
-        .no-print {
+        /* ═══ Floating Print & Fit Toolbar ═══ */
+        .print-toolbar {
             position: fixed;
-            top: 20px;
-            right: 20px;
+            top: 16px;
+            right: 24px;
             z-index: 9999;
             display: flex;
+            align-items: center;
             gap: 10px;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 10px 14px;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 8px 14px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.1);
+            user-select: none;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #f1f5f9;
+            padding: 3px 6px;
             border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            border: 1px solid #e2e8f0;
+        }
+
+        .toolbar-label {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #475569;
+            margin-right: 4px;
+            margin-left: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-density {
+            padding: 5px 11px;
+            background: transparent;
+            color: #475569;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.15s ease;
+        }
+
+        .btn-density:hover {
+            color: #0f172a;
+            background: #e2e8f0;
+        }
+
+        .btn-density.active {
+            background: #0f766e;
+            color: #ffffff;
+            box-shadow: 0 1px 4px rgba(15, 118, 110, 0.35);
+        }
+
+        .zoom-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #f8fafc;
+            padding: 3px 6px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-zoom {
+            width: 24px;
+            height: 24px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 14px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #334155;
+            transition: all 0.15s ease;
+        }
+
+        .btn-zoom:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+            border-color: #94a3b8;
+        }
+
+        .zoom-display {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #0f766e;
+            min-width: 40px;
+            text-align: center;
+            padding: 0 2px;
+        }
+
+        .btn-zoom-reset {
+            padding: 3px 7px;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 10.5px;
+            font-weight: 600;
+            color: #64748b;
+            transition: all 0.15s ease;
+        }
+
+        .btn-zoom-reset:hover {
+            background: #f1f5f9;
+            color: #334155;
         }
 
         .btn-print {
-            padding: 8px 18px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
             background: #2563eb;
-            color: #fff;
+            color: #ffffff;
             border: none;
-            border-radius: 6px;
+            border-radius: 7px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12.5px;
             font-weight: 600;
+            box-shadow: 0 1px 4px rgba(37, 99, 235, 0.35);
+            transition: all 0.15s ease;
+        }
+
+        .btn-print:hover {
+            background: #1d4ed8;
+            box-shadow: 0 3px 8px rgba(37, 99, 235, 0.4);
         }
 
         .btn-close {
-            padding: 8px 14px;
+            padding: 6px 14px;
             background: #64748b;
-            color: #fff;
+            color: #ffffff;
             border: none;
-            border-radius: 6px;
+            border-radius: 7px;
             cursor: pointer;
+            font-size: 12.5px;
+            font-weight: 600;
+            transition: all 0.15s ease;
+        }
+
+        .btn-close:hover {
+            background: #475569;
+        }
+
+        /* ═══ Compact Mode (Fit to 1 Page) ═══ */
+        body.compact-mode {
+            font-size: 11.5px;
+            line-height: 1.42;
+        }
+        body.compact-mode .print-header-space {
+            height: 32mm;
+        }
+        body.compact-mode .print-footer-space {
+            height: 30mm;
+        }
+        body.compact-mode .letter-meta {
+            margin-bottom: 10px;
+            font-size: 11.5px;
+        }
+        body.compact-mode .letter-recipient {
+            margin-bottom: 10px;
+            font-size: 11.5px;
+            line-height: 1.35;
+        }
+        body.compact-mode .letter-recipient .recipient-name {
             font-size: 13px;
+        }
+        body.compact-mode .letter-subject {
+            margin: 8px 0 10px;
+        }
+        body.compact-mode .letter-subject .subject-text {
+            font-size: 12px;
+        }
+        body.compact-mode .letter-body {
+            font-size: 11.5px;
+            line-height: 1.42;
+        }
+        body.compact-mode .letter-body p {
+            margin-bottom: 4px;
+        }
+        body.compact-mode .letter-body h1, 
+        body.compact-mode .letter-body h2, 
+        body.compact-mode .letter-body h3, 
+        body.compact-mode .letter-body h4 {
+            margin: 5px 0 2px 0;
+            font-size: 12px;
+        }
+        body.compact-mode .letter-body ul, 
+        body.compact-mode .letter-body ol {
+            margin-bottom: 5px;
+            padding-left: 18px;
+        }
+        body.compact-mode .letter-body li {
+            margin-bottom: 2px;
+        }
+        body.compact-mode .letter-extra-box {
+            margin: 8px 0 10px;
+            padding: 6px 10px;
+        }
+        body.compact-mode .table-extra-details {
+            font-size: 11.5px;
+        }
+        body.compact-mode .table-extra-details td {
+            padding: 2px 4px;
+        }
+        body.compact-mode .letter-signature-section {
+            margin-top: 10px;
+            font-size: 11.5px;
+        }
+        body.compact-mode .signature-block {
+            margin-top: 6px;
+        }
+        body.compact-mode .sig-img-container {
+            height: 38px !important;
+            margin-bottom: 3px !important;
+        }
+        body.compact-mode .sig-img-container img {
+            height: 36px !important;
+        }
+        body.compact-mode .sign-line {
+            width: 160px;
+            margin-bottom: 4px;
+        }
+        body.compact-mode .signatory-name {
+            font-size: 12px;
+        }
+        body.compact-mode .signatory-title {
+            font-size: 11px;
+        }
+        body.compact-mode .signatory-dept {
+            font-size: 10.5px;
+        }
+
+        /* Caution Letter Compact */
+        body.compact-mode .caution-header-title {
+            font-size: 14px;
+            margin-bottom: 14px;
+        }
+        body.compact-mode .caution-date {
+            margin-bottom: 4px;
+            font-size: 11.5px;
+        }
+        body.compact-mode .caution-recipient-block {
+            margin-bottom: 10px;
+            line-height: 1.35;
+            font-size: 11.5px;
+        }
+        body.compact-mode .caution-subject {
+            margin: 8px 0 10px;
+            font-size: 12px;
+        }
+        body.compact-mode .caution-salutation {
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        body.compact-mode .caution-body {
+            font-size: 11.5px;
+            line-height: 1.45;
+        }
+        body.compact-mode .caution-signoff {
+            margin-top: 18px;
+            font-size: 12px;
+        }
+
+        /* Experience Letter Compact */
+        body.compact-mode .cert-meta-stacked {
+            margin-bottom: 14px;
+            font-size: 11.5px;
+            line-height: 1.4;
+        }
+        body.compact-mode .cert-title-centered {
+            font-size: 14px;
+            margin: 12px 0 14px;
+        }
+        body.compact-mode .experience-body {
+            font-size: 11.5px;
+            line-height: 1.48;
+        }
+        body.compact-mode .experience-signoff {
+            margin-top: 16px;
+            font-size: 11.5px;
+        }
+        body.compact-mode .experience-signoff .signoff-spacer {
+            height: 30px;
+        }
+
+        /* ═══ Ultra Compact Mode (For Extra Long Letters) ═══ */
+        body.ultra-compact {
+            font-size: 10.5px;
+            line-height: 1.32;
+        }
+        body.ultra-compact .print-header-space {
+            height: 30mm;
+        }
+        body.ultra-compact .print-footer-space {
+            height: 28mm;
+        }
+        body.ultra-compact .letter-meta {
+            margin-bottom: 6px;
+            font-size: 10.5px;
+        }
+        body.ultra-compact .letter-recipient {
+            margin-bottom: 6px;
+            font-size: 10.5px;
+            line-height: 1.25;
+        }
+        body.ultra-compact .letter-recipient .recipient-name {
+            font-size: 12px;
+        }
+        body.ultra-compact .letter-subject {
+            margin: 6px 0 6px;
+        }
+        body.ultra-compact .letter-subject .subject-text {
+            font-size: 11px;
+        }
+        body.ultra-compact .letter-body {
+            font-size: 10.5px;
+            line-height: 1.32;
+        }
+        body.ultra-compact .letter-body p {
+            margin-bottom: 3px;
+        }
+        body.ultra-compact .letter-body h1, 
+        body.ultra-compact .letter-body h2, 
+        body.ultra-compact .letter-body h3, 
+        body.ultra-compact .letter-body h4 {
+            margin: 4px 0 2px 0;
+            font-size: 11px;
+        }
+        body.ultra-compact .letter-extra-box {
+            margin: 6px 0 8px;
+            padding: 4px 8px;
+        }
+        body.ultra-compact .table-extra-details {
+            font-size: 10.5px;
+        }
+        body.ultra-compact .table-extra-details td {
+            padding: 1px 3px;
+        }
+        body.ultra-compact .letter-signature-section {
+            margin-top: 8px;
+            font-size: 10.5px;
+        }
+        body.ultra-compact .signature-block {
+            margin-top: 4px;
+        }
+        body.ultra-compact .sig-img-container {
+            height: 32px !important;
+            margin-bottom: 2px !important;
+        }
+        body.ultra-compact .sig-img-container img {
+            height: 30px !important;
+        }
+        body.ultra-compact .sign-line {
+            width: 140px;
+            margin-bottom: 3px;
+        }
+        body.ultra-compact .signatory-name {
+            font-size: 11px;
+        }
+        body.ultra-compact .signatory-title {
+            font-size: 10px;
+        }
+        body.ultra-compact .signatory-dept {
+            font-size: 9.5px;
         }
 
         /* ═══ Standard Letter Styling ═══ */
@@ -508,25 +1039,45 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
     </style>
 </head>
 
-<body>
-    <!-- Print toolbar -->
-    <div class="no-print">
-        <button class="btn-print" onclick="window.print()">Print</button>
-        <button class="btn-close" onclick="window.close()">Close</button>
+<body class="<?= $initialDensity === 'compact' ? 'compact-mode' : ($initialDensity === 'ultra' ? 'ultra-compact' : '') ?>">
+    <!-- Floating print & fit toolbar -->
+    <div class="print-toolbar no-print">
+        <div class="toolbar-group">
+            <span class="toolbar-label">Page Fit:</span>
+            <button type="button" class="btn-density <?= $initialDensity === 'normal' ? 'active' : '' ?>" data-density="normal" onclick="setDensity('normal')" title="Standard normal spacing">Normal</button>
+            <button type="button" class="btn-density <?= $initialDensity === 'compact' ? 'active' : '' ?>" data-density="compact" onclick="setDensity('compact')" title="Auto-scale & compact spacing to fit on 1 single page">Fit to 1 Page</button>
+            <button type="button" class="btn-density <?= $initialDensity === 'ultra' ? 'active' : '' ?>" data-density="ultra" onclick="setDensity('ultra')" title="Ultra compact spacing for long multi-clause letters">Ultra</button>
+        </div>
+
+        <div class="zoom-group">
+            <span class="toolbar-label">Zoom:</span>
+            <button type="button" class="btn-zoom" onclick="adjustZoom(-0.03)" title="Zoom Out (shrink to fit)">−</button>
+            <span id="zoomDisplay" class="zoom-display">100%</span>
+            <button type="button" class="btn-zoom" onclick="adjustZoom(0.03)" title="Zoom In (enlarge)">+</button>
+            <button type="button" class="btn-zoom-reset" onclick="resetZoom()" title="Reset to auto-fit scale">↺ Auto</button>
+        </div>
+
+        <button type="button" class="btn-print" onclick="triggerPrint()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Print
+        </button>
+        <button type="button" class="btn-close" onclick="window.close()">Close</button>
     </div>
 
-    <!-- Letterhead background image (fixed on all printed pages) -->
-    <img src="<?= $GLOBALS['base_url'] ?>/assets/email-template/new-letter-template.jpeg" class="bg-letterhead"
-        alt="Letterhead">
+    <!-- Centered A4 Paper Sheet Container -->
+    <div class="sheet-container" id="sheetContainer">
+        <!-- Letterhead background image -->
+        <img src="<?= $GLOBALS['base_url'] ?>/assets/email-template/new-letter-template.jpeg" class="bg-letterhead"
+            alt="Letterhead">
 
-    <table class="print-layout-table">
-        <thead>
-            <tr><th class="print-header-space">&nbsp;</th></tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td class="print-content-cell">
-                    <div class="letter-content">
+        <table class="print-layout-table">
+            <thead>
+                <tr><th class="print-header-space">&nbsp;</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="print-content-cell">
+                        <div class="letter-content" id="letterContent">
 
             <?php if ($isCaution): ?>
                 <!-- ═══════════════════ CAUTION LETTER FORMAT ═══════════════════ -->
@@ -577,14 +1128,12 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
 
                 <?php if (stripos($letter['body'], 'Human Resources Department') === false): ?>
                     <div class="experience-signoff">
-                        <div class="signoff-closing">Sincerely,</div>
-                        <div class="signoff-company" style="margin-bottom: 5px;">For <strong><?= htmlspecialchars($companyName) ?></strong></div>
                         <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
-                            <div style="height: 48px; margin-bottom: 5px;">
+                            <div class="sig-img-container" style="height: 48px; margin-bottom: 5px;">
                                 <img src="<?= $sigUrl ?>" alt="Signature" style="height: 45px; max-width: 170px; object-fit: contain;">
                             </div>
                         <?php else: ?>
-                            <div class="signoff-spacer"></div>
+                            <div class="signoff-spacer sig-img-container"></div>
                         <?php endif; ?>
                         <?php if (!empty($letter['signatory_name'])): ?>
                             <div style="font-weight: 700;"><?= htmlspecialchars($letter['signatory_name']) ?></div>
@@ -595,6 +1144,103 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
                         <div class="signoff-dept">Human Resources Department</div>
                     </div>
                 <?php endif; ?>
+
+            <?php elseif ($isSalaryCert): ?>
+                <!-- ═══════════════════ SALARY CERTIFICATE FORMAT ═══════════════════ -->
+                <div class="cert-meta-stacked">
+                    <div class="meta-line"><strong>Ref:</strong> <?= htmlspecialchars($refNum) ?></div>
+                    <div class="meta-line"><strong>Date:</strong> <?= date('d F, Y', strtotime($letter['letter_date'])) ?></div>
+                </div>
+
+                <div class="cert-title-centered">TO WHOM IT MAY CONCERN</div>
+
+                <?php
+                $scBodyData = json_decode($letter['body'] ?? '', true);
+                $hasCustomOpening = !empty($scBodyData['opening']);
+                $hasCustomClosing = !empty($scBodyData['closing']);
+
+                $renderMarkdownText = function ($text) {
+                    $paragraphs = preg_split('/\r\n\r\n|\n\n/', trim($text));
+                    foreach ($paragraphs as $para) {
+                        if (trim($para) !== '') {
+                            $escaped = htmlspecialchars(trim($para));
+                            $withBold = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $escaped);
+                            echo '<p style="margin-bottom: 8px;">' . nl2br($withBold) . '</p>';
+                        }
+                    }
+                };
+                ?>
+
+                <div class="letter-body">
+                    <?php if ($hasCustomOpening): ?>
+                        <?php $renderMarkdownText($scBodyData['opening']); ?>
+                    <?php else: ?>
+                        <p>
+                            This is to certify that <strong><?= htmlspecialchars($rawName) ?></strong> (Employee ID: <?= htmlspecialchars($letter['employee_code']) ?>) was a <?= htmlspecialchars($empType) ?> employee of <strong><?= htmlspecialchars($companyName) ?></strong> and <?= $sheHe ?> was employed as <strong><?= htmlspecialchars($letter['designation_name'] ?? 'N/A') ?></strong> <?= $periodText ?>.
+                        </p>
+                        <p>
+                            According to our records, <?= $herHis ?> monthly salary breakdown was as follows:
+                        </p>
+                    <?php endif; ?>
+
+                    <!-- Salary Table -->
+                    <table class="sc-table" style="width: 100%; border-collapse: collapse; margin: 14px 0 16px; font-size: 12.5px; border: 1px solid #334155;">
+                        <thead>
+                            <tr style="background-color: #f8fafc;">
+                                <th style="width:60%; border: 1px solid #334155; padding: 6px 12px; text-align: center; font-weight: 700;">Earning</th>
+                                <th style="width:40%; border: 1px solid #334155; padding: 6px 12px; text-align: center; font-weight: 700;">Amount (BDT)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php $totalEarning = 0;
+                            if (!empty($salaryItems['earning'])):
+                                foreach ($salaryItems['earning'] as $item):
+                                    $totalEarning += (float) $item['amount']; ?>
+                                    <tr>
+                                        <td style="border: 1px solid #334155; padding: 5px 14px;"><?= htmlspecialchars($item['label']) ?></td>
+                                        <td style="border: 1px solid #334155; padding: 5px 14px; text-align: right;"><?= number_format((float) $item['amount']) ?></td>
+                                    </tr>
+                                <?php endforeach;
+                            endif; ?>
+                            <tr style="background-color: #f8fafc; font-weight: 700; border-top: 2px solid #334155;">
+                                <td style="border: 1px solid #334155; padding: 6px 14px;"><strong>Gross Salary</strong></td>
+                                <td style="border: 1px solid #334155; padding: 6px 14px; text-align: right;">
+                                    <strong><?= number_format((float) ($letter['gross_salary'] ?? $totalEarning)) ?> (BDT)</strong>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <?php if ($hasCustomClosing): ?>
+                        <div style="margin-top: 10px;">
+                            <?php $renderMarkdownText($scBodyData['closing']); ?>
+                        </div>
+                    <?php else: ?>
+                        <p style="margin-top: 10px;">
+                            This certificate is issued upon <?= $herHis ?> request for <?= htmlspecialchars($purposeText) ?> without any liability on the part of this company.
+                        </p>
+                        <p>We wish <?= $herHim ?> all the very best.</p>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Official HR Signoff -->
+                <div class="experience-signoff" style="margin-top: 22px;">
+                    <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
+                        <div class="sig-img-container" style="height: 48px; margin-bottom: 5px;">
+                            <img src="<?= $sigUrl ?>" alt="Signature" style="height: 45px; max-width: 170px; object-fit: contain;">
+                        </div>
+                    <?php else: ?>
+                        <div class="signoff-spacer sig-img-container" style="height: 40px;"></div>
+                    <?php endif; ?>
+                    <div style="width: 170px; border-top: 1px solid #475569; margin-bottom: 4px;"></div>
+                    <?php if (!empty($letter['signatory_name'])): ?>
+                        <div style="font-weight: 700;"><?= htmlspecialchars($letter['signatory_name']) ?></div>
+                        <?php if (!empty($letter['signatory_title'])): ?>
+                            <div style="color: #475569;"><?= htmlspecialchars($letter['signatory_title']) ?></div>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                    <div class="signoff-dept" style="font-weight: 600; color: #475569; font-size: 12px;">Human Resources Department</div>
+                </div>
 
             <?php else: ?>
                 <!-- ═══════════════════ STANDARD / OTHER LETTER FORMAT ═══════════════════ -->
@@ -623,7 +1269,7 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
                 <!-- Subject Line -->
                 <div class="letter-subject">
                     <span class="subject-text">
-                        <strong>Subject:</strong> <?= htmlspecialchars($letter['subject']) ?>
+                        <strong>Subject:</strong> <?= htmlspecialchars($letter['subject'] ?? '') ?>
                     </span>
                 </div>
 
@@ -673,19 +1319,17 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
 
                 <!-- Official Signatory Block -->
                 <div class="letter-signature-section">
-                    <p class="mb-1">Sincerely,</p>
-                    <p class="company-sign-for">For <strong><?= htmlspecialchars($companyName) ?></strong></p>
                     <div class="signature-block">
                         <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
-                            <div style="height: 48px; margin-bottom: 5px;">
+                            <div class="sig-img-container" style="height: 48px; margin-bottom: 5px;">
                                 <img src="<?= $sigUrl ?>" alt="Signature" style="height: 45px; max-width: 170px; object-fit: contain;">
                             </div>
                         <?php else: ?>
-                            <div style="height: 48px; margin-bottom: 5px;"></div>
+                            <div class="sig-img-container" style="height: 48px; margin-bottom: 5px;"></div>
                         <?php endif; ?>
                         <div class="sign-line"></div>
-                        <span class="signatory-name"><?= htmlspecialchars($letter['signatory_name']) ?></span>
-                        <span class="signatory-title"><?= htmlspecialchars($letter['signatory_title']) ?></span>
+                        <span class="signatory-name"><?= htmlspecialchars($letter['signatory_name'] ?? '') ?></span>
+                        <span class="signatory-title"><?= htmlspecialchars($letter['signatory_title'] ?? '') ?></span>
                         <span class="signatory-dept">Human Resources Department</span>
                     </div>
                 </div>
@@ -701,11 +1345,282 @@ if (!empty($letter['custom_signature']) && file_exists($baseDir . '/' . ltrim($l
             </tr>
         </tfoot>
     </table>
+    </div> <!-- /.sheet-container -->
 
     <script>
-        window.onload = function () {
+        let currentDensity = '<?= $initialDensity ?>';
+        let currentZoom = 1.0;
+        let originalContentHTML = null;
+
+        function updateZoomDisplay(val) {
+            const el = document.getElementById('zoomDisplay');
+            if (el) {
+                el.textContent = Math.round(val * 100) + '%';
+            }
+        }
+
+        function restoreOriginalContent() {
+            const content = document.getElementById('letterContent');
+            if (!content) return;
+
+            // Remove any dynamically created sheet2 and pageDivider
+            document.querySelectorAll('#sheet2').forEach(el => el.remove());
+            document.querySelectorAll('#pageDivider, .page-divider').forEach(el => el.remove());
+
+            if (originalContentHTML !== null) {
+                content.innerHTML = originalContentHTML;
+            } else {
+                originalContentHTML = content.innerHTML;
+            }
+        }
+
+        function paginateMultiPage() {
+            const sheet1 = document.getElementById('sheetContainer');
+            const letterContent = document.getElementById('letterContent');
+            if (!sheet1 || !letterContent) return;
+
+            // Safe available height for page 1 content (297mm - 35mm header - 35mm footer - safety buffer)
+            const maxH = 845;
+            const actualHeight = letterContent.scrollHeight;
+
+            // If it naturally fits on 1 page without zooming, do not paginate
+            if (actualHeight <= maxH) {
+                return;
+            }
+
+            const contentTop = letterContent.getBoundingClientRect().top;
+            const bodyEl = letterContent.querySelector('.letter-body, .caution-body, .experience-body');
+            const extraBox = letterContent.querySelector('.letter-extra-box');
+            const sigSection = letterContent.querySelector('.letter-signature-section, .caution-signoff, .experience-signoff');
+
+            let splitNode = null;
+            let splitInsideBody = false;
+
+            // Check if there is an explicit page-break element
+            const explicitBreak = letterContent.querySelector('.page-break');
+            if (explicitBreak) {
+                splitNode = explicitBreak;
+                if (bodyEl && bodyEl.contains(explicitBreak)) {
+                    splitInsideBody = true;
+                }
+            } else if (bodyEl) {
+                const bodyChildren = Array.from(bodyEl.children);
+                for (let i = 0; i < bodyChildren.length; i++) {
+                    const child = bodyChildren[i];
+                    const bottom = child.getBoundingClientRect().bottom - contentTop;
+                    if (bottom > maxH) {
+                        // If previous child was a heading (e.g. <h3>), split at heading to avoid leaving lone heading on page 1
+                        if (i > 0 && /^H[1-6]$/i.test(bodyChildren[i - 1].tagName)) {
+                            splitNode = bodyChildren[i - 1];
+                        } else {
+                            splitNode = child;
+                        }
+                        splitInsideBody = true;
+                        break;
+                    }
+                }
+                // If all body elements fit, but extraBox or sigSection exceeds maxH
+                if (!splitNode) {
+                    if (extraBox && (extraBox.getBoundingClientRect().bottom - contentTop > maxH)) {
+                        splitNode = extraBox;
+                    } else if (sigSection && (sigSection.getBoundingClientRect().bottom - contentTop > maxH)) {
+                        splitNode = sigSection;
+                    }
+                }
+            } else {
+                const children = Array.from(letterContent.children);
+                for (let i = 0; i < children.length; i++) {
+                    const child = children[i];
+                    if (child.classList.contains('letter-meta') || child.classList.contains('letter-recipient') || child.classList.contains('letter-subject') || child.classList.contains('caution-header-title')) {
+                        continue;
+                    }
+                    const bottom = child.getBoundingClientRect().bottom - contentTop;
+                    if (bottom > maxH) {
+                        splitNode = child;
+                        break;
+                    }
+                }
+            }
+
+            if (!splitNode) return;
+
+            // Create Sheet 2
+            const sheet2 = document.createElement('div');
+            sheet2.className = sheet1.className;
+            sheet2.id = 'sheet2';
+
+            const bgImgSrc = sheet1.querySelector('.bg-letterhead').getAttribute('src');
+            sheet2.innerHTML = `
+                <img src="${bgImgSrc}" class="bg-letterhead" alt="Letterhead">
+                <table class="print-layout-table">
+                    <thead><tr><th class="print-header-space">&nbsp;</th></tr></thead>
+                    <tbody>
+                        <tr>
+                            <td class="print-content-cell">
+                                <div class="letter-content" id="letterContentPage2"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot><tr><td class="print-footer-space">&nbsp;</td></tr></tfoot>
+                </table>
+            `;
+
+            const content2 = sheet2.querySelector('#letterContentPage2');
+
+            if (splitInsideBody && bodyEl) {
+                const body2 = document.createElement('div');
+                body2.className = bodyEl.className;
+
+                let moving = false;
+                const bodyChildren = Array.from(bodyEl.childNodes);
+                bodyChildren.forEach(child => {
+                    if (child === splitNode) moving = true;
+                    if (moving) {
+                        body2.appendChild(child);
+                    }
+                });
+                content2.appendChild(body2);
+
+                // Also move any subsequent siblings of bodyEl (extraBox, sigSection)
+                let movingSiblings = false;
+                const letterChildren = Array.from(letterContent.children);
+                letterChildren.forEach(child => {
+                    if (child === bodyEl) {
+                        movingSiblings = true;
+                        return;
+                    }
+                    if (movingSiblings) {
+                        content2.appendChild(child);
+                    }
+                });
+            } else {
+                let moving = false;
+                const letterChildren = Array.from(letterContent.children);
+                letterChildren.forEach(child => {
+                    if (child === splitNode) moving = true;
+                    if (moving) {
+                        content2.appendChild(child);
+                    }
+                });
+            }
+
+            // Clean up any existing divider or sheet2 before inserting
+            document.querySelectorAll('#sheet2').forEach(el => el.remove());
+            document.querySelectorAll('#pageDivider, .page-divider').forEach(el => el.remove());
+
+            // Insert Divider & Sheet 2 into the page
+            const divider = document.createElement('div');
+            divider.id = 'pageDivider';
+            divider.className = 'page-divider no-print';
+            divider.innerHTML = '<span class="page-badge">Page 2 of 2</span>';
+
+            sheet1.parentNode.insertBefore(divider, sheet1.nextSibling);
+            sheet1.parentNode.insertBefore(sheet2, divider.nextSibling);
+        }
+
+        function applyFitAndPagination() {
+            restoreOriginalContent();
+
+            const content = document.getElementById('letterContent');
+            if (!content) return;
+
+            if (currentDensity === 'normal') {
+                currentZoom = 1.0;
+                content.style.zoom = '1';
+                updateZoomDisplay(1.0);
+                paginateMultiPage();
+                return;
+            }
+
+            // Compact or Ultra mode: scale to fit strictly on 1 page!
+            content.style.zoom = '1';
+            const maxSafeHeight = (currentDensity === 'ultra') ? 885 : 864;
+            const actualHeight = content.scrollHeight;
+
+            if (actualHeight > maxSafeHeight) {
+                let ratio = maxSafeHeight / actualHeight;
+                ratio = Math.max(0.55, Math.min(0.99, ratio));
+                currentZoom = ratio;
+                content.style.zoom = ratio.toFixed(3);
+                updateZoomDisplay(ratio);
+            } else {
+                currentZoom = 1.0;
+                content.style.zoom = '1';
+                updateZoomDisplay(1.0);
+            }
+        }
+
+        function setDensity(mode) {
+            currentDensity = mode;
+            document.body.classList.remove('compact-mode', 'ultra-compact');
+            if (mode === 'compact') {
+                document.body.classList.add('compact-mode');
+            } else if (mode === 'ultra') {
+                document.body.classList.add('ultra-compact');
+            }
+
+            document.querySelectorAll('.btn-density').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-density') === mode);
+            });
+
+            try {
+                localStorage.setItem('letter_print_density', mode);
+            } catch (e) {}
+
+            applyFitAndPagination();
+        }
+
+        function adjustZoom(delta) {
+            const content = document.getElementById('letterContent');
+            if (!content) return;
+
+            currentZoom = Math.max(0.40, Math.min(1.40, currentZoom + delta));
+            content.style.zoom = currentZoom.toFixed(3);
+            updateZoomDisplay(currentZoom);
+
+            if (currentDensity === 'normal') {
+                restoreOriginalContent();
+                content.style.zoom = currentZoom.toFixed(3);
+                paginateMultiPage();
+            }
+        }
+
+        function resetZoom() {
+            applyFitAndPagination();
+        }
+
+        function triggerPrint() {
+            applyFitAndPagination();
             window.print();
-        };
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', function () {
+            originalContentHTML = document.getElementById('letterContent').innerHTML;
+
+            const urlParams = new URLSearchParams(window.location.search);
+            if (!urlParams.has('fit')) {
+                try {
+                    const saved = localStorage.getItem('letter_print_density');
+                    if (saved && (saved === 'normal' || saved === 'compact' || saved === 'ultra')) {
+                        setDensity(saved);
+                        return;
+                    }
+                } catch (e) {}
+            }
+            applyFitAndPagination();
+        });
+
+        window.addEventListener('load', function () {
+            applyFitAndPagination();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('noprint') !== '1') {
+                setTimeout(function () {
+                    window.print();
+                }, 400);
+            }
+        });
     </script>
 </body>
 

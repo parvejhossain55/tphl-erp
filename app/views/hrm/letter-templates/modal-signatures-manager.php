@@ -181,6 +181,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     for (var y = 0; y < h; y++) {
                         for (var x = 0; x < w; x++) {
                             var idx = (y * w + x) * 4;
+                            var srcA = data[idx + 3];
+
+                            // If pixel is already transparent in source PNG (transparent background)
+                            if (srcA <= 20) {
+                                data[idx + 3] = 0;
+                                continue;
+                            }
+
                             var r = data[idx];
                             var g = data[idx + 1];
                             var b = data[idx + 2];
@@ -190,16 +198,19 @@ document.addEventListener('DOMContentLoaded', function () {
                                 data[idx + 3] = 0;
                             } else {
                                 var alphaRatio = (threshold - lum) / threshold;
-                                var alpha = Math.min(255, Math.floor(alphaRatio * 255 * 1.5));
-                                data[idx + 3] = alpha;
+                                var calculatedAlpha = Math.min(255, Math.floor(alphaRatio * 255 * 1.5));
+                                var finalAlpha = (srcA < 255) ? Math.min(srcA, calculatedAlpha) : calculatedAlpha;
+                                data[idx + 3] = finalAlpha;
                                 data[idx] = Math.max(0, r - 50);
                                 data[idx + 1] = Math.max(0, g - 50);
                                 data[idx + 2] = Math.max(0, b - 40);
 
-                                if (x < minX) minX = x;
-                                if (x > maxX) maxX = x;
-                                if (y < minY) minY = y;
-                                if (y > maxY) maxY = y;
+                                if (finalAlpha > 30) {
+                                    if (x < minX) minX = x;
+                                    if (x > maxX) maxX = x;
+                                    if (y < minY) minY = y;
+                                    if (y > maxY) maxY = y;
+                                }
                             }
                         }
                     }
