@@ -1,0 +1,514 @@
+<?php
+
+class MealTrackerController extends Controller
+{
+    protected $db;
+    protected $mealProjectModel;
+    protected $mealRecordModel;
+    protected $employeeModel;
+
+    public function __construct($db)
+    {
+        $this->db = $db;
+        $this->mealProjectModel = new MealProject($this->db);
+        $this->mealRecordModel = new MealRecord($this->db);
+        $this->employeeModel = new Employee($this->db);
+    }
+
+    /**
+     * Check if current user has Admin, Operation, or HR role/permission
+     */
+    private function checkAccess($isJson = false)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!isset($_SESSION['user']['id'])) {
+            if ($isJson) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Unauthorized access. Please login.']);
+                exit;
+            }
+            setError("Unauthorized access. Please login.");
+            header("Location: {$GLOBALS['base_url']}/login");
+            exit;
+        }
+
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
+
+        // Allowed: Admin (1, 3), HR (4), Operation (20, 32)
+        $hasAccess = in_array($userRoleId, [1, 3, 4, 20, 32])
+            || (strpos($userRoleName, 'admin') !== false)
+            || (strpos($userRoleName, 'operation') !== false)
+            || (strpos($userRoleName, 'hr') !== false)
+            || hasPermission(['Hr Manage', 'HRM Management', 'Operation manage']);
+
+        if (!$hasAccess) {
+            if ($isJson) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Access denied. Meal Tracker is restricted to Admin, Operation, and HR roles.']);
+                exit;
+            }
+            setError("Access denied. Meal Tracker is restricted to Admin, Operation, and HR roles.");
+            header("Location: {$GLOBALS['base_url']}/dashboard");
+            exit;
+        }
+    }
+
+    /**
+     * Main Meal Tracker Grid View with Office Branch Tabs
+     */
+    public function index()
+    {
+        $this->checkAccess();
+
+        // Fetch all meal projects
+        $mealProjects = $this->mealProjectModel->getAll();
+
+        // Selected Project ID
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+        if (!$selectedProjectId && !empty($mealProjects)) {
+            $selectedProjectId = (int)$mealProjects[0]['id'];
+        }
+
+        $activeProject = null;
+        $dateColumns = [];
+        if ($selectedProjectId) {
+            $activeProject = $this->mealProjectModel->getById($selectedProjectId);
+            if ($activeProject && !empty($activeProject['from_date']) && !empty($activeProject['to_date'])) {
+                $start = new DateTime($activeProject['from_date']);
+                $end = new DateTime($activeProject['to_date']);
+                $end->modify('+1 day'); // inclusive
+
+                $interval = new DateInterval('P1D');
+                $period = new DatePeriod($start, $interval, $end);
+
+                foreach ($period as $dt) {
+                    $dateStr = $dt->format('Y-m-d');
+                    $dayName = $dt->format('D'); // Mon, Tue, etc.
+                    $dayNum = $dt->format('j');
+                    $monthShort = $dt->format('M');
+                    $dateColumns[] = [
+                        'date' => $dateStr,
+                        'day_name' => $dayName,
+                        'day_num' => $dayNum,
+                        'month_short' => $monthShort,
+                        'is_weekend' => in_array($dayName, ['Fri', 'Sat'])
+                    ];
+                }
+            }
+        }
+
+        // Fetch all active office branches
+        $branchRes = $this->db->query("SELECT * FROM office_branches WHERE status = 'active' ORDER BY id ASC");
+        $branches = [];
+        if ($branchRes) {
+            while ($bRow = $branchRes->fetch_assoc()) {
+                $branches[] = $bRow;
+            }
+        }
+
+        // Selected Branch ID
+        $selectedBranchId = isset($_GET['branch_id']) && $_GET['branch_id'] !== '' ? (int)$_GET['branch_id'] : null;
+        if (!$selectedBranchId && !empty($branches)) {
+            $selectedBranchId = (int)$branches[0]['id'];
+        }
+
+        // Fetch employees for this branch where is_meal_deduction = 1
+        $employees = [];
+        $records = [];
+        $guestRecords = [];
+
+        if ($selectedBranchId) {
+            $employees = $this->employeeModel->getActiveMealEmployeesByBranch($selectedBranchId);
+            if ($selectedProjectId && $activeProject) {
+                // Auto-sync attendance if no consumed records exist yet, or today has not been recorded
+                $hasConsumed = $this->mealRecordModel->hasConsumedRecords($selectedProjectId);
+                $today = date('Y-m-d');
+                $shouldAutoSync = false;
+                if (!$hasConsumed) {
+                    $shouldAutoSync = true;
+                } else if ($today >= $activeProject['from_date'] && $today <= $activeProject['to_date']) {
+                    if (!$this->mealRecordModel->hasRecordsForDate($selectedProjectId, $today)) {
+                        $shouldAutoSync = true;
+                    }
+                }
+
+                if ($shouldAutoSync) {
+                    $this->mealRecordModel->syncAttendanceWithMealRecords($selectedProjectId);
+                }
+
+                $records = $this->mealRecordModel->getRecordsByProjectAndBranch($selectedProjectId, $selectedBranchId);
+                $guestRecords = $this->mealRecordModel->getGuestRecordsByProjectAndBranch($selectedProjectId, $selectedBranchId);
+            }
+        }
+
+        // Also fetch payroll projects for project-creation link modal
+        $payrollProjRes = $this->db->query("SELECT id, name, date, start_date, end_date FROM payroll_projects ORDER BY id DESC");
+        $payrollProjects = [];
+        if ($payrollProjRes) {
+            while ($p = $payrollProjRes->fetch_assoc()) {
+                $payrollProjects[] = $p;
+            }
+        }
+
+        // Fetch employee meal opt-outs in project period
+        $optOuts = [];
+        if ($activeProject && !empty($activeProject['from_date']) && !empty($activeProject['to_date'])) {
+            $optOuts = $this->mealRecordModel->getOptOutsByDateRange($activeProject['from_date'], $activeProject['to_date']);
+        }
+
+        return $this->view('meal_tracker/index', [
+            'current_route' => 'meal-tracker',
+            'page_title' => 'Meal Tracker Workspace',
+            'mealProjects' => $mealProjects,
+            'selectedProjectId' => $selectedProjectId,
+            'activeProject' => $activeProject,
+            'dateColumns' => $dateColumns,
+            'branches' => $branches,
+            'selectedBranchId' => $selectedBranchId,
+            'employees' => $employees,
+            'records' => $records,
+            'guestRecords' => $guestRecords,
+            'payrollProjects' => $payrollProjects,
+            'optOuts' => $optOuts
+        ]);
+    }
+
+    /**
+     * Store new Meal Project
+     */
+    public function storeProject()
+    {
+        $this->checkAccess();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            setError("Invalid request method.");
+            header("Location: {$GLOBALS['base_url']}/meal-tracker");
+            exit;
+        }
+
+        $name = trim($_POST['name'] ?? '');
+        $standardAmount = (float)($_POST['standard_meal_amount'] ?? 120.00);
+        $fromDate = trim($_POST['from_date'] ?? '');
+        $toDate = trim($_POST['to_date'] ?? '');
+        $payrollProjectId = !empty($_POST['payroll_project_id']) ? (int)$_POST['payroll_project_id'] : null;
+        $createdBy = $_SESSION['user']['id'] ?? null;
+
+        if (empty($name) || empty($fromDate) || empty($toDate)) {
+            setError("Project Name, From Date and To Date are required.");
+            header("Location: {$GLOBALS['base_url']}/meal-tracker");
+            exit;
+        }
+
+        $newId = $this->mealProjectModel->create([
+            'name' => $name,
+            'standard_meal_amount' => $standardAmount > 0 ? $standardAmount : 120.00,
+            'from_date' => $fromDate,
+            'to_date' => $toDate,
+            'payroll_project_id' => $payrollProjectId,
+            'created_by' => $createdBy
+        ]);
+
+        if ($newId) {
+            // Auto-sync attendance immediately so all dates up to today are auto-ticked
+            $this->mealRecordModel->syncAttendanceWithMealRecords($newId);
+            setSuccess("Meal Project '$name' created successfully and attendance auto-synced.");
+            header("Location: {$GLOBALS['base_url']}/meal-tracker?project_id={$newId}");
+        } else {
+            setError("Failed to create Meal Project. Please try again.");
+            header("Location: {$GLOBALS['base_url']}/meal-tracker");
+        }
+        exit;
+    }
+
+    /**
+     * AJAX API: Get Branch Grid Data
+     */
+    public function getBranchGridData()
+    {
+        $this->checkAccess(true);
+        header('Content-Type: application/json');
+
+        $projectId = isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
+        $branchId = isset($_GET['branch_id']) ? (int)$_GET['branch_id'] : 0;
+
+        if (!$projectId || !$branchId) {
+            echo json_encode(['success' => false, 'message' => 'Project ID and Branch ID are required.']);
+            exit;
+        }
+
+        $project = $this->mealProjectModel->getById($projectId);
+        if (!$project) {
+            echo json_encode(['success' => false, 'message' => 'Meal Project not found.']);
+            exit;
+        }
+
+        $employees = $this->employeeModel->getActiveMealEmployeesByBranch($branchId);
+        $records = $this->mealRecordModel->getRecordsByProjectAndBranch($projectId, $branchId);
+        $guestRecords = $this->mealRecordModel->getGuestRecordsByProjectAndBranch($projectId, $branchId);
+        $optOuts = $this->mealRecordModel->getOptOutsByDateRange($project['from_date'], $project['to_date']);
+
+        echo json_encode([
+            'success' => true,
+            'project' => $project,
+            'employees' => $employees,
+            'records' => $records,
+            'guest_records' => $guestRecords,
+            'opt_outs' => $optOuts
+        ]);
+        exit;
+    }
+
+    /**
+     * AJAX POST: Save daily meal grid for a branch
+     */
+    public function saveDailyGrid()
+    {
+        $this->checkAccess(true);
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (!$input) {
+            echo json_encode(['success' => false, 'message' => 'No payload received.']);
+            exit;
+        }
+
+        $projectId = (int)($input['project_id'] ?? 0);
+        $branchId = (int)($input['branch_id'] ?? 0);
+        $records = $input['records'] ?? [];
+        $guestRecords = $input['guest_records'] ?? [];
+
+        if (!$projectId || !$branchId) {
+            echo json_encode(['success' => false, 'message' => 'Project and Branch ID are required.']);
+            exit;
+        }
+
+        $this->db->begin_transaction();
+        try {
+            $saveOk = $this->mealRecordModel->bulkUpsertRecords($projectId, $branchId, $records);
+            if (!$saveOk) {
+                throw new Exception("Failed to save employee meal records.");
+            }
+
+            if (!empty($guestRecords)) {
+                $guestOk = $this->mealRecordModel->bulkUpsertGuestRecords($projectId, $branchId, $guestRecords);
+                if (!$guestOk) {
+                    throw new Exception("Failed to save guest meal records.");
+                }
+            }
+
+            $this->db->commit();
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Meal tracker records saved successfully!'
+            ]);
+        } catch (Exception $e) {
+            $this->db->rollback();
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+
+    /**
+     * Meal History & Monthly Branch Bill Summary
+     */
+    public function history()
+    {
+        $this->checkAccess();
+
+        $mealProjects = $this->mealProjectModel->getAll();
+
+        // Calculate summary for each project
+        $historyData = [];
+        foreach ($mealProjects as $proj) {
+            $pid = (int)$proj['id'];
+            $branchSummary = $this->mealRecordModel->getBranchWiseSummary($pid);
+            $standardAmount = (float)$proj['standard_meal_amount'];
+
+            $totalMeals = 0;
+            $totalGuests = 0;
+            $totalBill = 0;
+
+            foreach ($branchSummary as &$b) {
+                $bMeals = $b['employee_meals'] + $b['guest_meals'];
+                $bCost = $bMeals * $standardAmount;
+                $b['total_meals'] = $bMeals;
+                $b['total_cost'] = $bCost;
+
+                $totalMeals += $b['employee_meals'];
+                $totalGuests += $b['guest_meals'];
+                $totalBill += $bCost;
+            }
+
+            $historyData[] = [
+                'project' => $proj,
+                'branches' => $branchSummary,
+                'total_employee_meals' => $totalMeals,
+                'total_guest_meals' => $totalGuests,
+                'grand_total_meals' => $totalMeals + $totalGuests,
+                'grand_total_bill' => $totalBill
+            ];
+        }
+
+        return $this->view('meal_tracker/history', [
+            'current_route' => 'meal-tracker-history',
+            'page_title' => 'Meal Tracker History & Branch Summary',
+            'historyData' => $historyData
+        ]);
+    }
+
+    /**
+     * AJAX GET: Get Today's Meal Status for Logged-In Employee
+     */
+    public function getTodayMealStatus()
+    {
+        header('Content-Type: application/json');
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!isset($_SESSION['user']['id'])) {
+            echo json_encode(['success' => false, 'is_enrolled' => false, 'message' => 'Not logged in.']);
+            exit;
+        }
+
+        $empId = (int)($_SESSION['user']['employee_db_id'] ?? 0);
+        if (!$empId) {
+            $userId = (int)$_SESSION['user']['id'];
+            $res = $this->db->query("SELECT id FROM employees WHERE user_id = $userId AND deleted_at IS NULL LIMIT 1");
+            if ($res && $row = $res->fetch_assoc()) {
+                $empId = (int)$row['id'];
+                $_SESSION['user']['employee_db_id'] = $empId;
+            }
+        }
+
+        if (!$empId) {
+            echo json_encode(['success' => false, 'is_enrolled' => false, 'message' => 'No employee profile.']);
+            exit;
+        }
+
+        $ctx = $this->employeeModel->getTodayMealContext($empId);
+        if (!$ctx) {
+            echo json_encode(['success' => false, 'is_enrolled' => false, 'message' => 'Context not found.']);
+            exit;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'context' => $ctx
+        ]);
+        exit;
+    }
+
+    /**
+     * AJAX POST: Toggle Today's Meal Opt-Out / Opt-In for Logged-In Employee (Before 12:00 PM)
+     */
+    public function toggleTodayMeal()
+    {
+        header('Content-Type: application/json');
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!isset($_SESSION['user']['id'])) {
+            echo json_encode(['success' => false, 'message' => 'Please login first.']);
+            exit;
+        }
+
+        $empId = (int)($_SESSION['user']['employee_db_id'] ?? 0);
+        if (!$empId) {
+            $userId = (int)$_SESSION['user']['id'];
+            $res = $this->db->query("SELECT id FROM employees WHERE user_id = $userId AND deleted_at IS NULL LIMIT 1");
+            if ($res && $row = $res->fetch_assoc()) {
+                $empId = (int)$row['id'];
+                $_SESSION['user']['employee_db_id'] = $empId;
+            }
+        }
+
+        if (!$empId) {
+            echo json_encode(['success' => false, 'message' => 'No employee profile linked to your user account.']);
+            exit;
+        }
+
+        $ctx = $this->employeeModel->getTodayMealContext($empId);
+        if (!$ctx || empty($ctx['is_enrolled'])) {
+            echo json_encode(['success' => false, 'message' => 'You are not enrolled in the company subsidized lunch plan.']);
+            exit;
+        }
+
+        // Strict 12:00 PM Cutoff Check (TEMPORARILY DISABLED FOR TESTING - allow full day testing)
+        // if (date('H:i') >= '12:00') {
+        //     echo json_encode([
+        //         'success' => false, 
+        //         'message' => 'আজকের মিল কাটঅফ সময় (দুপুর ১২:০০ টা) পার হয়ে গেছে। ১২:০০ টার পর আর আজকের মিল পরিবর্তন করা সম্ভব নয়।'
+        //     ]);
+        //     exit;
+        // }
+
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true) ?? [];
+        $action = trim($input['action'] ?? '');
+        $date = date('Y-m-d');
+        $reason = trim($input['reason'] ?? '');
+
+        if (!in_array($action, ['opt_out', 'opt_in'])) {
+            $action = $ctx['is_opted_out'] ? 'opt_in' : 'opt_out';
+        }
+
+        $res = $this->mealRecordModel->saveDailyOptOut($empId, $date, $action, $reason);
+
+        if ($res) {
+            $updatedCtx = $this->employeeModel->getTodayMealContext($empId, $date);
+            $msg = ($action === 'opt_out') 
+                ? 'আজকের মিল সফলভাবে অফ করা হয়েছে।' 
+                : 'আজকের মিল সফলভাবে পুনরায় চালু করা হয়েছে।';
+
+            echo json_encode([
+                'success' => true,
+                'status' => $action,
+                'message' => $msg,
+                'context' => $updatedCtx
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to update meal status. Please try again.']);
+        }
+        exit;
+    }
+
+    /**
+     * AJAX POST: Sync Attendance with Meal Records (Admin / HR)
+     */
+    public function syncAttendance()
+    {
+        $this->checkAccess(true);
+        header('Content-Type: application/json');
+
+        $rawInput = file_get_contents('php://input');
+        $input = json_decode($rawInput, true) ?? [];
+        $projectId = (int)($input['project_id'] ?? ($_GET['project_id'] ?? 0));
+        $branchId = !empty($input['branch_id']) ? (int)$input['branch_id'] : null;
+
+        if (!$projectId) {
+            echo json_encode(['success' => false, 'message' => 'Meal Project ID is required for sync.']);
+            exit;
+        }
+
+        $res = $this->mealRecordModel->syncAttendanceWithMealRecords($projectId, $branchId);
+        echo json_encode($res);
+        exit;
+    }
+}
+

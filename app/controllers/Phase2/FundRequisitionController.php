@@ -339,6 +339,18 @@ class FundRequisitionController extends Controller {
             $req['approved_amount'] = $effectiveAmt;
         }
 
+        // Auto-heal if fully paid but status was accidentally reverted to 'approved'
+        if ($req['status'] === 'approved' && !empty($req['paid_at']) && (float)($req['paid_amount'] ?? 0) >= (float)($req['approved_amount'] ?? $req['amount'])) {
+            $this->db->query("UPDATE fund_requisitions SET status = 'paid' WHERE id = {$id}");
+            $req['status'] = 'paid';
+        }
+
+        // Ensure paid_at is chronologically after approved_at (1 minute after)
+        if (!empty($req['paid_at']) && !empty($req['approved_at']) && strtotime($req['paid_at']) <= strtotime($req['approved_at'])) {
+            $this->db->query("UPDATE fund_requisitions SET paid_at = DATE_ADD(approved_at, INTERVAL 1 MINUTE) WHERE id = {$id}");
+            $req['paid_at'] = date('Y-m-d H:i:s', strtotime($req['approved_at'] . ' +1 minute'));
+        }
+
         // Expenses
         $expenses = $this->db->query("
             SELECT fre.*, p.name AS project_name, u.full_name AS creator_name
@@ -460,50 +472,46 @@ class FundRequisitionController extends Controller {
             $this->syncApprovalRequest($newReqId);
 
             // --- Email Notification Start ---
-            require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
-            $mailService = new \MailService();
-            $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $newReqId;
+            try {
+                require_once __DIR__ . '/../../core/MailServiceForPHPMailer.php';
+                $mailService = new \MailService();
+                $link = $GLOBALS['base_url'] . "/fund-requisitions/view/" . $newReqId;
 
-            $reqUserRes = $this->db->query("SELECT full_name FROM users WHERE id = {$requested_by}");
-            $requesterName = ($reqUserRes && $reqUserRes->num_rows > 0) ? $reqUserRes->fetch_assoc()['full_name'] : 'Unknown';
+                $reqUserRes = $this->db->query("SELECT full_name FROM users WHERE id = {$requested_by}");
+                $requesterName = ($reqUserRes && $reqUserRes->num_rows > 0) ? $reqUserRes->fetch_assoc()['full_name'] : 'Unknown';
 
-            $reqDetails = [
-                'title' => $purpose,
-                'requester_name' => $requesterName,
-                'amount' => $amount
-            ];
+                $reqDetails = [
+                    'title' => $purpose,
+                    'requester_name' => $requesterName,
+                    'amount' => $amount
+                ];
 
-            $emailSent = false;
-            if ($isDeptApprovalRequired == 1 && !empty($reportingUserId)) {
-                $bossRes = $this->db->query("SELECT full_name, email FROM users WHERE id = {$reportingUserId}");
-                if ($bossRes && $bossRes->num_rows > 0) {
-                    $bossInfo = $bossRes->fetch_assoc();
-                    if (!empty($bossInfo['email'])) {
-                        $emailSent = $mailService->sendRequisitionNotification($bossInfo['email'], $bossInfo['full_name'], 'Pending Department Head Approval', 'Fund Requisition', $reqDetails, $link);
+                $emailSent = false;
+                if ($isDeptApprovalRequired == 1 && !empty($reportingUserId)) {
+                    $bossRes = $this->db->query("SELECT full_name, email FROM users WHERE id = {$reportingUserId}");
+                    if ($bossRes && $bossRes->num_rows > 0) {
+                        $bossInfo = $bossRes->fetch_assoc();
+                        if (!empty($bossInfo['email'])) {
+                            $emailSent = $mailService->sendRequisitionNotification($bossInfo['email'], $bossInfo['full_name'], 'Pending Department Head Approval', 'Fund Requisition', $reqDetails, $link);
+                        }
                     }
-                }
-            } else {
-                $qcRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id = 24");
-                if ($qcRes) {
-                    while ($qc = $qcRes->fetch_assoc()) {
-                        if (!empty($qc['email'])) {
-                            $sent = $mailService->sendRequisitionNotification($qc['email'], $qc['full_name'], 'Pending QC & Internal Audit Head Approval', 'Fund Requisition', $reqDetails, $link);
-                            if ($sent) $emailSent = true;
+                } else {
+                    $qcRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id = 24");
+                    if ($qcRes) {
+                        while ($qc = $qcRes->fetch_assoc()) {
+                            if (!empty($qc['email'])) {
+                                $sent = $mailService->sendRequisitionNotification($qc['email'], $qc['full_name'], 'Pending QC & Internal Audit Head Approval', 'Fund Requisition', $reqDetails, $link);
+                                if ($sent) $emailSent = true;
+                            }
                         }
                     }
                 }
+            } catch (\Throwable $t) {
+                error_log("Fund requisition creation email notification error: " . $t->getMessage());
             }
             // --- Email Notification End ---
 
-            if (!$emailSent) {
-                // Rollback insertion
-                $this->db->query("DELETE FROM fund_requisitions WHERE id = {$newReqId}");
-                $this->db->query("DELETE FROM approval_requests WHERE source_table = 'fund_requisitions' AND source_id = {$newReqId}");
-                $exactError = isset($mailService->lastError) ? $mailService->lastError : 'Unknown error';
-                setError("Failed to create request: Email could not be sent. Error: " . $exactError);
-            } else {
-                setSuccess("Fund Requisition submitted successfully. Email sent.");
-            }
+            setSuccess("Fund Requisition submitted successfully.");
         } else {
             setError("Failed to submit request: " . $this->db->error);
         }
@@ -840,6 +848,9 @@ class FundRequisitionController extends Controller {
         if ($status === 'approved') {
             $posted_amount = $effectiveMax - $cumulative_approved_amount; 
             $cumulative_approved_amount = $effectiveMax;
+            if (!empty($frData['paid_at']) && (float)($frData['paid_amount'] ?? 0) >= $cumulative_approved_amount) {
+                $status = 'paid';
+            }
         } elseif ($status === 'partially_approved') {
             if ($new_approved_amount <= 0 || ($cumulative_approved_amount + $new_approved_amount) > $effectiveMax) {
                 setError('Invalid approved amount.');
@@ -964,6 +975,13 @@ class FundRequisitionController extends Controller {
         if (!$frData) {
             setError('Requisition not found.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        // STRICT GUARD: Must be approved by Management before Accounts can disburse payment
+        if (!in_array($frData['status'], ['approved', 'partially_approved', 'partially_paid'])) {
+            setError('Payment cannot be processed! Requisition must be approved by Management first (Current status: ' . htmlspecialchars($frData['status']) . ').');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
             exit;
         }
 

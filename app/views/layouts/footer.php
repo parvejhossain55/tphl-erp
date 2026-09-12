@@ -829,6 +829,9 @@ if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id']
 </script>
 <?php endif; ?>
 
+<!-- Daily Meal Notice Widget & Modal for Enrolled Employees -->
+<?php require_once __DIR__ . '/meal_daily_modal.php'; ?>
+
         </body>
 
         </html>

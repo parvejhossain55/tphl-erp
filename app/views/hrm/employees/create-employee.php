@@ -294,6 +294,30 @@ $show_breadcrumb = true;
                         <div class="col-lg-6">
                             <div class="from__input-box">
                                 <div class="form__input-title">
+                                    <label for="is_meal_deduction">Meal Deduction Service</label>
+                                </div>
+                                <div class="form__input">
+                                    <select class="form-control" name="is_meal_deduction" id="is_meal_deduction">
+                                        <option value="1">Enabled (চালু - মিল ট্র্যাকারে অন্তর্ভুক্ত)</option>
+                                        <option value="0" selected>Disabled (বন্ধ - মিল ট্র্যাকারে অন্তর্ভুক্ত নয়)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="from__input-box">
+                                <div class="form__input-title">
+                                    <label for="per_meal_percentage">Per Meal Rate Percentage (%)</label>
+                                </div>
+                                <div class="form__input">
+                                    <input class="form-control" name="per_meal_percentage" id="per_meal_percentage"
+                                        type="number" step="0.01" min="0" max="100" value="100.00" placeholder="e.g. 100.00">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="from__input-box">
+                                <div class="form__input-title">
                                     <label for="basic_salary">Basic Salary<span>*</span></label>
                                 </div>
                                 <div class="form__input">

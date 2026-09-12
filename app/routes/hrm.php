@@ -342,5 +342,18 @@ return [
     'payroll-salary-hold' => ['controller' => 'PayrollController', 'method' => 'salaryHoldPage'],
     'payroll-salary-hold-save' => ['controller' => 'PayrollController', 'method' => 'salaryHoldSave'],
     'payroll-salary-hold-remove' => ['controller' => 'PayrollController', 'method' => 'salaryHoldRemove'],
-    'payroll-salary-hold-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSalaryHoldPDF']
+    'payroll-salary-hold-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSalaryHoldPDF'],
+
+    // =========================================================================
+    // Meal Tracker Module Routes
+    // =========================================================================
+    'meal-tracker' => ['controller' => 'MealTrackerController', 'method' => 'index'],
+    'meal-project-store' => ['controller' => 'MealTrackerController', 'method' => 'storeProject'],
+    'api/meal-tracker/branch-data' => ['controller' => 'MealTrackerController', 'method' => 'getBranchGridData'],
+    'meal-tracker-save' => ['controller' => 'MealTrackerController', 'method' => 'saveDailyGrid'],
+    'meal-tracker-history' => ['controller' => 'MealTrackerController', 'method' => 'history'],
+    'api/employee/today-meal-status' => ['controller' => 'MealTrackerController', 'method' => 'getTodayMealStatus'],
+    'api/employee/toggle-today-meal' => ['controller' => 'MealTrackerController', 'method' => 'toggleTodayMeal'],
+    'api/meal-tracker/sync-attendance' => ['controller' => 'MealTrackerController', 'method' => 'syncAttendance']
 ];
+
