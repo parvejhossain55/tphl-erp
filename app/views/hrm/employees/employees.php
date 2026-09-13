@@ -93,6 +93,10 @@ $show_breadcrumb = true;
     </div>
 </form>
 
+<?php
+$currentQuery = !empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '';
+$listReturnUrl = $GLOBALS['base_url'] . '/employee-lists' . $currentQuery;
+?>
 <div class="row align-items-stretch">
     <?php foreach ($employees as $employee): ?>
         <div class="col-xxl-3 col-xl-4 col-lg-6 col-md-6 px-2">
@@ -130,7 +134,7 @@ $show_breadcrumb = true;
 
                                 <a class="btn btn-outline-theme-border" href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $employee['id'] ?>">View</a>
                                 <!-- <a href="< $GLOBALS['base_url'] ?>/edit-employee?id=< $employee['id'] ?>">Edit</a> -->
-                                <a class="btn btn-outline-theme-border" href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>">Edit</a>
+                                <a class="btn btn-outline-theme-border" href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>?return_url=<?= urlencode($listReturnUrl) ?>">Edit</a>
                                 <button class="removeBtnCust btn btn-outline-theme-border delete"
                                     data-id="<?= $employee['id'] ?>"
                                     data-name="<?= $employee['full_name'] ?>"
