@@ -14,6 +14,7 @@
          </div>
 
          <form action="<?= $GLOBALS['base_url'] ?>/update-employee/<?= $employee['id'] ?>" method="POST" enctype="multipart/form-data">
+             <input type="hidden" name="return_url" value="<?= htmlspecialchars($_GET['return_url'] ?? ($_POST['return_url'] ?? ($GLOBALS['base_url'] . '/employee-lists'))) ?>">
 
              <div class="row g-20 gy-20 align-items-center justify-content-center">
                  <!-- Employee ID -->
@@ -473,7 +474,8 @@
 
                   <!-- Submit -->
                   <div class="col-12 text-center mt-3">
-                      <button class="btn btn-primary">Update Employee</button>
+                      <button class="btn btn-primary me-2">Update Employee</button>
+                      <a href="<?= htmlspecialchars($_GET['return_url'] ?? ($GLOBALS['base_url'] . '/employee-lists')) ?>" class="btn btn-outline-secondary">Cancel</a>
                   </div>
               </div>
           </form>

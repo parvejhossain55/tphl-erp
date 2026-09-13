@@ -12,7 +12,7 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap d-flex align-items-center justify-content-between mb-15">
                     <h5 class="card__heading-title">Personal Information</h5>
                     <a data-bs-target="#profile__info" class="edit-icon"
-                        href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>">
+                        href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>?return_url=<?= urlencode($GLOBALS['base_url'] . '/employee-profile/' . $employee['id']) ?>">
                         <i class="fa-solid fa-pencil"></i>
                     </a>
                 </div>
@@ -99,7 +99,7 @@ $show_breadcrumb = true;
             <div class="employee__profile-single-box p-relative">
                 <div class="card__title-wrap d-flex align-items-center justify-content-between mb-15">
                     <h5 class="card__heading-title">Emergency Contact</h5>
-                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon"
+                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>?return_url=<?= urlencode($GLOBALS['base_url'] . '/employee-profile/' . $employee['id']) ?>" class="edit-icon"
                         data-bs-target="#emergency_contact_modal">
                         <i class="fa-solid fa-pencil"></i>
                     </a>
@@ -145,7 +145,7 @@ $show_breadcrumb = true;
             <div class="employee__profile-single-box p-relative">
                 <div class="card__title-wrap d-flex align-items-center justify-content-between mb-15">
                     <h5 class="card__heading-title">Education Qualification</h5>
-                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon"
+                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>?return_url=<?= urlencode($GLOBALS['base_url'] . '/employee-profile/' . $employee['id']) ?>" class="edit-icon"
                         data-bs-target="#education__info">
                         <i class="fa-solid fa-pencil"></i>
                     </a>
@@ -161,7 +161,7 @@ $show_breadcrumb = true;
             <div class="employee__profile-single-box p-relative">
                 <div class="card__title-wrap d-flex align-items-center justify-content-between mb-15">
                     <h5 class="card__heading-title">Experience Details</h5>
-                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon"
+                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>?return_url=<?= urlencode($GLOBALS['base_url'] . '/employee-profile/' . $employee['id']) ?>" class="edit-icon"
                         data-bs-target="#experience__info">
                         <i class="fa-solid fa-pencil"></i>
                     </a>
@@ -177,7 +177,7 @@ $show_breadcrumb = true;
             <div class="employee__profile-single-box p-relative">
                 <div class="card__title-wrap d-flex align-items-center justify-content-between mb-15">
                     <h5 class="card__heading-title">Bank Account</h5>
-                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon"
+                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>?return_url=<?= urlencode($GLOBALS['base_url'] . '/employee-profile/' . $employee['id']) ?>" class="edit-icon"
                         data-bs-target="#bank__account__info">
                         <i class="fa-solid fa-pencil"></i>
                     </a>
@@ -211,7 +211,7 @@ $show_breadcrumb = true;
             <div class="employee__profile-single-box p-relative">
                 <div class="card__title-wrap d-flex align-items-center justify-content-between mb-15">
                     <h5 class="card__heading-title">Passport Information</h5>
-                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon"
+                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>?return_url=<?= urlencode($GLOBALS['base_url'] . '/employee-profile/' . $employee['id']) ?>" class="edit-icon"
                         data-bs-target="#passport__info">
                         <i class="fa-solid fa-pencil"></i>
                     </a>
@@ -237,7 +237,7 @@ $show_breadcrumb = true;
             <div class="employee__profile-single-box p-relative">
                 <div class="card__title-wrap d-flex align-items-center justify-content-between mb-15">
                     <h5 class="card__heading-title">Social Profile</h5>
-                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>" class="edit-icon"
+                    <a href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>?return_url=<?= urlencode($GLOBALS['base_url'] . '/employee-profile/' . $employee['id']) ?>" class="edit-icon"
                         data-bs-target="#social__info">
                         <i class="fa-solid fa-pencil"></i>
                     </a>

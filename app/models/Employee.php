@@ -15,6 +15,16 @@ class Employee extends Model
             $this->db->query("ALTER TABLE `employees` ADD COLUMN `office_branch_id` INT NULL DEFAULT 2 AFTER `workplace`");
         }
         $this->db->query("UPDATE `employees` SET `office_branch_id` = 2 WHERE `office_branch_id` IS NULL OR `office_branch_id` = 0");
+
+        $resMeal = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'is_meal_deduction'");
+        if ($resMeal && $resMeal->num_rows === 0) {
+            $this->db->query("ALTER TABLE `employees` ADD COLUMN `is_meal_deduction` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = Subject to meal deduction, 0 = No deduction' AFTER `per_meal_amount`");
+        }
+
+        $resMealPct = $this->db->query("SHOW COLUMNS FROM `employees` LIKE 'per_meal_percentage'");
+        if ($resMealPct && $resMealPct->num_rows === 0) {
+            $this->db->query("ALTER TABLE `employees` ADD COLUMN `per_meal_percentage` DECIMAL(5,2) NOT NULL DEFAULT 100.00 COMMENT 'Percentage of standard meal amount employee pays' AFTER `is_meal_deduction`");
+        }
     }
 
     public function getPaginated($limit, $offset, $search = '', $department_id = '', $team_id = '', $workplace = '')
@@ -194,6 +204,7 @@ class Employee extends Model
     }
     public function create($data, $photoInputName = '')
     {
+        $this->ensureOfficeBranchSchema();
         $photo = '';
 
         if (!empty($_FILES[$photoInputName]['name'])) {
@@ -349,6 +360,7 @@ WHERE e.id = ?
 
     public function update($id, $data, $photoInputName = null)
     {
+        $this->ensureOfficeBranchSchema();
         // 1 Get old employee
         $oldEmployee = $this->find($id);
         if (!$oldEmployee) {

@@ -363,7 +363,8 @@ class EmployeeController extends Controller
         $existingEmployee = $this->employeeModel->find($id);
         if (!$existingEmployee) {
             setError("Employee not found!");
-            header("Location: {$GLOBALS['base_url']}/employee-lists");
+            $redirectUrl = !empty($_POST['return_url']) ? $_POST['return_url'] : "{$GLOBALS['base_url']}/employee-lists";
+            header("Location: {$redirectUrl}");
             exit;
         }
 
@@ -459,7 +460,11 @@ class EmployeeController extends Controller
 
         if (!$this->employeeModel->update($id, $employeeData, 'photo')) {
             setError("Employee update failed!");
-            header("Location: {$GLOBALS['base_url']}/edit-employee/$id");
+            $failRedirect = "{$GLOBALS['base_url']}/edit-employee/$id";
+            if (!empty($_POST['return_url'])) {
+                $failRedirect .= '?return_url=' . urlencode($_POST['return_url']);
+            }
+            header("Location: {$failRedirect}");
             exit;
         }
 
@@ -527,7 +532,8 @@ class EmployeeController extends Controller
 
         setSuccess("Employee updated successfully!");
 
-        header("Location: {$GLOBALS['base_url']}/employee-lists");
+        $redirectUrl = !empty($_POST['return_url']) ? $_POST['return_url'] : "{$GLOBALS['base_url']}/employee-lists";
+        header("Location: {$redirectUrl}");
         exit;
     }
 
