@@ -449,14 +449,15 @@ class MealTrackerController extends Controller
             exit;
         }
 
-        // Strict 12:00 PM Cutoff Check (TEMPORARILY DISABLED FOR TESTING - allow full day testing)
-        // if (date('H:i') >= '12:00') {
-        //     echo json_encode([
-        //         'success' => false, 
-        //         'message' => 'আজকের মিল কাটঅফ সময় (দুপুর ১২:০০ টা) পার হয়ে গেছে। ১২:০০ টার পর আর আজকের মিল পরিবর্তন করা সম্ভব নয়।'
-        //     ]);
-        //     exit;
-        // }
+        // Strict 12:00 PM Cutoff Check
+        date_default_timezone_set('Asia/Dhaka');
+        if (date('H:i') >= '12:00') {
+            echo json_encode([
+                'success' => false, 
+                'message' => 'আজকের মিল কাটঅফ সময় (দুপুর ১২:০০ টা) পার হয়ে গেছে। ১২:০০ টার পর আর আজকের মিল পরিবর্তন করা সম্ভব নয়।'
+            ]);
+            exit;
+        }
 
         $rawInput = file_get_contents('php://input');
         $input = json_decode($rawInput, true) ?? [];

@@ -47,9 +47,14 @@ if ((int)($eRow['is_meal_deduction'] ?? 0) !== 1) {
 
 $empFullName = !empty($eRow['full_name']) ? $eRow['full_name'] : ($_SESSION['user']['full_name'] ?? 'Colleague');
 
+date_default_timezone_set('Asia/Dhaka');
 $todayDate  = date('Y-m-d');
-// TEMPORARY TESTING MODE: Full day enabled so Mam can test right now (will revert to date('H:i') < '12:00' later)
-$isBefore12 = true; // (date('H:i') < '12:00');
+$isBefore12 = (date('H:i') < '12:00');
+
+// Strictly active ONLY up to 12:00 PM (noon)! After 12:00 PM, do not show bottom line or modal.
+if (!$isBefore12) {
+    return;
+}
 
 // Check opt-out status for today
 $optRes = $dbConn->query("SELECT status, opt_out_time FROM employee_meal_opt_outs WHERE employee_id = {$loggedInEmpId} AND opt_out_date = '{$todayDate}' LIMIT 1");
@@ -246,8 +251,14 @@ if ($attRes && $attRow = $attRes->fetch_assoc()) {
                 $('#floatingMealWidget').appendTo('body');
             }
 
+            function isNowBefore12() {
+                const now = new Date();
+                return (now.getHours() < 12);
+            }
+
             function shouldShowMealModal() {
-                if (!isBefore12) {
+                if (!isNowBefore12()) {
+                    $('#floatingMealWidget').remove();
                     return false;
                 }
                 const lastShown = localStorage.getItem(lastShownKey);
@@ -259,6 +270,15 @@ if ($attRes && $attRow = $attRes->fetch_assoc()) {
             }
 
             function triggerMealModalIfDue() {
+                if (!isNowBefore12()) {
+                    $('#floatingMealWidget').remove();
+                    const modalEl = document.getElementById('dailyMealNoticeModal');
+                    if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        const modalObj = bootstrap.Modal.getInstance(modalEl);
+                        if (modalObj) modalObj.hide();
+                    }
+                    return;
+                }
                 if (shouldShowMealModal()) {
                     const modalEl = document.getElementById('dailyMealNoticeModal');
                     if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {

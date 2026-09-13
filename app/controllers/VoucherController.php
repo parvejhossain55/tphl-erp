@@ -610,7 +610,7 @@ class VoucherController extends Controller
 
             case 'expense_adjustment':
             case 'expense_adjustments':
-                $stmt = $this->db->prepare("SELECT ea.*, u.full_name FROM expense_adjustments ea LEFT JOIN users u ON u.id = ea.user_id WHERE ea.id = ?");
+                $stmt = $this->db->prepare("SELECT ea.*, u.full_name, p.name as project_name FROM expense_adjustments ea LEFT JOIN users u ON u.id = ea.user_id LEFT JOIN projects p ON p.id = ea.project_id WHERE ea.id = ?");
                 if (!$stmt) die("Error preparing query: " . $this->db->error);
                 $stmt->bind_param("i", $id);
                 $stmt->execute();
@@ -619,8 +619,9 @@ class VoucherController extends Controller
 
                 if (!$req) die("Not found");
 
+                $voucherData['voucher_no'] = 'ADJ-' . str_pad($id, 4, '0', STR_PAD_LEFT);
                 $voucherData['paid_to'] = $req['full_name'];
-                $voucherData['project'] = 'N/A';
+                $voucherData['project'] = !empty($req['project_name']) ? $req['project_name'] : (!empty($req['office']) ? $req['office'] : 'Head Office / Operations');
                 $voucherData['purpose'] = 'Expense Adjustment - ' . $req['title'];
                 
                 $descParts = [];

@@ -5,102 +5,111 @@
     <title>Debit Voucher - <?= htmlspecialchars($voucher['voucher_no']) ?></title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             margin: 0;
-            padding: 20px;
-            color: #333;
+            padding: 10px;
+            color: #222;
+            background: #f4f6f9;
         }
         .voucher-container {
             width: 100%;
             max-width: 820px;
             margin: 0 auto;
             border: 2px solid #222;
-            padding: 24px;
+            padding: 12px 18px;
             position: relative;
             background: #fff;
             box-sizing: border-box;
+            border-radius: 2px;
         }
         .header {
             text-align: center;
-            border-bottom: 2px solid #222;
-            padding-bottom: 8px;
-            margin-bottom: 16px;
+            border-bottom: 1.5px solid #222;
+            padding-bottom: 3px;
+            margin-bottom: 6px;
         }
         .header h2 {
             margin: 0;
-            font-size: 17px;
+            font-size: 14px;
             text-transform: uppercase;
             letter-spacing: 2px;
             background: #222;
             color: #fff;
             display: inline-block;
-            padding: 4px 18px;
-            border-radius: 4px;
+            padding: 3px 16px;
+            border-radius: 3px;
         }
         .row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
+            margin-bottom: 4px;
+            line-height: 1.3;
         }
         .col {
             flex: 1;
         }
         .label {
             font-weight: bold;
-            width: 120px;
+            width: 85px;
             display: inline-block;
-            font-size: 13px;
+            font-size: 12px;
+            color: #111;
         }
         .value {
             border-bottom: 1px dotted #888;
             display: inline-block;
-            width: calc(100% - 130px);
-            padding-left: 8px;
-            font-size: 13px;
+            width: calc(100% - 95px);
+            padding-left: 6px;
+            font-size: 12px;
+            color: #222;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 14px;
-            margin-bottom: 14px;
-            font-size: 13px;
+            margin-top: 6px;
+            margin-bottom: 6px;
+            font-size: 11.5px;
         }
         table, th, td {
             border: 1px solid #222;
         }
         th, td {
-            padding: 6px 8px;
+            padding: 4px 7px;
             text-align: left;
+            line-height: 1.35;
         }
         th {
             background-color: #f2f2f2;
             font-weight: bold;
+            font-size: 11.5px;
         }
         .amount-row {
             font-weight: bold;
             text-align: right;
+            font-size: 12px;
         }
         .amount-in-words {
             font-weight: bold;
             background: #f9f9f9;
-            padding: 8px 12px;
+            padding: 5px 10px;
             border: 1px solid #ccc;
-            margin-top: 8px;
-            font-size: 13px;
+            margin-top: 5px;
+            font-size: 11.5px;
+            line-height: 1.35;
         }
         .attachments-box {
-            margin-top: 12px;
-            padding: 8px 12px;
+            margin-top: 5px;
+            padding: 4px 10px;
             background: #fafafa;
             border: 1px dashed #777;
-            font-size: 12px;
+            font-size: 11px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         /* Audit Trail Section */
         .audit-trail-section {
-            margin-top: 14px;
+            margin-top: 6px;
             border: 1px solid #222;
             background: #fff;
             page-break-inside: avoid;
@@ -108,8 +117,8 @@
         .audit-trail-title {
             background: #222;
             color: #fff;
-            padding: 4px 10px;
-            font-size: 11px;
+            padding: 3px 8px;
+            font-size: 10.5px;
             font-weight: bold;
             display: flex;
             justify-content: space-between;
@@ -120,9 +129,9 @@
         .audit-status-badge {
             background: #198754;
             color: #fff;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 10px;
+            padding: 1px 5px;
+            border-radius: 2px;
+            font-size: 9.5px;
         }
         .audit-grid {
             display: flex;
@@ -130,62 +139,62 @@
         }
         .audit-card {
             flex: 1;
-            padding: 8px 10px;
+            padding: 5px 8px;
             border-right: 1px solid #ddd;
-            font-size: 12px;
+            font-size: 11px;
         }
         .audit-card:last-child {
             border-right: none;
         }
         .audit-card-header {
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
             color: #333;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
             border-bottom: 1px dashed #ccc;
-            padding-bottom: 3px;
+            padding-bottom: 2px;
             font-weight: bold;
         }
         .step-num {
             background: #222;
             color: #fff;
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: bold;
         }
         .audit-user-name {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
             color: #111;
-            line-height: 1.3;
+            line-height: 1.25;
         }
         .audit-date {
-            font-size: 11px;
+            font-size: 10px;
             color: #555;
-            margin-top: 2px;
+            margin-top: 1px;
         }
         .audit-stage-badge {
             display: inline-block;
-            font-size: 9px;
+            font-size: 8.5px;
             font-weight: bold;
             background: #e9ecef;
             color: #222;
-            padding: 1px 5px;
+            padding: 1px 4px;
             border-radius: 2px;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
             text-transform: uppercase;
         }
         .audit-approver-item {
-            margin-bottom: 6px;
-            padding-bottom: 5px;
+            margin-bottom: 3px;
+            padding-bottom: 2px;
             border-bottom: 1px dotted #e0e0e0;
         }
         .audit-approver-item:last-child {
@@ -193,23 +202,125 @@
             padding-bottom: 0;
             border-bottom: none;
         }
+
+        /* PRINT MEDIA QUERY: STRICT SINGLE-PAGE FIT WITH MINIMAL TOP/BOTTOM GAPS */
         @media print {
-            body {
-                padding: 0;
-                background: #fff;
+            @page {
+                size: A4 portrait;
+                margin: 0;
             }
+            html, body {
+                height: 100% !important;
+                max-height: 100% !important;
+                overflow: hidden !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* 1. Header (Logo): Position logo neatly at the top without any empty void below */
+            body .upp-header,
+            html body .upp-header {
+                height: 74px !important;
+                padding: 6px 0 0 0 !important;
+                background-color: transparent !important;
+                border-bottom: none !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+            body .upp-header img,
+            html body .upp-header img {
+                max-height: 60px !important;
+                max-width: 320px !important;
+                object-fit: contain !important;
+            }
+
+            /* 2. Footer: Keep exact official company pad design intact at bottom */
+            body .upp-footer,
+            html body .upp-footer {
+                height: 98px !important;
+                padding: 12px 25px !important;
+                bottom: 0 !important;
+                background-color: #11502e !important;
+                display: block !important;
+            }
+
+            /* 3. Content Wrapper: Start right under logo (78px) and stretch down close to footer (102px) */
+            body .app__slide-wrapper, 
+            html body .app__slide-wrapper,
+            body .main-content {
+                margin-top: 78px !important;   /* sits directly under the 74px logo header */
+                margin-bottom: 102px !important; /* sits directly above the 98px footer pad */
+                padding: 0 25px 0 42px !important; /* clears the 25px dark green left border stripe with clean breathing room */
+                height: auto !important;
+                min-height: auto !important;
+                max-height: calc(100vh - 182px) !important;
+                background: transparent !important;
+                box-sizing: border-box !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-start !important;
+            }
+
+            /* 4. Voucher Container: Strictly avoids page-break and fits 1 page */
             .voucher-container {
                 border: 2px solid #222 !important;
-                padding: 16px !important;
+                padding: 8px 14px !important;
+                width: 100% !important;
                 max-width: 100% !important;
+                background: #fff !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                box-sizing: border-box !important;
+                box-shadow: none !important;
             }
+
+            /* 5. Tighten table and rows so long descriptions naturally stay within 1 page */
+            .voucher-container table {
+                margin-top: 5px !important;
+                margin-bottom: 5px !important;
+                font-size: 11px !important;
+                page-break-inside: avoid !important;
+            }
+            .voucher-container th, 
+            .voucher-container td {
+                padding: 4px 6px !important;
+                line-height: 1.3 !important;
+            }
+            .voucher-details-text {
+                font-size: 11px !important;
+                line-height: 1.35 !important;
+                word-break: break-word !important;
+            }
+            .voucher-container .amount-in-words {
+                margin-top: 4px !important;
+                padding: 4px 8px !important;
+                font-size: 11px !important;
+            }
+            .voucher-container .attachments-box {
+                margin-top: 4px !important;
+                padding: 3px 8px !important;
+                font-size: 10.5px !important;
+            }
+            .voucher-container .audit-trail-section {
+                margin-top: 5px !important;
+                page-break-inside: avoid !important;
+            }
+            .voucher-container .audit-card {
+                padding: 4px 6px !important;
+                font-size: 10px !important;
+            }
+
             .no-print {
                 display: none !important;
             }
         }
     </style>
 </head>
-<body onload="window.print()">
+<body onload="<?php if (!isset($_GET['no_print'])): ?>window.print();<?php endif; ?>">
 
     <div class="no-print" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; max-width: 820px; margin-left: auto; margin-right: auto;">
         <div style="font-size: 14px; color: #555; font-weight: bold;">
@@ -235,24 +346,24 @@
         </div>
 
         <div class="row">
-            <div class="col" style="flex: 2;">
+            <div class="col" style="flex: 1.8;">
                 <span class="label">Project:</span>
-                <span class="value"><?= htmlspecialchars($voucher['project']) ?></span>
+                <span class="value"><?= htmlspecialchars($voucher['project'] ?? 'Head Office / Operations') ?></span>
             </div>
-            <div class="col" style="text-align: right;">
-                <span class="label" style="width: auto; margin-right: 10px;">Voucher No:</span>
-                <span class="value" style="width: 160px; text-align: left; font-weight: bold;"><?= htmlspecialchars($voucher['voucher_no']) ?></span>
+            <div class="col" style="text-align: right; display: flex; justify-content: flex-end; align-items: baseline;">
+                <span class="label" style="width: auto; margin-right: 8px; white-space: nowrap;">Voucher No:</span>
+                <span class="value" style="width: auto; min-width: 130px; max-width: 250px; text-align: left; font-weight: bold; white-space: nowrap;"><?= htmlspecialchars($voucher['voucher_no']) ?></span>
             </div>
         </div>
 
         <div class="row">
-            <div class="col" style="flex: 2;">
+            <div class="col" style="flex: 1.8;">
                 <span class="label">Paid To:</span>
                 <span class="value" style="font-weight: 600;"><?= htmlspecialchars($voucher['paid_to']) ?></span>
             </div>
-            <div class="col" style="text-align: right;">
-                <span class="label" style="width: auto; margin-right: 10px;">Date:</span>
-                <span class="value" style="width: 160px; text-align: left;"><?= htmlspecialchars(date('d-m-Y', strtotime($voucher['date']))) ?></span>
+            <div class="col" style="text-align: right; display: flex; justify-content: flex-end; align-items: baseline;">
+                <span class="label" style="width: auto; margin-right: 8px; white-space: nowrap;">Date:</span>
+                <span class="value" style="width: auto; min-width: 130px; max-width: 250px; text-align: left;"><?= htmlspecialchars(date('d-m-Y', strtotime($voucher['date']))) ?></span>
             </div>
         </div>
 
@@ -294,7 +405,7 @@
                                     <div style="font-weight: 600; color: #111;"><?= htmlspecialchars($refText) ?></div>
                                 <?php endif; ?>
                                 <?php if (!empty($descText)): ?>
-                                    <div style="color: #333; font-size: 12px; margin-top: <?= !empty($refText) ? '4px' : '0' ?>; line-height: 1.4;">
+                                    <div class="voucher-details-text" style="color: #333; margin-top: <?= !empty($refText) ? '4px' : '0' ?>; line-height: 1.4;">
                                         <strong>Details:</strong> <?= nl2br(htmlspecialchars($descText)) ?>
                                     </div>
                                 <?php endif; ?>
