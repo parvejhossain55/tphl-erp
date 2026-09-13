@@ -826,6 +826,7 @@ function openPaymentModal(id, amount) {
     var paidInput = form.querySelector('input[name="paid_amount"]');
     if (paidInput && amount !== undefined) {
         paidInput.value = parseFloat(amount).toFixed(2);
+        paidInput.max = parseFloat(amount).toFixed(2);
     }
     new bootstrap.Modal(document.getElementById('paymentModal')).show();
 }

@@ -110,14 +110,7 @@ $show_breadcrumb = true;
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (empty($adjustments)): ?>
-                                <tr>
-                                    <td colspan="8" class="text-center py-4 text-muted">
-                                        <i class="fa-light fa-folder-open fa-2x d-block mb-2"></i>
-                                        No adjustment requests found in this view.
-                                    </td>
-                                </tr>
-                            <?php else: ?>
+                        
                                 <?php foreach ($adjustments as $row): 
                                     $isReturn = ($row['adjustment_type'] === 'return');
                                     
@@ -271,7 +264,6 @@ $show_breadcrumb = true;
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
-                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>

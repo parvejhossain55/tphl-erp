@@ -667,5 +667,102 @@ class MealRecord extends Model
         }
         return false;
     }
+
+    /**
+     * Get all daily meal records for a single employee in a specific project
+     * Returns: [ '2026-08-26' => [ 'is_consumed' => 1, 'updated_at' => '2026-09-12 18:30:00' ], ... ]
+     */
+    public function getEmployeeDetailedRecords($employeeId, $projectId)
+    {
+        $employeeId = (int)$employeeId;
+        $projectId = (int)$projectId;
+
+        $sql = "
+            SELECT meal_date, is_consumed, updated_at
+            FROM meal_records
+            WHERE employee_id = ? AND meal_project_id = ?
+            ORDER BY meal_date ASC
+        ";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return [];
+
+        $stmt->bind_param("ii", $employeeId, $projectId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        $records = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $records[$row['meal_date']] = [
+                    'is_consumed' => (int)$row['is_consumed'],
+                    'updated_at' => $row['updated_at']
+                ];
+            }
+        }
+        $stmt->close();
+        return $records;
+    }
+
+    /**
+     * Get opt-out records for a single employee in a date range
+     */
+    public function getEmployeeOptOutsInRange($employeeId, $fromDate, $toDate)
+    {
+        $employeeId = (int)$employeeId;
+        $fromDate = trim($fromDate);
+        $toDate = trim($toDate);
+
+        $sql = "
+            SELECT opt_out_date, status, opt_out_time
+            FROM employee_meal_opt_outs
+            WHERE employee_id = ? AND opt_out_date BETWEEN ? AND ?
+        ";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return [];
+
+        $stmt->bind_param("iss", $employeeId, $fromDate, $toDate);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        $optOuts = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $optOuts[$row['opt_out_date']] = $row;
+            }
+        }
+        $stmt->close();
+        return $optOuts;
+    }
+
+    /**
+     * Get attendance records for a single employee in a date range
+     */
+    public function getEmployeeAttendancesInRange($employeeId, $fromDate, $toDate)
+    {
+        $employeeId = (int)$employeeId;
+        $fromDate = trim($fromDate);
+        $toDate = trim($toDate);
+
+        $sql = "
+            SELECT attendance_date, today_status, punch_in_time, punch_out_time
+            FROM emp_attendances
+            WHERE employee_id = ? AND attendance_date BETWEEN ? AND ? AND deleted_at IS NULL
+        ";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return [];
+
+        $stmt->bind_param("iss", $employeeId, $fromDate, $toDate);
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        $attendances = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $attendances[$row['attendance_date']] = $row;
+            }
+        }
+        $stmt->close();
+        return $attendances;
+    }
 }
 

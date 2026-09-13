@@ -203,70 +203,107 @@
             border-bottom: none;
         }
 
-        /* PRINT MEDIA QUERY: STRICT SINGLE-PAGE FIT WITH MINIMAL TOP/BOTTOM GAPS */
+        /* PRINT MEDIA QUERY: STRICT SINGLE-PAGE FIT WITH MINIMAL TOP/BOTTOM GAPS & FULL PAD PRESERVATION */
         @media print {
             @page {
                 size: A4 portrait;
                 margin: 0;
             }
             html, body {
-                height: 100% !important;
-                max-height: 100% !important;
-                overflow: hidden !important;
+                height: auto !important;
+                min-height: 100% !important;
+                overflow: visible !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                background: #fff !important;
+                background: transparent !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
 
-            /* 1. Header (Logo): Position logo neatly at the top without any empty void below */
-            body .upp-header,
-            html body .upp-header {
-                height: 74px !important;
-                padding: 6px 0 0 0 !important;
-                background-color: transparent !important;
-                border-bottom: none !important;
+            /* FORCE UNIVERSAL PRINT PAD TO REMAIN VISIBLE AT ALL TIMES */
+            .universal-print-pad {
+                display: block !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                height: 100vh !important;
+                z-index: 0 !important;
+                pointer-events: none !important;
+                background: transparent !important;
+            }
+
+            /* Left Border Line (Wide Dark Green) */
+            .upp-left-border {
+                display: block !important;
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 25px !important;
+                height: 100vh !important;
+                background-color: #11502e !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* Header (Logo): Position logo neatly at the top with minimal gap below */
+            .upp-header {
                 display: flex !important;
+                position: absolute !important;
+                top: 0 !important;
+                left: 25px !important;
+                right: 0 !important;
+                height: 52px !important;
+                padding: 2px 0 0 0 !important;
+                background: transparent !important;
+                border-bottom: none !important;
                 align-items: center !important;
                 justify-content: center !important;
             }
-            body .upp-header img,
-            html body .upp-header img {
-                max-height: 60px !important;
+            .upp-header img {
+                display: block !important;
+                max-height: 48px !important;
                 max-width: 320px !important;
                 object-fit: contain !important;
+                margin: 0 auto !important;
             }
 
-            /* 2. Footer: Keep exact official company pad design intact at bottom */
-            body .upp-footer,
-            html body .upp-footer {
-                height: 98px !important;
-                padding: 12px 25px !important;
-                bottom: 0 !important;
-                background-color: #11502e !important;
+            /* Footer: Keep exact official company pad design intact at bottom */
+            .upp-footer {
                 display: block !important;
+                position: absolute !important;
+                bottom: 0 !important;
+                left: 25px !important;
+                right: 0 !important;
+                height: 100px !important;
+                background-color: #11502e !important;
+                color: #ffffff !important;
+                padding: 14px 28px !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .upp-footer * {
+                color: #ffffff !important;
             }
 
-            /* 3. Content Wrapper: Start right under logo (78px) and stretch down close to footer (102px) */
+            /* Content Wrapper: Start right below logo (58px) with minimal gap, and extend down above footer (105px) */
             body .app__slide-wrapper, 
             html body .app__slide-wrapper,
             body .main-content {
-                margin-top: 78px !important;   /* sits directly under the 74px logo header */
-                margin-bottom: 102px !important; /* sits directly above the 98px footer pad */
+                position: relative !important;
+                z-index: 1 !important;
+                margin-top: 58px !important;   /* sits immediately under the 52px logo header */
+                margin-bottom: 105px !important; /* sits directly above the 100px footer pad */
                 padding: 0 25px 0 42px !important; /* clears the 25px dark green left border stripe with clean breathing room */
                 height: auto !important;
                 min-height: auto !important;
-                max-height: calc(100vh - 182px) !important;
                 background: transparent !important;
                 box-sizing: border-box !important;
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: flex-start !important;
             }
 
-            /* 4. Voucher Container: Strictly avoids page-break and fits 1 page */
+            /* Voucher Container: Strictly avoids page-break and fits 1 page */
             .voucher-container {
+                margin: 0 auto !important;
                 border: 2px solid #222 !important;
                 padding: 8px 14px !important;
                 width: 100% !important;
@@ -278,17 +315,17 @@
                 box-shadow: none !important;
             }
 
-            /* 5. Tighten table and rows so long descriptions naturally stay within 1 page */
+            /* Tighten table and rows so long descriptions naturally stay within 1 page */
             .voucher-container table {
-                margin-top: 5px !important;
-                margin-bottom: 5px !important;
-                font-size: 11px !important;
+                margin-top: 6px !important;
+                margin-bottom: 6px !important;
+                font-size: 11.5px !important;
                 page-break-inside: avoid !important;
             }
             .voucher-container th, 
             .voucher-container td {
-                padding: 4px 6px !important;
-                line-height: 1.3 !important;
+                padding: 4px 7px !important;
+                line-height: 1.35 !important;
             }
             .voucher-details-text {
                 font-size: 11px !important;
@@ -296,22 +333,22 @@
                 word-break: break-word !important;
             }
             .voucher-container .amount-in-words {
-                margin-top: 4px !important;
+                margin-top: 5px !important;
+                padding: 4px 8px !important;
+                font-size: 11.5px !important;
+            }
+            .voucher-container .attachments-box {
+                margin-top: 5px !important;
                 padding: 4px 8px !important;
                 font-size: 11px !important;
             }
-            .voucher-container .attachments-box {
-                margin-top: 4px !important;
-                padding: 3px 8px !important;
-                font-size: 10.5px !important;
-            }
             .voucher-container .audit-trail-section {
-                margin-top: 5px !important;
+                margin-top: 6px !important;
                 page-break-inside: avoid !important;
             }
             .voucher-container .audit-card {
-                padding: 4px 6px !important;
-                font-size: 10px !important;
+                padding: 5px 7px !important;
+                font-size: 10.5px !important;
             }
 
             .no-print {

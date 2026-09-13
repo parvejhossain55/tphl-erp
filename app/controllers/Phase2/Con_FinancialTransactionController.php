@@ -477,7 +477,7 @@ class Con_FinancialTransactionController extends Controller
         } elseif ($refType === 'operational_fund') {
             $stmt = $this->db->prepare("SELECT COALESCE(approved_amount, amount) AS payable FROM operational_fund_requests WHERE id = ?");
         } elseif ($refType === 'vendor_payment') {
-            $stmt = $this->db->prepare("SELECT net_payable AS payable FROM vendor_payment_requests WHERE id = ?");
+            $stmt = $this->db->prepare("SELECT COALESCE(approved_amount, net_payable, invoice_amount) AS payable FROM vendor_payment_requests WHERE id = ?");
         } else {
             return 0;
         }

@@ -170,11 +170,29 @@ class AdvanceSalaryController extends Controller
             exit;
         }
 
-        $id = $_POST['advance_salary_id'] ?? null;
-        $paid_amount = $_POST['paid_amount'] ?? 0;
+        $id = (int)($_POST['advance_salary_id'] ?? 0);
+        $paid_amount = (float)($_POST['paid_amount'] ?? 0);
 
         if (!$id || $paid_amount <= 0) {
             $_SESSION['flash_error'] = "Invalid payment data.";
+            header("Location: " . $GLOBALS['base_url'] . "/advance-salary");
+            exit;
+        }
+
+        $advStmt = $this->db->prepare("SELECT * FROM advance_salaries WHERE id = ?");
+        $advStmt->bind_param("i", $id);
+        $advStmt->execute();
+        $adv = $advStmt->get_result()->fetch_assoc();
+
+        if (!$adv) {
+            $_SESSION['flash_error'] = "Advance Salary record not found.";
+            header("Location: " . $GLOBALS['base_url'] . "/advance-salary");
+            exit;
+        }
+
+        $maxAllowed = (float)($adv['amount'] ?? 0);
+        if ($paid_amount > $maxAllowed + 0.01) {
+            $_SESSION['flash_error'] = "Payment amount (৳" . number_format($paid_amount, 2) . ") cannot exceed the approved advance salary amount (৳" . number_format($maxAllowed, 2) . ").";
             header("Location: " . $GLOBALS['base_url'] . "/advance-salary");
             exit;
         }

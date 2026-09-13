@@ -218,6 +218,7 @@ return [
     // =========================================================================
     'all-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'allApprovalRequests'],
     'batch-process-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'batchProcessApprovalRequests'],
+    'api/actionable-approval-alerts' => ['controller' => 'ApprovalRequestController', 'method' => 'getActionableAlerts'],
 
     // =========================================================================
     // Live COA & Journal Migration Routes

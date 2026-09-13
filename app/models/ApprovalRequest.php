@@ -1035,7 +1035,22 @@ class ApprovalRequest extends Model
         $isQc = in_array($userRoleId, [13, 24, 25], true) || strpos($roleName, 'qc') !== false || strpos($roleName, 'audit') !== false;
         $isPurchase = in_array($userRoleId, [17, 23, 31], true) || strpos($roleName, 'purchase') !== false;
         $isHr = ($userRoleId === 4) || strpos($roleName, 'hr') !== false;
-        $isDeptHead = in_array($userRoleId, [8, 9, 10, 11, 12, 14, 15, 16, 18, 19], true) || strpos($roleName, 'head') !== false || strpos($roleName, 'manager') !== false;
+
+        // Check if user has subordinates reporting directly to them
+        $subordinateIds = [];
+        $subRes = $this->db->query("
+            SELECT u.id 
+            FROM users u 
+            JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            WHERE e.reporting_user_id = {$userId} AND e.deleted_at IS NULL
+        ");
+        if ($subRes) {
+            while ($sRow = $subRes->fetch_assoc()) {
+                $subordinateIds[] = (int)$sRow['id'];
+            }
+        }
+        $isReportingBoss = !empty($subordinateIds);
+        $isDesignatedDeptHead = in_array($userRoleId, [5, 9, 10, 14], true) || (strpos($roleName, 'head') !== false && !in_array($userRoleId, [8, 11, 12, 16, 18, 19, 21, 23, 25]));
 
         if ($isAccounts) {
             return "(
@@ -1058,13 +1073,16 @@ class ApprovalRequest extends Model
         } elseif ($isHr) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND LOWER({$prefix}approve_role) IN ('hr', 'hr_head'))";
-        } elseif ($isDeptHead) {
+        } elseif ($isReportingBoss) {
+            $subIdsStr = implode(',', $subordinateIds);
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
-                    AND ({$prefix}approve_role = 'dept_head' OR {$prefix}approve_role = 'dept_head_" . $userId . "'))";
+                    AND ({$prefix}approve_role = 'dept_head_" . $userId . "' OR ({$prefix}approve_role = 'dept_head' AND {$prefix}requested_by IN ({$subIdsStr}))))";
+        } elseif ($isDesignatedDeptHead) {
+            return "({$prefix}status IN ('pending', 'partially_approved', '') 
+                    AND {$prefix}approve_role = 'dept_head_" . $userId . "')";
         } else {
-            $escapedRole = $this->db->real_escape_string($roleName);
-            return "({$prefix}status IN ('pending', 'partially_approved', '') 
-                    AND LOWER({$prefix}approve_role) = '{$escapedRole}')";
+            // General employees / staff with no approval responsibilities (Draftsman, Site Engineer, Sales Executive, etc.)
+            return "1=0";
         }
     }
 
@@ -1655,7 +1673,8 @@ class ApprovalRequest extends Model
                     }
                 }
             } else if ($sourceTable === 'con_labor_requisitions') {
-                $lrSql = "SELECT status, total_amount, IFNULL(approved_amount, total_amount) AS app_amt, 
+                $lrSql = "SELECT status, total_amount, approved_amount, qc_approved_amount, 
+                                 IFNULL(approved_amount, total_amount) AS app_amt,
                                  IFNULL(total_paid, 0.00) AS total_paid, payment_date 
                           FROM con_labor_requisitions WHERE id = ? LIMIT 1";
                 $lrStmt = $this->db->prepare($lrSql);
@@ -1665,6 +1684,12 @@ class ApprovalRequest extends Model
                     $lrRow = $lrStmt->get_result()->fetch_assoc();
                     $lrStmt->close();
                     if ($lrRow) {
+                        $row['qc_approved_amount'] = (float)($lrRow['qc_approved_amount'] ?? 0);
+                        if (!empty($lrRow['approved_amount']) && (float)$lrRow['approved_amount'] > 0) {
+                            $row['approved_amount'] = (float)$lrRow['approved_amount'];
+                        } elseif (!empty($lrRow['qc_approved_amount']) && (float)$lrRow['qc_approved_amount'] > 0) {
+                            $row['approved_amount'] = (float)$lrRow['qc_approved_amount'];
+                        }
                         $lrStatus = strtolower($lrRow['status'] ?? '');
                         if ($lrStatus === 'pending') {
                             $row['approve_role'] = 'pm';
@@ -1715,7 +1740,9 @@ class ApprovalRequest extends Model
                     }
                 }
             } else if ($sourceTable === 'vendor_payment_requests') {
-                $vSql = "SELECT status, IFNULL(approved_amount, 0.00) AS app_amt, updated_at, payment_type, purchase_order_id 
+                $vSql = "SELECT status, approved_amount, qc_approved_amount, 
+                                COALESCE(approved_amount, qc_approved_amount, net_payable, invoice_amount, 0.00) AS app_amt,
+                                net_payable, invoice_amount, updated_at, payment_type, purchase_order_id 
                          FROM vendor_payment_requests WHERE id = ? LIMIT 1";
                 $vStmt = $this->db->prepare($vSql);
                 if ($vStmt) {
@@ -1724,6 +1751,12 @@ class ApprovalRequest extends Model
                     $vRow = $vStmt->get_result()->fetch_assoc();
                     $vStmt->close();
                     if ($vRow) {
+                        $row['qc_approved_amount'] = (float)($vRow['qc_approved_amount'] ?? 0);
+                        if (!empty($vRow['approved_amount']) && (float)$vRow['approved_amount'] > 0) {
+                            $row['approved_amount'] = (float)$vRow['approved_amount'];
+                        } elseif (!empty($vRow['qc_approved_amount']) && (float)$vRow['qc_approved_amount'] > 0) {
+                            $row['approved_amount'] = (float)$vRow['qc_approved_amount'];
+                        }
                         $vStatus = strtolower(trim(str_replace('_', ' ', $vRow['status'] ?? '')));
                         $row['vpr_payment_type'] = $vRow['payment_type'] ?? null;
                         $row['po_number'] = $vRow['purchase_order_id'] ?? null;
@@ -1854,7 +1887,7 @@ class ApprovalRequest extends Model
                     }
                 }
             } else if ($sourceTable === 'fund_requisitions') {
-                $frSql = "SELECT status, amount, paid_amount, paid_at, paid_by FROM fund_requisitions WHERE id = ? LIMIT 1";
+                $frSql = "SELECT status, amount, approved_amount, qc_approved_amount, paid_amount, paid_at, paid_by FROM fund_requisitions WHERE id = ? LIMIT 1";
                 $frStmt = $this->db->prepare($frSql);
                 if ($frStmt) {
                     $frStmt->bind_param("i", $sourceId);
@@ -1862,6 +1895,12 @@ class ApprovalRequest extends Model
                     $frRow = $frStmt->get_result()->fetch_assoc();
                     $frStmt->close();
                     if ($frRow) {
+                        $row['qc_approved_amount'] = (float)($frRow['qc_approved_amount'] ?? 0);
+                        if (!empty($frRow['approved_amount']) && (float)$frRow['approved_amount'] > 0) {
+                            $row['approved_amount'] = (float)$frRow['approved_amount'];
+                        } elseif (!empty($frRow['qc_approved_amount']) && (float)$frRow['qc_approved_amount'] > 0) {
+                            $row['approved_amount'] = (float)$frRow['qc_approved_amount'];
+                        }
                         $frStatus = strtolower($frRow['status'] ?? '');
                         if ($frStatus === 'pending_dept') {
                             $row['approve_role'] = 'dept_head';
@@ -2231,10 +2270,23 @@ class ApprovalRequest extends Model
         // Purchase Lead: Role 17, 23, 31
         $isPurchase = in_array($userRoleId, [17, 23, 31], true) || strpos($sessionRoleName, 'purchase') !== false;
 
-        // Dept Head / Reporting Boss: Role 8, 9, 10 or designation head/manager
-        $isDeptHead = in_array($userRoleId, [8, 9, 10, 11, 12, 14, 15, 16, 18, 19], true) || strpos($sessionRoleName, 'head') !== false || strpos($sessionRoleName, 'manager') !== false;
+        // Fetch subordinates reporting directly to this user
+        $subordinateUserIds = [];
+        $subRes = $this->db->query("
+            SELECT u.id 
+            FROM users u 
+            JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            WHERE e.reporting_user_id = {$userId} AND e.deleted_at IS NULL
+        ");
+        if ($subRes) {
+            while ($sRow = $subRes->fetch_assoc()) {
+                $subordinateUserIds[] = (int)$sRow['id'];
+            }
+        }
+        $isReportingBoss = !empty($subordinateUserIds);
+        $isDesignatedDeptHead = in_array($userRoleId, [5, 9, 10, 14], true) || (strpos($sessionRoleName, 'head') !== false && !in_array($userRoleId, [8, 11, 12, 16, 18, 19, 21, 23, 25]));
 
-        $isActionableByCurrentUser = function($item) use ($isFullManagement, $isRole20, $isAccounts, $isHR, $isQC, $isPurchase, $isDeptHead, $userId) {
+        $isActionableByCurrentUser = function($item) use ($isFullManagement, $isRole20, $isAccounts, $isHR, $isQC, $isPurchase, $isReportingBoss, $isDesignatedDeptHead, $subordinateUserIds, $userId) {
             $status = strtolower($item['status'] ?? '');
             $isPending = in_array($status, ['pending', 'partially_approved', '']);
             $approveRole = strtolower($item['approve_role'] ?? 'management');
@@ -2290,8 +2342,18 @@ class ApprovalRequest extends Model
             }
 
             // 7. Dept Head / Reporting Boss:
-            if ($isDeptHead && $isPending && ($approveRole === 'dept_head' || $approveRole === 'dept_head_' . $userId)) {
-                return true;
+            if ($isPending && ($approveRole === 'dept_head' || $approveRole === 'dept_head_' . $userId)) {
+                if ($isFullManagement) {
+                    return true;
+                }
+                $reqUid = (int)($item['requested_by'] ?? 0);
+                if ($isReportingBoss && in_array($reqUid, $subordinateUserIds, true)) {
+                    return true;
+                }
+                if ($approveRole === 'dept_head_' . $userId) {
+                    return true;
+                }
+                return false;
             }
 
             return false;
@@ -2403,13 +2465,19 @@ class ApprovalRequest extends Model
                 $metaData = json_encode(['purpose' => $row['purpose'], 'category' => $row['category']]);
                 $createdAt = $row['created_at'];
 
+                $initAppAmt = (!empty($row['approved_amount']) && (float)$row['approved_amount'] > 0)
+                    ? (float)$row['approved_amount']
+                    : ((!empty($row['qc_approved_amount']) && (float)$row['qc_approved_amount'] > 0)
+                        ? (float)$row['qc_approved_amount']
+                        : (in_array($status, ['approved', 'partially_paid']) ? $amount : 0.00));
+
                 $stmt = $this->db->prepare("
                     INSERT INTO approval_requests 
                     (department, request_type, title, source_table, source_id, request_amount, approved_amount, requested_by, approve_role, status, approved_by, approved_at, approval_note, meta_data, created_at)
                     VALUES (?, ?, ?, 'fund_requisitions', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if ($stmt) {
-                    $stmt->bind_param("sssiddississss", $deptName, $requestType, $title, $sourceId, $amount, $amount, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                    $stmt->bind_param("sssiddississss", $deptName, $requestType, $title, $sourceId, $amount, $initAppAmt, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
                     $stmt->execute();
                     $stmt->close();
                 }
@@ -2440,7 +2508,12 @@ class ApprovalRequest extends Model
                 ar.approved_at = fr.approved_at,
                 ar.approval_note = fr.approval_note,
                 ar.request_amount = fr.amount,
-                ar.approved_amount = IFNULL(fr.approved_amount, fr.amount)
+                ar.approved_amount = CASE 
+                    WHEN fr.approved_amount IS NOT NULL AND fr.approved_amount > 0 THEN fr.approved_amount
+                    WHEN fr.qc_approved_amount IS NOT NULL AND fr.qc_approved_amount > 0 THEN fr.qc_approved_amount
+                    WHEN fr.status IN ('approved', 'paid') THEN fr.amount
+                    ELSE 0.00
+                END
         ";
         @$this->db->query($syncSql);
     }

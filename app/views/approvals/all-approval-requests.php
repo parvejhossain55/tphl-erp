@@ -688,10 +688,21 @@
 
                                     <!-- Approved Amount -->
                                     <td>
-                                        <?php if ($req['approved_amount'] > 0): ?>
-                                            <span class="fw-bold text-success">৳
-                                                <?= number_format($req['approved_amount'], 2) ?>
+                                        <?php 
+                                        $appAmt = (float)($req['approved_amount'] ?? 0);
+                                        $qcAmt = (float)($req['qc_approved_amount'] ?? 0);
+                                        $isPendingMgmt = in_array(strtolower($req['approve_role'] ?? ''), ['management', 'operation_head']);
+                                        ?>
+                                        <?php if ($appAmt > 0): ?>
+                                            <span class="fw-bold <?= ($qcAmt > 0 && $appAmt == $qcAmt && $isPendingMgmt) ? 'text-primary' : 'text-success' ?>">
+                                                ৳ <?= number_format($appAmt, 2) ?>
                                             </span>
+                                            <?php if ($qcAmt > 0 && $appAmt == $qcAmt && $isPendingMgmt): ?>
+                                                <div class="mt-1"><span class="badge bg-info-subtle text-info border border-info-subtle extra-small" style="font-size: 9px; padding: 2px 6px;"><i class="bi bi-shield-check me-1"></i>QC Approved</span></div>
+                                            <?php endif; ?>
+                                        <?php elseif ($qcAmt > 0): ?>
+                                            <span class="fw-bold text-primary">৳ <?= number_format($qcAmt, 2) ?></span>
+                                            <div class="mt-1"><span class="badge bg-info-subtle text-info border border-info-subtle extra-small" style="font-size: 9px; padding: 2px 6px;"><i class="bi bi-shield-check me-1"></i>QC Approved</span></div>
                                         <?php else: ?>
                                             <span class="text-muted extra-small">--</span>
                                         <?php endif; ?>

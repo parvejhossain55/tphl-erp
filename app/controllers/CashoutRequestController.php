@@ -420,12 +420,28 @@ class CashoutRequestController extends Controller
             exit;
         }
 
+        $request = $this->cashoutModel->getRequestById($requestId);
+        if (!$request) {
+            setError("Request not found.");
+            header("Location: {$GLOBALS['base_url']}/admin-cashout-requests");
+            exit;
+        }
+
+        $maxApproved = (float)($request['approved_amount'] ?? $request['amount']);
+        $totalPaidSoFar = (float)$this->paymentModel->getTotalPaid($requestId);
+        $remainingDue = max(0, $maxApproved - $totalPaidSoFar);
+
+        if ((float)$data['amount'] > $remainingDue + 0.01) {
+            setError("Payment amount (৳" . number_format($data['amount'], 2) . ") cannot exceed the remaining approved due (৳" . number_format($remainingDue, 2) . ").");
+            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
+            exit;
+        }
+
         $result = $this->paymentModel->addPayment($data);
 
         if ($result['success']) {
-            $request   = $this->cashoutModel->getRequestById($requestId);
             $totalPaid = $this->paymentModel->getTotalPaid($requestId);
-            $dueAmount = ($request['approved_amount'] ?? $request['amount']) - $totalPaid;
+            $dueAmount = max(0, $maxApproved - $totalPaid);
 
             $this->cashoutModel->updateDueAmount($requestId, $dueAmount);
 
