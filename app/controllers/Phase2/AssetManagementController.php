@@ -786,6 +786,15 @@ class AssetManagementController extends Controller
                 }
                 // =====================================================
 
+                // Sync with central approval_requests
+                try {
+                    require_once dirname(dirname(__DIR__)) . '/models/ApprovalRequest.php';
+                    $appModel = new \ApprovalRequest($this->db);
+                    $appModel->syncMissingOfficeProcurements();
+                } catch (\Throwable $e) {
+                    error_log("Failed syncing approval_requests on extra purchase payment: " . $e->getMessage());
+                }
+
                 setSuccess("Procurement marked as paid.");
             } else {
                 setError("Failed procurement payment.");
@@ -814,6 +823,15 @@ class AssetManagementController extends Controller
             }
 
             if ($this->model->confirmPurchased($id, $userId, $document, $note)) {
+                // Sync with central approval_requests
+                try {
+                    require_once dirname(dirname(__DIR__)) . '/models/ApprovalRequest.php';
+                    $appModel = new \ApprovalRequest($this->db);
+                    $appModel->syncMissingOfficeProcurements();
+                } catch (\Throwable $e) {
+                    error_log("Failed syncing approval_requests on extra purchase confirm: " . $e->getMessage());
+                }
+
                 setSuccess("Procurement confirmed & added to Asset Inventory.");
             } else {
                 setError("Failed procurement confirmation.");

@@ -12,9 +12,19 @@
                 </ol>
             </nav>
         </div>
-        <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs" class="btn btn-secondary btn-sm">
-            <i class="bi bi-arrow-left"></i> Back to List
-        </a>
+        <div class="d-flex gap-2">
+            <?php if ($request['status'] === 'paid'): ?>
+                <a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments/create?parent_type=other_cost&cashout_request_id=<?= $request['id'] ?>&project_id=<?= $request['project_id'] ?>" class="btn btn-warning btn-sm shadow-sm">
+                    <i class="bi bi-sliders me-1"></i> Settlement / Adjustment
+                </a>
+                <a href="<?= $GLOBALS['base_url'] ?>/print-debit-voucher?module=project_other_costs&id=<?= $request['id'] ?>" target="_blank" class="btn btn-primary btn-sm">
+                    <i class="bi bi-printer me-1"></i> Debit Voucher
+                </a>
+            <?php endif; ?>
+            <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs" class="btn btn-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+        </div>
     </div>
 
     <section class="section">
@@ -60,6 +70,22 @@
                                         <div class="mt-1">
                                             <small class="text-muted fw-normal" style="font-size: 0.75rem;">
                                                 <i class="bi bi-person me-1"></i>Updated by <?= htmlspecialchars($request['management_apporved_by_id'] ? ($request['mgmt_name'] ?? 'N/A') : ($request['qc_name'] ?? 'N/A')) ?>
+                                            </small>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endif; ?>
+                                <?php if($request['status'] === 'paid'): ?>
+                                <tr>
+                                    <th class="bg-light text-primary">Paid Amount</th>
+                                    <td class="text-primary fw-bold">
+                                        ৳ <?= number_format($request['payment_amount'] ?? $request['approved_amount'], 2) ?>
+                                        <div class="mt-1">
+                                            <small class="text-muted fw-normal" style="font-size: 0.75rem;">
+                                                <i class="bi bi-cash me-1"></i>Disbursed by <?= htmlspecialchars($request['pay_name'] ?? 'Accounts') ?>
+                                                <?php if(!empty($request['payment_at'])): ?>
+                                                    on <?= date('d M Y h:i A', strtotime($request['payment_at'])) ?>
+                                                <?php endif; ?>
                                             </small>
                                         </div>
                                     </td>
@@ -272,6 +298,68 @@
                         <?php else: ?>
                             No actions required from your end at this stage.
                         <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($request['status'] === 'paid'): ?>
+                    <div class="card shadow-sm border-0 border-top border-3 border-warning mb-4">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="card-title text-warning mb-0 fs-6">
+                                <i class="bi bi-patch-check me-2"></i>Expense Settlement & Adjustments
+                            </h5>
+                            <a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments/create?parent_type=other_cost&cashout_request_id=<?= $request['id'] ?>&project_id=<?= $request['project_id'] ?>" class="btn btn-warning btn-sm shadow-sm fw-semibold">
+                                <i class="bi bi-file-earmark-plus me-1"></i> Submit Settlement
+                            </a>
+                        </div>
+                        <div class="card-body mt-2">
+                            <?php if (empty($adjustments)): ?>
+                                <div class="text-center py-3 text-muted">
+                                    <i class="bi bi-clipboard-x fs-2 d-block mb-1 text-secondary"></i>
+                                    No settlements or adjustments submitted yet for this payment.<br>
+                                    <small class="text-muted">You can return unused funds or request extra money for this expense.</small>
+                                </div>
+                            <?php else: ?>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Type</th>
+                                                <th class="text-end">Amount (৳)</th>
+                                                <th class="text-center">Status</th>
+                                                <th class="text-center">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($adjustments as $adj):
+                                                $typeBadge = ($adj['adjustment_type'] === 'return') ? 'info' : 'warning text-dark';
+                                                $typeLabel = ($adj['adjustment_type'] === 'return') ? 'Return Unused' : 'Extra Money';
+                                                $statusClass = match ($adj['status']) {
+                                                    'pending' => 'warning text-dark',
+                                                    'approved' => 'success',
+                                                    'rejected' => 'danger',
+                                                    'partially_paid' => 'info text-dark',
+                                                    'fully_paid' => 'success',
+                                                    default => 'secondary'
+                                                };
+                                            ?>
+                                            <tr>
+                                                <td class="fw-bold">REQ-<?= $adj['id'] ?></td>
+                                                <td><span class="badge bg-<?= $typeBadge ?>"><?= $typeLabel ?></span></td>
+                                                <td class="text-end fw-bold">৳ <?= number_format($adj['amount'], 2) ?></td>
+                                                <td class="text-center"><span class="badge bg-<?= $statusClass ?>"><?= ucfirst(str_replace('_', ' ', $adj['status'])) ?></span></td>
+                                                <td class="text-center">
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments/show?id=<?= $adj['id'] ?>" class="btn btn-xs btn-outline-primary" style="font-size: 0.75rem;">
+                                                        <i class="bi bi-eye"></i> View
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 <?php endif; ?>
             </div>

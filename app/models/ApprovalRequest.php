@@ -26,7 +26,8 @@ class ApprovalRequest extends Model
         'fund_requisitions',
         'project_other_costs',
         'project_extra_assets',
-        'con_labor_requisitions'
+        'con_labor_requisitions',
+        'expense_adjustments'
     ];
     public function create($data)
     {
@@ -500,6 +501,32 @@ class ApprovalRequest extends Model
             return $stmtForward->execute();
         }
 
+        if ($sourceTable === 'expense_adjustments' && strtolower($request['approve_role'] ?? '') === 'qc' && $status === 'approved') {
+            $qcApprovedAmt = ($approvedAmount !== null && $approvedAmount > 0) ? (float)$approvedAmount : (float)($request['request_amount'] ?? 0);
+            $stmtEa = $this->db->prepare("UPDATE expense_adjustments SET status = 'qc_approved', qc_approved_by = ?, qc_approved_at = NOW(), qc_note = ?, approved_amount = ?, due_amount = ? WHERE id = ?");
+            if ($stmtEa) {
+                $stmtEa->bind_param('isddi', $approvedBy, $approvalNote, $qcApprovedAmt, $qcApprovedAmt, $sourceId);
+                $stmtEa->execute();
+                $stmtEa->close();
+            }
+
+            // Forward to management instead of marking as completed
+            $sqlForward = "UPDATE {$this->table}
+                SET 
+                    approve_role = 'management',
+                    status = 'pending',
+                    request_amount = ?,
+                    approved_amount = NULL,
+                    approved_by = NULL,
+                    approval_note = ?,
+                    approved_at = NULL
+                WHERE id = ?";
+            $stmtForward = $this->db->prepare($sqlForward);
+            $qcNote = "Audited & Approved by QC. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('dsi', $qcApprovedAmt, $qcNote, $id);
+            return $stmtForward->execute();
+        }
+
         if ($status === 'approved' && ($approvedAmount === null || (float)$approvedAmount <= 0)) {
             $approvedAmount = (!empty($request['approved_amount']) && (float)$request['approved_amount'] > 0)
                 ? (float)$request['approved_amount']
@@ -636,6 +663,32 @@ class ApprovalRequest extends Model
                 $stmtPoc->bind_param('sidsi', $pocStatus, $approvedBy, $pocAppAmt, $approvalNote, $sourceId);
                 $stmtPoc->execute();
                 $stmtPoc->close();
+            }
+            return true;
+        }
+
+        if ($sourceTable === 'expense_adjustments') {
+            $eaRec = $this->db->query("SELECT * FROM expense_adjustments WHERE id = {$sourceId} LIMIT 1")->fetch_assoc();
+            if ($eaRec) {
+                if ($status === 'rejected') {
+                    $stmtEa = $this->db->prepare("UPDATE expense_adjustments SET status = 'rejected', approved_by = ?, approved_at = NOW(), rejection_note = ? WHERE id = ?");
+                    if ($stmtEa) {
+                        $stmtEa->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
+                        $stmtEa->execute();
+                        $stmtEa->close();
+                    }
+                } elseif ($status === 'approved') {
+                    $eaAppAmt = ($approvedAmount !== null && (float)$approvedAmount > 0) ? (float)$approvedAmount : (float)($request['request_amount'] ?? $eaRec['amount']);
+                    $stmtEa = $this->db->prepare("UPDATE expense_adjustments SET status = 'approved', approved_by = ?, approved_at = NOW(), mgmt_note = ?, approved_amount = ?, due_amount = ? WHERE id = ?");
+                    if ($stmtEa) {
+                        $stmtEa->bind_param('isddi', $approvedBy, $approvalNote, $eaAppAmt, $eaAppAmt, $sourceId);
+                        $stmtEa->execute();
+                        $stmtEa->close();
+                    }
+
+                    // Forward to accounts for payout
+                    $this->db->query("UPDATE {$this->table} SET approve_role = 'accounts', status = 'approved', approved_amount = {$eaAppAmt} WHERE id = {$id}");
+                }
             }
             return true;
         }
@@ -987,12 +1040,12 @@ class ApprovalRequest extends Model
         if ($isAccounts) {
             return "(
                 ({$prefix}status IN ('pending', 'partially_approved', '') AND LOWER({$prefix}approve_role) = 'accounts')
-                OR ({$prefix}status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets')))
+                OR ({$prefix}status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets', 'expense_adjustments')))
             )";
         } elseif ($isSiteOperator && !$isManagement) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND (LOWER({$prefix}approve_role) = 'management' OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') 
-                    AND ({$prefix}request_amount <= 100000 OR {$prefix}request_amount IS NULL OR {$prefix}request_amount = 0 OR {$prefix}source_table = 'project_other_costs'))";
+                    AND ({$prefix}request_amount <= 100000 OR {$prefix}request_amount IS NULL OR {$prefix}request_amount = 0 OR {$prefix}source_table IN ('project_other_costs', 'expense_adjustments')))";
         } elseif ($isManagement) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND (LOWER({$prefix}approve_role) = 'management' OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = ''))";
@@ -1028,6 +1081,7 @@ class ApprovalRequest extends Model
         $this->syncMissingContractorBills();
         $this->syncMissingAdvanceSalaries();
         $this->syncMissingCashoutRequests();
+        $this->syncMissingExpenseAdjustments();
 
         $moduleDefs = [
             'contractor_bill_requests' => [
@@ -1099,6 +1153,16 @@ class ApprovalRequest extends Model
                 'accent_hex'  => '#ef4444',
                 'portal_url'  => 'cashout-requests',
                 'portal_name' => 'Cashout'
+            ],
+            'expense_adjustments' => [
+                'key'         => 'expense_adjustments',
+                'name'        => 'Requisition Settlements',
+                'dept'        => 'Accounts & Audit',
+                'icon'        => 'fa-solid fa-scale-balanced',
+                'badge_color' => 'info',
+                'accent_hex'  => '#0ea5e9',
+                'portal_url'  => 'expense-adjustments',
+                'portal_name' => 'Settlements'
             ],
             'payslips' => [
                 'key'         => 'payslips',
@@ -1233,6 +1297,16 @@ class ApprovalRequest extends Model
             $dueData['cashout_requests'] = (float)($row['due'] ?? 0);
         }
 
+        // Expense Adjustments (Settlements)
+        $eaRes = $this->db->query("SELECT 
+            SUM(CASE WHEN status = 'fully_paid' THEN COALESCE(approved_amount, amount) WHEN status = 'partially_paid' THEN (COALESCE(approved_amount, amount) - due_amount) ELSE 0 END) as paid,
+            SUM(CASE WHEN status IN ('approved', 'partially_paid') THEN due_amount ELSE 0 END) as due
+        FROM expense_adjustments");
+        if ($eaRes && $row = $eaRes->fetch_assoc()) {
+            $paidData['expense_adjustments'] = (float)($row['paid'] ?? 0);
+            $dueData['expense_adjustments'] = (float)($row['due'] ?? 0);
+        }
+
         // Payslips
         $psRes = $this->db->query("SELECT 
             SUM(CASE WHEN status = 'paid' OR payment_status = 'paid' THEN net_salary ELSE 0 END) as paid,
@@ -1320,7 +1394,7 @@ class ApprovalRequest extends Model
                 if ($isAccounts) {
                     if ($appRole === 'accounts') $isActionable = true;
                 } elseif ($isRole20) {
-                    if ($srcTbl === 'project_other_costs' && in_array($appRole, ['management', ''])) {
+                    if (in_array($srcTbl, ['project_other_costs', 'expense_adjustments']) && in_array($appRole, ['management', ''])) {
                         $isActionable = true;
                     } elseif (in_array($appRole, ['management', '']) && $amt <= 100000.01) {
                         $isActionable = true;
@@ -1377,6 +1451,14 @@ class ApprovalRequest extends Model
                 $displayPendingCount = $myCount;
                 $displayPendingAmount = $myAmount;
                 $activeMode = 'my_pending';
+            } elseif ($statusFilter === 'paid') {
+                $displayPendingCount = $approvedCount;
+                $displayPendingAmount = $paidAmount;
+                $activeMode = 'paid';
+            } elseif ($statusFilter === 'pending_payout' || $statusFilter === 'approved_unpaid') {
+                $displayPendingCount = $approvedCount;
+                $displayPendingAmount = $dueAmount;
+                $activeMode = 'pending_payout';
             } elseif ($statusFilter === 'approved') {
                 $displayPendingCount = $approvedCount;
                 $displayPendingAmount = $approvedAmount;
@@ -1426,6 +1508,7 @@ class ApprovalRequest extends Model
         $this->syncMissingContractorBills();
         $this->syncMissingAdvanceSalaries();
         $this->syncMissingCashoutRequests();
+        $this->syncMissingExpenseAdjustments();
 
         $where = ["1=1"];
         $params = [];
@@ -1436,6 +1519,10 @@ class ApprovalRequest extends Model
 
         if ($isMyPending) {
             $where[] = $this->buildActionableCondition($filters, 'ar');
+        } elseif ($statusParam === 'paid') {
+            $where[] = "(ar.approve_role = 'completed' OR ar.status = 'paid')";
+        } elseif ($statusParam === 'pending_payout' || $statusParam === 'approved_unpaid') {
+            $where[] = "(ar.status = 'approved' AND ar.approve_role = 'accounts')";
         } elseif ($statusParam === 'approved') {
             $where[] = "(ar.status IN ('approved', 'paid') OR ar.approve_role = 'completed')";
         } elseif ($statusParam === 'rejected') {
@@ -1670,7 +1757,7 @@ class ApprovalRequest extends Model
                             $pendingForText = 'Rejected';
                         }
 
-                        if (in_array($vStatus, ['approved', 'management approved', 'management_approved', 'paid', 'completed', 'fully paid', 'fully_paid'])) {
+                        if (in_array($vStatus, ['paid', 'completed', 'fully paid', 'fully_paid'])) {
                             $payoutStatus = 'Paid & Settled';
                             $payoutAmount = (float) $vRow['app_amt'];
                             $payoutDate = $vRow['updated_at'];
@@ -1678,8 +1765,9 @@ class ApprovalRequest extends Model
                             $payoutStatus = 'Partially Paid';
                             $payoutAmount = (float) $vRow['app_amt'];
                             $payoutDate = $vRow['updated_at'];
-                        } else if ($row['status'] === 'approved') {
+                        } else if (in_array($vStatus, ['approved', 'management approved', 'management_approved']) || $row['status'] === 'approved') {
                             $payoutStatus = 'Pending Accounts Payout';
+                            $payoutAmount = (float) $vRow['app_amt'];
                         }
                     }
                 }
@@ -1979,6 +2067,88 @@ class ApprovalRequest extends Model
                         }
                     }
                 }
+                
+            } else if ($sourceTable === 'expense_adjustments') {
+                $eaSql = "SELECT status, adjustment_type, amount, approved_amount, due_amount, updated_at FROM expense_adjustments WHERE id = ? LIMIT 1";
+                $eaStmt = $this->db->prepare($eaSql);
+                if ($eaStmt) {
+                    $eaStmt->bind_param("i", $sourceId);
+                    $eaStmt->execute();
+                    $eaRow = $eaStmt->get_result()->fetch_assoc();
+                    $eaStmt->close();
+                    if ($eaRow) {
+                        $eaStatus = strtolower($eaRow['status'] ?? '');
+                        $adjType = strtolower($eaRow['adjustment_type'] ?? 'extra');
+                        $adjAmt = (float)(!empty($eaRow['approved_amount']) ? $eaRow['approved_amount'] : $eaRow['amount']);
+                        
+                        if ($adjType === 'return') {
+                            if ($eaStatus === 'fully_paid') {
+                                $row['status'] = 'approved';
+                                $row['approve_role'] = 'completed';
+                                $payoutStatus = 'Paid & Settled';
+                                $payoutAmount = (float)$eaRow['amount'];
+                                $payoutDate = $eaRow['updated_at'];
+                                $pendingStageLabel = 'Verified & Received';
+                                $pendingForText = 'Accounts Verified';
+                            } elseif ($eaStatus === 'partially_paid') {
+                                $row['status'] = 'partially_paid';
+                                $payoutStatus = 'Partially Paid';
+                                $payoutAmount = (float)($eaRow['amount'] - ($eaRow['due_amount'] ?? 0));
+                                $payoutDate = $eaRow['updated_at'];
+                                $pendingStageLabel = 'Partially Received';
+                                $pendingForText = 'Accounts & Finance';
+                            } elseif ($eaStatus === 'rejected') {
+                                $row['status'] = 'rejected';
+                                $pendingStageLabel = 'Rejected';
+                                $pendingForText = 'Rejected';
+                            } else {
+                                $row['approve_role'] = 'accounts';
+                                $row['status'] = 'pending';
+                                $payoutStatus = 'Pending Accounts Verification';
+                                $pendingStageLabel = 'Pending Accounts Verification';
+                                $pendingForText = 'Accounts Verification (Cash-In)';
+                            }
+                        } else {
+                            // Extra money request
+                            if ($eaStatus === 'pending') {
+                                $row['approve_role'] = 'qc';
+                                $row['status'] = 'pending';
+                                $pendingStageLabel = 'Pending QC & Audit';
+                                $pendingForText = 'QC & Internal Audit Head';
+                            } elseif ($eaStatus === 'qc_approved') {
+                                $row['approve_role'] = 'management';
+                                $row['status'] = 'pending';
+                                $pendingStageLabel = 'Pending Management';
+                                $pendingForText = 'Management / Role 20';
+                            } elseif ($eaStatus === 'approved') {
+                                $row['approve_role'] = 'accounts';
+                                $row['status'] = 'approved';
+                                $payoutStatus = 'Pending Accounts Payout';
+                                $pendingStageLabel = 'Pending Accounts Payout';
+                                $pendingForText = 'Accounts & Finance';
+                            } elseif ($eaStatus === 'fully_paid') {
+                                $row['status'] = 'approved';
+                                $row['approve_role'] = 'completed';
+                                $payoutStatus = 'Paid & Settled';
+                                $payoutAmount = $adjAmt;
+                                $payoutDate = $eaRow['updated_at'];
+                                $pendingStageLabel = 'Paid & Settled';
+                                $pendingForText = 'Settled';
+                            } elseif ($eaStatus === 'partially_paid') {
+                                $row['status'] = 'partially_paid';
+                                $payoutStatus = 'Partially Paid';
+                                $payoutAmount = (float)($adjAmt - ($eaRow['due_amount'] ?? 0));
+                                $payoutDate = $eaRow['updated_at'];
+                                $pendingStageLabel = 'Partially Paid';
+                                $pendingForText = 'Accounts & Finance';
+                            } elseif ($eaStatus === 'rejected') {
+                                $row['status'] = 'rejected';
+                                $pendingStageLabel = 'Rejected';
+                                $pendingForText = 'Rejected';
+                            }
+                        }
+                    }
+                }
             } else if ($sourceTable === 'advance_salaries') {
                 $asSql = "SELECT status, amount, updated_at FROM advance_salaries WHERE id = ? LIMIT 1";
                 $asStmt = $this->db->prepare($asSql);
@@ -2007,6 +2177,7 @@ class ApprovalRequest extends Model
                             $pendingForText = 'HR Head';
                         }
                     }
+
                 }
             } else if ($row['status'] === 'approved' && $sourceTable !== 'lead_payments') {
                 $payoutStatus = 'Pending Accounts Payout';
@@ -2089,7 +2260,7 @@ class ApprovalRequest extends Model
 
             // 2. Role 20 (DGM / Operation Head):
             if ($isRole20) {
-                if (($item['source_table'] ?? '') === 'project_other_costs' && $isPending && in_array($approveRole, ['management', ''])) {
+                if (in_array(($item['source_table'] ?? ''), ['project_other_costs', 'expense_adjustments']) && $isPending && in_array($approveRole, ['management', ''])) {
                     return true;
                 }
                 return ($isPending && in_array($approveRole, ['management', '']) && $amount <= 100000.01);
@@ -2254,13 +2425,13 @@ class ApprovalRequest extends Model
                     WHEN fr.status = 'pending_qc' THEN 'qc'
                     WHEN fr.status = 'pending' THEN 'management'
                     WHEN fr.status = 'approved' THEN 'accounts'
-                    WHEN fr.status IN ('paid', 'partially_paid') THEN 'accounts'
+                    WHEN fr.status IN ('paid', 'partially_paid') THEN 'completed'
                     WHEN fr.status = 'rejected' THEN 'management'
                     ELSE ar.approve_role 
                 END,
                 ar.status = CASE 
                     WHEN fr.status IN ('pending_dept', 'pending_qc', 'pending') THEN 'pending'
-                    WHEN fr.status = 'paid' THEN 'approved'
+                    WHEN fr.status IN ('approved', 'paid') THEN 'approved'
                     WHEN fr.status = 'partially_paid' THEN 'partially_paid'
                     WHEN fr.status = 'rejected' THEN 'rejected'
                     ELSE 'pending'
@@ -2338,7 +2509,7 @@ class ApprovalRequest extends Model
                     VALUES (?, ?, ?, 'project_extra_assets', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if ($stmt) {
-                    $stmt->bind_param("sssiddisisssss", $deptName, $requestType, $title, $sourceId, $amount, $approvedAmount, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                    $stmt->bind_param("sssiddississss", $deptName, $requestType, $title, $sourceId, $amount, $approvedAmount, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
                     $stmt->execute();
                     $stmt->close();
                 }
@@ -2468,7 +2639,7 @@ class ApprovalRequest extends Model
                 ar.approved_by = lr.management_approved_by,
                 ar.approved_at = lr.management_approved_at,
                 ar.approval_note = lr.management_note,
-                ar.request_amount = COALESCE(lr.pm_verified_amount, lr.qc_approved_amount, lr.total_amount),
+                ar.request_amount = COALESCE(lr.qc_approved_amount, lr.total_amount),
                 ar.approved_amount = CASE 
                     WHEN lr.status IN ('management_approved', 'partially_paid', 'paid', 'labor_disbursed') THEN COALESCE(lr.approved_amount, lr.total_amount) 
                     ELSE ar.approved_amount 
@@ -2976,6 +3147,169 @@ class ApprovalRequest extends Model
                 OR (cr.status = 'rejected' AND ar.status != 'rejected')
                 OR (cr.status = 'pending' AND (ar.approve_role != 'management' OR ar.status != 'pending'))
                 OR ar.status = '' OR ar.status IS NULL
+        ";
+        @$this->db->query($syncSql);
+    }
+
+    public function syncMissingExpenseAdjustments()
+    {
+        // 1. Insert missing expense adjustments
+        $sql = "
+            SELECT ea.*, d.name AS dept_name,
+                   COALESCE(cr.purpose_paid_to, CONCAT('Vendor Payment #', vpr.id, IF(vpr.invoice_number IS NOT NULL AND vpr.invoice_number != '', CONCAT(' (', vpr.invoice_number, ')'), '')), cbr.work_description, pr.notes, CONCAT('Other Cost: ', IFNULL(poc.purpose, poc.rcost_type)), CONCAT('Extra Asset: ', pea.item_name)) as original_purpose
+            FROM expense_adjustments ea
+            JOIN users u ON ea.user_id = u.id
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            LEFT JOIN departments d ON e.department_id = d.id
+            LEFT JOIN cashout_requests cr ON ea.cashout_request_id = cr.id AND ea.parent_type = 'cashout'
+            LEFT JOIN vendor_payment_requests vpr ON ea.cashout_request_id = vpr.id AND ea.parent_type = 'vendor'
+            LEFT JOIN contractor_bill_requests cbr ON ea.cashout_request_id = cbr.id AND ea.parent_type = 'contractor'
+            LEFT JOIN purchase_requests pr ON ea.cashout_request_id = pr.id AND ea.parent_type = 'purchase'
+            LEFT JOIN project_other_costs poc ON ea.cashout_request_id = poc.id AND ea.parent_type = 'other_cost'
+            LEFT JOIN project_extra_assets pea ON ea.cashout_request_id = pea.id AND ea.parent_type = 'extra_purchase'
+            LEFT JOIN approval_requests ar ON (ar.source_table = 'expense_adjustments' AND ar.source_id = ea.id)
+            WHERE ar.id IS NULL
+        ";
+        $res = $this->db->query($sql);
+        if ($res && $res->num_rows > 0) {
+            while ($row = $res->fetch_assoc()) {
+                $sourceId = (int)$row['id'];
+                $deptName = !empty($row['dept_name']) ? $row['dept_name'] : 'Accounts & Finance';
+                $isReturn = ($row['adjustment_type'] === 'return');
+                $requestType = $isReturn ? 'Expense Return' : 'Extra Expense';
+                $parentLabel = match ($row['parent_type']) {
+                    'vendor' => 'Vendor Payment',
+                    'contractor' => 'Contractor Bill',
+                    'other_cost' => 'Project Other Cost',
+                    'extra_purchase' => 'Extra Purchase',
+                    default => 'Cashout'
+                };
+                $titlePrefix = $isReturn ? 'Return Unused: ' : 'Extra Amount: ';
+                $title = $titlePrefix . $row['title'] . " (Against " . $parentLabel . " #" . $row['cashout_request_id'] . ")";
+                $amount = (float)$row['amount'];
+                $requestedBy = (int)$row['user_id'];
+                $approvedAmount = !empty($row['approved_amount']) ? (float)$row['approved_amount'] : null;
+                $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
+                $approvedAt = !empty($row['approved_at']) ? $row['approved_at'] : null;
+                $approvalNote = !empty($row['mgmt_note']) ? $row['mgmt_note'] : (!empty($row['qc_note']) ? $row['qc_note'] : (!empty($row['rejection_note']) ? $row['rejection_note'] : null));
+
+                $eaStatus = $row['status'];
+                if ($isReturn) {
+                    // Returns go straight to Accounts for verification & cash-in
+                    if ($eaStatus === 'fully_paid') {
+                        $status = 'approved';
+                        $approveRole = 'completed';
+                        $approvedAmount = $amount;
+                    } elseif ($eaStatus === 'partially_paid') {
+                        $status = 'partially_paid';
+                        $approveRole = 'accounts';
+                        $approvedAmount = $amount;
+                    } elseif ($eaStatus === 'rejected') {
+                        $status = 'rejected';
+                        $approveRole = 'management';
+                    } else {
+                        $status = 'pending';
+                        $approveRole = 'accounts';
+                    }
+                } else {
+                    // Extra requests follow: QC -> Management -> Accounts
+                    if ($eaStatus === 'pending') {
+                        $status = 'pending';
+                        $approveRole = 'qc';
+                    } elseif ($eaStatus === 'qc_approved') {
+                        $status = 'pending';
+                        $approveRole = 'management';
+                        $approvedBy = !empty($row['qc_approved_by']) ? (int)$row['qc_approved_by'] : null;
+                        $approvedAt = !empty($row['qc_approved_at']) ? $row['qc_approved_at'] : null;
+                    } elseif ($eaStatus === 'approved') {
+                        $status = 'approved';
+                        $approveRole = 'accounts';
+                    } elseif ($eaStatus === 'partially_paid') {
+                        $status = 'partially_paid';
+                        $approveRole = 'accounts';
+                    } elseif ($eaStatus === 'fully_paid') {
+                        $status = 'approved';
+                        $approveRole = 'completed';
+                    } elseif ($eaStatus === 'rejected') {
+                        $status = 'rejected';
+                        $approveRole = 'management';
+                    } else {
+                        $status = 'pending';
+                        $approveRole = 'qc';
+                    }
+                }
+
+                $metaData = json_encode([
+                    'adjustment_type' => $row['adjustment_type'],
+                    'parent_type' => $row['parent_type'],
+                    'cashout_request_id' => $row['cashout_request_id'],
+                    'original_purpose' => $row['original_purpose']
+                ]);
+                $createdAt = !empty($row['created_at']) ? $row['created_at'] : date('Y-m-d H:i:s');
+
+                $stmt = $this->db->prepare("
+                    INSERT INTO approval_requests 
+                    (department, request_type, title, source_table, source_id, request_amount, approved_amount, requested_by, approve_role, status, approved_by, approved_at, approval_note, meta_data, created_at)
+                    VALUES (?, ?, ?, 'expense_adjustments', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                if ($stmt) {
+                    $stmt->bind_param("sssiddississss", $deptName, $requestType, $title, $sourceId, $amount, $approvedAmount, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+            }
+        }
+
+        // 2. Sync existing expense_adjustments status
+        $syncSql = "
+            UPDATE approval_requests ar
+            INNER JOIN expense_adjustments ea ON (ar.source_table = 'expense_adjustments' AND ar.source_id = ea.id)
+            SET 
+                ar.approve_role = CASE
+                    WHEN ea.status = 'rejected' THEN 'management'
+                    WHEN ea.status = 'fully_paid' THEN 'completed'
+                    WHEN ea.status = 'partially_paid' THEN 'accounts'
+                    WHEN ea.adjustment_type = 'return' AND ea.status = 'pending' THEN 'accounts'
+                    WHEN ea.adjustment_type = 'extra' AND ea.status = 'pending' THEN 'qc'
+                    WHEN ea.adjustment_type = 'extra' AND ea.status = 'qc_approved' THEN 'management'
+                    WHEN ea.adjustment_type = 'extra' AND ea.status = 'approved' THEN 'accounts'
+                    ELSE ar.approve_role
+                END,
+                ar.status = CASE
+                    WHEN ea.status = 'rejected' THEN 'rejected'
+                    WHEN ea.status IN ('fully_paid', 'approved') THEN 'approved'
+                    WHEN ea.status = 'partially_paid' THEN 'partially_paid'
+                    ELSE 'pending'
+                END,
+                ar.approved_amount = CASE
+                    WHEN ea.status IN ('approved', 'fully_paid', 'partially_paid') THEN COALESCE(ea.approved_amount, ea.amount, ar.request_amount)
+                    WHEN ea.status = 'qc_approved' THEN COALESCE(ea.approved_amount, ar.approved_amount)
+                    ELSE ar.approved_amount
+                END,
+                ar.approved_by = CASE
+                    WHEN ea.approved_by IS NOT NULL THEN ea.approved_by
+                    WHEN ea.status = 'qc_approved' AND ea.qc_approved_by IS NOT NULL THEN ea.qc_approved_by
+                    ELSE ar.approved_by
+                END,
+                ar.approved_at = CASE
+                    WHEN ea.approved_at IS NOT NULL THEN ea.approved_at
+                    WHEN ea.status = 'qc_approved' AND ea.qc_approved_at IS NOT NULL THEN ea.qc_approved_at
+                    ELSE ar.approved_at
+                END,
+                ar.approval_note = CASE
+                    WHEN ea.mgmt_note IS NOT NULL AND ea.mgmt_note != '' THEN ea.mgmt_note
+                    WHEN ea.qc_note IS NOT NULL AND ea.qc_note != '' THEN ea.qc_note
+                    WHEN ea.rejection_note IS NOT NULL AND ea.rejection_note != '' THEN ea.rejection_note
+                    ELSE ar.approval_note
+                END
+            WHERE 
+                (ea.status = 'rejected' AND ar.status != 'rejected')
+                OR (ea.status = 'fully_paid' AND (ar.approve_role != 'completed' OR ar.status != 'approved'))
+                OR (ea.adjustment_type = 'return' AND ea.status = 'pending' AND (ar.approve_role != 'accounts' OR ar.status != 'pending'))
+                OR (ea.adjustment_type = 'extra' AND ea.status = 'pending' AND (ar.approve_role != 'qc' OR ar.status != 'pending'))
+                OR (ea.adjustment_type = 'extra' AND ea.status = 'qc_approved' AND (ar.approve_role != 'management' OR ar.status != 'pending'))
+                OR (ea.adjustment_type = 'extra' AND ea.status = 'approved' AND (ar.approve_role != 'accounts' OR ar.status != 'approved'))
+                OR (ar.status = '' OR ar.status IS NULL)
         ";
         @$this->db->query($syncSql);
     }

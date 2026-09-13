@@ -393,6 +393,44 @@
                 $vprRes = $db->query("SELECT COUNT(*) AS c FROM vendor_payment_requests WHERE status IN ('QC Approved', 'Submitted')");
                 $sidebarPendingVprCount = $vprRes ? (int)$vprRes->fetch_assoc()['c'] : 0;
             }
+
+            // 4. Pending Expense Adjustments count based on user's role
+            $sidebarPendingAdjCount = 0;
+            $adjUserId = (int)($_SESSION['user']['id'] ?? 0);
+            if ($isAccountsRole && !$isMgmtRole) {
+                // Accounts: Pending returns to verify + approved extras awaiting payout
+                $adjRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM expense_adjustments 
+                    WHERE (adjustment_type = 'return' AND status IN ('pending', 'partially_paid'))
+                       OR (adjustment_type = 'extra' AND status IN ('approved', 'partially_paid'))
+                ");
+                $sidebarPendingAdjCount = $adjRes ? (int)$adjRes->fetch_assoc()['c'] : 0;
+            } elseif ($isQcRole && !$isMgmtRole) {
+                // QC & Internal Audit: Extra requests awaiting QC audit
+                $adjRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM expense_adjustments 
+                    WHERE adjustment_type = 'extra' AND status = 'pending'
+                ");
+                $sidebarPendingAdjCount = $adjRes ? (int)$adjRes->fetch_assoc()['c'] : 0;
+            } elseif ($isMgmtRole) {
+                // Management / Admin / Role 20: Extra requests awaiting Management approval
+                $adjRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM expense_adjustments 
+                    WHERE adjustment_type = 'extra' AND status = 'qc_approved'
+                ");
+                $sidebarPendingAdjCount = $adjRes ? (int)$adjRes->fetch_assoc()['c'] : 0;
+            } else {
+                // Requesters (Site Engineer, Purchase Exec, etc.): their own requests in progress
+                $adjRes = $db->query("
+                    SELECT COUNT(*) AS c 
+                    FROM expense_adjustments 
+                    WHERE user_id = $adjUserId AND status IN ('pending', 'qc_approved')
+                ");
+                $sidebarPendingAdjCount = $adjRes ? (int)$adjRes->fetch_assoc()['c'] : 0;
+            }
         } catch (\Throwable $e) {
         }
     }
@@ -413,8 +451,8 @@
                     </li>
                 <?php endif; ?>
 
-                <?php if ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [6, 30, 20])): ?>
-                    <!-- All Approval Requests for Management & Accounts -->
+                <?php if ($isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [6, 30, 20, 24, 25, 13, 17])): ?>
+                    <!-- All Approval Requests for Management, Accounts & Audit/Purchase Heads -->
                     <li class="slide <?= isActive('all-approval-requests', $current_route) ?>">
                         <a href="<?= $base_url ?>/all-approval-requests"
                             class="sidebar__menu-item <?= isActive('all-approval-requests', $current_route) ?>">
@@ -442,6 +480,37 @@
                             class="sidebar__menu-item <?= isActive('expense-analytics', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-pie text-warning"></i></div>
                             <span class="sidebar__menu-label">Expense Analytics</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
+                <?php 
+                // Roles allowed to access Expense Adjustments:
+                // Accounts (6, 30), Purchase (17, 23, 31), Management (1, 3, 33), Admin & Operation Head (20, 32),
+                // QC & Internal Audit (13, 24, 25), Site Engineers & PMs (12, 15, 22), or anyone who made adjustments
+                $canViewExpenseAdjustments = in_array($sidebarUserRoleId, [1, 3, 33, 6, 30, 20, 32, 13, 24, 25, 17, 23, 31, 12, 15, 22], true)
+                    || ($isManagement ?? false)
+                    || ($isAccountsRole ?? false)
+                    || ($isQcRole ?? false)
+                    || ($isMgmtRole ?? false)
+                    || stripos($sbRoleName ?? '', 'purchase') !== false
+                    || stripos($sbRoleName ?? '', 'engineer') !== false
+                    || stripos($sbRoleName ?? '', 'audit') !== false
+                    || stripos($sbRoleName ?? '', 'account') !== false
+                    || hasPermission('accounts manage');
+                if ($canViewExpenseAdjustments): 
+                ?>
+                    <!-- Expense Adjustments Menu -->
+                    <li class="slide <?= isActive('expense-adjustments', $current_route) ?>">
+                        <a href="<?= $base_url ?>/expense-adjustments"
+                            class="sidebar__menu-item <?= isActive('expense-adjustments', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-scale-balanced text-info"></i></div>
+                            <span class="sidebar__menu-label">
+                                Expense Adjustments
+                                <?php if (!empty($sidebarPendingAdjCount)): ?>
+                                    <span class="badge bg-danger rounded-pill ms-2"><?= $sidebarPendingAdjCount ?></span>
+                                <?php endif; ?>
+                            </span>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -2056,7 +2125,11 @@
                                 <li class="slide <?= isActive('expense-adjustments', $current_route) ?>">
                                     <a href="<?= $base_url ?>/expense-adjustments"
                                         class="sidebar__menu-item <?= isActive('expense-adjustments', $current_route) ?>">Expense
-                                        Adjustments</a>
+                                        Adjustments
+                                        <?php if (!empty($sidebarPendingAdjCount)): ?>
+                                            <span class="badge bg-danger rounded-pill ms-1"><?= $sidebarPendingAdjCount ?></span>
+                                        <?php endif; ?>
+                                    </a>
                                 </li>
                             </ul>
                         </li>

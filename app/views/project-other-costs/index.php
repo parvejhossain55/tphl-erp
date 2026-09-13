@@ -73,7 +73,15 @@
                                             <td><?= $index + 1 ?></td>
                                             <td><?= htmlspecialchars($row['project_name']) ?></td>
                                             <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $row['rcost_type']))) ?></td>
-                                            <td><?= number_format($row['request_amount'], 2) ?></td>
+                                            <td>
+                                                <div><?= number_format($row['request_amount'], 2) ?></div>
+                                                <?php if (!empty($row['approved_amount']) && $row['approved_amount'] != $row['request_amount']): ?>
+                                                    <small class="text-success d-block">Appr: <?= number_format($row['approved_amount'], 2) ?></small>
+                                                <?php endif; ?>
+                                                <?php if ($row['status'] === 'paid' && !empty($row['payment_amount'])): ?>
+                                                    <small class="text-primary d-block font-monospace fw-bold">Paid: <?= number_format($row['payment_amount'], 2) ?></small>
+                                                <?php endif; ?>
+                                            </td>
                                             <td>
                                                 <?php if (!empty($row['attachment'])): ?>
                                                     <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= $row['attachment'] ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View</a>
@@ -106,6 +114,14 @@
                                                     <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs/review/<?= $row['id'] ?>" class="btn btn-sm btn-info shadow-sm" title="View Status">
                                                         <i class="bi bi-eye"></i>
                                                     </a>
+                                                    <?php if ($row['status'] === 'paid'): ?>
+                                                        <a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments/create?parent_type=other_cost&cashout_request_id=<?= $row['id'] ?>&project_id=<?= $row['project_id'] ?>" class="btn btn-sm btn-outline-warning shadow-sm" title="Settlement / Adjustment">
+                                                            <i class="bi bi-sliders"></i>
+                                                        </a>
+                                                        <a href="<?= $GLOBALS['base_url'] ?>/print-debit-voucher?module=project_other_costs&id=<?= $row['id'] ?>" target="_blank" class="btn btn-sm btn-outline-primary shadow-sm" title="Print Debit Voucher">
+                                                            <i class="bi bi-printer"></i>
+                                                        </a>
+                                                    <?php endif; ?>
                                                     <?php if (in_array($row['status'], ['pending', 'qc_approved'])): ?>
                                                         <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs/delete/<?= $row['id'] ?>" class="btn btn-sm btn-danger shadow-sm" onclick="return confirm('Are you sure you want to delete this request?');" title="Delete">
                                                             <i class="bi bi-trash"></i>
@@ -149,7 +165,12 @@
                                             <td><?= htmlspecialchars($row['project_name']) ?></td>
                                             <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $row['rcost_type']))) ?></td>
                                             <td><?= number_format($row['request_amount'], 2) ?></td>
-                                            <td><?= $row['approved_amount'] ? number_format($row['approved_amount'], 2) : '-' ?></td>
+                                            <td>
+                                                <?= $row['approved_amount'] ? number_format($row['approved_amount'], 2) : '-' ?>
+                                                <?php if ($row['status'] === 'paid' && !empty($row['payment_amount'])): ?>
+                                                    <small class="text-primary d-block font-monospace fw-bold">Paid: <?= number_format($row['payment_amount'], 2) ?></small>
+                                                <?php endif; ?>
+                                            </td>
                                             <td>
                                                 <?php if (!empty($row['attachment'])): ?>
                                                     <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= $row['attachment'] ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View</a>
@@ -185,7 +206,7 @@
                                             <td>
                                                 <div class="d-flex gap-2">
                                                     <?php
-                                                    $canApprove = false;
+                                                     $canApprove = false;
                                                     
                                                     $creatorReportingUserId = (int)($row['creator_reporting_user_id'] ?? 0);
                                                     $isDeptHead = ($row['dept_head_status'] === 'pending' && ($creatorReportingUserId === (int)$userId || $roleId === 1));
@@ -203,6 +224,15 @@
                                                     <?php else: ?>
                                                         <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs/review/<?= $row['id'] ?>" class="btn btn-sm btn-info rounded-2 px-3 shadow-sm">
                                                             <i class="bi bi-eye me-1"></i>View Module Page
+                                                        </a>
+                                                    <?php endif; ?>
+
+                                                    <?php if ($row['status'] === 'paid'): ?>
+                                                        <a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments/create?parent_type=other_cost&cashout_request_id=<?= $row['id'] ?>&project_id=<?= $row['project_id'] ?>" class="btn btn-sm btn-outline-warning rounded-2 px-2 shadow-sm" title="Settlement / Adjustment">
+                                                            <i class="bi bi-sliders me-1"></i>Settlement
+                                                        </a>
+                                                        <a href="<?= $GLOBALS['base_url'] ?>/print-debit-voucher?module=project_other_costs&id=<?= $row['id'] ?>" target="_blank" class="btn btn-sm btn-outline-primary rounded-2 px-2 shadow-sm" title="Print Debit Voucher">
+                                                            <i class="bi bi-printer me-1"></i>Voucher
                                                         </a>
                                                     <?php endif; ?>
 

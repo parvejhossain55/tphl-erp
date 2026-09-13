@@ -468,10 +468,26 @@ class ProjectOtherCostController extends Controller
         // Keep approval_requests table in sync with the latest status
         $this->syncToApprovalRequests($id);
 
+        // Fetch linked expense adjustments (Settlements)
+        $adjustments = [];
+        $stmtAdj = $this->db->prepare("
+            SELECT ea.*, u.full_name as requester_name 
+            FROM expense_adjustments ea 
+            JOIN users u ON ea.user_id = u.id 
+            WHERE ea.cashout_request_id = ? AND ea.parent_type = 'other_cost'
+            ORDER BY ea.id DESC
+        ");
+        if ($stmtAdj) {
+            $stmtAdj->bind_param('i', $id);
+            $stmtAdj->execute();
+            $adjustments = $stmtAdj->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
         $this->view('project-other-costs/review', [
             'request' => $request,
             'roleId' => $roleId,
-            'userId' => $userId
+            'userId' => $userId,
+            'adjustments' => $adjustments
         ]);
     }
 }

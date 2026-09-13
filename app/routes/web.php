@@ -163,6 +163,7 @@ return [
     'expense-adjustments/create' => ['controller' => 'ExpenseAdjustmentController', 'method' => 'create'],
     'expense-adjustments/store' => ['controller' => 'ExpenseAdjustmentController', 'method' => 'store'],
     'expense-adjustments/show' => ['controller' => 'ExpenseAdjustmentController', 'method' => 'show'],
+    'expense-adjustments/qc-approve' => ['controller' => 'ExpenseAdjustmentController', 'method' => 'qcApprove'],
     'expense-adjustments/approve' => ['controller' => 'ExpenseAdjustmentController', 'method' => 'approve'],
     'expense-adjustments/reject' => ['controller' => 'ExpenseAdjustmentController', 'method' => 'reject'],
     'expense-adjustments/add-payment' => ['controller' => 'ExpenseAdjustmentController', 'method' => 'addPayment'],

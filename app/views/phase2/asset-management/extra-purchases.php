@@ -351,6 +351,15 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             <i class="fa-solid fa-eye"></i>
                                         </button>
 
+                                        <?php if ($r['payment_status'] === 'paid' || in_array($r['overall_status'], ['paid', 'purchased'])): ?>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments/create?parent_type=extra_purchase&cashout_request_id=<?= $r['id'] ?>&project_id=<?= $r['project_id'] ?? '' ?>" class="btn btn-sm btn-outline-warning btn-icon" title="Settlement / Adjustment">
+                                                <i class="fa-solid fa-sliders"></i>
+                                            </a>
+                                            <a href="<?= $GLOBALS['base_url'] ?>/print-debit-voucher?module=project_extra_assets&id=<?= $r['id'] ?>" target="_blank" class="btn btn-sm btn-outline-primary btn-icon" title="Print Debit Voucher">
+                                                <i class="fa-solid fa-file-invoice-dollar"></i>
+                                            </a>
+                                        <?php endif; ?>
+
                                         <?php if ($canApprove): ?>
                                             <button type="button" class="btn btn-sm btn-outline-success btn-icon" title="Approve"
                                                 onclick="openApprovalModal(<?= $r['id'] ?>, 'approved', '<?= $step ?>')">
@@ -362,7 +371,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             </button>
                                         <?php elseif ($canPay): ?>
                                             <button type="button" class="btn btn-sm btn-outline-primary" title="Process Payment"
-                                                onclick="openPaymentModal(<?= $r['id'] ?>)">
+                                                onclick="openPaymentModal(<?= $r['id'] ?>, <?= (float)$r['total_price'] ?>)">
                                                 <i class="fa-solid fa-money-bill me-1"></i> Pay
                                             </button>
                                         <?php elseif ($canConfirmPurchase): ?>
@@ -811,9 +820,13 @@ function openApprovalModal(id, status, step) {
     new bootstrap.Modal(document.getElementById('approvalModal')).show();
 }
 
-function openPaymentModal(id) {
+function openPaymentModal(id, amount) {
     var form = document.getElementById('paymentForm');
     form.action = '<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/purchased/' + id;
+    var paidInput = form.querySelector('input[name="paid_amount"]');
+    if (paidInput && amount !== undefined) {
+        paidInput.value = parseFloat(amount).toFixed(2);
+    }
     new bootstrap.Modal(document.getElementById('paymentModal')).show();
 }
 
@@ -928,6 +941,16 @@ function renderDetailModal(data) {
                     <div class="detail-label">Total Amount</div>
                     <div class="detail-value text-success">৳ ${parseFloat(data.total_price || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
                 </div>
+                ${(data.payment_status === 'paid' || data.overall_status === 'paid' || data.overall_status === 'purchased') ? `
+                <div class="col-md-3 mt-2">
+                    <div class="detail-label text-success">Paid Amount</div>
+                    <div class="detail-value text-success fw-bold">৳ ${parseFloat(data.paid_amount || data.total_price || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                </div>
+                <div class="col-md-3 mt-2">
+                    <div class="detail-label text-muted">Payment Method</div>
+                    <div class="detail-value text-muted"><span class="badge bg-light text-dark border">${data.payment_method || 'Cash'}</span></div>
+                </div>
+                ` : ''}
                 ${parseFloat(data.return_amount || 0) > 0 ? `
                 <div class="col-md-3 mt-2">
                     <div class="detail-label text-danger">Returned Bal.</div>
@@ -1007,11 +1030,13 @@ function renderDetailModal(data) {
         </div>
         ` : ''}
 
-        <!-- Documents -->
-        ${(data.attachment || data.payment_attachment || data.purchase_document || data.purchase_head_document) ? `
+        <!-- Documents & Vouchers -->
+        ${(data.attachment || data.payment_attachment || data.purchase_document || data.purchase_head_document || data.payment_status === 'paid' || data.overall_status === 'paid' || data.overall_status === 'purchased') ? `
         <div class="mt-3">
-            <div class="detail-label mb-1 px-1">SUBMITTED DOCUMENTS</div>
+            <div class="detail-label mb-1 px-1">SUBMITTED DOCUMENTS & VOUCHERS</div>
             <div class="d-flex flex-wrap gap-2">
+                ${(data.payment_status === 'paid' || data.overall_status === 'paid' || data.overall_status === 'purchased') ? '<a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments/create?parent_type=extra_purchase&cashout_request_id=' + data.id + '&project_id=' + (data.project_id || '') + '" class="btn btn-sm btn-warning shadow-sm"><i class="fa-solid fa-sliders me-1"></i> Settlement / Adjustment</a>' : ''}
+                ${(data.payment_status === 'paid' || data.overall_status === 'paid' || data.overall_status === 'purchased') ? '<a href="<?= $GLOBALS['base_url'] ?>/print-debit-voucher?module=project_extra_assets&id=' + data.id + '" target="_blank" class="btn btn-sm btn-primary shadow-sm"><i class="fa-solid fa-file-invoice-dollar me-1"></i> Print Debit Voucher</a>' : ''}
                 ${data.attachment ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.attachment + '" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-file-pdf me-1"></i> Request Doc</a>' : ''}
                 ${data.purchase_head_document ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.purchase_head_document + '" target="_blank" class="btn btn-sm btn-outline-info"><i class="fa-solid fa-file-invoice me-1"></i> Purchase Head Doc</a>' : ''}
                 ${data.payment_attachment ? '<a href="<?= $GLOBALS['base_url'] ?>/' + data.payment_attachment + '" target="_blank" class="btn btn-sm btn-outline-success"><i class="fa-solid fa-receipt me-1"></i> Payment Receipt</a>' : ''}

@@ -30,38 +30,103 @@ class ExpenseAdjustmentController extends Controller
         }
     }
 
-    private function isAccounts()
+    public function isAccounts()
     {
-        // Typically Accounts role is 6, or Admins (1, 3)
-        return in_array($this->userRole, [1, 3, 6, 30]);
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        return in_array($this->userRole, [1, 3, 6, 30]) || strpos($roleName, 'account') !== false;
     }
 
-    private function canApprove($type = null)
+    public function canQcApprove()
     {
-        // Only Management/Admin roles can approve
-        return in_array($this->userRole, [1, 3]);
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        return in_array($this->userRole, [1, 3, 13, 24, 25]) || strpos($roleName, 'qc') !== false || strpos($roleName, 'audit') !== false;
+    }
+
+    public function canMgmtApprove()
+    {
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        return in_array($this->userRole, [1, 3, 20, 22, 32, 33]) || strpos($roleName, 'operation head') !== false || strpos($roleName, 'admin & operation') !== false || strpos($roleName, 'management') !== false || strpos($roleName, 'chief') !== false;
+    }
+
+    public function canApprove($type = null)
+    {
+        return $this->canMgmtApprove();
     }
 
     public function index()
     {
-        // For accounts/admin, they can see all. Regular users see their own.
-        // Wait, the user said "accounts there will be two pages my requestes all requests"
-        // Let's implement a filter for `?view=all` vs `?view=my`
-        $viewType = $_GET['view'] ?? ($this->isAccounts() ? 'all' : 'my');
-        
-        $filterUserId = null;
-        if ($viewType === 'my') {
-            $filterUserId = $this->userId;
+        $isAccounts = $this->isAccounts();
+        $canQc = $this->canQcApprove();
+        $canMgmt = $this->canMgmtApprove();
+        $isApprover = ($isAccounts || $canQc || $canMgmt);
+
+        // Determine user's primary actionable role
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isPureAccounts = in_array($this->userRole, [6, 30]) || (strpos($roleName, 'account') !== false && !in_array($this->userRole, [1, 3, 20, 32, 33]));
+        $isPureQc = in_array($this->userRole, [13, 24, 25]) || ((strpos($roleName, 'qc') !== false || strpos($roleName, 'audit') !== false) && !in_array($this->userRole, [1, 3, 20, 32, 33]));
+        $isMgmt = in_array($this->userRole, [1, 3, 20, 22, 32, 33]) || strpos($roleName, 'operation head') !== false || strpos($roleName, 'admin & operation') !== false || strpos($roleName, 'management') !== false || strpos($roleName, 'chief') !== false;
+
+        $actionableRole = null;
+        $actionableTabName = 'Action Required';
+        if ($isPureAccounts) {
+            $actionableRole = 'accounts';
+            $actionableTabName = 'Pending Accounts Action';
+        } elseif ($isPureQc) {
+            $actionableRole = 'qc';
+            $actionableTabName = 'Pending QC Audit';
+        } elseif ($isMgmt) {
+            $actionableRole = 'management';
+            $actionableTabName = 'Pending Management Approval';
         }
 
-        $adjustments = $this->model->getAll($filterUserId);
+        // Allow explicit stage override via ?stage= (for Admin/Management to toggle between QC / Mgmt / Accounts queues)
+        if (isset($_GET['stage']) && in_array($_GET['stage'], ['qc', 'management', 'accounts'])) {
+            $actionableRole = $_GET['stage'];
+            if ($actionableRole === 'qc') $actionableTabName = 'Pending QC Audit';
+            elseif ($actionableRole === 'management') $actionableTabName = 'Pending Management Approval';
+            elseif ($actionableRole === 'accounts') $actionableTabName = 'Pending Accounts Action';
+        }
+
+        // Get live counts for tabs
+        $counts = $this->model->getTabCounts($this->userId, $actionableRole);
+
+        // Determine view
+        if (isset($_GET['view'])) {
+            $viewType = $_GET['view'];
+        } else {
+            if ($isApprover) {
+                $viewType = ($counts['actionable'] > 0) ? 'actionable' : ($isAccounts ? 'all' : 'my');
+            } else {
+                $viewType = 'my';
+            }
+        }
+
+        // Enforce restriction: non-approvers can only view their own
+        if (!$isApprover && $viewType !== 'my') {
+            $viewType = 'my';
+        }
+
+        // Fetch records based on active view
+        if ($viewType === 'my') {
+            $adjustments = $this->model->getAll($this->userId);
+        } elseif ($viewType === 'actionable' && $actionableRole) {
+            $adjustments = $this->model->getAll(null, $actionableRole);
+        } else {
+            $adjustments = $this->model->getAll(null, null);
+        }
 
         $this->view('accounts/expense-adjustments/index', [
             'current_route' => 'expense-adjustments',
             'page_title' => 'Expense Adjustments',
             'adjustments' => $adjustments,
-            'isAccounts' => $this->isAccounts(),
-            'viewType' => $viewType
+            'isAccounts' => $isAccounts,
+            'canQc' => $canQc,
+            'canMgmt' => $canMgmt,
+            'isApprover' => $isApprover,
+            'actionableRole' => $actionableRole,
+            'actionableTabName' => $actionableTabName,
+            'viewType' => $viewType,
+            'counts' => $counts
         ]);
     }
 
@@ -110,6 +175,83 @@ class ExpenseAdjustmentController extends Controller
         $stmt4->execute();
         $res4 = $stmt4->get_result();
         while($r = $res4->fetch_assoc()) $userCashouts[] = $r;
+
+        // 5. Project Other Costs
+        $sql5 = $isAccounts ? 
+            "SELECT id, CONCAT('Other Cost: ', IFNULL(purpose, rcost_type)) as purpose, COALESCE(payment_amount, approved_amount, request_amount) as amount, status, 'other_cost' as type, created_at FROM project_other_costs WHERE status IN ('management_approved', 'paid') ORDER BY created_at DESC" :
+            "SELECT id, CONCAT('Other Cost: ', IFNULL(purpose, rcost_type)) as purpose, COALESCE(payment_amount, approved_amount, request_amount) as amount, status, 'other_cost' as type, created_at FROM project_other_costs WHERE created_by_id = ? AND status IN ('management_approved', 'paid') ORDER BY created_at DESC";
+        $stmt5 = $this->db->prepare($sql5);
+        if (!$isAccounts) $stmt5->bind_param("i", $userId);
+        $stmt5->execute();
+        $res5 = $stmt5->get_result();
+        while($r = $res5->fetch_assoc()) $userCashouts[] = $r;
+
+        // 6. Extra Purchases / Office Procurement
+        $sql6 = $isAccounts ? 
+            "SELECT id, CONCAT('Extra Asset: ', IFNULL(item_name, 'Office Procurement')) as purpose, COALESCE(paid_amount, total_price) as amount, payment_status as status, 'extra_purchase' as type, created_at FROM project_extra_assets WHERE payment_status = 'paid' OR overall_status IN ('approved', 'paid', 'purchased') ORDER BY created_at DESC" :
+            "SELECT id, CONCAT('Extra Asset: ', IFNULL(item_name, 'Office Procurement')) as purpose, COALESCE(paid_amount, total_price) as amount, payment_status as status, 'extra_purchase' as type, created_at FROM project_extra_assets WHERE requested_by = ? AND (payment_status = 'paid' OR overall_status IN ('approved', 'paid', 'purchased')) ORDER BY created_at DESC";
+        $stmt6 = $this->db->prepare($sql6);
+        if (!$isAccounts) $stmt6->bind_param("i", $userId);
+        $stmt6->execute();
+        $res6 = $stmt6->get_result();
+        while($r = $res6->fetch_assoc()) $userCashouts[] = $r;
+
+        // If a specific parent_type and cashout_request_id were requested via query params,
+        // ensure it is present in the list even if creator filter omitted it
+        $reqType = $_GET['parent_type'] ?? null;
+        $reqId = (int)($_GET['cashout_request_id'] ?? 0);
+        if ($reqType && $reqId > 0) {
+            $alreadyPresent = false;
+            foreach ($userCashouts as $co) {
+                if ($co['type'] === $reqType && (int)$co['id'] === $reqId) {
+                    $alreadyPresent = true;
+                    break;
+                }
+            }
+            if (!$alreadyPresent) {
+                if ($reqType === 'other_cost') {
+                    $s = $this->db->prepare("SELECT id, CONCAT('Other Cost: ', IFNULL(purpose, rcost_type)) as purpose, COALESCE(payment_amount, approved_amount, request_amount) as amount, status, 'other_cost' as type, created_at FROM project_other_costs WHERE id = ?");
+                    if ($s) {
+                        $s->bind_param("i", $reqId);
+                        $s->execute();
+                        $row = $s->get_result()->fetch_assoc();
+                        if ($row) array_unshift($userCashouts, $row);
+                    }
+                } elseif ($reqType === 'extra_purchase') {
+                    $s = $this->db->prepare("SELECT id, CONCAT('Extra Asset: ', IFNULL(item_name, 'Office Procurement')) as purpose, COALESCE(paid_amount, total_price) as amount, payment_status as status, 'extra_purchase' as type, created_at FROM project_extra_assets WHERE id = ?");
+                    if ($s) {
+                        $s->bind_param("i", $reqId);
+                        $s->execute();
+                        $row = $s->get_result()->fetch_assoc();
+                        if ($row) array_unshift($userCashouts, $row);
+                    }
+                } elseif ($reqType === 'vendor') {
+                    $s = $this->db->prepare("SELECT id, CONCAT('Vendor Payment ', IFNULL(invoice_number, '')) as purpose, net_payable_amount as amount, status, 'vendor' as type, created_at FROM vendor_payment_requests WHERE id = ?");
+                    if ($s) {
+                        $s->bind_param("i", $reqId);
+                        $s->execute();
+                        $row = $s->get_result()->fetch_assoc();
+                        if ($row) array_unshift($userCashouts, $row);
+                    }
+                } elseif ($reqType === 'contractor') {
+                    $s = $this->db->prepare("SELECT id, work_description as purpose, bill_amount as amount, status, 'contractor' as type, created_at FROM contractor_bill_requests WHERE id = ?");
+                    if ($s) {
+                        $s->bind_param("i", $reqId);
+                        $s->execute();
+                        $row = $s->get_result()->fetch_assoc();
+                        if ($row) array_unshift($userCashouts, $row);
+                    }
+                } elseif ($reqType === 'cashout') {
+                    $s = $this->db->prepare("SELECT id, purpose_paid_to as purpose, amount, status, 'cashout' as type, created_at FROM cashout_requests WHERE id = ?");
+                    if ($s) {
+                        $s->bind_param("i", $reqId);
+                        $s->execute();
+                        $row = $s->get_result()->fetch_assoc();
+                        if ($row) array_unshift($userCashouts, $row);
+                    }
+                }
+            }
+        }
 
         // Sort overall
         usort($userCashouts, function($a, $b) {
@@ -192,6 +334,19 @@ class ExpenseAdjustmentController extends Controller
             $stmt->execute();
             $pData = $stmt->get_result()->fetch_assoc();
             $projectId = $pData['project_id'] ?? null;
+        } elseif ($parentType == 'other_cost') {
+            $stmt = $this->db->prepare("SELECT project_id FROM project_other_costs WHERE id = ?");
+            $stmt->bind_param("i", $cashoutId);
+            $stmt->execute();
+            $pData = $stmt->get_result()->fetch_assoc();
+            $projectId = $pData['project_id'] ?? null;
+        } elseif ($parentType == 'extra_purchase') {
+            $stmt = $this->db->prepare("SELECT project_id, asset_location as office FROM project_extra_assets WHERE id = ?");
+            $stmt->bind_param("i", $cashoutId);
+            $stmt->execute();
+            $pData = $stmt->get_result()->fetch_assoc();
+            $projectId = $pData['project_id'] ?? null;
+            $office = $pData['office'] ?? null;
         }
 
         $data = [
@@ -210,6 +365,14 @@ class ExpenseAdjustmentController extends Controller
 
         $adjId = $this->model->create($data);
         if ($adjId) {
+            // Auto sync to approval requests
+            try {
+                require_once __DIR__ . '/../models/ApprovalRequest.php';
+                (new ApprovalRequest($this->db))->syncMissingExpenseAdjustments();
+            } catch (\Throwable $e) {
+                error_log("Approval sync error on adjustment submission: " . $e->getMessage());
+            }
+
             // Send email notification
             try {
                 $adjData = $this->model->getById($adjId);
@@ -244,16 +407,75 @@ class ExpenseAdjustmentController extends Controller
             exit;
         }
 
+        $isApprover = ($this->isAccounts() || $this->canQcApprove() || $this->canMgmtApprove());
+        if (!$isApprover && (int)$adj['user_id'] !== (int)$this->userId) {
+            setError('You do not have permission to view this adjustment request.');
+            header("Location: {$GLOBALS['base_url']}/expense-adjustments");
+            exit;
+        }
+
         $transactions = $this->model->getTransactions($id);
         
+        $bankAccounts = [];
+        $bRes = $this->db->query("SELECT id, account_code, account_name FROM chart_of_accounts WHERE account_code LIKE '1110%' AND account_code != '1110' AND status = 'active' ORDER BY account_code ASC");
+        if ($bRes) {
+            $bankAccounts = $bRes->fetch_all(MYSQLI_ASSOC);
+        }
+
         $this->view('accounts/expense-adjustments/show', [
             'current_route' => 'expense-adjustments',
             'page_title' => 'Adjustment Details',
             'adj' => $adj,
             'transactions' => $transactions,
             'canApprove' => $this->canApprove($adj['adjustment_type']),
-            'isAccounts' => $this->isAccounts()
+            'canQcApprove' => $this->canQcApprove(),
+            'canMgmtApprove' => $this->canMgmtApprove(),
+            'isAccounts' => $this->isAccounts(),
+            'bankAccounts' => $bankAccounts
         ]);
+    }
+
+    public function qcApprove()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/expense-adjustments");
+            exit;
+        }
+
+        $id = $_POST['id'] ?? null;
+        $adj = $this->model->getById($id);
+        if (!$adj || $adj['status'] !== 'pending' || $adj['adjustment_type'] !== 'extra') {
+            setError('Invalid or already processed request.');
+            header("Location: {$GLOBALS['base_url']}/expense-adjustments");
+            exit;
+        }
+
+        if (!$this->canQcApprove()) {
+            setError('You do not have permission to audit/approve this request as QC.');
+            header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
+            exit;
+        }
+
+        $qcAmount = !empty($_POST['qc_approved_amount']) ? (float)$_POST['qc_approved_amount'] : (float)$adj['amount'];
+        $qcNote = trim($_POST['qc_note'] ?? '');
+
+        if ($qcAmount <= 0) {
+            setError('Invalid approval amount.');
+            header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
+            exit;
+        }
+
+        if ($this->model->qcApprove($id, $this->userId, $qcAmount, $qcNote)) {
+            try {
+                require_once __DIR__ . '/../models/ApprovalRequest.php';
+                (new ApprovalRequest($this->db))->syncMissingExpenseAdjustments();
+            } catch (\Throwable $e) {}
+
+            setSuccess('Request successfully audited and approved by QC & Internal Audit. Forwarded to Management.');
+        } else {
+            setError('Failed to process QC approval.');
+        }
+        header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
     }
 
     public function approve()
@@ -265,27 +487,33 @@ class ExpenseAdjustmentController extends Controller
 
         $id = $_POST['id'] ?? null;
         $adj = $this->model->getById($id);
-        if (!$adj || $adj['status'] !== 'pending') {
+        if (!$adj || !in_array($adj['status'], ['pending', 'qc_approved'])) {
             setError('Invalid or already processed request.');
             header("Location: {$GLOBALS['base_url']}/expense-adjustments");
             exit;
         }
 
-        if (!$this->canApprove($adj['adjustment_type'])) {
+        if (!$this->canMgmtApprove()) {
             setError('You do not have permission to approve this request.');
             header("Location: {$GLOBALS['base_url']}/expense-adjustments");
             exit;
         }
 
-        // Management can set the approved amount for any type
-        $approvedAmount = $_POST['approved_amount'] ?? $adj['amount'];
+        $approvedAmount = !empty($_POST['approved_amount']) ? (float)$_POST['approved_amount'] : (float)($adj['approved_amount'] ?: $adj['amount']);
+        $mgmtNote = trim($_POST['mgmt_note'] ?? '');
+
         if ($approvedAmount <= 0) {
             setError('Invalid approval amount.');
             header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
             exit;
         }
 
-        if ($this->model->approve($id, $this->userId, $approvedAmount)) {
+        if ($this->model->mgmtApprove($id, $this->userId, $approvedAmount, $mgmtNote)) {
+            try {
+                require_once __DIR__ . '/../models/ApprovalRequest.php';
+                (new ApprovalRequest($this->db))->syncMissingExpenseAdjustments();
+            } catch (\Throwable $e) {}
+
             // Send email notification
             try {
                 $freshAdj = $this->model->getById($id);
@@ -296,7 +524,7 @@ class ExpenseAdjustmentController extends Controller
                 error_log("Expense Adjustment Mail Error (Approval): " . $e->getMessage());
             }
 
-            setSuccess('Adjustment request approved successfully.');
+            setSuccess('Adjustment request approved successfully by Management. Forwarded to Accounts for disbursement.');
         } else {
             setError('Failed to approve request.');
         }
@@ -312,13 +540,26 @@ class ExpenseAdjustmentController extends Controller
 
         $id = $_POST['id'] ?? null;
         $adj = $this->model->getById($id);
-        if (!$adj || !$this->canApprove($adj['adjustment_type'])) {
+        if (!$adj) {
+            setError('Invalid request.');
+            header("Location: {$GLOBALS['base_url']}/expense-adjustments");
+            exit;
+        }
+
+        if (!$this->canQcApprove() && !$this->canMgmtApprove()) {
             setError('You do not have permission to reject this request.');
             header("Location: {$GLOBALS['base_url']}/expense-adjustments");
             exit;
         }
 
-        if ($this->model->reject($id, $this->userId)) {
+        $rejectionNote = trim($_POST['rejection_note'] ?? '');
+
+        if ($this->model->reject($id, $this->userId, $rejectionNote)) {
+            try {
+                require_once __DIR__ . '/../models/ApprovalRequest.php';
+                (new ApprovalRequest($this->db))->syncMissingExpenseAdjustments();
+            } catch (\Throwable $e) {}
+
             // Send email notification
             try {
                 $freshAdj = $this->model->getById($id);
@@ -344,17 +585,35 @@ class ExpenseAdjustmentController extends Controller
         }
 
         $id = $_POST['adjustment_id'] ?? null;
-        $amount = $_POST['amount'] ?? 0;
+        $amount = (float)($_POST['amount'] ?? 0);
         
         $adj = $this->model->getById($id);
-        if (!$adj || !in_array($adj['status'], ['approved', 'partially_paid'])) {
+        if (!$adj) {
             setError('Invalid adjustment request.');
             header("Location: {$GLOBALS['base_url']}/expense-adjustments");
             exit;
         }
 
-        if ($amount <= 0 || $amount > $adj['due_amount']) {
-            setError('Invalid payment amount.');
+        $isReturn = ($adj['adjustment_type'] === 'return');
+
+        if ($isReturn) {
+            if (!in_array($adj['status'], ['pending', 'partially_paid'])) {
+                setError('Return request has already been settled or is in invalid status.');
+                header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
+                exit;
+            }
+            $targetDue = (!empty($adj['due_amount']) && (float)$adj['due_amount'] > 0) ? (float)$adj['due_amount'] : (float)$adj['amount'];
+        } else {
+            if (!in_array($adj['status'], ['approved', 'partially_paid'])) {
+                setError('Extra request must be approved by Management before Accounts payout.');
+                header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
+                exit;
+            }
+            $targetDue = (float)$adj['due_amount'];
+        }
+
+        if ($amount <= 0 || $amount > ($targetDue + 0.01)) {
+            setError('Invalid amount entered. Cannot exceed remaining due (TK.' . number_format($targetDue, 2) . ').');
             header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
             exit;
         }
@@ -378,12 +637,12 @@ class ExpenseAdjustmentController extends Controller
 
         $data = [
             'adjustment_id' => $id,
-            'transaction_type' => ($adj['adjustment_type'] == 'return') ? 'cashin' : 'cashout',
+            'transaction_type' => $isReturn ? 'cashin' : 'cashout',
             'amount' => $amount,
             'payment_date' => $_POST['payment_date'] ?? date('Y-m-d'),
             'payment_method' => $_POST['payment_method'] ?? 'cash',
             'transaction_ref' => $_POST['transaction_ref'] ?? null,
-            'bank_id' => !empty($_POST['bank_id']) ? $_POST['bank_id'] : null,
+            'bank_id' => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
             'bank_account_no' => $_POST['bank_account_no'] ?? null,
             'cheque_no' => $_POST['cheque_no'] ?? null,
             'online_type' => $_POST['online_type'] ?? null,
@@ -402,7 +661,14 @@ class ExpenseAdjustmentController extends Controller
                 error_log("Failed to auto-generate adjustment journal: " . $e->getMessage());
             }
 
-            setSuccess('Transaction recorded successfully.');
+            // Sync approval requests
+            try {
+                require_once __DIR__ . '/../models/ApprovalRequest.php';
+                (new ApprovalRequest($this->db))->syncMissingExpenseAdjustments();
+            } catch (\Throwable $e) {}
+
+            $msg = $isReturn ? 'Return money verified and recorded into Cash-In successfully.' : 'Disbursement payout recorded successfully.';
+            setSuccess($msg);
         } else {
             setError('Failed to record transaction.');
         }

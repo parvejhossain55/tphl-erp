@@ -136,7 +136,7 @@ class Con_FinancialTransaction extends Model
                     vpr.project_id,
                     p.name            AS project_name,
                     CONCAT(vpr.payment_type, ' Payment — ', v.name) AS description,
-                    vpr.net_payable   AS amount,
+                    COALESCE(vpr.approved_amount, vpr.net_payable) AS amount,
                     vpr.due_amount,
                     vpr.payment_type  AS payment_type,
                     vpr.status        AS source_status,
@@ -272,7 +272,7 @@ class Con_FinancialTransaction extends Model
             );
         } elseif ($refType === 'vendor_payment') {
             $stmt = $this->db->prepare(
-                "SELECT net_payable AS payable FROM vendor_payment_requests WHERE id = ?"
+                "SELECT COALESCE(approved_amount, net_payable) AS payable FROM vendor_payment_requests WHERE id = ?"
             );
         } else {
             return 0;

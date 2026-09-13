@@ -1494,24 +1494,77 @@ class PayrollController extends Controller
         ORDER BY e.employee_id ASC 
     ";
 
-        // Pre-fetch tracked meal counts from meal_records for this date range
-        $mealCountsByEmp = [];
-        $mealStmt = $this->db->prepare("
-            SELECT employee_id, COUNT(*) as meal_count 
-            FROM meal_records 
-            WHERE meal_date BETWEEN ? AND ? AND is_consumed = 1 
-            GROUP BY employee_id
-        ");
-        if ($mealStmt) {
-            $mealStmt->bind_param("ss", $targetStartDate, $targetEndDate);
-            $mealStmt->execute();
-            $mealRes = $mealStmt->get_result();
-            if ($mealRes) {
-                while ($mRow = $mealRes->fetch_assoc()) {
-                    $mealCountsByEmp[(int)$mRow['employee_id']] = (int)$mRow['meal_count'];
+        // Fetch all meal projects (newest first)
+        $meal_projects = [];
+        $mProjRes = $this->db->query("SELECT id, name, standard_meal_amount, from_date, to_date, payroll_project_id FROM meal_projects ORDER BY id DESC, from_date DESC");
+        if ($mProjRes) {
+            while ($mp = $mProjRes->fetch_assoc()) {
+                $meal_projects[] = $mp;
+            }
+        }
+
+        // Determine active/selected meal project
+        $selectedMealProjectId = isset($_GET['meal_project_id']) && $_GET['meal_project_id'] !== '' && $_GET['meal_project_id'] !== 'undefined' ? (int)$_GET['meal_project_id'] : 0;
+        $activeMealProject = null;
+
+        if ($selectedMealProjectId > 0) {
+            foreach ($meal_projects as $mp) {
+                if ((int)$mp['id'] === $selectedMealProjectId) {
+                    $activeMealProject = $mp;
+                    break;
                 }
             }
-            $mealStmt->close();
+        }
+
+        // Priority 2: Check if any meal project is explicitly linked to selected payroll_project_id
+        if (!$activeMealProject && $selectedProject) {
+            foreach ($meal_projects as $mp) {
+                if (!empty($mp['payroll_project_id']) && (int)$mp['payroll_project_id'] === (int)$selectedProject) {
+                    $activeMealProject = $mp;
+                    $selectedMealProjectId = (int)$mp['id'];
+                    break;
+                }
+            }
+        }
+
+        // Priority 3: Smart auto-detect based on timeframe overlap (e.g. august-sept-2026 for September)
+        if (!$activeMealProject) {
+            foreach ($meal_projects as $mp) {
+                if ($mp['from_date'] <= $targetEndDate && $mp['to_date'] >= $targetStartDate) {
+                    $activeMealProject = $mp;
+                    $selectedMealProjectId = (int)$mp['id'];
+                    break;
+                }
+            }
+        }
+
+        // Fallback: pick the latest meal project if exists
+        if (!$activeMealProject && !empty($meal_projects)) {
+            $activeMealProject = $meal_projects[0];
+            $selectedMealProjectId = (int)$activeMealProject['id'];
+        }
+
+        // Pre-fetch tracked meal counts from meal_records for this active meal project
+        $mealCountsByEmp = [];
+        if ($activeMealProject) {
+            $mPid = (int)$activeMealProject['id'];
+            $mealStmt = $this->db->prepare("
+                SELECT employee_id, COUNT(*) as meal_count 
+                FROM meal_records 
+                WHERE meal_project_id = ? AND is_consumed = 1 
+                GROUP BY employee_id
+            ");
+            if ($mealStmt) {
+                $mealStmt->bind_param("i", $mPid);
+                $mealStmt->execute();
+                $mealRes = $mealStmt->get_result();
+                if ($mealRes) {
+                    while ($mRow = $mealRes->fetch_assoc()) {
+                        $mealCountsByEmp[(int)$mRow['employee_id']] = (int)$mRow['meal_count'];
+                    }
+                }
+                $mealStmt->close();
+            }
         }
 
         $res = $this->db->query($query);
@@ -1585,7 +1638,12 @@ class PayrollController extends Controller
             "selectedYear" => $selectedYear,
             "selectedMonth" => $selectedMonth,
             "payroll_projects" => $payroll_projects,
-            "mealCountsByEmp" => $mealCountsByEmp
+            "meal_projects" => $meal_projects,
+            "activeMealProject" => $activeMealProject,
+            "selectedMealProjectId" => $selectedMealProjectId,
+            "mealCountsByEmp" => $mealCountsByEmp,
+            "selectedFromDate" => $targetStartDate,
+            "selectedToDate" => $targetEndDate
         ]);
     }
 
@@ -1632,7 +1690,12 @@ class PayrollController extends Controller
             $stmt->bind_param("ssiss", $name, $date, $is_custom, $start_date, $end_date);
 
             if ($stmt->execute()) {
-                echo "<script>window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
+                $newProjId = $stmt->insert_id;
+                $meal_project_id = !empty($_POST['meal_project_id']) ? (int)$_POST['meal_project_id'] : 0;
+                if ($meal_project_id > 0 && $newProjId > 0) {
+                    $this->db->query("UPDATE meal_projects SET payroll_project_id = $newProjId WHERE id = $meal_project_id");
+                }
+                echo "<script>window.location.href='{$GLOBALS['base_url']}/payroll-workspace?payroll_project_id={$newProjId}';</script>";
             } else {
                 echo "<script>alert('Failed to create project.'); window.location.href='{$GLOBALS['base_url']}/payroll-workspace';</script>";
             }
@@ -2238,6 +2301,15 @@ class PayrollController extends Controller
                                     elseif (strpos($lname, 'duty') !== false || strpos($lname, 'food') !== false || strpos($lname, 'car') !== false) $itemLookupMap['duty'] = (int)$it['id'];
                                     elseif (strpos($lname, 'other') !== false && $it['type'] === 'deduction') $itemLookupMap['other_deduct'] = (int)$it['id'];
                                     elseif (strpos($lname, 'tax') !== false) $itemLookupMap['tax'] = (int)$it['id'];
+                                }
+                            }
+                            if (!isset($itemLookupMap['lunch'])) {
+                                $chk = $this->db->query("SELECT id FROM payslip_items WHERE LOWER(name) LIKE '%lunch%' OR LOWER(name) LIKE '%meal%' LIMIT 1");
+                                if ($chk && $cr = $chk->fetch_assoc()) {
+                                    $itemLookupMap['lunch'] = (int)$cr['id'];
+                                } else {
+                                    $this->db->query("INSERT INTO payslip_items (name, type, created_at) VALUES ('Subsidized Lunch', 'deduction', NOW())");
+                                    $itemLookupMap['lunch'] = (int)$this->db->insert_id;
                                 }
                             }
                         }

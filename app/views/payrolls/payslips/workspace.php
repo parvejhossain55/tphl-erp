@@ -70,7 +70,7 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                 </div>
 
                 <!-- Payroll Project -->
-                <div class="col-sm-3">
+                <div class="col-xl-3 col-md-4">
                     <label class="form-label fw-semibold text-muted mb-1" for="payrollProject">Payroll Project</label>
                     <div class="d-flex align-items-center gap-2">
                         <select class="form-select w-100" name="payroll_project_id" id="payrollProject">
@@ -90,13 +90,34 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                         </select>
                         <button type="button" class="btn btn-primary text-nowrap" data-bs-toggle="modal"
                             data-bs-target="#createProjectModal" style="height: 38px;">
-                            <i class="fa-solid fa-plus me-1"></i> Create Project
+                            <i class="fa-solid fa-plus me-1"></i> Create
                         </button>
                     </div>
                 </div>
 
+                <!-- Meal Project (Tracker) -->
+                <div class="col-xl-2 col-md-4">
+                    <label class="form-label fw-semibold text-muted mb-1" for="mealProject">Meal Project</label>
+                    <select class="form-select w-100" name="meal_project_id" id="mealProject">
+                        <?php if (!empty($activeMealProject) && empty($_GET['meal_project_id'])): ?>
+                            <option value="">Auto: <?= htmlspecialchars($activeMealProject['name']) ?></option>
+                        <?php else: ?>
+                            <option value="">Select Meal Project</option>
+                        <?php endif; ?>
+                        <?php if (!empty($meal_projects)): ?>
+                            <?php foreach ($meal_projects as $mp): ?>
+                                <option value="<?= htmlspecialchars($mp['id']) ?>"
+                                    data-standard="<?= htmlspecialchars($mp['standard_meal_amount'] ?? '120') ?>"
+                                    <?= (!empty($selectedMealProjectId) && $selectedMealProjectId == $mp['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($mp['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+
                 <!-- Search Button -->
-                <div class="col-sm-auto">
+                <div class="col-xl-2 col-md-auto">
                     <button type="submit" class="btn btn-primary" style="height:38px;">
                         <i class="fa-solid fa-search me-1"></i> Search
                     </button>
@@ -178,6 +199,13 @@ $_selectedMonth = $selectedMonth   ?? date('m');
             setTimeout(() => document.getElementById('workspaceFilterForm').submit(), 50);
         });
     }
+
+    const mealProjectSelect = document.getElementById('mealProject');
+    if (mealProjectSelect) {
+        mealProjectSelect.addEventListener('change', function () {
+            setTimeout(() => document.getElementById('workspaceFilterForm').submit(), 50);
+        });
+    }
 })();
 </script>
 
@@ -226,6 +254,22 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                             <label class="form-label" style="font-weight: 600;">End Date <span class="text-danger">*</span></label>
                             <input type="date" name="end_date" id="createProjectEnd" class="form-control">
                         </div>
+                    </div>
+
+                    <!-- Link Meal Project (Optional) -->
+                    <div class="form__group mb-3">
+                        <label class="form-label" style="font-weight: 600;">Link Meal Project <span class="text-muted">(Optional)</span></label>
+                        <select name="meal_project_id" class="form-select">
+                            <option value="">-- None / Standalone --</option>
+                            <?php if (!empty($meal_projects)): ?>
+                                <?php foreach ($meal_projects as $mp): ?>
+                                    <option value="<?= htmlspecialchars($mp['id']) ?>" <?= (!empty($activeMealProject) && $activeMealProject['id'] == $mp['id']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($mp['name']) ?> (<?= date('d M', strtotime($mp['from_date'])) ?> - <?= date('d M Y', strtotime($mp['to_date'])) ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                        <small class="text-muted">Link an already created Meal Tracker cycle with this payroll project.</small>
                     </div>
 
                     <script>
@@ -405,8 +449,11 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                 $empIdFk = (int)($p['real_emp_id_fk'] ?? $p['id'] ?? 0);
                                 $isMealDeductible = isset($p['is_meal_deduction']) ? (int)$p['is_meal_deduction'] : 1;
                                 $mealPct = isset($p['per_meal_percentage']) ? (float)$p['per_meal_percentage'] : 100.00;
+                                $standardMealRate = isset($activeMealProject['standard_meal_amount']) && $activeMealProject['standard_meal_amount'] > 0 
+                                    ? (float)$activeMealProject['standard_meal_amount'] 
+                                    : 120.00;
                                 $effectiveMealRate = ($isMealDeductible == 1) 
-                                    ? (!empty($p['per_meal_amount']) && $p['per_meal_amount'] > 0 ? (float)$p['per_meal_amount'] : round(120.00 * ($mealPct / 100), 2))
+                                    ? (!empty($p['per_meal_amount']) && $p['per_meal_amount'] > 0 ? (float)$p['per_meal_amount'] : round($standardMealRate * ($mealPct / 100), 2))
                                     : 0.00;
 
                                 $mealCount = 0;
@@ -415,8 +462,6 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                         $mealCount = (float)$p['meal_count'];
                                     } elseif (isset($mealCountsByEmp[$empIdFk])) {
                                         $mealCount = (float)$mealCountsByEmp[$empIdFk];
-                                    } elseif (isset($p['tipsoi_present'])) {
-                                        $mealCount = (float)$p['tipsoi_present'];
                                     }
                                 }
 
@@ -815,7 +860,7 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                      else if (!dayAtt.isOffday && !dayAtt.isHoliday && !dayAtt.isLeave) absent++;
                                  });
 
-                                 matchedRow.querySelector('.in-mealcount').value    = present;
+                                 // Tipsoi updates absent days; meal count is strictly managed by Meal Tracker!
                                  matchedRow.querySelector('.in-absent-days').value  = absent;
                                  
                                  matchedRow.querySelector('input').dispatchEvent(new Event('input'));

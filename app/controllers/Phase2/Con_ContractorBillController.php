@@ -513,6 +513,21 @@ class Con_ContractorBillController extends Controller
         $settlements          = $this->settlementModel->getByBillId((int)$id);
         $totalPaidToContractor = $this->settlementModel->getTotalPaidByBill((int)$id);
 
+        // Fetch linked expense adjustments (Central Accounts Settlements)
+        $expenseAdjustments = [];
+        $stmtAdj = $this->db->prepare("
+            SELECT ea.*, u.full_name as requester_name 
+            FROM expense_adjustments ea 
+            JOIN users u ON ea.user_id = u.id 
+            WHERE ea.cashout_request_id = ? AND ea.parent_type = 'contractor'
+            ORDER BY ea.id DESC
+        ");
+        if ($stmtAdj) {
+            $stmtAdj->bind_param('i', $id);
+            $stmtAdj->execute();
+            $expenseAdjustments = $stmtAdj->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
         $this->view('phase2/contractor-bills/show-bill', [
             'current_route'           => 'con-contractor-bills',
             'page_title'              => 'Contractor Bill Detail',
@@ -532,6 +547,7 @@ class Con_ContractorBillController extends Controller
             'settlements'             => $settlements,
             'total_paid_to_contractor'=> $totalPaidToContractor,
             'current_user_id'         => $this->userId,
+            'expense_adjustments'     => $expenseAdjustments,
         ]);
     }
 
