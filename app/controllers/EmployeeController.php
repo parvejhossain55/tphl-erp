@@ -169,9 +169,9 @@ class EmployeeController extends Controller
                 'pass_num' => trim($_POST['pass_num'] ?? ''),
                 'department_id' => (int) ($_POST['department_id'] ?? 0),
                 'designation_id' => (int) ($_POST['designation_id'] ?? 0),
-                'dob' => !empty($_POST['dob']) ? $_POST['dob'] : null,
-                'joining_date' => !empty($_POST['joining_date']) ? $_POST['joining_date'] : null,
-                'resign_date' => !empty($_POST['resign_date']) ? $_POST['resign_date'] : null,
+                'dob' => $this->sanitizeDate($_POST['dob'] ?? null),
+                'joining_date' => $this->sanitizeDate($_POST['joining_date'] ?? null),
+                'resign_date' => $this->sanitizeDate($_POST['resign_date'] ?? null),
                 'account_holder_name' => trim($_POST['account_holder_name'] ?? ''),
                 'account_number' => trim($_POST['account_number'] ?? ''),
                 'bank_name' => trim($_POST['bank_name'] ?? ''),
@@ -434,9 +434,9 @@ class EmployeeController extends Controller
             'pass_num' => trim($_POST['pass_num'] ?? ''),
             'department_id' => (int) ($_POST['department_id'] ?? 0),
             'designation_id' => (int) ($_POST['designation_id'] ?? 0),
-            'dob' => !empty($_POST['dob']) ? $_POST['dob'] : null,
-            'joining_date' => !empty($_POST['joining_date']) ? $_POST['joining_date'] : null,
-            'resign_date' => !empty($_POST['resign_date']) ? $_POST['resign_date'] : null,
+            'dob' => $this->sanitizeDate($_POST['dob'] ?? null),
+            'joining_date' => $this->sanitizeDate($_POST['joining_date'] ?? null),
+            'resign_date' => $this->sanitizeDate($_POST['resign_date'] ?? null),
             'account_holder_name' => trim($_POST['account_holder_name'] ?? ''),
             'account_number' => trim($_POST['account_number'] ?? ''),
             'bank_name' => trim($_POST['bank_name'] ?? ''),
@@ -706,5 +706,25 @@ class EmployeeController extends Controller
             "current_route" => "hrm-create-tipsoi-employee",
             "page_title" => "Create Employee"
         ]);
+    }
+
+    /**
+     * Safely normalize date inputs to YYYY-MM-DD for MySQL DATE columns
+     */
+    private function sanitizeDate($dateStr)
+    {
+        if (empty($dateStr)) {
+            return null;
+        }
+        $trimmed = trim((string)$dateStr);
+        if ($trimmed === '' || $trimmed === '0000-00-00') {
+            return null;
+        }
+        $normalized = str_replace('/', '-', $trimmed);
+        $ts = strtotime($normalized);
+        if ($ts && date('Y-m-d', $ts) !== '1970-01-01') {
+            return date('Y-m-d', $ts);
+        }
+        return null;
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-$current_server = 3;
+$current_server = 1;
 // Local Development Server
 /////////////////////////------------//////////
 if ($current_server == 1) {
