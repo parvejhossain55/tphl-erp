@@ -100,79 +100,88 @@
     <div class="row mb-4">
         <!-- Total System Requests -->
         <div class="col-xl-3 col-md-6 col-sm-6">
-            <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-primary">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted small fw-semibold">Total Requests Created</span>
-                        <div class="avatar avatar-sm bg-primary-subtle text-primary rounded-2">
-                            <i class="fa-solid fa-folder-tree"></i>
+            <a href="<?= $base_url ?>/all-approval-requests?status=all<?= !empty($filters['department']) ? '&department=' . urlencode($filters['department']) : '' ?><?= !empty($filters['source_table']) ? '&source_table=' . urlencode($filters['source_table']) : '' ?>" class="text-decoration-none">
+                <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-primary hover-shadow transition-all">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted small fw-semibold">Total Requests Created</span>
+                            <div class="avatar avatar-sm bg-primary-subtle text-primary rounded-2">
+                                <i class="fa-solid fa-folder-tree"></i>
+                            </div>
                         </div>
+                        <h3 class="fw-bold mb-1 text-dark">
+                            <?= number_format($companyMetrics['total_requests']) ?> Items
+                        </h3>
+                        <span class="text-muted extra-small">Across all company departments &bull; View All</span>
                     </div>
-                    <h3 class="fw-bold mb-1 text-dark">
-                        <?= number_format($companyMetrics['total_requests']) ?> Items
-                    </h3>
-                    <span class="text-muted extra-small">Across all company departments</span>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Pending Approval Queue -->
         <div class="col-xl-3 col-md-6 col-sm-6">
-            <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-warning">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted small fw-semibold">Pending Approval Queue</span>
-                        <div class="avatar avatar-sm bg-warning-subtle text-warning rounded-2">
-                            <i class="fa-solid fa-clock-rotate-left"></i>
+            <a href="<?= $base_url ?>/all-approval-requests?status=all_pending<?= !empty($filters['department']) ? '&department=' . urlencode($filters['department']) : '' ?><?= !empty($filters['source_table']) ? '&source_table=' . urlencode($filters['source_table']) : '' ?>" class="text-decoration-none">
+                <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-warning hover-shadow transition-all">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted small fw-semibold">Pending Approval Queue</span>
+                            <div class="avatar avatar-sm bg-warning-subtle text-warning rounded-2">
+                                <i class="fa-solid fa-clock-rotate-left"></i>
+                            </div>
                         </div>
+                        <h3 class="fw-bold mb-1 text-warning">৳
+                            <?= number_format($companyMetrics['pending_amount'], 2) ?>
+                        </h3>
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small rounded-pill">
+                            <?= $companyMetrics['pending_count'] ?> Requests Awaiting Review
+                        </span>
                     </div>
-                    <h3 class="fw-bold mb-1 text-warning">৳
-                        <?= number_format($companyMetrics['pending_amount'], 2) ?>
-                    </h3>
-                    <span
-                        class="badge bg-warning-subtle text-warning border border-warning-subtle extra-small rounded-pill">
-                        <?= $companyMetrics['pending_count'] ?> Requests Awaiting Review
-                    </span>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Total Approved Amount -->
         <div class="col-xl-3 col-md-6 col-sm-6">
-            <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-info">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted small fw-semibold">Total Approved Value</span>
-                        <div class="avatar avatar-sm bg-info-subtle text-info rounded-2">
-                            <i class="fa-solid fa-circle-check"></i>
+            <a href="<?= $base_url ?>/all-approval-requests?status=pending_payout<?= !empty($filters['department']) ? '&department=' . urlencode($filters['department']) : '' ?><?= !empty($filters['source_table']) ? '&source_table=' . urlencode($filters['source_table']) : '' ?>" class="text-decoration-none">
+                <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-info hover-shadow transition-all">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted small fw-semibold">Total Approved Value</span>
+                            <div class="avatar avatar-sm bg-info-subtle text-info rounded-2">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
                         </div>
+                        <h3 class="fw-bold mb-1 text-info">৳
+                            <?= number_format($companyMetrics['approved_amount'], 2) ?>
+                        </h3>
+                        <span class="badge bg-info-subtle text-info border border-info-subtle extra-small rounded-pill">
+                            <?= $companyMetrics['approved_count'] ?> Approved Requests (View Queue)
+                        </span>
                     </div>
-                    <h3 class="fw-bold mb-1 text-info">৳
-                        <?= number_format($companyMetrics['approved_amount'], 2) ?>
-                    </h3>
-                    <span class="badge bg-info-subtle text-info border border-info-subtle extra-small rounded-pill">
-                        <?= $companyMetrics['approved_count'] ?> Approved Requests
-                    </span>
                 </div>
-            </div>
+            </a>
         </div>
 
         <!-- Total Accounts Disbursed / Paid -->
         <div class="col-xl-3 col-md-6 col-sm-6">
-            <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-success">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="text-muted small fw-semibold">Total Accounts Disbursed</span>
-                        <div class="avatar avatar-sm bg-success-subtle text-success rounded-2">
-                            <i class="fa-solid fa-money-bill-wave"></i>
+            <a href="<?= $base_url ?>/all-approval-requests?status=paid<?= !empty($filters['department']) ? '&department=' . urlencode($filters['department']) : '' ?><?= !empty($filters['source_table']) ? '&source_table=' . urlencode($filters['source_table']) : '' ?>" class="text-decoration-none">
+                <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-success hover-shadow transition-all">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="text-muted small fw-semibold">Total Accounts Disbursed</span>
+                            <div class="avatar avatar-sm bg-success-subtle text-success rounded-2">
+                                <i class="fa-solid fa-money-bill-wave"></i>
+                            </div>
                         </div>
+                        <h3 class="fw-bold mb-1 text-success">৳
+                            <?= number_format($companyMetrics['total_disbursed'], 2) ?>
+                        </h3>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle extra-small rounded-pill">
+                            <i class="fa-solid fa-check-double me-1"></i>View Paid & Settled History
+                        </span>
                     </div>
-                    <h3 class="fw-bold mb-1 text-success">৳
-                        <?= number_format($companyMetrics['total_disbursed'], 2) ?>
-                    </h3>
-                    <span class="text-muted extra-small">Paid via Bank/Cash to Vendors & Staff</span>
                 </div>
-            </div>
+            </a>
         </div>
     </div>
 
@@ -302,7 +311,9 @@
                     <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Approval Status</label>
                     <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="" <?= empty($filters['status']) || $filters['status'] === 'pending' || $filters['status'] === 'my_pending' ? 'selected' : '' ?>>My Actionable Pending (Default)</option>
-                        <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>Approved & Paid History</option>
+                        <option value="paid" <?= ($filters['status'] ?? '') === 'paid' ? 'selected' : '' ?>>Paid & Settled History (পরিশোধিত)</option>
+                        <option value="pending_payout" <?= ($filters['status'] ?? '') === 'pending_payout' ? 'selected' : '' ?>>Approved — Pending Accounts Payout (পেমেন্ট বাকি)</option>
+                        <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>All Approved & Paid (সকল অনুমোদিত ও পরিশোধিত)</option>
                         <option value="rejected" <?= ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' ?>>Rejected History</option>
                         <option value="all_pending" <?= ($filters['status'] ?? '') === 'all_pending' ? 'selected' : '' ?>>All Departments Pending (Audit)</option>
                         <option value="all" <?= ($filters['status'] ?? '') === 'all' ? 'selected' : '' ?>>All Company Requests (Complete Audit)</option>
@@ -452,6 +463,8 @@
                                     $targetUrl = $base_url . '/project-other-costs/review/' . $req['source_id'];
                                 } elseif ($sourceTable === 'project_extra_assets' || $sourceTable === 'purchase_requests') {
                                     $targetUrl = $base_url . '/asset-extra-purchases?view=' . $req['source_id'];
+                                } elseif ($sourceTable === 'expense_adjustments') {
+                                    $targetUrl = $base_url . '/expense-adjustments/show?id=' . $req['source_id'];
                                 }
                                 $reqApproveRole = strtolower($req['approve_role'] ?? 'management');
                                 if (empty($reqApproveRole)) {
@@ -483,7 +496,7 @@
                                         $canUserApprove = true;
                                     }
                                 } elseif ($isSiteOperator) {
-                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', '']) && ($reqAmount <= 100000.01 || $sourceTable === 'project_other_costs')) {
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', '']) && ($reqAmount <= 100000.01 || $sourceTable === 'project_other_costs' || $sourceTable === 'expense_adjustments')) {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
                                     }
@@ -535,6 +548,8 @@
                                                     <?php if (!empty($req['po_number'])): ?>
                                                         <span class="badge bg-success-subtle text-success border border-success-subtle rounded px-1 ms-1 extra-small">PO-<?= htmlspecialchars($req['po_number']) ?></span>
                                                     <?php endif; ?>
+                                                <?php elseif ($sourceTable === 'expense_adjustments'): ?>
+                                                    <span class="fw-bold text-dark">ADJ-<?= (int)$req['source_id'] ?></span>
                                                 <?php elseif (!empty($req['po_number'])): ?>
                                                     <span class="fw-bold text-success">PO-
                                                         <?= htmlspecialchars($req['po_number']) ?>
@@ -551,6 +566,8 @@
                                                 <?php if (!empty($req['po_number'])): ?>
                                                     <span class="badge bg-success-subtle text-success border border-success-subtle rounded px-1 ms-1 extra-small">PO-<?= htmlspecialchars($req['po_number']) ?></span>
                                                 <?php endif; ?>
+                                            <?php elseif ($sourceTable === 'expense_adjustments'): ?>
+                                                <span class="fw-bold text-dark d-block">ADJ-<?= (int)$req['source_id'] ?></span>
                                             <?php elseif (!empty($req['po_number'])): ?>
                                                 <span class="fw-bold text-success d-block">PO-
                                                     <?= htmlspecialchars($req['po_number']) ?>
@@ -589,6 +606,19 @@
                                                 <?= htmlspecialchars($req['title']) ?>
                                             <?php endif; ?>
                                         </div>
+                                        <?php if ($sourceTable === 'expense_adjustments'): ?>
+                                            <div class="mt-1 d-flex flex-wrap gap-1">
+                                                <?php if (($req['request_type'] ?? '') === 'Extra Expense' || strpos(strtolower($req['title'] ?? ''), 'extra') !== false): ?>
+                                                    <span class="badge bg-warning text-dark border border-warning-subtle extra-small fw-bold">
+                                                        <i class="fa-solid fa-plus-circle me-1"></i>Extra Amount Request
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-info-subtle text-info border border-info-subtle extra-small fw-bold">
+                                                        <i class="fa-solid fa-arrow-rotate-left me-1"></i>Return Unused Money
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                         <?php if (!empty($req['project_name'])): ?>
                                             <div class="mt-1">
                                                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle extra-small">

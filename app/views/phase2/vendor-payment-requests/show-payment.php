@@ -81,7 +81,10 @@ $advancePaid = (float) ($advance_paid ?? 0);
             </nav>
     </div>
     <div class="d-flex gap-2 align-items-center flex-wrap">
-        <?php if (!empty($payments)): ?>
+        <?php if (!empty($payments) || $totalPaid > 0): ?>
+            <a href="<?= $base_url ?>/expense-adjustments/create?parent_type=vendor&cashout_request_id=<?= $request['id'] ?>&project_id=<?= $request['project_id'] ?>" class="btn btn-warning btn-sm">
+                <i class="bi bi-sliders me-1"></i> Settlement / Adjustment
+            </a>
             <a href="<?= $base_url ?>/print-debit-voucher?module=vendor_payment&id=<?= $request['id'] ?>" target="_blank" class="btn btn-primary btn-sm">
                 <i class="bi bi-printer me-1"></i> Debit Voucher
             </a>

@@ -307,6 +307,12 @@ $canApprove = $canApprove ?? false;
                                                     <i class="bi bi-wallet2 me-1"></i> Pay
                                                 </a>
                                             <?php endif; ?>
+                                            <?php if ($alreadyPaid > 0): ?>
+                                                <a href="<?= $base_url ?>/expense-adjustments/create?parent_type=vendor&cashout_request_id=<?= $req['id'] ?>&project_id=<?= $req['project_id'] ?>" 
+                                                   class="btn btn-sm btn-outline-warning" title="Settlement / Adjustment">
+                                                    <i class="bi bi-sliders"></i>
+                                                </a>
+                                            <?php endif; ?>
                                             <a href="<?= $base_url ?>/con-vendor-payment-show/<?= $req['id'] ?>" 
                                                class="btn btn-sm btn-outline-primary" title="View Details">
                                                 <i class="bi bi-eye"></i>

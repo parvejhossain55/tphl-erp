@@ -303,87 +303,137 @@ class JournalIntegrationService
     }
 
     /**
-     * Hook 4: Expense Adjustment Journal (Return or More Requisition)
+     * Hook 4: Expense Adjustment Journal (Return Unused or Extra Payout)
      */
     public function generateAdjustmentJournal($txnId, $userId)
     {
         // 1. Fetch transaction and adjustment details
         $stmt = $this->db->prepare("
-            SELECT t.*, ea.adjustment_type, ea.project_id, ea.title, u.full_name as employee_name
+            SELECT t.*, ea.parent_type, ea.cashout_request_id, ea.adjustment_type, ea.project_id, ea.office, ea.title as adj_title, u.full_name as employee_name
             FROM adjustment_transactions t
             JOIN expense_adjustments ea ON t.adjustment_id = ea.id
-            JOIN users u ON ea.user_id = u.id
+            LEFT JOIN users u ON ea.user_id = u.id
             WHERE t.id = ?
         ");
         $stmt->bind_param('i', $txnId);
         $stmt->execute();
         $txn = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
         
         if (!$txn) return false;
 
         $amount = (float)$txn['amount'];
-        $projectId = (int)$txn['project_id'];
-        $adjType = $txn['adjustment_type']; // 'return' or 'more_requisition'
+        if ($amount <= 0) return false;
+
+        $projectId = !empty($txn['project_id']) ? (int)$txn['project_id'] : null;
+        $adjType = $txn['adjustment_type']; // 'return' or 'extra'
+        $requesterName = $txn['employee_name'] ?: 'Requester';
+        $parentType = ucfirst($txn['parent_type']);
+        $parentId = $txn['cashout_request_id'];
+        $ref = $txn['transaction_ref'] ?: ('#TXN-' . $txnId);
         
-        $cashAccountId = $this->getAccountIdByCode('1110'); // Cash/Bank
+        // Determine Cash/Bank account
+        $cashBankAccountId = null;
+        if (!empty($txn['bank_id'])) {
+            $bStmt = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE id = ? LIMIT 1");
+            if ($bStmt) {
+                $bStmt->bind_param('i', $txn['bank_id']);
+                $bStmt->execute();
+                $bRes = $bStmt->get_result()->fetch_assoc();
+                $bStmt->close();
+                if ($bRes) $cashBankAccountId = (int)$bRes['id'];
+            }
+        }
+        if (!$cashBankAccountId) {
+            $cashBankAccountId = $this->getAccountIdByCode('1110'); // Cash and Bank Equivalents
+        }
         
         // Expense Account: if Project ID exists, use WIP Site Expenses, else use General Admin Expenses
         $expenseAccountId = $projectId > 0 ? $this->getAccountIdByCode('1250') : $this->getAccountIdByCode('6100');
 
-        if (!$cashAccountId || !$expenseAccountId) {
+        if (!$cashBankAccountId || !$expenseAccountId) {
             error_log("JournalIntegrationService: Adjustment accounts missing.");
             return false;
         }
 
         $details = [];
 
-        if ($adjType === 'return') {
-            // Company receives cash back, decreasing the expense
+        if ($adjType === 'return' || $txn['transaction_type'] === 'cashin') {
+            // RETURN UNUSED MONEY: Accounts receives cash/bank back into company (Receipt Voucher)
+            // DEBIT: Cash / Bank
+            // CREDIT: Expense / WIP
+            $lineNarration = "Cash-In Return from {$requesterName} against {$parentType} #{$parentId} (Ref: {$ref})";
+
             $details[] = [
-                'account_id' => $cashAccountId,
-                'debit' => $amount,
-                'credit' => 0,
-                'narration' => "Cash Returned from " . $txn['employee_name'] . " - " . $txn['title'],
+                'account_id' => $cashBankAccountId,
+                'debit'      => $amount,
+                'credit'     => 0,
+                'narration'  => $lineNarration,
                 'project_id' => $projectId
             ];
             $details[] = [
                 'account_id' => $expenseAccountId,
-                'debit' => 0,
-                'credit' => $amount,
-                'narration' => "Expense Reversal (Adjustment)",
+                'debit'      => 0,
+                'credit'     => $amount,
+                'narration'  => $lineNarration,
                 'project_id' => $projectId
             ];
+
+            $headerNarration = "Expense Adjustment Return: {$txn['adj_title']} - Received from {$requesterName} (Ref: {$ref})";
+            $headerData = [
+                'journal_number' => $this->journalModel->generateJournalNumber(),
+                'date'           => $txn['payment_date'] ?: date('Y-m-d'),
+                'voucher_type'   => 'Receipt Voucher',
+                'narration'      => $headerNarration,
+                'total_debit'    => $amount,
+                'total_credit'   => $amount,
+                'project_id'     => $projectId,
+                'office'         => !empty($txn['office']) ? $txn['office'] : $this->getUserWorkplaceOffice($userId),
+                'source_module'  => 'expense_adjustment_return',
+                'source_ref_id'  => $txnId,
+                'entry_type'     => 'cashin'
+            ];
+
+            return $this->journalModel->storeJournal($headerData, $details, $userId);
+
         } else {
-            // Company pays more cash out, increasing the expense
+            // EXTRA MONEY PAYOUT: Accounts disburses additional funds (Payment Voucher)
+            // DEBIT: Expense / WIP
+            // CREDIT: Cash / Bank
+            $lineNarration = "Extra Expense Payout to {$requesterName} against {$parentType} #{$parentId} (Ref: {$ref})";
+
             $details[] = [
                 'account_id' => $expenseAccountId,
-                'debit' => $amount,
-                'credit' => 0,
-                'narration' => "Additional Expense Accrual - " . $txn['title'],
+                'debit'      => $amount,
+                'credit'     => 0,
+                'narration'  => $lineNarration,
                 'project_id' => $projectId
             ];
             $details[] = [
-                'account_id' => $cashAccountId,
-                'debit' => 0,
-                'credit' => $amount,
-                'narration' => "Additional Cash Disbursed to " . $txn['employee_name'],
+                'account_id' => $cashBankAccountId,
+                'debit'      => 0,
+                'credit'     => $amount,
+                'narration'  => $lineNarration,
                 'project_id' => $projectId
             ];
+
+            $headerNarration = "Extra Expense Payout: {$txn['adj_title']} - Disbursed to {$requesterName} (Ref: {$ref})";
+            $headerData = [
+                'journal_number' => $this->journalModel->generateJournalNumber(),
+                'date'           => $txn['payment_date'] ?: date('Y-m-d'),
+                'voucher_type'   => 'Payment Voucher',
+                'narration'      => $headerNarration,
+                'total_debit'    => $amount,
+                'total_credit'   => $amount,
+                'project_id'     => $projectId,
+                'office'         => !empty($txn['office']) ? $txn['office'] : $this->getUserWorkplaceOffice($userId),
+                'source_module'  => 'expense_adjustment_extra',
+                'source_ref_id'  => $txnId,
+                'entry_type'     => 'disbursement'
+            ];
+
+            return $this->journalModel->storeJournal($headerData, $details, $userId);
         }
-
-        // 4. Build Header and Save
-        $headerData = [
-            'journal_number' => $this->journalModel->generateJournalNumber(),
-            'date' => $txn['payment_date'] ?: date('Y-m-d'),
-            'voucher_type' => 'Journal Voucher',
-            'narration' => ucfirst($adjType) . " Adjustment for Transaction #" . $txnId,
-            'total_debit' => $amount,
-            'total_credit' => $amount,
-            'project_id' => $projectId,
-            'office' => $this->getUserWorkplaceOffice($userId)
-        ];
-
-        return $this->journalModel->storeJournal($headerData, $details, $userId);
     }
 
     /**

@@ -175,7 +175,7 @@ class Con_FinancialTransactionController extends Controller
             $source = $this->vprModel->find($refId);
 
             if ($source) {
-                $netPayable = (float)($source['net_payable'] ?? 0);
+                $netPayable = (float)($source['approved_amount'] ?? $source['net_payable'] ?? 0);
                 $penalty    = (float)($source['penalty_deducted'] ?? 0);
 
                 // For Final/Partial: check how much Advance was already paid for same PO

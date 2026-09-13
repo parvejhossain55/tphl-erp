@@ -42,6 +42,8 @@ $show_breadcrumb = true;
                                     if ($co['type'] == 'vendor') $prefix = 'VENDORREQ';
                                     if ($co['type'] == 'contractor') $prefix = 'CONTRACTORREQ';
                                     if ($co['type'] == 'purchase') $prefix = 'PURCHASEREQ';
+                                    if ($co['type'] == 'other_cost') $prefix = 'OTHERCOST';
+                                    if ($co['type'] == 'extra_purchase') $prefix = 'EXTRAPURCHASE';
                                     
                                     $isSelected = ($co['type'] == $selectedParentType && $co['id'] == $selectedRequestId);
                                 ?>
@@ -76,7 +78,14 @@ $show_breadcrumb = true;
 
                     <div class="mb-3">
                         <label class="form-label">Title / Purpose <span class="text-danger">*</span></label>
-                        <input type="text" name="title" class="form-control" required placeholder="Brief title for this adjustment" value="<?= ($selectedParentType === 'vendor') ? 'Vendor Payment Settlement for VPR-' . $selectedRequestId : '' ?>">
+                        <?php
+                        $defaultTitle = '';
+                        if ($selectedParentType === 'vendor') $defaultTitle = 'Vendor Payment Settlement for VPR-' . $selectedRequestId;
+                        elseif ($selectedParentType === 'contractor') $defaultTitle = 'Contractor Bill Settlement for CB-' . $selectedRequestId;
+                        elseif ($selectedParentType === 'other_cost') $defaultTitle = 'Project Other Cost Settlement for REQ-' . $selectedRequestId;
+                        elseif ($selectedParentType === 'extra_purchase') $defaultTitle = 'Office Procurement Settlement for REQ-' . $selectedRequestId;
+                        ?>
+                        <input type="text" name="title" class="form-control" required placeholder="Brief title for this adjustment" value="<?= htmlspecialchars($defaultTitle) ?>">
                     </div>
 
                     <div class="mb-3">

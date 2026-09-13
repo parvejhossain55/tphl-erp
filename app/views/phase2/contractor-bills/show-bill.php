@@ -53,7 +53,10 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
         </nav>
     </div>
     <div class="d-flex gap-2 align-items-center">
-        <?php if (!empty($payments)): ?>
+        <?php if (!empty($payments) || $totalPaid > 0): ?>
+            <a href="<?= $base_url ?>/expense-adjustments/create?parent_type=contractor&cashout_request_id=<?= $bill['id'] ?>&project_id=<?= $bill['project_id'] ?>" class="btn btn-warning btn-sm">
+                <i class="bi bi-sliders me-1"></i> Settlement / Adjustment
+            </a>
             <a href="<?= $base_url ?>/print-debit-voucher?module=contractor_bill&id=<?= $bill['id'] ?>" target="_blank" class="btn btn-primary btn-sm">
                 <i class="bi bi-printer me-1"></i> Debit Voucher
             </a>
@@ -562,16 +565,23 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
      ============================================================ -->
 <div class="container-fluid mt-3">
     <div class="card custom-card">
-        <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h6 class="card-title mb-0">
                 <i class="bi bi-patch-check me-2 text-success"></i>
                 Contractor Settlement &amp; Labour Accountability
             </h6>
-            <?php if ($canSubmitSettlement): ?>
-            <button class="btn btn-sm btn-success fw-bold" data-bs-toggle="modal" data-bs-target="#settlementModal">
-                <i class="bi bi-file-earmark-plus me-1"></i> Submit New Settlement
-            </button>
-            <?php endif; ?>
+            <div class="d-flex gap-2 align-items-center">
+                <?php if ($totalPaid > 0 || !empty($payments)): ?>
+                    <a href="<?= $base_url ?>/expense-adjustments/create?parent_type=contractor&cashout_request_id=<?= $bill['id'] ?>&project_id=<?= $bill['project_id'] ?>" class="btn btn-sm btn-outline-warning fw-bold">
+                        <i class="bi bi-sliders me-1"></i> Accounts Adjustment (Return/Extra)
+                    </a>
+                <?php endif; ?>
+                <?php if ($canSubmitSettlement): ?>
+                <button class="btn btn-sm btn-success fw-bold" data-bs-toggle="modal" data-bs-target="#settlementModal">
+                    <i class="bi bi-file-earmark-plus me-1"></i> Submit New Settlement
+                </button>
+                <?php endif; ?>
+            </div>
         </div>
         <div class="card-body">
 
@@ -702,6 +712,57 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($expenseAdjustments)): ?>
+                <div class="mt-4 pt-3 border-top">
+                    <h6 class="fw-bold text-warning mb-2">
+                        <i class="bi bi-sliders me-1"></i> Central Accounts Adjustments (Return Unused / Extra Money)
+                    </h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Date</th>
+                                    <th>Requester</th>
+                                    <th>Type</th>
+                                    <th class="text-end">Amount (৳)</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($expenseAdjustments as $adj): 
+                                    $typeBadge = ($adj['adjustment_type'] === 'return') ? 'info' : 'warning text-dark';
+                                    $typeLabel = ($adj['adjustment_type'] === 'return') ? 'Return Unused' : 'Extra Money';
+                                    $statusClass = match ($adj['status']) {
+                                        'pending' => 'warning text-dark',
+                                        'approved' => 'success',
+                                        'rejected' => 'danger',
+                                        'partially_paid' => 'info text-dark',
+                                        'fully_paid' => 'success',
+                                        default => 'secondary'
+                                    };
+                                ?>
+                                <tr>
+                                    <td class="fw-bold">REQ-<?= $adj['id'] ?></td>
+                                    <td><?= date('d M Y', strtotime($adj['created_at'])) ?></td>
+                                    <td><?= htmlspecialchars($adj['requester_name']) ?></td>
+                                    <td><span class="badge bg-<?= $typeBadge ?>"><?= $typeLabel ?></span></td>
+                                    <td class="text-end fw-bold">৳ <?= number_format($adj['amount'], 2) ?></td>
+                                    <td class="text-center"><span class="badge bg-<?= $statusClass ?>"><?= ucfirst(str_replace('_', ' ', $adj['status'])) ?></span></td>
+                                    <td class="text-center">
+                                        <a href="<?= $base_url ?>/expense-adjustments/show?id=<?= $adj['id'] ?>" class="btn btn-xs btn-outline-primary" style="font-size: 0.75rem;">
+                                            <i class="bi bi-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             <?php endif; ?>
         </div>
