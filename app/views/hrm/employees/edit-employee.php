@@ -164,12 +164,12 @@
                  <?php
                     $joiningDate = $employee['joining_date'];
                     $joiningDateFormatted = ($joiningDate && $joiningDate !== '0000-00-00')
-                        ? date('d-m-Y', strtotime($joiningDate))
+                        ? date('Y-m-d', strtotime($joiningDate))
                         : '';
 
                     $dob = $employee['dob'];
                     $dobFormatted = ($dob && $dob !== '0000-00-00')
-                        ? date('d-m-Y', strtotime($dob))
+                        ? date('Y-m-d', strtotime($dob))
                         : '';
                     ?>
 
@@ -573,7 +573,21 @@
       // Fallback for flatpickr initialization in case main.js is cached by the browser
       if (typeof $ !== 'undefined' && $.fn.flatpickr) {
           setTimeout(function() {
-              if ($("#resignDate").length) {
+              if ($("#joiningDate").length && !$("#joiningDate").hasClass('flatpickr-input')) {
+                  $("#joiningDate").flatpickr({
+                      altInput: true,
+                      altFormat: "F j, Y",
+                      dateFormat: "Y-m-d",
+                  });
+              }
+              if ($("#humanFriendlyDates").length && !$("#humanFriendlyDates").hasClass('flatpickr-input')) {
+                  $("#humanFriendlyDates").flatpickr({
+                      altInput: true,
+                      altFormat: "F j, Y",
+                      dateFormat: "Y-m-d",
+                  });
+              }
+              if ($("#resignDate").length && !$("#resignDate").hasClass('flatpickr-input')) {
                   $("#resignDate").flatpickr({
                       altInput: true,
                       altFormat: "F j, Y",

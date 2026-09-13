@@ -139,9 +139,9 @@ class ExternalApiService
         $employees = $data['data'] ?? $data['employees'] ?? $data['content'] ?? $data;
         $total = (int) ($data['total'] ?? $data['totalElements'] ?? $data['meta']['total'] ?? count($employees));
 
-        // Auto-sync joining_date for local employees based on Tipsoi startDate
+        // Auto-sync joining_date for local employees based on Tipsoi startDate (only if not already set in ERP)
         if (is_array($employees)) {
-            $updateStmt = $this->db->prepare("UPDATE employees SET joining_date = ? WHERE employee_id = ?");
+            $updateStmt = $this->db->prepare("UPDATE employees SET joining_date = ? WHERE employee_id = ? AND (joining_date IS NULL OR joining_date = '0000-00-00')");
             if ($updateStmt) {
                 foreach ($employees as $extEmp) {
                     $officeId = trim((string) ($extEmp['employeeOfficeId'] ?? $extEmp['employeeId'] ?? ''));
