@@ -122,22 +122,34 @@
             gap: 20px;
         }
 
+        .salary-col-left,
+        .salary-col-right {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
         .breakdown-card {
             border: 1px solid #d1d5db;
-            padding: 18px;
+            padding: 16px;
+            background: #fff;
         }
 
         .breakdown-title {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 700;
             color: #0f766e;
             margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
         .breakdown-item {
             display: flex;
             justify-content: space-between;
             padding: 6px 0;
+            font-size: 13px;
         }
 
         .breakdown-total {
@@ -145,6 +157,9 @@
             padding-top: 8px;
             border-top: 1px solid #d1d5db;
             font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
         }
 
         /* ================= NET SALARY ================= */
@@ -472,11 +487,20 @@
                 gap: 12px !important;
             }
 
+            .salary-col-left,
+            .salary-col-right {
+                width: 48.5% !important;
+                max-width: 48.5% !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 8px !important;
+            }
+
             .breakdown-card {
-                width: 50% !important;
-                max-width: 50% !important;
+                width: 100% !important;
+                max-width: 100% !important;
                 border: 1px solid #999 !important;
-                padding: 12px !important;
+                padding: 10px !important;
             }
 
             .status-btn {
@@ -546,18 +570,21 @@
                         alt="Company Logo">
                 <?php endif; ?>
 
-
                 <div class="company-info">
-                    <div class="company-name"><?= getSetting('wesite_title') ?></div>
+                    <div class="company-name"><?= getSetting('website_title') ?></div>
                     <div><?= getSetting('email') ?></div>
                     <div><?= getSetting('phone') ?></div>
                 </div>
             </div>
 
             <div class="header-block header-right">
+                <div class="employee-row"><span class="pe-2">Employee ID: </span><strong><?= htmlspecialchars($payslip['employee_office_id'] ?? 'N/A') ?></strong></div>
                 <div class="employee-row"><span class="pe-2">Employee: </span><?= htmlspecialchars($payslip['employee_name']) ?></div>
                 <div class="employee-row "><span class="pe-2">Designation: </span><?= htmlspecialchars($payslip['designation_name'] ?? "N/A") ?></div>
                 <div class="employee-row"><span class="pe-2">Department: </span><?= htmlspecialchars($payslip['department_name'] ?? "N/A") ?></div>
+                <?php if (!empty($payslip['joining_date'])): ?>
+                    <div class="employee-row"><span class="pe-2">Joining Date: </span><?= date('d M Y', strtotime($payslip['joining_date'])) ?></div>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -568,95 +595,171 @@
 
         <!-- PERIOD -->
         <div class="period-info-bar">
-            <div><span class="period-label">Created:</span> <?= date('d M Y', strtotime($payslip['created_at'])) ?></div>
-            <?php if ($payslip['status'] === 'draft'): ?>
-                <div><span class="period-label">Type:</span> Salary Certificate (Draft)</div>
-            <?php else: ?>
-                <div><span class="period-label">Salary Month:</span> <?= date('F Y', strtotime($payslip['payslip_month'] ?? $payslip['created_at'])) ?></div>
-            <?php endif; ?>
+            <div><span class="period-label">Created:</span> <?= !empty($payslip['created_at']) ? date('d M Y', strtotime($payslip['created_at'])) : date('d M Y') ?></div>
+            <div>
+                <span class="period-label">Salary Month:</span> 
+                <?= date('F Y', strtotime($payslip['payslip_month'] ?? $payslip['created_at'])) ?>
+                <?= ($payslip['status'] === 'draft') ? ' <span class="text-muted" style="font-weight:normal;">(Draft Certificate)</span>' : '' ?>
+            </div>
             <div><span class="period-label">Payslip No:</span> PS-<?= $payslip['id'] ?></div>
         </div>
 
         <div class="payslip-content">
 
-            <!-- SALARY -->
+            <?php
+            // Categorize Earnings & Deductions
+            $coreEarnings = [];
+            $additionalEarnings = [];
+            $deductions = [];
+
+            // 1. Basic Salary
+            $basicSalary = (float)($payslip['basic_salary'] ?? 0);
+            $coreEarnings[] = [
+                'name' => 'Basic Salary',
+                'amount' => $basicSalary
+            ];
+
+            $coreEarningTotal = $basicSalary;
+            $additionalEarningTotal = 0;
+            $deductionTotal = 0;
+
+            foreach ($payslip['items'] as $item) {
+                $name = trim($item['item_name'] ?? '');
+                $type = $item['item_type'] ?? 'earning';
+                $amt = (float)($item['amount'] ?? 0);
+                if ($amt <= 0) continue;
+
+                $lower = strtolower($name);
+                if ($type === 'earning') {
+                    if (strpos($lower, 'basic') !== false) {
+                        continue;
+                    } elseif (
+                        strpos($lower, 'house rent') !== false ||
+                        strpos($lower, 'medical') !== false ||
+                        strpos($lower, 'conveyance') !== false ||
+                        strpos($lower, 'recreation') !== false
+                    ) {
+                        $coreEarnings[] = ['name' => $name, 'amount' => $amt];
+                        $coreEarningTotal += $amt;
+                    } else {
+                        // Additional earnings (Punctuality Bonus, Overtime, Arrears, Duty Allowance, Special Allowance, etc.)
+                        $additionalEarnings[] = ['name' => $name, 'amount' => $amt];
+                        $additionalEarningTotal += $amt;
+                    }
+                } elseif ($type === 'deduction') {
+                    $deductions[] = ['name' => $name, 'amount' => $amt];
+                    $deductionTotal += $amt;
+                }
+            }
+
+            $calculatedTotalEarnings = $coreEarningTotal + $additionalEarningTotal;
+            $displayTotalEarnings = (float)($payslip['total_earning'] ?? $calculatedTotalEarnings);
+            $displayTotalDeduction = $deductionTotal > 0 ? $deductionTotal : (float)($payslip['total_deduction'] ?? 0);
+            ?>
+
+            <!-- SALARY BREAKDOWN -->
             <div class="salary-breakdown">
 
-                <!-- Earnings -->
-                <div class="breakdown-card">
-                    <div class="breakdown-title">Earnings</div>
+                <!-- Left Column: Core Salary & Additional Earnings -->
+                <div class="salary-col-left">
 
-                    <div class="breakdown-item">
-                        <span>Basic Salary</span>
-                        <span>৳ <?= number_format((float)$payslip['basic_salary'], 2) ?></span>
-                    </div>
+                    <!-- Segment 1: Core Salary Breakdown -->
+                    <div class="breakdown-card">
+                        <div class="breakdown-title">
+                            <span><i class="fa-solid fa-wallet me-1"></i> Earnings (Salary Breakdown)</span>
+                        </div>
 
-                    <?php $earningTotal = (float)$payslip['basic_salary']; ?>
-                    <?php foreach ($payslip['items'] as $item): ?>
-                        <?php if ($item['item_type'] === 'earning' && stripos($item['item_name'], 'basic') === false): ?>
-                            <?php $earningTotal += (float)$item['amount']; ?>
+                        <?php foreach ($coreEarnings as $item): ?>
                             <div class="breakdown-item">
-                                <span><?= htmlspecialchars($item['item_name']) ?></span>
+                                <span><?= htmlspecialchars($item['name']) ?></span>
                                 <span>৳ <?= number_format($item['amount'], 2) ?></span>
                             </div>
-                        <?php endif; ?>
-                    <?php endforeach; ?>
+                        <?php endforeach; ?>
 
-                    <div class="breakdown-total">
-                        <span>Total Earnings</span>
-                        <span>৳ <?= number_format((float)($payslip['total_earning'] ?? $earningTotal), 2) ?></span>
+                        <div class="breakdown-total">
+                            <span>Gross Salary (Core)</span>
+                            <span>৳ <?= number_format($coreEarningTotal, 2) ?></span>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Deductions -->
-                <div class="breakdown-card">
-                    <div class="breakdown-title">Deductions</div>
+                    <!-- Segment 2: Additional Earnings & Bonuses -->
+                    <div class="breakdown-card">
+                        <div class="breakdown-title" style="color: #2563eb;">
+                            <span><i class="fa-solid fa-gift me-1"></i> Additional Earnings &amp; Bonuses</span>
+                        </div>
 
-                    <?php
-                    $deductionTotal = 0;
-                    $hasDeduction = false;
-                    foreach ($payslip['items'] as $item) {
-                        if ($item['item_type'] === 'deduction' && (float)$item['amount'] > 0) {
-                            $hasDeduction = true;
-                            $deductionTotal += (float)$item['amount'];
-                        }
-                    }
-                    ?>
-
-                    <?php if ($hasDeduction): ?>
-                        <?php foreach ($payslip['items'] as $item): ?>
-                            <?php if ($item['item_type'] === 'deduction' && (float)$item['amount'] > 0): ?>
+                        <?php if (!empty($additionalEarnings)): ?>
+                            <?php foreach ($additionalEarnings as $item): ?>
                                 <div class="breakdown-item">
-                                    <span><?= htmlspecialchars($item['item_name']) ?></span>
+                                    <span><?= htmlspecialchars($item['name']) ?></span>
                                     <span>৳ <?= number_format($item['amount'], 2) ?></span>
                                 </div>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <div class="breakdown-item">
-                            <span>No Deduction</span>
-                            <span>৳ 0.00</span>
-                        </div>
-                    <?php endif; ?>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="breakdown-item text-muted">
+                                <span>No Additional Benefits</span>
+                                <span>৳ 0.00</span>
+                            </div>
+                        <?php endif; ?>
 
-                    <div class="breakdown-total">
-                        <span>Total Deductions</span>
-                        <span>৳ <?= number_format((float)($payslip['total_deduction'] ?? $deductionTotal), 2) ?></span>
+                        <div class="breakdown-total" style="color: #2563eb;">
+                            <span>Total Additional Earnings</span>
+                            <span>৳ <?= number_format($additionalEarningTotal, 2) ?></span>
+                        </div>
+                    </div>
+
+                    <!-- Overall Total Earnings Bar -->
+                    <div class="p-2 px-3 rounded d-flex justify-content-between align-items-center fw-bold" style="background: #f0fdf4; border: 1px solid #86efac; color: #166534; font-size: 13px;">
+                        <span><i class="fa-solid fa-circle-plus me-1"></i> Total Earnings</span>
+                        <span>৳ <?= number_format($displayTotalEarnings, 2) ?></span>
+                    </div>
+
+                </div>
+
+                <!-- Right Column: Deductions -->
+                <div class="salary-col-right">
+                    <div class="breakdown-card h-100 d-flex flex-column">
+                        <div class="breakdown-title" style="color: #dc2626;">
+                            <span><i class="fa-solid fa-circle-minus me-1"></i> Deductions</span>
+                        </div>
+
+                        <?php if (!empty($deductions)): ?>
+                            <?php foreach ($deductions as $item): ?>
+                                <div class="breakdown-item">
+                                    <span><?= htmlspecialchars($item['name']) ?></span>
+                                    <span>৳ <?= number_format($item['amount'], 2) ?></span>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="breakdown-item text-muted">
+                                <span>No Deduction</span>
+                                <span>৳ 0.00</span>
+                            </div>
+                        <?php endif; ?>
+
+                        <div class="breakdown-total mt-auto pt-3" style="color: #dc2626;">
+                            <span>Total Deductions</span>
+                            <span>৳ <?= number_format($displayTotalDeduction, 2) ?></span>
+                        </div>
                     </div>
                 </div>
 
             </div>
+
+            <?php
+            $displayNetSalary = $displayTotalEarnings - $displayTotalDeduction;
+            ?>
             <!-- NET -->
             <div class="net-salary-section">
-                <div class="net-salary-label">Net Salary (Take Home)</div>
+                <div class="net-salary-label">Net Salary</div>
 
                 <div class="net-salary-amount">
-                    ৳ <?= number_format($payslip['net_salary'], 2) ?>
+                    ৳ <?= number_format($displayNetSalary, 2) ?>
                 </div>
 
                 <div class="amount-words">
                     <span class="words-label">Amount in Words:</span>
-                    <?= amountInWords($payslip['net_salary']) ?> Taka Only
+                    <?= amountInWords($displayNetSalary) ?>
                 </div>
 
                 <!-- STATUS BUTTON -->
@@ -665,11 +768,9 @@
                         <span class="status-btn status-paid">
                             ✔ PAID
                         </span>
-
                     <?php endif; ?>
                 </div>
             </div>
-
 
             <!-- PAYMENT -->
             <div class="payment-details-section">
@@ -688,9 +789,13 @@
                         <div class="payment-item"><span class="payment-label">Cash Payment</span>৳ <?= number_format($payslip['cash_amount'], 2) ?></div>
                     <?php endif; ?>
 
-                    <?php if ($payslip['payment_method'] === 'bank' && !empty($payslip['bank_name'])): ?>
-                        <div class="payment-item"><span class="payment-label">Bank Name</span><?= htmlspecialchars($payslip['bank_name'] ?? '-') ?></div>
-                        <div class="payment-item"><span class="payment-label">Account Number</span><?= htmlspecialchars($payslip['account_number'] ?? '-') ?></div>
+                    <?php 
+                    $displayBankName = !empty($payslip['emp_bank_name']) ? $payslip['emp_bank_name'] : ($payslip['bank_name'] ?? '');
+                    $displayAccountNo = !empty($payslip['emp_account_number']) ? $payslip['emp_account_number'] : ($payslip['account_number'] ?? '');
+                    ?>
+                    <?php if ($payslip['payment_method'] === 'bank' && !empty($displayBankName)): ?>
+                        <div class="payment-item"><span class="payment-label">Bank Name</span><?= htmlspecialchars($displayBankName) ?></div>
+                        <div class="payment-item"><span class="payment-label">Account Number</span><?= htmlspecialchars($displayAccountNo) ?></div>
                     <?php endif; ?>
 
                 <?php elseif ($payslip['status'] === 'draft'): ?>
@@ -708,13 +813,10 @@
         </div>
         <!-- Footer -->
         <div class="payslip-footer">
-            <!-- <p><i class="fas fa-info-circle"></i> This is a computer-generated payslip. No signature is required.</p>
-    <p>For any queries, please contact the HR Department</p> -->
-
             <!-- Signature Section -->
             <div class="signature-section">
                 <div class="signature-box">
-                    <span class="signature-title ">Employee Signature</span>
+                    <span class="signature-title">Employee Signature</span>
                     <div class="signature-line mt-5"></div>
                 </div>
                 <div class="signature-box">
@@ -724,24 +826,16 @@
             </div>
         </div>
 
-        <!-- Action Buttons -->
-        <div class="action-section">
-            <button type="button" class="btn-action btn-print" onclick="printPayslip()">
-                <i class="fas fa-print"></i> Print Payslip
-            </button>
+    </div>
 
-
-            <!-- <a href="<= $GLOBALS['base_url'] ?>/download-payslip/<= $payslip['id'] ?>" target="_blank" class="btn-action btn-download">
-                <i class="fas fa-file-pdf"></i> Download PDF
-            </a> -->
-            <button type="button" class="btn-action btn-download" onclick="downloadPayslipPDF()">
-                <i class="mdi mdi-download"></i> Download PDF
-            </button>
-
-        </div>
-
-
-
+    <!-- Action Buttons (OUTSIDE #payslip to prevent screenshot capture in PDF) -->
+    <div class="action-section" style="max-width: 900px; margin: 15px auto; display: flex; justify-content: flex-end; gap: 12px;">
+        <button type="button" class="btn-action btn-print" onclick="printPayslip()">
+            <i class="fas fa-print me-1"></i> Print Payslip
+        </button>
+        <button type="button" class="btn-action btn-download" onclick="downloadPayslipPDF()">
+            <i class="fas fa-file-pdf me-1"></i> Download PDF
+        </button>
     </div>
     <script>
         function printPayslip() {

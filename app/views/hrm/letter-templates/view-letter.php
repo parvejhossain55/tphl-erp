@@ -11,14 +11,303 @@
                     <a href="<?= $GLOBALS['base_url'] ?>/edit-letter/<?= $letter['id'] ?>" class="btn btn-primary btn-sm">
                         <i class="fa fa-edit me-1"></i> Edit Letter
                     </a>
-                    <a href="<?= $GLOBALS['base_url'] ?>/pdf-letter/<?= $letter['id'] ?>" class="btn btn-danger btn-sm"
-                        target="_blank">
+                    <a href="<?= $GLOBALS['base_url'] ?>/pdf-letter/<?= $letter['id'] ?>?fit=1" class="btn btn-danger btn-sm"
+                        target="_blank" title="Download PDF formatted to strictly fit on 1 page">
                         <i class="fa fa-file-pdf me-1"></i> Download PDF
                     </a>
-                    <a href="<?= $GLOBALS['base_url'] ?>/print-letter/<?= $letter['id'] ?>"
-                        class="btn btn-info btn-sm text-white" target="_blank">
-                        <i class="fa fa-print me-1"></i> Print Letter
-                    </a>
+<style>
+/* ═══ Solid, Premium Print & PDF Dropdown ═══ */
+.print-dropdown-menu {
+    min-width: 300px !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 14px 35px -4px rgba(15, 23, 42, 0.22), 0 4px 14px -2px rgba(15, 23, 42, 0.1) !important;
+    padding: 8px !important;
+    margin-top: 6px !important;
+    z-index: 1060 !important;
+    animation: printDropdownFadeIn 0.15s ease-out;
+}
+
+@keyframes printDropdownFadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+[bd-theme="bd-theme-dark"] .print-dropdown-menu {
+    background: #1e293b !important;
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    box-shadow: 0 14px 35px -4px rgba(0, 0, 0, 0.55) !important;
+}
+
+.print-dropdown-header {
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    color: #64748b !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.6px !important;
+    padding: 6px 10px 4px 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+[bd-theme="bd-theme-dark"] .print-dropdown-header {
+    color: #94a3b8 !important;
+}
+
+.print-dropdown-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 8px 10px !important;
+    color: #1e293b !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    border-radius: 8px !important;
+    transition: all 0.15s ease !important;
+    text-decoration: none !important;
+    margin-bottom: 2px !important;
+    background: transparent !important;
+}
+
+[bd-theme="bd-theme-dark"] .print-dropdown-item {
+    color: #f1f5f9 !important;
+}
+
+.print-dropdown-item:hover, 
+.print-dropdown-item:focus {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    transform: translateX(3px) !important;
+}
+
+[bd-theme="bd-theme-dark"] .print-dropdown-item:hover,
+[bd-theme="bd-theme-dark"] .print-dropdown-item:focus {
+    background-color: #334155 !important;
+    color: #ffffff !important;
+}
+
+.print-dropdown-item.active {
+    background-color: #ecfdf5 !important;
+    color: #065f46 !important;
+}
+
+[bd-theme="bd-theme-dark"] .print-dropdown-item.active {
+    background-color: #064e3b !important;
+    color: #a7f3d0 !important;
+}
+
+.print-dropdown-item .item-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+.print-dropdown-item .item-icon {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+    flex-shrink: 0 !important;
+}
+
+.item-icon-compact {
+    background: #ecfdf5 !important;
+    color: #059669 !important;
+}
+
+.item-icon-normal {
+    background: #eff6ff !important;
+    color: #2563eb !important;
+}
+
+.item-icon-ultra {
+    background: #fffbeb !important;
+    color: #d97706 !important;
+}
+
+.item-icon-pdf {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+}
+
+.item-icon-pdf-multi {
+    background: #f1f5f9 !important;
+    color: #64748b !important;
+}
+
+.print-dropdown-item .item-title {
+    font-weight: 600 !important;
+    line-height: 1.25 !important;
+    font-size: 12.5px !important;
+}
+
+.print-dropdown-item .item-desc {
+    color: #64748b !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    margin-top: 1px !important;
+}
+
+[bd-theme="bd-theme-dark"] .print-dropdown-item .item-desc {
+    color: #94a3b8 !important;
+}
+
+.print-dropdown-badge {
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    padding: 2px 7px !important;
+    border-radius: 6px !important;
+    letter-spacing: 0.2px !important;
+    flex-shrink: 0 !important;
+}
+
+.badge-compact {
+    background-color: #d1fae5 !important;
+    color: #065f46 !important;
+}
+
+.badge-normal {
+    background-color: #f1f5f9 !important;
+    color: #475569 !important;
+}
+
+.badge-ultra {
+    background-color: #fef3c7 !important;
+    color: #92400e !important;
+}
+
+.badge-pdf {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+}
+
+.print-dropdown-divider {
+    height: 1px !important;
+    background-color: #e2e8f0 !important;
+    border: none !important;
+    margin: 6px 4px !important;
+}
+
+[bd-theme="bd-theme-dark"] .print-dropdown-divider {
+    background-color: #334155 !important;
+}
+
+/* Split Button Styling */
+.btn-print-group {
+    box-shadow: 0 1px 3px rgba(2, 132, 199, 0.35) !important;
+    border-radius: 6px !important;
+}
+
+.btn-print-main {
+    background-color: #0284c7 !important;
+    border-color: #0284c7 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    font-size: 12.5px !important;
+    padding: 6px 14px !important;
+}
+
+.btn-print-main:hover {
+    background-color: #0369a1 !important;
+    border-color: #0369a1 !important;
+    color: #ffffff !important;
+}
+
+.btn-print-toggle {
+    background-color: #0284c7 !important;
+    border-color: #0284c7 !important;
+    color: #ffffff !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.3) !important;
+    padding-left: 9px !important;
+    padding-right: 9px !important;
+}
+
+.btn-print-toggle:hover,
+.btn-print-toggle:focus,
+.btn-print-group.show .btn-print-toggle {
+    background-color: #0369a1 !important;
+    border-color: #0369a1 !important;
+    color: #ffffff !important;
+}
+</style>
+
+                    <div class="btn-group btn-print-group">
+                        <a href="<?= $GLOBALS['base_url'] ?>/print-letter/<?= $letter['id'] ?>?fit=1"
+                            class="btn btn-sm btn-print-main" target="_blank" title="Print Letter (Auto-scaled to 1 Page)">
+                            <i class="fa fa-print me-1"></i> Print (Fit to 1 Page)
+                        </a>
+                        <button type="button" class="btn btn-sm btn-print-toggle dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" title="More Print & PDF Options">
+                            <span class="visually-hidden">Toggle Dropdown</span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end print-dropdown-menu">
+                            <div class="print-dropdown-header">
+                                <i class="fa fa-sliders-h me-1"></i> PRINT MODES
+                            </div>
+                            <a class="dropdown-item print-dropdown-item active" href="<?= $GLOBALS['base_url'] ?>/print-letter/<?= $letter['id'] ?>?fit=1" target="_blank">
+                                <div class="item-left">
+                                    <span class="item-icon item-icon-compact"><i class="fa fa-compress-alt"></i></span>
+                                    <div>
+                                        <div class="item-title">Fit to 1 Page</div>
+                                        <div class="item-desc">Compact & Auto-scaled (Recommended)</div>
+                                    </div>
+                                </div>
+                                <span class="print-dropdown-badge badge-compact">1 Page</span>
+                            </a>
+                            <a class="dropdown-item print-dropdown-item" href="<?= $GLOBALS['base_url'] ?>/print-letter/<?= $letter['id'] ?>?fit=normal" target="_blank">
+                                <div class="item-left">
+                                    <span class="item-icon item-icon-normal"><i class="fa fa-file-alt"></i></span>
+                                    <div>
+                                        <div class="item-title">Standard Spacing</div>
+                                        <div class="item-desc">Normal margins (Multi-page allowed)</div>
+                                    </div>
+                                </div>
+                                <span class="print-dropdown-badge badge-normal">Original</span>
+                            </a>
+                            <a class="dropdown-item print-dropdown-item" href="<?= $GLOBALS['base_url'] ?>/print-letter/<?= $letter['id'] ?>?fit=ultra" target="_blank">
+                                <div class="item-left">
+                                    <span class="item-icon item-icon-ultra"><i class="fa fa-compress"></i></span>
+                                    <div>
+                                        <div class="item-title">Ultra Compact</div>
+                                        <div class="item-desc">For extra long 5+ clause letters</div>
+                                    </div>
+                                </div>
+                                <span class="print-dropdown-badge badge-ultra">Tight</span>
+                            </a>
+
+                            <div class="print-dropdown-divider"></div>
+
+                            <div class="print-dropdown-header">
+                                <i class="fa fa-file-pdf me-1"></i> PDF EXPORT
+                            </div>
+                            <a class="dropdown-item print-dropdown-item" href="<?= $GLOBALS['base_url'] ?>/pdf-letter/<?= $letter['id'] ?>?fit=1" target="_blank">
+                                <div class="item-left">
+                                    <span class="item-icon item-icon-pdf"><i class="fa fa-file-pdf"></i></span>
+                                    <div>
+                                        <div class="item-title">PDF (Fit to 1 Page)</div>
+                                        <div class="item-desc">Single-page PDF download</div>
+                                    </div>
+                                </div>
+                                <span class="print-dropdown-badge badge-pdf">1 Page</span>
+                            </a>
+                            <a class="dropdown-item print-dropdown-item" href="<?= $GLOBALS['base_url'] ?>/pdf-letter/<?= $letter['id'] ?>?fit=0" target="_blank">
+                                <div class="item-left">
+                                    <span class="item-icon item-icon-pdf-multi"><i class="fa fa-file-pdf"></i></span>
+                                    <div>
+                                        <div class="item-title">PDF (Standard)</div>
+                                        <div class="item-desc">Multi-page standard PDF</div>
+                                    </div>
+                                </div>
+                                <span class="print-dropdown-badge badge-normal">Multi</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -30,7 +319,7 @@
             } elseif (file_exists($baseDir . '/public/assets/images/hrm/hr_signature.png')) {
                 $sigUrl = $GLOBALS['base_url'] . '/public/assets/images/hrm/hr_signature.png';
             } else {
-                $dbConn = $GLOBALS['db'] ?? ($this->db ?? null);
+                $dbConn = (isset($this) && isset($this->db)) ? $this->db : ($GLOBALS['db'] ?? null);
                 if ($dbConn) {
                     $defRes = $dbConn->query("SELECT signature_path FROM hr_signatures WHERE status = 'active' ORDER BY is_default DESC, id DESC LIMIT 1");
                     if ($defRes && $row = $defRes->fetch_assoc()) {
@@ -58,15 +347,73 @@
 
             $isCaution = ($letter['letter_type'] === 'caution');
             $isExperience = ($letter['letter_type'] === 'experience');
+            $isSalaryCert = ($letter['letter_type'] === 'salary_certificate');
 
             if ($isExperience) {
                 $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/Experience Certificate/' . date('M-Y', strtotime($letter['letter_date'])));
+            } elseif ($isSalaryCert) {
+                $certMonth = !empty($letter['certificate_month']) ? date('F-Y', strtotime($letter['certificate_month'] . '-01')) : date('F-Y', strtotime($letter['letter_date']));
+                $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/Salary Certificate/' . $certMonth);
             } else {
                 $refNum = !empty($letter['ref_number']) ? $letter['ref_number'] : ('TPHL/HR/' . date('Y', strtotime($letter['letter_date'])) . '/' . str_pad($letter['id'], 4, '0', STR_PAD_LEFT));
             }
 
+            if ($isSalaryCert) {
+                if (empty($salaryItems) && !empty($letter['id'])) {
+                    $db = $GLOBALS['db'] ?? null;
+                    if ($db) {
+                        $sRes = $db->query("SELECT * FROM letter_salary_items WHERE letter_id = " . (int)$letter['id'] . " ORDER BY item_type DESC, sort_order ASC");
+                        $salaryItems = ['earning' => [], 'deduction' => []];
+                        if ($sRes) {
+                            while ($sRow = $sRes->fetch_assoc()) {
+                                $salaryItems[$sRow['item_type']][] = $sRow;
+                            }
+                        }
+                    }
+                }
+
+                $empTypeLabel = [
+                    'permanent' => 'permanent',
+                    'contract' => 'contractual',
+                    'director' => 'director',
+                    'intern' => 'intern',
+                    'remote' => 'remote',
+                    'probation' => 'probationary',
+                    'management' => 'management',
+                ];
+                $empType = $empTypeLabel[$letter['employee_type'] ?? 'permanent'] ?? 'permanent';
+
+                $isFemale = false;
+                $nameLower = strtolower($rawName);
+                $femaleKeywords = ['ms.', 'mrs.', 'miss', 'khatun', 'begum', 'akter', 'akther', 'sultana', 'jahan', 'nahar', 'parvin', 'nasrin', 'farzana', 'roksana', 'shammi', 'bornali'];
+                foreach ($femaleKeywords as $kw) {
+                    if (strpos($nameLower, $kw) !== false) {
+                        $isFemale = true;
+                        break;
+                    }
+                }
+                $herHis = $isFemale ? 'her' : 'his';
+                $sheHe = $isFemale ? 'she' : 'he';
+                $herHim = $isFemale ? 'her' : 'him';
+
+                $startDate = !empty($letter['joining_date']) ? date('d F Y', strtotime($letter['joining_date'])) : (!empty($letter['emp_joining_date']) ? date('d F Y', strtotime($letter['emp_joining_date'])) : 'N/A');
+                $endDate = !empty($letter['effective_date']) ? date('d F Y', strtotime($letter['effective_date'])) : (!empty($letter['emp_resign_date']) ? date('d F Y', strtotime($letter['emp_resign_date'])) : '');
+
+                $periodText = $startDate;
+                if (!empty($endDate)) {
+                    $periodText = "from " . $startDate . " to " . $endDate;
+                } else {
+                    $periodText = "from " . $startDate . " to present";
+                }
+
+                $purposeText = !empty($letter['purpose']) ? $letter['purpose'] : 'final settlement';
+                if (strtolower($purposeText) === 'personal use') {
+                    $purposeText = 'personal use';
+                }
+            }
+
             // Ensure non-salary-certificate letters never display salary certificate ref numbers
-            if ($letter['letter_type'] !== 'salary_certificate' && !empty($refNum) && stripos($refNum, 'Salary Certificate') !== false) {
+            if (!$isSalaryCert && !empty($refNum) && stripos($refNum, 'Salary Certificate') !== false) {
                 $refNum = 'TPHL/HR/' . date('Y', strtotime($letter['letter_date'])) . '/' . str_pad($letter['id'], 4, '0', STR_PAD_LEFT);
             }
 
@@ -164,8 +511,6 @@
                                     <?php if ($isLastPage): ?>
                                         <?php if (stripos($letter['body'], 'Human Resources Department') === false): ?>
                                             <div class="experience-signoff">
-                                                <div class="signoff-closing">Sincerely,</div>
-                                                <div class="signoff-company" style="margin-bottom: 5px;">For <strong><?= htmlspecialchars($companyName) ?></strong></div>
                                                 <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
                                                     <div style="height: 48px; margin-bottom: 5px;">
                                                         <img src="<?= $sigUrl ?>" alt="Signature" style="height: 45px; max-width: 170px; object-fit: contain;">
@@ -182,6 +527,105 @@
                                                 <div class="signoff-dept">Human Resources Department</div>
                                             </div>
                                         <?php endif; ?>
+                                    <?php endif; ?>
+                                <?php elseif ($isSalaryCert): ?>
+                                    <!-- ═══════════════════ SALARY CERTIFICATE FORMAT ═══════════════════ -->
+                                    <?php if ($isFirstPage): ?>
+                                        <div class="cert-meta-stacked">
+                                            <div class="meta-line"><strong>Ref:</strong> <?= htmlspecialchars($refNum) ?></div>
+                                            <div class="meta-line"><strong>Date:</strong> <?= date('d F, Y', strtotime($letter['letter_date'])) ?></div>
+                                        </div>
+
+                                        <div class="cert-title-centered">TO WHOM IT MAY CONCERN</div>
+                                    <?php endif; ?>
+
+                                    <?php
+                                    $scBodyData = json_decode($letter['body'] ?? '', true);
+                                    $hasCustomOpening = !empty($scBodyData['opening']);
+                                    $hasCustomClosing = !empty($scBodyData['closing']);
+
+                                    $renderMarkdownText = function ($text) {
+                                        $paragraphs = preg_split('/\r\n\r\n|\n\n/', trim($text));
+                                        foreach ($paragraphs as $para) {
+                                            if (trim($para) !== '') {
+                                                $escaped = htmlspecialchars(trim($para));
+                                                $withBold = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $escaped);
+                                                echo '<p style="margin-bottom: 8px;">' . nl2br($withBold) . '</p>';
+                                            }
+                                        }
+                                    };
+                                    ?>
+
+                                    <div class="letter-body">
+                                        <?php if ($hasCustomOpening): ?>
+                                            <?php $renderMarkdownText($scBodyData['opening']); ?>
+                                        <?php else: ?>
+                                            <p>
+                                                This is to certify that <strong><?= htmlspecialchars($rawName) ?></strong> (Employee ID: <?= htmlspecialchars($letter['employee_code']) ?>) was a <?= htmlspecialchars($empType) ?> employee of <strong><?= htmlspecialchars($companyName) ?></strong> and <?= $sheHe ?> was employed as <strong><?= htmlspecialchars($letter['designation_name'] ?? 'N/A') ?></strong> <?= $periodText ?>.
+                                            </p>
+                                            <p>
+                                                According to our records, <?= $herHis ?> monthly salary breakdown was as follows:
+                                            </p>
+                                        <?php endif; ?>
+
+                                        <!-- Salary Table -->
+                                        <table class="sc-table" style="width: 100%; border-collapse: collapse; margin: 14px 0 16px; font-size: 12.5px; border: 1px solid #334155;">
+                                            <thead>
+                                                <tr style="background-color: #f8fafc;">
+                                                    <th style="width:60%; border: 1px solid #334155; padding: 6px 12px; text-align: center; font-weight: 700;">Earning</th>
+                                                    <th style="width:40%; border: 1px solid #334155; padding: 6px 12px; text-align: center; font-weight: 700;">Amount (BDT)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php $totalEarning = 0;
+                                                if (!empty($salaryItems['earning'])):
+                                                    foreach ($salaryItems['earning'] as $item):
+                                                        $totalEarning += (float) $item['amount']; ?>
+                                                        <tr>
+                                                            <td style="border: 1px solid #334155; padding: 5px 14px;"><?= htmlspecialchars($item['label']) ?></td>
+                                                            <td style="border: 1px solid #334155; padding: 5px 14px; text-align: right;"><?= number_format((float) $item['amount']) ?></td>
+                                                        </tr>
+                                                    <?php endforeach;
+                                                endif; ?>
+                                                <tr style="background-color: #f8fafc; font-weight: 700; border-top: 2px solid #334155;">
+                                                    <td style="border: 1px solid #334155; padding: 6px 14px;"><strong>Gross Salary</strong></td>
+                                                    <td style="border: 1px solid #334155; padding: 6px 14px; text-align: right;">
+                                                        <strong><?= number_format((float) ($letter['gross_salary'] ?? $totalEarning)) ?> (BDT)</strong>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+
+                                        <?php if ($hasCustomClosing): ?>
+                                            <div style="margin-top: 10px;">
+                                                <?php $renderMarkdownText($scBodyData['closing']); ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <p style="margin-top: 10px;">
+                                                This certificate is issued upon <?= $herHis ?> request for <?= htmlspecialchars($purposeText) ?> without any liability on the part of this company.
+                                            </p>
+                                            <p>We wish <?= $herHim ?> all the very best.</p>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <?php if ($isLastPage): ?>
+                                        <div class="experience-signoff" style="margin-top: 22px;">
+                                            <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
+                                                <div class="sig-img-container" style="height: 48px; margin-bottom: 5px;">
+                                                    <img src="<?= $sigUrl ?>" alt="Signature" style="height: 45px; max-width: 170px; object-fit: contain;">
+                                                </div>
+                                            <?php else: ?>
+                                                <div class="signoff-spacer" style="height: 40px;"></div>
+                                            <?php endif; ?>
+                                            <div style="width: 170px; border-top: 1px solid #475569; margin-bottom: 4px;"></div>
+                                            <?php if (!empty($letter['signatory_name'])): ?>
+                                                <div style="font-weight: 700;"><?= htmlspecialchars($letter['signatory_name']) ?></div>
+                                                <?php if (!empty($letter['signatory_title'])): ?>
+                                                    <div style="color: #475569;"><?= htmlspecialchars($letter['signatory_title']) ?></div>
+                                                <?php endif; ?>
+                                            <?php endif; ?>
+                                            <div class="signoff-dept" style="font-weight: 600; color: #475569; font-size: 12px;">Human Resources Department</div>
+                                        </div>
                                     <?php endif; ?>
 
                                 <?php else: ?>
@@ -212,7 +656,7 @@
                                         <!-- Subject Line -->
                                         <div class="letter-subject">
                                             <span class="subject-text">
-                                                <strong>Subject:</strong> <?= htmlspecialchars($letter['subject']) ?>
+                                                <strong>Subject:</strong> <?= htmlspecialchars($letter['subject'] ?? '') ?>
                                             </span>
                                         </div>
                                     <?php endif; ?>
@@ -264,8 +708,6 @@
 
                                         <!-- Official Signatory Block -->
                                         <div class="letter-signature-section">
-                                            <p class="mb-1">Sincerely,</p>
-                                            <p class="company-sign-for">For <strong><?= htmlspecialchars($companyName) ?></strong></p>
                                             <div class="signature-block">
                                                 <?php if ((!isset($letter['include_signature']) || $letter['include_signature'] == 1) && !empty($sigUrl)): ?>
                                                     <div style="height: 48px; margin-bottom: 5px;">
@@ -275,8 +717,8 @@
                                                     <div style="height: 48px; margin-bottom: 5px;"></div>
                                                 <?php endif; ?>
                                                 <div class="sign-line"></div>
-                                                <span class="signatory-name"><?= htmlspecialchars($letter['signatory_name']) ?></span>
-                                                <span class="signatory-title"><?= htmlspecialchars($letter['signatory_title']) ?></span>
+                                                <span class="signatory-name"><?= htmlspecialchars($letter['signatory_name'] ?? '') ?></span>
+                                                <span class="signatory-title"><?= htmlspecialchars($letter['signatory_title'] ?? '') ?></span>
                                                 <span class="signatory-dept">Human Resources Department</span>
                                             </div>
                                         </div>

@@ -209,10 +209,10 @@
                                             <a href="<?= $GLOBALS['base_url'] ?>/edit-letter/<?= $letter['id'] ?>" class="btn btn-primary btn-sm" title="Edit">
                                                 <i class="fa fa-edit"></i>
                                             </a>
-                                            <a href="<?= $GLOBALS['base_url'] ?>/pdf-letter/<?= $letter['id'] ?>" class="btn btn-danger btn-sm" target="_blank" title="PDF">
+                                            <a href="<?= $GLOBALS['base_url'] ?>/pdf-letter/<?= $letter['id'] ?>?fit=1" class="btn btn-danger btn-sm" target="_blank" title="Download PDF (Fit to 1 Page)">
                                                 <i class="fa fa-file-pdf"></i>
                                             </a>
-                                            <a href="<?= $GLOBALS['base_url'] ?>/print-letter/<?= $letter['id'] ?>" class="btn btn-secondary btn-sm" target="_blank" title="Print">
+                                            <a href="<?= $GLOBALS['base_url'] ?>/print-letter/<?= $letter['id'] ?>?fit=1" class="btn btn-secondary btn-sm" target="_blank" title="Print Letter (Fit to 1 Page)">
                                                 <i class="fa fa-print"></i>
                                             </a>
                                             <a href="<?= $GLOBALS['base_url'] ?>/delete-letter/<?= $letter['id'] ?>" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')">
