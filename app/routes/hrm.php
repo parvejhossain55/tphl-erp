@@ -354,6 +354,7 @@ return [
     'meal-tracker-history' => ['controller' => 'MealTrackerController', 'method' => 'history'],
     'api/employee/today-meal-status' => ['controller' => 'MealTrackerController', 'method' => 'getTodayMealStatus'],
     'api/employee/toggle-today-meal' => ['controller' => 'MealTrackerController', 'method' => 'toggleTodayMeal'],
-    'api/meal-tracker/sync-attendance' => ['controller' => 'MealTrackerController', 'method' => 'syncAttendance']
+    'api/meal-tracker/sync-attendance' => ['controller' => 'MealTrackerController', 'method' => 'syncAttendance'],
+    'my-meal-tracker' => ['controller' => 'MealTrackerController', 'method' => 'myMeals']
 ];
 

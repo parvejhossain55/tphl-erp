@@ -511,5 +511,197 @@ class MealTrackerController extends Controller
         echo json_encode($res);
         exit;
     }
+
+    /**
+     * Employee Self-Service: My Meal Tracker
+     * Accessible to employees with is_meal_deduction = 1
+     */
+    public function myMeals()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!isset($_SESSION['user']['id'])) {
+            header("Location: {$GLOBALS['base_url']}/login");
+            exit;
+        }
+
+        $userId = (int)$_SESSION['user']['id'];
+        $empId  = (int)($_SESSION['user']['employee_db_id'] ?? 0);
+
+        if (!$empId && $userId > 0) {
+            $uEmpId = (int)($_SESSION['user']['employee_id'] ?? 0);
+            if ($uEmpId > 0) {
+                $chkRes = $this->db->query("SELECT id FROM employees WHERE id = {$uEmpId} AND deleted_at IS NULL LIMIT 1");
+                if ($chkRes && $chkRow = $chkRes->fetch_assoc()) {
+                    $empId = (int)$chkRow['id'];
+                    $_SESSION['user']['employee_db_id'] = $empId;
+                }
+            }
+            if (!$empId) {
+                $chkRes = $this->db->query("SELECT id FROM employees WHERE user_id = {$userId} AND deleted_at IS NULL LIMIT 1");
+                if ($chkRes && $chkRow = $chkRes->fetch_assoc()) {
+                    $empId = (int)$chkRow['id'];
+                    $_SESSION['user']['employee_db_id'] = $empId;
+                }
+            }
+        }
+
+        // Fetch employee details
+        $employee = null;
+        if ($empId > 0) {
+            $empSql = "
+                SELECT e.*, 
+                       d.name AS designation_name,
+                       dept.name AS department_name,
+                       b.name AS branch_name
+                FROM employees e
+                LEFT JOIN designations d ON e.designation_id = d.id
+                LEFT JOIN departments dept ON e.department_id = dept.id
+                LEFT JOIN office_branches b ON e.office_branch_id = b.id
+                WHERE e.id = {$empId} AND e.deleted_at IS NULL
+                LIMIT 1
+            ";
+            $empRes = $this->db->query($empSql);
+            if ($empRes) {
+                $employee = $empRes->fetch_assoc();
+            }
+        }
+
+        $isEnrolled = ($employee && (int)($employee['is_meal_deduction'] ?? 0) === 1);
+
+        // If not enrolled or no employee profile, show friendly notice
+        if (!$employee || !$isEnrolled) {
+            return $this->view('meal_tracker/my_meals', [
+                'current_route' => 'my-meal-tracker',
+                'page_title' => 'My Meal Tracker',
+                'employee' => $employee,
+                'is_enrolled' => false
+            ]);
+        }
+
+        // Fetch all meal projects (cycles)
+        $mealProjects = $this->mealProjectModel->getAll();
+
+        date_default_timezone_set('Asia/Dhaka');
+        $today = date('Y-m-d');
+
+        // Determine active/selected project
+        $selectedProjectId = isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
+        $activeProject = null;
+
+        if ($selectedProjectId > 0) {
+            foreach ($mealProjects as $p) {
+                if ((int)$p['id'] === $selectedProjectId) {
+                    $activeProject = $p;
+                    break;
+                }
+            }
+        }
+
+        // Default to active cycle covering today, or newest project
+        if (!$activeProject && !empty($mealProjects)) {
+            foreach ($mealProjects as $p) {
+                if (!empty($p['from_date']) && !empty($p['to_date'])) {
+                    if ($today >= $p['from_date'] && $today <= $p['to_date']) {
+                        $activeProject = $p;
+                        $selectedProjectId = (int)$p['id'];
+                        break;
+                    }
+                }
+            }
+            if (!$activeProject) {
+                $activeProject = $mealProjects[0];
+                $selectedProjectId = (int)$activeProject['id'];
+            }
+        }
+
+        // Build list of dates for the cycle
+        $dates = [];
+        $records = [];
+        $optOuts = [];
+        $attendances = [];
+
+        $totalConsumed = 0;
+        $totalSkipped = 0;
+        $totalScheduled = 0;
+        $latestUpdated = null;
+
+        $standardRate = (float)($activeProject['standard_meal_amount'] ?? 120.00);
+        $percentage = (float)($employee['per_meal_percentage'] ?? 100.00);
+        $employeeRate = round(($standardRate * $percentage) / 100, 2);
+        $subsidyRate = max(0, $standardRate - $employeeRate);
+
+        if ($activeProject && !empty($activeProject['from_date']) && !empty($activeProject['to_date'])) {
+            $from = new DateTime($activeProject['from_date']);
+            $to = new DateTime($activeProject['to_date']);
+            $to->modify('+1 day');
+            $period = new DatePeriod($from, new DateInterval('P1D'), $to);
+
+            foreach ($period as $dt) {
+                $dates[] = $dt->format('Y-m-d');
+            }
+
+            // Fetch records, opt-outs, and attendances
+            $records = $this->mealRecordModel->getEmployeeDetailedRecords($empId, $activeProject['id']);
+            $optOuts = $this->mealRecordModel->getEmployeeOptOutsInRange($empId, $activeProject['from_date'], $activeProject['to_date']);
+            $attendances = $this->mealRecordModel->getEmployeeAttendancesInRange($empId, $activeProject['from_date'], $activeProject['to_date']);
+
+            foreach ($dates as $d) {
+                $isConsumed = isset($records[$d]) ? (int)$records[$d]['is_consumed'] : null;
+                $updatedAt = $records[$d]['updated_at'] ?? null;
+
+                if ($updatedAt && (!$latestUpdated || $updatedAt > $latestUpdated)) {
+                    $latestUpdated = $updatedAt;
+                }
+
+                if ($isConsumed === 1) {
+                    $totalConsumed++;
+                } elseif ($isConsumed === 0) {
+                    $totalSkipped++;
+                } else {
+                    if ($d <= $today) {
+                        $totalSkipped++;
+                    } else {
+                        $totalScheduled++;
+                    }
+                }
+            }
+        }
+
+        $totalDeduction = round($totalConsumed * $employeeRate, 2);
+        $totalCompanySubsidy = round($totalConsumed * $subsidyRate, 2);
+        $totalStandardAmount = round($totalConsumed * $standardRate, 2);
+
+        return $this->view('meal_tracker/my_meals', [
+            'current_route' => 'my-meal-tracker',
+            'page_title' => 'My Meal Tracker',
+            'employee' => $employee,
+            'is_enrolled' => true,
+            'mealProjects' => $mealProjects,
+            'activeProject' => $activeProject,
+            'selectedProjectId' => $selectedProjectId,
+            'dates' => $dates,
+            'records' => $records,
+            'optOuts' => $optOuts,
+            'attendances' => $attendances,
+            'today' => $today,
+            'stats' => [
+                'total_consumed' => $totalConsumed,
+                'total_skipped' => $totalSkipped,
+                'total_scheduled' => $totalScheduled,
+                'total_days' => count($dates),
+                'standard_rate' => $standardRate,
+                'percentage' => $percentage,
+                'employee_rate' => $employeeRate,
+                'subsidy_rate' => $subsidyRate,
+                'total_deduction' => $totalDeduction,
+                'total_company_subsidy' => $totalCompanySubsidy,
+                'total_standard_amount' => $totalStandardAmount,
+                'latest_updated' => $latestUpdated
+            ]
+        ]);
+    }
 }
 

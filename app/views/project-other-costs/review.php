@@ -263,7 +263,9 @@
                                 <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/pay/<?= $request['id'] ?>" enctype="multipart/form-data">
                                     <div class="mb-3">
                                         <label class="form-label fw-bold">Amount to Pay (৳)</label>
-                                        <input type="number" step="0.01" class="form-control form-control-lg" name="payment_amount" value="<?= $request['approved_amount'] ?? 0 ?>" required>
+                                        <?php $maxPay = (float)(!empty($request['approved_amount']) ? $request['approved_amount'] : $request['request_amount']); ?>
+                                        <input type="number" step="0.01" min="0.01" max="<?= $maxPay ?>" class="form-control form-control-lg" name="payment_amount" value="<?= $maxPay ?>" required>
+                                        <small class="text-muted d-block mt-1"><i class="bi bi-shield-check text-success me-1"></i>Approved limit: <strong>৳ <?= number_format($maxPay, 2) ?></strong> (cannot exceed this amount)</small>
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label fw-bold">Payment Date</label>

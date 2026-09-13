@@ -1555,7 +1555,7 @@
                     </li>
                 <?php endif; ?>
 
-                <!-- Meal Tracker Menu (Accessible to Admin, Operation, and HR roles) -->
+                <!-- Meal Tracker Menu (Accessible to Admin, Operation, HR roles and Enrolled Employees) -->
                 <?php
                 $mealUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
                 $mealUserRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
@@ -1564,14 +1564,50 @@
                     || (strpos($mealUserRoleName, 'operation') !== false)
                     || (strpos($mealUserRoleName, 'hr') !== false)
                     || hasPermission(['Hr Manage', 'HRM Management', 'Operation manage']);
+
+                // Check if logged-in user has is_meal_deduction = 1 in employees table
+                $userMealEmpId = (int)($_SESSION['user']['employee_db_id'] ?? 0);
+                $userId = (int)($_SESSION['user']['id'] ?? 0);
+                if ($userMealEmpId <= 0 && $userId > 0) {
+                    $uEmpId = (int)($_SESSION['user']['employee_id'] ?? 0);
+                    if ($uEmpId > 0) {
+                        $chkRes = $db->query("SELECT id, is_meal_deduction FROM employees WHERE id = {$uEmpId} AND deleted_at IS NULL LIMIT 1");
+                        if ($chkRes && $chkRow = $chkRes->fetch_assoc()) {
+                            $userMealEmpId = (int)$chkRow['id'];
+                            $_SESSION['user']['employee_db_id'] = $userMealEmpId;
+                            $_SESSION['user']['is_meal_deduction'] = (int)$chkRow['is_meal_deduction'];
+                        }
+                    }
+                    if ($userMealEmpId <= 0) {
+                        $chkRes = $db->query("SELECT id, is_meal_deduction FROM employees WHERE user_id = {$userId} AND deleted_at IS NULL LIMIT 1");
+                        if ($chkRes && $chkRow = $chkRes->fetch_assoc()) {
+                            $userMealEmpId = (int)$chkRow['id'];
+                            $_SESSION['user']['employee_db_id'] = $userMealEmpId;
+                            $_SESSION['user']['is_meal_deduction'] = (int)$chkRow['is_meal_deduction'];
+                        }
+                    }
+                }
+
+                $isMealEnrolled = false;
+                if ($userMealEmpId > 0) {
+                    if (!isset($_SESSION['user']['is_meal_deduction'])) {
+                        $chkMeal = $db->query("SELECT is_meal_deduction FROM employees WHERE id = {$userMealEmpId} AND deleted_at IS NULL LIMIT 1");
+                        if ($chkMeal && $rowM = $chkMeal->fetch_assoc()) {
+                            $_SESSION['user']['is_meal_deduction'] = (int)$rowM['is_meal_deduction'];
+                        } else {
+                            $_SESSION['user']['is_meal_deduction'] = 0;
+                        }
+                    }
+                    $isMealEnrolled = ((int)($_SESSION['user']['is_meal_deduction'] ?? 0) === 1);
+                }
                 ?>
                 <?php if ($canAccessMealTracker): ?>
                     <li class="sidebar__menu-category ">
                         <span class="category-name">Meal Management</span>
                     </li>
-                    <li class="slide has-sub <?= isActive(['meal-tracker', 'meal-tracker-history'], $current_route) ? 'active' : '' ?>">
+                    <li class="slide has-sub <?= isActive(['meal-tracker', 'meal-tracker-history', 'my-meal-tracker'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['meal-tracker', 'meal-tracker-history'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['meal-tracker', 'meal-tracker-history', 'my-meal-tracker'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-utensils"></i></div>
                             <span class="sidebar__menu-label">Meal Tracker</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -1585,7 +1621,25 @@
                                 <a href="<?= $base_url ?>/meal-tracker-history"
                                     class="sidebar__menu-item <?= isActive('meal-tracker-history', $current_route) ?>">Meal History</a>
                             </li>
+                            <?php if ($isMealEnrolled): ?>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/my-meal-tracker"
+                                        class="sidebar__menu-item <?= isActive('my-meal-tracker', $current_route) ?>">My Meal Tracker</a>
+                                </li>
+                            <?php endif; ?>
                         </ul>
+                    </li>
+                <?php elseif ($isMealEnrolled): ?>
+                    <!-- Dedicated menu for enrolled employee -->
+                    <li class="sidebar__menu-category ">
+                        <span class="category-name">Meal Service</span>
+                    </li>
+                    <li class="slide <?= isActive('my-meal-tracker', $current_route) ? 'active' : '' ?>">
+                        <a href="<?= $base_url ?>/my-meal-tracker"
+                            class="sidebar__menu-item <?= isActive('my-meal-tracker', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-bowl-food"></i></div>
+                            <span class="sidebar__menu-label">My Meal Tracker</span>
+                        </a>
                     </li>
                 <?php endif; ?>
 

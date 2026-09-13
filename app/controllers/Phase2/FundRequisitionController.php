@@ -1624,7 +1624,11 @@ class FundRequisitionController extends Controller {
         $requestType = $row['requisition_type'];
         $title = "Fund Requisition: " . (mb_strlen($row['purpose']) > 80 ? mb_substr($row['purpose'], 0, 80) . '...' : $row['purpose']);
         $amount = (float)$row['amount'];
-        $approvedAmount = !empty($row['approved_amount']) ? (float)$row['approved_amount'] : (in_array($row['status'], ['approved', 'paid']) ? $amount : 0);
+        $approvedAmount = (!empty($row['approved_amount']) && (float)$row['approved_amount'] > 0)
+            ? (float)$row['approved_amount']
+            : ((!empty($row['qc_approved_amount']) && (float)$row['qc_approved_amount'] > 0)
+                ? (float)$row['qc_approved_amount']
+                : (in_array($row['status'], ['approved', 'paid']) ? $amount : 0));
         if ($approvedAmount == 0 && $row['status'] === 'pending_dept') {
             $approvedAmount = $amount;
         }

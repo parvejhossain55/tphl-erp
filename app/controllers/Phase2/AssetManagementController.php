@@ -728,6 +728,26 @@ class AssetManagementController extends Controller
             $paymentMethod = $_POST['payment_method'] ?? 'Cash';
             $paidAmount = (float)($_POST['paid_amount'] ?? 0);
 
+            $req = $this->model->findExtraPurchase($id);
+            if (!$req) {
+                setError("Procurement request not found.");
+                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                exit;
+            }
+
+            $maxAllowed = (float)($req['total_price'] ?? 0);
+            if ($paidAmount <= 0) {
+                setError("Payment amount must be greater than 0.");
+                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                exit;
+            }
+
+            if ($paidAmount > $maxAllowed + 0.01) {
+                setError("Payment amount (৳" . number_format($paidAmount, 2) . ") cannot exceed the approved procurement price (৳" . number_format($maxAllowed, 2) . ").");
+                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                exit;
+            }
+
             $attachment = null;
             if (isset($_FILES['payment_attachment']) && $_FILES['payment_attachment']['error'] === UPLOAD_ERR_OK) {
                 $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/procurement/';

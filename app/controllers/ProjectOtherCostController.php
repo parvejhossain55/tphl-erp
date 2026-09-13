@@ -281,8 +281,28 @@ class ProjectOtherCostController extends Controller
     public function pay($id)
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $paymentAmount = $_POST['payment_amount'] ?? 0;
+            $request = $this->otherCostModel->getById($id);
+            if (!$request) {
+                setError("Request not found.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
+                exit();
+            }
+
+            $paymentAmount = (float)($_POST['payment_amount'] ?? 0);
             $paymentAt = $_POST['payment_at'] ?? date('Y-m-d H:i:s');
+            $maxAllowed = (float)(!empty($request['approved_amount']) ? $request['approved_amount'] : $request['request_amount']);
+
+            if ($paymentAmount <= 0) {
+                setError("Payment amount must be greater than 0.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                exit();
+            }
+
+            if ($paymentAmount > $maxAllowed) {
+                setError("Payment amount (৳" . number_format($paymentAmount, 2) . ") cannot exceed the approved amount (৳" . number_format($maxAllowed, 2) . ").");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                exit();
+            }
             
             $data = [
                 'payment_by_id' => $_SESSION['user']['id'],

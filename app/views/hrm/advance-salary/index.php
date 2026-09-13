@@ -162,7 +162,9 @@
                                                                 
                                                                 <div class="mb-3">
                                                                     <label class="form-label" style="font-size: 0.85rem; font-weight: 500;">Final Payout Amount <span class="text-danger">*</span></label>
-                                                                    <input type="number" step="0.01" class="form-control" name="paid_amount" value="<?= htmlspecialchars($adv['amount'] ?? '') ?>" placeholder="Enter approved amount" required>
+                                                                    <?php $maxAdv = (float)($adv['amount'] ?? 0); ?>
+                                                                    <input type="number" step="0.01" min="0.01" max="<?= $maxAdv ?>" class="form-control" name="paid_amount" value="<?= htmlspecialchars($adv['amount'] ?? '') ?>" placeholder="Enter approved amount" required>
+                                                                    <small class="text-muted d-block mt-1" style="font-size: 0.75rem;"><i class="bi bi-shield-check text-success me-1"></i>Approved limit: <strong>৳ <?= number_format($maxAdv, 2) ?></strong> (cannot exceed this amount)</small>
                                                                 </div>
                                                                 
                                                                 <div class="mb-4">
