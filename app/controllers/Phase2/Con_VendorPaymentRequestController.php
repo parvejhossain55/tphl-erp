@@ -49,7 +49,7 @@ class Con_VendorPaymentRequestController extends Controller
     private function canApprove()
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        if ($this->userRole === 33 || $roleName === 'chief officer') {
+        if (in_array($this->userRole, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             return false;
         }
         return (
@@ -66,7 +66,7 @@ class Con_VendorPaymentRequestController extends Controller
     {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        if ($roleId === 33 || $roleName === 'chief officer') {
+        if (in_array($roleId, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             return false;
         }
         return (
@@ -113,7 +113,7 @@ class Con_VendorPaymentRequestController extends Controller
     private function canProcessPayment()
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        if ($this->userRole === 33 || $roleName === 'chief officer') {
+        if (in_array($this->userRole, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             return false;
         }
         return (
@@ -134,7 +134,7 @@ class Con_VendorPaymentRequestController extends Controller
         // Other roles only see their own requests OR requests for projects they are assigned to
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         $isPrivileged = (
-            in_array($this->userRole, [1, 3, 33, 6, 22, 17, 23, 31])
+            in_array($this->userRole, [1, 3, 33, 34, 35, 6, 22, 17, 23, 31])
             || strpos($roleName, 'admin') !== false
             || strpos($roleName, 'management') !== false
             || strpos($roleName, 'accounts') !== false

@@ -733,8 +733,8 @@ class Con_WorkOrderController extends Controller
         $uid = $this->userId;
         $rid = $this->userRole;
 
-        // Admin, Director, PM Head → see ALL projects
-        if (in_array($rid, [1, 3, 33, 22])) {
+        // Admin, Director, PM Head, Management Viewer, SEAL CEO → see ALL projects
+        if (in_array($rid, [1, 3, 33, 34, 35, 22])) {
             $filter = "1=1";
         } else {
             // All other roles → only their assigned projects

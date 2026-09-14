@@ -10,7 +10,7 @@ $awaitingApproval = [];
 $readyToPay       = [];
 
 $roleNameLower = strtolower($_SESSION['user']['role_name'] ?? '');
-$isChiefOfficer = ((int)$userRole === 33 || $roleNameLower === 'chief officer');
+$isChiefOfficer = (in_array((int)$userRole, [33, 34, 35], true) || in_array($roleNameLower, ['chief officer', 'management viewer', 'seal ceo'], true));
 $isQc = !$isChiefOfficer && (in_array($userRole, [1, 24, 25]) || strpos($roleNameLower, 'qc') !== false || strpos($roleNameLower, 'audit') !== false);
 $isMgmt = !$isChiefOfficer && (in_array($userRole, [1, 3, 22, 20, 32]) || strpos($roleNameLower, 'operation') !== false || strpos($roleNameLower, 'management') !== false || strpos($roleNameLower, 'admin') !== false);
 

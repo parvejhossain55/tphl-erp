@@ -31,8 +31,8 @@ class ErpTrackerController extends Controller
         $user_id = $_SESSION['user']['id'];
         $role_id = $_SESSION['user']['role_id'];
         
-        // 1 = Super Admin, 3 = Management/Admin, 33 = Chief Officer
-        $isManagement = in_array($role_id, [1, 3, 33]);
+        // 1 = Super Admin, 3 = Management/Admin, 33 = Chief Officer, 34 = Management Viewer, 35 = SEAL CEO
+        $isManagement = in_array($role_id, [1, 3, 33, 34, 35]);
 
         if ($requireManagement && !$isManagement) {
             die("Access Denied. Management only.");

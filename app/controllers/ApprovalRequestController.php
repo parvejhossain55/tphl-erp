@@ -67,7 +67,7 @@ class ApprovalRequestController extends Controller
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-        $isChiefOfficer = ($userRoleId === 33 || $sessionRoleName === 'chief officer');
+        $isChiefOfficer = (in_array($userRoleId, [33, 34, 35], true) || in_array($sessionRoleName, ['chief officer', 'management viewer', 'seal ceo'], true));
 
         $status = $_GET['status'] ?? '';
         if ($status === '' && $isChiefOfficer) {
@@ -138,9 +138,9 @@ class ApprovalRequestController extends Controller
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
-        if ($userRoleId === 33 || $sessionRoleName === 'chief officer') {
+        if (in_array($userRoleId, [33, 34, 35], true) || in_array($sessionRoleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             ob_clean();
-            echo json_encode(['success' => false, 'message' => 'Chief Officer is not authorized to approve or reject requests.']);
+            echo json_encode(['success' => false, 'message' => 'This role is not authorized to approve or reject requests (View-Only Access).']);
             exit;
         }
 
@@ -204,15 +204,15 @@ class ApprovalRequestController extends Controller
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
-        // Chief Officer has NO approval tasks: return 0 pending, employee category, interval 0
-        if ($userRoleId === 33 || $userRoleName === 'chief officer') {
+        // Chief Officer, Management Viewer & SEAL CEO have NO approval tasks: return 0 pending, employee category, interval 0
+        if (in_array($userRoleId, [33, 34, 35], true) || in_array($userRoleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             ob_clean();
             echo json_encode([
                 'success'              => true,
                 'user_id'              => $userId,
                 'role_id'              => $userRoleId,
                 'role_category'        => 'employee',
-                'role_badge'           => 'CHIEF OFFICER DESK',
+                'role_badge'           => 'VIEW ONLY DESK',
                 'interval_hours'       => 0,
                 'interval_ms'          => 0,
                 'headline'             => '',

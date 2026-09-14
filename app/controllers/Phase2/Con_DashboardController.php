@@ -79,7 +79,7 @@ class Con_DashboardController extends Controller
         $recentFunds = $this->db->query($recentFundsQuery)->fetch_all(MYSQLI_ASSOC);
 
         $statusFilter = "b.status = 'pending'";
-        if (in_array($userRole, [1, 3, 33])) {
+        if (in_array($userRole, [1, 3, 33, 34, 35])) {
             $statusFilter = "b.status = 'pm_approved'";
         }
 
@@ -451,7 +451,7 @@ class Con_DashboardController extends Controller
         // Fetch pending Land requisitions and Petty Cash requests for Management / Admin
         $pendingLandRequisitions = [];
         $pendingPettyCash = [];
-        if (in_array($userRole, [1, 3, 33])) {
+        if (in_array($userRole, [1, 3, 33, 34, 35])) {
             $landProjFilter = $selectedProjectId ? " AND la.project_id = $selectedProjectId " : "";
             $rLandReq = $this->db->query("
                 SELECT lfr.*, la.land_owner_name, p.name as project_name, u.full_name as requester_name

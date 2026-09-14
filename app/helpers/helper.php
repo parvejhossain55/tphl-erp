@@ -186,6 +186,8 @@ function redirectByRole()
         case 1: // Super Admin
         case 3: // Admin
         case 33: // Chief Officer
+        case 34: // Management Viewer
+        case 35: // SEAL CEO / Management Viewer
             $url = "{$GLOBALS['base_url']}/home";
             break;
 

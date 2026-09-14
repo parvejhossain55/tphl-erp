@@ -53,7 +53,7 @@ class Con_ContractorBillController extends Controller
     private function canApprove()
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        if ($this->userRole === 33 || $roleName === 'chief officer') {
+        if (in_array($this->userRole, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             return false;
         }
         return (
@@ -70,10 +70,10 @@ class Con_ContractorBillController extends Controller
     /** QC & Internal Audit role or specific permission check */
     private function canApproveQC()
     {
-        if (in_array($this->userRole, [3, 22, 20, 33])) return false;
+        if (in_array($this->userRole, [3, 22, 20, 33, 34, 35])) return false;
         if (in_array($this->userRole, [1, 24, 25])) return true;
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        if ($this->userRole === 33 || $roleName === 'chief officer') return false;
+        if (in_array($this->userRole, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) return false;
         return (
             str_contains($roleName, 'qc') 
             || str_contains($roleName, 'quality controller') 
@@ -87,7 +87,7 @@ class Con_ContractorBillController extends Controller
     /** Roles 1, 3, 6 (Accounts) can process payments */
     private function canProcessPayment()
     {
-        if ($this->userRole === 33 || strtolower($_SESSION['user']['role_name'] ?? '') === 'chief officer') {
+        if (in_array($this->userRole, [33, 34, 35], true) || in_array(strtolower($_SESSION['user']['role_name'] ?? ''), ['chief officer', 'management viewer', 'seal ceo'], true)) {
             return false;
         }
         return in_array($this->userRole, [1, 3, 6, 30]);

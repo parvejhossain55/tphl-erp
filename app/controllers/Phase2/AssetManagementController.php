@@ -402,14 +402,14 @@ class AssetManagementController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userId = (int)($_SESSION['user']['id'] ?? 0);
 
-        $isChiefOfficer = ($roleId === 33 || strtolower(trim($_SESSION['user']['role_name'] ?? '')) === 'chief officer');
+        $isChiefOfficer = (in_array($roleId, [33, 34, 35], true) || in_array(strtolower(trim($_SESSION['user']['role_name'] ?? '')), ['chief officer', 'management viewer', 'seal ceo'], true));
         $isSuperAdmin   = in_array($roleId, [1, 3]) && !$isChiefOfficer; // Admin (1) and super Admin (3) ONLY. Role 2 is Employee!
         $isOperations   = ($isSuperAdmin || in_array($roleId, [20, 32])) && !$isChiefOfficer;
         $isPurchaseHead = ($isSuperAdmin || in_array($roleId, [17, 31])) && !$isChiefOfficer;
         $isQcAudit      = ($isSuperAdmin || in_array($roleId, [24, 25])) && !$isChiefOfficer;
         $isManagement   = $isSuperAdmin && !$isChiefOfficer;
         $isAccounts     = ($isSuperAdmin || in_array($roleId, [6, 30])) && !$isChiefOfficer;
-        $isGlobalViewer = in_array($roleId, [1, 3, 33, 6, 17, 20, 24, 25, 30, 31, 32]);
+        $isGlobalViewer = in_array($roleId, [1, 3, 33, 34, 35, 6, 17, 20, 24, 25, 30, 31, 32]);
         $isApprover     = $isGlobalViewer && !$isChiefOfficer;
 
         $activeTab  = $_GET['tab'] ?? ($isApprover ? 'all_requests' : 'my_requests');
@@ -600,9 +600,9 @@ class AssetManagementController extends Controller
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
             $userId = (int)($_SESSION['user']['id'] ?? 1);
-            $isChiefOfficer = ($roleId === 33 || strtolower(trim($_SESSION['user']['role_name'] ?? '')) === 'chief officer');
+            $isChiefOfficer = (in_array($roleId, [33, 34, 35], true) || in_array(strtolower(trim($_SESSION['user']['role_name'] ?? '')), ['chief officer', 'management viewer', 'seal ceo'], true));
             if ($isChiefOfficer) {
-                setError("Access denied: Chief Officer has view-only access.");
+                setError("Access denied: You have view-only access.");
                 header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
                 exit;
             }

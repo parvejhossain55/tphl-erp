@@ -756,7 +756,7 @@ class CashoutRequestController extends Controller
     {
         $roleId = (int) $this->userRole;
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        if ($roleId === 33 || $roleName === 'chief officer') {
+        if (in_array($roleId, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             return false;
         }
         return in_array($roleId, [1, 3], true)
@@ -764,13 +764,13 @@ class CashoutRequestController extends Controller
     }
 
     /**
-     * Full admin access: roles 1 (Admin), 3 (Super Admin), 33 (Chief Officer),
+     * Full admin access: roles 1 (Admin), 3 (Super Admin), 33 (Chief Officer), 34 (Management Viewer), 35 (SEAL CEO),
      * Accounts (6, 30), Marketing (10), and Operation Head (20, 32).
      */
     private function isAdminUser()
     {
         $roleId = (int) $this->userRole;
-        return in_array($roleId, [1, 3, 6, 10, 20, 30, 32, 33], true)
+        return in_array($roleId, [1, 3, 6, 10, 20, 30, 32, 33, 34, 35], true)
             || $this->isManagementUser()
             || $this->isSiteOperator();
     }
@@ -783,7 +783,7 @@ class CashoutRequestController extends Controller
     {
         $roleId = (int) $this->userRole;
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        if ($roleId === 33 || $roleName === 'chief officer') {
+        if (in_array($roleId, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             return false;
         }
 
@@ -805,7 +805,7 @@ class CashoutRequestController extends Controller
     {
         $roleId = (int) $this->userRole;
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        if ($roleId === 33 || $roleName === 'chief officer') {
+        if (in_array($roleId, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             return false;
         }
         if (in_array($this->userRole, [1, 24, 25])) return true;

@@ -561,7 +561,7 @@ $hasTransactions = !empty($recentTransactions);
     <!-- Payment Methods & Recent Bookings -->
     <div class="row ">
 
-        <?php if ((int)($_SESSION['user']['role_id'] ?? 0) !== 33): ?>
+        <?php if (!in_array((int)($_SESSION['user']['role_id'] ?? 0), [33, 34, 35], true)): ?>
         <div class="col-xl-6 col-lg-6 col-md-12 col-12 mt-2">
             <div class="card__wrapper h-100">
                 <div class="card-header_title pt-3 border-bottom-0">
@@ -716,7 +716,7 @@ $hasTransactions = !empty($recentTransactions);
         <?php endif; ?>
 
         <!-- Recent Bookings (All Bookings) -->
-        <div class="<?= ((int)($_SESSION['user']['role_id'] ?? 0) === 33) ? 'col-12' : 'col-xl-6 col-lg-6 col-md-12 col-12' ?> mt-2">
+        <div class="<?= (in_array((int)($_SESSION['user']['role_id'] ?? 0), [33, 34, 35], true)) ? 'col-12' : 'col-xl-6 col-lg-6 col-md-12 col-12' ?> mt-2">
             <div class="card__wrapper h-100 ">
                 <div class="card-header pt-3 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
                     <h6 class="mb-2 mb-md-0">All Bookings</h6>

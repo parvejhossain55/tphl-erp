@@ -360,7 +360,7 @@
         <?php
         $userRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
         $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-        $isChiefOfficer = ($userRoleId === 33 || $sessionRoleName === 'chief officer');
+        $isChiefOfficer = (in_array($userRoleId, [33, 34, 35], true) || in_array($sessionRoleName, ['chief officer', 'management viewer', 'seal ceo'], true));
         ?>
         <div class="p-3 bg-light border-bottom d-flex flex-wrap align-items-center justify-content-between gap-3">
             <div class="d-flex align-items-center gap-2">
@@ -376,7 +376,7 @@
                     </button>
                 <?php else: ?>
                     <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fs-12 px-3 py-2">
-                        <i class="fa-solid fa-eye me-1"></i> View-Only Access (Role: Chief Officer)
+                        <i class="fa-solid fa-eye me-1"></i> View-Only Access (Role: <?= htmlspecialchars($_SESSION['user']['role_name'] ?? 'View-Only') ?>)
                     </span>
                 <?php endif; ?>
             </div>
@@ -484,7 +484,7 @@
                                 $isMgmtRequest = ($reqApproveRole === 'management');
                                 $userRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
                                 $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-                                $isChiefOfficer = ($userRoleId === 33 || $sessionRoleName === 'chief officer');
+                                $isChiefOfficer = (in_array($userRoleId, [33, 34, 35], true) || in_array($sessionRoleName, ['chief officer', 'management viewer', 'seal ceo'], true));
 
                                 $isManagementUser = (in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management'], true)) && !$isChiefOfficer;
                                 $isSiteOperator = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
