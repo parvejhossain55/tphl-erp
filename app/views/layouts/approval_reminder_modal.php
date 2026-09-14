@@ -9,6 +9,11 @@ if (empty($_SESSION['user']['id'])) {
 $currentUserId = (int)$_SESSION['user']['id'];
 $currentUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
 $currentUserRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+// Chief Officer has no approval or disbursement tasks: disable modal & timer completely
+if ($currentUserRoleId === 33 || $currentUserRoleName === 'chief officer') {
+    return;
+}
 ?>
 
 <!-- Approval & Disbursement Reminder Modal -->

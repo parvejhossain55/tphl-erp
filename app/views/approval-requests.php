@@ -109,9 +109,11 @@
                                                 <?php endif; ?>
                                                 <?php
                                                 $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-                                                $isMgmt = in_array($userRoleId, [1, 3, 33], true);
+                                                $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+                                                $isChiefOfficer = ($userRoleId === 33 || $sessionRoleName === 'chief officer');
+                                                $isMgmt = in_array($userRoleId, [1, 3], true) && !$isChiefOfficer;
                                                 $isSiteOp = ($userRoleId === 20);
-                                                $canAct = $isMgmt || ($isSiteOp && (float)($req['request_amount'] ?? 0) <= 100000) || !in_array(strtolower($req['approve_role'] ?? ''), ['management']);
+                                                $canAct = !$isChiefOfficer && ($isMgmt || ($isSiteOp && (float)($req['request_amount'] ?? 0) <= 100000) || !in_array(strtolower($req['approve_role'] ?? ''), ['management']));
                                                 ?>
                                                 <?php if ($canAct): ?>
                                                     <?php if ($req['request_type'] !== 'manpower_requisition'): ?>

@@ -44,8 +44,8 @@ class ApprovalRequestController extends Controller
             $roles = ['accounts'];
         }
         
-        // Let's add management for Admins, Chief Officer and Site Operators / Operation Heads
-        if(in_array($roleId, [1, 3, 20, 33])) {
+        // Let's add management for Admins and Site Operators / Operation Heads
+        if(in_array($roleId, [1, 3, 20])) {
             $roles[] = 'management';
         }
 
@@ -64,13 +64,17 @@ class ApprovalRequestController extends Controller
      */
     public function allApprovalRequests()
     {
-        $status = $_GET['status'] ?? '';
-        $department = $_GET['department'] ?? '';
-        $sourceTable = $_GET['source_table'] ?? '';
-
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isChiefOfficer = ($userRoleId === 33 || $sessionRoleName === 'chief officer');
+
+        $status = $_GET['status'] ?? '';
+        if ($status === '' && $isChiefOfficer) {
+            $status = 'all_pending';
+        }
+        $department = $_GET['department'] ?? '';
+        $sourceTable = $_GET['source_table'] ?? '';
 
         $filters = [
             'status'       => $status,
@@ -133,7 +137,14 @@ class ApprovalRequestController extends Controller
 
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-        $isManagement = in_array($userRoleId, [1, 3, 33], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+
+        if ($userRoleId === 33 || $sessionRoleName === 'chief officer') {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Chief Officer is not authorized to approve or reject requests.']);
+            exit;
+        }
+
+        $isManagement = in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management'], true);
         $isSiteOperator = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
 
         foreach ($requestIds as $id) {
@@ -193,6 +204,28 @@ class ApprovalRequestController extends Controller
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
+        // Chief Officer has NO approval tasks: return 0 pending, employee category, interval 0
+        if ($userRoleId === 33 || $userRoleName === 'chief officer') {
+            ob_clean();
+            echo json_encode([
+                'success'              => true,
+                'user_id'              => $userId,
+                'role_id'              => $userRoleId,
+                'role_category'        => 'employee',
+                'role_badge'           => 'CHIEF OFFICER DESK',
+                'interval_hours'       => 0,
+                'interval_ms'          => 0,
+                'headline'             => '',
+                'sub_headline'         => '',
+                'quote'                => '',
+                'total_pending'        => 0,
+                'total_pending_amount' => 0,
+                'groups'               => [],
+                'view_all_url'         => $GLOBALS['base_url'] . '/all-approval-requests'
+            ]);
+            exit;
+        }
+
         // Determine Interval & Role Metas
         $intervalHours = 1;
         $intervalMs = 3600 * 1000;
@@ -202,7 +235,7 @@ class ApprovalRequestController extends Controller
         $quote = 'Your prompt action keeps TPHL moving with confidence.';
         $roleCategory = 'general';
 
-        if (in_array($userRoleId, [1, 3, 33], true) || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer'], true)) {
+        if (in_array($userRoleId, [1, 3], true) || in_array($userRoleName, ['super admin', 'admin', 'management'], true)) {
             $intervalHours = 6;
             $intervalMs = 6 * 3600 * 1000;
             $roleBadge = 'MANAGEMENT EXECUTIVE DESK';

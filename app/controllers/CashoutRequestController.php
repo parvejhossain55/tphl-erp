@@ -756,8 +756,11 @@ class CashoutRequestController extends Controller
     {
         $roleId = (int) $this->userRole;
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        return in_array($roleId, [1, 3, 33], true)
-            || in_array($roleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+        if ($roleId === 33 || $roleName === 'chief officer') {
+            return false;
+        }
+        return in_array($roleId, [1, 3], true)
+            || in_array($roleName, ['super admin', 'admin', 'management'], true);
     }
 
     /**
@@ -773,11 +776,17 @@ class CashoutRequestController extends Controller
     }
 
     /**
-     * Management (roles 1, 3, 33) can approve any amount.
+     * Management (roles 1, 3) can approve any amount.
      * Operation Head (roles 20, 32) can approve requests <= 100,000.
      */
     public function canApproveOrReject($amount = null)
     {
+        $roleId = (int) $this->userRole;
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        if ($roleId === 33 || $roleName === 'chief officer') {
+            return false;
+        }
+
         if ($this->isManagementUser()) {
             return true;
         }
@@ -794,8 +803,12 @@ class CashoutRequestController extends Controller
 
     private function canApproveQC()
     {
-        if (in_array($this->userRole, [1, 24, 25])) return true;
+        $roleId = (int) $this->userRole;
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        if ($roleId === 33 || $roleName === 'chief officer') {
+            return false;
+        }
+        if (in_array($this->userRole, [1, 24, 25])) return true;
         return (str_contains($roleName, 'qc & internal audit') || hasPermission('QC & Internal Audit'));
     }
 

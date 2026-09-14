@@ -402,14 +402,15 @@ class AssetManagementController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $userId = (int)($_SESSION['user']['id'] ?? 0);
 
-        $isSuperAdmin   = in_array($roleId, [1, 3, 33]); // Admin (1) and super Admin (3) ONLY. Role 2 is Employee!
-        $isOperations   = $isSuperAdmin || in_array($roleId, [20, 32]);
-        $isPurchaseHead = $isSuperAdmin || in_array($roleId, [17, 31]);
-        $isQcAudit      = $isSuperAdmin || in_array($roleId, [24, 25]);
-        $isManagement   = $isSuperAdmin;
-        $isAccounts     = $isSuperAdmin || in_array($roleId, [6, 30]);
+        $isChiefOfficer = ($roleId === 33 || strtolower(trim($_SESSION['user']['role_name'] ?? '')) === 'chief officer');
+        $isSuperAdmin   = in_array($roleId, [1, 3]) && !$isChiefOfficer; // Admin (1) and super Admin (3) ONLY. Role 2 is Employee!
+        $isOperations   = ($isSuperAdmin || in_array($roleId, [20, 32])) && !$isChiefOfficer;
+        $isPurchaseHead = ($isSuperAdmin || in_array($roleId, [17, 31])) && !$isChiefOfficer;
+        $isQcAudit      = ($isSuperAdmin || in_array($roleId, [24, 25])) && !$isChiefOfficer;
+        $isManagement   = $isSuperAdmin && !$isChiefOfficer;
+        $isAccounts     = ($isSuperAdmin || in_array($roleId, [6, 30])) && !$isChiefOfficer;
         $isGlobalViewer = in_array($roleId, [1, 3, 33, 6, 17, 20, 24, 25, 30, 31, 32]);
-        $isApprover     = $isGlobalViewer;
+        $isApprover     = $isGlobalViewer && !$isChiefOfficer;
 
         $activeTab  = $_GET['tab'] ?? ($isApprover ? 'all_requests' : 'my_requests');
 
@@ -501,7 +502,7 @@ class AssetManagementController extends Controller
 
                 $canApprove = false;
                 $step = '';
-                if (!$isCreator) {
+                if (!$isCreator && !$isChiefOfficer) {
                     $dhStatus = $autoOpenRequest['dept_head_status'] ?? 'not_required';
                     if (($isReporterBoss || $isSuperAdmin) && $dhStatus === 'pending') {
                         $canApprove = true; $step = 'dept_head';
@@ -599,6 +600,12 @@ class AssetManagementController extends Controller
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
             $userId = (int)($_SESSION['user']['id'] ?? 1);
+            $isChiefOfficer = ($roleId === 33 || strtolower(trim($_SESSION['user']['role_name'] ?? '')) === 'chief officer');
+            if ($isChiefOfficer) {
+                setError("Access denied: Chief Officer has view-only access.");
+                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                exit;
+            }
             $req = $this->model->findExtraPurchase($id);
 
             if ($req && (int)$req['requested_by'] === $userId) {
@@ -640,7 +647,7 @@ class AssetManagementController extends Controller
             $reqTotal = (float)($req['total_price'] ?? 0);
             $isRole20Eligible = (in_array($roleId, [20, 32]) && $reqTotal <= 100000);
 
-            if (in_array($roleId, [1, 3, 33])) {
+            if (in_array($roleId, [1, 3])) {
                 $canApproveStep = true;
             } else {
                 if ($step === 'dept_head') {
@@ -661,7 +668,7 @@ class AssetManagementController extends Controller
                         $canApproveStep = true;
                     }
                 } elseif ($step === 'mgmt') {
-                    if (in_array($roleId, [1, 3, 33]) || $isRole20Eligible) {
+                    if (in_array($roleId, [1, 3]) || $isRole20Eligible) {
                         $canApproveStep = true;
                     }
                 }

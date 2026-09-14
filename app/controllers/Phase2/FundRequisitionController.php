@@ -132,7 +132,7 @@ class FundRequisitionController extends Controller {
 
         // Determine what status requires the current user's action
         $pendingCondition = "0";
-        if (in_array($roleId, [1, 3, 33])) { // Admin / Management
+        if (in_array($roleId, [1, 3])) { // Admin / Management
             $pendingCondition = "fr.status IN ('pending_dept', 'pending_qc', 'pending', 'partially_approved', 'partially_paid')";
         } elseif ($roleId == 24) { // QC
             $pendingCondition = "fr.status = 'pending_qc'";
@@ -636,7 +636,7 @@ class FundRequisitionController extends Controller {
         $sessionUserId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        if ($roleId !== 24 && !in_array($roleId, [1, 3, 33])) {
+        if ($roleId === 33 || ($roleId !== 24 && !in_array($roleId, [1, 3]))) {
             setError('Only QC & Internal Audit Head or Admins can approve this stage.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
@@ -821,7 +821,8 @@ class FundRequisitionController extends Controller {
 
     public function approve() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 3, 33, 20, 32])) {
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        if ($roleId === 33 || $roleName === 'chief officer' || !in_array($roleId, [1, 3, 20, 32])) {
             setError('Only Management, Admins, or Operation can approve requisitions.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
@@ -846,7 +847,7 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
-        if (in_array($roleId, [1, 3, 33])) {
+        if (in_array($roleId, [1, 3])) {
             $effectiveMax = (float)$frData['amount'];
         } else {
             // Operation Head (20, 32)

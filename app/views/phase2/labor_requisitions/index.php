@@ -1,10 +1,10 @@
 <?php
 $base      = $GLOBALS['base_url'];
 $isSE      = in_array($userRole, [12, 1]);
-$isPM      = in_array($userRole, [15, 22, 1, 3, 33]);
-$isQC      = in_array($userRole, [13, 24, 25, 1, 3, 33]);
-$isMgmt    = in_array($userRole, [3, 1, 33]);
-$isAccts   = in_array($userRole, [6, 30, 1, 3, 33]);
+$isPM      = in_array($userRole, [15, 22, 1, 3]);
+$isQC      = in_array($userRole, [13, 24, 25, 1, 3]);
+$isMgmt    = in_array($userRole, [3, 1]);
+$isAccts   = in_array($userRole, [6, 30, 1, 3]);
 $filterStatus = $_GET['status'] ?? '';
 $isPayView = $isAccts && $filterStatus === 'management_approved';
 

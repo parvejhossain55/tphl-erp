@@ -4,17 +4,19 @@ $userId = (int)($_SESSION['user']['id'] ?? 0);
 
 $canCreate = true; // Enable New Request button for all logged in users
 
+$isChiefOfficer = ($roleId === 33 || strtolower(trim($_SESSION['user']['role_name'] ?? '')) === 'chief officer');
+
 // Approval Pipeline Role Permissions (Admin=1, super Admin=3)
-$isAdminOrMgmt = in_array($roleId, [1, 3, 33]); 
-$isOperations   = $isAdminOrMgmt || in_array($roleId, [20, 32]); // Operations Step: Role 20, 32
-$isPurchaseHead = $isAdminOrMgmt || in_array($roleId, [17, 31]); // Purchase Head Step: Role 17, 31
-$isQcAudit      = $isAdminOrMgmt || in_array($roleId, [24, 25]); // QC & Internal Audit Step
+$isAdminOrMgmt = in_array($roleId, [1, 3]) && !$isChiefOfficer; 
+$isOperations   = ($isAdminOrMgmt || in_array($roleId, [20, 32])) && !$isChiefOfficer; // Operations Step: Role 20, 32
+$isPurchaseHead = ($isAdminOrMgmt || in_array($roleId, [17, 31])) && !$isChiefOfficer; // Purchase Head Step: Role 17, 31
+$isQcAudit      = ($isAdminOrMgmt || in_array($roleId, [24, 25])) && !$isChiefOfficer; // QC & Internal Audit Step
 $isManagement   = $isAdminOrMgmt;                               // Management Step
-$isAccounts     = $isAdminOrMgmt || in_array($roleId, [6, 30]);  // Accounts Payment
+$isAccounts     = ($isAdminOrMgmt || in_array($roleId, [6, 30])) && !$isChiefOfficer;  // Accounts Payment
 
 // Global approvers / viewers include Management, Operations, Purchase, QC/Audit, Accounts roles
 $isGlobalViewer = in_array($roleId, [1, 3, 33, 6, 17, 20, 24, 25, 30, 31, 32]);
-$isApprover     = $isGlobalViewer;
+$isApprover     = $isGlobalViewer && !$isChiefOfficer;
 $activeTab      = $_GET['tab'] ?? ($isApprover ? 'all_requests' : 'my_requests');
 
 $overallBadges = [

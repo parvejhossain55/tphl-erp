@@ -396,12 +396,13 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                     <?php 
                                     $userRoleId = (int) ($userRole ?? 0);
                                     $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-                                    $isFullManagement = in_array($userRoleId, [1, 3, 33], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
-                                    $isSiteOperatorUser = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
+                                    $isChiefOfficer = ($userRoleId === 33 || $sessionRoleName === 'chief officer');
+                                    $isFullManagement = (in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management'], true)) && !$isChiefOfficer;
+                                    $isSiteOperatorUser = (in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false) && !$isChiefOfficer;
 
                                     $reqAmount = (float)($request['amount'] ?? 0);
-                                    $canDirectApprove = $isFullManagement || ($isSiteOperatorUser && $reqAmount <= 100000.01);
-                                    $isQCOnlyUser = $canApproveQC && !$isFullManagement && !$isSiteOperatorUser;
+                                    $canDirectApprove = !$isChiefOfficer && ($isFullManagement || ($isSiteOperatorUser && $reqAmount <= 100000.01));
+                                    $isQCOnlyUser = $canApproveQC && !$isFullManagement && !$isSiteOperatorUser && !$isChiefOfficer;
                                     ?>
 
                                     <?php if ($isPending && $canDirectApprove && !$isAlreadyApproved): ?>

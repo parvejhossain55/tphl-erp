@@ -10,8 +10,9 @@ $awaitingApproval = [];
 $readyToPay       = [];
 
 $roleNameLower = strtolower($_SESSION['user']['role_name'] ?? '');
-$isQc = in_array($userRole, [1, 24, 25]) || strpos($roleNameLower, 'qc') !== false || strpos($roleNameLower, 'audit') !== false;
-$isMgmt = in_array($userRole, [1, 3, 33, 22, 20, 32]) || strpos($roleNameLower, 'operation') !== false || strpos($roleNameLower, 'management') !== false || strpos($roleNameLower, 'admin') !== false;
+$isChiefOfficer = ((int)$userRole === 33 || $roleNameLower === 'chief officer');
+$isQc = !$isChiefOfficer && (in_array($userRole, [1, 24, 25]) || strpos($roleNameLower, 'qc') !== false || strpos($roleNameLower, 'audit') !== false);
+$isMgmt = !$isChiefOfficer && (in_array($userRole, [1, 3, 22, 20, 32]) || strpos($roleNameLower, 'operation') !== false || strpos($roleNameLower, 'management') !== false || strpos($roleNameLower, 'admin') !== false);
 
 foreach ($pending ?? [] as $p) {
     $refType = $p['ref_type'];

@@ -6,7 +6,7 @@ $base          = $GLOBALS['base_url'];
 $isOwner    = ($req['requested_by'] == $sessionUserId);
 $isAccounts = in_array($sessionRoleId, [1, 6, 30]);
 $isAdmin    = in_array($sessionRoleId, [1, 3]);
-$canApprove = in_array($sessionRoleId, [1, 3, 33]) || (in_array($sessionRoleId, [20, 32]) && $req['amount'] <= 100000);
+$canApprove = in_array($sessionRoleId, [1, 3]) || (in_array($sessionRoleId, [20, 32]) && $req['amount'] <= 100000);
 $isVerified = !empty($req['accounts_settlement_verified']);
 
 $effectiveApprovedAmount = (!empty($req['approved_amount']) && (float)$req['approved_amount'] > 0)
@@ -422,7 +422,7 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
                                     <p class="fs-12 text-muted mb-0 mt-1">
                                         Awaiting approval from QC & Internal Audit Head (Role 24).
                                     </p>
-                                    <?php if (in_array($sessionRoleId, [24, 1, 3, 33])): ?>
+                                    <?php if (in_array($sessionRoleId, [24, 1, 3])): ?>
                                         <button class="btn btn-sm btn-info text-white mt-2 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#qcApproveModal">
                                             <i class="fa-solid fa-stamp me-1"></i> QC Head Approve / Reject
                                         </button>
@@ -453,7 +453,7 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
                                                 </span>
                                             </div>
                                         <?php endif; ?>
-                                        <?php if (in_array($sessionRoleId, [24, 1, 3, 33]) && (float)($req['qc_approved_amount'] ?? 0) < (float)$req['amount']): ?>
+                                        <?php if (in_array($sessionRoleId, [24, 1, 3]) && (float)($req['qc_approved_amount'] ?? 0) < (float)$req['amount']): ?>
                                             <div class="mt-2">
                                                 <button class="btn btn-sm btn-outline-info shadow-sm fw-medium" data-bs-toggle="modal" data-bs-target="#qcApproveModal">
                                                     <i class="fa-solid fa-pen-to-square me-1"></i> Update / Approve Remaining (QC)
@@ -526,7 +526,7 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
                                         </div>
                                     <?php endif; ?>
                                     <?php 
-                                    if (in_array($sessionRoleId, [1, 3, 33])) {
+                                    if (in_array($sessionRoleId, [1, 3])) {
                                         $maxApprovableMgmt = (float)$req['amount'];
                                     } else {
                                         $qcCapMgmt = (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0)
@@ -822,7 +822,7 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
 </div>
 
 <?php 
-$canApproveQc = in_array($sessionRoleId, [24, 1, 3, 33]);
+$canApproveQc = in_array($sessionRoleId, [24, 1, 3]);
 $canShowQcModal = $canApproveQc && ($req['status'] === 'pending_qc' || (!empty($req['qc_approved_by']) && (float)($req['qc_approved_amount'] ?? 0) < (float)$req['amount']));
 if ($canShowQcModal): 
 ?>
@@ -881,7 +881,7 @@ if ($req['status'] === 'pending_dept' && $canApproveDept):
 <?php endif; ?>
 
 <?php 
-if (in_array($sessionRoleId, [1, 3, 33])) {
+if (in_array($sessionRoleId, [1, 3])) {
     $maxApprovable = (float)$req['amount'];
 } else {
     $effectiveReqAmount = (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0)

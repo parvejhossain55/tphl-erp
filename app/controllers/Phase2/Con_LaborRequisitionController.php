@@ -22,17 +22,21 @@ class Con_LaborRequisitionController extends Controller
 
     // Role helpers
     // 12 = Site Engineer, 15 = Project Manager, 22 = Project Manager Head
-    // 24 = QC & Internal Audit Head, 3 = Management, 6/30 = Accounts, 1 = Admin, 33 = Chief Officer
+    // 24 = QC & Internal Audit Head, 3 = Management, 6/30 = Accounts, 1 = Admin
     private function isSiteEngineer() { return in_array($this->userRole, [12, 1]); }
     private function isPM()           { return in_array($this->userRole, [15, 22, 1]); }
     private function isQC()           { return in_array($this->userRole, [24, 1]); }
-    private function isManagement()   { return in_array($this->userRole, [3, 1, 33]);  }
-    private function isAccounts()     { return in_array($this->userRole, [6, 30, 1, 3, 33]);  }
+    private function isManagement()   { return in_array($this->userRole, [3, 1]);  }
+    private function isAccounts()     { return in_array($this->userRole, [6, 30, 1, 3]);  }
 
-    // Checks whether current user can approve management step (Roles 1, 3, 33 or Role 20 for amount <= 100,000)
+    // Checks whether current user can approve management step (Roles 1, 3 or Role 20 for amount <= 100,000)
     private function canApproveManagement($amount = 0)
     {
-        if (in_array($this->userRole, [3, 1, 33])) {
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        if ($this->userRole === 33 || $roleName === 'chief officer') {
+            return false;
+        }
+        if (in_array($this->userRole, [3, 1])) {
             return true;
         }
         if ($this->userRole === 20 && (float)$amount <= 100000) {

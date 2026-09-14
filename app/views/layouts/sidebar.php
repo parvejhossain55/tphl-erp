@@ -69,21 +69,34 @@
         ");
 
         $loggedUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (in_array($loggedUserRoleId, [1, 3, 33])) {
+        $loggedUserRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        if ($loggedUserRoleId === 33 || $loggedUserRoleName === 'chief officer') {
+            // Chief Officer has no approval authority: 0 pending requests (hide badge)
+            $pendingApprovalCount = 0;
+        } elseif (in_array($loggedUserRoleId, [1, 3])) {
             // Full Management: all pending management approvals
             $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role = 'management'");
+            if (isset($resApp) && $resApp) {
+                $pendingApprovalCount = (int) ($resApp->fetch_assoc()['total'] ?? 0);
+            }
         } elseif ($loggedUserRoleId === 20 || $loggedUserRoleId === 32) {
             // Role 20 / 32 (Site Operator / Operation Head): management approvals with amount <= 100,000
             $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role = 'management' AND (request_amount <= 100000 OR request_amount IS NULL OR request_amount = 0)");
+            if (isset($resApp) && $resApp) {
+                $pendingApprovalCount = (int) ($resApp->fetch_assoc()['total'] ?? 0);
+            }
         } elseif (in_array($loggedUserRoleId, [6, 30])) {
             // Accounts
             $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role = 'accounts'");
+            if (isset($resApp) && $resApp) {
+                $pendingApprovalCount = (int) ($resApp->fetch_assoc()['total'] ?? 0);
+            }
         } else {
             $sessionRole = strtolower($_SESSION['user']['role_name'] ?? '');
             $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role = '{$sessionRole}'");
-        }
-        if (isset($resApp) && $resApp) {
-            $pendingApprovalCount = (int) ($resApp->fetch_assoc()['total'] ?? 0);
+            if (isset($resApp) && $resApp) {
+                $pendingApprovalCount = (int) ($resApp->fetch_assoc()['total'] ?? 0);
+            }
         }
     }
 
@@ -101,7 +114,7 @@
         } elseif ($lrRoleId === 24) {
             // QC & Internal Audit Head (Role 24): payment requested
             $rLR = $db->query("SELECT COUNT(*) AS total FROM con_labor_requisitions WHERE status = 'payment_requested'");
-        } elseif (in_array($lrRoleId, [3, 33])) {
+        } elseif ($lrRoleId === 3) {
             // Top Management: awaiting management (qc_approved, payment_requested, pm_payment_approved)
             $rLR = $db->query("SELECT COUNT(*) AS total FROM con_labor_requisitions WHERE status IN ('qc_approved', 'payment_requested', 'pm_payment_approved')");
         } elseif ($lrRoleId === 20) {
@@ -196,7 +209,7 @@
         }
 
         // 2. Management Pending Count (Management roles 1, 3, 20)
-        if (in_array($loggedRoleId, [1, 3, 33, 20, 32])) {
+        if (in_array($loggedRoleId, [1, 3, 20, 32])) {
             $resMgmt = $db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status = 'pending'");
             if ($resMgmt) {
                 $pendingFundReqMgmtCount = (int) ($resMgmt->fetch_assoc()['total'] ?? 0);
@@ -226,7 +239,7 @@
             // Pending Project Other Costs awaiting action
             $pocStatus = null;
             if (in_array($sidebarRoleId, [13, 24, 25, 1])) $pocStatus = 'pending';
-            elseif (in_array($sidebarRoleId, [3, 15, 20, 22, 32, 33, 1])) $pocStatus = 'qc_approved';
+            elseif (in_array($sidebarRoleId, [3, 15, 20, 22, 32, 1])) $pocStatus = 'qc_approved';
             elseif (in_array($sidebarRoleId, [6, 30, 1])) $pocStatus = 'management_approved';
             
             if ($pocStatus) {
@@ -368,9 +381,10 @@
             // 3. Pending Vendor Payment Requests awaiting action based on user's role
             $sidebarPendingVprCount = 0;
             $sbRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
-            $isQcRole = in_array($sidebarRoleId, [24, 25]) || strpos($sbRoleName, 'qc') !== false;
-            $isMgmtRole = in_array($sidebarRoleId, [1, 3, 33, 20, 32]) || strpos($sbRoleName, 'admin') !== false || strpos($sbRoleName, 'management') !== false || strpos($sbRoleName, 'operation') !== false;
-            $isAccountsRole = in_array($sidebarRoleId, [6, 30]) || strpos($sbRoleName, 'accounts') !== false;
+            $sbIsChiefOfficer = ($sidebarRoleId === 33 || strpos($sbRoleName, 'chief officer') !== false);
+            $isQcRole = !$sbIsChiefOfficer && (in_array($sidebarRoleId, [24, 25]) || strpos($sbRoleName, 'qc') !== false);
+            $isMgmtRole = !$sbIsChiefOfficer && (in_array($sidebarRoleId, [1, 3, 20, 32]) || strpos($sbRoleName, 'admin') !== false || strpos($sbRoleName, 'management') !== false || strpos($sbRoleName, 'operation') !== false);
+            $isAccountsRole = !$sbIsChiefOfficer && (in_array($sidebarRoleId, [6, 30]) || strpos($sbRoleName, 'accounts') !== false);
 
             if ($isQcRole && !$isMgmtRole) {
                 // QC: Awaiting QC Verification (Submitted)

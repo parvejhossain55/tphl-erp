@@ -1599,7 +1599,7 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
 
                 <!-- QC Head Approval button -->
                 <?php 
-                $canApproveQc = in_array($roleId, [24, 1, 3, 33]);
+                $canApproveQc = in_array($roleId, [24, 1, 3]);
                 if ($req['status'] === 'pending_qc' && $canApproveQc): 
                 ?>
                     <button type="button" class="btn btn-sm btn-info d-inline-flex align-items-center gap-1 text-white" 

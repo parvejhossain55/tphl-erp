@@ -199,7 +199,7 @@
                 $creatorReportingUserId = (int)($request['creator_reporting_user_id'] ?? 0);
                 $canDeptHeadApprove = ($request['dept_head_status'] === 'pending' && ($userId == $creatorReportingUserId || $roleId == 1));
                 $canQCApprove = ($request['status'] == 'pending' && $request['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25, 1]));
-                $canMgmtApprove = ($request['status'] == 'qc_approved' && in_array($roleId, [3, 15, 20, 22, 32, 33, 1]));
+                $canMgmtApprove = ($request['status'] == 'qc_approved' && in_array($roleId, [3, 15, 20, 22, 32, 1]));
                 $canPay = ($request['status'] == 'management_approved' && in_array($roleId, [6, 30, 1]));
                 ?>
 
