@@ -45,12 +45,15 @@ class Con_VendorPaymentRequestController extends Controller
     // ROLE HELPERS
     // =========================================================================
 
-    /** Roles 1 (Admin), 3 (Super Admin), 33 (Chief Officer), 20 (Operation Head/Site Operator), 32 (Admin Operation) can approve */
+    /** Roles 1 (Admin), 3 (Super Admin), 20 (Operation Head/Site Operator), 32 (Admin Operation) can approve */
     private function canApprove()
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        if ($this->userRole === 33 || $roleName === 'chief officer') {
+            return false;
+        }
         return (
-            in_array($this->userRole, [1, 3, 33, 20, 32]) 
+            in_array($this->userRole, [1, 3, 20, 32]) 
             || strpos($roleName, 'admin') !== false 
             || strpos($roleName, 'management') !== false
             || strpos($roleName, 'operation') !== false
@@ -63,6 +66,9 @@ class Con_VendorPaymentRequestController extends Controller
     {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        if ($roleId === 33 || $roleName === 'chief officer') {
+            return false;
+        }
         return (
             $roleId === 24
             || strpos($roleName, 'qc') !== false 
@@ -107,8 +113,11 @@ class Con_VendorPaymentRequestController extends Controller
     private function canProcessPayment()
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        if ($this->userRole === 33 || $roleName === 'chief officer') {
+            return false;
+        }
         return (
-            in_array($this->userRole, [1, 3, 33, 6, 30]) 
+            in_array($this->userRole, [1, 3, 6, 30]) 
             || strpos($roleName, 'admin') !== false 
             || strpos($roleName, 'management') !== false 
             || strpos($roleName, 'accounts') !== false

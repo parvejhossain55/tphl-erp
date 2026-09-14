@@ -213,7 +213,7 @@
                                                     
                                                     if ($isDeptHead) $canApprove = true;
                                                     if ($row['status'] == 'pending' && $row['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25, 1])) $canApprove = true;
-                                                    if ($row['status'] == 'qc_approved' && in_array($roleId, [3, 15, 20, 22, 32, 33, 1])) $canApprove = true;
+                                                    if ($row['status'] == 'qc_approved' && in_array($roleId, [3, 15, 20, 22, 32, 1])) $canApprove = true;
                                                     if ($row['status'] == 'management_approved' && in_array($roleId, [6, 30, 1])) $canApprove = true;
                                                     ?>
                                                     

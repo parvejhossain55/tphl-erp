@@ -236,6 +236,14 @@ class ProjectOtherCostController extends Controller
     public function approve_qc($id)
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+            $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+            if ($roleId === 33 || $roleName === 'chief officer' || !in_array($roleId, [1, 13, 24, 25])) {
+                setError("You are not authorized to approve this request as QC.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                exit();
+            }
+
             $data = [
                 'approved_amount' => $_POST['approved_amount'],
                 'qc_audit_note' => $_POST['qc_audit_note'],
@@ -258,6 +266,14 @@ class ProjectOtherCostController extends Controller
     public function approve_management($id)
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+            $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+            if ($roleId === 33 || $roleName === 'chief officer' || !in_array($roleId, [1, 3, 15, 20, 22, 32])) {
+                setError("You are not authorized to approve this request as Management.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                exit();
+            }
+
             $data = [
                 'approved_amount' => $_POST['approved_amount'],
                 'management_apporved_note' => $_POST['management_apporved_note'],

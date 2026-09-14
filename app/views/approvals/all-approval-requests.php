@@ -357,17 +357,28 @@
         </div>
 
         <!-- Bulk Action & Page Length Bar -->
+        <?php
+        $userRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isChiefOfficer = ($userRoleId === 33 || $sessionRoleName === 'chief officer');
+        ?>
         <div class="p-3 bg-light border-bottom d-flex flex-wrap align-items-center justify-content-between gap-3">
             <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-primary fs-12 px-3 py-2" id="selectedApprovalCountBadge">0 Selected</span>
-                <button type="button" class="btn btn-sm btn-success fw-bold px-3"
-                    onclick="processBulkApprovalAction('approve')">
-                    <i class="fa-solid fa-circle-check me-1"></i> Bulk Approve Selected
-                </button>
-                <button type="button" class="btn btn-sm btn-danger fw-bold px-3"
-                    onclick="processBulkApprovalAction('reject')">
-                    <i class="fa-solid fa-circle-xmark me-1"></i> Bulk Reject Selected
-                </button>
+                <?php if (!$isChiefOfficer): ?>
+                    <span class="badge bg-primary fs-12 px-3 py-2" id="selectedApprovalCountBadge">0 Selected</span>
+                    <button type="button" class="btn btn-sm btn-success fw-bold px-3"
+                        onclick="processBulkApprovalAction('approve')">
+                        <i class="fa-solid fa-circle-check me-1"></i> Bulk Approve Selected
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger fw-bold px-3"
+                        onclick="processBulkApprovalAction('reject')">
+                        <i class="fa-solid fa-circle-xmark me-1"></i> Bulk Reject Selected
+                    </button>
+                <?php else: ?>
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fs-12 px-3 py-2">
+                        <i class="fa-solid fa-eye me-1"></i> View-Only Access (Role: Chief Officer)
+                    </span>
+                <?php endif; ?>
             </div>
             <div class="d-flex align-items-center gap-2">
                 <label class="form-label mb-0 fs-13 fw-bold text-muted">Rows per page:</label>
@@ -391,7 +402,7 @@
                         <tr>
                             <th class="ps-3" style="width: 40px;">
                                 <input type="checkbox" id="masterApprovalCheckbox" class="form-check-input"
-                                    onclick="toggleSelectAllApprovalRequests(this)">
+                                    onclick="toggleSelectAllApprovalRequests(this)" <?= $isChiefOfficer ? 'disabled title="Bulk approval disabled for Chief Officer"' : '' ?>>
                             </th>
                             <th>Req # & Date</th>
                             <th>Department & Module</th>
@@ -473,8 +484,9 @@
                                 $isMgmtRequest = ($reqApproveRole === 'management');
                                 $userRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
                                 $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+                                $isChiefOfficer = ($userRoleId === 33 || $sessionRoleName === 'chief officer');
 
-                                $isManagementUser = in_array($userRoleId, [1, 3, 33], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+                                $isManagementUser = (in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management'], true)) && !$isChiefOfficer;
                                 $isSiteOperator = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
                                 $isAccountsUser = in_array($userRoleId, [6, 30], true) || strpos($sessionRoleName, 'account') !== false;
                                 $isQcUser = in_array($userRoleId, [13, 24, 25], true) || strpos($sessionRoleName, 'qc') !== false || strpos($sessionRoleName, 'audit') !== false;
@@ -490,7 +502,11 @@
                                 // Determine whether this request is actionable by the logged-in user right now
                                 $isActionableByMe = false;
                                 $canUserApprove = false;
-                                if ($isAccountsUser) {
+                                if ($isChiefOfficer) {
+                                    // Chief Officer has view-only access across all requests; strictly cannot approve or reject
+                                    $isActionableByMe = false;
+                                    $canUserApprove = false;
+                                } elseif ($isAccountsUser) {
                                     if (in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid']) || ($reqApproveRole === 'accounts' && in_array($statusLower, ['pending', 'approved', 'partially_approved', 'partially_paid']))) {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
@@ -537,7 +553,7 @@
                                 <tr data-source-table="<?= htmlspecialchars($req['source_table']) ?>" <?= !empty($targetUrl) ? 'data-href="' . htmlspecialchars($targetUrl) . '" class="clickable-approval-row' . ($isActionableByMe ? ' border-start border-primary border-3' : '') . '" style="cursor: pointer; ' . $rowBgStyle . '"' : '' ?>>
                                     <td class="ps-3">
                                         <input type="checkbox" class="approval-req-checkbox form-check-input"
-                                            value="<?= $req['id'] ?>" <?= (!in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) || !$canUserApprove) ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
+                                            value="<?= $req['id'] ?>" <?= (!in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) || !$canUserApprove || $isChiefOfficer) ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
                                     </td>
                                     <!-- Req # & Date -->
                                     <td>
@@ -863,7 +879,13 @@
                                             </a>
 
                                         <?php elseif (in_array($req['status'], ['pending', 'partially_approved'])): ?>
-                                            <?php if ($canUserApprove): ?>
+                                            <?php if ($isChiefOfficer): ?>
+                                                <a href="<?= !empty($targetUrl) && $targetUrl !== 'javascript:void(0)' ? $targetUrl : 'javascript:void(0)' ?>"
+                                                    class="btn btn-sm btn-light text-dark rounded-2 px-2 border"
+                                                    title="Pending for <?= htmlspecialchars($req['pending_for_text'] ?? 'Management') ?>">
+                                                    <i class="fa-solid fa-eye me-1"></i>View Details
+                                                </a>
+                                            <?php elseif ($canUserApprove): ?>
                                                 <a href="<?= $targetUrl ?>" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold">
                                                     <i class="fa-solid fa-up-right-from-square me-1"></i>Review / Process
                                                 </a>

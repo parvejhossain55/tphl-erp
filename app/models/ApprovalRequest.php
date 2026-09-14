@@ -1034,7 +1034,12 @@ class ApprovalRequest extends Model
         $userId = (int)($filters['user_id'] ?? ($_SESSION['user']['id'] ?? 0));
         $roleName = strtolower(trim($filters['role_name'] ?? ($_SESSION['user']['role_name'] ?? '')));
 
-        $isManagement = in_array($userRoleId, [1, 3, 33], true) || in_array($roleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+        // Chief Officer has NO actionable approval items
+        if ($userRoleId === 33 || $roleName === 'chief officer') {
+            return "1=0";
+        }
+
+        $isManagement = in_array($userRoleId, [1, 3], true) || in_array($roleName, ['super admin', 'admin', 'management'], true);
         $isSiteOperator = in_array($userRoleId, [20, 32], true) || strpos($roleName, 'operation head') !== false || strpos($roleName, 'admin & operation') !== false;
         $isAccounts = in_array($userRoleId, [6, 30], true) || strpos($roleName, 'account') !== false;
         $isQc = in_array($userRoleId, [13, 24, 25], true) || strpos($roleName, 'qc') !== false || strpos($roleName, 'audit') !== false;
@@ -1369,8 +1374,9 @@ class ApprovalRequest extends Model
         $userRoleId = (int)($filters['role_id'] ?? ($_SESSION['user']['role_id'] ?? 0));
         $userId = (int)($filters['user_id'] ?? ($_SESSION['user']['id'] ?? 0));
         $sessionRoleName = strtolower(trim($filters['role_name'] ?? ($_SESSION['user']['role_name'] ?? '')));
+        $isChiefOfficer = ($userRoleId === 33 || $sessionRoleName === 'chief officer');
 
-        $isFullManagement = in_array($userRoleId, [1, 3, 33], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+        $isFullManagement = !$isChiefOfficer && (in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management'], true));
         $isRole20 = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
         $isAccounts = in_array($userRoleId, [6, 30], true) || strpos($sessionRoleName, 'account') !== false;
         $isHR = ($userRoleId === 4) || strpos($sessionRoleName, 'hr') !== false;
@@ -2266,8 +2272,10 @@ class ApprovalRequest extends Model
         $userId = (int)($filters['user_id'] ?? ($_SESSION['user']['id'] ?? 0));
         $sessionRoleName = strtolower(trim($filters['role_name'] ?? ($_SESSION['user']['role_name'] ?? '')));
 
-        // Full Management: Super Admin (3), Admin (1), Chief Officer (33)
-        $isFullManagement = in_array($userRoleId, [1, 3, 33], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+        $isChiefOfficer = ($userRoleId === 33 || $sessionRoleName === 'chief officer');
+
+        // Full Management: Super Admin (3), Admin (1)
+        $isFullManagement = !$isChiefOfficer && (in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management'], true));
 
         // Site Operator / Admin & Operation Head: Role 20, Role 32
         $isRole20 = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
@@ -2300,7 +2308,12 @@ class ApprovalRequest extends Model
         $isReportingBoss = !empty($subordinateUserIds);
         $isDesignatedDeptHead = in_array($userRoleId, [5, 9, 10, 14], true) || (strpos($sessionRoleName, 'head') !== false && !in_array($userRoleId, [8, 11, 12, 16, 18, 19, 21, 23, 25]));
 
-        $isActionableByCurrentUser = function($item) use ($isFullManagement, $isRole20, $isAccounts, $isHR, $isQC, $isPurchase, $isReportingBoss, $isDesignatedDeptHead, $subordinateUserIds, $userId) {
+        $isActionableByCurrentUser = function($item) use ($isChiefOfficer, $isFullManagement, $isRole20, $isAccounts, $isHR, $isQC, $isPurchase, $isReportingBoss, $isDesignatedDeptHead, $subordinateUserIds, $userId) {
+            // Chief Officer cannot approve anything
+            if ($isChiefOfficer) {
+                return false;
+            }
+
             $status = strtolower($item['status'] ?? '');
             $isPending = in_array($status, ['pending', 'partially_approved', '']);
             $approveRole = strtolower($item['approve_role'] ?? 'management');
@@ -2335,7 +2348,7 @@ class ApprovalRequest extends Model
                 return ($isPending && in_array($approveRole, ['management', '']) && $amount <= 100000.01);
             }
 
-            // 3. Full Management (Super Admin 3, Admin 1, Chief Officer 33):
+            // 3. Full Management (Super Admin 3, Admin 1):
             if ($isFullManagement) {
                 if (($item['source_table'] ?? '') === 'project_other_costs' && $isPending && in_array($approveRole, ['management', ''])) {
                     return true;
