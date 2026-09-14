@@ -79,8 +79,8 @@ class LeadController extends Controller
             $filterCountry = null;
         }
 
-        // Determine team restriction: roles 1, 3, 9, 32, 33 see all by default (unless filtered), others filter by team.
-        if (in_array((int)$userRoleId, [1, 3, 9, 32, 33])) {
+        // Determine team restriction: roles 1, 3, 9, 32, 33, 34, 35 see all by default (unless filtered), others filter by team.
+        if (in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
             $teamIdForQuery = $filterTeamId;
         } else {
             // If they have no team_id, let them see everything (e.g. Sales Manager with no team)
@@ -102,7 +102,7 @@ class LeadController extends Controller
 
         // Get total count for pagination
         // Co-leader gets team-scoped data same as role_id=5 (Sales Manager)
-        $effectiveRoleId = ($isCoLeader && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33])) ? 5 : (int)$userRoleId;
+        $effectiveRoleId = ($isCoLeader && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
         $leadCounts = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
 
         // Fetch paginated records
@@ -398,8 +398,8 @@ class LeadController extends Controller
             $filterCountry = null;
         }
 
-        // Determine team restriction: roles 1, 3, 9, 32, 33 see all by default, but can filter.
-        if (in_array((int)$userRoleId, [1, 3, 9, 32, 33])) {
+        // Determine team restriction: roles 1, 3, 9, 32, 33, 34, 35 see all by default, but can filter.
+        if (in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
             $teamIdForQuery = $filterTeamId;
         } else {
             // If they have no team_id, let them see everything (e.g. Sales Manager with no team)
@@ -407,7 +407,7 @@ class LeadController extends Controller
         }
 
         // Co-leader gets same team-scoped access as Sales Manager (role_id=5)
-        $effectiveRoleId = (isSalesCoLeader() && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33])) ? 5 : (int)$userRoleId;
+        $effectiveRoleId = (isSalesCoLeader() && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
 
         $totalRecords = $this->leadModel->countAllWithFilter($year, $month, $lastAction, $effectiveRoleId, $teamIdForQuery, $assigned, $assigned_user, $date, null, $from_date, $to_date, $filter_card, $filterProjectId, $filterCategoryId, $filterCountry, $assigned_hours);
 
@@ -641,6 +641,301 @@ class LeadController extends Controller
             "recordsFiltered" => $filteredRecords,
             "data" => $data
         ]);
+        exit;
+    }
+
+    public function exportExcel()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $userRoleId = $_SESSION['user']['role_id'] ?? null;
+        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $userTeamId = $_SESSION['user']['team_id'] ?? null;
+        $userId     = $_SESSION['user']['id']      ?? null;
+        $isCoLeader = isSalesCoLeader();
+        $isManagement = in_array((int)$userRoleId, [1, 3, 33, 34, 35], true) || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'management viewer', 'seal ceo'], true);
+
+        // Block Sales Executives (role 8) who are not co-leaders from exporting leads
+        if ($userRoleId === 8 && !$isCoLeader) {
+            setError("You do not have permission to export leads.");
+            header("Location: " . $GLOBALS['base_url'] . "/lead-lists");
+            exit;
+        }
+
+        set_time_limit(300);
+        ini_set('memory_limit', '1024M');
+
+        // Extract filters from GET
+        $year           = $_GET['year']           ?? null;
+        $month          = $_GET['month']          ?? null;
+        $lastAction     = $_GET['last_action']     ?? null;
+        $assigned       = $_GET['assigned']       ?? null;
+        $assigned_user  = $_GET['assigned_user']  ?? null;
+        $assigned_hours = $_GET['assigned_hours'] ?? null;
+        $date           = $_GET['date']           ?? null;
+        $from_date      = $_GET['from_date']      ?? null;
+        $to_date        = $_GET['to_date']        ?? null;
+        $filter_card    = $_GET['filter_card']    ?? null;
+        $search         = !empty($_GET['search']) ? trim($_GET['search']) : null;
+        $selected_ids   = !empty($_GET['selected_ids']) ? array_filter(array_map('intval', explode(',', $_GET['selected_ids']))) : [];
+
+        $filterTeamId     = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int)$_GET['team_id'] : null;
+        $filterProjectId  = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+        $filterCategoryId = isset($_GET['project_category_id']) && $_GET['project_category_id'] !== '' ? (int)$_GET['project_category_id'] : null;
+        
+        $filterCountry = !empty($_GET['filter_country']) ? $_GET['filter_country'] : null;
+        if (is_array($filterCountry)) {
+            $filterCountry = array_values(array_filter($filterCountry, fn($val) => trim($val) !== ''));
+            if (empty($filterCountry)) $filterCountry = null;
+        } elseif (is_string($filterCountry) && trim($filterCountry) === '') {
+            $filterCountry = null;
+        }
+
+        // Determine team restriction: roles 1, 3, 9, 32, 33, 34, 35 see all by default, but can filter.
+        if (in_array((int)$userRoleId, [1, 3, 9, 32, 33, 34, 35])) {
+            $teamIdForQuery = $filterTeamId;
+        } else {
+            $teamIdForQuery = !empty($userTeamId) ? (int)$userTeamId : $filterTeamId;
+        }
+
+        $effectiveRoleId = ($isCoLeader && !in_array((int)$userRoleId, [1, 3, 5, 9, 32, 33, 34, 35])) ? 5 : (int)$userRoleId;
+
+        // Fetch all matching records without LIMIT / OFFSET
+        $leads = $this->leadModel->getAllWithFilter(
+            $year, 
+            $month, 
+            $lastAction, 
+            $effectiveRoleId, 
+            $teamIdForQuery, 
+            $assigned, 
+            $assigned_user, 
+            $date, 
+            null, // limit
+            null, // offset
+            $search, 
+            $from_date, 
+            $to_date, 
+            $filter_card, 
+            $filterProjectId, 
+            $filterCategoryId, 
+            $filterCountry, 
+            $assigned_hours
+        );
+
+        // If specific selected_ids are requested, filter down to them
+        if (!empty($selected_ids)) {
+            $leads = array_values(array_filter($leads, function($l) use ($selected_ids) {
+                return in_array((int)$l['id'], $selected_ids, true);
+            }));
+        }
+
+        // Fetch follow up and booking counts
+        $leadIds = array_column($leads, 'id');
+        $followUpCounts = [];
+        $bookingCounts = [];
+        if (!empty($leadIds)) {
+            if (count($leadIds) <= 2000) {
+                $followUpCounts = (new FollowUp($this->db))->getFollowUpCountByLeadIds($leadIds);
+                $bookingCounts = $this->leadBookedModel->getBookingCountByLeadIds($leadIds);
+            } else {
+                foreach (array_chunk($leadIds, 1000) as $chunk) {
+                    $f = (new FollowUp($this->db))->getFollowUpCountByLeadIds($chunk);
+                    $b = $this->leadBookedModel->getBookingCountByLeadIds($chunk);
+                    $followUpCounts += $f;
+                    $bookingCounts += $b;
+                }
+            }
+        }
+
+        // Build data rows
+        $rowsData = [];
+        $sl = 1;
+        foreach ($leads as $lead) {
+            $id = $lead['id'];
+            $createdDate = !empty($lead['created_at']) && $lead['created_at'] !== '0000-00-00 00:00:00'
+                ? date('d M, Y, h:i A', strtotime($lead['created_at']))
+                : '';
+
+            $name = $lead['full_name'] ?? '';
+            $jobTitle = !empty($lead['job_title']) ? $lead['job_title'] : ($lead['designation'] ?? '');
+            $company = !empty($lead['company_name']) ? $lead['company_name'] : ($lead['company'] ?? '');
+            $phone = $lead['phone_number'] ?? ($lead['phone'] ?? '');
+            $email = $lead['email'] ?? '';
+            $address = $lead['address'] ?? '';
+            $city = $lead['city'] ?? '';
+            $country = $lead['country'] ?? '';
+            $source = !empty($lead['uploaded_from']) ? $lead['uploaded_from'] : ($lead['source'] ?? '');
+
+            $project = $lead['project_name'] ?? '';
+            $category = $lead['project_category_name'] ?? '';
+            $campaign = $lead['campaign_name'] ?? '';
+
+            $status = ucfirst($lead['last_lead_action'] ?? 'New');
+            $leadType = !empty($lead['lead_type']) ? ucfirst($lead['lead_type']) : 'Regular';
+            $bestTime = $lead['when_is_the_best_time_to_contact_you'] ?? '';
+
+            $nextFollowUp = (!empty($lead['next_follow_up_date']) && $lead['next_follow_up_date'] !== '0000-00-00')
+                ? date('d M, Y', strtotime($lead['next_follow_up_date']))
+                : 'No Schedule';
+
+            $fuCount = $followUpCounts[$id] ?? 0;
+            $bkCount = $bookingCounts[$id] ?? 0;
+            $bookingStatus = ($bkCount > 0 || strtolower($lead['last_lead_action'] ?? '') === 'booked') ? 'Booked' : 'Not Booked';
+
+            $agent = !empty($lead['agent_name']) ? $lead['agent_name'] : 'Unassigned';
+            $assignedBy = !empty($lead['assigned_by_name']) ? $lead['assigned_by_name'] : 'System';
+
+            $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
+                ? $lead['assigned_at']
+                : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
+            $assignedDate = (!empty($assignedRaw) && $assignedRaw !== '0000-00-00 00:00:00')
+                ? date('d M, Y, h:i A', strtotime($assignedRaw))
+                : '';
+
+            $note = $lead['call_note'] ?? '';
+
+            $rowsData[] = [
+                $sl++,
+                $id,
+                $createdDate,
+                $name,
+                $jobTitle,
+                $company,
+                $phone ? ' ' . $phone : '',
+                $email,
+                $address,
+                $city,
+                $country,
+                $source,
+                $project,
+                $category,
+                $campaign,
+                $status,
+                $leadType,
+                $bestTime,
+                $nextFollowUp,
+                $fuCount,
+                $bookingStatus,
+                $agent,
+                $assignedBy,
+                $assignedDate,
+                $note
+            ];
+        }
+
+        // Initialize PhpSpreadsheet
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Leads Export');
+
+        $headers = [
+            'SL', 'Lead ID', 'Lead Date', 'Lead Name', 'Job Title', 'Company', 
+            'Phone Number', 'Email', 'Address', 'City', 'Country', 'Source', 
+            'Project', 'Category', 'Campaign', 'Status', 'Lead Type', 
+            'Best Time to Contact', 'Next Follow-Up', 'Follow-Up Count', 
+            'Booking Status', 'Sales Executive', 'Assigned By', 'Assigned Date', 'Call Note'
+        ];
+
+        $columnWidths = [
+            'A' => 6,   // SL
+            'B' => 10,  // Lead ID
+            'C' => 20,  // Lead Date
+            'D' => 24,  // Lead Name
+            'E' => 18,  // Job Title
+            'F' => 20,  // Company
+            'G' => 18,  // Phone Number
+            'H' => 24,  // Email
+            'I' => 25,  // Address
+            'J' => 15,  // City
+            'K' => 15,  // Country
+            'L' => 16,  // Source
+            'M' => 22,  // Project
+            'N' => 18,  // Category
+            'O' => 22,  // Campaign
+            'P' => 14,  // Status
+            'Q' => 12,  // Lead Type
+            'R' => 20,  // Best Time
+            'S' => 16,  // Next Follow-Up
+            'T' => 14,  // Follow-Up Count
+            'U' => 14,  // Booking Status
+            'V' => 20,  // Sales Executive
+            'W' => 18,  // Assigned By
+            'X' => 20,  // Assigned Date
+            'Y' => 35,  // Call Note
+        ];
+
+        // Insert Header
+        $sheet->fromArray($headers, null, 'A1');
+
+        // Insert Data
+        if (!empty($rowsData)) {
+            $sheet->fromArray($rowsData, null, 'A2');
+        }
+
+        $lastRow = max(2, count($rowsData) + 1);
+
+        // Explicit Column Widths
+        foreach ($columnWidths as $col => $w) {
+            $sheet->getColumnDimension($col)->setWidth($w);
+        }
+
+        // Header Styling
+        $headerStyle = [
+            'font' => [
+                'bold' => true,
+                'color' => ['rgb' => 'FFFFFF'],
+                'size' => 11
+            ],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '1E7E34']
+            ],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+            ],
+        ];
+        $sheet->getStyle('A1:Y1')->applyFromArray($headerStyle);
+        $sheet->getRowDimension(1)->setRowHeight(28);
+
+        // Borders
+        $borderStyle = [
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => ['rgb' => 'E0E0E0'],
+                ],
+            ],
+        ];
+        $sheet->getStyle("A1:Y{$lastRow}")->applyFromArray($borderStyle);
+
+        // Format column G (Phone) as text
+        $sheet->getStyle("G2:G{$lastRow}")->getNumberFormat()->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
+
+        // Center alignments
+        $centerCols = ['A', 'B', 'C', 'G', 'K', 'L', 'P', 'Q', 'S', 'T', 'U', 'X'];
+        foreach ($centerCols as $c) {
+            $sheet->getStyle("{$c}2:{$c}{$lastRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        }
+
+        // Freeze Top Row & AutoFilter
+        $sheet->freezePane('A2');
+        $sheet->setAutoFilter('A1:Y1');
+
+        // Clean any output buffer
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        $fileName = 'Leads_Export_' . date('Y-m-d_His') . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $fileName . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
         exit;
     }
 

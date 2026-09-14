@@ -438,6 +438,10 @@ $activeCard = $_GET['filter_card'] ?? '';
                                 <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
                             </a>
 
+                            <button type="button" class="btn btn-outline-success btn-sm px-3 py-1.5" id="exportLeadsExcelBtn" title="Export searched/filtered leads to Excel">
+                                <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+                            </button>
+
                             <!-- Import CSV button outside form submit -->
                             <button type="button" class="btn btn-outline-secondary btn-sm px-3" id="importCsvBtn" data-bs-toggle="modal" data-bs-target="#importCsvModal">
                                 Import Leads CSV
@@ -696,6 +700,10 @@ $activeCard = $_GET['filter_card'] ?? '';
                             class="btn btn-outline-secondary btn-sm w-100">
                             Reset
                         </a>
+
+                        <button type="button" class="btn btn-outline-success btn-sm w-100" id="exportLeadsExcelBtnMobile">
+                            <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+                        </button>
 
                         <a href="<?= $GLOBALS['base_url'] ?>/create-lead"
                             class="btn btn-success btn-sm w-100">
@@ -1322,6 +1330,99 @@ document.addEventListener('DOMContentLoaded', function () {
     const importBtn = document.getElementById('importCsvBtn');
     if (importBtn) {
         importBtn.addEventListener('click', e => e.preventDefault());
+    }
+
+    // ── Export Leads to Excel ──────────────────────────────────────────
+    function handleLeadsExcelExport() {
+        const params = new URLSearchParams(window.location.search);
+
+        // Merge active filter form inputs
+        const filterForm = document.querySelector('.desktop-only .filters form') || document.querySelector('#mobileFilterCollapse form');
+        if (filterForm) {
+            const formData = new FormData(filterForm);
+            for (const [key, value] of formData.entries()) {
+                if (value !== '' && value !== null && value !== undefined) {
+                    params.set(key, value);
+                }
+            }
+        }
+
+        // Get current search value from DataTables if available
+        try {
+            if ($.fn.DataTable && $.fn.DataTable.isDataTable('#serverSideLeadTable')) {
+                const dtSearch = $('#serverSideLeadTable').DataTable().search();
+                if (dtSearch && dtSearch.trim() !== '') {
+                    params.set('search', dtSearch.trim());
+                }
+            }
+        } catch (e) {}
+
+        const hasSelected = (typeof selectedLeadsSet !== 'undefined' && selectedLeadsSet.size > 0);
+
+        const executeExport = function (onlySelected) {
+            const exportParams = new URLSearchParams(params.toString());
+            exportParams.delete('page');
+            exportParams.delete('url');
+
+            if (onlySelected && hasSelected) {
+                exportParams.set('selected_ids', Array.from(selectedLeadsSet).join(','));
+            } else {
+                exportParams.delete('selected_ids');
+            }
+
+            const baseUrl = window.base_url || '<?= $GLOBALS["base_url"] ?>';
+            const exportUrl = baseUrl + '/leads-export-excel?' + exportParams.toString();
+            window.location.href = exportUrl;
+        };
+
+        if (hasSelected) {
+            const count = selectedLeadsSet.size;
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Export Leads to Excel',
+                    html: `You have <strong>${count}</strong> lead(s) selected.<br><br>Would you like to export only the selected leads or all matching filtered leads?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    showDenyButton: true,
+                    confirmButtonText: `Export Selected (${count})`,
+                    denyButtonText: 'Export All Filtered',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#198754',
+                    denyButtonColor: '#0d6efd',
+                    cancelButtonColor: '#6c757d'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        executeExport(true);
+                    } else if (result.isDenied) {
+                        executeExport(false);
+                    }
+                });
+            } else {
+                if (confirm(`You have ${count} leads selected. Click OK to export only selected, or Cancel to export all filtered leads.`)) {
+                    executeExport(true);
+                } else {
+                    executeExport(false);
+                }
+            }
+        } else {
+            executeExport(false);
+        }
+    }
+
+    const exportBtn = document.getElementById('exportLeadsExcelBtn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            handleLeadsExcelExport();
+        });
+    }
+
+    const exportBtnMobile = document.getElementById('exportLeadsExcelBtnMobile');
+    if (exportBtnMobile) {
+        exportBtnMobile.addEventListener('click', function (e) {
+            e.preventDefault();
+            handleLeadsExcelExport();
+        });
     }
 
     // ── DataTables (server-side) init ─────────────────────────────────

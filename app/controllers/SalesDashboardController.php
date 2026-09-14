@@ -37,8 +37,8 @@ class SalesDashboardController extends Controller
 
         $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int) $_GET['team_id'] : null;
 
-        // Admin, Super Admin, Sales Head, Management, Chief Officer see all by default
-        if (in_array($roleId, [1, 3, 9, 32, 33])) {
+        // Admin, Super Admin, Sales Head, Management, Chief Officer, SEAL CEO see all by default
+        if (in_array($roleId, [1, 3, 9, 32, 33, 34, 35])) {
             $teamId = $filterTeamId;
         } else {
             // If they have no team_id, let them see everything (e.g. Sales Manager with no team)

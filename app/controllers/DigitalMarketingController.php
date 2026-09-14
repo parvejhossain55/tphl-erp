@@ -130,9 +130,19 @@ class DigitalMarketingController extends Controller
         }
 
         if (!empty($platformFilter)) {
-            $cSql .= " AND l.platform = ?";
-            $cParams[] = $platformFilter;
-            $cTypes   .= "s";
+            $pAliases = Lead::getPlatformAliases($platformFilter);
+            if (!empty($pAliases)) {
+                $cPlaceholders = implode(',', array_fill(0, count($pAliases), '?'));
+                $cSql .= " AND LOWER(TRIM(l.platform)) IN ($cPlaceholders)";
+                foreach ($pAliases as $pa) {
+                    $cParams[] = strtolower(trim($pa));
+                    $cTypes   .= "s";
+                }
+            } else {
+                $cSql .= " AND l.platform = ?";
+                $cParams[] = $platformFilter;
+                $cTypes   .= "s";
+            }
         }
 
         if (!empty($fromDate) && !empty($toDate)) {
@@ -347,9 +357,19 @@ public function deleteBudget($id)
         }
 
         if (!empty($platformFilter)) {
-            $cSql .= " AND l.platform = ?";
-            $cParams[] = $platformFilter;
-            $cTypes   .= "s";
+            $pAliases = Lead::getPlatformAliases($platformFilter);
+            if (!empty($pAliases)) {
+                $cPlaceholders = implode(',', array_fill(0, count($pAliases), '?'));
+                $cSql .= " AND LOWER(TRIM(l.platform)) IN ($cPlaceholders)";
+                foreach ($pAliases as $pa) {
+                    $cParams[] = strtolower(trim($pa));
+                    $cTypes   .= "s";
+                }
+            } else {
+                $cSql .= " AND l.platform = ?";
+                $cParams[] = $platformFilter;
+                $cTypes   .= "s";
+            }
         }
 
         if (!empty($fromDate) && !empty($toDate)) {
@@ -447,9 +467,9 @@ public function deleteBudget($id)
         if (session_status() === PHP_SESSION_NONE) session_start();
         header('Content-Type: application/json');
 
-        // Role guard: allow DM Head (10) and DM Executive (11)
+        // Role guard: allow DM Head (10), DM Executive (11), and Management
         $userRoleId = $_SESSION['user']['role_id'] ?? null;
-        if (!in_array($userRoleId, [10, 11])) {
+        if (!in_array((int)$userRoleId, [1, 3, 10, 11, 33, 34, 35], true)) {
             echo json_encode(['error' => 'Unauthorized']);
             exit;
         }
@@ -659,7 +679,14 @@ public function deleteBudget($id)
                 'follow_up'     => $fuBadge,
                 'contact_status'=> $csBadge,
                 'lead_type'     => $ltBadge,
-                'platform'      => '<span class="badge bg-info-soft text-info mb-1 d-inline-block">' . htmlspecialchars($lead['platform'] ?? 'N/A') . '</span><div class="small text-muted">' . htmlspecialchars($campProj) . '</div>',
+                'platform'      => (function() use ($lead, $campProj) {
+                    $canonical = Lead::resolveCanonicalPlatform($lead['platform'] ?? '');
+                    $raw = trim($lead['platform'] ?? '');
+                    $rawTag = ($raw !== '' && strtolower($raw) !== strtolower($canonical)) 
+                        ? ' <small class="text-muted d-block" style="font-size:10px;">(' . htmlspecialchars($raw) . ')</small>' 
+                        : '';
+                    return '<span class="badge bg-info-soft text-info mb-1 d-inline-block fw-semibold">' . htmlspecialchars($canonical) . '</span>' . $rawTag . '<div class="small text-muted">' . htmlspecialchars($campProj) . '</div>';
+                })(),
                 'team'          => htmlspecialchars($lead['team_name'] ?? 'N/A'),
                 'sales_lead'    => '<div class="fw-bold text-primary">' . htmlspecialchars($lead['sales_team_lead_name'] ?? 'Not Assigned') . '</div>',
                 'assigned_to'   => $assignedToHtml,
@@ -885,5 +912,190 @@ public function deleteBudget($id)
             "executives" => $executives,
             "selectedExecutive" => $selectedExecutive
         ]);
+    }
+
+    /**
+     * All Platform Leads - Date-wise Summary Report
+     */
+    public function allPlatformLeads()
+    {
+        $userId = $_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? null;
+
+        $fromDate = isset($_GET['from_date']) && $_GET['from_date'] !== '' ? trim($_GET['from_date']) : date('Y-m-d');
+        $toDate   = isset($_GET['to_date']) && $_GET['to_date'] !== ''     ? trim($_GET['to_date'])   : date('Y-m-d');
+        $projectId = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null;
+        $projectCategoryId = !empty($_GET['project_category_id']) ? (int)$_GET['project_category_id'] : null;
+        $teamId = !empty($_GET['team_id']) ? (int)$_GET['team_id'] : null;
+
+        $filters = [
+            'from_date'           => $fromDate,
+            'to_date'             => $toDate,
+            'project_id'          => $projectId,
+            'project_category_id' => $projectCategoryId,
+            'team_id'             => $teamId,
+        ];
+
+        $reportData = $this->leadModel->getPlatformLeadsDateWiseReport($filters);
+        $projects   = (new Project($this->db))->getAll();
+        $categories = (new ProjectCategory($this->db))->getAll();
+
+        return $this->view("digital-marketing-team/all-platform-leads", [
+            "current_route" => "all-platform-leads",
+            "page_title"    => "All Platform Leads",
+            "filters"       => $filters,
+            "rows"          => $reportData['rows'],
+            "totals"        => $reportData['totals'],
+            "projects"      => $projects,
+            "categories"    => $categories,
+        ]);
+    }
+
+    /**
+     * Export All Platform Leads Date-wise Report to Excel (.xlsx)
+     */
+    public function exportAllPlatformLeadsExcel()
+    {
+        $userId = $_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? null;
+
+        $fromDate = isset($_GET['from_date']) && $_GET['from_date'] !== '' ? trim($_GET['from_date']) : date('Y-m-d');
+        $toDate   = isset($_GET['to_date']) && $_GET['to_date'] !== ''     ? trim($_GET['to_date'])   : date('Y-m-d');
+        $projectId = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null;
+        $projectCategoryId = !empty($_GET['project_category_id']) ? (int)$_GET['project_category_id'] : null;
+        $teamId = !empty($_GET['team_id']) ? (int)$_GET['team_id'] : null;
+
+        $filters = [
+            'from_date'           => $fromDate,
+            'to_date'             => $toDate,
+            'project_id'          => $projectId,
+            'project_category_id' => $projectCategoryId,
+            'team_id'             => $teamId,
+        ];
+
+        $reportData = $this->leadModel->getPlatformLeadsDateWiseReport($filters);
+        $rows = $reportData['rows'];
+        $totals = $reportData['totals'];
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Platform Leads');
+
+        // Header Columns
+        $headers = [
+            'Date',
+            'Facebook Lead Form',
+            'Whatsapp',
+            'Meta Inbox',
+            'Google Form',
+            'Brochure Leads',
+            'Others',
+            'Total'
+        ];
+
+        $sheet->fromArray($headers, null, 'A1');
+
+        $rowNum = 2;
+        foreach ($rows as $r) {
+            $formattedDate = !empty($r['report_date']) ? date('d M Y', strtotime($r['report_date'])) : '-';
+            $sheet->setCellValue('A' . $rowNum, $formattedDate);
+            $sheet->setCellValue('B' . $rowNum, (int)$r['fb_count']);
+            $sheet->setCellValue('C' . $rowNum, (int)$r['wa_count']);
+            $sheet->setCellValue('D' . $rowNum, (int)$r['mi_count']);
+            $sheet->setCellValue('E' . $rowNum, (int)$r['gf_count']);
+            $sheet->setCellValue('F' . $rowNum, (int)$r['bl_count']);
+            $sheet->setCellValue('G' . $rowNum, (int)$r['others_count']);
+            $sheet->setCellValue('H' . $rowNum, (int)$r['total_count']);
+            $rowNum++;
+        }
+
+        // Summary Total Row
+        $sheet->setCellValue('A' . $rowNum, 'Total');
+        $sheet->setCellValue('B' . $rowNum, (int)$totals['fb_count']);
+        $sheet->setCellValue('C' . $rowNum, (int)$totals['wa_count']);
+        $sheet->setCellValue('D' . $rowNum, (int)$totals['mi_count']);
+        $sheet->setCellValue('E' . $rowNum, (int)$totals['gf_count']);
+        $sheet->setCellValue('F' . $rowNum, (int)$totals['bl_count']);
+        $sheet->setCellValue('G' . $rowNum, (int)$totals['others_count']);
+        $sheet->setCellValue('H' . $rowNum, (int)$totals['total_count']);
+
+        // Column Dimensions
+        $columnWidths = [
+            'A' => 16,
+            'B' => 22,
+            'C' => 16,
+            'D' => 16,
+            'E' => 16,
+            'F' => 18,
+            'G' => 16,
+            'H' => 16,
+        ];
+        foreach ($columnWidths as $col => $w) {
+            $sheet->getColumnDimension($col)->setWidth($w);
+        }
+
+        // Header Styling
+        $headerStyle = [
+            'font' => [
+                'bold' => true,
+                'color' => ['rgb' => 'FFFFFF'],
+                'size' => 11
+            ],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '1E7E34']
+            ],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+            ],
+        ];
+        $sheet->getStyle('A1:H1')->applyFromArray($headerStyle);
+        $sheet->getRowDimension(1)->setRowHeight(28);
+
+        // Data Rows Alignment
+        $sheet->getStyle("A2:A{$rowNum}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("B2:H{$rowNum}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+
+        // Total Row Styling
+        $totalStyle = [
+            'font' => [
+                'bold' => true,
+                'color' => ['rgb' => '1E7E34'],
+                'size' => 11
+            ],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => 'E8F5E9']
+            ],
+        ];
+        $sheet->getStyle("A{$rowNum}:H{$rowNum}")->applyFromArray($totalStyle);
+        $sheet->getRowDimension($rowNum)->setRowHeight(24);
+
+        // Borders
+        $borderStyle = [
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => ['rgb' => 'D0D5DD'],
+                ],
+            ],
+        ];
+        $sheet->getStyle("A1:H{$rowNum}")->applyFromArray($borderStyle);
+
+        // Freeze Pane
+        $sheet->freezePane('A2');
+
+        // Clear output buffer
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        $fileName = 'All_Platform_Leads_' . ($fromDate ?: 'all') . '_to_' . ($toDate ?: 'all') . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $fileName . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
     }
 }

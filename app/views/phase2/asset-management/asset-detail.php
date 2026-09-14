@@ -237,13 +237,33 @@ $conditionStatuses = ['new','ok','need_repair','repairing','repaired','damaged',
                                                     <?= ucfirst($req['status']) ?>
                                                 </span>
                                             </td>
-                                            <td class="fs-12">
-                                                <?php if ($req['receipt_path']): ?>
-                                                    <a href="<?= $GLOBALS['base_url'] ?>/public/<?= $req['receipt_path'] ?>" target="_blank" class="btn btn-sm btn-light"><i class="fa-solid fa-file-pdf text-danger"></i></a>
+                                             <td class="fs-12">
+                                                <?php 
+                                                if (!empty($req['receipt_path'])): 
+                                                    $receiptList = [];
+                                                    $decoded = json_decode($req['receipt_path'], true);
+                                                    if (is_array($decoded)) {
+                                                        $receiptList = $decoded;
+                                                    } else {
+                                                        $receiptList = [$req['receipt_path']];
+                                                    }
+                                                    $receiptList = array_values(array_filter($receiptList));
+                                                ?>
+                                                    <div class="d-flex gap-1 flex-wrap">
+                                                        <?php foreach ($receiptList as $idx => $rPath): 
+                                                            $rUrl = (strpos($rPath, 'public/') === 0 ? $GLOBALS['base_url'] . '/' : $GLOBALS['base_url'] . '/public/') . ltrim($rPath, '/');
+                                                            $ext = strtolower(pathinfo($rPath, PATHINFO_EXTENSION));
+                                                            $isPdf = ($ext === 'pdf');
+                                                        ?>
+                                                            <a href="<?= htmlspecialchars($rUrl) ?>" target="_blank" class="btn btn-sm btn-light border" title="Attachment #<?= $idx + 1 ?>">
+                                                                <i class="fa-solid <?= $isPdf ? 'fa-file-pdf text-danger' : 'fa-paperclip text-primary' ?>"></i>
+                                                            </a>
+                                                        <?php endforeach; ?>
+                                                    </div>
                                                 <?php else: ?>
                                                     —
                                                 <?php endif; ?>
-                                            </td>
+                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>

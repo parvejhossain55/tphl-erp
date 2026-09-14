@@ -571,14 +571,14 @@
 
                 $upcomingCount = getFollowUpCount($userId, 'upcoming');
                 ?>
-                <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [15, 22, 9, 33])): ?>
+                <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22, 9, 33, 34, 35])): ?>
 
                     <!--Sales CATEGORY -->
                     <li class="sidebar__menu-category">
                         <span class="category-name">Sales & Business</span>
                     </li>
 
-                    <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [9, 33])): ?>
+                    <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 9, 33, 34, 35])): ?>
                         <?php if (($_SESSION['user']['role_id'] ?? 0) != 9): ?>
                             <!-- sales Dashboard -->
                             <li class="slide ">
@@ -756,7 +756,7 @@
                         </ul>
                     </li>
 
-                    <?php if ((hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 9, 15, 33]))): ?>
+                    <?php if ((hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 9, 15, 33, 34, 35]))): ?>
 
                         <!-- Sales Activity Report -->
                         <li class="slide">
@@ -792,7 +792,7 @@
                                         Incentives</a>
                                 </li>
                                 <!-- Visible to Management, Accounts, HR, Chairman, and Sales Heads/Managers -->
-                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 4, 5, 6, 9, 33])): ?>
+                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 4, 5, 6, 9, 33, 34, 35])): ?>
                                     <li class="slide child2">
                                         <a href="<?= $base_url ?>/incentive-management"
                                             class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">Company
@@ -801,7 +801,7 @@
                                 <?php endif; ?>
 
                                 <!-- Visible to Sales Managers, Heads, Co-ordinators (5,6,9,15) and Management -->
-                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 9, 15, 33])): ?>
+                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 9, 15, 33, 34, 35])): ?>
                                     <li class="slide child2">
                                         <a href="<?= $base_url ?>/my-team-incentives"
                                             class="sidebar__menu-item <?= isActive('my-team-incentives', $current_route) ?>">My
@@ -815,7 +815,7 @@
                                 <?php endif; ?>
 
                                 <!-- Settings for Management, Sales Manager and Sales Head -->
-                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 9, 33])): ?>
+                                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 9, 33, 34, 35])): ?>
                                     <li class="slide child2">
                                         <a href="<?= $base_url ?>/incentive-config"
                                             class="sidebar__menu-item <?= isActive('incentive-config', $current_route) ?>">Settings</a>
@@ -1089,10 +1089,26 @@
                     </li>
 
                     <li class="slide ">
+                        <a href="<?= $base_url ?>/all-platform-leads"
+                            class="sidebar__menu-item <?= isActive('all-platform-leads', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-layer-group"></i></div>
+                            <span class="sidebar__menu-label">All Platform Leads</span>
+                        </a>
+                    </li>
+
+                    <li class="slide ">
                         <a href="<?= $base_url ?>/digital-marketing-upload-report"
                             class="sidebar__menu-item <?= isActive('digital-marketing-upload-report', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-file-contract"></i></div>
                             <span class="sidebar__menu-label">Lead Upload Report</span>
+                        </a>
+                    </li>
+
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/campaign-leads"
+                            class="sidebar__menu-item <?= isActive(['campaign-leads', 'digital-marketing-executive-dashboard'], $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-bullhorn"></i></div>
+                            <span class="sidebar__menu-label">Campaign Leads</span>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -1108,6 +1124,22 @@
                             class="sidebar__menu-item <?= isActive('digital-marketing-executive-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">Marketing Executive Dashboard</span>
+                        </a>
+                    </li>
+
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/all-platform-leads"
+                            class="sidebar__menu-item <?= isActive('all-platform-leads', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-layer-group"></i></div>
+                            <span class="sidebar__menu-label">All Platform Leads</span>
+                        </a>
+                    </li>
+
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/campaign-leads"
+                            class="sidebar__menu-item <?= isActive(['campaign-leads'], $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-bullhorn"></i></div>
+                            <span class="sidebar__menu-label">Campaign Leads</span>
                         </a>
                     </li>
 

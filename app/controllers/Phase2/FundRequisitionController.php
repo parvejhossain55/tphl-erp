@@ -45,6 +45,14 @@ class FundRequisitionController extends Controller {
                 @$this->db->query("ALTER TABLE fund_requisitions MODIFY COLUMN status ENUM('pending_dept','pending_qc','pending','approved','rejected','paid','partially_approved','partially_paid') DEFAULT 'pending'");
             }
         }
+
+        // Ensure receipt_path is TEXT for multiple attachments support
+        $colReceipt = $this->db->query("SHOW COLUMNS FROM fund_requisitions LIKE 'receipt_path'");
+        if ($colReceipt && $rR = $colReceipt->fetch_assoc()) {
+            if (isset($rR['Type']) && strpos(strtolower($rR['Type']), 'text') === false) {
+                @$this->db->query("ALTER TABLE fund_requisitions MODIFY COLUMN receipt_path TEXT NULL DEFAULT NULL");
+            }
+        }
     }
 
     public function index() {
@@ -430,19 +438,42 @@ class FundRequisitionController extends Controller {
             $category = 'Petty Cash';
         }
 
-        // Receipt Upload
-        $receipt_path = null;
-        if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === UPLOAD_ERR_OK) {
-            $upload_dir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/receipts/';
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0777, true);
-            }
-            $file_extension = pathinfo($_FILES['receipt']['name'], PATHINFO_EXTENSION);
-            $filename = 'receipt_' . time() . '_' . rand(1000, 9999) . '.' . $file_extension;
-            if (move_uploaded_file($_FILES['receipt']['tmp_name'], $upload_dir . $filename)) {
-                $receipt_path = 'uploads/receipts/' . $filename;
+        // Receipt Uploads (Supports multiple files up to 4 images/documents)
+        $uploaded_receipts = [];
+        $upload_dir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/receipts/';
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0777, true);
+        }
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'webp'];
+
+        // 1. Multiple files from dynamic inputs: receipts[]
+        if (!empty($_FILES['receipts']['name']) && is_array($_FILES['receipts']['name'])) {
+            $count = count($_FILES['receipts']['name']);
+            for ($i = 0; $i < min(4, $count); $i++) {
+                if (isset($_FILES['receipts']['error'][$i]) && $_FILES['receipts']['error'][$i] === UPLOAD_ERR_OK && !empty($_FILES['receipts']['tmp_name'][$i])) {
+                    $ext = strtolower(pathinfo($_FILES['receipts']['name'][$i], PATHINFO_EXTENSION));
+                    if (in_array($ext, $allowed_exts)) {
+                        $filename = 'receipt_' . time() . '_' . rand(1000, 9999) . '_' . ($i + 1) . '.' . $ext;
+                        if (move_uploaded_file($_FILES['receipts']['tmp_name'][$i], $upload_dir . $filename)) {
+                            $uploaded_receipts[] = 'uploads/receipts/' . $filename;
+                        }
+                    }
+                }
             }
         }
+
+        // 2. Fallback for single receipt input: receipt
+        if (empty($uploaded_receipts) && isset($_FILES['receipt']) && $_FILES['receipt']['error'] === UPLOAD_ERR_OK && !empty($_FILES['receipt']['tmp_name'])) {
+            $file_extension = strtolower(pathinfo($_FILES['receipt']['name'], PATHINFO_EXTENSION));
+            if (in_array($file_extension, $allowed_exts)) {
+                $filename = 'receipt_' . time() . '_' . rand(1000, 9999) . '.' . $file_extension;
+                if (move_uploaded_file($_FILES['receipt']['tmp_name'], $upload_dir . $filename)) {
+                    $uploaded_receipts[] = 'uploads/receipts/' . $filename;
+                }
+            }
+        }
+
+        $receipt_path = !empty($uploaded_receipts) ? json_encode($uploaded_receipts) : null;
 
         // Check employee record for requested_by user to see if Dept Head approval is required
         $empRes = $this->db->query("
