@@ -403,12 +403,12 @@ class AssetManagementController extends Controller
         $userId = (int)($_SESSION['user']['id'] ?? 0);
 
         $isSuperAdmin   = in_array($roleId, [1, 3, 33]); // Admin (1) and super Admin (3) ONLY. Role 2 is Employee!
-        $isOperations   = $isSuperAdmin || in_array($roleId, [20, 22, 30, 32]);
-        $isPurchaseHead = $isSuperAdmin || in_array($roleId, [17, 23, 31]);
+        $isOperations   = $isSuperAdmin || in_array($roleId, [20, 32]);
+        $isPurchaseHead = $isSuperAdmin || in_array($roleId, [17, 31]);
         $isQcAudit      = $isSuperAdmin || in_array($roleId, [24, 25]);
         $isManagement   = $isSuperAdmin;
         $isAccounts     = $isSuperAdmin || in_array($roleId, [6, 30]);
-        $isGlobalViewer = in_array($roleId, [1, 3, 33, 6, 17, 20, 22, 23, 24, 25, 30, 31, 32]);
+        $isGlobalViewer = in_array($roleId, [1, 3, 33, 6, 17, 20, 24, 25, 30, 31, 32]);
         $isApprover     = $isGlobalViewer;
 
         $activeTab  = $_GET['tab'] ?? ($isApprover ? 'all_requests' : 'my_requests');
@@ -502,7 +502,10 @@ class AssetManagementController extends Controller
                 $canApprove = false;
                 $step = '';
                 if (!$isCreator) {
-                    if (($isOperations || $isReporterBoss) && $autoOpenRequest['operations_status'] === 'pending') {
+                    $dhStatus = $autoOpenRequest['dept_head_status'] ?? 'not_required';
+                    if (($isReporterBoss || $isSuperAdmin) && $dhStatus === 'pending') {
+                        $canApprove = true; $step = 'dept_head';
+                    } elseif ($isOperations && in_array($dhStatus, ['approved', 'not_required']) && $autoOpenRequest['operations_status'] === 'pending') {
                         $canApprove = true; $step = 'operations';
                     } elseif ($isPurchaseHead && $autoOpenRequest['operations_status'] === 'approved' && $autoOpenRequest['purchase_head_status'] === 'pending') {
                         $canApprove = true; $step = 'purchase_head';
@@ -565,11 +568,19 @@ class AssetManagementController extends Controller
                 try {
                     $request = $this->model->findExtraPurchase($requestId);
                     if ($request) {
-                        $this->mailService->sendOfficeProcurementToApprovalRoles(
-                            $request,
-                            [20, 32],
-                            'Operations'
-                        );
+                        if (($request['dept_head_status'] ?? 'not_required') === 'pending' && !empty($request['reporting_user_id'])) {
+                            $this->mailService->sendOfficeProcurementToUser(
+                                $request,
+                                (int)$request['reporting_user_id'],
+                                'Department Head / Reporting Boss'
+                            );
+                        } else {
+                            $this->mailService->sendOfficeProcurementToApprovalRoles(
+                                $request,
+                                [20, 32],
+                                'Operations'
+                            );
+                        }
                     }
                 } catch (\Throwable $e) {
                     error_log('Office Procurement email (submission) failed: ' . $e->getMessage());
@@ -596,27 +607,53 @@ class AssetManagementController extends Controller
                 exit;
             }
 
-            $step = $_POST['step'] ?? 'operations';
+            $step = $_POST['step'] ?? 'qc_audit';
             if ($step === 'management') {
                 $step = 'mgmt';
+            }
+
+            // Guard: If trying to approve while earlier steps are still pending
+            $dhStatus = $req['dept_head_status'] ?? 'not_required';
+            if ($step === 'operations' && $dhStatus === 'pending') {
+                setError("This request is currently pending Department Head approval.");
+                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                exit;
+            }
+            if ($step === 'purchase_head' && ($req['operations_status'] ?? 'pending') !== 'approved') {
+                setError("This request is currently pending Operations approval.");
+                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                exit;
+            }
+            if ($step === 'qc_audit' && ($req['purchase_head_status'] ?? 'pending') !== 'approved') {
+                setError("This request is currently pending Purchase Head approval.");
+                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                exit;
+            }
+            if ($step === 'mgmt' && ($req['qc_audit_status'] ?? 'pending') !== 'approved') {
+                setError("This request is currently pending QC & Audit approval.");
+                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                exit;
             }
 
             // Role permission validation for step approval
             $canApproveStep = false;
             $reqTotal = (float)($req['total_price'] ?? 0);
-            $isRole20Eligible = ($roleId === 20 && $reqTotal <= 100000);
+            $isRole20Eligible = (in_array($roleId, [20, 32]) && $reqTotal <= 100000);
 
             if (in_array($roleId, [1, 3, 33])) {
                 $canApproveStep = true;
             } else {
-                if ($step === 'operations') {
-                    if (in_array($roleId, [20, 22, 30, 32])) {
+                if ($step === 'dept_head') {
+                    $reportingBossId = (int)($req['reporting_user_id'] ?? $req['requester_reporting_boss_id'] ?? 0);
+                    if ($reportingBossId === $userId) {
                         $canApproveStep = true;
-                    } elseif (!empty($req['requester_reporting_boss_id']) && (int)$req['requester_reporting_boss_id'] === $userId) {
+                    }
+                } elseif ($step === 'operations') {
+                    if (in_array($roleId, [20, 32])) {
                         $canApproveStep = true;
                     }
                 } elseif ($step === 'purchase_head') {
-                    if (in_array($roleId, [17, 23, 31])) {
+                    if (in_array($roleId, [17, 31])) {
                         $canApproveStep = true;
                     }
                 } elseif ($step === 'qc_audit') {
@@ -655,7 +692,8 @@ class AssetManagementController extends Controller
                     try {
                         $updatedRequest = $this->model->findExtraPurchase($id);
                         $nextStage = [
-                            'operations'    => [[17, 23, 31], 'Purchase Head / Senior Purchase Executive'],
+                            'dept_head'     => [[20, 32], 'Operations'],
+                            'operations'    => [[17, 31], 'Purchase Head'],
                             'purchase_head' => [[24, 25], 'QC & Internal Audit'],
                             'qc_audit'      => [[1, 3, 33], 'Management'],
                             'mgmt'          => [[6, 30], 'Accounts / Accounts Head'],
@@ -673,7 +711,7 @@ class AssetManagementController extends Controller
                     }
                 }
                 // ====== AUTO POSTING GENERAL JOURNAL (Batch 2/3) ======
-                if ($status === 'approved') {
+                if ($status === 'approved' && $step === 'mgmt') {
                     try {
                         require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
                         $autoPosting = new \AutoPostingService($this->db);

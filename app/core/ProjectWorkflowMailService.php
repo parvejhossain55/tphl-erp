@@ -440,10 +440,22 @@ class ProjectWorkflowMailService
      */
     public function notifyApproversForNewPO(int $projectId, string $projectName, int $poId): void
     {
-        $creatorStmt = $this->db->prepare('SELECT creator_role_id FROM purchase_orders WHERE id = ? LIMIT 1');
+        $creatorStmt = $this->db->prepare('
+            SELECT u.role_id AS creator_role_id 
+            FROM purchase_orders po 
+            LEFT JOIN users u ON u.id = po.created_by 
+            WHERE po.id = ? 
+            LIMIT 1
+        ');
+        if (!$creatorStmt) {
+            error_log("[ProjectWorkflowMailService] Failed to prepare creatorStmt for PO #{$poId}: " . $this->db->error);
+            return;
+        }
         $creatorStmt->bind_param('i', $poId);
         $creatorStmt->execute();
         $creator = $creatorStmt->get_result()->fetch_assoc();
+        $creatorStmt->close();
+
         $firstRole = in_array((int)($creator['creator_role_id'] ?? 0), [23, 31], true) ? 17 : 24;
         $firstLabel = $firstRole === 17 ? 'Purchase Head' : 'QC & Internal Audit';
 

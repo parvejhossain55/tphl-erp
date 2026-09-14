@@ -114,6 +114,23 @@ class MealProject extends Model
     }
 
     /**
+     * Update only standard meal amount for a project
+     */
+    public function updateStandardRate($id, $rate)
+    {
+        $id = (int)$id;
+        $rate = (float)$rate;
+        $stmt = $this->db->prepare("UPDATE meal_projects SET standard_meal_amount = ? WHERE id = ?");
+        if (!$stmt) {
+            return false;
+        }
+        $stmt->bind_param("di", $rate, $id);
+        $res = $stmt->execute();
+        $stmt->close();
+        return $res;
+    }
+
+    /**
      * Delete project and related records
      */
     public function delete($id)

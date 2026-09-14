@@ -282,6 +282,8 @@ class ApprovalRequest extends Model
                        d.name AS department_name,
                        cat.name AS category_name,
                        u_req.full_name AS requested_by_name,
+                       u_dh.full_name AS dept_head_by_name,
+                       u_rb.full_name AS reporting_boss_name,
                        u_op.full_name AS operations_by_name,
                        u_ph.full_name AS purchase_head_by_name,
                        u_qc.full_name AS qc_audit_by_name,
@@ -291,6 +293,8 @@ class ApprovalRequest extends Model
                 LEFT JOIN departments d ON d.id = pea.department_id
                 LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
                 LEFT JOIN users u_req ON u_req.id = pea.requested_by
+                LEFT JOIN users u_dh ON u_dh.id = pea.dept_head_by
+                LEFT JOIN users u_rb ON u_rb.id = pea.reporting_user_id
                 LEFT JOIN users u_op ON u_op.id = pea.operations_by
                 LEFT JOIN users u_ph ON u_ph.id = pea.purchase_head_by
                 LEFT JOIN users u_qc ON u_qc.id = pea.qc_audit_by
@@ -306,6 +310,7 @@ class ApprovalRequest extends Model
                     'total_price' => number_format((float)$details['procurement']['total_price'], 2),
                     'location' => $details['procurement']['asset_location'],
                     'justification' => $details['procurement']['justification'],
+                    'dept_head' => ucfirst($details['procurement']['dept_head_status'] ?? 'not_required'),
                     'operations_status' => ucfirst($details['procurement']['operations_status']),
                     'purchase_head' => ucfirst($details['procurement']['purchase_head_status']),
                     'qc_audit' => ucfirst($details['procurement']['qc_audit_status']),
@@ -1059,8 +1064,8 @@ class ApprovalRequest extends Model
             )";
         } elseif ($isSiteOperator && !$isManagement) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
-                    AND (LOWER({$prefix}approve_role) = 'management' OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') 
-                    AND ({$prefix}request_amount <= 100000 OR {$prefix}request_amount IS NULL OR {$prefix}request_amount = 0 OR {$prefix}source_table IN ('project_other_costs', 'expense_adjustments')))";
+                    AND (LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') 
+                    AND ({$prefix}request_amount <= 100000 OR {$prefix}request_amount IS NULL OR {$prefix}request_amount = 0 OR {$prefix}source_table IN ('project_other_costs', 'expense_adjustments', 'project_extra_assets')))";
         } elseif ($isManagement) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND (LOWER({$prefix}approve_role) = 'management' OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = ''))";
@@ -1413,6 +1418,8 @@ class ApprovalRequest extends Model
                     if ($appRole === 'accounts') $isActionable = true;
                 } elseif ($isRole20) {
                     if (in_array($srcTbl, ['project_other_costs', 'expense_adjustments']) && in_array($appRole, ['management', ''])) {
+                        $isActionable = true;
+                    } elseif ($srcTbl === 'project_extra_assets' && in_array($appRole, ['operations', 'management'])) {
                         $isActionable = true;
                     } elseif (in_array($appRole, ['management', '']) && $amt <= 100000.01) {
                         $isActionable = true;
@@ -1959,7 +1966,7 @@ class ApprovalRequest extends Model
                     $pendingForText = 'Management Approved';
                 }
             } else if ($sourceTable === 'project_extra_assets') {
-                $peaSql = "SELECT payment_status, paid_amount, paid_at, operations_status, purchase_head_status, qc_audit_status, mgmt_status, overall_status FROM project_extra_assets WHERE id = ? LIMIT 1";
+                $peaSql = "SELECT payment_status, paid_amount, paid_at, reporting_user_id, dept_head_status, operations_status, purchase_head_status, qc_audit_status, mgmt_status, overall_status FROM project_extra_assets WHERE id = ? LIMIT 1";
                 $peaStmt = $this->db->prepare($peaSql);
                 if ($peaStmt) {
                     $peaStmt->bind_param("i", $sourceId);
@@ -1967,6 +1974,7 @@ class ApprovalRequest extends Model
                     $peaRow = $peaStmt->get_result()->fetch_assoc();
                     $peaStmt->close();
                     if ($peaRow) {
+                        $dhStatus = strtolower($peaRow['dept_head_status'] ?? 'not_required');
                         $opStatus = strtolower($peaRow['operations_status'] ?? 'pending');
                         $phStatus = strtolower($peaRow['purchase_head_status'] ?? 'pending');
                         $qcStatus = strtolower($peaRow['qc_audit_status'] ?? 'pending');
@@ -1984,21 +1992,27 @@ class ApprovalRequest extends Model
                             $row['status'] = 'approved';
                             $pendingStageLabel = 'Pending Accounts Payout';
                             $pendingForText = 'Accounts & Finance';
-                        } elseif ($peaMgmtStatus === 'rejected' || $peaOverall === 'rejected' || $qcStatus === 'rejected' || $phStatus === 'rejected' || $opStatus === 'rejected') {
+                        } elseif ($peaMgmtStatus === 'rejected' || $peaOverall === 'rejected' || $qcStatus === 'rejected' || $phStatus === 'rejected' || $opStatus === 'rejected' || $dhStatus === 'rejected') {
                             $row['status'] = 'rejected';
                             $row['approve_role'] = 'rejected';
                             $pendingStageLabel = 'Rejected';
                             $pendingForText = 'Rejected';
-                        } elseif ($opStatus === 'pending') {
-                            $row['approve_role'] = 'dept_head';
+                        } elseif ($dhStatus === 'pending') {
+                            $repId = (int)($peaRow['reporting_user_id'] ?? 0);
+                            $row['approve_role'] = $repId > 0 ? ('dept_head_' . $repId) : 'dept_head';
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending Dept Head';
-                            $pendingForText = 'Operations / Dept Head';
+                            $pendingForText = 'Department Head / Reporting Boss';
+                        } elseif ($opStatus === 'pending') {
+                            $row['approve_role'] = 'operations';
+                            $row['status'] = 'pending';
+                            $pendingStageLabel = 'Pending Operations';
+                            $pendingForText = 'Operations (Role 20, 32)';
                         } elseif ($phStatus === 'pending') {
-                            $row['approve_role'] = 'purchase';
+                            $row['approve_role'] = 'purchase_head';
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending Purchase Head';
-                            $pendingForText = 'Purchase Team / Head';
+                            $pendingForText = 'Purchase Head (Role 17, 31)';
                         } elseif ($qcStatus === 'pending') {
                             $row['approve_role'] = 'qc';
                             $row['status'] = 'pending';
@@ -2315,6 +2329,9 @@ class ApprovalRequest extends Model
                 if (in_array(($item['source_table'] ?? ''), ['project_other_costs', 'expense_adjustments']) && $isPending && in_array($approveRole, ['management', ''])) {
                     return true;
                 }
+                if (($item['source_table'] ?? '') === 'project_extra_assets' && $isPending && in_array($approveRole, ['operations', 'management'])) {
+                    return true;
+                }
                 return ($isPending && in_array($approveRole, ['management', '']) && $amount <= 100000.01);
             }
 
@@ -2556,10 +2573,12 @@ class ApprovalRequest extends Model
                     $approvedBy = null;
                     $approvedAt = null;
                     
-                    if (($row['operations_status'] ?? 'pending') === 'pending') {
-                        $approveRole = 'dept_head';
+                    if (($row['dept_head_status'] ?? 'not_required') === 'pending') {
+                        $approveRole = (!empty($row['reporting_user_id']) && (int)$row['reporting_user_id'] > 0) ? ('dept_head_' . $row['reporting_user_id']) : 'dept_head';
+                    } elseif (($row['operations_status'] ?? 'pending') === 'pending') {
+                        $approveRole = 'operations';
                     } elseif (($row['purchase_head_status'] ?? 'pending') === 'pending') {
-                        $approveRole = 'purchase';
+                        $approveRole = 'purchase_head';
                     } elseif (($row['qc_audit_status'] ?? 'pending') === 'pending') {
                         $approveRole = 'qc';
                     } else {
@@ -2596,15 +2615,16 @@ class ApprovalRequest extends Model
             SET ar.status = CASE 
                     WHEN pea.payment_status = 'paid' OR pea.overall_status = 'purchased' THEN 'approved'
                     WHEN pea.mgmt_status = 'approved' THEN 'approved' 
-                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' THEN 'rejected' 
+                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' OR pea.dept_head_status = 'rejected' THEN 'rejected' 
                     ELSE 'pending' 
                 END,
                 ar.approve_role = CASE
                     WHEN pea.payment_status = 'paid' OR pea.overall_status = 'purchased' THEN 'completed'
                     WHEN pea.mgmt_status = 'approved' THEN 'accounts'
-                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' THEN 'management'
-                    WHEN pea.operations_status = 'pending' THEN 'dept_head'
-                    WHEN pea.purchase_head_status = 'pending' THEN 'purchase'
+                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' OR pea.dept_head_status = 'rejected' THEN 'management'
+                    WHEN pea.dept_head_status = 'pending' THEN IF(pea.reporting_user_id IS NOT NULL AND pea.reporting_user_id > 0, CONCAT('dept_head_', pea.reporting_user_id), 'dept_head')
+                    WHEN pea.operations_status = 'pending' THEN 'operations'
+                    WHEN pea.purchase_head_status = 'pending' THEN 'purchase_head'
                     WHEN pea.qc_audit_status = 'pending' THEN 'qc'
                     ELSE 'management'
                 END,

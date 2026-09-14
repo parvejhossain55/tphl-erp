@@ -319,14 +319,28 @@ class Con_PurchaseOrderController extends Controller
             $mailService = new \ProjectWorkflowMailService($this->db);
             // Fetch project ID and name. The mail service expects a project ID.
             $projectQuery = $this->db->prepare("SELECT pr.project_id, p.name FROM purchase_requests pr JOIN projects p ON p.id = pr.project_id WHERE pr.id = ?");
-            $projectQuery->bind_param('i', $requestId);
-            $projectQuery->execute();
-            $pNameRow = $projectQuery->get_result()->fetch_assoc();
-            $projectName = $pNameRow['name'] ?? 'Unknown Project';
+            $projectName = 'Unknown Project';
+            $projectId = 0;
+            if ($projectQuery) {
+                $projectQuery->bind_param('i', $requestId);
+                $projectQuery->execute();
+                $pNameRow = $projectQuery->get_result()->fetch_assoc();
+                $projectName = $pNameRow['name'] ?? 'Unknown Project';
+                $projectId = (int)($pNameRow['project_id'] ?? 0);
+                $projectQuery->close();
+            }
 
-            $mailService->notifyApproversForNewPO((int)($pNameRow['project_id'] ?? 0), $projectName, $result['id']);
+            try {
+                $mailService->notifyApproversForNewPO($projectId, $projectName, $result['id']);
+            } catch (\Throwable $e) {
+                error_log("[Con_PurchaseOrderController] Failed to send PO notification email: " . $e->getMessage());
+            }
 
-            setSuccess('Purchase Order #' . $result['id'] . ' generated. Awaiting QC & Internal Audit approval.');
+            $poData = $this->poModel->find($result['id']);
+            $creatorRole = (int)($poData['creator_role_id'] ?? 0);
+            $nextStage = in_array($creatorRole, [23, 31], true) ? 'Purchase Head' : 'QC & Internal Audit';
+
+            setSuccess('Purchase Order #' . $result['id'] . ' generated. Awaiting ' . $nextStage . ' approval.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$result['id']}");
         } else {
             setError('PO generation failed: ' . $result['error']);

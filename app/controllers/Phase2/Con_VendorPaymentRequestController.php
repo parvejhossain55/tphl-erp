@@ -277,7 +277,7 @@ class Con_VendorPaymentRequestController extends Controller
             SELECT po.id, po.status, po.created_at,
                    po.purchase_head_approved_by_id, po.qc_approved_by_id, po.op_head_approved_by_id,
                    po.purchase_head_approved_at, po.qc_approved_at, po.op_head_approved_at,
-                   po.creator_role_id,
+                   u_creator.role_id AS creator_role_id,
                    u_ph.full_name AS ph_name,
                    u_qc.full_name AS qc_name,
                    u_op.full_name AS op_name,
@@ -293,6 +293,7 @@ class Con_VendorPaymentRequestController extends Controller
             JOIN purchase_requests pr ON pr.id = po.request_id
             LEFT JOIN projects p ON p.id = pr.project_id
             LEFT JOIN vendors v ON v.id = po.vendor_id
+            LEFT JOIN users u_creator ON u_creator.id = po.created_by
             LEFT JOIN users u_ph ON u_ph.id = po.purchase_head_approved_by_id
             LEFT JOIN users u_qc ON u_qc.id = po.qc_approved_by_id
             LEFT JOIN users u_op ON u_op.id = po.op_head_approved_by_id

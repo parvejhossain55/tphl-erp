@@ -747,8 +747,8 @@ WHERE e.id = ?
     {
         $employeeId = (int)$employeeId;
         $date = $date ? trim($date) : date('Y-m-d');
-        // TEMPORARY TESTING MODE: Full day enabled so Mam can test right now
-        $isBefore12 = true; // (date('H:i') < '12:00');
+        $isBefore11 = (date('H:i') < '11:00');
+        $isBefore12 = $isBefore11;
 
         // 1. Employee meal enrollment
         $empSql = "SELECT id, full_name, employee_id, is_meal_deduction, per_meal_percentage, office_branch_id FROM employees WHERE id = ? LIMIT 1";
@@ -826,6 +826,7 @@ WHERE e.id = ?
             'opt_out_time' => $optOutTime,
             'is_present' => $isPresent,
             'today_status' => $todayStatus,
+            'is_before_11' => $isBefore11,
             'is_before_12' => $isBefore12,
             'meal_active' => $mealActive,
             'date' => $date

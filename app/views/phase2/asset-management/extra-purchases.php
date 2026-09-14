@@ -5,15 +5,15 @@ $userId = (int)($_SESSION['user']['id'] ?? 0);
 $canCreate = true; // Enable New Request button for all logged in users
 
 // Approval Pipeline Role Permissions (Admin=1, super Admin=3)
-$isAdminOrMgmt = in_array($roleId, [1, 3]); 
-$isOperations   = $isAdminOrMgmt || in_array($roleId, [20, 22, 30, 32]); // Operations Step 1 (includes Role 32)
-$isPurchaseHead = $isAdminOrMgmt || in_array($roleId, [17, 23, 31]);    // Purchase Head / Sr Executive Step 2
-$isQcAudit      = $isAdminOrMgmt || in_array($roleId, [24, 25]);        // QC & Internal Audit Step 3
-$isManagement   = $isAdminOrMgmt;                                      // Management Step 4
-$isAccounts     = $isAdminOrMgmt || in_array($roleId, [6, 30]);         // Accounts Payment
+$isAdminOrMgmt = in_array($roleId, [1, 3, 33]); 
+$isOperations   = $isAdminOrMgmt || in_array($roleId, [20, 32]); // Operations Step: Role 20, 32
+$isPurchaseHead = $isAdminOrMgmt || in_array($roleId, [17, 31]); // Purchase Head Step: Role 17, 31
+$isQcAudit      = $isAdminOrMgmt || in_array($roleId, [24, 25]); // QC & Internal Audit Step
+$isManagement   = $isAdminOrMgmt;                               // Management Step
+$isAccounts     = $isAdminOrMgmt || in_array($roleId, [6, 30]);  // Accounts Payment
 
 // Global approvers / viewers include Management, Operations, Purchase, QC/Audit, Accounts roles
-$isGlobalViewer = in_array($roleId, [1, 3, 6, 17, 20, 22, 23, 24, 25, 30, 31, 32]);
+$isGlobalViewer = in_array($roleId, [1, 3, 33, 6, 17, 20, 24, 25, 30, 31, 32]);
 $isApprover     = $isGlobalViewer;
 $activeTab      = $_GET['tab'] ?? ($isApprover ? 'all_requests' : 'my_requests');
 
@@ -56,7 +56,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
     <div class="alert alert-info-transparent border fs-12 mb-4">
         <i class="fa-solid fa-circle-info me-1"></i>
         <strong>Approval Flow:</strong> 
-        Requisition → Operations (Step 1) → Purchase Head (Step 2) → QC & Internal Audit (Step 3) → Management (Step 4) → Accounts (Payment)
+        Requisition → Department Head / Reporting Boss (if applicable) → QC & Internal Audit → Management → Accounts (Payment)
     </div>
 
     <!-- Main Card -->
@@ -157,6 +157,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                             <th class="text-center">Qty</th>
                             <th class="text-end">Total (BDT)</th>
                             <th>Requested By</th>
+                            <th class="text-center">Dept Head</th>
                             <th class="text-center">Operations</th>
                             <th class="text-center">Purchase Head</th>
                             <th class="text-center">QC & Audit</th>
@@ -169,7 +170,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                     <tbody>
                         <?php if (empty($requests)): ?>
                             <tr>
-                                <td colspan="14" class="text-center py-4 text-muted">No purchase requests found.</td>
+                                <td colspan="15" class="text-center py-4 text-muted">No purchase requests found.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($requests as $r): ?>
@@ -204,7 +205,37 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             <small class="text-muted fs-11 d-block"><i class="fa-solid fa-building me-1 text-info"></i><?= htmlspecialchars($r['department_name']) ?></small>
                                         <?php endif; ?>
                                     </td>
-                                    <!-- Step 0: Operations -->
+                                    <!-- Step: Dept Head -->
+                                    <td class="text-center">
+                                        <?php
+                                        $dhStatus = $r['dept_head_status'] ?? 'not_required';
+                                        if ($dhStatus === 'not_required'):
+                                        ?>
+                                            <span class="badge fs-10 px-2 py-1" style="background:#e9ecef;color:#6c757d;font-weight:600;">
+                                                N/A
+                                            </span>
+                                        <?php else:
+                                            $dhColor = $dhStatus === 'approved' ? '#198754' : ($dhStatus === 'rejected' ? '#dc3545' : '#e6a817');
+                                            $dhBg = $dhStatus === 'approved' ? '#d1e7dd' : ($dhStatus === 'rejected' ? '#f8d7da' : '#fff3cd');
+                                        ?>
+                                            <span class="badge fs-10 px-2 py-1" style="background:<?= $dhBg ?>;color:<?= $dhColor ?>;font-weight:600;">
+                                                <?= ucfirst($dhStatus) ?>
+                                            </span>
+                                            <?php if ($dhStatus !== 'pending' && !empty($r['dept_head_by_name'])): ?>
+                                                <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['dept_head_at']) ? date('d M Y, h:i A', strtotime($r['dept_head_at'])) : '' ?>">
+                                                    <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['dept_head_by_name']) ?>
+                                                    <?php if (!empty($r['dept_head_at'])): ?>
+                                                        <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['dept_head_at'])) ?></span>
+                                                    <?php endif; ?>
+                                                </small>
+                                            <?php elseif ($dhStatus === 'pending' && !empty($r['reporting_boss_name'])): ?>
+                                                <small class="d-block text-muted fs-9 mt-1" style="line-height:1.2;">
+                                                    <i class="fa-solid fa-user-clock me-1 text-warning"></i><?= htmlspecialchars($r['reporting_boss_name']) ?>
+                                                </small>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                    </td>
+                                    <!-- Step: Operations -->
                                     <td class="text-center">
                                         <?php
                                         $opColor = $r['operations_status'] === 'approved' ? '#198754' : ($r['operations_status'] === 'rejected' ? '#dc3545' : '#e6a817');
@@ -222,7 +253,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             </small>
                                         <?php endif; ?>
                                     </td>
-                                    <!-- Step 1: Purchase Head -->
+                                    <!-- Step: Purchase Head -->
                                     <td class="text-center">
                                         <?php
                                         $phColor = $r['purchase_head_status'] === 'approved' ? '#198754' : ($r['purchase_head_status'] === 'rejected' ? '#dc3545' : '#e6a817');
@@ -240,7 +271,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             </small>
                                         <?php endif; ?>
                                     </td>
-                                    <!-- Step 2: QC & Audit -->
+                                    <!-- Step: QC & Audit -->
                                     <td class="text-center">
                                         <?php
                                         $qcColor = $r['qc_audit_status'] === 'approved' ? '#198754' : ($r['qc_audit_status'] === 'rejected' ? '#dc3545' : '#e6a817');
@@ -258,7 +289,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             </small>
                                         <?php endif; ?>
                                     </td>
-                                    <!-- Step 3: Management -->
+                                    <!-- Step: Management -->
                                     <td class="text-center">
                                         <?php
                                         $mgColor = $r['mgmt_status'] === 'approved' ? '#198754' : ($r['mgmt_status'] === 'rejected' ? '#dc3545' : '#e6a817');
@@ -276,7 +307,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             </small>
                                         <?php endif; ?>
                                     </td>
-                                    <!-- Step 4: Payment -->
+                                    <!-- Step: Payment -->
                                     <td class="text-center">
                                         <?php
                                         $pyColor = $r['payment_status'] === 'paid' ? '#198754' : '#e6a817';
@@ -311,16 +342,20 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                     <td class="text-center">
                                         <?php
                                         $isCreator = (int)$r['requested_by'] === $userId;
-                                        $isReporterBoss = !empty($r['requester_reporting_boss_id']) && (int)$r['requester_reporting_boss_id'] === $userId;
+                                        $reportingBossId = (int)($r['reporting_user_id'] ?? $r['requester_reporting_boss_id'] ?? 0);
+                                        $isReporterBoss = ($reportingBossId === $userId);
 
                                         // Strict self-approval prevention: Creator can NEVER approve/reject their own request
                                         $canApprove = false;
                                         $step = '';
                                         $reqTotal = (float)($r['total_price'] ?? 0);
                                         $isRole20Eligible = (in_array($roleId, [20, 32]) && $reqTotal <= 100000);
+                                        $rowDhStatus = $r['dept_head_status'] ?? 'not_required';
                                         
                                         if (!$isCreator) {
-                                            if (($isOperations || $isReporterBoss) && $r['operations_status'] === 'pending') {
+                                            if (($isReporterBoss || $isAdminOrMgmt) && $rowDhStatus === 'pending') {
+                                                $canApprove = true; $step = 'dept_head';
+                                            } elseif ($isOperations && in_array($rowDhStatus, ['approved', 'not_required']) && $r['operations_status'] === 'pending') {
                                                 $canApprove = true; $step = 'operations';
                                             } elseif ($isPurchaseHead && $r['operations_status'] === 'approved' && $r['purchase_head_status'] === 'pending') {
                                                 $canApprove = true; $step = 'purchase_head';
@@ -335,7 +370,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                         $canConfirmPurchase = !empty($isOperations) && $r['payment_status'] === 'paid' && $r['overall_status'] === 'paid';
 
                                         // Creator or Admin can delete BEFORE any approval step has passed
-                                        $isInitialPending = ($r['operations_status'] === 'pending' && $r['purchase_head_status'] === 'pending' && $r['qc_audit_status'] === 'pending' && $r['mgmt_status'] === 'pending');
+                                        $isInitialPending = in_array($rowDhStatus, ['pending', 'not_required']) && ($r['operations_status'] === 'pending' && $r['purchase_head_status'] === 'pending' && $r['qc_audit_status'] === 'pending' && $r['mgmt_status'] === 'pending');
                                         $canDelete = ($isCreator || $isAdminOrMgmt) && $isInitialPending;
                                         $r['can_approve'] = $canApprove;
                                         $r['approval_step'] = $step;
@@ -852,20 +887,22 @@ function formatDate(dateStr) {
 function getNextStep(data) {
     if (data.overall_status === 'rejected') return { text: 'Request was rejected', color: 'danger', icon: 'fa-circle-xmark' };
     if (data.overall_status === 'purchased') return { text: 'Completed — Payment processed & assets registered', color: 'success', icon: 'fa-circle-check' };
-    if (data.operations_status === 'pending') return { text: 'Waiting for Operations / Dept Head approval', color: 'secondary', icon: 'fa-hourglass-half' };
-    if (data.purchase_head_status === 'pending') return { text: 'Waiting for Purchase Head approval', color: 'primary', icon: 'fa-hourglass-half' };
+    if (data.dept_head_status === 'pending') return { text: 'Waiting for Department Head / Reporting Boss approval', color: 'info', icon: 'fa-hourglass-half' };
+    if (data.operations_status === 'pending') return { text: 'Waiting for Operations (Role 20, 32) approval', color: 'secondary', icon: 'fa-hourglass-half' };
+    if (data.purchase_head_status === 'pending') return { text: 'Waiting for Purchase Head (Role 17, 31) approval', color: 'primary', icon: 'fa-hourglass-half' };
     if (data.qc_audit_status === 'pending') return { text: 'Waiting for QC & Internal Audit review', color: 'info', icon: 'fa-hourglass-half' };
     if (data.mgmt_status === 'pending') return { text: 'Waiting for Management approval', color: 'warning', icon: 'fa-hourglass-half' };
     if (data.payment_status === 'unpaid') return { text: 'Approved — Waiting for Accounts to process payment', color: 'success', icon: 'fa-money-bill-wave' };
-    return { text: 'Processing...', color: 'secondary', icon: 'fa-spinner' };
+    return { text: 'Processing', color: 'info', icon: 'fa-clock' };
 }
 
 function getStepTitle(step) {
     var titles = {
-        'operations': 'Operations Approval (Step 1)',
-        'purchase_head': 'Purchase Head Approval (Step 2)',
-        'qc_audit': 'QC & Internal Audit Review (Step 3)',
-        'mgmt': 'Management Approval (Step 4)'
+        'dept_head': 'Department Head / Reporting Boss Approval',
+        'operations': 'Operations Approval (Role 20, 32)',
+        'purchase_head': 'Purchase Head Approval (Role 17, 31)',
+        'qc_audit': 'QC & Internal Audit Review',
+        'mgmt': 'Management Approval'
     };
     return titles[step] || 'Step Approval';
 }
@@ -881,6 +918,7 @@ function renderDetailModal(data) {
 
     var nextStep = getNextStep(data);
     
+    var dhClass = getStepClass(data.dept_head_status);
     var opClass = getStepClass(data.operations_status);
     var phClass = getStepClass(data.purchase_head_status);
     var qcClass = getStepClass(data.qc_audit_status);
@@ -890,7 +928,8 @@ function renderDetailModal(data) {
     
     // Add "waiting" animation to the current active step
     if (data.overall_status !== 'rejected' && data.overall_status !== 'purchased') {
-        if (data.operations_status === 'pending') opClass = 'waiting';
+        if (data.dept_head_status === 'pending') dhClass = 'waiting';
+        else if (data.operations_status === 'pending') opClass = 'waiting';
         else if (data.purchase_head_status === 'pending') phClass = 'waiting';
         else if (data.qc_audit_status === 'pending') qcClass = 'waiting';
         else if (data.mgmt_status === 'pending') mgClass = 'waiting';
@@ -978,6 +1017,14 @@ function renderDetailModal(data) {
                 <div class="step-person">${data.requested_by_name || '—'}</div>
                 <div class="step-time">${data.created_at ? formatDate(data.created_at) : ''}</div>
             </div>
+            ${data.dept_head_status !== 'not_required' ? `
+            <div class="approval-step">
+                <div class="step-circle ${dhClass}">${getStepIcon(data.dept_head_status)}</div>
+                <div class="step-label">Dept Head</div>
+                <div class="step-person">${data.dept_head_by_name || (data.reporting_boss_name ? data.reporting_boss_name : '<span class="text-muted">Awaiting</span>')}</div>
+                <div class="step-time">${data.dept_head_at ? formatDate(data.dept_head_at) : ''}</div>
+            </div>
+            ` : ''}
             <div class="approval-step">
                 <div class="step-circle ${opClass}">${getStepIcon(data.operations_status)}</div>
                 <div class="step-label">Operations</div>
@@ -1017,10 +1064,11 @@ function renderDetailModal(data) {
         </div>
 
         <!-- Approval Notes (if any) -->
-        ${(data.operations_note || data.purchase_head_note || data.qc_audit_note || data.mgmt_note || data.purchase_note || data.return_note) ? `
+        ${(data.dept_head_note || data.operations_note || data.purchase_head_note || data.qc_audit_note || data.mgmt_note || data.purchase_note || data.return_note) ? `
         <div class="mt-3">
             <div class="detail-label mb-1 px-1">APPROVAL NOTES</div>
             <div class="bg-light rounded p-2">
+                ${data.dept_head_note ? '<div class="fs-11 mb-1"><strong class="text-info">Dept Head:</strong> ' + data.dept_head_note + '</div>' : ''}
                 ${data.operations_note ? '<div class="fs-11 mb-1"><strong class="text-secondary">Operations:</strong> ' + data.operations_note + '</div>' : ''}
                 ${data.purchase_head_note ? '<div class="fs-11 mb-1"><strong class="text-primary">Purchase Head:</strong> ' + data.purchase_head_note + '</div>' : ''}
                 ${data.qc_audit_note ? '<div class="fs-11 mb-1"><strong class="text-info">QC & Audit:</strong> ' + data.qc_audit_note + '</div>' : ''}

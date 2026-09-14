@@ -1105,7 +1105,13 @@ function fetchModalExpensesData(id, startDate = '', endDate = '') {
                     limitAlert.classList.add('d-none');
                 }
                 
-                var totalAmount = parseFloat(req.amount);
+                var totalAmount = (data.effective_approved_amount !== undefined && parseFloat(data.effective_approved_amount) > 0)
+                    ? parseFloat(data.effective_approved_amount)
+                    : ((parseFloat(req.approved_amount) > 0)
+                        ? parseFloat(req.approved_amount)
+                        : ((parseFloat(req.qc_approved_amount) > 0)
+                            ? parseFloat(req.qc_approved_amount)
+                            : parseFloat(req.amount)));
                 var totalSpentGlobal = parseFloat(data.total_spent_global || 0);
                 listBody.innerHTML = '';
                 
