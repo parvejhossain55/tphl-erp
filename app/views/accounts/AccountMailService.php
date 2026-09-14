@@ -501,6 +501,55 @@ HTML;
     }
 
     /**
+     * Notify a specific user (e.g. Reporting Boss / Dept Head) for an Office Procurement Request.
+     */
+    public function sendOfficeProcurementToUser($requestData, int $userId, string $stageLabel): bool
+    {
+        try {
+            $user = $this->getUserById($userId);
+            if (!$user || empty($user['email']) || !filter_var($user['email'], FILTER_VALIDATE_EMAIL)) {
+                return false;
+            }
+
+            $mail = $this->getMailer();
+            $requestId = (int)($requestData['id'] ?? 0);
+            $itemName = htmlspecialchars($requestData['item_name'] ?? 'Office Procurement Item');
+            $office = htmlspecialchars($requestData['asset_location'] ?? 'Head Office');
+            $quantity = (int)($requestData['quantity'] ?? 0);
+            $totalPrice = number_format((float)($requestData['total_price'] ?? 0), 2);
+
+            $subject = "Action Required: Office Procurement #{$requestId} - {$stageLabel}";
+            $detailsHtml = "
+                <h4 style='margin-top:0;color:#000;'>Approval Required</h4>
+                <div style='color:#333;font-size:15px;line-height:1.6;'>
+                    <strong>Item:</strong> {$itemName}<br>
+                    <strong>Office:</strong> {$office}<br>
+                    <strong>Quantity:</strong> {$quantity}<br>
+                    <strong>Total Amount:</strong> BDT {$totalPrice}<br>
+                    <strong>Stage:</strong> {$stageLabel}
+                </div>
+            ";
+
+            $mail->Subject = $subject;
+            $mail->Body = $this->getHtmlTemplate(
+                "Action Required: {$stageLabel}",
+                'Hello ' . htmlspecialchars($user['full_name']) . ',',
+                "Office Procurement Request <strong>#{$requestId}</strong> from your reporting team member is awaiting your {$stageLabel} approval.",
+                'Review Procurement Request',
+                'https://thepremiumhomesltd.com/TPHL-ERP/asset-extra-purchases',
+                $detailsHtml
+            );
+            $mail->AltBody = "Office Procurement Request #{$requestId} is awaiting {$stageLabel} approval.";
+
+            $mail->addAddress($user['email'], $user['full_name']);
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Mail Service Error (Office Procurement to User): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Notification: Vendor Payment Request Approved
      * Sent to Management (1, 3), Accounts (6), and original Requester
      */

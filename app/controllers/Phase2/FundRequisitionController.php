@@ -361,8 +361,14 @@ class FundRequisitionController extends Controller {
             ORDER BY fre.id DESC
         ")->fetch_all(MYSQLI_ASSOC);
 
+        $effectiveApprovedAmount = (!empty($req['approved_amount']) && (float)$req['approved_amount'] > 0)
+            ? (float)$req['approved_amount']
+            : ((!empty($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0)
+                ? (float)$req['qc_approved_amount']
+                : (float)$req['amount']);
+
         $totalSpent = array_sum(array_column($expenses, 'amount'));
-        $balance    = max(0, (float)$req['amount'] - $totalSpent);
+        $balance    = max(0, $effectiveApprovedAmount - $totalSpent);
 
         // Projects dropdown — restrict for restricted roles
         if (!in_array($sessionRoleId, [1, 3, 33, 6, 30])) {
@@ -378,15 +384,16 @@ class FundRequisitionController extends Controller {
         }
 
         $this->view('phase2/fund_requisition/show', [
-            'current_route'  => 'fund-requisitions',
-            'page_title'     => 'Requisition Details — REQ-' . $id,
-            'req'            => $req,
-            'expenses'       => $expenses,
-            'projects'       => $projects,
-            'totalSpent'     => $totalSpent,
-            'balance'        => $balance,
-            'sessionUserId'  => $sessionUserId,
-            'sessionRoleId'  => $sessionRoleId,
+            'current_route'           => 'fund-requisitions',
+            'page_title'              => 'Requisition Details — REQ-' . $id,
+            'req'                     => $req,
+            'expenses'                => $expenses,
+            'projects'                => $projects,
+            'totalSpent'              => $totalSpent,
+            'balance'                 => $balance,
+            'effectiveApprovedAmount' => $effectiveApprovedAmount,
+            'sessionUserId'           => $sessionUserId,
+            'sessionRoleId'           => $sessionRoleId,
         ]);
     }
 
@@ -653,13 +660,20 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
-        if ($req['status'] !== 'pending_qc') {
+        $isInitialQc = ($req['status'] === 'pending_qc');
+        $isQcUpdate  = (!empty($req['qc_approved_by']) && (float)($req['qc_approved_amount'] ?? 0) < (float)$req['amount']);
+
+        if (!$isInitialQc && !$isQcUpdate) {
             setError('Requisition is not waiting for QC approval.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
         }
 
-        $newMainStatus = ($status === 'approved') ? 'pending' : 'rejected';
+        if ($isInitialQc) {
+            $newMainStatus = ($status === 'approved') ? 'pending' : 'rejected';
+        } else {
+            $newMainStatus = ($status === 'rejected') ? 'rejected' : $req['status'];
+        }
         
         $qc_approved_amount = null;
         if ($status === 'approved') {
@@ -832,24 +846,30 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
-        $effectiveMax = ($frData['qc_approved_amount'] !== null && (float)$frData['qc_approved_amount'] > 0)
-            ? (float)$frData['qc_approved_amount']
-            : (float)$frData['amount'];
-
-        if (in_array($roleId, [20, 32]) && $effectiveMax > 100000) {
-            setError('Operation Head can only approve requisitions up to 1,00,000 BDT.');
-            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
-            exit;
+        if (in_array($roleId, [1, 3, 33])) {
+            $effectiveMax = (float)$frData['amount'];
+        } else {
+            // Operation Head (20, 32)
+            $effectiveMax = ($frData['qc_approved_amount'] !== null && (float)$frData['qc_approved_amount'] > 0)
+                ? (float)$frData['qc_approved_amount']
+                : (float)$frData['amount'];
+            if ($effectiveMax > 100000) {
+                setError('Operation Head can only approve requisitions up to 1,00,000 BDT.');
+                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+                exit;
+            }
         }
 
         $cumulative_approved_amount = (float)($frData['approved_amount'] ?? 0);
         $posted_amount = 0;
 
         if ($status === 'approved') {
-            $posted_amount = $effectiveMax - $cumulative_approved_amount; 
+            $posted_amount = max(0, $effectiveMax - $cumulative_approved_amount); 
             $cumulative_approved_amount = $effectiveMax;
             if (!empty($frData['paid_at']) && (float)($frData['paid_amount'] ?? 0) >= $cumulative_approved_amount) {
                 $status = 'paid';
+            } elseif (!empty($frData['paid_at']) && (float)($frData['paid_amount'] ?? 0) > 0) {
+                $status = 'partially_paid';
             }
         } elseif ($status === 'partially_approved') {
             if ($new_approved_amount <= 0 || ($cumulative_approved_amount + $new_approved_amount) > $effectiveMax) {
@@ -860,7 +880,15 @@ class FundRequisitionController extends Controller {
             $cumulative_approved_amount += $new_approved_amount;
             $posted_amount = $new_approved_amount;
             if ($cumulative_approved_amount >= $effectiveMax) {
-                $status = 'approved';
+                if (!empty($frData['paid_at']) && (float)($frData['paid_amount'] ?? 0) >= $cumulative_approved_amount) {
+                    $status = 'paid';
+                } elseif (!empty($frData['paid_at']) && (float)($frData['paid_amount'] ?? 0) > 0) {
+                    $status = 'partially_paid';
+                } else {
+                    $status = 'approved';
+                }
+            } else {
+                $status = 'partially_approved';
             }
         } elseif ($status === 'rejected') {
             // No change to approved_amount
@@ -1249,18 +1277,25 @@ class FundRequisitionController extends Controller {
             $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
         }
 
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success'            => true,
-            'requisition'        => $req,
-            'expenses'           => $expenses,
-            'projects'           => $projects,
-            'session_user_id'    => (int)$_SESSION['user']['id'],
-            'session_role_id'    => (int)$_SESSION['user']['role_id'],
-            'is_default_limit'   => $isDefaultLimit,
-            'total_spent_global' => $totalSpentGlobal,
-            'balance_remaining'  => max(0, (float)$req['amount'] - $totalSpentGlobal),
-        ]);
+            $effectiveApprovedAmount = (!empty($req['approved_amount']) && (float)$req['approved_amount'] > 0)
+                ? (float)$req['approved_amount']
+                : ((!empty($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0)
+                    ? (float)$req['qc_approved_amount']
+                    : (float)$req['amount']);
+
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success'                   => true,
+                'requisition'               => $req,
+                'expenses'                  => $expenses,
+                'projects'                  => $projects,
+                'session_user_id'           => (int)$_SESSION['user']['id'],
+                'session_role_id'           => (int)$_SESSION['user']['role_id'],
+                'is_default_limit'          => $isDefaultLimit,
+                'total_spent_global'        => $totalSpentGlobal,
+                'effective_approved_amount' => $effectiveApprovedAmount,
+                'balance_remaining'         => max(0, $effectiveApprovedAmount - $totalSpentGlobal),
+            ]);
         exit;
     }
 
@@ -1288,13 +1323,19 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
+        $effectiveApprovedAmount = (!empty($req['approved_amount']) && (float)$req['approved_amount'] > 0)
+            ? (float)$req['approved_amount']
+            : ((!empty($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0)
+                ? (float)$req['qc_approved_amount']
+                : (float)$req['amount']);
+
         // Limit checking
         $sumSql = "SELECT SUM(amount) as total_spent FROM fund_requisition_expenses WHERE fund_requisition_id = $fund_requisition_id";
         $sumRes = $this->db->query($sumSql)->fetch_assoc();
         $total_spent = (float)($sumRes['total_spent'] ?? 0);
-        $remaining = $req['amount'] - $total_spent;
+        $remaining = max(0, $effectiveApprovedAmount - $total_spent);
         if ($amount > $remaining) {
-            setError('Expense amount (BDT ' . number_format($amount, 2) . ') exceeds the remaining requisition balance (BDT ' . number_format($remaining, 2) . ').');
+            setError('Expense amount (BDT ' . number_format($amount, 2) . ') exceeds the remaining approved requisition balance (BDT ' . number_format($remaining, 2) . ').');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $fund_requisition_id);
             exit;
         }

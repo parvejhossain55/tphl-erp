@@ -256,19 +256,33 @@ $defaultToDate = date('Y-m-25');
                 <button type="button" class="btn btn-outline-primary fw-semibold btn-open-meal-modal" data-bs-toggle="modal" data-bs-target="#createMealProjectModal">
                     <i class="fa-solid fa-plus me-1"></i> New Project
                 </button>
+
+                <?php if (!empty($mealProjects)): ?>
+                    <button type="button" class="btn btn-outline-danger fw-semibold btn-open-delete-meal-modal" 
+                            data-bs-toggle="modal" data-bs-target="#deleteMealProjectModal"
+                            title="Delete meal projects and all associated data">
+                        <i class="fa-solid fa-trash-can me-1"></i> Delete Project
+                    </button>
+                <?php endif; ?>
             </div>
 
             <!-- Middle: Info Badges -->
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <?php if ($activeProject): ?>
-                    <span class="badge bg-teal text-white p-2 px-3" style="background-color:#0f766e;">
+                    <span class="badge bg-teal  p-2 px-3" style="background-color:#0f766e;">
                         <i class="fa-solid fa-calendar-days me-1"></i> 
                         <?= date('d M Y', strtotime($activeProject['from_date'])) ?> &rarr; <?= date('d M Y', strtotime($activeProject['to_date'])) ?> (<?= $totalDaysInPeriod ?> Days)
                     </span>
-                    <span class="badge border p-2 px-3" style="background: var(--clr-bg-card, transparent); color: inherit; border-color: var(--clr-border-1, #e5e7eb) !important;">
-                        <i class="fa-solid fa-utensils me-1 text-primary"></i> 
-                        Standard Rate: <strong>৳<?= number_format($standardAmount, 2) ?></strong>
-                    </span>
+                    <button type="button" class="btn btn-sm border p-2 px-3 d-inline-flex align-items-center gap-2 shadow-sm btn-open-edit-rate-modal"
+                            data-bs-toggle="modal" data-bs-target="#editStandardRateModal"
+                            title="Click to edit Standard Meal Rate for this project"
+                            style="background: var(--clr-bg-card, #ffffff); color: inherit; border-color: var(--clr-border-1, #e5e7eb) !important; cursor: pointer; border-radius: 6px; font-weight: 500;">
+                        <i class="fa-solid fa-utensils text-primary"></i> 
+                        <span>Standard Rate: <strong class="text-dark">৳<?= number_format($standardAmount, 2) ?></strong></span>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 ms-1" style="font-size: 0.72rem; font-weight: 600;">
+                            <i class="fa-solid fa-pen-to-square me-1"></i>Edit
+                        </span>
+                    </button>
                 <?php endif; ?>
             </div>
 
@@ -379,7 +393,7 @@ $defaultToDate = date('Y-m-25');
                                     <span class="badge border" style="background: var(--clr-bg-secondary, rgba(0,0,0,0.05)); color: inherit;"><?= htmlspecialchars($emp['employee_id']) ?></span>
                                 </td>
                                 <td class="sticky-col-4">
-                                    <span class="badge bg-info text-white"><?= number_format($pct, 0) ?>%</span>
+                                    <span class="badge bg-info "><?= number_format($pct, 0) ?>%</span>
                                 </td>
                                 <td class="sticky-col-5 fw-semibold text-muted">
                                     ৳<?= number_format($effectiveRate, 2) ?>
@@ -522,6 +536,166 @@ $defaultToDate = date('Y-m-25');
 </div>
 
 <!-- ========================================================================= -->
+<!-- Modal: Delete Meal Project (Manage & Clean Duplicates)                    -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="deleteMealProjectModal" tabindex="-1" aria-labelledby="deleteMealProjectModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-danger  py-3">
+                <h5 class="modal-title fw-bold" id="deleteMealProjectModalLabel">
+                    <i class="fa-solid fa-trash-can me-2"></i> Delete Meal Project
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <?php if ($activeProject): ?>
+                    <!-- Active Project Quick Delete Box -->
+                    <div class="alert alert-warning border-warning d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 shadow-sm" style="border-radius: 8px;">
+                        <div>
+                            <div class="fw-bold text-dark fs-6 mb-1">
+                                <i class="fa-solid fa-triangle-exclamation text-danger me-1"></i> Current Active Project:
+                            </div>
+                            <div class="text-secondary fw-semibold">
+                                <span class="badge bg-danger me-1">ID: #<?= $activeProject['id'] ?></span>
+                                <span class="text-dark fw-bold fs-6"><?= htmlspecialchars($activeProject['name']) ?></span>
+                                <span class="badge  text-dark border ms-1">
+                                    <?= date('d M Y', strtotime($activeProject['from_date'])) ?> &rarr; <?= date('d M Y', strtotime($activeProject['to_date'])) ?>
+                                </span>
+                            </div>
+                            <div class="small text-danger mt-1">
+                                <i class="fa-solid fa-circle-info me-1"></i> Deleting will permanently remove this project and ALL its meal records and guest data.
+                            </div>
+                        </div>
+                        <form method="POST" action="<?= $GLOBALS['base_url'] ?>/meal-project-delete" onsubmit="return confirm('Are you sure you want to permanently delete \'<?= htmlspecialchars(addslashes($activeProject['name'])) ?>\' (ID: <?= $activeProject['id'] ?>) and ALL its meal records? This cannot be undone.');" style="margin:0;">
+                            <input type="hidden" name="project_id" value="<?= (int)$activeProject['id'] ?>">
+                            <button type="submit" class="btn btn-danger fw-bold shadow-sm px-3 py-2">
+                                <i class="fa-solid fa-trash-can me-1"></i> Delete Active Project
+                            </button>
+                        </form>
+                    </div>
+                <?php endif; ?>
+
+                <!-- List of All Projects (Manage & Clean Duplicates) -->
+                <div class="card border shadow-none" style="border-radius: 8px;">
+                    <div class="card-header  py-2 d-flex align-items-center justify-content-between">
+                        <span class="fw-bold text-dark">
+                            <i class="fa-solid fa-list-check me-1 text-primary"></i> All Meal Projects (Duplicate Clean-up)
+                        </span>
+                        <span class="badge bg-secondary"><?= count($mealProjects ?? []) ?> Projects Found</span>
+                    </div>
+                    <div class="card-body p-0 table-responsive" style="max-height: 280px; overflow-y: auto;">
+                        <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 70px;">ID</th>
+                                    <th>Project Name</th>
+                                    <th>Cycle Duration</th>
+                                    <th style="width: 90px;">Status</th>
+                                    <th style="width: 120px;" class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($mealProjects)): ?>
+                                    <?php foreach ($mealProjects as $p): ?>
+                                        <tr class="<?= ($selectedProjectId == $p['id']) ? 'table-warning' : '' ?>">
+                                            <td class="fw-bold text-muted">#<?= $p['id'] ?></td>
+                                            <td>
+                                                <span class="fw-semibold text-dark"><?= htmlspecialchars($p['name']) ?></span>
+                                                <?php if (!empty($p['payroll_project_id'])): ?>
+                                                    <span class="badge bg-info text-dark ms-1" style="font-size: 0.75rem;">Payroll Linked</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-secondary small">
+                                                <?= date('d M Y', strtotime($p['from_date'])) ?> &rarr; <?= date('d M Y', strtotime($p['to_date'])) ?>
+                                            </td>
+                                            <td>
+                                                <?php if ($selectedProjectId == $p['id']): ?>
+                                                    <span class="badge bg-success">Active</span>
+                                                <?php else: ?>
+                                                    <span class="badge  text-secondary border">Inactive</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-end">
+                                                <form method="POST" action="<?= $GLOBALS['base_url'] ?>/meal-project-delete" onsubmit="return confirm('Are you sure you want to permanently delete \'<?= htmlspecialchars(addslashes($p['name'])) ?>\' (ID: <?= $p['id'] ?>) and ALL its meal data?');" style="display:inline-block; margin:0;">
+                                                    <input type="hidden" name="project_id" value="<?= (int)$p['id'] ?>">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger fw-semibold" title="Delete this meal project">
+                                                        <i class="fa-solid fa-trash-can me-1"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-3">No meal projects found.</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer  py-2">
+                <button type="button" class="btn btn-secondary px-4 fw-semibold" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- Modal: Edit Standard Meal Rate                                            -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="editStandardRateModal" tabindex="-1" aria-labelledby="editStandardRateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header text-white py-3" style="background: #0f766e !important;">
+                <h5 class="modal-title fw-bold" id="editStandardRateModalLabel">
+                    <i class="fa-solid fa-pen-to-square me-2"></i> Edit Standard Meal Rate
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <?php if ($activeProject): ?>
+                    <form method="POST" action="<?= $GLOBALS['base_url'] ?>/meal-project-update-rate" id="formEditStandardRate">
+                        <input type="hidden" name="project_id" value="<?= (int)$activeProject['id'] ?>">
+                        <input type="hidden" name="branch_id" value="<?= (int)$selectedBranchId ?>">
+
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-semibold mb-1">Target Meal Project</label>
+                            <input type="text" class="form-control  fw-semibold" value="<?= htmlspecialchars($activeProject['name']) ?> (<?= date('d M', strtotime($activeProject['from_date'])) ?> - <?= date('d M Y', strtotime($activeProject['to_date'])) ?>)" readonly>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Standard Meal Rate (৳) <span class="text-danger">*</span></label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text fw-bold ">৳</span>
+                                <input type="number" step="0.01" min="1" name="standard_meal_amount" class="form-control fw-bold fs-4 text-success" value="<?= number_format($standardAmount, 2, '.', '') ?>" required autofocus>
+                            </div>
+                            <small class="text-muted d-block mt-2">
+                                <i class="fa-solid fa-circle-info text-primary me-1"></i>
+                                Standard lunch cost before subsidy. Updating this rate will instantly recompute all individual employee deductions based on their subsidy percentages (e.g., 50%, 100%).
+                            </small>
+                        </div>
+
+                        <div class="modal-footer px-0 pb-0 pt-3 border-top d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary px-4 fw-bold" style="background: #0f766e; border-color: #0f766e;">
+                                <i class="fa-solid fa-floppy-disk me-1"></i> Update Rate
+                            </button>
+                        </div>
+                    </form>
+                <?php else: ?>
+                    <div class="text-center py-3 text-muted">
+                        <i class="fa-solid fa-circle-exclamation fs-3 text-warning mb-2"></i>
+                        <p class="mb-0">No active meal project selected.</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
 <!-- Frontend JavaScript (Safe Ready Checker Pattern as per rules)              -->
 <!-- ========================================================================= -->
 <script>
@@ -538,15 +712,47 @@ $defaultToDate = date('Y-m-25');
             const currentBranchId = <?= (int)$selectedBranchId ?>;
             const standardMealAmount = <?= (float)$standardAmount ?>;
 
-            // Rule 4 (Stacking Context Fix): Append modal to body directly so it is never trapped in .page__body-wrapper
+            // Rule 4 (Stacking Context Fix): Append modals to body directly so they are never trapped in .page__body-wrapper
             if ($('#createMealProjectModal').parent().prop('tagName') !== 'BODY') {
                 $('#createMealProjectModal').appendTo('body');
             }
+            if ($('#deleteMealProjectModal').parent().prop('tagName') !== 'BODY') {
+                $('#deleteMealProjectModal').appendTo('body');
+            }
+            if ($('#editStandardRateModal').parent().prop('tagName') !== 'BODY') {
+                $('#editStandardRateModal').appendTo('body');
+            }
 
-            // Rule 3 (Dual Event Binding): Direct delegated click fallback for modal trigger
+            // Rule 3 (Dual Event Binding): Direct delegated click fallback for modal triggers
             $(document).on('click', '.btn-open-meal-modal, [data-bs-target="#createMealProjectModal"]', function(e) {
                 e.preventDefault();
                 const modalEl = document.getElementById('createMealProjectModal');
+                if (modalEl) {
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        const modalObj = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modalObj.show();
+                    } else if (typeof $ !== 'undefined' && $.fn.modal) {
+                        $(modalEl).modal('show');
+                    }
+                }
+            });
+
+            $(document).on('click', '.btn-open-delete-meal-modal, [data-bs-target="#deleteMealProjectModal"]', function(e) {
+                e.preventDefault();
+                const modalEl = document.getElementById('deleteMealProjectModal');
+                if (modalEl) {
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        const modalObj = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modalObj.show();
+                    } else if (typeof $ !== 'undefined' && $.fn.modal) {
+                        $(modalEl).modal('show');
+                    }
+                }
+            });
+
+            $(document).on('click', '.btn-open-edit-rate-modal, [data-bs-target="#editStandardRateModal"]', function(e) {
+                e.preventDefault();
+                const modalEl = document.getElementById('editStandardRateModal');
                 if (modalEl) {
                     if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
                         const modalObj = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -743,6 +949,62 @@ $defaultToDate = date('Y-m-25');
                             btn.prop('disabled', false).html(origHtml);
                             console.error("Sync error:", err);
                             Swal.fire('Error', 'Network or server error during sync.', 'error');
+                        });
+                    }
+                });
+            });
+
+            // Delete Meal Project Action
+            $(document).on('click', '#btnDeleteMealProject', function() {
+                const projId = $(this).data('id');
+                const projName = $(this).data('name');
+
+                Swal.fire({
+                    title: `Delete "${projName}"?`,
+                    text: "Are you sure? This will permanently delete this meal project and ALL its meal records and guest data! This action cannot be undone.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Yes, Delete Everything',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Deleting Project...',
+                            text: 'Please wait while project and all meal records are being removed.',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        fetch(`${baseUrl}/meal-project-delete`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ project_id: projId })
+                        })
+                        .then(r => r.json())
+                        .then(res => {
+                            if (res.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Deleted Successfully!',
+                                    text: res.message,
+                                    confirmButtonColor: '#0f766e'
+                                }).then(() => {
+                                    window.location.href = `${baseUrl}/meal-tracker`;
+                                });
+                            } else {
+                                Swal.fire('Delete Failed', res.message || 'Error occurred.', 'error');
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Delete error:", err);
+                            Swal.fire('Error', 'Network or server error during project deletion.', 'error');
                         });
                     }
                 });

@@ -48,9 +48,17 @@ $show_breadcrumb = true;
                                 Rate: <strong>৳<?= number_format($standardRate, 2) ?></strong>
                             </span>
                         </div>
-                        <div class="text-end">
-                            <div class="text-muted small">Grand Total Bill</div>
-                            <h4 class="fw-bold text-success mb-0">৳<?= number_format($hist['grand_total_bill'], 2) ?></h4>
+                        <div class="text-end d-flex align-items-center gap-3">
+                            <div>
+                                <div class="text-muted small">Grand Total Bill</div>
+                                <h4 class="fw-bold text-success mb-0">৳<?= number_format($hist['grand_total_bill'], 2) ?></h4>
+                            </div>
+                            <button type="button" class="btn btn-outline-danger btn-sm btn-delete-history-project"
+                                    data-id="<?= (int)$proj['id'] ?>"
+                                    data-name="<?= htmlspecialchars($proj['name']) ?>"
+                                    title="Delete this meal project and all associated records">
+                                <i class="fa-solid fa-trash-can me-1"></i> Delete
+                            </button>
                         </div>
                     </div>
 
@@ -113,3 +121,79 @@ $show_breadcrumb = true;
         <?php endforeach; ?>
     <?php endif; ?>
 </div>
+
+<script>
+(function() {
+    function initHistoryScripts() {
+        if (typeof jQuery === 'undefined' || typeof Swal === 'undefined') {
+            setTimeout(initHistoryScripts, 50);
+            return;
+        }
+
+        jQuery(function($) {
+            const baseUrl = "<?= $GLOBALS['base_url'] ?>";
+
+            $(document).on('click', '.btn-delete-history-project', function() {
+                const projId = $(this).data('id');
+                const projName = $(this).data('name');
+
+                Swal.fire({
+                    title: `Delete "${projName}"?`,
+                    text: "Are you sure? This will permanently delete this meal project and ALL its associated employee meal records and guest data! This action cannot be undone.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Yes, Delete Everything',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Deleting Project...',
+                            text: 'Please wait while all meal records are being removed.',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        fetch(`${baseUrl}/meal-project-delete`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ project_id: projId })
+                        })
+                        .then(r => r.json())
+                        .then(res => {
+                            if (res.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Deleted Successfully!',
+                                    text: res.message,
+                                    confirmButtonColor: '#0f766e'
+                                }).then(() => {
+                                    window.location.reload();
+                                });
+                            } else {
+                                Swal.fire('Delete Failed', res.message || 'Error occurred.', 'error');
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Delete error:", err);
+                            Swal.fire('Error', 'Network or server error during project deletion.', 'error');
+                        });
+                    }
+                });
+            });
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initHistoryScripts);
+    } else {
+        initHistoryScripts();
+    }
+})();
+</script>

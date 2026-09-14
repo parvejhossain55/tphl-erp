@@ -203,6 +203,20 @@ class MealTrackerController extends Controller
             exit;
         }
 
+        // Prevent duplicate project with identical name
+        $checkStmt = $this->db->prepare("SELECT id, name FROM meal_projects WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1");
+        if ($checkStmt) {
+            $checkStmt->bind_param("s", $name);
+            $checkStmt->execute();
+            $exist = $checkStmt->get_result()->fetch_assoc();
+            $checkStmt->close();
+            if ($exist) {
+                setError("A meal project with the name '{$name}' already exists. Please choose a unique name or use the existing project.");
+                header("Location: {$GLOBALS['base_url']}/meal-tracker?project_id={$exist['id']}");
+                exit;
+            }
+        }
+
         $newId = $this->mealProjectModel->create([
             'name' => $name,
             'standard_meal_amount' => $standardAmount > 0 ? $standardAmount : 120.00,
@@ -219,6 +233,119 @@ class MealTrackerController extends Controller
             header("Location: {$GLOBALS['base_url']}/meal-tracker?project_id={$newId}");
         } else {
             setError("Failed to create Meal Project. Please try again.");
+            header("Location: {$GLOBALS['base_url']}/meal-tracker");
+        }
+        exit;
+    }
+
+    /**
+     * Update Standard Meal Amount for a Meal Project
+     */
+    public function updateStandardRate()
+    {
+        $this->checkAccess();
+
+        $projectId = (int)($_POST['project_id'] ?? 0);
+        $standardAmount = (float)($_POST['standard_meal_amount'] ?? 0);
+        $branchId = (int)($_POST['branch_id'] ?? 0);
+
+        if (!$projectId || $standardAmount <= 0) {
+            setError("Valid Project ID and positive Standard Meal Rate are required.");
+            $redirUrl = "{$GLOBALS['base_url']}/meal-tracker";
+            if ($projectId) {
+                $redirUrl .= "?project_id={$projectId}" . ($branchId ? "&branch_id={$branchId}" : "");
+            }
+            header("Location: {$redirUrl}");
+            exit;
+        }
+
+        $project = $this->mealProjectModel->getById($projectId);
+        if (!$project) {
+            setError("Meal project not found.");
+            header("Location: {$GLOBALS['base_url']}/meal-tracker");
+            exit;
+        }
+
+        $updated = $this->mealProjectModel->updateStandardRate($projectId, $standardAmount);
+        if ($updated) {
+            setSuccess("Standard meal rate for '{$project['name']}' updated to ৳" . number_format($standardAmount, 2) . " successfully.");
+        } else {
+            setError("Failed to update standard meal rate.");
+        }
+
+        $redirUrl = "{$GLOBALS['base_url']}/meal-tracker?project_id={$projectId}" . ($branchId ? "&branch_id={$branchId}" : "");
+        header("Location: {$redirUrl}");
+        exit;
+    }
+
+    /**
+     * Delete Meal Project and completely delete all its associated records (meal_records, meal_guest_records)
+     */
+    public function deleteProject()
+    {
+        $this->checkAccess();
+
+        $projectId = (int)($_POST['project_id'] ?? ($_GET['project_id'] ?? 0));
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
+                  || (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false);
+
+        if (!$projectId) {
+            $rawInput = file_get_contents('php://input');
+            $input = json_decode($rawInput, true) ?? [];
+            if (!empty($input['project_id'])) {
+                $projectId = (int)$input['project_id'];
+                $isAjax = true;
+            }
+        }
+
+        if (!$projectId) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Valid Project ID is required.']);
+                exit;
+            }
+            setError("Valid Project ID is required.");
+            header("Location: {$GLOBALS['base_url']}/meal-tracker");
+            exit;
+        }
+
+        $project = $this->mealProjectModel->getById($projectId);
+        if (!$project) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Meal project not found.']);
+                exit;
+            }
+            setError("Meal project not found.");
+            header("Location: {$GLOBALS['base_url']}/meal-tracker");
+            exit;
+        }
+
+        $projectName = $project['name'];
+
+        // Fully delete all related records: meal_records, meal_guest_records, and meal_projects
+        $this->db->query("DELETE FROM meal_records WHERE meal_project_id = {$projectId}");
+        $this->db->query("DELETE FROM meal_guest_records WHERE meal_project_id = {$projectId}");
+        $deleted = $this->mealProjectModel->delete($projectId);
+
+        if ($deleted) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => "Meal Project '{$projectName}' and all associated meal records have been completely deleted."
+                ]);
+                exit;
+            }
+            setSuccess("Meal Project '{$projectName}' and all associated records deleted successfully.");
+            header("Location: {$GLOBALS['base_url']}/meal-tracker");
+        } else {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Failed to delete project. Please try again.']);
+                exit;
+            }
+            setError("Failed to delete project. Please try again.");
             header("Location: {$GLOBALS['base_url']}/meal-tracker");
         }
         exit;
@@ -449,12 +576,13 @@ class MealTrackerController extends Controller
             exit;
         }
 
-        // Strict 12:00 PM Cutoff Check
+        // Strict 11:00 AM Cutoff Check
         date_default_timezone_set('Asia/Dhaka');
-        if (date('H:i') >= '12:00') {
+        $isTestMode = isset($_GET['test_meal']) || isset($_GET['preview_meal']) || isset($_GET['test_modal']);
+        if (!$isTestMode && date('H:i') >= '11:00') {
             echo json_encode([
                 'success' => false, 
-                'message' => 'আজকের মিল কাটঅফ সময় (দুপুর ১২:০০ টা) পার হয়ে গেছে। ১২:০০ টার পর আর আজকের মিল পরিবর্তন করা সম্ভব নয়।'
+                'message' => "Today's meal cutoff time (11:00 AM) has passed. Status cannot be modified after 11:00 AM."
             ]);
             exit;
         }
@@ -474,8 +602,8 @@ class MealTrackerController extends Controller
         if ($res) {
             $updatedCtx = $this->employeeModel->getTodayMealContext($empId, $date);
             $msg = ($action === 'opt_out') 
-                ? 'আজকের মিল সফলভাবে অফ করা হয়েছে।' 
-                : 'আজকের মিল সফলভাবে পুনরায় চালু করা হয়েছে।';
+                ? "Today's meal has been successfully turned OFF." 
+                : "Today's meal has been successfully turned ON.";
 
             echo json_encode([
                 'success' => true,

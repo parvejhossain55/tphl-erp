@@ -1,7 +1,6 @@
 <?php
 $current_server = 3;
 // Local Development Server
-/////////////////////////------------//////////
 if ($current_server == 1) {
     return [
         "db_host" => "127.0.0.1",
@@ -122,7 +121,6 @@ if ($current_server == 3) {
     ];
 
 }
-
 
 /// if emi data uploaded wrong then deleted with
 // -- ধাপ ১: EMI শিডিউল ডিলিট করা

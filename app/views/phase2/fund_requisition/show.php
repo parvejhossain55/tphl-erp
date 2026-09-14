@@ -15,6 +15,7 @@ $effectiveApprovedAmount = (!empty($req['approved_amount']) && (float)$req['appr
         ? (float)$req['qc_approved_amount']
         : (float)$req['amount']);
 
+$balance = max(0, $effectiveApprovedAmount - (float)($totalSpent ?? 0));
 $dueToPay = max(0, $effectiveApprovedAmount - (float)($req['paid_amount'] ?? 0));
 
 $statusColors = [
@@ -34,7 +35,8 @@ $settleBadgeMap = [
 ];
 [$settleClass, $settleLabel] = $settleBadgeMap[$req['settlement_status'] ?? 'pending'] ?? ['bg-secondary-transparent text-secondary', '---'];
 
-$spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amount']) * 100, 1)) : 0;
+$baseAmount = ($effectiveApprovedAmount > 0) ? $effectiveApprovedAmount : (float)$req['amount'];
+$spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / $baseAmount) * 100, 1)) : 0;
 ?>
 <div class="container-fluid py-3">
     <!-- PAGE BREADCRUMB & HEADER -->
@@ -451,6 +453,13 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                                                 </span>
                                             </div>
                                         <?php endif; ?>
+                                        <?php if (in_array($sessionRoleId, [24, 1, 3, 33]) && (float)($req['qc_approved_amount'] ?? 0) < (float)$req['amount']): ?>
+                                            <div class="mt-2">
+                                                <button class="btn btn-sm btn-outline-info shadow-sm fw-medium" data-bs-toggle="modal" data-bs-target="#qcApproveModal">
+                                                    <i class="fa-solid fa-pen-to-square me-1"></i> Update / Approve Remaining (QC)
+                                                </button>
+                                            </div>
+                                        <?php endif; ?>
                                         <?php if (!empty($req['qc_approval_note'])): ?>
                                             <div class="bg-light p-2 rounded fs-12 mt-2 text-dark border">
                                                 <i class="fa-solid fa-quote-left text-muted me-1 fs-11"></i><?php echo htmlspecialchars($req['qc_approval_note']); ?>
@@ -514,6 +523,27 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                                     <?php if (!empty($req['approval_note'])): ?>
                                         <div class="bg-light p-2 rounded fs-12 mt-2 text-dark border">
                                             <i class="fa-solid fa-quote-left text-muted me-1 fs-11"></i><?php echo htmlspecialchars($req['approval_note']); ?>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php 
+                                    if (in_array($sessionRoleId, [1, 3, 33])) {
+                                        $maxApprovableMgmt = (float)$req['amount'];
+                                    } else {
+                                        $qcCapMgmt = (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0)
+                                            ? (float)$req['qc_approved_amount']
+                                            : (float)$req['amount'];
+                                        $maxApprovableMgmt = min(100000, $qcCapMgmt);
+                                    }
+                                    $dueToApproveMgmt = max(0, $maxApprovableMgmt - (float)($req['approved_amount'] ?? 0));
+                                    if ($canApprove && $dueToApproveMgmt > 0): 
+                                    ?>
+                                        <div class="mt-2">
+                                            <span class="badge bg-warning-transparent text-dark border border-warning fs-11 me-2">
+                                                Remaining Unapproved: &#2547; <?php echo number_format($dueToApproveMgmt, 2); ?>
+                                            </span>
+                                            <button class="btn btn-sm btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#approveModal">
+                                                <i class="fa-solid fa-stamp me-1"></i> Approve Remaining Balance
+                                            </button>
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -706,7 +736,7 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
                             <div class="progress-bar <?php echo $spentPercent > 90 ? 'bg-danger' : ($spentPercent > 50 ? 'bg-warning' : 'bg-success'); ?>" role="progressbar" style="width: <?php echo $spentPercent; ?>%"></div>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mt-2 fs-11 text-muted">
-                            <span>Disbursed: <strong>&#2547; <?php echo number_format($req['amount'], 2); ?></strong></span>
+                            <span>Disbursed / Approved: <strong>&#2547; <?php echo number_format($effectiveApprovedAmount, 2); ?></strong></span>
                             <span>Spent: <strong>&#2547; <?php echo number_format($totalSpent, 2); ?></strong></span>
                             <span>Remaining: <strong class="<?php echo $balance > 0 ? 'text-success' : 'text-muted'; ?>">&#2547; <?php echo number_format($balance, 2); ?></strong></span>
                         </div>
@@ -793,7 +823,8 @@ $spentPercent = ($req['amount'] > 0) ? min(100, round(($totalSpent / $req['amoun
 
 <?php 
 $canApproveQc = in_array($sessionRoleId, [24, 1, 3, 33]);
-if ($req['status'] === 'pending_qc' && $canApproveQc): 
+$canShowQcModal = $canApproveQc && ($req['status'] === 'pending_qc' || (!empty($req['qc_approved_by']) && (float)($req['qc_approved_amount'] ?? 0) < (float)$req['amount']));
+if ($canShowQcModal): 
 ?>
 <div class="modal fade" id="qcApproveModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve-qc" method="POST">
@@ -850,11 +881,16 @@ if ($req['status'] === 'pending_dept' && $canApproveDept):
 <?php endif; ?>
 
 <?php 
-$effectiveReqAmount = (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0)
-    ? (float)$req['qc_approved_amount']
-    : (float)$req['amount'];
-$dueToApprove = $effectiveReqAmount - ($req['approved_amount'] ?? 0);
-if (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) && $canApprove && $dueToApprove > 0): ?>
+if (in_array($sessionRoleId, [1, 3, 33])) {
+    $maxApprovable = (float)$req['amount'];
+} else {
+    $effectiveReqAmount = (isset($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0)
+        ? (float)$req['qc_approved_amount']
+        : (float)$req['amount'];
+    $maxApprovable = min(100000, $effectiveReqAmount);
+}
+$dueToApprove = max(0, $maxApprovable - (float)($req['approved_amount'] ?? 0));
+if ($canApprove && $dueToApprove > 0 && !in_array($req['status'], ['rejected', 'pending_dept', 'pending_qc'])): ?>
 <div class="modal fade" id="approveModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/approve" method="POST">
         <div class="modal-content">
