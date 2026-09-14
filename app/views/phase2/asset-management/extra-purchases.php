@@ -4,7 +4,7 @@ $userId = (int)($_SESSION['user']['id'] ?? 0);
 
 $canCreate = true; // Enable New Request button for all logged in users
 
-$isChiefOfficer = ($roleId === 33 || strtolower(trim($_SESSION['user']['role_name'] ?? '')) === 'chief officer');
+$isChiefOfficer = (in_array($roleId, [33, 34, 35], true) || in_array(strtolower(trim($_SESSION['user']['role_name'] ?? '')), ['chief officer', 'management viewer', 'seal ceo'], true));
 
 // Approval Pipeline Role Permissions (Admin=1, super Admin=3)
 $isAdminOrMgmt = in_array($roleId, [1, 3]) && !$isChiefOfficer; 
@@ -15,7 +15,7 @@ $isManagement   = $isAdminOrMgmt;                               // Management St
 $isAccounts     = ($isAdminOrMgmt || in_array($roleId, [6, 30])) && !$isChiefOfficer;  // Accounts Payment
 
 // Global approvers / viewers include Management, Operations, Purchase, QC/Audit, Accounts roles
-$isGlobalViewer = in_array($roleId, [1, 3, 33, 6, 17, 20, 24, 25, 30, 31, 32]);
+$isGlobalViewer = in_array($roleId, [1, 3, 33, 34, 35, 6, 17, 20, 24, 25, 30, 31, 32]);
 $isApprover     = $isGlobalViewer && !$isChiefOfficer;
 $activeTab      = $_GET['tab'] ?? ($isApprover ? 'all_requests' : 'my_requests');
 

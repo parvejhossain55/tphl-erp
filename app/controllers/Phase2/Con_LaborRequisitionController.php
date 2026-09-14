@@ -33,7 +33,7 @@ class Con_LaborRequisitionController extends Controller
     private function canApproveManagement($amount = 0)
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        if ($this->userRole === 33 || $roleName === 'chief officer') {
+        if (in_array($this->userRole, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             return false;
         }
         if (in_array($this->userRole, [3, 1])) {

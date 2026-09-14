@@ -26,8 +26,8 @@ class ExpenseAnalyticsController extends Controller
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $allowedRoles = [1, 3, 6, 30, 20, 32, 17];
 
-        if ($roleId === 33) {
-            $_SESSION['flash_error'] = "Access denied: Chief Officer is not authorized for Expense Analytics.";
+        if (in_array($roleId, [33, 34, 35], true)) {
+            $_SESSION['flash_error'] = "Access denied: You are not authorized for Expense Analytics.";
             header("Location: {$GLOBALS['base_url']}/home");
             exit;
         }

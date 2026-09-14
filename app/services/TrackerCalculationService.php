@@ -135,11 +135,12 @@ class TrackerCalculationService
         // (Roles: Super Admin (3), Admin (1), HR (4), Admin & Operation head (20), Admin Operation (32), Chief Officer (33))
         // Or if role_name or username contains 'admin', 'chief', 'director', 'management'
         $isGlobalAdmin = (
-            in_array($roleId, [1, 3, 4, 20, 32, 33])
+            in_array($roleId, [1, 3, 4, 20, 32, 33, 34, 35])
             || str_contains($roleName, 'admin') 
             || str_contains($roleName, 'chief') 
             || str_contains($roleName, 'director')
             || str_contains($roleName, 'management')
+            || str_contains($roleName, 'ceo')
             || str_contains($userName, 'admin')
         );
 

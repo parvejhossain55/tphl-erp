@@ -9,6 +9,26 @@ class Con_Quotation extends Model
     protected $itemTable = 'quotation_items';
     public    $lastError = null;  // stores the last error message for caller
 
+    public function __construct($db = null)
+    {
+        parent::__construct($db);
+        $this->ensureSchema();
+    }
+
+    private function ensureSchema()
+    {
+        try {
+            $colRes = $this->db->query("SHOW COLUMNS FROM {$this->table} LIKE 'attachment'");
+            if ($colRes && $col = $colRes->fetch_assoc()) {
+                if (stripos($col['Type'], 'int') !== false) {
+                    $this->db->query("ALTER TABLE {$this->table} MODIFY COLUMN attachment VARCHAR(255) NULL DEFAULT NULL");
+                }
+            }
+        } catch (\Throwable $e) {
+            // Silently ignore if already modified or DDL restricted
+        }
+    }
+
     // =========================================================================
     // QUOTATION — READ
     // =========================================================================

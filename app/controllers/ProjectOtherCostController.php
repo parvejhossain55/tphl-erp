@@ -21,8 +21,8 @@ class ProjectOtherCostController extends Controller
         
         $approvalRequests = [];
         
-        // Approver roles: QC(13, 24, 25), Management(3, 33, 32, 15, 22), Accounts(6, 30), Admin(1)
-        $approverRoles = [1, 3, 6, 13, 15, 20, 22, 24, 25, 30, 32, 33];
+        // Approver roles: QC(13, 24, 25), Management(3, 33, 34, 35, 32, 15, 22), Accounts(6, 30), Admin(1)
+        $approverRoles = [1, 3, 6, 13, 15, 20, 22, 24, 25, 30, 32, 33, 34, 35];
         
         // Check if user is a designated reporting boss for any employees
         $isReportingBoss = false;
@@ -238,7 +238,7 @@ class ProjectOtherCostController extends Controller
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
             $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-            if ($roleId === 33 || $roleName === 'chief officer' || !in_array($roleId, [1, 13, 24, 25])) {
+            if (in_array($roleId, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true) || !in_array($roleId, [1, 13, 24, 25])) {
                 setError("You are not authorized to approve this request as QC.");
                 header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
                 exit();
@@ -268,7 +268,7 @@ class ProjectOtherCostController extends Controller
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
             $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-            if ($roleId === 33 || $roleName === 'chief officer' || !in_array($roleId, [1, 3, 15, 20, 22, 32])) {
+            if (in_array($roleId, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true) || !in_array($roleId, [1, 3, 15, 20, 22, 32])) {
                 setError("You are not authorized to approve this request as Management.");
                 header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
                 exit();

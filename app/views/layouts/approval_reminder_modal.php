@@ -10,8 +10,8 @@ $currentUserId = (int)$_SESSION['user']['id'];
 $currentUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
 $currentUserRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 
-// Chief Officer has no approval or disbursement tasks: disable modal & timer completely
-if ($currentUserRoleId === 33 || $currentUserRoleName === 'chief officer') {
+// Chief Officer, Management Viewer & SEAL CEO have no approval or disbursement tasks: disable modal & timer completely
+if (in_array($currentUserRoleId, [33, 34, 35], true) || in_array($currentUserRoleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
     return;
 }
 ?>

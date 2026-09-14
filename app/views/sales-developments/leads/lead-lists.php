@@ -4,7 +4,7 @@ $show_breadcrumb = true;
 
 $sessionUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
 $sessionUserRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-$isManagement = in_array($sessionUserRoleId, [1, 3, 33], true) || in_array($sessionUserRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+$isManagement = in_array($sessionUserRoleId, [1, 3, 33, 34, 35], true) || in_array($sessionUserRoleName, ['super admin', 'admin', 'management', 'chief officer', 'management viewer', 'seal ceo'], true);
 ?>
 <?php
 // ── Booking CSV import skipped-row report ────────────────────────
@@ -270,7 +270,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                     <!-- Team Filter -->
                     <?php 
                     $sessionUserRoleId = $_SESSION['user']['role_id'] ?? null;
-                    if (in_array($sessionUserRoleId, [1, 3, 9, 33]) && !empty($teams)): 
+                    if (in_array((int)$sessionUserRoleId, [1, 3, 9, 33, 34, 35], true) && !empty($teams)): 
                     ?>
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 fw-bold text-dark small" style="font-size: 0.8rem;">Team</label>

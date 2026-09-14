@@ -374,7 +374,7 @@ class LeadController extends Controller
         $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
         $userTeamId = $_SESSION['user']['team_id'] ?? null;
         $isCoLeader = isSalesCoLeader();
-        $isManagement = in_array((int)$userRoleId, [1, 3, 33], true) || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer'], true);
+        $isManagement = in_array((int)$userRoleId, [1, 3, 33, 34, 35], true) || in_array($userRoleName, ['super admin', 'admin', 'management', 'chief officer', 'management viewer', 'seal ceo'], true);
 
         // Block Sales Executives (role 8) who are not co-leaders from fetching lead data via AJAX
         if ($userRoleId === 8 && !$isCoLeader) {

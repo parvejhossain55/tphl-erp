@@ -283,7 +283,7 @@ class HomeController extends Controller
         }
 
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if ($userRoleId === 33) {
+        if (in_array($userRoleId, [33, 34, 35], true)) {
             $pendingRequests = [];
         } else {
             $pendingRequests = $this->approvalModel->getPendingForRole($roles, 10);
@@ -345,7 +345,10 @@ class HomeController extends Controller
         try {
             $request = $this->approvalModel->find($id);
             $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-            $isManagement = in_array($userRoleId, [1, 3, 33], true);
+            if (in_array($userRoleId, [33, 34, 35], true)) {
+                throw new Exception("Unauthorized action: View-Only roles cannot approve requests.");
+            }
+            $isManagement = in_array($userRoleId, [1, 3], true);
             $isSiteOperator = ($userRoleId === 20);
 
             if ($isSiteOperator && !$isManagement) {
@@ -395,7 +398,10 @@ class HomeController extends Controller
         try {
             $request = $this->approvalModel->find($id);
             $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-            $isManagement = in_array($userRoleId, [1, 3, 33], true);
+            if (in_array($userRoleId, [33, 34, 35], true)) {
+                throw new Exception("Unauthorized action: View-Only roles cannot approve requests.");
+            }
+            $isManagement = in_array($userRoleId, [1, 3], true);
             $isSiteOperator = ($userRoleId === 20);
 
             if ($isSiteOperator && !$isManagement) {
@@ -525,7 +531,10 @@ class HomeController extends Controller
     {
         $request = $this->approvalModel->find($id);
         $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $isManagement = in_array($userRoleId, [1, 3, 33], true);
+        if (in_array($userRoleId, [33, 34, 35], true)) {
+            die("Unauthorized action: View-Only roles cannot reject requests.");
+        }
+        $isManagement = in_array($userRoleId, [1, 3], true);
         $isSiteOperator = ($userRoleId === 20);
 
         if ($isSiteOperator && !$isManagement) {

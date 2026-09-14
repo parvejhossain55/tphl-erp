@@ -636,7 +636,7 @@ class FundRequisitionController extends Controller {
         $sessionUserId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        if ($roleId === 33 || ($roleId !== 24 && !in_array($roleId, [1, 3]))) {
+        if (in_array($roleId, [33, 34, 35], true) || ($roleId !== 24 && !in_array($roleId, [1, 3]))) {
             setError('Only QC & Internal Audit Head or Admins can approve this stage.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
@@ -822,7 +822,7 @@ class FundRequisitionController extends Controller {
     public function approve() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
-        if ($roleId === 33 || $roleName === 'chief officer' || !in_array($roleId, [1, 3, 20, 32])) {
+        if (in_array($roleId, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true) || !in_array($roleId, [1, 3, 20, 32])) {
             setError('Only Management, Admins, or Operation can approve requisitions.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
