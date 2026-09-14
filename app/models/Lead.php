@@ -329,7 +329,7 @@ class Lead extends Model
 
         // TEAM BASED FILTER
         if (!empty($teamId)) {
-            if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33])) {
+            if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
                 $loggedInUserId = $_SESSION['user']['id'] ?? 0;
                 $sql .= " AND (l.team_id = ? OR l.assigned_id = ?)";
                 $params[] = $teamId;
@@ -619,7 +619,7 @@ class Lead extends Model
 
         // TEAM BASED FILTER
         if (!empty($teamId)) {
-            if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33])) {
+            if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
                 $loggedInUserId = $_SESSION['user']['id'] ?? 0;
                 $sql .= " AND (l.team_id = ? OR l.assigned_id = ?)";
                 $params[] = $teamId;
@@ -2572,19 +2572,92 @@ class Lead extends Model
         return $this->getMarketingLeadsFlexible($userId, null, '7days', 'DESC');
     }
 
-    public function getDistinctMarketingPlatforms()
+    /**
+     * Standard platform groupings and their aliases (case-insensitive)
+     */
+    public static function getStandardPlatformGroups(): array
     {
-        $sql = "SELECT DISTINCT TRIM(platform) AS platform FROM leads WHERE deleted_at IS NULL AND uploaded_from = 'From Campaign' AND platform IS NOT NULL AND TRIM(platform) != '' ORDER BY platform ASC";
-        $res = $this->db->query($sql);
-        $list = [];
-        if ($res) {
-            while ($r = $res->fetch_assoc()) {
-                if (!empty($r['platform'])) {
-                    $list[] = $r['platform'];
+        return [
+            'Facebook Form Lead' => [
+                'facebook', 'fb', 'fb(lead form)', 'lead form', 'leadform', 'leadfrom', 'meta form', 'meta inform'
+            ],
+            'Meta Inbox' => [
+                'meta inbox', 'meta'
+            ],
+            'Instagram(IG)' => [
+                'instagram', 'ig', 'instagram(ig)'
+            ],
+            'Google Form' => [
+                'google form', 'google', 'googleform'
+            ],
+            'WhatsApp' => [
+                'whatsapp', 'wa', 'whats app', 'whatsappp', 'whataapp', 'whatsapp lead'
+            ],
+            'Brochure Leads' => [
+                'brochure leads', 'brocure leads', 'brochure lead', 'brocure lead', 'brochure'
+            ],
+        ];
+    }
+
+    /**
+     * Get all raw database values / aliases for a given platform name or category
+     */
+    public static function getPlatformAliases(string $platform): array
+    {
+        $platform = trim($platform);
+        if ($platform === '') return [];
+
+        $groups = self::getStandardPlatformGroups();
+        $targetLower = strtolower($platform);
+
+        // If the platform matches a standard group name directly
+        foreach ($groups as $groupName => $aliases) {
+            if (strtolower($groupName) === $targetLower) {
+                $all = array_unique(array_merge([$groupName], $aliases));
+                return array_values($all);
+            }
+        }
+
+        // If the platform matches any alias within a group
+        foreach ($groups as $groupName => $aliases) {
+            foreach ($aliases as $alias) {
+                if (strtolower($alias) === $targetLower) {
+                    $all = array_unique(array_merge([$groupName], $aliases));
+                    return array_values($all);
                 }
             }
         }
-        return $list;
+
+        // If not found in any group, return just the platform itself
+        return [$platform];
+    }
+
+    /**
+     * Resolve raw platform string to canonical platform name
+     */
+    public static function resolveCanonicalPlatform(?string $rawPlatform): string
+    {
+        if (empty($rawPlatform)) return 'N/A';
+        $targetLower = strtolower(trim($rawPlatform));
+
+        $groups = self::getStandardPlatformGroups();
+        foreach ($groups as $groupName => $aliases) {
+            if (strtolower($groupName) === $targetLower) {
+                return $groupName;
+            }
+            foreach ($aliases as $alias) {
+                if (strtolower($alias) === $targetLower) {
+                    return $groupName;
+                }
+            }
+        }
+
+        return $rawPlatform;
+    }
+
+    public function getDistinctMarketingPlatforms()
+    {
+        return array_keys(self::getStandardPlatformGroups());
     }
 
     /**
@@ -2639,9 +2712,19 @@ class Lead extends Model
         }
 
         if (!empty($platform)) {
-            $sql .= " AND l.platform = ?";
-            $params[] = $platform;
-            $types   .= "s";
+            $aliases = self::getPlatformAliases($platform);
+            if (!empty($aliases)) {
+                $placeholders = implode(',', array_fill(0, count($aliases), '?'));
+                $sql .= " AND LOWER(TRIM(l.platform)) IN ($placeholders)";
+                foreach ($aliases as $alias) {
+                    $params[] = strtolower(trim($alias));
+                    $types   .= "s";
+                }
+            } else {
+                $sql .= " AND l.platform = ?";
+                $params[] = $platform;
+                $types   .= "s";
+            }
         }
 
         if (!empty($fromDate) && !empty($toDate)) {
@@ -2785,9 +2868,19 @@ class Lead extends Model
         }
 
         if (!empty($platform)) {
-            $sql .= " AND l.platform = ?";
-            $params[] = $platform;
-            $types   .= "s";
+            $aliases = self::getPlatformAliases($platform);
+            if (!empty($aliases)) {
+                $placeholders = implode(',', array_fill(0, count($aliases), '?'));
+                $sql .= " AND LOWER(TRIM(l.platform)) IN ($placeholders)";
+                foreach ($aliases as $alias) {
+                    $params[] = strtolower(trim($alias));
+                    $types   .= "s";
+                }
+            } else {
+                $sql .= " AND l.platform = ?";
+                $params[] = $platform;
+                $types   .= "s";
+            }
         }
 
         if (!empty($fromDate) && !empty($toDate)) {
@@ -3354,6 +3447,122 @@ class Lead extends Model
         $results['leads'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
         return $results;
+    }
+
+    /**
+     * Date-wise breakdown report for All Platform Leads
+     */
+    public function getPlatformLeadsDateWiseReport($filters = [])
+    {
+        $fromDate = !empty($filters['from_date']) ? $filters['from_date'] : date('Y-m-d');
+        $toDate   = !empty($filters['to_date'])   ? $filters['to_date']   : date('Y-m-d');
+        $projectId = !empty($filters['project_id']) ? (int)$filters['project_id'] : null;
+        $projectCategoryId = !empty($filters['project_category_id']) ? (int)$filters['project_category_id'] : null;
+        $teamId = !empty($filters['team_id']) ? (int)$filters['team_id'] : null;
+
+        $groups = self::getStandardPlatformGroups();
+        $fbAliases = array_map(fn($a) => "'" . $this->db->real_escape_string(strtolower(trim($a))) . "'", $groups['Facebook Form Lead']);
+        $waAliases = array_map(fn($a) => "'" . $this->db->real_escape_string(strtolower(trim($a))) . "'", $groups['WhatsApp']);
+        $miAliases = array_map(fn($a) => "'" . $this->db->real_escape_string(strtolower(trim($a))) . "'", $groups['Meta Inbox']);
+        $gfAliases = array_map(fn($a) => "'" . $this->db->real_escape_string(strtolower(trim($a))) . "'", $groups['Google Form']);
+        $blAliases = array_map(fn($a) => "'" . $this->db->real_escape_string(strtolower(trim($a))) . "'", $groups['Brochure Leads']);
+
+        $allStandardAliases = array_merge($fbAliases, $waAliases, $miAliases, $gfAliases, $blAliases);
+
+        $fbIn = implode(',', $fbAliases);
+        $waIn = implode(',', $waAliases);
+        $miIn = implode(',', $miAliases);
+        $gfIn = implode(',', $gfAliases);
+        $blIn = implode(',', $blAliases);
+        $allIn = implode(',', $allStandardAliases);
+
+        $sql = "
+            SELECT 
+                DATE(l.created_at) AS report_date,
+                SUM(CASE WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ($fbIn) THEN 1 ELSE 0 END) AS fb_count,
+                SUM(CASE WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ($waIn) THEN 1 ELSE 0 END) AS wa_count,
+                SUM(CASE WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ($miIn) THEN 1 ELSE 0 END) AS mi_count,
+                SUM(CASE WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ($gfIn) THEN 1 ELSE 0 END) AS gf_count,
+                SUM(CASE WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ($blIn) THEN 1 ELSE 0 END) AS bl_count,
+                SUM(CASE WHEN LOWER(TRIM(COALESCE(l.platform, ''))) NOT IN ($allIn) THEN 1 ELSE 0 END) AS others_count,
+                COUNT(*) AS total_count
+            FROM leads l
+            WHERE l.deleted_at IS NULL AND l.uploaded_from = 'From Campaign'
+        ";
+
+        $params = [];
+        $types  = "";
+
+        if (!empty($fromDate) && !empty($toDate)) {
+            $sql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+            $params[] = $fromDate;
+            $params[] = $toDate;
+            $types   .= "ss";
+        } elseif (!empty($fromDate)) {
+            $sql .= " AND DATE(l.created_at) >= ?";
+            $params[] = $fromDate;
+            $types   .= "s";
+        } elseif (!empty($toDate)) {
+            $sql .= " AND DATE(l.created_at) <= ?";
+            $params[] = $toDate;
+            $types   .= "s";
+        }
+
+        if ($projectId) {
+            $sql .= " AND l.project_id = ?";
+            $params[] = $projectId;
+            $types   .= "i";
+        }
+
+        if ($projectCategoryId) {
+            $sql .= " AND l.project_category_id = ?";
+            $params[] = $projectCategoryId;
+            $types   .= "i";
+        }
+
+        if ($teamId) {
+            $sql .= " AND l.team_id = ?";
+            $params[] = $teamId;
+            $types   .= "i";
+        }
+
+        $sql .= " GROUP BY DATE(l.created_at) ORDER BY report_date DESC";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return ['rows' => [], 'totals' => []];
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rows = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Compute Grand Totals across all dates
+        $totals = [
+            'fb_count'     => 0,
+            'wa_count'     => 0,
+            'mi_count'     => 0,
+            'gf_count'     => 0,
+            'bl_count'     => 0,
+            'others_count' => 0,
+            'total_count'  => 0,
+        ];
+
+        foreach ($rows as $r) {
+            $totals['fb_count']     += (int)$r['fb_count'];
+            $totals['wa_count']     += (int)$r['wa_count'];
+            $totals['mi_count']     += (int)$r['mi_count'];
+            $totals['gf_count']     += (int)$r['gf_count'];
+            $totals['bl_count']     += (int)$r['bl_count'];
+            $totals['others_count'] += (int)$r['others_count'];
+            $totals['total_count']  += (int)$r['total_count'];
+        }
+
+        return [
+            'rows'   => $rows,
+            'totals' => $totals,
+        ];
     }
 }
 

@@ -298,14 +298,48 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
                             </div>
                         </div>
 
-                        <?php if (!empty($req['receipt_path'])): ?>
+                        <?php 
+                        if (!empty($req['receipt_path'])): 
+                            $receiptList = [];
+                            $decoded = json_decode($req['receipt_path'], true);
+                            if (is_array($decoded)) {
+                                $receiptList = $decoded;
+                            } else {
+                                $receiptList = [$req['receipt_path']];
+                            }
+                            $receiptList = array_values(array_filter($receiptList));
+                            if (!empty($receiptList)):
+                        ?>
                             <div class="col-12">
-                                <a href="<?php echo $base . '/' . $req['receipt_path']; ?>" target="_blank" class="btn btn-sm btn-outline-secondary border shadow-sm w-100 text-start d-flex align-items-center justify-content-between">
-                                    <span><i class="fa-solid fa-paperclip me-2 text-primary"></i>View Requisition Receipt</span>
-                                    <i class="fa-solid fa-external-link fs-11"></i>
-                                </a>
+                                <small class="text-muted d-block fs-11 text-uppercase fw-semibold mb-2">
+                                    <i class="fa-solid fa-paperclip me-1"></i>Attached Receipts & Documents (<?= count($receiptList) ?>)
+                                </small>
+                                <div class="d-flex flex-column gap-2">
+                                    <?php foreach ($receiptList as $idx => $rPath): 
+                                        $rUrl = (strpos($rPath, 'public/') === 0 ? $base . '/' : $base . '/public/') . ltrim($rPath, '/');
+                                        $ext = strtolower(pathinfo($rPath, PATHINFO_EXTENSION));
+                                        $isPdf = ($ext === 'pdf');
+                                        $iconClass = $isPdf ? 'fa-file-pdf text-danger' : 'fa-image text-primary';
+                                        $fileName = basename($rPath);
+                                    ?>
+                                        <a href="<?= htmlspecialchars($rUrl); ?>" target="_blank" class="btn btn-sm btn-outline-secondary border shadow-sm w-100 text-start d-flex align-items-center justify-content-between py-2 px-3 bg-white">
+                                            <span class="d-inline-flex align-items-center gap-2">
+                                                <i class="fa-solid <?= $iconClass ?> fs-14"></i>
+                                                <span class="fw-semibold text-dark fs-12">Attachment #<?= $idx + 1 ?></span>
+                                                <small class="text-muted fs-11 ms-1 d-none d-sm-inline">(<?= htmlspecialchars($fileName) ?>)</small>
+                                            </span>
+                                            <span class="badge bg-light text-secondary border fs-11 d-inline-flex align-items-center gap-1">
+                                                <span>View</span>
+                                                <i class="fa-solid fa-arrow-up-right-from-square fs-10"></i>
+                                            </span>
+                                        </a>
+                                    <?php endforeach; ?>
+                                </div>
                             </div>
-                        <?php endif; ?>
+                        <?php 
+                            endif;
+                        endif; 
+                        ?>
                     </div>
                 </div>
             </div>

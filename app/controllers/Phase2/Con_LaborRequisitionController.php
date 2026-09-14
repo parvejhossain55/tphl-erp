@@ -420,13 +420,23 @@ class Con_LaborRequisitionController extends Controller
             ]);
 
             if ($existing) {
-                if ($action === 'approved') {
-                    $stmt = $this->db->prepare("UPDATE approval_requests SET status = 'approved', approved_amount = ?, approved_by = ?, approved_at = NOW(), approval_note = ?, updated_at = NOW() WHERE id = ?");
+                if ($action === 'paid') {
+                    $stmt = $this->db->prepare("UPDATE approval_requests SET status = 'approved', approve_role = 'completed', approved_amount = COALESCE(?, approved_amount), updated_at = NOW() WHERE id = ?");
+                    $appAmt = ($approvedAmount !== null && $approvedAmount > 0) ? (float)$approvedAmount : $amount;
+                    $stmt->bind_param('di', $appAmt, $existing['id']);
+                    $stmt->execute();
+                } elseif ($action === 'partially_paid') {
+                    $stmt = $this->db->prepare("UPDATE approval_requests SET status = 'partially_paid', approve_role = 'accounts', approved_amount = COALESCE(?, approved_amount), updated_at = NOW() WHERE id = ?");
+                    $appAmt = ($approvedAmount !== null && $approvedAmount > 0) ? (float)$approvedAmount : $amount;
+                    $stmt->bind_param('di', $appAmt, $existing['id']);
+                    $stmt->execute();
+                } elseif ($action === 'approved') {
+                    $stmt = $this->db->prepare("UPDATE approval_requests SET status = 'approved', approve_role = 'accounts', approved_amount = ?, approved_by = ?, approved_at = NOW(), approval_note = ?, updated_at = NOW() WHERE id = ?");
                     $appAmt = ($approvedAmount !== null && $approvedAmount > 0) ? (float)$approvedAmount : $amount;
                     $stmt->bind_param('disi', $appAmt, $this->userId, $note, $existing['id']);
                     $stmt->execute();
                 } elseif ($action === 'rejected') {
-                    $stmt = $this->db->prepare("UPDATE approval_requests SET status = 'rejected', approved_by = ?, approved_at = NOW(), approval_note = ?, updated_at = NOW() WHERE id = ?");
+                    $stmt = $this->db->prepare("UPDATE approval_requests SET status = 'rejected', approve_role = 'management', approved_by = ?, approved_at = NOW(), approval_note = ?, updated_at = NOW() WHERE id = ?");
                     $stmt->bind_param('isi', $this->userId, $note, $existing['id']);
                     $stmt->execute();
                 } else {
@@ -435,19 +445,20 @@ class Con_LaborRequisitionController extends Controller
                     $stmt->execute();
                 }
             } else {
-                $status = ($action === 'approved') ? 'approved' : (($action === 'rejected') ? 'rejected' : 'pending');
-                $appAmt = ($status === 'approved') ? ($approvedAmount ?: $amount) : null;
+                $status = ($action === 'approved' || $action === 'paid') ? 'approved' : (($action === 'partially_paid') ? 'partially_paid' : (($action === 'rejected') ? 'rejected' : 'pending'));
+                $appRole = ($action === 'paid') ? 'completed' : (($action === 'approved' || $action === 'partially_paid') ? 'accounts' : 'management');
+                $appAmt = ($status === 'approved' || $status === 'partially_paid') ? ($approvedAmount ?: $amount) : null;
                 $appBy  = ($status !== 'pending') ? $this->userId : null;
                 $appAt  = ($status !== 'pending') ? date('Y-m-d H:i:s') : null;
 
                 $stmt = $this->db->prepare("
                     INSERT INTO approval_requests 
                     (department, request_type, title, source_table, source_id, request_amount, approved_amount, requested_by, approve_role, status, approved_by, approved_at, approval_note, meta_data, created_at)
-                    VALUES ('Construction', 'Labor Bill by SE', ?, 'con_labor_requisitions', ?, ?, ?, ?, 'management', ?, ?, ?, ?, ?, NOW())
+                    VALUES ('Construction', 'Labor Bill by SE', ?, 'con_labor_requisitions', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ");
                 if ($stmt) {
                     $reqBy = (int)$req['requested_by'];
-                    $stmt->bind_param("siddisisss", $title, $id, $amount, $appAmt, $reqBy, $status, $appBy, $appAt, $note, $metaData);
+                    $stmt->bind_param("siddississs", $title, $id, $amount, $appAmt, $reqBy, $appRole, $status, $appBy, $appAt, $note, $metaData);
                     $stmt->execute();
                     $stmt->close();
                 }
@@ -511,8 +522,10 @@ class Con_LaborRequisitionController extends Controller
 
         $newDue = max(0, $dueAmount - $paidAmount);
         if ($result === 'paid') {
+            $this->syncToApprovalRequests((int)$id, 'paid', $approvedAmount, $data['payment_note'] ?? '');
             $_SESSION['success'] = '✅ Full payment of ৳' . number_format($paidAmount, 2) . ' disbursed! Due amount: ৳ 0.00. Requisition is now marked as Paid.';
         } elseif ($result === 'partially_paid') {
+            $this->syncToApprovalRequests((int)$id, 'partially_paid', $approvedAmount, $data['payment_note'] ?? '');
             $_SESSION['success'] = '⚠️ Partial payment of ৳' . number_format($paidAmount, 2) . ' disbursed. Remaining due amount: ৳ ' . number_format($newDue, 2) . '.';
         } else {
             $_SESSION['error'] = 'Payment processing failed. Please try again.';

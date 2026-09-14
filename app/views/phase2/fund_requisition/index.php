@@ -323,10 +323,23 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
                         <textarea name="purpose" id="purpose" class="form-control" rows="3" placeholder="Describe the purpose of this request..." required></textarea>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="receipt" class="form-label">Receipt / Invoice Attachment (Optional)</label>
-                        <input type="file" name="receipt" id="receipt" class="form-control" accept="image/*,application/pdf">
-                        <small class="text-muted">Max file size: 5MB (PDF or Image)</small>
+                    <div class="mb-3" id="receiptsUploadSection">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0">Receipt / Invoice Attachments <small class="text-muted">(Optional, Max 4)</small></label>
+                            <span class="badge bg-light text-secondary border fs-11" id="receiptCountBadge">1/4 Files</span>
+                        </div>
+                        <div id="receiptInputsContainer" class="d-flex flex-column gap-2">
+                            <div class="input-group input-group-sm receipt-input-row">
+                                <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-paperclip"></i></span>
+                                <input type="file" name="receipts[]" class="form-control" accept="image/*,application/pdf">
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" id="addMoreReceiptBtn" style="font-size: 11px;">
+                                <i class="fa-solid fa-plus me-1"></i> Add More Image
+                            </button>
+                            <small class="text-muted fs-11">Max 4 files (Image or PDF, up to 5MB each)</small>
+                        </div>
                     </div>
 
                 </div>
@@ -850,6 +863,56 @@ function toggleRequisitionType() {
 }
 
 // Client-side validations
+// Dynamic multiple receipts upload (Max 4)
+document.addEventListener('DOMContentLoaded', function() {
+    var addBtn = document.getElementById('addMoreReceiptBtn');
+    var container = document.getElementById('receiptInputsContainer');
+    var badge = document.getElementById('receiptCountBadge');
+    var maxFiles = 4;
+
+    function updateReceiptUI() {
+        if (!container || !badge || !addBtn) return;
+        var rows = container.querySelectorAll('.receipt-input-row');
+        var count = rows.length;
+        badge.innerText = count + '/' + maxFiles + ' Files';
+        if (count >= maxFiles) {
+            addBtn.style.display = 'none';
+        } else {
+            addBtn.style.display = 'inline-block';
+        }
+    }
+
+    if (addBtn && container) {
+        addBtn.addEventListener('click', function() {
+            var rows = container.querySelectorAll('.receipt-input-row');
+            if (rows.length < maxFiles) {
+                var newRow = document.createElement('div');
+                newRow.className = 'input-group input-group-sm receipt-input-row';
+                newRow.innerHTML = `
+                    <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-paperclip"></i></span>
+                    <input type="file" name="receipts[]" class="form-control" accept="image/*,application/pdf">
+                    <button type="button" class="btn btn-outline-danger remove-receipt-row-btn" title="Remove this file">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                `;
+                container.appendChild(newRow);
+                updateReceiptUI();
+            }
+        });
+
+        container.addEventListener('click', function(e) {
+            var btn = e.target.closest('.remove-receipt-row-btn');
+            if (btn) {
+                var row = btn.closest('.receipt-input-row');
+                if (row) {
+                    row.remove();
+                    updateReceiptUI();
+                }
+            }
+        });
+    }
+});
+
 document.getElementById('amount').addEventListener('input', function() {
     var type = document.getElementById('requisition_type').value;
     var amount = parseFloat(this.value);
@@ -1026,11 +1089,37 @@ function fetchModalExpensesData(id, startDate = '', endDate = '') {
             document.getElementById('vPurpose').innerText = req.purpose;
             
             if (req.receipt_path) {
-                document.getElementById('vReceiptLink').innerHTML = `
-                    <a href="<?= $GLOBALS['base_url'] ?>/public/${req.receipt_path}" target="_blank" class="btn btn-sm btn-light border px-2">
-                        <i class="fa-solid fa-paperclip me-1"></i> View Receipt
-                    </a>
-                `;
+                var receiptsList = [];
+                try {
+                    if (typeof req.receipt_path === 'string' && (req.receipt_path.startsWith('[') || req.receipt_path.startsWith('{'))) {
+                        receiptsList = JSON.parse(req.receipt_path);
+                    } else if (Array.isArray(req.receipt_path)) {
+                        receiptsList = req.receipt_path;
+                    } else {
+                        receiptsList = [req.receipt_path];
+                    }
+                } catch(e) {
+                    receiptsList = [req.receipt_path];
+                }
+                
+                if (Array.isArray(receiptsList) && receiptsList.length > 0) {
+                    var html = '<div class="d-flex flex-wrap gap-1">';
+                    receiptsList.forEach(function(p, i) {
+                        if (!p) return;
+                        var fileUrl = p.startsWith('public/') ? '<?= $GLOBALS['base_url'] ?>/' + p : '<?= $GLOBALS['base_url'] ?>/public/' + p.replace(/^\/+/, '');
+                        var isPdf = p.toLowerCase().endsWith('.pdf');
+                        var icon = isPdf ? 'fa-file-pdf text-danger' : 'fa-paperclip text-primary';
+                        html += `<a href="${fileUrl}" target="_blank" class="btn btn-sm btn-light border px-2 py-1 fs-11 d-inline-flex align-items-center gap-1 shadow-xs" title="View Attachment ${i + 1}">
+                            <i class="fa-solid ${icon}"></i>
+                            <span>Attachment #${i + 1}</span>
+                            <i class="fa-solid fa-external-link fs-10 text-muted ms-1"></i>
+                        </a>`;
+                    });
+                    html += '</div>';
+                    document.getElementById('vReceiptLink').innerHTML = html;
+                } else {
+                    document.getElementById('vReceiptLink').innerHTML = '<span class="text-muted fs-11">No Receipt Attached</span>';
+                }
             } else {
                 document.getElementById('vReceiptLink').innerHTML = '<span class="text-muted fs-11">No Receipt Attached</span>';
             }
@@ -1527,12 +1616,28 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
             <?php endif; ?>
         </td>
         <td>
-            <div class="d-flex gap-1">
-                <?php if (!empty($req['receipt_path'])): ?>
-                    <a href="<?= $GLOBALS['base_url'] . '/public/' . $req['receipt_path'] ?>" target="_blank" class="btn btn-icon btn-sm btn-light border no-print" title="Requisition Receipt">
-                        <i class="fa-solid fa-paperclip"></i>
+            <div class="d-flex gap-1 flex-wrap">
+                <?php 
+                if (!empty($req['receipt_path'])): 
+                    $receiptList = [];
+                    $decoded = json_decode($req['receipt_path'], true);
+                    if (is_array($decoded)) {
+                        $receiptList = $decoded;
+                    } else {
+                        $receiptList = [$req['receipt_path']];
+                    }
+                    foreach ($receiptList as $idx => $rPath):
+                        if (empty($rPath)) continue;
+                        $rUrl = (strpos($rPath, 'public/') === 0 ? $GLOBALS['base_url'] . '/' : $GLOBALS['base_url'] . '/public/') . ltrim($rPath, '/');
+                        $isPdf = (strtolower(pathinfo($rPath, PATHINFO_EXTENSION)) === 'pdf');
+                ?>
+                    <a href="<?= htmlspecialchars($rUrl) ?>" target="_blank" class="btn btn-icon btn-sm btn-light border no-print" title="Receipt #<?= $idx + 1 ?>">
+                        <i class="fa-solid <?= $isPdf ? 'fa-file-pdf text-danger' : 'fa-paperclip text-primary' ?>"></i>
                     </a>
-                <?php endif; ?>
+                <?php 
+                    endforeach;
+                endif; 
+                ?>
                 <?php if (!empty($req['payment_attachment_path'])): ?>
                     <a href="<?= $GLOBALS['base_url'] . '/' . $req['payment_attachment_path'] ?>" target="_blank" class="btn btn-icon btn-sm btn-success-light border no-print" title="Payment Slip">
                         <i class="fa-solid fa-receipt text-success"></i>

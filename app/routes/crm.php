@@ -13,6 +13,7 @@ return [
     // =========================================================================
     'lead-lists' => ['controller' => 'LeadController', 'method' => 'index'],
     'leads-ajax-data' => ['controller' => 'LeadController', 'method' => 'getLeadsAjax'],
+    'leads-export-excel' => ['controller' => 'LeadController', 'method' => 'exportExcel'],
     'leads-ajax-debug' => ['controller' => 'LeadController', 'method' => 'debugLeadsAjax'],
     'create-lead' => ['controller' => 'LeadController', 'method' => 'create'],
     'store-lead' => ['controller' => 'LeadController', 'method' => 'store'],
@@ -40,6 +41,7 @@ return [
     // =========================================================================
     'digital-marketing-dashboard' => ['controller' => 'DigitalMarketingController', 'method' => 'index'],
     'digital-marketing-executive-dashboard' => ['controller' => 'DigitalMarketingController', 'method' => 'executiveDashboard'],
+    'campaign-leads' => ['controller' => 'DigitalMarketingController', 'method' => 'executiveDashboard'],
     'dm-exec-leads-ajax' => ['controller' => 'DigitalMarketingController', 'method' => 'getLeadsAjax'],
     'dm-head-leads-ajax' => ['controller' => 'DigitalMarketingController', 'method' => 'getLeadsAjax'],
     'delete-lead-permanent' => ['controller' => 'DigitalMarketingController', 'method' => 'deletePermanent'],
@@ -49,6 +51,8 @@ return [
     'forms' => ['controller' => 'DigitalMarketingController', 'method' => 'forms'],
     'forms/(\d+)/responses' => ['controller' => 'DigitalMarketingController', 'method' => 'formResponses'],
     'digital-marketing-upload-report' => ['controller' => 'DigitalMarketingController', 'method' => 'uploadReport'],
+    'all-platform-leads' => ['controller' => 'DigitalMarketingController', 'method' => 'allPlatformLeads'],
+    'all-platform-leads-export' => ['controller' => 'DigitalMarketingController', 'method' => 'exportAllPlatformLeadsExcel'],
 
     // =========================================================================
     // Controller: OnboardClientController

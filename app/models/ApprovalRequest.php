@@ -1064,8 +1064,10 @@ class ApprovalRequest extends Model
 
         if ($isAccounts) {
             return "(
-                ({$prefix}status IN ('pending', 'partially_approved', '') AND LOWER({$prefix}approve_role) = 'accounts')
-                OR ({$prefix}status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets', 'expense_adjustments')))
+                LOWER({$prefix}approve_role) != 'completed' AND (
+                    ({$prefix}status IN ('pending', 'partially_approved', '') AND LOWER({$prefix}approve_role) = 'accounts')
+                    OR ({$prefix}status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets', 'expense_adjustments')))
+                )
             )";
         } elseif ($isSiteOperator && !$isManagement) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
@@ -1726,10 +1728,12 @@ class ApprovalRequest extends Model
                             $pendingForText = 'Accounts & Finance';
                         } elseif (in_array($lrStatus, ['paid', 'labor_disbursed'])) {
                             $row['status'] = 'approved';
+                            $row['approve_role'] = 'completed';
                             $pendingStageLabel = 'Paid & Settled';
                             $pendingForText = 'Settled';
                         } elseif ($lrStatus === 'partially_paid') {
                             $row['status'] = 'partially_paid';
+                            $row['approve_role'] = 'accounts';
                             $pendingStageLabel = 'Partially Paid';
                             $pendingForText = 'Accounts & Finance';
                         } elseif ($lrStatus === 'rejected') {
@@ -2683,8 +2687,11 @@ class ApprovalRequest extends Model
                 } elseif (in_array($lrStatus, ['qc_approved', 'pm_payment_approved'])) {
                     $approveRole = 'management';
                     $status = 'pending';
-                } elseif (in_array($lrStatus, ['management_approved', 'paid', 'labor_disbursed'])) {
+                } elseif ($lrStatus === 'management_approved') {
                     $approveRole = 'accounts';
+                    $status = 'approved';
+                } elseif (in_array($lrStatus, ['paid', 'labor_disbursed'])) {
+                    $approveRole = 'completed';
                     $status = 'approved';
                 } elseif ($lrStatus === 'partially_paid') {
                     $approveRole = 'accounts';
@@ -2733,7 +2740,10 @@ class ApprovalRequest extends Model
                     WHEN lr.status = 'pending' THEN 'pm'
                     WHEN lr.status = 'payment_requested' THEN 'qc'
                     WHEN lr.status IN ('qc_approved', 'pm_payment_approved') THEN 'management'
-                    WHEN lr.status IN ('management_approved', 'paid', 'labor_disbursed', 'partially_paid') THEN 'accounts'
+                    WHEN lr.status = 'management_approved' THEN 'accounts'
+                    WHEN lr.status IN ('paid', 'labor_disbursed') THEN 'completed'
+                    WHEN lr.status = 'partially_paid' THEN 'accounts'
+                    WHEN lr.status = 'rejected' THEN 'management'
                     ELSE 'management'
                 END,
                 ar.status = CASE 
