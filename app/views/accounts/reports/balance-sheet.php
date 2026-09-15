@@ -262,7 +262,12 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
 
                         <!-- 1.1 Non-Current Assets -->
                         <div class="mb-4 ps-3 border-start border-3 border-success">
-                            <h6 class="fw-bold text-success text-uppercase mb-2"><i class="fa-solid fa-folder me-1"></i> 1.1 Non-Current Assets (স্থায়ী ও দীর্ঘমেয়াদী সম্পদ)</h6>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="fw-bold text-success text-uppercase mb-0"><i class="fa-solid fa-folder me-1"></i> 1.1 Non-Current Assets (স্থায়ী ও দীর্ঘমেয়াদী সম্পদ)</h6>
+                                <a href="<?= $base_url ?>/office-assets" class="btn btn-outline-success btn-sm py-0 px-2 fs-11" title="View Physical Asset Register">
+                                    <i class="fa-solid fa-boxes-stacked me-1"></i> Asset Register (Physical Assets)
+                                </a>
+                            </div>
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle mb-0">
                                     <thead class="table-light">
@@ -279,7 +284,14 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                                             <?php foreach ($nonCurrentAssets as $acc): ?>
                                                 <tr>
                                                     <td><span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold"><?= htmlspecialchars($acc['account_code']) ?></span></td>
-                                                    <td class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></td>
+                                                    <td class="fw-semibold text-dark fs-13">
+                                                        <?= htmlspecialchars($acc['account_name']) ?>
+                                                        <?php if (str_starts_with((string)$acc['account_code'], '10')): ?>
+                                                            <a href="<?= $base_url ?>/office-assets" class="badge bg-light text-primary border ms-1 fs-11" title="Tracked in Office Asset Register">
+                                                                <i class="fa-solid fa-boxes-stacked me-1"></i> Assets
+                                                            </a>
+                                                        <?php endif; ?>
+                                                    </td>
                                                     <td class="text-end font-monospace text-success fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
                                                 </tr>
                                             <?php endforeach; ?>

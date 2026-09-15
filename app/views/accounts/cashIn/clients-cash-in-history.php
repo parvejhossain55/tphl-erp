@@ -430,9 +430,16 @@ $show_breadcrumb = true;
 
 
                 <div class="mt-3 d-flex flex-wrap gap-2 align-items-center mb-3">
-                    <?php if (isset($refundDetails) && $refundDetails['status'] === 'approved'): ?>
-                        <button class="btn btn-secondary" disabled title="Refund approved, cannot add transactions">
-                            <i class="fa-light fa-ban me-2"></i> Add Transaction (Disabled)
+                    <?php 
+                        $rfStatus = $refundDetails['status'] ?? ((($clientDetails['booking_status'] ?? '') === 'refunded') ? 'approved' : '');
+                    ?>
+                    <?php if ($rfStatus === 'approved'): ?>
+                        <a href="<?= $GLOBALS['base_url'] ?>/client-refund-create/<?= $clientDetails['booking_id'] ?>" class="btn btn-danger">
+                            <i class="fa-light fa-money-bill-wave me-2"></i> Refund Paid Request
+                        </a>
+                    <?php elseif ($rfStatus === 'refunded'): ?>
+                        <button class="btn btn-secondary" disabled>
+                            <i class="fa-light fa-check-circle me-2"></i> Refunded Paid
                         </button>
                     <?php else: ?>
                         <a href="<?= $GLOBALS['base_url'] ?>/<?= $isShop ? 'shop-client-cash-in-form' : 'client-cash-in-form' ?>?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary">

@@ -35,6 +35,15 @@
         }
     }
 
+    // Calculate unpaid refund requests count for badge
+    $unpaidRefundsCount = 0;
+    if (isset($db)) {
+        $rfRes = $db->query("SELECT COUNT(*) as cnt FROM client_refund_requests WHERE status IN ('pending', 'approved')");
+        if ($rfRes && $rfRow = $rfRes->fetch_assoc()) {
+            $unpaidRefundsCount = (int) ($rfRow['cnt'] ?? 0);
+        }
+    }
+
     // Calculate pending system approval requests count for Management & Accounts badge
     $pendingApprovalCount = 0;
     if (isset($db)) {
@@ -701,7 +710,11 @@
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/client-refunds"
                                         class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">Client
-                                        Refunds</a>
+                                        Refunds
+                                        <?php if ($unpaidRefundsCount > 0): ?>
+                                            <span class="badge bg-danger rounded-pill ms-auto"><?= $unpaidRefundsCount ?></span>
+                                        <?php endif; ?>
+                                    </a>
                                 </li>
                             </ul>
                         </li>
@@ -1240,6 +1253,9 @@
                                 class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-arrow-rotate-left"></i></div>
                                 <span class="sidebar__menu-label">Client Refunds</span>
+                                <?php if ($unpaidRefundsCount > 0): ?>
+                                    <span class="badge bg-danger rounded-pill ms-auto"><?= $unpaidRefundsCount ?></span>
+                                <?php endif; ?>
                             </a>
                         </li>
                     <?php endif; ?>
@@ -1976,7 +1992,12 @@
                             </li>
                             <li class="slide <?= isActive('client-refunds', $current_route) ?>">
                                 <a href="<?= $base_url ?>/client-refunds"
-                                    class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">Refunds</a>
+                                    class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">
+                                    Refunds
+                                    <?php if ($unpaidRefundsCount > 0): ?>
+                                        <span class="badge bg-danger rounded-pill ms-auto"><?= $unpaidRefundsCount ?></span>
+                                    <?php endif; ?>
+                                </a>
                             </li>
                         </ul>
                     </li>
@@ -2304,6 +2325,9 @@
                             class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-arrow-rotate-left"></i></div>
                             <span class="sidebar__menu-label">Client Refunds</span>
+                            <?php if ($unpaidRefundsCount > 0): ?>
+                                <span class="badge bg-danger rounded-pill ms-auto"><?= $unpaidRefundsCount ?></span>
+                            <?php endif; ?>
                         </a>
                     </li>
 

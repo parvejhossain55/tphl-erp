@@ -69,6 +69,17 @@ $payments  = $payments ?? [];
                 </div>
             </div>
 
+            <!-- Sales Note Alert -->
+            <?php if (!empty($existing_refund['reason'])): ?>
+            <div class="alert alert-warning border border-warning d-flex align-items-center mb-3 shadow-sm">
+                <i class="bi bi-chat-left-quote-fill text-warning fs-4 me-3"></i>
+                <div>
+                    <strong class="d-block text-dark">Sales Person's Refund Note / Reason:</strong>
+                    <span class="text-dark fw-medium"><?= nl2br(htmlspecialchars($existing_refund['reason'])) ?></span>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- Payment History (Read-only) -->
             <?php if (!empty($payments)): ?>
             <div class="card custom-card mb-3">
@@ -123,7 +134,7 @@ $payments  = $payments ?? [];
                     <h6 class="card-title mb-0"><i class="bi bi-calculator me-2"></i>Refund Calculation</h6>
                 </div>
                 <div class="card-body">
-                    <form action="<?= $base_url ?>/client-refund-store" method="POST" id="refundForm">
+                    <form action="<?= $base_url ?>/client-refund-store" method="POST" enctype="multipart/form-data" id="refundForm">
                         <input type="hidden" name="booking_id" value="<?= $booking['id'] ?>">
 
                         <!-- Total Paid (read-only) -->
@@ -139,17 +150,43 @@ $payments  = $payments ?? [];
                             <label class="form-label fw-semibold">Retention Amount (৳) <span class="text-danger">*</span></label>
                             <input type="number" name="retention_amount" id="retentionAmount"
                                    class="form-control" step="0.01" min="0"
+                                   value="<?= htmlspecialchars($existing_refund['retention_amount'] ?? '0') ?>"
                                    placeholder="Company charges to retain" required>
-                            <small style="color:var(--text-muted, #adb5bd);">Amount the company will retain (non-refundable)</small>
+                            <small style="color:var(--text-muted, #adb5bd);">Amount the company will retain (non-refundable charge)</small>
                         </div>
 
                         <!-- Refund Amount (auto-calculated) -->
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Refund Amount (৳)</label>
-                            <input type="hidden" name="refund_amount" id="refundAmountHidden" value="0">
+                            <label class="form-label fw-semibold">Net Refund Amount (৳)</label>
+                            <input type="hidden" name="refund_amount" id="refundAmountHidden" value="<?= htmlspecialchars($existing_refund['refund_amount'] ?? '0') ?>">
                             <div class="border border-success rounded p-3 text-center" id="refundBox">
                                 <h4 class="text-success fw-bold mb-0" id="refundAmountDisplay">৳ 0.00</h4>
                             </div>
+                        </div>
+
+                        <?php if (!empty($is_accounts_payout)): ?>
+                            <!-- Payment Method -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Payment Method <span class="text-danger">*</span></label>
+                                <select name="payment_method" class="form-select" required>
+                                    <option value="cash">Cash</option>
+                                    <option value="bank">Bank Transfer</option>
+                                    <option value="cheque">Cheque</option>
+                                </select>
+                            </div>
+
+                            <!-- Cheque / Transaction Ref -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Cheque / Voucher No</label>
+                                <input type="text" name="cheque_no" class="form-control" placeholder="Cheque / Voucher / Reference No (Optional)">
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Document Upload -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Supporting Document</label>
+                            <input type="file" name="document" class="form-control" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                            <small class="text-muted">Allowed: JPG, PNG, PDF, DOCX (Max: 5MB)</small>
                         </div>
 
                         <hr>
@@ -158,13 +195,20 @@ $payments  = $payments ?? [];
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
                             <textarea name="reason" class="form-control" rows="3" 
-                                      placeholder="Enter the reason for refund..." required></textarea>
+                                      placeholder="Enter the reason for refund..." required><?= htmlspecialchars($existing_refund['reason'] ?? '') ?></textarea>
                         </div>
 
-                        <button type="submit" class="btn btn-warning w-100 fw-bold text-dark"
-                                onclick="return confirm('Submit this refund request for approval?');">
-                            <i class="bi bi-send me-1"></i> Submit Refund Request
-                        </button>
+                        <?php if (!empty($is_accounts_payout)): ?>
+                            <button type="submit" class="btn btn-danger w-100 fw-bold"
+                                    onclick="return confirm('Confirm and process this refund payout? This will record deduction from cash-in balance.');">
+                                <i class="bi bi-cash-stack me-1"></i> Confirm & Process Refund Payout
+                            </button>
+                        <?php else: ?>
+                            <button type="submit" class="btn btn-warning w-100 fw-bold text-dark"
+                                    onclick="return confirm('Submit this refund request for approval?');">
+                                <i class="bi bi-send me-1"></i> Submit Refund Request
+                            </button>
+                        <?php endif; ?>
                     </form>
                 </div>
             </div>

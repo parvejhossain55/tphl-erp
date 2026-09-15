@@ -377,6 +377,164 @@ class BookingController extends Controller
         }
     }
 
+    public function quickRefund()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = $_SESSION['user']['id'] ?? null;
+        $userRole = isset($_SESSION['user']['role_id']) ? (int)$_SESSION['user']['role_id'] : 0;
+
+        if (!$userId) {
+            setError("Please login first.");
+            header("Location: {$GLOBALS['base_url']}/login");
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/onboard-leads");
+            exit;
+        }
+
+        $bookingId = (int)($_POST['booking_id'] ?? 0);
+        $reason = trim($_POST['reason'] ?? '');
+
+        if (!$bookingId) {
+            setError("Invalid Booking ID.");
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/onboard-leads"));
+            exit;
+        }
+
+        if (empty($reason)) {
+            setError("Please provide a reason for the refund.");
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/onboard-leads"));
+            exit;
+        }
+
+        // Fetch booking details
+        $bStmt = $this->db->prepare("SELECT lb.*, l.full_name as client_name, f.flat_name, p.name as project_name 
+                                     FROM lead_bookings lb 
+                                     LEFT JOIN leads l ON lb.lead_id = l.id
+                                     LEFT JOIN flats f ON lb.flat_id = f.id
+                                     LEFT JOIN projects p ON lb.project_id = p.id
+                                     WHERE lb.id = ? LIMIT 1");
+        $bStmt->bind_param("i", $bookingId);
+        $bStmt->execute();
+        $booking = $bStmt->get_result()->fetch_assoc();
+
+        if (!$booking) {
+            setError("Booking record not found.");
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/onboard-leads"));
+            exit;
+        }
+
+        $leadId = (int)$booking['lead_id'];
+
+        // Authorization check: Salesperson who made the sale (sales_by_id) OR roles [1, 3, 9, 20, 33]
+        $isSalesperson = (!empty($booking['sales_by_id']) && (int)$booking['sales_by_id'] === (int)$userId);
+        $hasBackupRole = in_array($userRole, [1, 3, 9, 20, 33]);
+
+        if (!$isSalesperson && !$hasBackupRole) {
+            setError("You are not authorized to initiate refund for this booking. Only the assigned salesperson or authorized management can initiate.");
+            header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+            exit;
+        }
+
+        if (in_array($booking['booking_status'], ['refunded', 'cancelled'])) {
+            setError("This booking has already been " . $booking['booking_status'] . ".");
+            header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+            exit;
+        }
+
+        // Calculate total verified paid
+        $pStmt = $this->db->prepare("SELECT COALESCE(SUM(amount), 0) as total_paid FROM lead_payments WHERE booking_id = ? AND verification_status = 'verified'");
+        $pStmt->bind_param("i", $bookingId);
+        $pStmt->execute();
+        $pRow = $pStmt->get_result()->fetch_assoc();
+        $totalPaid = (float)($pRow['total_paid'] ?? 0);
+
+        // Execute changes inside a transaction
+        $this->db->begin_transaction();
+        try {
+            // 1. Release the flat: status = 'available', is_booked = 0
+            if (!empty($booking['flat_id'])) {
+                $flatId = (int)$booking['flat_id'];
+                $fStmt = $this->db->prepare("UPDATE flats SET status = 'available', is_booked = 0 WHERE id = ?");
+                $fStmt->bind_param("i", $flatId);
+                $fStmt->execute();
+            }
+
+            // 2. Update booking: booking_status = 'refunded', landshare_status = 'cancelled'
+            $lbStmt = $this->db->prepare("UPDATE lead_bookings SET booking_status = 'refunded', landshare_status = 'cancelled' WHERE id = ?");
+            $lbStmt->bind_param("i", $bookingId);
+            $lbStmt->execute();
+
+            // 3. Update lead: last_lead_action = 'cancel'
+            if ($leadId > 0) {
+                $lStmt = $this->db->prepare("UPDATE leads SET last_lead_action = 'cancel' WHERE id = ?");
+                $lStmt->bind_param("i", $leadId);
+                $lStmt->execute();
+            }
+
+            // 4. Cancel pending EMI schedules
+            $emiStmt = $this->db->prepare("UPDATE emi_schedules SET status = 'cancelled' WHERE lead_booking_id = ? AND status IN ('pending', 'missed')");
+            $emiStmt->bind_param("i", $bookingId);
+            $emiStmt->execute();
+
+            // 5. Create/update client_refund_requests record
+            // Check if active refund already exists
+            $checkRefund = $this->db->prepare("SELECT id FROM client_refund_requests WHERE booking_id = ? AND status != 'rejected' LIMIT 1");
+            $checkRefund->bind_param("i", $bookingId);
+            $checkRefund->execute();
+            $existingRefund = $checkRefund->get_result()->fetch_assoc();
+
+            $refundId = null;
+            if ($existingRefund) {
+                $refundId = (int)$existingRefund['id'];
+                $rfUpdate = $this->db->prepare("UPDATE client_refund_requests SET total_paid = ?, refund_amount = ?, reason = ?, requested_by = ?, status = 'pending' WHERE id = ?");
+                $rfUpdate->bind_param("ddsii", $totalPaid, $totalPaid, $reason, $userId, $refundId);
+                $rfUpdate->execute();
+            } else {
+                $rfInsert = $this->db->prepare("INSERT INTO client_refund_requests 
+                    (booking_id, lead_id, project_id, flat_id, total_paid, retention_amount, refund_amount, reason, requested_by, status) 
+                    VALUES (?, ?, ?, ?, ?, 0.00, ?, ?, ?, 'pending')");
+                $flatId = (int)($booking['flat_id'] ?? 0);
+                $projId = (int)($booking['project_id'] ?? 0);
+                $rfInsert->bind_param("iiiiddsi", $bookingId, $leadId, $projId, $flatId, $totalPaid, $totalPaid, $reason, $userId);
+                $rfInsert->execute();
+                $refundId = $rfInsert->insert_id;
+            }
+
+            // 6. Add/Update approval_requests for management approval (Roles 3, 9, 20, 33)
+            if ($refundId) {
+                $delAr = $this->db->prepare("DELETE FROM approval_requests WHERE source_table = 'client_refund_requests' AND source_id = ?");
+                $delAr->bind_param("i", $refundId);
+                $delAr->execute();
+
+                $this->approvalRequestModel->create([
+                    'department'     => 'accounts',
+                    'request_type'   => 'client_refund',
+                    'title'          => 'Client Refund — ' . ($booking['client_name'] ?? '') . ' | ' . ($booking['flat_name'] ?? '') . ' | ' . ($booking['project_name'] ?? ''),
+                    'source_table'   => 'client_refund_requests',
+                    'source_id'      => $refundId,
+                    'requested_days' => 0,
+                    'requested_by'   => $userId,
+                    'approve_role'   => 'management',
+                    'meta_data'      => null,
+                    'request_amount' => $totalPaid,
+                ]);
+            }
+
+            $this->db->commit();
+            setSuccess("Refund request submitted successfully! Flat unit has been released to available, and the request is sent for management approval.");
+        } catch (\Exception $e) {
+            $this->db->rollback();
+            error_log("quickRefund failed: " . $e->getMessage());
+            setError("Failed to process refund: " . $e->getMessage());
+        }
+
+        header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+        exit;
+    }
+
     public function importCsvBulkBookings()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();

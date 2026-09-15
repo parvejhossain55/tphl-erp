@@ -33,10 +33,10 @@ class ClientRefundController extends Controller
         }
     }
 
-    /** Roles 1 (Admin), 3 (Super Admin) can approve */
+    /** Roles 1 (Admin), 3 (Super Admin), 9 (Sales Team Head), 20 (Admin & Operation head), 33 (Chief Officer) can approve */
     private function canApprove()
     {
-        return in_array($this->userRole, [1, 3]);
+        return in_array($this->userRole, [1, 3, 9, 20, 33]);
     }
 
     /** Roles 1 (Admin), 3 (Super Admin), 4 (Sales Exec), 5 (Sales Mgr), 6, 10, 30 (Accounts) can create refund requests */
@@ -86,28 +86,40 @@ class ClientRefundController extends Controller
             exit;
         }
 
-        if (!in_array($booking['booking_status'], ['booked', 'completed'])) {
-            setError('Only active (booked or completed) bookings can be refunded.');
+        if (!in_array($booking['booking_status'], ['booked', 'completed', 'refunded'])) {
+            setError('This booking cannot be refunded (status: ' . $booking['booking_status'] . ').');
             header("Location: {$GLOBALS['base_url']}/client-refunds");
             exit;
         }
 
         // Check if there's already a non-rejected refund for this booking
-        if ($this->model->hasActiveRefund($bookingId)) {
-            setError('A refund request already exists for this booking.');
-            header("Location: {$GLOBALS['base_url']}/client-refunds");
+        $existingRefund = null;
+        $rfStmt = $this->db->prepare("SELECT * FROM client_refund_requests WHERE booking_id = ? AND status != 'rejected' ORDER BY id DESC LIMIT 1");
+        if ($rfStmt) {
+            $rfStmt->bind_param("i", $bookingId);
+            $rfStmt->execute();
+            $existingRefund = $rfStmt->get_result()->fetch_assoc();
+        }
+
+        if ($existingRefund && $existingRefund['status'] === 'refunded') {
+            setError('This refund has already been paid and completed.');
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}");
             exit;
         }
 
         $totalPaid = $this->model->getTotalVerifiedPaid($bookingId);
         $payments  = $this->model->getPaymentsForBooking($bookingId);
 
+        $isAccountsPayout = in_array($this->userRole, [1, 3, 6, 10, 30]) && ($booking['booking_status'] === 'refunded' || ($existingRefund && in_array($existingRefund['status'], ['pending', 'approved'])));
+
         $this->view('accounts/refunds/create-refund', [
-            'current_route' => 'client-refunds',
-            'page_title'    => 'Create Refund Request',
-            'booking'       => $booking,
-            'total_paid'    => $totalPaid,
-            'payments'      => $payments,
+            'current_route'      => 'client-refunds',
+            'page_title'         => $isAccountsPayout ? 'Process Refund Payout' : 'Create Refund Request',
+            'booking'            => $booking,
+            'total_paid'         => $totalPaid,
+            'payments'           => $payments,
+            'existing_refund'    => $existingRefund,
+            'is_accounts_payout' => $isAccountsPayout,
         ]);
     }
 
@@ -129,27 +141,38 @@ class ClientRefundController extends Controller
         }
 
         $bookingId       = (int)($_POST['booking_id'] ?? 0);
-        $refundAmount = (float)($_POST['refund_amount'] ?? 0);
+        $refundAmount    = (float)($_POST['refund_amount'] ?? 0);
         $reason          = trim($_POST['reason'] ?? '');
+        $paymentMethod   = trim($_POST['payment_method'] ?? 'cash');
+        $chequeNo        = trim($_POST['cheque_no'] ?? '');
 
         $booking = $this->model->getBookingDetails($bookingId);
-        if (!$booking || !in_array($booking['booking_status'], ['booked', 'completed'])) {
+        if (!$booking || !in_array($booking['booking_status'], ['booked', 'completed', 'refunded'])) {
             setError('Invalid or inactive booking.');
-            header("Location: {$GLOBALS['base_url']}/clients-cash-in-history/{$bookingId}");
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}");
             exit;
         }
 
-        if ($this->model->hasActiveRefund($bookingId)) {
-            setError('A refund request already exists for this booking.');
-            header("Location: {$GLOBALS['base_url']}/clients-cash-in-history/{$bookingId}");
+        // Check if there is an existing refund record
+        $existingRefund = null;
+        $checkStmt = $this->db->prepare("SELECT * FROM client_refund_requests WHERE booking_id = ? AND status != 'rejected' ORDER BY id DESC LIMIT 1");
+        if ($checkStmt) {
+            $checkStmt->bind_param("i", $bookingId);
+            $checkStmt->execute();
+            $existingRefund = $checkStmt->get_result()->fetch_assoc();
+        }
+
+        if ($existingRefund && $existingRefund['status'] === 'refunded') {
+            setError('This refund has already been paid and completed.');
+            header("Location: {$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}");
             exit;
         }
 
-        $totalPaid    = $this->model->getTotalVerifiedPaid($bookingId);
+        $totalPaid = $this->model->getTotalVerifiedPaid($bookingId);
 
         if ($refundAmount < 0 || $refundAmount > $totalPaid) {
             setError('Refund amount cannot be negative or exceed total paid.');
-            header("Location: {$GLOBALS['base_url']}/clients-cash-in-history/{$bookingId}");
+            header("Location: {$GLOBALS['base_url']}/client-refund-create/{$bookingId}");
             exit;
         }
         
@@ -164,12 +187,12 @@ class ClientRefundController extends Controller
 
             if (!in_array($fileExt, $allowedTypes)) {
                 setError('Only DOC, DOCX, PDF, JPG, PNG allowed for document.');
-                header("Location: {$GLOBALS['base_url']}/clients-cash-in-history/{$bookingId}");
+                header("Location: {$GLOBALS['base_url']}/client-refund-create/{$bookingId}");
                 exit;
             }
             if ($_FILES['document']['size'] > $maxSize) {
                 setError('Document exceeds 5MB limit.');
-                header("Location: {$GLOBALS['base_url']}/clients-cash-in-history/{$bookingId}");
+                header("Location: {$GLOBALS['base_url']}/client-refund-create/{$bookingId}");
                 exit;
             }
             $newFileName = 'refund_' . time() . '_' . uniqid() . '.' . $fileExt;
@@ -184,61 +207,114 @@ class ClientRefundController extends Controller
                 $documentPath = $uploadPath;
             } else {
                 setError('Failed to upload document.');
-                header("Location: {$GLOBALS['base_url']}/clients-cash-in-history/{$bookingId}");
+                header("Location: {$GLOBALS['base_url']}/client-refund-create/{$bookingId}");
                 exit;
             }
+        } elseif ($existingRefund && !empty($existingRefund['document'])) {
+            $documentPath = $existingRefund['document'];
         }
 
-        $data = [
-            'booking_id'       => $bookingId,
-            'lead_id'          => (int)$booking['lead_id'],
-            'project_id'       => (int)$booking['project_id'],
-            'flat_id'          => (int)$booking['flat_id'],
-            'total_paid'       => $totalPaid,
-            'retention_amount' => $retentionAmount,
-            'refund_amount'    => $refundAmount,
-            'reason'           => $reason,
-            'document'         => $documentPath,
-            'requested_by'     => $this->userId,
-        ];
+        // Determine if Accounts is completing payout
+        $isAccounts = in_array($this->userRole, [1, 3, 6, 10, 30]);
 
-        $refundId = $this->model->create($data);
+        $this->db->begin_transaction();
+        try {
+            $refundId = null;
 
-        if ($refundId) {
-            // Create approval_request for management dashboard
-            $this->approvalModel->create([
-                'department'     => 'accounts',
-                'request_type'   => 'client_refund',
-                'title'          => 'Client Refund — ' . ($booking['client_name'] ?? '') . ' | ' . ($booking['flat_name'] ?? '') . ' | ' . ($booking['project_name'] ?? ''),
-                'source_table'   => 'client_refund_requests',
-                'source_id'      => $refundId,
-                'requested_days' => 0,
-                'requested_by'   => $this->userId,
-                'approve_role'   => 'management',
-                'meta_data'      => null,
-                'request_amount' => $refundAmount,
-            ]);
+            if ($existingRefund) {
+                $refundId = (int)$existingRefund['id'];
+                $newStatus = $isAccounts ? 'refunded' : 'pending';
+                $refundedAt = $isAccounts ? date('Y-m-d H:i:s') : null;
 
-            // Send email notification
-            try {
-                $this->mailService->sendRefundOnSubmission([
-                    'client_name'      => $booking['client_name'] ?? '',
-                    'flat_name'        => $booking['flat_name'] ?? '',
-                    'project_name'     => $booking['project_name'] ?? '',
-                    'total_paid'       => $totalPaid,
-                    'retention_amount' => $retentionAmount,
-                    'refund_amount'    => $refundAmount,
-                    'reason'           => $reason,
-                    'requested_by'     => $this->userId,
-                ]);
-            } catch (\Exception $e) {
-                error_log("Refund email (submission) failed: " . $e->getMessage());
+                $upStmt = $this->db->prepare("UPDATE client_refund_requests 
+                    SET total_paid = ?, retention_amount = ?, refund_amount = ?, reason = ?, document = ?, 
+                        status = ?, refunded_at = ?, approved_by = IFNULL(approved_by, ?) 
+                    WHERE id = ?");
+                $upStmt->bind_param("dddssssii", $totalPaid, $retentionAmount, $refundAmount, $reason, $documentPath, $newStatus, $refundedAt, $this->userId, $refundId);
+                $upStmt->execute();
+            } else {
+                $newStatus = $isAccounts ? 'refunded' : 'pending';
+                $refundedAt = $isAccounts ? date('Y-m-d H:i:s') : null;
+
+                $inStmt = $this->db->prepare("INSERT INTO client_refund_requests 
+                    (booking_id, lead_id, project_id, flat_id, total_paid, retention_amount, refund_amount, reason, document, requested_by, status, refunded_at, approved_by, approved_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+                $leadId = (int)$booking['lead_id'];
+                $projId = (int)$booking['project_id'];
+                $flatId = (int)$booking['flat_id'];
+                $inStmt->bind_param("iiiidddssissi", $bookingId, $leadId, $projId, $flatId, $totalPaid, $retentionAmount, $refundAmount, $reason, $documentPath, $this->userId, $newStatus, $refundedAt, $this->userId);
+                $inStmt->execute();
+                $refundId = $inStmt->insert_id;
             }
 
-            setSuccess('Refund request submitted. Refund Amount: ৳' . number_format($refundAmount, 2));
-            header("Location: {$GLOBALS['base_url']}/client-refund/{$refundId}");
-        } else {
-            setError('Failed to create refund request.');
+            // If Accounts processed the payout, record the refund deduction in lead_payments
+            if ($isAccounts && $refundAmount > 0) {
+                // Release flat if not yet released
+                if (!empty($booking['flat_id'])) {
+                    $flatId = (int)$booking['flat_id'];
+                    $fStmt = $this->db->prepare("UPDATE flats SET status = 'available', is_booked = 0 WHERE id = ?");
+                    $fStmt->bind_param("i", $flatId);
+                    $fStmt->execute();
+                }
+
+                // Ensure booking is refunded
+                $lbStmt = $this->db->prepare("UPDATE lead_bookings SET booking_status = 'refunded', landshare_status = 'cancelled' WHERE id = ?");
+                $lbStmt->bind_param("i", $bookingId);
+                $lbStmt->execute();
+
+                // Cancel pending EMIs
+                $emiStmt = $this->db->prepare("UPDATE emi_schedules SET status = 'cancelled' WHERE lead_booking_id = ? AND status IN ('pending', 'missed')");
+                $emiStmt->bind_param("i", $bookingId);
+                $emiStmt->execute();
+
+                // Insert negative refund entry in lead_payments to reduce cash in
+                $negAmount = -abs($refundAmount);
+                $txnRef = 'Refund Payout #' . $refundId . ($chequeNo !== '' ? ' (Ref: ' . $chequeNo . ')' : '');
+
+                $payStmt = $this->db->prepare("INSERT INTO lead_payments 
+                    (booking_id, payment_type, amount, payment_method, cheque_no, payment_status, verification_status, verified_by, payment_date, transaction_ref, created_by) 
+                    VALUES (?, 'refund', ?, ?, ?, 'paid', 'verified', ?, CURDATE(), ?, ?)");
+                $payStmt->bind_param("idssisi", $bookingId, $negAmount, $paymentMethod, $chequeNo, $this->userId, $txnRef, $this->userId);
+                $payStmt->execute();
+
+                // Update approval_requests to approved
+                $arStmt = $this->db->prepare("UPDATE approval_requests SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE source_table = 'client_refund_requests' AND source_id = ?");
+                $arStmt->bind_param("ii", $this->userId, $refundId);
+                $arStmt->execute();
+            } else {
+                // Create approval request if not exists
+                $arCheck = $this->db->prepare("SELECT id FROM approval_requests WHERE source_table = 'client_refund_requests' AND source_id = ? LIMIT 1");
+                $arCheck->bind_param("i", $refundId);
+                $arCheck->execute();
+                if (!$arCheck->get_result()->fetch_assoc()) {
+                    $this->approvalModel->create([
+                        'department'     => 'accounts',
+                        'request_type'   => 'client_refund',
+                        'title'          => 'Client Refund — ' . ($booking['client_name'] ?? '') . ' | ' . ($booking['flat_name'] ?? '') . ' | ' . ($booking['project_name'] ?? ''),
+                        'source_table'   => 'client_refund_requests',
+                        'source_id'      => $refundId,
+                        'requested_days' => 0,
+                        'requested_by'   => $this->userId,
+                        'approve_role'   => 'management',
+                        'meta_data'      => null,
+                        'request_amount' => $refundAmount,
+                    ]);
+                }
+            }
+
+            $this->db->commit();
+
+            if ($isAccounts) {
+                setSuccess('Refund payout completed! ৳' . number_format($refundAmount, 2) . ' disbursed to client and deducted from cash-in.');
+                header("Location: {$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}");
+            } else {
+                setSuccess('Refund request submitted for approval. Refund Amount: ৳' . number_format($refundAmount, 2));
+                header("Location: {$GLOBALS['base_url']}/client-refund/{$refundId}");
+            }
+        } catch (\Exception $e) {
+            $this->db->rollback();
+            error_log("Refund store failed: " . $e->getMessage());
+            setError('Failed to process refund: ' . $e->getMessage());
             header("Location: {$GLOBALS['base_url']}/client-refund-create/{$bookingId}");
         }
         exit;

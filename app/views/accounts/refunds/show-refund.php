@@ -5,6 +5,7 @@ $payments  = $payments ?? [];
 $cashout   = $cashout_request ?? null;
 $approval  = $approval_request ?? null;
 $canApproveReq = $canApprove ?? false;
+$userRole = $userRole ?? ($_SESSION['user']['role_id'] ?? null);
 
 $statusMap = [
     'pending'  => ['label' => 'Pending',  'color' => 'warning'],
@@ -112,9 +113,16 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                         </div>
 
                         <?php if (!empty($refund['reason'])): ?>
-                        <div class="col-md-12">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Reason</div>
-                            <div class="info-value"><?= nl2br(htmlspecialchars($refund['reason'])) ?></div>
+                        <div class="col-md-12 mt-3">
+                            <div class="p-3 rounded-2 border border-warning bg-warning bg-opacity-10 shadow-sm">
+                                <div class="d-flex align-items-center mb-1">
+                                    <i class="bi bi-chat-left-quote-fill text-warning fs-5 me-2"></i>
+                                    <span class="fw-bold text-dark text-uppercase small">Sales Refund Note / Reason:</span>
+                                </div>
+                                <div class="text-dark fw-semibold ps-4" style="font-size: 15px; line-height: 1.5;">
+                                    <?= nl2br(htmlspecialchars($refund['reason'])) ?>
+                                </div>
+                            </div>
                         </div>
                         <?php endif; ?>
 
@@ -232,25 +240,31 @@ $isApproved = in_array($status, ['approved', 'refunded']);
 
             <!-- Approval Actions (Management only, pending status) -->
             <?php if ($canApproveReq && $isPending): ?>
-            <div class="card custom-card border-warning mb-3">
-                <div class="card-header bg-warning bg-opacity-10">
-                    <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Approval Action</h6>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info small mb-3">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Approving will:<br>
-                        • Cancel the booking<br>
-                        • Release the flat back to available<br>
-                        • Cancel all pending EMIs<br>
-                        • Create a cashout request for ৳<?= number_format($refund['refund_amount'], 2) ?>
-                    </div>
-                    <form action="<?= $base_url ?>/client-refund-approve/<?= $refund['id'] ?>" method="POST" class="mb-3" id="approveForm">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Approved Amount (৳)</label>
-                            <input type="number" step="0.01" name="approved_amount" class="form-control" value="<?= htmlspecialchars($refund['refund_amount']) ?>" required>
+            <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #ffc107 !important; background: #fffdf5;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center mb-2.5">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0" style="width: 34px; height: 34px; background: rgba(255, 193, 7, 0.2); color: #b78103;">
+                            <i class="bi bi-shield-lock-fill fs-6"></i>
                         </div>
-                        <button type="button" class="btn btn-success w-100 fw-bold" onclick="confirmApproval()">
+                        <div>
+                            <h6 class="card-title mb-0 fw-bold text-dark fs-14">ম্যানেজমেন্ট অনুমোদন</h6>
+                            <span class="badge bg-warning text-dark font-monospace" style="font-size: 10px;">Approval Action</span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-2.5 rounded-2 bg-white border border-light-subtle small mb-3 text-secondary" style="font-size: 12px; line-height: 1.6;">
+                        <span class="fw-semibold text-dark d-block mb-1">অনুমোদনের প্রভাব:</span>
+                        • অ্যাকাউন্টস পে-আউটের জন্য রিকোয়েস্টটি সক্রিয় হবে<br>
+                        • ফ্ল্যাট রিলিজ ও বুকিং ক্যানসেলেশন কনফার্ম হবে<br>
+                        • ৳ <?= number_format($refund['refund_amount'], 2) ?> টাকার অনুমোদন প্রদান করা হবে
+                    </div>
+
+                    <form action="<?= $base_url ?>/client-refund-approve/<?= $refund['id'] ?>" method="POST" class="mb-2" id="approveForm">
+                        <div class="mb-2">
+                            <label class="form-label fw-bold small mb-1">Approved Amount (৳)</label>
+                            <input type="number" step="0.01" name="approved_amount" class="form-control form-control-sm fw-bold text-success" value="<?= htmlspecialchars($refund['refund_amount']) ?>" required>
+                        </div>
+                        <button type="button" class="btn btn-success w-100 fw-bold btn-sm py-2 shadow-sm" onclick="confirmApproval()">
                             <i class="bi bi-check-circle me-1"></i> Approve Refund
                         </button>
                     </form>
@@ -261,12 +275,81 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                     </form>
                 </div>
             </div>
+            <?php endif; ?>
+
+            <!-- Informative Box for Accounts / Sales when Pending -->
+            <?php if ($isPending && !$canApproveReq): ?>
+            <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #0d6efd !important; background: #f8faff;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center mb-2.5">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0" style="width: 34px; height: 34px; background: rgba(13, 110, 253, 0.12); color: #0d6efd;">
+                            <i class="bi bi-hourglass-split fs-6"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-bold fs-13 text-primary">ম্যানেজমেন্ট অনুমোদনের অপেক্ষায়</h6>
+                            <span class="badge bg-warning text-dark font-monospace" style="font-size: 10px;">Pending Approval</span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-2.5 rounded-2 bg-white border border-light-subtle small mt-2 text-secondary" style="font-size: 12.5px; line-height: 1.6;">
+                        <div class="fw-semibold text-dark mb-1">
+                            <i class="bi bi-shield-check text-success me-1"></i> রিটেনশন ও পেমেন্ট নির্দেশিকা:
+                        </div>
+                        ম্যানেজমেন্ট (Role 3, 9, 20, 33 বা Admin) কর্তৃক এই রিকোয়েস্টটি <strong>Approve</strong> করার পর, অ্যাকাউন্টস ডিপার্টমেন্ট এখানে রিটেনশন ফি (কোম্পানি চার্জ) কেটে সরাসরি ক্লায়েন্টকে রিফান্ড পেইড করার অপশন পাবে।
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Accounts Payout Action (Approved status) -->
+            <?php if ($status === 'approved' && in_array($userRole, [1, 3, 6, 10, 30])): ?>
+            <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #198754 !important; background: #f4fbf7;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center mb-2.5">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0" style="width: 34px; height: 34px; background: rgba(25, 135, 84, 0.15); color: #198754;">
+                            <i class="bi bi-check2-circle fs-5"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-bold fs-14 text-success">ম্যানেজমেন্ট কর্তৃক অনুমোদিত</h6>
+                            <span class="badge bg-success text-white font-monospace" style="font-size: 10px;">Approved</span>
+                        </div>
+                    </div>
+                    <div class="p-2.5 rounded-2 bg-white border border-light-subtle small mt-2 mb-3 text-secondary" style="font-size: 12.5px; line-height: 1.6;">
+                        <span class="fw-semibold text-dark d-block mb-1">অ্যাকাউন্টস ডিপার্টমেন্টের করণীয়:</span>
+                        রিটেনশন ফি (কোম্পানি চার্জ) নির্ধারণ করে ক্লায়েন্টের নিট রিফান্ড অর্থ প্রদান সম্পন্ন করুন।
+                    </div>
+                    <a href="<?= $base_url ?>/client-refund-create/<?= $refund['booking_id'] ?>" class="btn btn-danger w-100 fw-bold py-2 shadow-sm d-flex align-items-center justify-content-center gap-2">
+                        <i class="bi bi-cash-coin fs-6"></i> Pay Refund & Deduct Retention
+                    </a>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Refund Completed -->
+            <?php if ($status === 'refunded'): ?>
+            <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #0d6efd !important; background: #f8faff;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center mb-2.5">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0" style="width: 34px; height: 34px; background: rgba(13, 110, 253, 0.12); color: #0d6efd;">
+                            <i class="bi bi-check-all fs-5"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-bold fs-14 text-primary">রিফান্ড পরিশোধ সম্পন্ন</h6>
+                            <span class="badge bg-secondary text-white font-monospace" style="font-size: 10px;">Refunded Paid</span>
+                        </div>
+                    </div>
+                    <p class="small text-secondary mb-0 mt-2" style="font-size: 12.5px; line-height: 1.6;">
+                        এই রিফান্ডটি অ্যাকাউন্টস কর্তৃক পরিশোধ সম্পন্ন হয়েছে এবং ক্লায়েন্ট লেজার থেকে <strong>৳ <?= number_format($refund['refund_amount'], 2) ?></strong> সমন্বয় করা হয়েছে।
+                    </p>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <script>
             function confirmApproval() {
                 Swal.fire({
                     title: 'Approve this refund?',
-                    text: 'This will cancel the booking and release the flat.',
+                    text: 'This will authorize the refund for Accounts payout and confirm booking cancellation.',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#28a745',
@@ -295,7 +378,6 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                 });
             }
             </script>
-            <?php endif; ?>
 
             <!-- Status Messages -->
             <?php if ($isApproved): ?>

@@ -74,6 +74,7 @@ return [
     'booking-store' => ['controller' => 'BookingController', 'method' => 'store'],
     'booking-update' => ['controller' => 'BookingController', 'method' => 'update'],
     'booking-delete/(\d+)' => ['controller' => 'BookingController', 'method' => 'delete'],
+    'booking-quick-refund' => ['controller' => 'BookingController', 'method' => 'quickRefund'],
     'get-flats-by-project/(\d+)' => ['controller' => 'BookingController', 'method' => 'getFlatsByProject'],
     'update-flats-by-project' => ['controller' => 'BookingController', 'method' => 'update'],
 

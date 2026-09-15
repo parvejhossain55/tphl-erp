@@ -63,6 +63,14 @@ $statusMap = [
                                 <?php if (!empty($r['client_phone'])): ?>
                                     <br><small class="text-muted"><?= $r['client_phone'] ?></small>
                                 <?php endif; ?>
+                                <?php if (!empty($r['reason'])): ?>
+                                    <div class="mt-1" style="max-width: 250px;">
+                                        <span class="badge bg-warning bg-opacity-25 text-dark border border-warning px-1 py-0 me-1">
+                                            <i class="bi bi-chat-left-text text-primary me-1"></i>Note:
+                                        </span>
+                                        <span class="text-dark small fst-italic fw-medium"><?= htmlspecialchars($r['reason']) ?></span>
+                                    </div>
+                                <?php endif; ?>
                             </td>
                             <td><?= htmlspecialchars($r['project_name'] ?? '—') ?></td>
                             <td>
@@ -91,6 +99,11 @@ $statusMap = [
                                 <a href="<?= $base_url ?>/client-refund/<?= $r['id'] ?>" class="btn btn-sm btn-outline-primary mb-1">
                                     <i class="bi bi-eye"></i> View
                                 </a>
+                                <?php if ($r['status'] === 'approved' && in_array($userRole, [1, 3, 6, 10, 30])): ?>
+                                    <a href="<?= $base_url ?>/client-refund-create/<?= $r['booking_id'] ?>" class="btn btn-sm btn-outline-danger mb-1">
+                                        <i class="bi bi-cash-stack"></i> Pay Refund
+                                    </a>
+                                <?php endif; ?>
                                 <?php if ($r['status'] === 'pending' && $r['requested_by'] == ($_SESSION['user']['id'] ?? 0)): ?>
                                     <!-- Edit disabled for now until feature is built -->
                                     <form action="<?= $base_url ?>/client-refund-delete/<?= $r['id'] ?>" method="POST" class="d-inline" onsubmit="return confirm('Delete this refund request?');">

@@ -76,10 +76,29 @@ $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET
                         <span class="badge bg-success">Current</span>
                     <?php endif; ?>
                     
-                    <?php if (isset($refundDetails) && $refundDetails['status'] === 'approved'): ?>
-                        <span class="badge bg-danger"><i class="fa-light fa-undo me-1"></i>Refund Approved</span>
-                        <?php if ($refundPaidAmount > 0): ?>
-                            <span class="badge" style="background:#2d8cf0; color:#fff;"><i class="fa-light fa-money-bill-transfer me-1"></i>Refunded Amount: TK.<?= number_format($refundPaidAmount, 2) ?></span>
+                    <?php 
+                        $isAccountsUser = in_array($userRoleId, [1, 3, 6, 10, 30]);
+                        $bookingRefunded = (($clientDetails['booking_status'] ?? '') === 'refunded');
+                    ?>
+                    <?php if (!empty($refundDetails) || $bookingRefunded): ?>
+                        <?php 
+                            $rfStatus = $refundDetails['status'] ?? ($bookingRefunded ? 'approved' : '');
+                            $rfAmount = (float)($refundDetails['refund_amount'] ?? $refundPaidAmount);
+                        ?>
+                        <?php if ($rfStatus === 'pending'): ?>
+                            <span class="badge bg-warning text-dark"><i class="fa-light fa-clock me-1"></i>Refund Requested (Pending Approval)</span>
+                        <?php elseif ($rfStatus === 'approved'): ?>
+                            <span class="badge bg-info text-white"><i class="fa-light fa-hourglass-half me-1"></i>Refund Request (Amount Not Paid)</span>
+                            <?php if ($isAccountsUser): ?>
+                                <a href="<?= $GLOBALS['base_url'] ?>/client-refund-create/<?= $bookingId ?>" class="btn btn-sm btn-danger ms-1">
+                                    <i class="fa-light fa-money-bill-wave me-1"></i>Refund Paid Request
+                                </a>
+                            <?php endif; ?>
+                        <?php elseif ($rfStatus === 'refunded'): ?>
+                            <span class="badge bg-success"><i class="fa-light fa-check-circle me-1"></i>Refunded Paid</span>
+                            <?php if ($rfAmount > 0): ?>
+                                <span class="badge" style="background:#2d8cf0; color:#fff;"><i class="fa-light fa-money-bill-transfer me-1"></i>Refunded Amount: TK.<?= number_format($rfAmount, 2) ?></span>
+                            <?php endif; ?>
                         <?php endif; ?>
                     <?php endif; ?>
                 </div>

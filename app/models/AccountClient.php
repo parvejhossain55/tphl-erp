@@ -1774,6 +1774,7 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'construction_fee' THEN 'CONSTRUCTION'
                     WHEN lp.payment_type = 'development_charge' THEN 'DEV CHARGE'
                     WHEN lp.payment_type = 'shop_service_charge' THEN 'SHOP SVC CHARGE'
+                    WHEN lp.payment_type = 'refund' THEN 'REFUND'
                     ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
                 END as installment_label,
                 CASE 
@@ -1786,6 +1787,7 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
                     WHEN lp.payment_type = 'development_charge' THEN 'Development Charge'
                     WHEN lp.payment_type = 'shop_service_charge' THEN 'Shop Service Charge'
+                    WHEN lp.payment_type = 'refund' THEN 'Client Refund Payout'
                     ELSE 'Other Payment'
                 END as payment_details,
                 cb.bank_name as company_bank_name,
@@ -1828,7 +1830,10 @@ ORDER BY lb.booking_date DESC
                 $transaction['service_fee'] = $transaction['emi_service_fee'];
             }
 
-            if (isset($transaction['payment_status'])) {
+            if (($transaction['payment_type'] ?? '') === 'refund') {
+                $transaction['status_class'] = 'bg-danger';
+                $transaction['status_text']  = 'Refunded';
+            } elseif (isset($transaction['payment_status'])) {
                 // If verified by Accounts, always show as Paid regardless of raw payment_status
                 if (($transaction['verification_status'] ?? '') === 'verified') {
                     $transaction['status_class'] = 'bg-success';
