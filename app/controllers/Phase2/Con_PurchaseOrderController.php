@@ -291,13 +291,20 @@ class Con_PurchaseOrderController extends Controller
         if (!empty($po['request_id'])) {
             $prId = (int)$po['request_id'];
 
-            // Fetch PR attachment
-            $prStmt = $this->db->prepare("SELECT id, attachment FROM purchase_requests WHERE id = ?");
+            // Fetch PR details & attachment
+            $prDetails = null;
+            $prStmt = $this->db->prepare("
+                SELECT pr.*, u.full_name AS requester_name, p.name AS pr_project_name 
+                FROM purchase_requests pr 
+                LEFT JOIN users u ON u.id = pr.created_by 
+                LEFT JOIN projects p ON p.id = pr.project_id 
+                WHERE pr.id = ?
+            ");
             if ($prStmt) {
                 $prStmt->bind_param('i', $prId);
                 $prStmt->execute();
-                $prRow = $prStmt->get_result()->fetch_assoc();
-                $prAttachment = $prRow['attachment'] ?? null;
+                $prDetails = $prStmt->get_result()->fetch_assoc();
+                $prAttachment = $prDetails['attachment'] ?? null;
             }
 
             // Fetch CST Comparison Header
@@ -368,6 +375,7 @@ class Con_PurchaseOrderController extends Controller
             'quotationsList'      => $quotationsList,
             'cstInfo'             => $cstInfo,
             'prAttachment'        => $prAttachment,
+            'prDetails'           => $prDetails,
         ]);
     }
 
