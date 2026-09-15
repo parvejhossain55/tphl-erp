@@ -1147,6 +1147,36 @@ function renderDetailModal(data) {
             </form>
         </div>
         ` : ''}
+
+        <!-- Action: Confirm Purchase Received & Register in Asset Tracker (When Paid) -->
+        ${(data.payment_status === 'paid' && data.overall_status !== 'purchased') ? `
+        <div class="mt-4 p-3 border border-primary rounded-3 bg-primary-subtle shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <span class="fw-bold fs-13 text-primary d-block">
+                    <i class="fa-solid fa-box-check me-1"></i> Ready to Confirm Purchase & Add to Asset Tracker
+                </span>
+                <small class="text-muted">Payment has been completed. Confirm that items are purchased/received to register them into Product Master & Asset Tracker.</small>
+            </div>
+            <button type="button" class="btn btn-success btn-sm px-3 fw-bold shadow-sm" onclick="closeDetailModalAndConfirm(${data.id})">
+                <i class="fa-solid fa-box-check me-1"></i> Confirm & Mark Purchased
+            </button>
+        </div>
+        ` : ''}
+
+        <!-- Action: Already Registered in Asset Tracker -->
+        ${data.overall_status === 'purchased' ? `
+        <div class="mt-4 p-3 border border-success rounded-3 bg-success-subtle shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <span class="fw-bold fs-13 text-success d-block">
+                    <i class="fa-solid fa-circle-check me-1"></i> Purchased & Registered in Asset Tracker
+                </span>
+                <small class="text-muted">This asset has been auto-coded and capitalized under Fixed Assets in Financial Hub Balance Sheet.</small>
+            </div>
+            <a href="<?= $GLOBALS['base_url'] ?>/office-assets" class="btn btn-success btn-sm px-3 fw-semibold">
+                <i class="fa-solid fa-boxes-stacked me-1"></i> View in Asset Register
+            </a>
+        </div>
+        ` : ''}
     `;
     var modalEl = document.getElementById('detailModal');
     if (modalEl) {
@@ -1159,40 +1189,54 @@ function renderDetailModal(data) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    function triggerAutoOpen() {
-        <?php if (!empty($autoOpenRequest)): ?>
-            renderDetailModal(<?= json_encode($autoOpenRequest) ?>);
-            var targetRow = document.querySelector(`tr[data-request-id="<?= $autoOpenRequest['id'] ?>"]`);
-            if (targetRow) {
-                targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                targetRow.classList.add('table-primary');
-            }
-        <?php else: ?>
-            const urlParams = new URLSearchParams(window.location.search);
-            const viewId = urlParams.get('view') || urlParams.get('id');
-            if (viewId) {
-                const btn = document.querySelector(`button[data-id="${viewId}"]`);
-                if (btn) {
-                    openDetailModal(btn);
-                    btn.closest('tr')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    btn.closest('tr')?.classList.add('table-primary');
-                }
-            }
-        <?php endif; ?>
+function closeDetailModalAndConfirm(id) {
+    var detailModalEl = document.getElementById('detailModal');
+    if (detailModalEl) {
+        var modal = bootstrap.Modal.getInstance(detailModalEl);
+        if (modal) modal.hide();
     }
-
-    // Small delay ensures bootstrap bundle from footer has initialized
-    setTimeout(triggerAutoOpen, 150);
-});
+    var btn = document.querySelector(`button[data-id="${id}"]`);
+    if (btn) {
+        openConfirmPurchaseModal(btn);
+    }
+}
 
 function openConfirmPurchaseModal(btn) {
-    var data = JSON.parse(btn.getAttribute('data-info'));
+    var data = null;
+    if (typeof btn === 'object' && btn.getAttribute) {
+        data = JSON.parse(btn.getAttribute('data-info'));
+    } else if (typeof btn === 'object') {
+        data = btn;
+    }
+    if (!data) return;
+
     document.getElementById('confirmPurchaseForm').action = '<?= $GLOBALS['base_url'] ?>/asset-extra-purchases/confirm/' + data.id;
     document.getElementById('confirm_purchase_note').value = '';
     document.getElementById('confirm_purchase_document').value = '';
+
+    // Auto fill Purchase Date from payment date or today
+    var todayStr = new Date().toISOString().substring(0, 10);
+    var pDate = data.paid_at ? data.paid_at.substring(0, 10) : todayStr;
+    var dateInput = document.getElementById('confirm_purchase_date');
+    if (dateInput) {
+        dateInput.value = pDate;
+    }
+
+    // Populate Item Summary Card
+    var summaryEl = document.getElementById('confirmPurchaseSummary');
+    if (summaryEl) {
+        var assignedText = data.assigned_to_name ? data.assigned_to_name : (data.requested_by_name ? data.requested_by_name : 'Unassigned');
+        var branchText = data.asset_location ? data.asset_location : 'Default Office';
+        summaryEl.innerHTML = `
+            <div class="row g-2">
+                <div class="col-6"><strong>Item:</strong> ${data.item_name} (${data.quantity} pcs)</div>
+                <div class="col-6"><strong>Total Price:</strong> ৳ ${parseFloat(data.total_price || 0).toLocaleString(undefined, {minimumFractionDigits:2})}</div>
+                <div class="col-6"><strong>Assign To:</strong> <span class="badge bg-primary-subtle text-primary">${assignedText}</span></div>
+                <div class="col-6"><strong>Office Branch:</strong> <span class="badge bg-info-subtle text-info">${branchText}</span></div>
+            </div>
+        `;
+    }
     
-    // Set default assignment based on request data if available
     new bootstrap.Modal(document.getElementById('confirmPurchaseModal')).show();
 }
 </script>
@@ -1209,29 +1253,40 @@ function openConfirmPurchaseModal(btn) {
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted fs-12 mb-3">Confirm that the purchased items have been received. This will register the assets in the system.</p>
+                    <p class="text-muted fs-12 mb-2">Confirm that the purchased items have been received. This will automatically generate a Product Code, register the assets in the Asset Tracker, and capitalize them in Financial Hub Balance Sheet.</p>
                     
+                    <div class="alert alert-light border p-2 mb-3 fs-12" id="confirmPurchaseSummary">
+                        <!-- Populated by JS -->
+                    </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Upload Document <span class="text-muted fs-11">(Invoice, Receipt, Challan etc.)</span></label>
-                        <input type="file" name="purchase_document" id="confirm_purchase_document" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                        <label class="form-label fs-12 fw-semibold">Purchase Date <span class="text-danger">*</span></label>
+                        <input type="date" name="purchase_date" id="confirm_purchase_date" class="form-control form-control-sm" required value="<?= date('Y-m-d') ?>">
+                        <small class="text-muted fs-11">Date when the asset was purchased or received.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fs-12 fw-semibold">Upload Invoice / Voucher <span class="text-muted fs-11">(Invoice, Receipt, Challan etc.)</span></label>
+                        <input type="file" name="purchase_document" id="confirm_purchase_document" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Returned Balance <span class="text-muted fs-11">(optional, if money was saved)</span></label>
-                        <input type="number" name="return_amount" class="form-control" step="0.01" min="0" placeholder="0.00">
+                        <label class="form-label fs-12 fw-semibold">Returned Balance <span class="text-muted fs-11">(optional, if money was saved)</span></label>
+                        <input type="number" name="return_amount" class="form-control form-control-sm" step="0.01" min="0" placeholder="0.00">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Return Note <span class="text-muted fs-11">(optional)</span></label>
-                        <input type="text" name="return_note" class="form-control" placeholder="E.g., Vendor discount applied">
+                        <label class="form-label fs-12 fw-semibold">Return Note <span class="text-muted fs-11">(optional)</span></label>
+                        <input type="text" name="return_note" class="form-control form-control-sm" placeholder="E.g., Vendor discount applied">
                     </div>
                     <div class="mb-0">
-                        <label class="form-label">Purchase Notes <span class="text-muted fs-11">(optional)</span></label>
-                        <textarea name="purchase_note" id="confirm_purchase_note" class="form-control" rows="2" placeholder="Any remarks about the received items..."></textarea>
+                        <label class="form-label fs-12 fw-semibold">Purchase Notes <span class="text-muted fs-11">(optional)</span></label>
+                        <textarea name="purchase_note" id="confirm_purchase_note" class="form-control form-control-sm" rows="2" placeholder="Any remarks about the received items..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success btn-sm">Confirm & Register Assets</button>
+                    <button type="submit" class="btn btn-success btn-sm fw-bold">
+                        <i class="fa-solid fa-box-check me-1"></i> Confirm & Register Assets
+                    </button>
                 </div>
             </div>
         </form>

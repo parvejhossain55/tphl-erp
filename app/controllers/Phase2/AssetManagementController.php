@@ -69,6 +69,14 @@ class AssetManagementController extends Controller
             $users = $uRes->fetch_all(MYSQLI_ASSOC);
         }
 
+        $empBranchMap = [];
+        $ebRes = $this->db->query("SELECT user_id, office_branch_id FROM employees WHERE user_id IS NOT NULL AND office_branch_id IS NOT NULL");
+        if ($ebRes) {
+            while ($row = $ebRes->fetch_assoc()) {
+                $empBranchMap[(int)$row['user_id']] = (int)$row['office_branch_id'];
+            }
+        }
+
         $data = [
             'page_title' => 'Office Asset Management',
             'assets' => $assets,
@@ -77,6 +85,7 @@ class AssetManagementController extends Controller
             'branches' => $branches,
             'projects' => $projects,
             'users' => $users,
+            'empBranchMap' => $empBranchMap,
             'stats' => $stats,
             'filters' => $filters,
             'canEdit' => $this->canUserEdit()
@@ -722,19 +731,32 @@ class AssetManagementController extends Controller
                     try {
                         require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
                         $autoPosting = new \AutoPostingService($this->db);
-                        $assetExpenseAccId = $autoPosting->getAccountIdByCode('5220'); // Office & Asset Expense
                         $vendorPayableAccId = $autoPosting->getAccountIdByCode('2110'); // Accounts Payable - Vendors
                         
                         $req = $this->model->findExtraPurchase($id);
                         if ($req && (float)$req['total_price'] > 0) {
+                            $requestType = $req['request_type'] ?? 'Purchase';
+                            if (strtolower($requestType) === 'purchase') {
+                                // Capitalize to Fixed Asset (Property, Plant & Equipment)
+                                $debitAccountId = $this->model->getFixedAssetAccountId($req['item_category_id'] ?? null, $req['item_name'] ?? '');
+                                if (!$debitAccountId) {
+                                    $debitAccountId = $autoPosting->getAccountIdByCode('100002'); // Office Equipment
+                                }
+                                $narrationDesc = "Office Fixed Asset Procurement (PR-{$id}): " . $req['item_name'] . " (Qty: {$req['quantity']})";
+                            } else {
+                                // Servicing / Maintenance is operating expense
+                                $debitAccountId = $autoPosting->getAccountIdByCode('5220'); // Office & Asset Expense
+                                $narrationDesc = "Office Asset Servicing (PR-{$id}): " . $req['item_name'];
+                            }
+
                             $procurementOffice = !empty($req['asset_location']) ? $req['asset_location'] : null;
                             $autoPosting->postAccrualEntry(
                                 'asset_procurement',
                                 $id,
-                                $assetExpenseAccId,
+                                $debitAccountId,
                                 $vendorPayableAccId,
                                 $req['total_price'],
-                                "Office Asset Procurement (PR-{$id}): " . $req['item_name'] . " (Qty: {$req['quantity']})",
+                                $narrationDesc,
                                 $req['project_id'],
                                 'employee',
                                 $req['assigned_to'] ?? $req['requested_by'],
@@ -874,6 +896,11 @@ class AssetManagementController extends Controller
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = (int)($_SESSION['user']['id'] ?? 1);
             $note = $_POST['purchase_note'] ?? $_POST['note'] ?? '';
+            $purchaseDate = !empty($_POST['purchase_date']) ? trim($_POST['purchase_date']) : null;
+            $assignedTo = isset($_POST['assigned_to']) && $_POST['assigned_to'] !== '' ? (int)$_POST['assigned_to'] : null;
+            $location = !empty($_POST['location']) ? trim($_POST['location']) : null;
+            $returnAmount = (float)($_POST['return_amount'] ?? 0);
+            $returnNote = $_POST['return_note'] ?? '';
 
             $document = null;
             if (isset($_FILES['purchase_document']) && $_FILES['purchase_document']['error'] === UPLOAD_ERR_OK) {
@@ -887,7 +914,7 @@ class AssetManagementController extends Controller
                 }
             }
 
-            if ($this->model->confirmPurchased($id, $userId, $document, $note)) {
+            if ($this->model->confirmPurchased($id, $userId, $document, $note, $assignedTo, $location, $returnAmount, $returnNote, $purchaseDate)) {
                 // Sync with central approval_requests
                 try {
                     require_once dirname(dirname(__DIR__)) . '/models/ApprovalRequest.php';
@@ -897,7 +924,7 @@ class AssetManagementController extends Controller
                     error_log("Failed syncing approval_requests on extra purchase confirm: " . $e->getMessage());
                 }
 
-                setSuccess("Procurement confirmed & added to Asset Inventory.");
+                setSuccess("Procurement confirmed & successfully registered in Asset Tracker with auto code and branch details!");
             } else {
                 setError("Failed procurement confirmation.");
             }

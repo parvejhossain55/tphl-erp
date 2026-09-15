@@ -209,6 +209,12 @@ class AssetManagement
         if ($resCat && $resCat->num_rows === 0) {
             $this->db->query("ALTER TABLE `office_asset_products` ADD COLUMN `category_id` INT NULL DEFAULT NULL AFTER `name`");
         }
+
+        // 5. Ensure return_note column exists in project_extra_assets
+        $resRn = $this->db->query("SHOW COLUMNS FROM `project_extra_assets` LIKE 'return_note'");
+        if ($resRn && $resRn->num_rows === 0) {
+            $this->db->query("ALTER TABLE `project_extra_assets` ADD COLUMN `return_note` TEXT NULL DEFAULT NULL AFTER `return_amount`");
+        }
     }
 
     public function getAllOfficeBranches($status = 'active')
@@ -325,10 +331,10 @@ class AssetManagement
     public function createAsset($data)
     {
         $this->ensureOfficeBranchesSchema();
-        $branchId = !empty($data['office_branch_id']) ? (int)$data['office_branch_id'] : null;
+        $assignedTo = !empty($data['assigned_to']) ? (int)$data['assigned_to'] : null;
+        $branchId = !empty($data['office_branch_id']) ? (int)$data['office_branch_id'] : ($assignedTo ? $this->getEmployeeOfficeBranch($assignedTo) : null);
         $projectId = !empty($data['project_id']) ? (int)$data['project_id'] : null;
         $deptId = !empty($data['department_id']) ? (int)$data['department_id'] : null;
-        $assignedTo = !empty($data['assigned_to']) ? (int)$data['assigned_to'] : null;
 
         $assetCode = !empty($data['asset_code']) ? $data['asset_code'] : $this->generateAssetCode();
         $productId = !empty($data['product_id']) ? (int)$data['product_id'] : null;
@@ -430,9 +436,9 @@ class AssetManagement
         $itemName = array_key_exists('item_name', $data) && trim($data['item_name']) !== '' ? trim($data['item_name']) : $old['item_name'];
         $productId = array_key_exists('product_id', $data) ? (!empty($data['product_id']) ? (int)$data['product_id'] : null) : $old['product_id'];
         $projectId = array_key_exists('project_id', $data) ? (!empty($data['project_id']) ? (int)$data['project_id'] : null) : $old['project_id'];
-        $branchId = array_key_exists('office_branch_id', $data) ? (!empty($data['office_branch_id']) ? (int)$data['office_branch_id'] : null) : $old['office_branch_id'];
-        $deptId = array_key_exists('department_id', $data) ? (!empty($data['department_id']) ? (int)$data['department_id'] : null) : $old['department_id'];
         $assignedTo = array_key_exists('assigned_to', $data) ? (!empty($data['assigned_to']) ? (int)$data['assigned_to'] : null) : $old['assigned_to'];
+        $branchId = array_key_exists('office_branch_id', $data) ? (!empty($data['office_branch_id']) ? (int)$data['office_branch_id'] : ($assignedTo ? $this->getEmployeeOfficeBranch($assignedTo) : null)) : ($assignedTo && empty($old['office_branch_id']) ? $this->getEmployeeOfficeBranch($assignedTo) : $old['office_branch_id']);
+        $deptId = array_key_exists('department_id', $data) ? (!empty($data['department_id']) ? (int)$data['department_id'] : null) : $old['department_id'];
         $location = array_key_exists('location', $data) ? $data['location'] : $old['location'];
         $purchaseDate = array_key_exists('purchase_date', $data) ? $data['purchase_date'] : $old['purchase_date'];
         $purchasePrice = (array_key_exists('purchase_price', $data) && $data['purchase_price'] !== '' && $data['purchase_price'] !== null) ? (float)$data['purchase_price'] : (float)($old['purchase_price'] ?? 0);
@@ -498,9 +504,114 @@ class AssetManagement
         return $prefix . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
     }
 
-    // =========================================================================
-    // ASSET MOVEMENT LOGS
-    // =========================================================================
+    /**
+     * Generate next product code: PRD-YYYY-NNNN
+     */
+    public function generateProductCode()
+    {
+        $year = date('Y');
+        $prefix = "PRD-{$year}-";
+
+        $stmt = $this->db->prepare(
+            "SELECT product_code FROM office_asset_products WHERE product_code LIKE ? ORDER BY id DESC LIMIT 1"
+        );
+        $like = $prefix . '%';
+        $stmt->bind_param('s', $like);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+
+        if ($row) {
+            $lastNum = (int)substr($row['product_code'], strlen($prefix));
+            $nextNum = $lastNum + 1;
+        } else {
+            $nextNum = 1;
+        }
+
+        return $prefix . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Look up an employee's assigned office branch ID
+     */
+    public function getEmployeeOfficeBranch($userId)
+    {
+        if (empty($userId)) return null;
+        $userId = (int)$userId;
+        $stmt = $this->db->prepare("SELECT office_branch_id, office_branch, branch_name FROM employees WHERE user_id = ? OR id = ? LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param('ii', $userId, $userId);
+            $stmt->execute();
+            $emp = $stmt->get_result()->fetch_assoc();
+            if ($emp && !empty($emp['office_branch_id'])) {
+                return (int)$emp['office_branch_id'];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Resolve the appropriate Fixed Asset account ID (Property, Plant & Equipment) in Chart of Accounts
+     */
+    public function getFixedAssetAccountId($itemCategoryId = null, $itemName = '')
+    {
+        // 1. Keyword matching on Item Name
+        $nameLower = strtolower(trim($itemName));
+        if (strpos($nameLower, 'computer') !== false || strpos($nameLower, 'laptop') !== false || strpos($nameLower, 'printer') !== false || strpos($nameLower, 'monitor') !== false || strpos($nameLower, 'keyboard') !== false || strpos($nameLower, 'mouse') !== false || strpos($nameLower, 'ups') !== false || strpos($nameLower, 'scanner') !== false || strpos($nameLower, 'router') !== false) {
+            $acc = $this->getAccountIdByCode('100001'); // Computer, Printer & IT Equipment
+            if ($acc) return $acc;
+        }
+        if (strpos($nameLower, 'chair') !== false || strpos($nameLower, 'table') !== false || strpos($nameLower, 'desk') !== false || strpos($nameLower, 'sofa') !== false || strpos($nameLower, 'cabinet') !== false || strpos($nameLower, 'almirah') !== false || strpos($nameLower, 'furniture') !== false) {
+            $acc = $this->getAccountIdByCode('100000'); // Furniture & Fixtures
+            if ($acc) return $acc;
+        }
+        if (strpos($nameLower, 'vehicle') !== false || strpos($nameLower, 'bike') !== false || strpos($nameLower, 'car') !== false || strpos($nameLower, 'motorcycle') !== false) {
+            $acc = $this->getAccountIdByCode('100003'); // Transport & Vehicle
+            if ($acc) return $acc;
+        }
+
+        // 2. Check Procurement Category ID
+        if ($itemCategoryId) {
+            $catStmt = $this->db->prepare("SELECT name FROM office_procurement_categories WHERE id = ?");
+            if ($catStmt) {
+                $catStmt->bind_param('i', $itemCategoryId);
+                $catStmt->execute();
+                $cat = $catStmt->get_result()->fetch_assoc();
+                if ($cat) {
+                    $catName = strtolower($cat['name']);
+                    if (strpos($catName, 'computer') !== false || strpos($catName, 'printer') !== false || strpos($catName, 'it security') !== false) {
+                        $acc = $this->getAccountIdByCode('100001');
+                        if ($acc) return $acc;
+                    }
+                    if (strpos($catName, 'furniture') !== false) {
+                        $acc = $this->getAccountIdByCode('100000');
+                        if ($acc) return $acc;
+                    }
+                    if (strpos($catName, 'vehicle') !== false) {
+                        $acc = $this->getAccountIdByCode('100003');
+                        if ($acc) return $acc;
+                    }
+                }
+            }
+        }
+
+        // Default: Office Equipment (100002)
+        $acc = $this->getAccountIdByCode('100002');
+        return $acc ? $acc : $this->getAccountIdByCode('100');
+    }
+
+    /**
+     * Helper to find chart of accounts ID by account_code
+     */
+    public function getAccountIdByCode($code)
+    {
+        $stmt = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE account_code = ? LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("s", $code);
+            $stmt->execute();
+            $res = $stmt->get_result()->fetch_assoc();
+            if ($res) return (int)$res['id'];
+        }
+    }
 
     /**
      * Log an asset movement/change
@@ -988,69 +1099,223 @@ class AssetManagement
     }
 
     /**
-     * Operations confirms purchase received → registers assets into All Assets
+     * Operations confirms purchase received → registers assets into All Assets & auto codes product/asset
      */
-    public function confirmPurchased($id, $userId, $document = null, $note = '', $assignedTo = null, $location = null, $returnAmount = 0, $returnNote = '')
+    public function confirmPurchased($id, $userId, $document = null, $note = '', $assignedTo = null, $location = null, $returnAmount = 0, $returnNote = '', $purchaseDate = null)
     {
-        // Mark as purchased with document and note
+        $this->ensureOfficeBranchesSchema();
+        $req = $this->findExtraPurchase($id);
+        if (!$req) return false;
+
+        $finalPurchaseDate = !empty($purchaseDate) ? $purchaseDate : (!empty($req['purchase_date']) ? $req['purchase_date'] : (!empty($req['paid_at']) ? date('Y-m-d', strtotime($req['paid_at'])) : date('Y-m-d')));
+        $finalDoc = $document !== null ? $document : ($req['purchase_document'] ?? null);
+
+        // Mark as purchased with document, note, and purchase date
         $stmt = $this->db->prepare(
             "UPDATE project_extra_assets SET 
                 overall_status = 'purchased', 
                 purchase_document = ?, 
                 purchase_note = ?,
+                purchase_date = ?,
                 return_amount = ?,
                 return_note = ?,
                 purchase_confirmed_by = ?,
                 purchase_confirmed_at = NOW()
             WHERE id = ?"
         );
-        $stmt->bind_param('ssdsii', $document, $note, $returnAmount, $returnNote, $userId, $id);
+        $stmt->bind_param('sssdsii', $finalDoc, $note, $finalPurchaseDate, $returnAmount, $returnNote, $userId, $id);
         $res = $stmt->execute();
 
         if ($res) {
+            // Re-fetch request data
             $req = $this->findExtraPurchase($id);
-            if ($req) {
-                // Auto-register to Product Master if it doesn't exist
-                $stmtCheck = $this->db->prepare("SELECT id FROM office_asset_products WHERE name = ? LIMIT 1");
-                $stmtCheck->bind_param('s', $req['item_name']);
-                $stmtCheck->execute();
-                $resCheck = $stmtCheck->get_result();
-                
-                $productId = 0;
-                if ($resCheck->num_rows > 0) {
-                    $productId = $resCheck->fetch_assoc()['id'];
-                } else {
-                    // Create new product
-                    $productCode = 'PROD-' . time() . '-' . rand(10, 99);
-                    $stmtProd = $this->db->prepare("INSERT INTO office_asset_products (product_code, name, category_id, unit_price, status, created_by) VALUES (?, ?, ?, ?, 'active', ?)");
-                    $stmtProd->bind_param('ssidi', $productCode, $req['item_name'], $req['item_category_id'], $req['unit_price'], $userId);
-                    if ($stmtProd->execute()) {
-                        $productId = $this->db->insert_id;
-                    }
-                }
 
-                $qty = (int)$req['quantity'];
-                for ($i = 0; $i < $qty; $i++) {
-                    $code = $this->generateAssetCode();
-                    
-                    $finalAssignedTo = $assignedTo !== null ? $assignedTo : ($req['assigned_to'] ? (int)$req['assigned_to'] : null);
-                    $finalLocation = $location !== null && $location !== '' ? $location : $req['asset_location'];
-                    $assetStatus = $finalAssignedTo ? 'in_use' : 'in_store';
-                    
-                    $insertStmt = $this->db->prepare("INSERT INTO office_assets (asset_code, product_id, item_name, project_id, location, assigned_to, purchase_price, purchase_date, condition_status, asset_status, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'new', ?, ?, NOW())");
-                    $insertStmt->bind_param('sisisisdi', $code, $productId, $req['item_name'], $req['project_id'], $finalLocation, $finalAssignedTo, $req['unit_price'], $assetStatus, $userId);
-                    $insertStmt->execute();
-                }
+            // Determine Assigned To
+            $finalAssignedTo = $assignedTo !== null ? (int)$assignedTo : ($req['assigned_to'] ? (int)$req['assigned_to'] : null);
 
-                // Update project_extra_assets with product_id
-                if ($productId > 0) {
-                    $updReq = $this->db->prepare("UPDATE project_extra_assets SET product_id = ? WHERE id = ?");
-                    $updReq->bind_param('ii', $productId, $id);
-                    $updReq->execute();
+            // Determine Office Branch from employee or request
+            $finalBranchId = null;
+            if ($finalAssignedTo) {
+                $finalBranchId = $this->getEmployeeOfficeBranch($finalAssignedTo);
+            }
+            if (!$finalBranchId && !empty($req['office_branch_id'])) {
+                $finalBranchId = (int)$req['office_branch_id'];
+            }
+            if (!$finalBranchId) {
+                $finalBranchId = 1; // Default to Corporate Gulshan Office
+            }
+
+            // Determine Location Text
+            $finalLocation = $location !== null && $location !== '' ? $location : (!empty($req['asset_location']) ? $req['asset_location'] : null);
+            if (empty($finalLocation) && $finalBranchId) {
+                $bStmt = $this->db->prepare("SELECT name FROM office_branches WHERE id = ?");
+                if ($bStmt) {
+                    $bStmt->bind_param('i', $finalBranchId);
+                    $bStmt->execute();
+                    $bRow = $bStmt->get_result()->fetch_assoc();
+                    if ($bRow) $finalLocation = $bRow['name'];
                 }
             }
+            if (empty($finalLocation)) {
+                $finalLocation = 'Head Office';
+            }
+
+            // 1. Auto-register to Product Master (office_asset_products) if it doesn't exist
+            $productId = 0;
+            $stmtCheck = $this->db->prepare("SELECT id FROM office_asset_products WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1");
+            $stmtCheck->bind_param('s', $req['item_name']);
+            $stmtCheck->execute();
+            $resCheck = $stmtCheck->get_result();
+
+            if ($resCheck->num_rows > 0) {
+                $productId = (int)$resCheck->fetch_assoc()['id'];
+            } else {
+                $productCode = $this->generateProductCode();
+                $itemCatId = !empty($req['item_category_id']) ? (int)$req['item_category_id'] : null;
+                $unitPrice = (float)($req['unit_price'] ?? 0);
+                
+                $stmtProd = $this->db->prepare("INSERT INTO office_asset_products (product_code, name, category_id, unit_price, status, created_by) VALUES (?, ?, ?, ?, 'active', ?)");
+                $stmtProd->bind_param('ssidi', $productCode, $req['item_name'], $itemCatId, $unitPrice, $userId);
+                if ($stmtProd->execute()) {
+                    $productId = (int)$this->db->insert_id;
+                }
+            }
+
+            // 2. Auto-register each unit into office_assets (Asset Tracker)
+            $qty = max(1, (int)($req['quantity'] ?? 1));
+            $unitPrice = (float)($req['unit_price'] > 0 ? $req['unit_price'] : ($req['total_price'] / $qty));
+            $assetStatus = $finalAssignedTo ? 'in_use' : 'in_store';
+            $conditionStatus = 'new';
+            $projectId = !empty($req['project_id']) ? (int)$req['project_id'] : null;
+            $deptId = !empty($req['department_id']) ? (int)$req['department_id'] : null;
+
+            // Check if assets have already been registered for this PR to prevent duplicate insertion
+            $chkAsset = $this->db->prepare("SELECT COUNT(*) AS cnt FROM office_assets WHERE remarks LIKE ?");
+            $prRemark = "%PR-" . $id . "%";
+            $chkAsset->bind_param('s', $prRemark);
+            $chkAsset->execute();
+            $existingAssetCnt = (int)($chkAsset->get_result()->fetch_assoc()['cnt'] ?? 0);
+
+            if ($existingAssetCnt < $qty) {
+                $needed = $qty - $existingAssetCnt;
+                for ($i = 0; $i < $needed; $i++) {
+                    $code = $this->generateAssetCode();
+                    $assetRemark = "Auto-registered from Office Procurement PR-{$id}";
+
+                    $insertStmt = $this->db->prepare(
+                        "INSERT INTO office_assets 
+                        (asset_code, product_id, item_name, project_id, office_branch_id, department_id, assigned_to, location, 
+                         purchase_date, purchase_price, condition_status, asset_status, remarks, created_by, created_at) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
+                    );
+                    $insertStmt->bind_param(
+                        'sisiiiissdsssi',
+                        $code,
+                        $productId,
+                        $req['item_name'],
+                        $projectId,
+                        $finalBranchId,
+                        $deptId,
+                        $finalAssignedTo,
+                        $finalLocation,
+                        $finalPurchaseDate,
+                        $unitPrice,
+                        $conditionStatus,
+                        $assetStatus,
+                        $assetRemark,
+                        $userId
+                    );
+                    $insertStmt->execute();
+                }
+            }
+
+            // 3. Update project_extra_assets with product_id, office_branch_id, and purchase_date
+            $updReq = $this->db->prepare("UPDATE project_extra_assets SET product_id = COALESCE(?, product_id), office_branch_id = COALESCE(office_branch_id, ?), purchase_date = COALESCE(?, purchase_date) WHERE id = ?");
+            $updReq->bind_param('iisi', $productId, $finalBranchId, $finalPurchaseDate, $id);
+            $updReq->execute();
+
+            // 4. Ensure Financial Hub Balance Sheet Journal is capitalized under Non-Current Assets
+            $this->ensureFixedAssetJournalEntry($id, $req, $finalPurchaseDate, $userId);
         }
+
         return $res;
+    }
+
+    /**
+     * Ensure financial journal reflects Capital/Fixed Asset under Non-Current Assets on Balance Sheet
+     */
+    public function ensureFixedAssetJournalEntry($id, $req, $purchaseDate, $userId)
+    {
+        $totalPrice = (float)($req['total_price'] ?? 0);
+        if ($totalPrice <= 0) return;
+
+        // Only capitalize purchases (request_type = 'Purchase')
+        $requestType = $req['request_type'] ?? 'Purchase';
+        if (strtolower($requestType) !== 'purchase') return;
+
+        $fixedAssetAccId = $this->getFixedAssetAccountId($req['item_category_id'] ?? null, $req['item_name'] ?? '');
+        if (!$fixedAssetAccId) return;
+
+        // Check if accrual journal exists
+        $stmtJ = $this->db->prepare("SELECT id FROM journals WHERE source_module = 'asset_procurement' AND source_ref_id = ? AND entry_type = 'accrual' LIMIT 1");
+        $stmtJ->bind_param('i', $id);
+        $stmtJ->execute();
+        $jRow = $stmtJ->get_result()->fetch_assoc();
+
+        if ($jRow) {
+            $journalId = (int)$jRow['id'];
+            // Update the debit line in journal_details to point to Fixed Asset account
+            $updD = $this->db->prepare("UPDATE journal_details SET account_id = ? WHERE journal_id = ? AND debit > 0 LIMIT 1");
+            $updD->bind_param('ii', $fixedAssetAccId, $journalId);
+            $updD->execute();
+
+            // Update journal date if purchase date provided
+            if ($purchaseDate) {
+                $updJ = $this->db->prepare("UPDATE journals SET date = ? WHERE id = ?");
+                $updJ->bind_param('si', $purchaseDate, $journalId);
+                $updJ->execute();
+            }
+        } else {
+            // Create accrual entry via AutoPostingService
+            try {
+                require_once dirname(__DIR__) . '/services/AutoPostingService.php';
+                $autoPosting = new \AutoPostingService($this->db);
+                $vendorPayableAccId = $autoPosting->getAccountIdByCode('2110');
+                $procurementOffice = !empty($req['asset_location']) ? $req['asset_location'] : null;
+
+                $autoPosting->postAccrualEntry(
+                    'asset_procurement',
+                    $id,
+                    $fixedAssetAccId,
+                    $vendorPayableAccId,
+                    $totalPrice,
+                    "Office Fixed Asset Procurement (PR-{$id}): " . $req['item_name'] . " (Qty: {$req['quantity']})",
+                    $req['project_id'] ?? null,
+                    'employee',
+                    $req['assigned_to'] ?? $req['requested_by'] ?? 1,
+                    $userId,
+                    $procurementOffice
+                );
+            } catch (\Exception $e) {
+                error_log("Failed creating fixed asset accrual entry for PR-{$id}: " . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Retroactively sync any paid or purchased procurement request into the Asset Tracker & Balance Sheet
+     */
+    public function syncPurchasedToAssetRegister($id, $userId = 1)
+    {
+        $req = $this->findExtraPurchase($id);
+        if (!$req) return false;
+        if (!in_array($req['overall_status'], ['paid', 'purchased']) && $req['payment_status'] !== 'paid') return false;
+
+        $doc = $req['purchase_document'] ?? $req['payment_attachment'] ?? null;
+        $note = !empty($req['purchase_note']) ? $req['purchase_note'] : 'Confirmed and synced to Asset Tracker';
+        $pDate = !empty($req['purchase_date']) ? $req['purchase_date'] : (!empty($req['paid_at']) ? date('Y-m-d', strtotime($req['paid_at'])) : date('Y-m-d'));
+
+        return $this->confirmPurchased($id, $userId, $doc, $note, null, null, 0, '', $pDate);
     }
 
     /**

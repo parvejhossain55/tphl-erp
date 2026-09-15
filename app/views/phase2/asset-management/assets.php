@@ -447,7 +447,15 @@ $statusBadges = [
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Purchase Price (BDT)</label>
-                            <input type="text" id="edit_purchase_price_display" class="form-control" disabled>
+                            <input type="number" name="purchase_price" id="edit_purchase_price" class="form-control" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Purchase Date</label>
+                            <input type="date" name="purchase_date" id="edit_purchase_date" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Warranty Expiry</label>
+                            <input type="date" name="warranty_expiry" id="edit_warranty_expiry" class="form-control">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Location / Room</label>
@@ -838,11 +846,9 @@ function openEditModal(button) {
         setVal('edit_asset_status', asset.asset_status || 'in_store');
         setVal('edit_assigned_to', asset.assigned_to);
         setVal('edit_remarks', asset.remarks);
-
-        var priceEl = document.getElementById('edit_purchase_price_display');
-        if (priceEl) {
-            priceEl.value = asset.purchase_price ? parseFloat(asset.purchase_price).toLocaleString('en-BD', {minimumFractionDigits: 2}) : '0.00';
-        }
+        setVal('edit_purchase_price', (asset.purchase_price !== null && asset.purchase_price !== undefined) ? parseFloat(asset.purchase_price) : '');
+        setVal('edit_purchase_date', asset.purchase_date || '');
+        setVal('edit_warranty_expiry', asset.warranty_expiry || '');
         
         if (typeof $ !== 'undefined' && $.fn.select2) {
             $('#edit_product_id, #edit_project_id, #edit_office_branch_id, #edit_assigned_to').trigger('change');
@@ -860,6 +866,19 @@ function openEditModal(button) {
 
 if (typeof $ !== 'undefined') {
     $(document).ready(function() {
+        window.empBranchMap = <?= json_encode($empBranchMap ?? []) ?>;
+
+        // Auto-select office branch when assigned_to user is selected
+        $(document).on('change', 'select[name="assigned_to"]', function() {
+            var uId = $(this).val();
+            if (uId && window.empBranchMap && window.empBranchMap[uId]) {
+                var branchSelect = $(this).closest('.modal-body').find('select[name="office_branch_id"]');
+                if (branchSelect.length) {
+                    branchSelect.val(window.empBranchMap[uId]).trigger('change');
+                }
+            }
+        });
+
         function initModalSelect2(modalEl) {
             if (!$.fn.select2) return;
             $(modalEl).find('.select2').each(function() {

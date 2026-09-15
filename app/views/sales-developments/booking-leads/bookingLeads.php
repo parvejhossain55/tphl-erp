@@ -293,10 +293,24 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                                     </a>
                                                 <?php endif; ?>
                                                 
-                                                <a href="<?= $GLOBALS['base_url'] ?>/client-refund-create/<?= $or['id'] ?>"
-                                                    class="btn btn-sm btn-outline-danger">
-                                                    Refund Request
-                                                </a>
+                                                <?php
+                                                    $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
+                                                    $currentUserRole = (int)($_SESSION['user']['role_id'] ?? 0);
+                                                    $canSalesRefund = (!empty($or['sales_by_id']) && (int)$or['sales_by_id'] === $currentUserId) || in_array($currentUserRole, [1, 3, 9, 20, 33]);
+                                                ?>
+                                                <?php if ($canSalesRefund): ?>
+                                                    <button type="button"
+                                                        class="btn btn-sm btn-outline-danger quickRefundBtn"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#quickRefundModal"
+                                                        data-id="<?= $or['id'] ?>"
+                                                        data-flat="<?= htmlspecialchars($or['flat_name'] ?? '') ?>"
+                                                        data-project="<?= htmlspecialchars($or['project_name'] ?? '') ?>"
+                                                        data-agreement="<?= number_format($or['agreement_value'] ?? 0, 2) ?>"
+                                                        data-client="<?= htmlspecialchars($lead['full_name'] ?? '') ?>">
+                                                        <i class="fa-solid fa-rotate-left"></i> Refund
+                                                    </button>
+                                                <?php endif; ?>
 
                                                 <?php if ($or['approval_status'] === 'pending'): ?>
                                                     <small class="text-warning d-block w-100" style="font-size:11px;">
@@ -327,6 +341,54 @@ if (session_status() === PHP_SESSION_NONE) session_start();
     </div>
 </div>
 
+
+<!-- Quick Refund Confirmation Modal -->
+<div id="quickRefundModal" class="modal custom-modal fade" role="dialog">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title text-white">
+                    <i class="fa-solid fa-triangle-exclamation me-2"></i>Confirm Booking Refund
+                </h5>
+                <button type="button" class="bd-btn-close btn-close-white" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large text-white"></i>
+                </button>
+            </div>
+            <form action="<?= $GLOBALS['base_url'] ?>/booking-quick-refund" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="booking_id" id="refund_booking_id">
+
+                    <div class="alert alert-warning d-flex align-items-start gap-2 mb-3">
+                        <i class="fa-solid fa-circle-info fs-5 mt-1 text-warning"></i>
+                        <div class="small">
+                            <strong>সতর্কতা:</strong> রিফান্ড কনফার্ম করলে সংশ্লিষ্ট ফ্ল্যাট ইউনিটটি তাৎক্ষণিকভাবে সিস্টেমে <strong>Available (উন্মুক্ত)</strong> হয়ে যাবে এবং অনুমোদনের জন্য ম্যানেজমেন্টের কাছে যাবে।
+                        </div>
+                    </div>
+
+                    <div class="bg-light p-3 rounded mb-3 border">
+                        <div class="row g-2 small">
+                            <div class="col-6"><strong>Client:</strong> <span id="refund_client_name">—</span></div>
+                            <div class="col-6"><strong>Project:</strong> <span id="refund_project_name">—</span></div>
+                            <div class="col-6"><strong>Flat:</strong> <span id="refund_flat_name">—</span></div>
+                            <div class="col-6"><strong>Agreement:</strong> ৳<span id="refund_agreement_val">0.00</span></div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Refund Reason (রিফান্ডের কারণ) <span class="text-danger">*</span></label>
+                        <textarea name="reason" id="refund_reason" class="form-control" rows="3" required placeholder="কেন রিফান্ড করা হচ্ছে তা বিস্তারিত লিখুন..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to release this flat and initiate refund?');">
+                        <i class="fa-solid fa-check me-1"></i> Confirm & Release Flat
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <!-- Edit Booking Modal -->
 <div id="editModalBooking" class="modal custom-modal fade" role="dialog">
@@ -647,6 +709,31 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 refreshSelect2(editProjectSelect);
 
                 loadEditFlats(projectId, flatId);
+            });
+        });
+
+        // Quick Refund Modal data population
+        document.querySelectorAll('.quickRefundBtn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const bookingId = this.dataset.id || '';
+                const client = this.dataset.client || '—';
+                const project = this.dataset.project || '—';
+                const flat = this.dataset.flat || '—';
+                const agreement = this.dataset.agreement || '0.00';
+
+                const idInput = document.getElementById('refund_booking_id');
+                const clientSpan = document.getElementById('refund_client_name');
+                const projectSpan = document.getElementById('refund_project_name');
+                const flatSpan = document.getElementById('refund_flat_name');
+                const agreementSpan = document.getElementById('refund_agreement_val');
+                const reasonInput = document.getElementById('refund_reason');
+
+                if (idInput) idInput.value = bookingId;
+                if (clientSpan) clientSpan.textContent = client;
+                if (projectSpan) projectSpan.textContent = project;
+                if (flatSpan) flatSpan.textContent = flat;
+                if (agreementSpan) agreementSpan.textContent = agreement;
+                if (reasonInput) reasonInput.value = '';
             });
         });
     });

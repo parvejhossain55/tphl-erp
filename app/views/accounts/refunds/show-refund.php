@@ -5,6 +5,7 @@ $payments  = $payments ?? [];
 $cashout   = $cashout_request ?? null;
 $approval  = $approval_request ?? null;
 $canApproveReq = $canApprove ?? false;
+$userRole = $userRole ?? ($_SESSION['user']['role_id'] ?? null);
 
 $statusMap = [
     'pending'  => ['label' => 'Pending',  'color' => 'warning'],
@@ -112,9 +113,16 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                         </div>
 
                         <?php if (!empty($refund['reason'])): ?>
-                        <div class="col-md-12">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Reason</div>
-                            <div class="info-value"><?= nl2br(htmlspecialchars($refund['reason'])) ?></div>
+                        <div class="col-md-12 mt-3">
+                            <div class="p-3 rounded-2 border border-warning bg-warning bg-opacity-10 shadow-sm">
+                                <div class="d-flex align-items-center mb-1">
+                                    <i class="bi bi-chat-left-quote-fill text-warning fs-5 me-2"></i>
+                                    <span class="fw-bold text-dark text-uppercase small">Sales Refund Note / Reason:</span>
+                                </div>
+                                <div class="text-dark fw-semibold ps-4" style="font-size: 15px; line-height: 1.5;">
+                                    <?= nl2br(htmlspecialchars($refund['reason'])) ?>
+                                </div>
+                            </div>
                         </div>
                         <?php endif; ?>
 
@@ -240,10 +248,9 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                     <div class="alert alert-info small mb-3">
                         <i class="bi bi-info-circle me-1"></i>
                         Approving will:<br>
-                        • Cancel the booking<br>
-                        • Release the flat back to available<br>
-                        • Cancel all pending EMIs<br>
-                        • Create a cashout request for ৳<?= number_format($refund['refund_amount'], 2) ?>
+                        • Authorize the refund request for Accounts payout<br>
+                        • Confirm booking cancellation and flat release<br>
+                        • Create a linked cashout request for ৳<?= number_format($refund['refund_amount'], 2) ?>
                     </div>
                     <form action="<?= $base_url ?>/client-refund-approve/<?= $refund['id'] ?>" method="POST" class="mb-3" id="approveForm">
                         <div class="mb-3">
@@ -261,12 +268,66 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                     </form>
                 </div>
             </div>
+            <?php endif; ?>
+
+            <!-- Informative Box for Accounts when Pending -->
+            <?php if ($isPending && !$canApproveReq): ?>
+            <div class="card custom-card border-info mb-3">
+                <div class="card-header bg-info bg-opacity-10">
+                    <h6 class="card-title mb-0 text-info"><i class="bi bi-hourglass-split me-2"></i>Awaiting Management Approval</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-2">
+                        এই রিফান্ড রিকোয়েস্টটি বর্তমানে <strong>Pending (অপেক্ষমান)</strong> রয়েছে।
+                    </p>
+                    <div class="alert alert-light border small mb-0">
+                        <i class="bi bi-info-circle text-primary "></i>
+                        <strong>রিটেনশন কেটে রিফান্ড প্রদান:</strong><br>
+                        ম্যানেজমেন্ট কর্তৃক এই রিকোয়েস্টটি <strong>Approve</strong> করার পর, অ্যাকাউন্টস ডিপার্টমেন্ট রিটেনশন ফি (কোম্পানি চার্জ) কেটে বাকি রিফান্ড পেইড করার অপশন পাবে।
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Accounts Payout Action (Approved status) -->
+            <?php if ($status === 'approved' && in_array($userRole, [1, 3, 6, 10, 30])): ?>
+            <div class="card custom-card border-success mb-3 shadow-sm">
+                <div class="card-header bg-success bg-opacity-10">
+                    <h6 class="card-title mb-0 text-success"><i class="bi bi-cash-stack me-2"></i>Process Refund Payout</h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success small mb-3">
+                        <i class="bi bi-check-circle-fill me-1"></i>
+                        <strong>ম্যানেজমেন্ট কর্তৃক Approved!</strong><br>
+                        এখন অ্যাকাউন্টস রিটেনশন কেটে ক্লায়েন্টকে রিফান্ডের টাকা পরিশোধ করতে পারবে।
+                    </div>
+                    <a href="<?= $base_url ?>/client-refund-create/<?= $refund['booking_id'] ?>" class="btn btn-danger w-100 fw-bold py-2 shadow-sm">
+                        <i class="bi bi-cash-coin me-1"></i> Pay Refund & Deduct Retention
+                    </a>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Refund Completed -->
+            <?php if ($status === 'refunded'): ?>
+            <div class="card custom-card border-secondary mb-3 shadow-sm">
+                <div class="card-header bg-secondary bg-opacity-10">
+                    <h6 class="card-title mb-0 text-secondary"><i class="bi bi-check2-all me-2"></i>Refund Disbursed</h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success small mb-0">
+                        <i class="bi bi-check-circle me-1"></i>
+                        রিফান্ড পরিশোধ সম্পন্ন হয়েছে এবং ক্লায়েন্ট লেজার থেকে <strong>৳ <?= number_format($refund['refund_amount'], 2) ?></strong> সমন্বয় করা হয়েছে।
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <script>
             function confirmApproval() {
                 Swal.fire({
                     title: 'Approve this refund?',
-                    text: 'This will cancel the booking and release the flat.',
+                    text: 'This will authorize the refund for Accounts payout and confirm booking cancellation.',
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#28a745',
@@ -295,7 +356,6 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                 });
             }
             </script>
-            <?php endif; ?>
 
             <!-- Status Messages -->
             <?php if ($isApproved): ?>
