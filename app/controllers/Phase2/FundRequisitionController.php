@@ -175,13 +175,22 @@ class FundRequisitionController extends Controller {
             $types .= "ssss";
         }
 
-        // Limit to 10 by default if no filter is applied
+        $selectedProject = $_GET['project_id'] ?? '';
+        $selectedType = $_GET['requisition_type'] ?? '';
+
+        if (!empty($selectedProject)) {
+            $where .= " AND fr.project_id = ?";
+            $params[] = (int)$selectedProject;
+            $types .= "i";
+        }
+        if (!empty($selectedType)) {
+            $where .= " AND fr.requisition_type = ?";
+            $params[] = $selectedType;
+            $types .= "s";
+        }
+
         $limitClause = "";
         $isDefaultLimit = false;
-        if (empty($startDate) && empty($endDate) && empty($statusFilter) && empty($searchQuery)) {
-            $limitClause = " LIMIT 10";
-            $isDefaultLimit = true;
-        }
 
         // Auto-check and add asset_id to fund_requisitions if missing
         $checkCol = $this->db->query("SHOW COLUMNS FROM fund_requisitions LIKE 'asset_id'");
@@ -304,6 +313,8 @@ class FundRequisitionController extends Controller {
             'endDate' => $endDate,
             'statusFilter' => $statusFilter,
             'searchQuery' => $searchQuery,
+            'selectedProject' => $selectedProject,
+            'selectedType' => $selectedType,
             'isDefaultLimit' => $isDefaultLimit,
             'deptHeadDeptIds' => $deptHeadDeptIds
         ]);

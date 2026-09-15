@@ -405,6 +405,339 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
         </div>
       <?php endif; ?>
     </div>
+
+    <!-- Selected Vendor & CST Details Section in PO View -->
+    <?php
+    $resolvePoAttUrl = function($att, $type = 'vendor_quotation') use ($base_url) {
+        if (empty($att)) return '';
+        $att = trim($att);
+        if (preg_match('/^https?:\/\//i', $att)) return $att;
+        if (strpos($att, 'public/') === 0 || strpos($att, '/public/') === 0) {
+            return $base_url . '/' . ltrim($att, '/');
+        }
+        if (strpos($att, 'uploads/') === 0 || strpos($att, '/uploads/') === 0) {
+            return $base_url . '/' . ltrim($att, '/');
+        }
+        if ($type === 'purchase_requests') {
+            return $base_url . '/public/uploads/purchase_requests/' . ltrim($att, '/');
+        }
+        return $base_url . '/public/uploads/vendor_quotation/' . ltrim($att, '/');
+    };
+
+    $isPoImg = function($file) {
+        if (empty($file)) return false;
+        $ext = strtolower(pathinfo(parse_url($file, PHP_URL_PATH), PATHINFO_EXTENSION));
+        return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
+    };
+
+    $poSelVenId = $selectedVendor['id'] ?? ($po['vendor_id'] ?? null);
+    $poPrAttUrl = !empty($prAttachment) ? $resolvePoAttUrl($prAttachment, 'purchase_requests') : null;
+    ?>
+
+    <div class="po-panel" style="border-color: rgba(59,130,246,0.35); background: #ffffff;">
+      <div class="po-panel-title d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <div class="po-dot" style="background:#3b82f6"></div>
+          <span>Selected Vendor & Comparative Statement (CST) Details</span>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+          <?php if (isset($cstMatrix) && !empty($cstMatrix['vendors'])): ?>
+            <button type="button" class="btn btn-sm btn-primary" style="font-size:11.5px;font-weight:700;border-radius:8px;padding:4px 12px" data-bs-toggle="modal" data-bs-target="#cstMatrixModal">
+              <i class="fal fa-table me-1"></i> View Full CST Matrix
+            </button>
+          <?php endif; ?>
+          <?php if (!empty($poPrAttUrl)): ?>
+            <a href="<?= htmlspecialchars($poPrAttUrl) ?>" target="_blank" class="btn btn-sm btn-outline-secondary" style="font-size:11.5px;font-weight:600;border-radius:8px;padding:4px 12px">
+              <i class="fal fa-paperclip me-1"></i> PR Attachment
+            </a>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <!-- 1. Selected Vendor Profile Box -->
+      <div style="background:linear-gradient(135deg, rgba(59,130,246,.04) 0%, rgba(16,185,129,.04) 100%); border:1px solid rgba(59,130,246,.2); border-radius:12px; padding:16px; margin-bottom:20px">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(59,130,246,.15); padding-bottom:10px; margin-bottom:14px; flex-wrap:wrap; gap:8px">
+          <div style="display:flex; align-items:center; gap:8px">
+            <span class="badge bg-success" style="font-size:11px; padding:4px 8px"><i class="fal fa-check-circle me-1"></i> Selected / Awarded Vendor</span>
+            <span style="font-weight:700; font-size:14px; color:var(--text-color, #1f2937)">
+              <?= !empty($selectedVendor['name']) ? htmlspecialchars($selectedVendor['name']) : 'null' ?>
+            </span>
+            <?php if (!empty($selectedVendor['company_name'])): ?>
+              <span class="text-muted" style="font-size:12px">(<?= htmlspecialchars($selectedVendor['company_name']) ?>)</span>
+            <?php endif; ?>
+          </div>
+          <?php if (!empty($cstInfo['prepared_by_name'])): ?>
+            <div style="font-size:11.5px; color:var(--text-muted)">
+              <i class="fal fa-user-check me-1 text-primary"></i> CST Prepared By: 
+              <strong style="color:var(--text-color)"><?= htmlspecialchars($cstInfo['prepared_by_name']) ?></strong>
+              <?php if (!empty($cstInfo['created_at'])): ?>
+                <span style="margin-left:4px">(<?= date('d M Y, h:i A', strtotime($cstInfo['created_at'])) ?>)</span>
+              <?php endif; ?>
+            </div>
+          <?php endif; ?>
+        </div>
+
+        <!-- 6 Required Fields: [id], [name], [phone], [email], [address], [company_name] -->
+        <div class="row g-3">
+          <div class="col-md-2 col-6">
+            <div style="font-size:10.5px; text-transform:uppercase; font-weight:700; color:var(--text-muted); letter-spacing:0.5px">Vendor ID [id]</div>
+            <div style="font-weight:700; font-size:13px; color:#1e293b; font-family:monospace; margin-top:3px">
+              <?= isset($selectedVendor['id']) && $selectedVendor['id'] !== '' ? '#' . htmlspecialchars($selectedVendor['id']) : '<span style="color:#94a3b8;font-style:italic">null</span>' ?>
+            </div>
+          </div>
+          <div class="col-md-3 col-6">
+            <div style="font-size:10.5px; text-transform:uppercase; font-weight:700; color:var(--text-muted); letter-spacing:0.5px">Vendor Name [name]</div>
+            <div style="font-weight:600; font-size:13px; color:#1e293b; margin-top:3px">
+              <?= !empty($selectedVendor['name']) ? htmlspecialchars($selectedVendor['name']) : '<span style="color:#94a3b8;font-style:italic">null</span>' ?>
+            </div>
+          </div>
+          <div class="col-md-2 col-6">
+            <div style="font-size:10.5px; text-transform:uppercase; font-weight:700; color:var(--text-muted); letter-spacing:0.5px">Phone [phone]</div>
+            <div style="font-weight:600; font-size:13px; color:#1e293b; margin-top:3px">
+              <?php if (!empty($selectedVendor['phone'])): ?>
+                <a href="tel:<?= htmlspecialchars($selectedVendor['phone']) ?>" style="color:#059669; text-decoration:none">
+                  <i class="fal fa-phone me-1"></i><?= htmlspecialchars($selectedVendor['phone']) ?>
+                </a>
+              <?php else: ?>
+                <span style="color:#94a3b8;font-style:italic">null</span>
+              <?php endif; ?>
+            </div>
+          </div>
+          <div class="col-md-2 col-6">
+            <div style="font-size:10.5px; text-transform:uppercase; font-weight:700; color:var(--text-muted); letter-spacing:0.5px">Email [email]</div>
+            <div style="font-weight:600; font-size:13px; color:#1e293b; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="<?= htmlspecialchars($selectedVendor['email'] ?? '') ?>">
+              <?php if (!empty($selectedVendor['email'])): ?>
+                <a href="mailto:<?= htmlspecialchars($selectedVendor['email']) ?>" style="color:#2563eb; text-decoration:none">
+                  <i class="fal fa-envelope me-1"></i><?= htmlspecialchars($selectedVendor['email']) ?>
+                </a>
+              <?php else: ?>
+                <span style="color:#94a3b8;font-style:italic">null</span>
+              <?php endif; ?>
+            </div>
+          </div>
+          <div class="col-md-3 col-12">
+            <div style="font-size:10.5px; text-transform:uppercase; font-weight:700; color:var(--text-muted); letter-spacing:0.5px">Company [company_name]</div>
+            <div style="font-weight:600; font-size:13px; color:#1e293b; margin-top:3px">
+              <?= !empty($selectedVendor['company_name']) ? htmlspecialchars($selectedVendor['company_name']) : '<span style="color:#94a3b8;font-style:italic">null</span>' ?>
+            </div>
+          </div>
+          <div class="col-12" style="border-top:1px solid rgba(0,0,0,0.06); padding-top:10px; margin-top:8px">
+            <div style="font-size:10.5px; text-transform:uppercase; font-weight:700; color:var(--text-muted); letter-spacing:0.5px">Address [address]</div>
+            <div style="font-size:12.5px; color:#334155; margin-top:3px">
+              <?php if (!empty($selectedVendor['address'])): ?>
+                <i class="fal fa-map-marker-alt text-danger me-1"></i><?= nl2br(htmlspecialchars($selectedVendor['address'])) ?>
+              <?php else: ?>
+                <span style="color:#94a3b8;font-style:italic">null</span>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. CST Participating Vendors Table -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+        <div style="font-weight:700; font-size:13px; color:var(--text-color)">
+          <i class="fal fa-users me-1 text-primary"></i> Participating Vendors in CST Comparison
+        </div>
+        <span class="badge bg-light text-dark border" style="font-size:11px">
+          <?= count($quotationsList) ?> Vendor Quote(s)
+        </span>
+      </div>
+
+      <?php if (!empty($quotationsList)): ?>
+        <div class="table-responsive mb-4">
+          <table class="table table-bordered table-hover align-middle mb-0" style="font-size:12px">
+            <thead class="table-light">
+              <tr>
+                <th style="width:40px">#</th>
+                <th>Vendor Details</th>
+                <th>Company Name</th>
+                <th>Contact Info</th>
+                <th class="text-end">Quoted Total</th>
+                <th class="text-center">Quotation Attachment</th>
+                <th class="text-center">CST Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($quotationsList as $idx => $q): ?>
+                <?php
+                $isThisSelected = ($poSelVenId && (int)$q['vendor_id'] === (int)$poSelVenId);
+                $qAttUrl = $resolvePoAttUrl($q['attachment'] ?? null);
+                $qIsImg = $isPoImg($q['attachment'] ?? null);
+                ?>
+                <tr class="<?= $isThisSelected ? 'table-success bg-opacity-25' : '' ?>">
+                  <td class="fw-bold"><?= $idx + 1 ?></td>
+                  <td>
+                    <div class="fw-bold text-dark">
+                      <?= !empty($q['vendor_name']) ? htmlspecialchars($q['vendor_name']) : 'null' ?>
+                    </div>
+                    <div class="text-muted small font-monospace">
+                      Vendor ID: #<?= !empty($q['vendor_id']) ? htmlspecialchars($q['vendor_id']) : 'null' ?>
+                    </div>
+                  </td>
+                  <td>
+                    <?= !empty($q['vendor_company_name']) ? htmlspecialchars($q['vendor_company_name']) : '<span class="text-muted fst-italic">null</span>' ?>
+                  </td>
+                  <td>
+                    <div>
+                      <i class="fal fa-phone text-muted me-1 small"></i>
+                      <?= !empty($q['vendor_phone']) ? htmlspecialchars($q['vendor_phone']) : '<span class="text-muted fst-italic">null</span>' ?>
+                    </div>
+                    <div class="small text-truncate" style="max-width:200px">
+                      <i class="fal fa-envelope text-muted me-1 small"></i>
+                      <?= !empty($q['vendor_email']) ? htmlspecialchars($q['vendor_email']) : '<span class="text-muted fst-italic">null</span>' ?>
+                    </div>
+                  </td>
+                  <td class="text-end fw-bold">
+                    <?php if (isset($q['total_quoted_amount'])): ?>
+                      ৳ <?= number_format((float)$q['total_quoted_amount'], 2) ?>
+                    <?php else: ?>
+                      <span class="text-muted">—</span>
+                    <?php endif; ?>
+                  </td>
+                  <td class="text-center">
+                    <div class="d-flex flex-column gap-1 align-items-center justify-content-center">
+                      <?php if (!empty($qAttUrl)): ?>
+                        <a href="<?= htmlspecialchars($qAttUrl) ?>" target="_blank" class="btn btn-xs btn-outline-primary px-2 py-1" style="font-size:11px">
+                          <?php if ($qIsImg): ?>
+                            <i class="fal fa-image me-1 text-info"></i> View Image
+                          <?php else: ?>
+                            <i class="fal fa-file-pdf me-1 text-danger"></i> View Document
+                          <?php endif; ?>
+                        </a>
+                      <?php endif; ?>
+                      <?php if (!empty($q['drive_link'])): ?>
+                        <a href="<?= htmlspecialchars($q['drive_link']) ?>" target="_blank" class="btn btn-xs btn-outline-info px-2 py-1" style="font-size:11px" title="Open Google Drive / External Link">
+                          <i class="fal fa-link me-1"></i> Drive Link
+                        </a>
+                      <?php endif; ?>
+                      <?php if (empty($qAttUrl) && empty($q['drive_link'])): ?>
+                        <span class="text-muted fst-italic small">No file</span>
+                      <?php endif; ?>
+                    </div>
+                  </td>
+                  <td class="text-center">
+                    <?php if ($isThisSelected): ?>
+                      <span class="badge bg-success" style="font-size:10.5px"><i class="fal fa-check-circle me-1"></i> Selected Vendor</span>
+                    <?php else: ?>
+                      <span class="badge bg-light text-muted border" style="font-size:10.5px">Alternative</span>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      <?php else: ?>
+        <div class="alert alert-light border text-center text-muted py-3 mb-4" style="font-size:12px">
+          <i class="fal fa-info-circle me-1"></i> No CST quotation records found for this purchase request.
+        </div>
+      <?php endif; ?>
+
+      <!-- 3. Price Quotation & PR Attachments Gallery -->
+      <?php
+      $poHasAttachments = false;
+      if (!empty($poPrAttUrl)) $poHasAttachments = true;
+      foreach ($quotationsList as $q) {
+          if (!empty($q['attachment']) || !empty($q['drive_link'])) {
+              $poHasAttachments = true;
+              break;
+          }
+      }
+      ?>
+
+      <?php if ($poHasAttachments): ?>
+        <div style="border-top:1px solid rgba(0,0,0,0.06); padding-top:14px">
+          <div style="font-weight:700; font-size:13px; color:var(--text-color); margin-bottom:12px">
+            <i class="fal fa-images me-1 text-primary"></i> Price Quotations, Drive Links & PR Attachments
+          </div>
+          <div class="row g-3">
+            <?php if (!empty($poPrAttUrl)): ?>
+              <?php $prIsImg = $isPoImg($prAttachment); ?>
+              <div class="col-md-3 col-sm-6">
+                <div class="card h-100 border shadow-none bg-light-subtle rounded-3 p-2 text-center position-relative">
+                  <span class="badge bg-secondary position-absolute top-0 start-0 m-2" style="font-size:10px">PR Attachment</span>
+                  <div class="py-3">
+                    <?php if ($prIsImg): ?>
+                      <a href="<?= htmlspecialchars($poPrAttUrl) ?>" target="_blank">
+                        <img src="<?= htmlspecialchars($poPrAttUrl) ?>" alt="PR Attachment" class="img-fluid rounded border" style="max-height:100px; object-fit:cover">
+                      </a>
+                    <?php else: ?>
+                      <i class="fal fa-file-pdf text-danger" style="font-size:3rem"></i>
+                    <?php endif; ?>
+                  </div>
+                  <div class="small fw-semibold text-truncate mb-2" title="Purchase Request Attachment">
+                    PR #<?= htmlspecialchars($po['request_id'] ?? '') ?> Document
+                  </div>
+                  <a href="<?= htmlspecialchars($poPrAttUrl) ?>" target="_blank" class="btn btn-sm btn-outline-secondary w-100" style="font-size:11px">
+                    <i class="fal fa-external-link me-1"></i> Open PR File
+                  </a>
+                </div>
+              </div>
+            <?php endif; ?>
+
+            <?php foreach ($quotationsList as $q): ?>
+              <?php if (!empty($q['attachment']) || !empty($q['drive_link'])): ?>
+                <?php
+                $qUrl = !empty($q['attachment']) ? $resolvePoAttUrl($q['attachment']) : null;
+                $imgCheck = !empty($q['attachment']) ? $isPoImg($q['attachment']) : false;
+                $isAwarded = ($poSelVenId && (int)$q['vendor_id'] === (int)$poSelVenId);
+                ?>
+                <div class="col-md-3 col-sm-6">
+                  <div class="card h-100 border <?= $isAwarded ? 'border-success' : '' ?> shadow-none bg-light-subtle rounded-3 p-2 text-center position-relative">
+                    <?php if ($isAwarded): ?>
+                      <span class="badge bg-success position-absolute top-0 start-0 m-2" style="font-size:10px">
+                        <i class="fal fa-check-circle me-1"></i> Selected
+                      </span>
+                    <?php else: ?>
+                      <span class="badge bg-secondary position-absolute top-0 start-0 m-2" style="font-size:10px">Quote</span>
+                    <?php endif; ?>
+                    <div class="py-3">
+                      <?php if ($imgCheck): ?>
+                        <a href="<?= htmlspecialchars($qUrl) ?>" target="_blank">
+                          <img src="<?= htmlspecialchars($qUrl) ?>" alt="Quotation Attachment" class="img-fluid rounded border" style="max-height:100px; object-fit:cover">
+                        </a>
+                      <?php elseif (!empty($qUrl)): ?>
+                        <i class="fal fa-file-alt text-primary" style="font-size:3rem"></i>
+                      <?php else: ?>
+                        <i class="fal fa-cloud-upload text-info" style="font-size:3rem"></i>
+                      <?php endif; ?>
+                    </div>
+                    <div class="small fw-bold text-truncate" title="<?= htmlspecialchars($q['vendor_name'] ?? '') ?>">
+                      <?= htmlspecialchars($q['vendor_name'] ?? 'Vendor Quote') ?>
+                    </div>
+                    <div class="text-muted small mb-2 font-monospace" style="font-size:10.5px">
+                      <?= !empty($q['total_quoted_amount']) ? '৳ ' . number_format((float)$q['total_quoted_amount'], 2) : '' ?>
+                    </div>
+                    <?php if (!empty($qUrl)): ?>
+                      <a href="<?= htmlspecialchars($qUrl) ?>" target="_blank" class="btn btn-sm btn-outline-primary w-100 mb-1" style="font-size:11px">
+                        <i class="fal fa-external-link me-1"></i> View Quotation File
+                      </a>
+                    <?php endif; ?>
+                    <?php if (!empty($q['drive_link'])): ?>
+                      <a href="<?= htmlspecialchars($q['drive_link']) ?>" target="_blank" class="btn btn-sm btn-outline-info w-100" style="font-size:11px">
+                        <i class="fal fa-link me-1"></i> Open Drive Link
+                      </a>
+                    <?php endif; ?>
+                  </div>
+                </div>
+              <?php endif; ?>
+            <?php endforeach; ?>
+          </div>
+        </div>
+      <?php else: ?>
+        <div style="border-top:1px solid rgba(0,0,0,0.06); padding-top:14px; margin-top:10px">
+          <div style="background:rgba(0,0,0,0.02); border:1px solid rgba(0,0,0,0.06); border-radius:10px; padding:12px 16px; display:flex; align-items:center; gap:12px">
+            <div style="font-size:24px; color:#94a3b8"><i class="fal fa-file-times"></i></div>
+            <div style="font-size:12px; color:#64748b">
+              <strong style="color:#1e293b">No Quotation or PR Attachments Uploaded:</strong><br>
+              No quotation files (PDF / Image) or PR attachments were uploaded when these vendor quotations were recorded for this CST.
+            </div>
+          </div>
+        </div>
+      <?php endif; ?>
+    </div>
+
   </div>
 
 
@@ -412,26 +745,83 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
   <div class="col-xl-4">
 
     <!-- Vendor Selection Info -->
-    <?php $vendorSelectionData = $vendorSelectionData ?? null; ?>
-    <?php if ($vendorSelectionData): ?>
+    <?php 
+    $vendorSelectionData = $vendorSelectionData ?? null; 
+    $showVendorPanel = !empty($selectedVendor) || !empty($po['vendor_id']) || !empty($vendorSelectionData);
+    ?>
+    <?php if ($showVendorPanel): ?>
     <div class="po-panel" style="border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.03)">
       <div class="po-panel-title">
         <div class="po-dot" style="background:#3b82f6"></div>
-        Vendor Selection Details
+        Selected Vendor & CST Details
       </div>
-      <div style="font-size:12px;margin-bottom:8px">
+      
+      <div style="font-size:12px;margin-bottom:6px">
+        <span style="color:var(--text-muted)">Vendor ID:</span>
+        <strong style="color:var(--text-color);font-family:monospace">#<?= isset($selectedVendor['id']) && $selectedVendor['id'] !== '' ? htmlspecialchars($selectedVendor['id']) : 'null' ?></strong>
+      </div>
+      <div style="font-size:12px;margin-bottom:6px">
+        <span style="color:var(--text-muted)">Name:</span>
+        <strong style="color:var(--text-color)"><?= !empty($selectedVendor['name']) ? htmlspecialchars($selectedVendor['name']) : 'null' ?></strong>
+      </div>
+      <div style="font-size:12px;margin-bottom:6px">
+        <span style="color:var(--text-muted)">Company:</span>
+        <span style="color:var(--text-color);font-weight:600"><?= !empty($selectedVendor['company_name']) ? htmlspecialchars($selectedVendor['company_name']) : 'null' ?></span>
+      </div>
+      <div style="font-size:12px;margin-bottom:6px">
+        <span style="color:var(--text-muted)">Phone:</span>
+        <span style="color:var(--text-color)"><?= !empty($selectedVendor['phone']) ? htmlspecialchars($selectedVendor['phone']) : 'null' ?></span>
+      </div>
+      <div style="font-size:12px;margin-bottom:6px">
+        <span style="color:var(--text-muted)">Email:</span>
+        <span style="color:var(--text-color)"><?= !empty($selectedVendor['email']) ? htmlspecialchars($selectedVendor['email']) : 'null' ?></span>
+      </div>
+      <div style="font-size:12px;margin-bottom:10px">
+        <span style="color:var(--text-muted)">Address:</span>
+        <span style="color:var(--text-color)"><?= !empty($selectedVendor['address']) ? htmlspecialchars($selectedVendor['address']) : 'null' ?></span>
+      </div>
+
+      <?php if (!empty($cstInfo['prepared_by_name'])): ?>
+      <div style="font-size:12px;margin-bottom:8px;border-top:1px dashed rgba(59,130,246,.2);padding-top:8px">
+        <span style="color:var(--text-muted)">CST Prepared By:</span>
+        <span style="font-weight:700;color:var(--text-color)"><?= htmlspecialchars($cstInfo['prepared_by_name']) ?></span>
+      </div>
+      <?php elseif (!empty($vendorSelectionData['selector_name'])): ?>
+      <div style="font-size:12px;margin-bottom:8px;border-top:1px dashed rgba(59,130,246,.2);padding-top:8px">
         <span style="color:var(--text-muted)">Selected By:</span>
-        <span style="font-weight:700;color:var(--text-color)"><?= htmlspecialchars($vendorSelectionData['selector_name'] ?? 'Unknown') ?></span>
+        <span style="font-weight:700;color:var(--text-color)"><?= htmlspecialchars($vendorSelectionData['selector_name']) ?></span>
       </div>
-      <?php if (!empty($vendorSelectionData['attachment'])): ?>
-      <div>
-        <a href="<?= $base_url ?>/public/uploads/vendor_quotation/<?= htmlspecialchars($vendorSelectionData['attachment']) ?>" target="_blank"
-          style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;background:rgba(59,130,246,.1);color:#2563eb;font-size:11px;font-weight:700;text-decoration:none;margin-bottom:8px">
+      <?php endif; ?>
+
+      <?php
+      $selAtt = $vendorSelectionData['attachment'] ?? null;
+      $selDrive = $vendorSelectionData['drive_link'] ?? null;
+      if (empty($selAtt) || empty($selDrive)) {
+          foreach ($quotationsList as $q) {
+              if ($poSelVenId && (int)$q['vendor_id'] === (int)$poSelVenId) {
+                  if (empty($selAtt) && !empty($q['attachment'])) $selAtt = $q['attachment'];
+                  if (empty($selDrive) && !empty($q['drive_link'])) $selDrive = $q['drive_link'];
+              }
+          }
+      }
+      ?>
+
+      <?php if (!empty($selAtt)): ?>
+      <div style="margin-bottom:8px">
+        <a href="<?= $resolvePoAttUrl($selAtt) ?>" target="_blank"
+          style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;background:rgba(59,130,246,.1);color:#2563eb;font-size:11px;font-weight:700;text-decoration:none;width:100%;justify-content:center">
           <i class="fal fa-paperclip"></i> View Quotation Attachment
         </a>
       </div>
-      <?php else: ?>
-      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px"><i class="fal fa-info-circle me-1"></i> No attachment provided.</div>
+      <?php endif; ?>
+
+      <?php if (!empty($selDrive)): ?>
+      <div style="margin-bottom:8px">
+        <a href="<?= htmlspecialchars($selDrive) ?>" target="_blank"
+          style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;background:rgba(6,182,212,.1);color:#0891b2;font-size:11px;font-weight:700;text-decoration:none;width:100%;justify-content:center">
+          <i class="fal fa-link"></i> Open Drive Link
+        </a>
+      </div>
       <?php endif; ?>
 
       <?php if (isset($cstMatrix) && !empty($cstMatrix['vendors'])): ?>

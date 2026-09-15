@@ -645,7 +645,7 @@ class ExpenseAnalytics
                 -- 1. Vendor Payments
                 SELECT 
                     vpr.project_id,
-                    vpr.net_payable_amount as req_amount,
+                    COALESCE(vpr.approved_amount, vpr.invoice_amount) as req_amount,
                     CASE 
                         WHEN vpr.status IN ('Paid', 'Fully_Paid') THEN vpr.approved_amount 
                         WHEN vpr.status = 'Partially_Paid' THEN (vpr.approved_amount - vpr.due_amount) 
@@ -748,7 +748,7 @@ class ExpenseAnalytics
             ) t
             LEFT JOIN projects p ON p.id = t.project_id
             GROUP BY t.project_id, p.name
-            ORDER BY total_req_amount DESC
+            ORDER BY total_paid_amount DESC, total_req_amount DESC
             LIMIT " . (int)$limit;
 
         $res = $this->db->query($sql);
@@ -826,8 +826,8 @@ class ExpenseAnalytics
                     IFNULL(v.name, 'Vendor') as payee_name,
                     'Vendor' as payee_type,
                     CONCAT('Vendor Payment — ', IFNULL(v.name, 'Vendor'), ' (Inv: ', IFNULL(vpr.invoice_number, '-'), ')') as purpose_title,
-                    vpr.net_payable_amount as req_amount,
-                    IFNULL(vpr.approved_amount, vpr.net_payable_amount) as approved_amount,
+                    COALESCE(vpr.approved_amount, vpr.invoice_amount) as req_amount,
+                    IFNULL(vpr.approved_amount, vpr.invoice_amount) as approved_amount,
                     CASE 
                         WHEN vpr.status IN ('Paid', 'Fully_Paid') THEN vpr.approved_amount 
                         WHEN vpr.status = 'Partially_Paid' THEN (vpr.approved_amount - vpr.due_amount) 
@@ -1234,7 +1234,7 @@ class ExpenseAnalytics
 
         if (!empty($topProjects['leaderboard'])) {
             foreach ($topProjects['leaderboard'] as $tp) {
-                $pAmt = (float)$tp['total_req_amount'];
+                $pAmt = (float)$tp['total_paid_amount'] > 0 ? (float)$tp['total_paid_amount'] : (float)$tp['total_req_amount'];
                 if ($pAmt > 0) {
                     $projectLabels[] = $tp['project_name'];
                     $projectSeries[] = round($pAmt, 2);

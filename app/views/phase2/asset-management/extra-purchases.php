@@ -28,8 +28,8 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
 
 <div class="container-fluid">
     <!-- Page Header -->
-    <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
-        <h1 class="page-title fw-semibold fs-18 mb-0">Office Procurement Requests</h1>
+    <div class="d-md-flex d-block align-items-center justify-content-between mb-3 page-header-breadcrumb">
+        <h4 class="mb-0 fw-semibold">Office Procurement Requests</h4>
     </div>
 
     <!-- Alert Messages -->
@@ -58,57 +58,20 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
     <div class="alert alert-info-transparent border fs-12 mb-4">
         <i class="fa-solid fa-circle-info me-1"></i>
         <strong>Approval Flow:</strong> 
-        Requisition → Department Head / Reporting Boss (if applicable) → QC & Internal Audit → Management → Accounts (Payment)
+        Requisition → Department Head / Reporting Boss (if applicable) → Operations → Purchase Head → QC & Internal Audit → Management → Accounts (Payment) → Purchased (Asset Inventory)
     </div>
 
-    <!-- Main Card -->
-    <div class="card custom-card">
-        <div class="card-header justify-content-between align-items-center">
-            <div class="card-title">Purchase Requests</div>
-            <div class="d-flex gap-2">
-                <?php if (!empty($canCreate)): ?>
-                    <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#newRequestModal">
-                        <i class="fa-solid fa-plus"></i> New Request
-                    </button>
-                <?php endif; ?>
-                <?php if (!empty($isOperations)): ?>
-                    <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#manageCategoryModal">
-                        <i class="fa-solid fa-gear"></i> Manage Categories
-                    </button>
-                <?php endif; ?>
-            </div>
-        </div>
+    <!-- Filter Card Wrapper (Matching flat-lists) -->
+    <div class="card__wrapper mb-3">
+        <form method="GET" action="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases">
+            <?php if (!empty($isApprover)): ?>
+                <input type="hidden" name="tab" value="<?= htmlspecialchars($activeTab) ?>">
+            <?php endif; ?>
 
-        <?php if (!empty($isApprover)): ?>
-        <div class="card-body border-bottom pb-0 pt-3 px-3">
-            <ul class="nav nav-tabs mb-0 border-bottom-0">
-                <li class="nav-item">
-                    <a class="nav-link <?= $activeTab === 'pending_approval' ? 'active' : '' ?>" href="?tab=pending_approval<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['workplace']) ? '&workplace='.urlencode($_GET['workplace']) : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>">
-                        <i class="fa-solid fa-clock-rotate-left me-1"></i>Pending My Approval
-                        <?php if (!empty($pendingCount) && $pendingCount > 0): ?>
-                            <span class="badge bg-warning text-dark rounded-pill ms-1"><?= $pendingCount ?></span>
-                        <?php endif; ?>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?= $activeTab === 'my_requests' ? 'active' : '' ?>" href="?tab=my_requests<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['workplace']) ? '&workplace='.urlencode($_GET['workplace']) : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>"><i class="fa-solid fa-user me-1"></i>My Requests</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link <?= $activeTab === 'all_requests' ? 'active' : '' ?>" href="?tab=all_requests<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['workplace']) ? '&workplace='.urlencode($_GET['workplace']) : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>"><i class="fa-solid fa-list-check me-1"></i>All / Processed Requests</a>
-                </li>
-            </ul>
-        </div>
-        <?php endif; ?>
-
-        <!-- Filters -->
-        <div class="card-body border-bottom pb-3">
-            <form method="GET" class="row g-2 align-items-end">
-                <?php if (!empty($isApprover)): ?>
-                    <input type="hidden" name="tab" value="<?= htmlspecialchars($activeTab) ?>">
-                <?php endif; ?>
-                <div class="col-md-3">
-                    <label class="form-label fs-11 fw-semibold mb-1">Department</label>
-                    <select name="department_id" class="form-select form-select-sm">
+            <!-- Row 1: Filter inputs -->
+            <div class="row g-2 align-items-center mb-2">
+                <div class="col-xl-3 col-md-3 col-sm-6">
+                    <select name="department_id" class="form-control form-control-sm select2">
                         <option value="">All Departments</option>
                         <?php foreach ($departments ?? [] as $dept): ?>
                             <option value="<?= $dept['id'] ?>" <?= ($_GET['department_id'] ?? '') == $dept['id'] ? 'selected' : '' ?>>
@@ -117,10 +80,9 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label fs-11 fw-semibold mb-1">Branch / Location</label>
-                    <select name="office_branch_id" class="form-select form-select-sm">
-                        <option value="">All Branches</option>
+                <div class="col-xl-3 col-md-3 col-sm-6">
+                    <select name="office_branch_id" class="form-control form-control-sm select2">
+                        <option value="">All Branches / Locations</option>
                         <?php foreach ($officeBranches ?? [] as $b): ?>
                             <option value="<?= $b['id'] ?>" <?= ((string)($_GET['office_branch_id'] ?? '') === (string)$b['id'] || ($_GET['workplace'] ?? '') === $b['name']) ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($b['name']) ?>
@@ -128,10 +90,19 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label fs-11 fw-semibold mb-1">Status</label>
-                    <select name="status" class="form-select form-select-sm">
-                        <option value="">All</option>
+                <div class="col-xl-2 col-md-3 col-sm-6">
+                    <select name="project_id" class="form-control form-control-sm select2">
+                        <option value="">All Projects</option>
+                        <?php foreach ($projects ?? [] as $p): ?>
+                            <option value="<?= $p['id'] ?>" <?= ((string)($_GET['project_id'] ?? '') === (string)$p['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($p['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-xl-2 col-md-3 col-sm-6">
+                    <select name="status" class="form-control form-control-sm">
+                        <option value="">All Statuses</option>
                         <option value="pending" <?= ($_GET['status'] ?? '') === 'pending' ? 'selected' : '' ?>>Pending</option>
                         <option value="in_review" <?= ($_GET['status'] ?? '') === 'in_review' ? 'selected' : '' ?>>In Review</option>
                         <option value="approved" <?= ($_GET['status'] ?? '') === 'approved' ? 'selected' : '' ?>>Approved</option>
@@ -139,302 +110,346 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                         <option value="purchased" <?= ($_GET['status'] ?? '') === 'purchased' ? 'selected' : '' ?>>Purchased</option>
                     </select>
                 </div>
-                <div class="col-md-4 mt-2 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary btn-sm flex-fill"><i class="fa-solid fa-filter me-1"></i> Filter</button>
-                    <a href="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases" class="btn btn-light btn-sm flex-fill text-center"><i class="fa-solid fa-arrows-rotate"></i> Reset</a>
+                <div class="col-xl-2 col-md-12 col-sm-6">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-secondary btn-sm flex-fill"><i class="fa-solid fa-filter me-1"></i> Filter</button>
+                        <a href="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases" class="btn btn-success btn-sm flex-fill text-center"><i class="fa-solid fa-rotate-right me-1"></i> Reset</a>
+                    </div>
                 </div>
-            </form>
-        </div>
+            </div>
 
-        <!-- Requests Table -->
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table text-nowrap table-hover">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Date</th>
-                            <th>Project</th>
-                            <th>Item</th>
-                            <th class="text-center">Qty</th>
-                            <th class="text-end">Total (BDT)</th>
-                            <th>Requested By</th>
-                            <th class="text-center">Dept Head</th>
-                            <th class="text-center">Operations</th>
-                            <th class="text-center">Purchase Head</th>
-                            <th class="text-center">QC & Audit</th>
-                            <th class="text-center">Management</th>
-                            <th class="text-center">Payment</th>
-                            <th>Overall</th>
-                            <th class="text-center">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($requests)): ?>
-                            <tr>
-                                <td colspan="15" class="text-center py-4 text-muted">No purchase requests found.</td>
+            <!-- Row 2: Action Buttons -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="d-flex flex-wrap gap-2">
+                        <?php if (!empty($canCreate)): ?>
+                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newRequestModal">
+                                <i class="fa-solid fa-plus me-1"></i> New Request
+                            </button>
+                        <?php endif; ?>
+                        <?php if (!empty($isOperations)): ?>
+                            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#manageCategoryModal">
+                                <i class="fa-solid fa-gear me-1"></i> Manage Categories
+                            </button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table Card Wrapper (Matching flat-lists) -->
+    <div class="row">
+        <div class="col-xxl-12">
+            <div class="card__wrapper">
+                <?php if (!empty($isApprover)): ?>
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom">
+                    <ul class="nav nav-tabs nav-tabs-bordered mb-0">
+                        <li class="nav-item">
+                            <a class="nav-link <?= $activeTab === 'pending_approval' ? 'active' : '' ?> fw-semibold" href="?tab=pending_approval<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['office_branch_id']) ? '&office_branch_id='.$_GET['office_branch_id'] : '' ?><?= !empty($_GET['project_id']) ? '&project_id='.$_GET['project_id'] : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>">
+                                <i class="fa-solid fa-clock-rotate-left me-1"></i>Pending My Approval
+                                <?php if (!empty($pendingCount) && $pendingCount > 0): ?>
+                                    <span class="badge bg-warning text-dark rounded-pill ms-1"><?= $pendingCount ?></span>
+                                <?php endif; ?>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?= $activeTab === 'my_requests' ? 'active' : '' ?> fw-semibold" href="?tab=my_requests<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['office_branch_id']) ? '&office_branch_id='.$_GET['office_branch_id'] : '' ?><?= !empty($_GET['project_id']) ? '&project_id='.$_GET['project_id'] : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>"><i class="fa-solid fa-user me-1"></i>My Requests</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?= $activeTab === 'all_requests' ? 'active' : '' ?> fw-semibold" href="?tab=all_requests<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['office_branch_id']) ? '&office_branch_id='.$_GET['office_branch_id'] : '' ?><?= !empty($_GET['project_id']) ? '&project_id='.$_GET['project_id'] : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>"><i class="fa-solid fa-list-check me-1"></i>All / Processed Requests</a>
+                        </li>
+                    </ul>
+                </div>
+                <?php endif; ?>
+
+                <div class="table__wrapper table-responsive">
+                    <table class="table mb-20" id="procurementTable">
+                        <thead>
+                            <tr class="table__title">
+                                <th style="width:40px" class="text-center">#</th>
+                                <th>ID</th>
+                                <th>Date</th>
+                                <th>Project</th>
+                                <th>Item</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-end">Total (BDT)</th>
+                                <th>Requested By</th>
+                                <th class="text-center">Dept Head</th>
+                                <th class="text-center">Operations</th>
+                                <th class="text-center">Purchase Head</th>
+                                <th class="text-center">QC & Audit</th>
+                                <th class="text-center">Management</th>
+                                <th class="text-center">Payment</th>
+                                <th>Overall</th>
+                                <th class="text-center no-print" style="width:130px">Action</th>
                             </tr>
-                        <?php else: ?>
-                            <?php foreach ($requests as $r): ?>
-                                <tr data-request-id="<?= $r['id'] ?>" class="<?= (!empty($autoOpenRequest) && $autoOpenRequest['id'] == $r['id']) ? 'table-primary' : '' ?>">
-                                    <td class="fw-semibold">#<?= $r['id'] ?></td>
-                                    <td class="fs-12"><?= date('d M Y', strtotime($r['created_at'])) ?></td>
-                                    <td class="fs-12">
-                                        <?php if (!empty($r['project_name'])): ?>
-                                            <span class="fw-semibold"><?= htmlspecialchars($r['project_name']) ?></span>
-                                        <?php else: ?>
-                                            <span class="badge bg-light text-secondary border fs-11"><i class="fa-solid fa-building me-1"></i><?= htmlspecialchars(!empty($r['workplace_name']) ? $r['workplace_name'] : 'Head Office') ?></span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <span class="fs-12 fw-semibold"><?= htmlspecialchars($r['item_name']) ?></span>
-                                        <?php if (!empty($r['category_name'])): ?>
-                                            <br><small class="text-muted fs-10"><?= htmlspecialchars($r['category_name']) ?></small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-center"><?= $r['quantity'] ?></td>
-                                    <td class="text-end fw-semibold">
-                                        <?= number_format($r['total_price'], 2) ?>
-                                        <?php if (!empty($r['paid_amount']) && $r['paid_amount'] > 0): ?>
-                                            <br><small class="text-success fs-10">Paid: <?= number_format($r['paid_amount'], 2) ?></small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="fs-12">
-                                        <div class="fw-semibold text-dark"><?= htmlspecialchars(!empty($r['requested_by_name']) ? $r['requested_by_name'] : 'System Admin') ?></div>
-                                        <?php if (!empty($r['workplace_name'])): ?>
-                                            <small class="text-muted fs-11 d-block"><i class="fa-solid fa-location-dot me-1 text-primary"></i><?= htmlspecialchars($r['workplace_name']) ?></small>
-                                        <?php elseif (!empty($r['department_name'])): ?>
-                                            <small class="text-muted fs-11 d-block"><i class="fa-solid fa-building me-1 text-info"></i><?= htmlspecialchars($r['department_name']) ?></small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <!-- Step: Dept Head -->
-                                    <td class="text-center">
-                                        <?php
-                                        $dhStatus = $r['dept_head_status'] ?? 'not_required';
-                                        if ($dhStatus === 'not_required'):
-                                        ?>
-                                            <span class="badge fs-10 px-2 py-1" style="background:#e9ecef;color:#6c757d;font-weight:600;">
-                                                N/A
+                        </thead>
+                        <tbody class="table__body">
+                            <?php if (!empty($requests)): ?>
+                                <?php foreach ($requests as $index => $r): ?>
+                                    <tr data-request-id="<?= $r['id'] ?>" class="<?= (!empty($autoOpenRequest) && $autoOpenRequest['id'] == $r['id']) ? 'table-primary' : '' ?>">
+                                        <td class="text-center fw-bold text-muted"><?= $index + 1 ?></td>
+                                        <td class="fw-semibold text-primary">#<?= $r['id'] ?></td>
+                                        <td class="fs-12"><?= date('d M Y', strtotime($r['created_at'])) ?></td>
+                                        <td class="fs-12">
+                                            <?php if (!empty($r['project_name'])): ?>
+                                                <span class="fw-semibold"><?= htmlspecialchars($r['project_name']) ?></span>
+                                            <?php else: ?>
+                                                <span class="badge bg-light text-secondary border fs-11"><i class="fa-solid fa-building me-1"></i><?= htmlspecialchars(!empty($r['workplace_name']) ? $r['workplace_name'] : 'Head Office') ?></span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <span class="fs-12 fw-semibold"><?= htmlspecialchars($r['item_name']) ?></span>
+                                            <?php if (!empty($r['category_name'])): ?>
+                                                <br><small class="text-muted fs-10"><?= htmlspecialchars($r['category_name']) ?></small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-center"><?= $r['quantity'] ?></td>
+                                        <td class="text-end fw-semibold">
+                                            <?= number_format($r['total_price'], 2) ?>
+                                            <?php if (!empty($r['paid_amount']) && $r['paid_amount'] > 0): ?>
+                                                <br><small class="text-success fs-10">Paid: <?= number_format($r['paid_amount'], 2) ?></small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="fs-12">
+                                            <div class="fw-semibold text-dark"><?= htmlspecialchars(!empty($r['requested_by_name']) ? $r['requested_by_name'] : 'System Admin') ?></div>
+                                            <?php if (!empty($r['workplace_name'])): ?>
+                                                <small class="text-muted fs-11 d-block"><i class="fa-solid fa-location-dot me-1 text-primary"></i><?= htmlspecialchars($r['workplace_name']) ?></small>
+                                            <?php elseif (!empty($r['department_name'])): ?>
+                                                <small class="text-muted fs-11 d-block"><i class="fa-solid fa-building me-1 text-info"></i><?= htmlspecialchars($r['department_name']) ?></small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <!-- Step: Dept Head -->
+                                        <td class="text-center">
+                                            <?php
+                                            $dhStatus = $r['dept_head_status'] ?? 'not_required';
+                                            if ($dhStatus === 'not_required'):
+                                            ?>
+                                                <span class="badge fs-10 px-2 py-1" style="background:#e9ecef;color:#6c757d;font-weight:600;">
+                                                    N/A
+                                                </span>
+                                            <?php else:
+                                                $dhColor = $dhStatus === 'approved' ? '#198754' : ($dhStatus === 'rejected' ? '#dc3545' : '#e6a817');
+                                                $dhBg = $dhStatus === 'approved' ? '#d1e7dd' : ($dhStatus === 'rejected' ? '#f8d7da' : '#fff3cd');
+                                            ?>
+                                                <span class="badge fs-10 px-2 py-1" style="background:<?= $dhBg ?>;color:<?= $dhColor ?>;font-weight:600;">
+                                                    <?= ucfirst($dhStatus) ?>
+                                                </span>
+                                                <?php if ($dhStatus !== 'pending' && !empty($r['dept_head_by_name'])): ?>
+                                                    <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['dept_head_at']) ? date('d M Y, h:i A', strtotime($r['dept_head_at'])) : '' ?>">
+                                                        <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['dept_head_by_name']) ?>
+                                                        <?php if (!empty($r['dept_head_at'])): ?>
+                                                            <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['dept_head_at'])) ?></span>
+                                                        <?php endif; ?>
+                                                    </small>
+                                                <?php elseif ($dhStatus === 'pending' && !empty($r['reporting_boss_name'])): ?>
+                                                    <small class="d-block text-muted fs-9 mt-1" style="line-height:1.2;">
+                                                        <i class="fa-solid fa-user-clock me-1 text-warning"></i><?= htmlspecialchars($r['reporting_boss_name']) ?>
+                                                    </small>
+                                                <?php endif; ?>
+                                            <?php endif; ?>
+                                        </td>
+                                        <!-- Step: Operations -->
+                                        <td class="text-center">
+                                            <?php
+                                            $opColor = $r['operations_status'] === 'approved' ? '#198754' : ($r['operations_status'] === 'rejected' ? '#dc3545' : '#e6a817');
+                                            $opBg = $r['operations_status'] === 'approved' ? '#d1e7dd' : ($r['operations_status'] === 'rejected' ? '#f8d7da' : '#fff3cd');
+                                            ?>
+                                            <span class="badge fs-10 px-2 py-1" style="background:<?= $opBg ?>;color:<?= $opColor ?>;font-weight:600;">
+                                                <?= ucfirst($r['operations_status']) ?>
                                             </span>
-                                        <?php else:
-                                            $dhColor = $dhStatus === 'approved' ? '#198754' : ($dhStatus === 'rejected' ? '#dc3545' : '#e6a817');
-                                            $dhBg = $dhStatus === 'approved' ? '#d1e7dd' : ($dhStatus === 'rejected' ? '#f8d7da' : '#fff3cd');
-                                        ?>
-                                            <span class="badge fs-10 px-2 py-1" style="background:<?= $dhBg ?>;color:<?= $dhColor ?>;font-weight:600;">
-                                                <?= ucfirst($dhStatus) ?>
-                                            </span>
-                                            <?php if ($dhStatus !== 'pending' && !empty($r['dept_head_by_name'])): ?>
-                                                <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['dept_head_at']) ? date('d M Y, h:i A', strtotime($r['dept_head_at'])) : '' ?>">
-                                                    <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['dept_head_by_name']) ?>
-                                                    <?php if (!empty($r['dept_head_at'])): ?>
-                                                        <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['dept_head_at'])) ?></span>
+                                            <?php if ($r['operations_status'] !== 'pending' && !empty($r['operations_by_name'])): ?>
+                                                <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['operations_at']) ? date('d M Y, h:i A', strtotime($r['operations_at'])) : '' ?>">
+                                                    <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['operations_by_name']) ?>
+                                                    <?php if (!empty($r['operations_at'])): ?>
+                                                        <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['operations_at'])) ?></span>
                                                     <?php endif; ?>
                                                 </small>
-                                            <?php elseif ($dhStatus === 'pending' && !empty($r['reporting_boss_name'])): ?>
-                                                <small class="d-block text-muted fs-9 mt-1" style="line-height:1.2;">
-                                                    <i class="fa-solid fa-user-clock me-1 text-warning"></i><?= htmlspecialchars($r['reporting_boss_name']) ?>
+                                            <?php endif; ?>
+                                        </td>
+                                        <!-- Step: Purchase Head -->
+                                        <td class="text-center">
+                                            <?php
+                                            $phColor = $r['purchase_head_status'] === 'approved' ? '#198754' : ($r['purchase_head_status'] === 'rejected' ? '#dc3545' : '#e6a817');
+                                            $phBg = $r['purchase_head_status'] === 'approved' ? '#d1e7dd' : ($r['purchase_head_status'] === 'rejected' ? '#f8d7da' : '#fff3cd');
+                                            ?>
+                                            <span class="badge fs-10 px-2 py-1" style="background:<?= $phBg ?>;color:<?= $phColor ?>;font-weight:600;">
+                                                <?= ucfirst($r['purchase_head_status']) ?>
+                                            </span>
+                                            <?php if ($r['purchase_head_status'] !== 'pending' && !empty($r['purchase_head_by_name'])): ?>
+                                                <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['purchase_head_at']) ? date('d M Y, h:i A', strtotime($r['purchase_head_at'])) : '' ?>">
+                                                    <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['purchase_head_by_name']) ?>
+                                                    <?php if (!empty($r['purchase_head_at'])): ?>
+                                                        <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['purchase_head_at'])) ?></span>
+                                                    <?php endif; ?>
                                                 </small>
                                             <?php endif; ?>
-                                        <?php endif; ?>
-                                    </td>
-                                    <!-- Step: Operations -->
-                                    <td class="text-center">
-                                        <?php
-                                        $opColor = $r['operations_status'] === 'approved' ? '#198754' : ($r['operations_status'] === 'rejected' ? '#dc3545' : '#e6a817');
-                                        $opBg = $r['operations_status'] === 'approved' ? '#d1e7dd' : ($r['operations_status'] === 'rejected' ? '#f8d7da' : '#fff3cd');
-                                        ?>
-                                        <span class="badge fs-10 px-2 py-1" style="background:<?= $opBg ?>;color:<?= $opColor ?>;font-weight:600;">
-                                            <?= ucfirst($r['operations_status']) ?>
-                                        </span>
-                                        <?php if ($r['operations_status'] !== 'pending' && !empty($r['operations_by_name'])): ?>
-                                            <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['operations_at']) ? date('d M Y, h:i A', strtotime($r['operations_at'])) : '' ?>">
-                                                <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['operations_by_name']) ?>
-                                                <?php if (!empty($r['operations_at'])): ?>
-                                                    <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['operations_at'])) ?></span>
+                                        </td>
+                                        <!-- Step: QC & Audit -->
+                                        <td class="text-center">
+                                            <?php
+                                            $qcColor = $r['qc_audit_status'] === 'approved' ? '#198754' : ($r['qc_audit_status'] === 'rejected' ? '#dc3545' : '#e6a817');
+                                            $qcBg = $r['qc_audit_status'] === 'approved' ? '#d1e7dd' : ($r['qc_audit_status'] === 'rejected' ? '#f8d7da' : '#fff3cd');
+                                            ?>
+                                            <span class="badge fs-10 px-2 py-1" style="background:<?= $qcBg ?>;color:<?= $qcColor ?>;font-weight:600;">
+                                                <?= ucfirst($r['qc_audit_status']) ?>
+                                            </span>
+                                            <?php if ($r['qc_audit_status'] !== 'pending' && !empty($r['qc_audit_by_name'])): ?>
+                                                <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['qc_audit_at']) ? date('d M Y, h:i A', strtotime($r['qc_audit_at'])) : '' ?>">
+                                                    <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['qc_audit_by_name']) ?>
+                                                    <?php if (!empty($r['qc_audit_at'])): ?>
+                                                        <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['qc_audit_at'])) ?></span>
+                                                    <?php endif; ?>
+                                                </small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <!-- Step: Management -->
+                                        <td class="text-center">
+                                            <?php
+                                            $mgColor = $r['mgmt_status'] === 'approved' ? '#198754' : ($r['mgmt_status'] === 'rejected' ? '#dc3545' : '#e6a817');
+                                            $mgBg = $r['mgmt_status'] === 'approved' ? '#d1e7dd' : ($r['mgmt_status'] === 'rejected' ? '#f8d7da' : '#fff3cd');
+                                            ?>
+                                            <span class="badge fs-10 px-2 py-1" style="background:<?= $mgBg ?>;color:<?= $mgColor ?>;font-weight:600;">
+                                                <?= ucfirst($r['mgmt_status']) ?>
+                                            </span>
+                                            <?php if ($r['mgmt_status'] !== 'pending' && !empty($r['mgmt_by_name'])): ?>
+                                                <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['mgmt_at']) ? date('d M Y, h:i A', strtotime($r['mgmt_at'])) : '' ?>">
+                                                    <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['mgmt_by_name']) ?>
+                                                    <?php if (!empty($r['mgmt_at'])): ?>
+                                                        <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['mgmt_at'])) ?></span>
+                                                    <?php endif; ?>
+                                                </small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <!-- Step: Payment -->
+                                        <td class="text-center">
+                                            <?php
+                                            $pyColor = $r['payment_status'] === 'paid' ? '#198754' : '#e6a817';
+                                            $pyBg = $r['payment_status'] === 'paid' ? '#d1e7dd' : '#fff3cd';
+                                            ?>
+                                            <span class="badge fs-10 px-2 py-1" style="background:<?= $pyBg ?>;color:<?= $pyColor ?>;font-weight:600;">
+                                                <?= ucfirst($r['payment_status']) ?>
+                                            </span>
+                                            <?php if ($r['payment_status'] === 'paid' && !empty($r['paid_by_name'])): ?>
+                                                <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['paid_at']) ? date('d M Y, h:i A', strtotime($r['paid_at'])) : '' ?>">
+                                                    <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['paid_by_name']) ?>
+                                                    <?php if (!empty($r['paid_at'])): ?>
+                                                        <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['paid_at'])) ?></span>
+                                                    <?php endif; ?>
+                                                </small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php
+                                            $ovColors = [
+                                                'pending' => ['#e6a817','#fff3cd'], 'in_review' => ['#0d6efd','#cfe2ff'],
+                                                'approved' => ['#198754','#d1e7dd'], 'rejected' => ['#dc3545','#f8d7da'],
+                                                'paid' => ['#0d6efd','#cfe2ff'],
+                                                'purchased' => ['#6f42c1','#e2d9f3']
+                                            ];
+                                            $oc = $ovColors[$r['overall_status']] ?? ['#6c757d','#e9ecef'];
+                                            ?>
+                                            <span class="badge fs-10 px-2 py-1" style="background:<?= $oc[1] ?>;color:<?= $oc[0] ?>;font-weight:700;">
+                                                <?= ucfirst(str_replace('_', ' ', $r['overall_status'])) ?>
+                                            </span>
+                                        </td>
+                                        <td class="text-center no-print">
+                                            <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
+                                                <?php
+                                                $isCreator = (int)$r['requested_by'] === $userId;
+                                                $reportingBossId = (int)($r['reporting_user_id'] ?? $r['requester_reporting_boss_id'] ?? 0);
+                                                $isReporterBoss = ($reportingBossId === $userId);
+
+                                                // Strict self-approval prevention: Creator can NEVER approve/reject their own request
+                                                $canApprove = false;
+                                                $step = '';
+                                                $reqTotal = (float)($r['total_price'] ?? 0);
+                                                $isRole20Eligible = (in_array($roleId, [20, 32]) && $reqTotal <= 100000);
+                                                $rowDhStatus = $r['dept_head_status'] ?? 'not_required';
+                                                
+                                                if (!$isCreator) {
+                                                    if (($isReporterBoss || $isAdminOrMgmt) && $rowDhStatus === 'pending') {
+                                                        $canApprove = true; $step = 'dept_head';
+                                                    } elseif ($isOperations && in_array($rowDhStatus, ['approved', 'not_required']) && $r['operations_status'] === 'pending') {
+                                                        $canApprove = true; $step = 'operations';
+                                                    } elseif ($isPurchaseHead && $r['operations_status'] === 'approved' && $r['purchase_head_status'] === 'pending') {
+                                                        $canApprove = true; $step = 'purchase_head';
+                                                    } elseif ($isQcAudit && $r['purchase_head_status'] === 'approved' && $r['qc_audit_status'] === 'pending') {
+                                                        $canApprove = true; $step = 'qc_audit';
+                                                    } elseif (($isManagement || $isRole20Eligible) && $r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending') {
+                                                        $canApprove = true; $step = 'mgmt';
+                                                    }
+                                                }
+                                                
+                                                $canPay = !empty($isAccounts) && $r['mgmt_status'] === 'approved' && $r['payment_status'] === 'unpaid';
+                                                $canConfirmPurchase = !empty($isOperations) && $r['payment_status'] === 'paid' && $r['overall_status'] === 'paid';
+
+                                                // Creator or Admin can delete BEFORE any approval step has passed
+                                                $isInitialPending = in_array($rowDhStatus, ['pending', 'not_required']) && ($r['operations_status'] === 'pending' && $r['purchase_head_status'] === 'pending' && $r['qc_audit_status'] === 'pending' && $r['mgmt_status'] === 'pending');
+                                                $canDelete = ($isCreator || $isAdminOrMgmt) && $isInitialPending;
+                                                $r['can_approve'] = $canApprove;
+                                                $r['approval_step'] = $step;
+                                                $r['can_pay'] = $canPay;
+                                                $r['can_confirm_purchase'] = $canConfirmPurchase;
+                                                ?>
+
+                                                <!-- Always show View button -->
+                                                <button type="button" class="btn btn-sm btn-outline-secondary btn-icon" title="View"
+                                                    data-id="<?= $r['id'] ?>"
+                                                    data-info='<?= htmlspecialchars(json_encode($r), ENT_QUOTES, "UTF-8") ?>'
+                                                    onclick="openDetailModal(this)">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </button>
+
+                                                <?php if ($r['payment_status'] === 'paid' || in_array($r['overall_status'], ['paid', 'purchased'])): ?>
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments/create?parent_type=extra_purchase&cashout_request_id=<?= $r['id'] ?>&project_id=<?= $r['project_id'] ?? '' ?>" class="btn btn-sm btn-outline-warning btn-icon" title="Settlement / Adjustment">
+                                                        <i class="fa-solid fa-sliders"></i>
+                                                    </a>
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/print-debit-voucher?module=project_extra_assets&id=<?= $r['id'] ?>" target="_blank" class="btn btn-sm btn-outline-primary btn-icon" title="Print Debit Voucher">
+                                                        <i class="fa-solid fa-file-invoice-dollar"></i>
+                                                    </a>
                                                 <?php endif; ?>
-                                            </small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <!-- Step: Purchase Head -->
-                                    <td class="text-center">
-                                        <?php
-                                        $phColor = $r['purchase_head_status'] === 'approved' ? '#198754' : ($r['purchase_head_status'] === 'rejected' ? '#dc3545' : '#e6a817');
-                                        $phBg = $r['purchase_head_status'] === 'approved' ? '#d1e7dd' : ($r['purchase_head_status'] === 'rejected' ? '#f8d7da' : '#fff3cd');
-                                        ?>
-                                        <span class="badge fs-10 px-2 py-1" style="background:<?= $phBg ?>;color:<?= $phColor ?>;font-weight:600;">
-                                            <?= ucfirst($r['purchase_head_status']) ?>
-                                        </span>
-                                        <?php if ($r['purchase_head_status'] !== 'pending' && !empty($r['purchase_head_by_name'])): ?>
-                                            <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['purchase_head_at']) ? date('d M Y, h:i A', strtotime($r['purchase_head_at'])) : '' ?>">
-                                                <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['purchase_head_by_name']) ?>
-                                                <?php if (!empty($r['purchase_head_at'])): ?>
-                                                    <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['purchase_head_at'])) ?></span>
+
+                                                <?php if ($canApprove): ?>
+                                                    <button type="button" class="btn btn-sm btn-outline-success btn-icon" title="Approve"
+                                                        onclick="openApprovalModal(<?= $r['id'] ?>, 'approved', '<?= $step ?>')">
+                                                        <i class="fa-solid fa-check"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger btn-icon" title="Reject"
+                                                        onclick="openApprovalModal(<?= $r['id'] ?>, 'rejected', '<?= $step ?>')">
+                                                        <i class="fa-solid fa-xmark"></i>
+                                                    </button>
+                                                <?php elseif ($canPay): ?>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" title="Process Payment"
+                                                        onclick="openPaymentModal(<?= $r['id'] ?>, <?= (float)$r['total_price'] ?>)">
+                                                        <i class="fa-solid fa-money-bill me-1"></i> Pay
+                                                    </button>
+                                                <?php elseif ($canConfirmPurchase): ?>
+                                                    <button type="button" class="btn btn-sm btn-outline-success" title="Mark as Purchased"
+                                                        data-info='<?= htmlspecialchars(json_encode($r), ENT_QUOTES, "UTF-8") ?>'
+                                                        onclick="openConfirmPurchaseModal(this)">
+                                                        <i class="fa-solid fa-box-check me-1"></i> Mark Purchased
+                                                    </button>
                                                 <?php endif; ?>
-                                            </small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <!-- Step: QC & Audit -->
-                                    <td class="text-center">
-                                        <?php
-                                        $qcColor = $r['qc_audit_status'] === 'approved' ? '#198754' : ($r['qc_audit_status'] === 'rejected' ? '#dc3545' : '#e6a817');
-                                        $qcBg = $r['qc_audit_status'] === 'approved' ? '#d1e7dd' : ($r['qc_audit_status'] === 'rejected' ? '#f8d7da' : '#fff3cd');
-                                        ?>
-                                        <span class="badge fs-10 px-2 py-1" style="background:<?= $qcBg ?>;color:<?= $qcColor ?>;font-weight:600;">
-                                            <?= ucfirst($r['qc_audit_status']) ?>
-                                        </span>
-                                        <?php if ($r['qc_audit_status'] !== 'pending' && !empty($r['qc_audit_by_name'])): ?>
-                                            <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['qc_audit_at']) ? date('d M Y, h:i A', strtotime($r['qc_audit_at'])) : '' ?>">
-                                                <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['qc_audit_by_name']) ?>
-                                                <?php if (!empty($r['qc_audit_at'])): ?>
-                                                    <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['qc_audit_at'])) ?></span>
+
+                                                <?php if ($canDelete): ?>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger btn-icon" title="Delete / Cancel Request"
+                                                        onclick="openDeleteRequestModal(<?= $r['id'] ?>)">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
                                                 <?php endif; ?>
-                                            </small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <!-- Step: Management -->
-                                    <td class="text-center">
-                                        <?php
-                                        $mgColor = $r['mgmt_status'] === 'approved' ? '#198754' : ($r['mgmt_status'] === 'rejected' ? '#dc3545' : '#e6a817');
-                                        $mgBg = $r['mgmt_status'] === 'approved' ? '#d1e7dd' : ($r['mgmt_status'] === 'rejected' ? '#f8d7da' : '#fff3cd');
-                                        ?>
-                                        <span class="badge fs-10 px-2 py-1" style="background:<?= $mgBg ?>;color:<?= $mgColor ?>;font-weight:600;">
-                                            <?= ucfirst($r['mgmt_status']) ?>
-                                        </span>
-                                        <?php if ($r['mgmt_status'] !== 'pending' && !empty($r['mgmt_by_name'])): ?>
-                                            <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['mgmt_at']) ? date('d M Y, h:i A', strtotime($r['mgmt_at'])) : '' ?>">
-                                                <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['mgmt_by_name']) ?>
-                                                <?php if (!empty($r['mgmt_at'])): ?>
-                                                    <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['mgmt_at'])) ?></span>
-                                                <?php endif; ?>
-                                            </small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <!-- Step: Payment -->
-                                    <td class="text-center">
-                                        <?php
-                                        $pyColor = $r['payment_status'] === 'paid' ? '#198754' : '#e6a817';
-                                        $pyBg = $r['payment_status'] === 'paid' ? '#d1e7dd' : '#fff3cd';
-                                        ?>
-                                        <span class="badge fs-10 px-2 py-1" style="background:<?= $pyBg ?>;color:<?= $pyColor ?>;font-weight:600;">
-                                            <?= ucfirst($r['payment_status']) ?>
-                                        </span>
-                                        <?php if ($r['payment_status'] === 'paid' && !empty($r['paid_by_name'])): ?>
-                                            <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['paid_at']) ? date('d M Y, h:i A', strtotime($r['paid_at'])) : '' ?>">
-                                                <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['paid_by_name']) ?>
-                                                <?php if (!empty($r['paid_at'])): ?>
-                                                    <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['paid_at'])) ?></span>
-                                                <?php endif; ?>
-                                            </small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <?php
-                                        $ovColors = [
-                                            'pending' => ['#e6a817','#fff3cd'], 'in_review' => ['#0d6efd','#cfe2ff'],
-                                            'approved' => ['#198754','#d1e7dd'], 'rejected' => ['#dc3545','#f8d7da'],
-                                            'paid' => ['#0d6efd','#cfe2ff'],
-                                            'purchased' => ['#6f42c1','#e2d9f3']
-                                        ];
-                                        $oc = $ovColors[$r['overall_status']] ?? ['#6c757d','#e9ecef'];
-                                        ?>
-                                        <span class="badge fs-10 px-2 py-1" style="background:<?= $oc[1] ?>;color:<?= $oc[0] ?>;font-weight:700;">
-                                            <?= ucfirst(str_replace('_', ' ', $r['overall_status'])) ?>
-                                        </span>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php
-                                        $isCreator = (int)$r['requested_by'] === $userId;
-                                        $reportingBossId = (int)($r['reporting_user_id'] ?? $r['requester_reporting_boss_id'] ?? 0);
-                                        $isReporterBoss = ($reportingBossId === $userId);
-
-                                        // Strict self-approval prevention: Creator can NEVER approve/reject their own request
-                                        $canApprove = false;
-                                        $step = '';
-                                        $reqTotal = (float)($r['total_price'] ?? 0);
-                                        $isRole20Eligible = (in_array($roleId, [20, 32]) && $reqTotal <= 100000);
-                                        $rowDhStatus = $r['dept_head_status'] ?? 'not_required';
-                                        
-                                        if (!$isCreator) {
-                                            if (($isReporterBoss || $isAdminOrMgmt) && $rowDhStatus === 'pending') {
-                                                $canApprove = true; $step = 'dept_head';
-                                            } elseif ($isOperations && in_array($rowDhStatus, ['approved', 'not_required']) && $r['operations_status'] === 'pending') {
-                                                $canApprove = true; $step = 'operations';
-                                            } elseif ($isPurchaseHead && $r['operations_status'] === 'approved' && $r['purchase_head_status'] === 'pending') {
-                                                $canApprove = true; $step = 'purchase_head';
-                                            } elseif ($isQcAudit && $r['purchase_head_status'] === 'approved' && $r['qc_audit_status'] === 'pending') {
-                                                $canApprove = true; $step = 'qc_audit';
-                                            } elseif (($isManagement || $isRole20Eligible) && $r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending') {
-                                                $canApprove = true; $step = 'mgmt';
-                                            }
-                                        }
-                                        
-                                        $canPay = !empty($isAccounts) && $r['mgmt_status'] === 'approved' && $r['payment_status'] === 'unpaid';
-                                        $canConfirmPurchase = !empty($isOperations) && $r['payment_status'] === 'paid' && $r['overall_status'] === 'paid';
-
-                                        // Creator or Admin can delete BEFORE any approval step has passed
-                                        $isInitialPending = in_array($rowDhStatus, ['pending', 'not_required']) && ($r['operations_status'] === 'pending' && $r['purchase_head_status'] === 'pending' && $r['qc_audit_status'] === 'pending' && $r['mgmt_status'] === 'pending');
-                                        $canDelete = ($isCreator || $isAdminOrMgmt) && $isInitialPending;
-                                        $r['can_approve'] = $canApprove;
-                                        $r['approval_step'] = $step;
-                                        $r['can_pay'] = $canPay;
-                                        $r['can_confirm_purchase'] = $canConfirmPurchase;
-                                        ?>
-
-                                        <!-- Always show View button -->
-                                        <button type="button" class="btn btn-sm btn-outline-secondary btn-icon" title="View"
-                                            data-id="<?= $r['id'] ?>"
-                                            data-info='<?= htmlspecialchars(json_encode($r), ENT_QUOTES, "UTF-8") ?>'
-                                            onclick="openDetailModal(this)">
-                                            <i class="fa-solid fa-eye"></i>
-                                        </button>
-
-                                        <?php if ($r['payment_status'] === 'paid' || in_array($r['overall_status'], ['paid', 'purchased'])): ?>
-                                            <a href="<?= $GLOBALS['base_url'] ?>/expense-adjustments/create?parent_type=extra_purchase&cashout_request_id=<?= $r['id'] ?>&project_id=<?= $r['project_id'] ?? '' ?>" class="btn btn-sm btn-outline-warning btn-icon" title="Settlement / Adjustment">
-                                                <i class="fa-solid fa-sliders"></i>
-                                            </a>
-                                            <a href="<?= $GLOBALS['base_url'] ?>/print-debit-voucher?module=project_extra_assets&id=<?= $r['id'] ?>" target="_blank" class="btn btn-sm btn-outline-primary btn-icon" title="Print Debit Voucher">
-                                                <i class="fa-solid fa-file-invoice-dollar"></i>
-                                            </a>
-                                        <?php endif; ?>
-
-                                        <?php if ($canApprove): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-success btn-icon" title="Approve"
-                                                onclick="openApprovalModal(<?= $r['id'] ?>, 'approved', '<?= $step ?>')">
-                                                <i class="fa-solid fa-check"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-icon" title="Reject"
-                                                onclick="openApprovalModal(<?= $r['id'] ?>, 'rejected', '<?= $step ?>')">
-                                                <i class="fa-solid fa-xmark"></i>
-                                            </button>
-                                        <?php elseif ($canPay): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-primary" title="Process Payment"
-                                                onclick="openPaymentModal(<?= $r['id'] ?>, <?= (float)$r['total_price'] ?>)">
-                                                <i class="fa-solid fa-money-bill me-1"></i> Pay
-                                            </button>
-                                        <?php elseif ($canConfirmPurchase): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-success" title="Mark as Purchased"
-                                                data-info='<?= htmlspecialchars(json_encode($r), ENT_QUOTES, "UTF-8") ?>'
-                                                onclick="openConfirmPurchaseModal(this)">
-                                                <i class="fa-solid fa-box-check me-1"></i> Mark Purchased
-                                            </button>
-                                        <?php endif; ?>
-
-                                        <?php if ($canDelete): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-icon" title="Delete / Cancel Request"
-                                                onclick="openDeleteRequestModal(<?= $r['id'] ?>)">
-                                                <i class="fa-solid fa-trash"></i>
-                                            </button>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
 <?php if (!empty($canCreate)): ?>
 <!-- ========================================================================= -->
@@ -1236,6 +1251,43 @@ document.addEventListener("DOMContentLoaded", function() {
                 });
             }
         });
+
+        // Initialize DataTable for Office Procurement (#procurementTable)
+        if (typeof jQuery.fn.DataTable !== 'undefined') {
+            jQuery('#procurementTable').DataTable({
+                destroy: true,
+                responsive: true,
+                lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+                pageLength: 10,
+                order: [], // Preserve SQL order (pea.id DESC)
+                columnDefs: [
+                    { orderable: false, searchable: false, targets: 0 },  // # serial column
+                    { orderable: false, searchable: false, targets: -1 } // Actions column
+                ],
+                language: {
+                    search: "_INPUT_",
+                    searchPlaceholder: "Quick filter in table...",
+                    lengthMenu: "Show _MENU_ entries",
+                    info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                    infoEmpty: "Showing 0 to 0 of 0 entries",
+                    infoFiltered: "(filtered from _MAX_ total entries)",
+                    emptyTable: "No purchase requests found.",
+                    paginate: {
+                        first: '<i class="fa-solid fa-angles-left"></i>',
+                        previous: '<i class="fa-solid fa-angle-left"></i>',
+                        next: '<i class="fa-solid fa-angle-right"></i>',
+                        last: '<i class="fa-solid fa-angles-right"></i>'
+                    }
+                },
+                drawCallback: function(settings) {
+                    var api = this.api();
+                    var startIndex = api.context[0]._iDisplayStart;
+                    api.column(0, {search:'applied', order:'applied'}).nodes().each(function(cell, i) {
+                        cell.innerHTML = startIndex + i + 1;
+                    });
+                }
+            });
+        }
     }
 });
 </script>

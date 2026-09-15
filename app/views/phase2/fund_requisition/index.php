@@ -49,210 +49,162 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
             <hr>
         </div>
 
-        <!-- Main Card Container -->
-        <div class="card custom-card">
-            <div class="card-header justify-content-between align-items-center no-print">
-                <div class="card-title">
-                    Requisitions Log
-                </div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#createRequisitionModal">
-                        <i class="fa-solid fa-plus"></i> New Requisition
-                    </button>
-                    <button type="button" class="btn btn-secondary btn-sm d-flex align-items-center gap-1" onclick="window.print()">
-                        <i class="fa-solid fa-print"></i> Print Statement
-                    </button>
-                </div>
-            </div>
+        <!-- Filter Card Wrapper (Matching flat-lists) -->
+        <div class="card__wrapper mb-3 no-print">
+            <form action="<?= $GLOBALS['base_url'] ?>/fund-requisitions" method="get">
 
-            <!-- Search & Filter Bar (No print) -->
-            <div class="card-body no-print border-bottom pb-3">
-                <form method="GET" action="<?= $GLOBALS['base_url'] ?>/fund-requisitions" class="row g-3 align-items-end">
-                    <!-- Search Keyword -->
-                    <div class="col-md-3 col-sm-6">
-                        <label for="search" class="form-label fs-12 fw-semibold mb-1">Search Requisitions</label>
-                        <input type="text" name="search" id="search" class="form-control form-control-sm" placeholder="Search ID, Name, Purpose..." value="<?= htmlspecialchars($searchQuery ?? '') ?>">
-                    </div>
-                    <!-- Status Filter -->
-                    <div class="col-md-3 col-sm-6">
-                        <label for="status" class="form-label fs-12 fw-semibold mb-1">Approval / Payout Status</label>
-                        <select name="status" id="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                            <option value="">All Statuses (Pending, Approved, Paid)</option>
-                            <option value="pending" <?= ($statusFilter ?? '') === 'pending' ? 'selected' : '' ?>>All Pending Review</option>
-                            <option value="pending_qc" <?= ($statusFilter ?? '') === 'pending_qc' ? 'selected' : '' ?>>Pending QC Approval</option>
-                            <option value="approved" <?= ($statusFilter ?? '') === 'approved' ? 'selected' : '' ?>> Management Approved (Pending Payout)</option>
-                            <option value="paid" <?= ($statusFilter ?? '') === 'paid' ? 'selected' : '' ?>> Paid & Settled</option>
-                            <option value="rejected" <?= ($statusFilter ?? '') === 'rejected' ? 'selected' : '' ?>> Rejected</option>
+                <!-- Row 1: Filter inputs -->
+                <div class="row g-2 align-items-center mb-2">
+
+                    <!-- Project Filter -->
+                    <div class="col-xl-3 col-md-4 col-sm-6">
+                        <select class="form-control form-control-sm select2" name="project_id">
+                            <option value="">All Projects</option>
+                            <?php foreach ($projects as $project): ?>
+                                <option value="<?= $project['id'] ?>"
+                                    <?= ($selectedProject ?? '') == $project['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($project['name']) ?>
+                                </option>
+                            <?php endforeach ?>
                         </select>
                     </div>
-                    <!-- Start Date -->
-                    <div class="col-md-2 col-sm-6">
-                        <label for="start_date" class="form-label fs-12 fw-semibold mb-1">Start Date</label>
-                        <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="<?= htmlspecialchars($startDate ?? '') ?>">
+
+                    <!-- Status Filter -->
+                    <div class="col-xl-2 col-md-3 col-sm-6">
+                        <select class="form-control form-control-sm" name="status">
+                            <option value="">All Statuses</option>
+                            <option value="pending" <?= ($statusFilter ?? '') === 'pending' ? 'selected' : '' ?>>All Pending Review</option>
+                            <option value="pending_dept" <?= ($statusFilter ?? '') === 'pending_dept' ? 'selected' : '' ?>>Pending Dept Head</option>
+                            <option value="pending_qc" <?= ($statusFilter ?? '') === 'pending_qc' ? 'selected' : '' ?>>Pending QC Approval</option>
+                            <option value="approved" <?= ($statusFilter ?? '') === 'approved' ? 'selected' : '' ?>>Management Approved</option>
+                            <option value="paid" <?= ($statusFilter ?? '') === 'paid' ? 'selected' : '' ?>>Paid & Settled</option>
+                            <option value="rejected" <?= ($statusFilter ?? '') === 'rejected' ? 'selected' : '' ?>>Rejected</option>
+                        </select>
                     </div>
-                    <!-- End Date -->
-                    <div class="col-md-2 col-sm-6">
-                        <label for="end_date" class="form-label fs-12 fw-semibold mb-1">End Date</label>
-                        <input type="date" name="end_date" id="end_date" class="form-control form-control-sm" value="<?= htmlspecialchars($endDate ?? '') ?>">
+
+                    <!-- Type Filter -->
+                    <div class="col-xl-2 col-md-3 col-sm-6">
+                        <select class="form-control form-control-sm" name="requisition_type">
+                            <option value="">All Types</option>
+                            <option value="petty_cash" <?= ($selectedType ?? '') === 'petty_cash' ? 'selected' : '' ?>>Petty Cash</option>
+                            <option value="general" <?= ($selectedType ?? '') === 'general' ? 'selected' : '' ?>>General / Other</option>
+                        </select>
                     </div>
-                    <!-- Buttons -->
-                    <div class="col-md-2 col-sm-12 text-end">
-                        <button type="submit" class="btn btn-primary btn-sm px-3"><i class="fa-solid fa-filter me-1"></i> Filter</button>
-                        <?php if (!empty($startDate) || !empty($endDate) || !empty($statusFilter) || !empty($searchQuery)): ?>
-                            <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions" class="btn btn-light btn-sm border ms-1"><i class="fa-solid fa-arrows-rotate me-1"></i> Reset</a>
-                        <?php endif; ?>
+
+                    <!-- Search -->
+                    <div class="col-xl-3 col-md-4 col-sm-6">
+                        <input type="text" class="form-control form-control-sm" name="search" id="fundSearch"
+                            placeholder="Search ID, Requester, Purpose..."
+                            value="<?= htmlspecialchars($searchQuery ?? '') ?>">
                     </div>
-                    <?php if ($isDefaultLimit): ?>
-                        <div class="col-12 mt-2">
-                            <span class="badge bg-info-transparent text-info fs-11">
-                                <i class="fa-solid fa-info-circle me-1"></i> Showing latest 10 requisitions. Use the Status or Date filters above to search all requisitions.
-                            </span>
+
+                    <!-- Filter + Reset -->
+                    <div class="col-xl-2 col-md-4 col-sm-6">
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-secondary btn-sm flex-fill">
+                                <i class="fa-solid fa-filter me-1"></i> Filter
+                            </button>
+                            <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions" class="btn btn-success btn-sm flex-fill">
+                                <i class="fa-solid fa-rotate-right me-1"></i> Reset
+                            </a>
                         </div>
-                    <?php endif; ?>
-                </form>
-            </div>
+                    </div>
 
-            <!-- Tabs filter (No print) -->
-            <div class="card-body no-print border-bottom pb-0">
-                <ul class="nav nav-tabs nav-tabs-bordered mb-0" id="requisitionTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active fw-semibold" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-tab-pane" type="button" role="tab" aria-controls="all-tab-pane" aria-selected="true">
-                            All Requisitions (<?= count($requests) ?>)
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link fw-semibold text-warning" id="petty-tab" data-bs-toggle="tab" data-bs-target="#petty-tab-pane" type="button" role="tab" aria-controls="petty-tab-pane" aria-selected="false">
-                            Petty Cash
-                            <?php 
-                            $pcCount = 0;
-                            foreach ($requests as $r) { if ($r['requisition_type'] === 'petty_cash') $pcCount++; }
-                            echo "($pcCount)";
-                            ?>
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link fw-semibold text-info" id="general-tab" data-bs-toggle="tab" data-bs-target="#general-tab-pane" type="button" role="tab" aria-controls="general-tab-pane" aria-selected="false">
-                            General / Other Expenses
-                            <?php 
-                            $genCount = 0;
-                            foreach ($requests as $r) { if ($r['requisition_type'] === 'general') $genCount++; }
-                            echo "($genCount)";
-                            ?>
-                        </button>
-                    </li>
-                </ul>
-            </div>
+                </div>
 
-            <div class="card-body p-0">
-                <div class="tab-content" id="requisitionTabsContent">
-                    
-                    <!-- Tab 1: All Requisitions -->
-                    <div class="tab-pane fade show active" id="all-tab-pane" role="tabpanel" aria-labelledby="all-tab" tabindex="0">
-                        <div class="table-responsive">
-                            <table class="table text-nowrap table-hover border-top-0 requisition-table">
-                                <thead>
+                <!-- Row 2: Date Filters & Action Buttons -->
+                <div class="row g-2 align-items-center mt-1">
+                    <div class="col-xl-2 col-md-3 col-sm-6">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light text-muted fs-11">From</span>
+                            <input type="date" name="start_date" class="form-control form-control-sm" value="<?= htmlspecialchars($startDate ?? '') ?>">
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-md-3 col-sm-6">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light text-muted fs-11">To</span>
+                            <input type="date" name="end_date" class="form-control form-control-sm" value="<?= htmlspecialchars($endDate ?? '') ?>">
+                        </div>
+                    </div>
+                    <div class="col-xl-8 col-md-6 col-sm-12 text-end">
+                        <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createRequisitionModal">
+                                <i class="fa-solid fa-plus me-1"></i> New Requisition
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="window.print()">
+                                <i class="fa-solid fa-print me-1"></i> Print Statement
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+
+        <?php
+        $pcCount = 0;
+        $genCount = 0;
+        foreach ($requests as $r) {
+            if (($r['requisition_type'] ?? '') === 'petty_cash') $pcCount++;
+            if (($r['requisition_type'] ?? '') === 'general') $genCount++;
+        }
+        ?>
+
+        <!-- Table Card Wrapper (Matching flat-lists) -->
+        <div class="row">
+            <div class="col-xxl-12">
+                <div class="card__wrapper">
+                    <!-- Quick Filter Tabs -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom no-print">
+                        <ul class="nav nav-tabs nav-tabs-bordered mb-0" id="fundTabs" role="tablist">
+                            <li class="nav-item">
+                                <button class="nav-link active fw-semibold" id="tab-all" data-type="" type="button">
+                                    All Requisitions (<span id="count-all"><?= count($requests) ?></span>)
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link fw-semibold text-warning" id="tab-petty" data-type="Petty Cash" type="button">
+                                    Petty Cash (<span id="count-petty"><?= $pcCount ?></span>)
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link fw-semibold text-info" id="tab-general" data-type="General" type="button">
+                                    General / Other (<span id="count-general"><?= $genCount ?></span>)
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="table__wrapper table-responsive">
+                        <table class="table mb-20" id="fundRequisitionTable">
+                            <thead>
+                                <tr class="table__title">
+                                    <th style="width:40px" class="text-center">#</th>
+                                    <th>ID</th>
+                                    <th>Date</th>
+                                    <th>Requester & Dept</th>
+                                    <th>Project</th>
+                                    <th>Type / Category</th>
+                                    <th class="text-end">Amount</th>
+                                    <th>Purpose</th>
+                                    <th>Receipt</th>
+                                    <th>Status</th>
+                                    <th class="text-center no-print" style="width:130px">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="table__body">
+                                <?php if (empty($requests)): ?>
                                     <tr>
-                                        <th scope="col">ID</th>
-                                        <th scope="col">Date</th>
-                                        <th scope="col">Requester & Dept</th>
-                                        <th scope="col">Project</th>
-                                        <th scope="col">Type / Category</th>
-                                        <th scope="col" class="text-end">Amount</th>
-                                        <th scope="col">Purpose</th>
-                                        <th scope="col">Receipt</th>
-                                        <th scope="col">Status</th>
-                                        <th scope="col" class="no-print">Action</th>
+                                        <td colspan="11" class="text-center py-4 text-muted">No requisitions found.</td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if (empty($requests)): ?>
-                                        <tr>
-                                            <td colspan="10" class="text-center py-4 text-muted">No requisitions found.</td>
-                                        </tr>
-                                    <?php else: ?>
-                                        <?php foreach ($requests as $req): ?>
-                                            <?php renderRow($req, $userId, $roleId, $isSiteEngineer); ?>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                                <?php else: ?>
+                                    <?php foreach ($requests as $index => $req): ?>
+                                        <?php renderRow($req, $userId, $roleId, $isSiteEngineer, $index + 1); ?>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
                     </div>
-
-                    <!-- Tab 2: Petty Cash Requisitions -->
-                    <div class="tab-pane fade" id="petty-tab-pane" role="tabpanel" aria-labelledby="petty-tab" tabindex="0">
-                        <div class="table-responsive">
-                            <table class="table text-nowrap table-hover requisition-table">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">ID</th>
-                                        <th scope="col">Date</th>
-                                        <th scope="col">Requester & Dept</th>
-                                        <th scope="col">Project</th>
-                                        <th scope="col">Type / Category</th>
-                                        <th scope="col" class="text-end">Amount</th>
-                                        <th scope="col">Purpose</th>
-                                        <th scope="col">Receipt</th>
-                                        <th scope="col">Status</th>
-                                        <th scope="col" class="no-print">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php 
-                                    $pcFound = false;
-                                    foreach ($requests as $req) {
-                                        if ($req['requisition_type'] === 'petty_cash') {
-                                            $pcFound = true;
-                                            renderRow($req, $userId, $roleId, $isSiteEngineer);
-                                        }
-                                    }
-                                    if (!$pcFound): ?>
-                                        <tr>
-                                            <td colspan="10" class="text-center py-4 text-muted">No Petty Cash requisitions found.</td>
-                                        </tr>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Tab 3: General Requisitions -->
-                    <div class="tab-pane fade" id="general-tab-pane" role="tabpanel" aria-labelledby="general-tab" tabindex="0">
-                        <div class="table-responsive">
-                            <table class="table text-nowrap table-hover requisition-table">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">ID</th>
-                                        <th scope="col">Date</th>
-                                        <th scope="col">Requester & Dept</th>
-                                        <th scope="col">Project</th>
-                                        <th scope="col">Type / Category</th>
-                                        <th scope="col" class="text-end">Amount</th>
-                                        <th scope="col">Purpose</th>
-                                        <th scope="col">Receipt</th>
-                                        <th scope="col">Status</th>
-                                        <th scope="col" class="no-print">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php 
-                                    $genFound = false;
-                                    foreach ($requests as $req) {
-                                        if ($req['requisition_type'] === 'general') {
-                                            $genFound = true;
-                                            renderRow($req, $userId, $roleId, $isSiteEngineer);
-                                        }
-                                    }
-                                    if (!$genFound): ?>
-                                        <tr>
-                                            <td colspan="10" class="text-center py-4 text-muted">No general fund requisitions found.</td>
-                                        </tr>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
                 </div>
             </div>
         </div>
@@ -1455,6 +1407,57 @@ function toggleExpenseProjectInput() {
 // Initial triggers
 document.addEventListener("DOMContentLoaded", function() {
     toggleRequisitionType();
+
+    // Custom DataTable for fund-requisitions (matching flat-lists table and pagination)
+    if (typeof $.fn.DataTable !== 'undefined') {
+        var fundTable = $('#fundRequisitionTable').DataTable({
+            destroy: true,
+            responsive: true,
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+            pageLength: 10,
+            order: [], // Preserve SQL fr.id DESC order
+            columnDefs: [
+                { orderable: false, searchable: false, targets: 0 },  // # serial column
+                { orderable: false, targets: 8 },                     // Receipt
+                { orderable: false, searchable: false, targets: -1 }  // Actions
+            ],
+            language: {
+                search: "_INPUT_",
+                searchPlaceholder: "Quick filter in table...",
+                lengthMenu: "Show _MENU_ entries",
+                info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                infoEmpty: "Showing 0 to 0 of 0 entries",
+                infoFiltered: "(filtered from _MAX_ total entries)",
+                paginate: {
+                    first: '<i class="fa-solid fa-angles-left"></i>',
+                    previous: '<i class="fa-solid fa-angle-left"></i>',
+                    next: '<i class="fa-solid fa-angle-right"></i>',
+                    last: '<i class="fa-solid fa-angles-right"></i>'
+                }
+            },
+            drawCallback: function(settings) {
+                var api = this.api();
+                var startIndex = api.context[0]._iDisplayStart;
+                api.column(0, {search:'applied', order:'applied'}).nodes().each(function(cell, i) {
+                    cell.innerHTML = startIndex + i + 1;
+                });
+            }
+        });
+
+        // Quick filter tabs (All, Petty Cash, General)
+        $('#fundTabs button').on('click', function(e) {
+            e.preventDefault();
+            $('#fundTabs button').removeClass('active');
+            $(this).addClass('active');
+
+            var filterType = $(this).data('type') || '';
+            if (filterType) {
+                fundTable.column(5).search(filterType).draw();
+            } else {
+                fundTable.column(5).search('').draw();
+            }
+        });
+    }
 });
 </script>
 
@@ -1515,7 +1518,7 @@ document.addEventListener("DOMContentLoaded", function() {
 <?php
 
 // Helper function to render a single table row
-function renderRow($req, $userId, $roleId, $isSiteEngineer) {
+function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
     $statusClass = 'bg-warning-transparent text-warning';
     $statusText = 'Pending';
     if ($req['status'] === 'pending_dept') {
@@ -1548,7 +1551,12 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
     $typeText = ($req['requisition_type'] === 'petty_cash') ? 'Petty Cash' : 'General';
     ?>
     <tr>
-        <td>REQ-<?= $req['id'] ?></td>
+        <td class="text-center fw-bold text-muted"><?= $serial ?></td>
+        <td>
+            <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions/view/<?= $req['id'] ?>" class="fw-bold text-primary">
+                REQ-<?= $req['id'] ?>
+            </a>
+        </td>
         <td><?= date('d M Y', strtotime($req['created_at'])) ?></td>
         <td>
             <div class="fw-semibold"><?= htmlspecialchars($req['requester_name'] ?? 'System User') ?></div>
@@ -1677,8 +1685,8 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
                 </div>
             <?php endif; ?>
         </td>
-        <td class="no-print">
-            <div class="btn-list">
+        <td class="no-print text-center">
+            <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
                 <!-- View Details button -->
                 <a href="<?= $GLOBALS['base_url'] ?>/fund-requisitions/view/<?= $req['id'] ?>"
                    class="btn btn-icon btn-sm btn-info border" title="View Details & Log Expenses">

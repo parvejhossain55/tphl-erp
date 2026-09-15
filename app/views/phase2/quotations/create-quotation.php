@@ -90,10 +90,17 @@ if (!empty($isEdit) && !empty($quotationItems)) {
                                 <td>
                                     <?php if (!empty($eq['attachment'])): ?>
                                         <a href="<?= $base_url ?>/public/uploads/vendor_quotation/<?= htmlspecialchars($eq['attachment']) ?>"
-                                           target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2">
-                                             <i class="bi bi-paperclip me-1"></i>View
+                                           target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2 mb-1 d-inline-block">
+                                             <i class="bi bi-paperclip me-1"></i>View File
                                         </a>
-                                    <?php else: ?>
+                                    <?php endif; ?>
+                                    <?php if (!empty($eq['drive_link'])): ?>
+                                        <a href="<?= htmlspecialchars($eq['drive_link']) ?>"
+                                           target="_blank" class="btn btn-sm btn-outline-info py-0 px-2 d-inline-block" title="Open Drive Link">
+                                             <i class="bi bi-link-45deg me-1"></i>Drive Link
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if (empty($eq['attachment']) && empty($eq['drive_link'])): ?>
                                         <span class="text-muted small">—</span>
                                     <?php endif; ?>
                                 </td>
@@ -165,9 +172,9 @@ if (!empty($isEdit) && !empty($quotationItems)) {
                                         <th style="width:12%;">PR Qty</th>
                                         <th style="width:12%;">Qty <span class="text-danger">*</span></th>
                                         <th style="width:13%;">Unit Price <span class="text-danger">*</span></th>
-                                        <th style="width:18%;" class="text-center">
-                                            <i class="bi bi-paperclip me-1"></i>Attachment
-                                            <small class="text-muted d-block fw-normal" style="font-size:10px">(per vendor)</small>
+                                        <th style="width:24%;" class="text-center">
+                                            <i class="bi bi-paperclip me-1"></i>Attachment <span class="text-danger">*</span>
+                                            <small class="text-muted d-block fw-normal" style="font-size:10px">(File & Optional Drive Link)</small>
                                         </th>
                                         <th style="width:15%;" class="text-end">Total</th>
                                     </tr>
@@ -194,22 +201,39 @@ if (!empty($isEdit) && !empty($quotationItems)) {
                                                    value="<?= !empty($isEdit) ? htmlspecialchars($qiMap[$item['material_id']]['unit_price'] ?? 0) : '' ?>">
                                         </td>
                                         <?php if ($idx === 0): ?>
-                                        <td class="text-center align-middle" rowspan="<?= count($prItems) ?>"
-                                            style="background:rgba(var(--clr-theme-primary-rgb),.04);vertical-align:middle">
-                                            <input type="file" name="attachment" id="attachment"
-                                                   class="form-control form-control-sm mb-2"
-                                                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
-                                            <div class="form-text text-center" style="font-size:10px">
-                                                PDF, Image, Word
+                                        <td class="text-start align-middle p-3" rowspan="<?= count($prItems) ?>"
+                                            style="background:rgba(var(--clr-theme-primary-rgb),.04);vertical-align:middle;min-width:220px;">
+                                            <label class="form-label fw-bold mb-1" style="font-size:11px;">
+                                                <i class="bi bi-file-earmark-arrow-up text-primary me-1"></i>Upload Quotation File <span class="text-danger">*</span>
+                                            </label>
+                                            <input type="file" name="attachment" id="quotAttachmentInput"
+                                                   class="form-control form-control-sm mb-1"
+                                                   accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx"
+                                                   <?= (empty($isEdit) || empty($quotation['attachment'])) ? 'required' : '' ?>>
+                                            <div class="form-text text-muted mb-2" style="font-size:10px">
+                                                PDF, Image (JPG/PNG/WEBP), Word, Excel
                                             </div>
                                             <?php if (!empty($isEdit) && !empty($quotation['attachment'])): ?>
-                                                <div class="mt-2 text-center">
+                                                <div class="mb-2">
                                                     <a href="<?= $base_url ?>/public/uploads/vendor_quotation/<?= htmlspecialchars($quotation['attachment']) ?>"
-                                                       target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:11px">
-                                                        <i class="bi bi-paperclip"></i> Current file
+                                                       target="_blank" class="btn btn-sm btn-outline-success py-0 px-2 w-100" style="font-size:11px">
+                                                        <i class="bi bi-paperclip me-1"></i> Current File: <?= htmlspecialchars(substr($quotation['attachment'], 0, 15)) ?>...
                                                     </a>
                                                 </div>
                                             <?php endif; ?>
+
+                                            <div class="pt-2 border-top">
+                                                <label class="form-label fw-semibold mb-1 text-muted" style="font-size:11px;">
+                                                    <i class="bi bi-link-45deg text-info me-1"></i>Drive / PDF Link <small class="text-muted">(Optional)</small>
+                                                </label>
+                                                <input type="url" name="drive_link" id="quotDriveLinkInput"
+                                                       class="form-control form-control-sm"
+                                                       placeholder="https://drive.google.com/..."
+                                                       value="<?= htmlspecialchars($quotation['drive_link'] ?? '') ?>">
+                                                <div class="form-text text-muted" style="font-size:9.5px">
+                                                    Optional Google Drive, Dropbox or Web Link
+                                                </div>
+                                            </div>
                                         </td>
                                         <?php endif; ?>
                                         <td class="text-end fw-bold quot-row-total">0.00</td>
@@ -269,6 +293,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Run once on load to prefill totals in edit mode
     recalc();
+
+    // Dynamic attachment requirement logic
+    var fileInput = document.getElementById('quotAttachmentInput');
+    var linkInput = document.getElementById('quotDriveLinkInput');
+    if (fileInput && linkInput) {
+        function checkAttachmentReq() {
+            var hasLink = linkInput.value.trim().length > 0;
+            if (hasLink) {
+                fileInput.removeAttribute('required');
+            } else {
+                <?php if (empty($isEdit) || empty($quotation['attachment'])): ?>
+                fileInput.setAttribute('required', 'required');
+                <?php endif; ?>
+            }
+        }
+        linkInput.addEventListener('input', checkAttachmentReq);
+        checkAttachmentReq();
+    }
 
     // Delete confirmation handler
     document.querySelectorAll('.delete-quot-btn').forEach(function (btn) {

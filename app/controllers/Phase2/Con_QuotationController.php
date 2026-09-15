@@ -68,8 +68,16 @@ class Con_QuotationController extends Controller
 
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        // ── Handle attachment upload ──────────────────────────────────
+        // ── Handle attachment upload & drive link ──────────────────────
         $attachmentFile = uploadFile('attachment', 'vendor_quotation');
+        $driveLink = trim($_POST['drive_link'] ?? ($_POST['extra_link'] ?? ''));
+
+        // Validation: attachment is required (either file or drive link)
+        if (empty($attachmentFile) && empty($driveLink)) {
+            setError('Quotation attachment is required. Please upload a file (Image/PDF) or provide a drive link.');
+            header("Location: {$GLOBALS['base_url']}/con-quotation-create/" . (int)($_POST['request_id'] ?? 0));
+            exit;
+        }
 
         $data = [
             'request_id'    => (int)($_POST['request_id'] ?? 0),
@@ -77,6 +85,7 @@ class Con_QuotationController extends Controller
             'validity_date' => $_POST['validity_date'] ?? null,
             'status'        => 'Active',
             'attachment'    => $attachmentFile, // null if no file uploaded
+            'drive_link'    => !empty($driveLink) ? $driveLink : null,
             'created_by'    => (int)($_SESSION['user']['id'] ?? 0),
         ];
 
@@ -302,18 +311,22 @@ class Con_QuotationController extends Controller
             }
         }
 
-        // Handle attachment upload if any
+        // Handle attachment upload if any & drive link
         $attachmentFile = uploadFile('attachment', 'vendor_quotation');
+        $driveLink = isset($_POST['drive_link']) ? trim($_POST['drive_link']) : (isset($_POST['extra_link']) ? trim($_POST['extra_link']) : null);
 
         $data = [
             'validity_date' => $_POST['validity_date'] ?? null,
-            'attachment'    => $attachmentFile, // null if no file uploaded
+            'attachment'    => !empty($attachmentFile) ? $attachmentFile : ($quotation['attachment'] ?? null),
+            'drive_link'    => ($driveLink !== null) ? (!empty($driveLink) ? $driveLink : null) : ($quotation['drive_link'] ?? null),
             'created_by'    => (int)($_SESSION['user']['id'] ?? 0),
         ];
 
-        // If no new attachment, keep the old one
-        if (empty($attachmentFile)) {
-            $data['attachment'] = $quotation['attachment'];
+        // Validation: at least one of file attachment or drive link must be present
+        if (empty($data['attachment']) && empty($data['drive_link'])) {
+            setError('Quotation attachment is required. Please upload a file (Image/PDF) or provide a drive link.');
+            header("Location: {$GLOBALS['base_url']}/con-quotation-edit/{$quotationId}");
+            exit;
         }
 
         $materialIds = $_POST['material_id'] ?? [];

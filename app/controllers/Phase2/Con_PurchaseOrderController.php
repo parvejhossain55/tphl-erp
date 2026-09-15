@@ -201,7 +201,7 @@ class Con_PurchaseOrderController extends Controller
         $vendorSelectionData = null;
         if (!empty($po['request_id']) && !empty($po['vendor_id'])) {
             $cstQuery = $this->db->prepare("
-                SELECT q.attachment, qc.prepared_by, u.full_name AS selector_name
+                SELECT q.attachment, q.drive_link, qc.prepared_by, u.full_name AS selector_name
                 FROM quotations q
                 LEFT JOIN quotation_comparisons qc ON qc.request_id = q.request_id
                 LEFT JOIN users u ON u.id = qc.prepared_by
@@ -272,6 +272,71 @@ class Con_PurchaseOrderController extends Controller
         }
         $poDueBalance = max(0, $poTotalValue - $poTotalPaid);
 
+        // Fetch Selected Vendor Full Details
+        $selectedVendor = null;
+        if (!empty($po['vendor_id'])) {
+            $vStmt = $this->db->prepare("SELECT id, name, phone, email, address, company_name FROM vendors WHERE id = ?");
+            if ($vStmt) {
+                $vStmt->bind_param('i', $po['vendor_id']);
+                $vStmt->execute();
+                $selectedVendor = $vStmt->get_result()->fetch_assoc();
+            }
+        }
+
+        // Fetch All Quotations & CST data for this PR
+        $quotationsList = [];
+        $cstInfo        = null;
+        $prAttachment   = null;
+
+        if (!empty($po['request_id'])) {
+            $prId = (int)$po['request_id'];
+
+            // Fetch PR attachment
+            $prStmt = $this->db->prepare("SELECT id, attachment FROM purchase_requests WHERE id = ?");
+            if ($prStmt) {
+                $prStmt->bind_param('i', $prId);
+                $prStmt->execute();
+                $prRow = $prStmt->get_result()->fetch_assoc();
+                $prAttachment = $prRow['attachment'] ?? null;
+            }
+
+            // Fetch CST Comparison Header
+            $cstStmt = $this->db->prepare("
+                SELECT qc.*, u.full_name AS prepared_by_name 
+                FROM quotation_comparisons qc 
+                LEFT JOIN users u ON u.id = qc.prepared_by 
+                WHERE qc.request_id = ?
+                LIMIT 1
+            ");
+            if ($cstStmt) {
+                $cstStmt->bind_param('i', $prId);
+                $cstStmt->execute();
+                $cstInfo = $cstStmt->get_result()->fetch_assoc();
+            }
+
+            // Fetch all Quotations for this PR with full vendor info & attachments
+            $qStmt = $this->db->prepare("
+                SELECT q.*, 
+                       v.name AS vendor_name, 
+                       v.phone AS vendor_phone, 
+                       v.email AS vendor_email, 
+                       v.address AS vendor_address, 
+                       v.company_name AS vendor_company_name,
+                       u.full_name AS quoted_by_name,
+                       (SELECT SUM(qi.quantity * qi.unit_price) FROM quotation_items qi WHERE qi.quotation_id = q.id) AS total_quoted_amount
+                FROM quotations q 
+                LEFT JOIN vendors v ON v.id = q.vendor_id 
+                LEFT JOIN users u ON u.id = q.created_by
+                WHERE q.request_id = ?
+                ORDER BY q.id ASC
+            ");
+            if ($qStmt) {
+                $qStmt->bind_param('i', $prId);
+                $qStmt->execute();
+                $quotationsList = $qStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            }
+        }
+
         $this->view('phase2/purchase-orders/show-purchase-order', [
             'current_route'       => 'con-purchase-orders',
             'page_title'          => 'Purchase Order #' . $id,
@@ -299,6 +364,10 @@ class Con_PurchaseOrderController extends Controller
             'poTotalValue'        => $poTotalValue,
             'poTotalPaid'         => $poTotalPaid,
             'poDueBalance'        => $poDueBalance,
+            'selectedVendor'      => $selectedVendor,
+            'quotationsList'      => $quotationsList,
+            'cstInfo'             => $cstInfo,
+            'prAttachment'        => $prAttachment,
         ]);
     }
 

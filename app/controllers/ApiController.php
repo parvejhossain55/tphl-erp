@@ -102,16 +102,22 @@ class ApiController extends Controller
             exit;
         }
 
+        $projectId = isset($_REQUEST['project_id']) && is_numeric($_REQUEST['project_id']) ? (int)$_REQUEST['project_id'] : null;
         $projectName = $_REQUEST['project_name'] ?? null;
         
-        if (!$projectName) {
-            echo json_encode(["success" => false, "message" => "Missing project_name parameter"]);
+        if (!$projectId && !$projectName) {
+            echo json_encode(["success" => false, "message" => "Missing project_name or project_id parameter"]);
             exit;
         }
 
-        // Find Project ID
-        $stmt = $this->db->prepare("SELECT id, name FROM projects WHERE name = ? LIMIT 1");
-        $stmt->bind_param("s", $projectName);
+        // Find Project
+        if ($projectId) {
+            $stmt = $this->db->prepare("SELECT id, name FROM projects WHERE id = ? LIMIT 1");
+            $stmt->bind_param("i", $projectId);
+        } else {
+            $stmt = $this->db->prepare("SELECT id, name FROM projects WHERE name = ? LIMIT 1");
+            $stmt->bind_param("s", $projectName);
+        }
         $stmt->execute();
         $res = $stmt->get_result()->fetch_assoc();
 
