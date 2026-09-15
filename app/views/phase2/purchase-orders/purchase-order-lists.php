@@ -1,6 +1,6 @@
-<div class="pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <div class="mb-4">
-        <h4><?= htmlspecialchars($page_title) ?></h4>
+<div class="pagetitle d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+        <h4 class="mb-0 fw-semibold"><?= htmlspecialchars($page_title) ?></h4>
         <nav>
             <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
@@ -8,7 +8,7 @@
             </ol>
         </nav>
     </div>
-    <div class="mb-4 d-flex gap-2 align-items-center">
+    <div class="d-flex gap-2 align-items-center">
         <?php if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])): ?>
         <a href="<?= $base_url ?>/con-material-receiving-import"
            class="btn btn-success btn-sm fw-bold">
@@ -27,34 +27,16 @@
 .payment-requested-row:hover {
     background-color: #dff2e6 !important;
 }
-.card__header .select2-container .select2-selection--single {
-    height: 31px !important;
-    padding: 2px 6px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    border-color: #dee2e6;
-    display: flex;
-    align-items: center;
-}
-.card__header .select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: 29px !important;
-}
-.card__header .select2-container--default .select2-selection--single .select2-selection__rendered {
-    line-height: 27px !important;
-    padding-left: 2px;
-}
 </style>
 
-    <div class="card__wrapper shadow-sm">
-        <div class="card__header d-flex justify-content-between align-items-center bg-white p-3 border-bottom">
-            <h6 class="mb-0 d-flex align-items-center flex-wrap gap-2">
-                <span><i class="fa-solid fa-filter me-2 text-primary"></i>Filter Orders</span>
-                <span class="badge bg-success bg-opacity-10  border border-success border-opacity-25 fw-semibold" style="font-size:11px;">
-                    <i class="fa-solid fa-square me-1" style="color:#28a745"></i> Light Green = Payment Requested
-                </span>
-            </h6>
-            <form method="GET" class="d-flex gap-2 mb-0 flex-wrap align-items-center">
-                <select name="project_id" class="form-select form-select-sm fw-semibold" onchange="this.form.submit()" style="width: 190px; border-color: #dee2e6;">
+<!-- Filter Card Wrapper (Matching flat-lists & fund-requisitions) -->
+<div class="card__wrapper mb-3">
+    <form method="GET" action="<?= $base_url ?>/con-purchase-orders">
+        <!-- Row 1: Filter inputs -->
+        <div class="row g-2 align-items-center mb-2">
+            <!-- Project Filter -->
+            <div class="col-xl-3 col-md-3 col-sm-6">
+                <select name="project_id" class="form-control form-control-sm select2" onchange="this.form.submit()">
                     <option value="">All Projects</option>
                     <?php if (!empty($projects)): ?>
                         <?php foreach ($projects as $proj): ?>
@@ -64,53 +46,77 @@
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </select>
+            </div>
 
-                <div style="min-width: 210px;">
-                    <select name="category_id" id="category_filter" class="form-select form-select-sm fw-semibold select2-no-scroll" onchange="this.form.submit()" data-placeholder="All Material Categories" style="width: 100%;">
-                        <option value="">All Material Categories</option>
-                        <?php if (!empty($categories)): ?>
-                            <?php foreach ($categories as $cat): ?>
-                                <option value="<?= $cat['id'] ?>" <?= (string)($currentCategoryId ?? '') === (string)$cat['id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($cat['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </select>
-                </div>
+            <!-- Material Category Filter -->
+            <div class="col-xl-3 col-md-3 col-sm-6">
+                <select name="category_id" id="category_filter" class="form-control form-control-sm select2" data-placeholder="All Material Categories">
+                    <option value="">All Material Categories</option>
+                    <?php if (!empty($categories)): ?>
+                        <?php foreach ($categories as $cat): ?>
+                            <option value="<?= $cat['id'] ?>" <?= (string)($currentCategoryId ?? '') === (string)$cat['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($cat['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
+            </div>
 
-                <select name="payment_filter" class="form-select form-select-sm fw-semibold" onchange="this.form.submit()" style="width: 190px; border-color: #dee2e6;">
+            <!-- Payment Filter -->
+            <div class="col-xl-2 col-md-3 col-sm-6">
+                <select name="payment_filter" class="form-control form-control-sm" onchange="this.form.submit()">
                     <option value="all" <?= ($paymentFilter ?? 'all') === 'all' ? 'selected' : '' ?>>All Payment Status</option>
                     <option value="unrequested" <?= ($paymentFilter ?? '') === 'unrequested' ? 'selected' : '' ?>>Payment Not Requested</option>
                     <option value="requested" <?= ($paymentFilter ?? '') === 'requested' ? 'selected' : '' ?>>Payment Requested</option>
                     <option value="paid" <?= ($paymentFilter ?? '') === 'paid' ? 'selected' : '' ?>>Payment Completed</option>
                 </select>
+            </div>
 
-                <select name="filter" class="form-select form-select-sm fw-semibold" onchange="this.form.submit()" style="width: 180px; border-color: #dee2e6;">
+            <!-- Approval Status Filter -->
+            <div class="col-xl-2 col-md-3 col-sm-6">
+                <select name="filter" class="form-control form-control-sm" onchange="this.form.submit()">
                     <option value="pending_my_approval" <?= ($currentFilter ?? '') === 'pending_my_approval' ? 'selected' : '' ?>>Pending My Approval</option>
                     <option value="pending_approval" <?= ($currentFilter ?? '') === 'pending_approval' ? 'selected' : '' ?>>Pending Any Approval</option>
                     <option value="my_approved" <?= ($currentFilter ?? '') === 'my_approved' ? 'selected' : '' ?>>Approved By Me</option>
                     <option value="all" <?= ($currentFilter ?? '') === 'all' ? 'selected' : '' ?>>All Orders</option>
                 </select>
+            </div>
 
-                <button type="submit" class="btn btn-sm btn-primary d-flex align-items-center" style="padding: 4px 12px; font-weight: 600;" title="Apply Filters">
-                    <i class="fa-solid fa-magnifying-glass me-1"></i>Filter
-                </button>
-
-                <?php
-                $hasActiveFilters = (!empty($currentProjectId) || !empty($currentCategoryId) || (($paymentFilter ?? 'all') !== 'all') || (($currentFilter ?? '') !== ($isApproverRole ? 'pending_my_approval' : 'all')));
-                ?>
-                <?php if ($hasActiveFilters): ?>
-                    <a href="<?= $base_url ?>/con-purchase-orders" class="btn btn-sm btn-outline-secondary d-flex align-items-center" style="padding: 4px 10px;" title="Reset all filters">
-                        <i class="fa-solid fa-rotate-left me-1"></i>Reset
+            <!-- Filter + Reset Buttons -->
+            <div class="col-xl-2 col-md-12 col-sm-6">
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-secondary btn-sm flex-fill">
+                        <i class="fa-solid fa-filter me-1"></i> Filter
+                    </button>
+                    <a href="<?= $base_url ?>/con-purchase-orders" class="btn btn-success btn-sm flex-fill text-center">
+                        <i class="fa-solid fa-rotate-right me-1"></i> Reset
                     </a>
-                <?php endif; ?>
-            </form>
+                </div>
+            </div>
         </div>
-        <div class="card__body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover table-striped custom-table mb-0 multiple-table">
-                    <thead class="table-light">
-                        <tr>
+
+        <!-- Row 2: Status Legend -->
+        <div class="row mt-2 align-items-center">
+            <div class="col-12">
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                    <span class="badge bg-success bg-opacity-10  border border-success border-opacity-25 fw-semibold" style="font-size:11px;">
+                        <i class="fa-solid fa-square me-1" style="color:#28a745"></i> Light Green = Payment Requested
+                    </span>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Table Card Wrapper (Matching flat-lists & fund-requisitions) -->
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card__wrapper">
+            <div class="table__wrapper table-responsive">
+                <table class="table mb-20" id="purchaseOrdersTable">
+                    <thead>
+                        <tr class="table__title">
+                            <th style="width:40px" class="text-center">#</th>
                             <th>PO #</th>
                             <th>Project</th>
                             <th class="text-end">Total Amount</th>
@@ -119,14 +125,15 @@
                             <th class="text-center">Vendor Payment</th>
                             <th>Order Date</th>
                             <th>Created By</th>
-                            <th class="text-center">Actions</th>
+                            <th class="text-center no-print" style="width:90px">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="table__body">
                         <?php if (!empty($orders)): ?>
-                            <?php foreach ($orders as $po): ?>
+                            <?php foreach ($orders as $index => $po): ?>
                             <?php $hasPaymentReq = !empty($po['vpr_id']); ?>
                             <tr class="<?= $hasPaymentReq ? 'payment-requested-row' : '' ?>">
+                                <td class="text-center fw-bold text-muted"><?= $index + 1 ?></td>
                                 <td><span class="fw-bold text-primary">PO-<?= $po['id'] ?></span></td>
                                 <td class="fw-bold">
                                     <?= htmlspecialchars($po['project_name']) ?>
@@ -148,18 +155,18 @@
                                         </div>
                                     <?php endif; ?>
                                 </td>
-                                <td class="text-end">৳ <?= number_format($po['total_amount'] ?? 0, 2) ?></td>
+                                <td class="text-end fw-semibold">৳ <?= number_format($po['total_amount'] ?? 0, 2) ?></td>
                                 <td>
                                      <?php
                                      $badge = match($po['status']) {
-                                         'Issued'             => 'bg-info',
+                                         'Issued'                 => 'bg-info',
                                          'Purchase Head Approved' => 'bg-warning text-dark',
-                                         'QC Approved'        => 'bg-primary',
-                                         'Approved'           => 'bg-success',
-                                         'Partially Received' => 'bg-warning text-dark',
-                                         'Fully Received'     => 'bg-success',
-                                         'Cancelled'          => 'bg-danger',
-                                         default              => 'bg-secondary',
+                                         'QC Approved'            => 'bg-primary',
+                                         'Approved'               => 'bg-success',
+                                         'Partially Received'     => 'bg-warning text-dark',
+                                         'Fully Received'         => 'bg-success',
+                                         'Cancelled'              => 'bg-danger',
+                                         default                  => 'bg-secondary',
                                      };
                                      ?>
                                      <span class="badge <?= $badge ?>"><?= $po['status'] ?></span>
@@ -292,8 +299,8 @@
                                 </td>
                                 <td class="text-muted small"><?= date('d M Y', strtotime($po['order_date'])) ?></td>
                                 <td><?= htmlspecialchars($po['created_by_name'] ?? '—') ?></td>
-                                <td class="text-center">
-                                    <div class="d-flex justify-content-center gap-1">
+                                <td class="text-center no-print">
+                                    <div class="d-flex justify-content-center gap-1 flex-wrap">
                                         <a href="<?= $base_url ?>/con-purchase-order/<?= $po['id'] ?>"
                                            class="btn btn-sm btn-outline-info" title="View PO">
                                             <i class="bi bi-eye"></i>
@@ -308,26 +315,58 @@
                                 </td>
                             </tr>
                             <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="9" class="text-center py-4 text-muted">
-                                    <i class="bi bi-clipboard-x me-2"></i>No purchase orders yet.
-                                    POs are auto-generated from approved CST comparisons.
-                                </td>
-                            </tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
+</div>
 
 <script>
-window.addEventListener('load', function () {
+document.addEventListener('DOMContentLoaded', function () {
     if (typeof jQuery !== 'undefined') {
+        // Material category select change triggers filter
         $('#category_filter').on('change select2:select select2:clear', function () {
             $(this).closest('form').submit();
         });
+
+        // Initialize DataTable with default 50 entries and 'All' option
+        if (typeof jQuery.fn.DataTable !== 'undefined') {
+            jQuery('#purchaseOrdersTable').DataTable({
+                destroy: true,
+                responsive: true,
+                pageLength: 50,
+                lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+                order: [], // Preserve controller's ranking & SQL order
+                columnDefs: [
+                    { orderable: false, searchable: false, targets: 0 },  // # serial column
+                    { orderable: false, searchable: false, targets: -1 } // Actions column
+                ],
+                language: {
+                    search: "_INPUT_",
+                    searchPlaceholder: "Quick filter in table...",
+                    lengthMenu: "Show _MENU_ entries",
+                    info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                    infoEmpty: "Showing 0 to 0 of 0 entries",
+                    infoFiltered: "(filtered from _MAX_ total entries)",
+                    emptyTable: "No purchase orders found.",
+                    paginate: {
+                        first: '<i class="fa-solid fa-angles-left"></i>',
+                        previous: '<i class="fa-solid fa-angle-left"></i>',
+                        next: '<i class="fa-solid fa-angle-right"></i>',
+                        last: '<i class="fa-solid fa-angles-right"></i>'
+                    }
+                },
+                drawCallback: function(settings) {
+                    var api = this.api();
+                    var startIndex = api.context[0]._iDisplayStart;
+                    api.column(0, {search:'applied', order:'applied'}).nodes().each(function(cell, i) {
+                        cell.innerHTML = startIndex + i + 1;
+                    });
+                }
+            });
+        }
     }
 });
 </script>

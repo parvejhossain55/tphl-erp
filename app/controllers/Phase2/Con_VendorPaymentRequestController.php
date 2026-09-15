@@ -578,6 +578,92 @@ class Con_VendorPaymentRequestController extends Controller
             }
         }
 
+        // Fetch Selected Vendor Full Details
+        $selectedVendor = null;
+        if (!empty($request['vendor_id'])) {
+            $vStmt = $this->db->prepare("SELECT id, name, phone, email, address, company_name FROM vendors WHERE id = ?");
+            if ($vStmt) {
+                $vStmt->bind_param('i', $request['vendor_id']);
+                $vStmt->execute();
+                $selectedVendor = $vStmt->get_result()->fetch_assoc();
+            }
+        }
+
+        // Fetch CST & Quotation data linked via PO -> PR
+        $cstInfo        = null;
+        $cstMatrix      = null;
+        $cstQuotations  = [];
+        $prAttachment   = null;
+        $poDetails      = null;
+
+        if (!empty($request['purchase_order_id'])) {
+            $poId = (int)$request['purchase_order_id'];
+            $poStmt = $this->db->prepare("SELECT * FROM purchase_orders WHERE id = ?");
+            if ($poStmt) {
+                $poStmt->bind_param('i', $poId);
+                $poStmt->execute();
+                $poDetails = $poStmt->get_result()->fetch_assoc();
+            }
+
+            if ($poDetails && !empty($poDetails['request_id'])) {
+                $prId = (int)$poDetails['request_id'];
+
+                // 1. Fetch PR Attachment
+                $prStmt = $this->db->prepare("SELECT id, attachment FROM purchase_requests WHERE id = ?");
+                if ($prStmt) {
+                    $prStmt->bind_param('i', $prId);
+                    $prStmt->execute();
+                    $prRow = $prStmt->get_result()->fetch_assoc();
+                    $prAttachment = $prRow['attachment'] ?? null;
+                }
+
+                // 2. Fetch CST Comparison Header
+                $cstStmt = $this->db->prepare("
+                    SELECT qc.*, u.full_name AS prepared_by_name 
+                    FROM quotation_comparisons qc 
+                    LEFT JOIN users u ON u.id = qc.prepared_by 
+                    WHERE qc.request_id = ?
+                    LIMIT 1
+                ");
+                if ($cstStmt) {
+                    $cstStmt->bind_param('i', $prId);
+                    $cstStmt->execute();
+                    $cstInfo = $cstStmt->get_result()->fetch_assoc();
+                }
+
+                // 3. Fetch all Quotations for this PR with full vendor info & attachments
+                $qStmt = $this->db->prepare("
+                    SELECT q.*, 
+                           v.name AS vendor_name, 
+                           v.phone AS vendor_phone, 
+                           v.email AS vendor_email, 
+                           v.address AS vendor_address, 
+                           v.company_name AS vendor_company_name,
+                           u.full_name AS quoted_by_name,
+                           (SELECT SUM(qi.quantity * qi.unit_price) FROM quotation_items qi WHERE qi.quotation_id = q.id) AS total_quoted_amount
+                    FROM quotations q 
+                    LEFT JOIN vendors v ON v.id = q.vendor_id 
+                    LEFT JOIN users u ON u.id = q.created_by
+                    WHERE q.request_id = ?
+                    ORDER BY q.id ASC
+                ");
+                if ($qStmt) {
+                    $qStmt->bind_param('i', $prId);
+                    $qStmt->execute();
+                    $cstQuotations = $qStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                }
+
+                // 4. Fetch CST Matrix
+                try {
+                    require_once dirname(dirname(__DIR__)) . '/models/Con_Quotation.php';
+                    $quotModel = new \Con_Quotation($this->db);
+                    $cstMatrix = $quotModel->buildComparison($prId);
+                } catch (\Throwable $e) {
+                    error_log("Error building CST comparison matrix for VPR {$id}: " . $e->getMessage());
+                }
+            }
+        }
+
         $this->view('phase2/vendor-payment-requests/show-payment', [
             'current_route'     => 'con-vendor-payment-requests',
             'page_title'        => 'Payment Request Details',
@@ -599,6 +685,12 @@ class Con_VendorPaymentRequestController extends Controller
             'poStocks'          => $poStocks,
             'adjustments'       => $adjustments,
             'material_logs'     => $materialLogs,
+            'selectedVendor'    => $selectedVendor,
+            'cstInfo'           => $cstInfo,
+            'cstMatrix'         => $cstMatrix,
+            'cstQuotations'     => $cstQuotations,
+            'prAttachment'      => $prAttachment,
+            'poDetails'         => $poDetails,
         ]);
     }
 

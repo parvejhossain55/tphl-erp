@@ -1,8 +1,9 @@
 <?php
 /**
  * Con_Quotation Model
- * Tables: quotations, quotation_items, quotation_comparisons, comparison_items
  */
+require_once __DIR__ . '/Con_PurchaseRequest.php';
+
 class Con_Quotation extends Model
 {
     protected $table     = 'quotations';
@@ -23,6 +24,10 @@ class Con_Quotation extends Model
                 if (stripos($col['Type'], 'int') !== false) {
                     $this->db->query("ALTER TABLE {$this->table} MODIFY COLUMN attachment VARCHAR(255) NULL DEFAULT NULL");
                 }
+            }
+            $linkRes = $this->db->query("SHOW COLUMNS FROM {$this->table} LIKE 'drive_link'");
+            if ($linkRes && $linkRes->num_rows === 0) {
+                $this->db->query("ALTER TABLE {$this->table} ADD COLUMN drive_link TEXT NULL AFTER attachment");
             }
         } catch (\Throwable $e) {
             // Silently ignore if already modified or DDL restricted
@@ -99,16 +104,18 @@ class Con_Quotation extends Model
         try {
             // ── Insert quotation header ──────────────────────────────────────
             $stmt = $this->db->prepare(
-                "INSERT INTO {$this->table} (request_id, vendor_id, validity_date, attachment, created_by)
-                 VALUES (?, ?, ?, ?, ?)"
+                "INSERT INTO {$this->table} (request_id, vendor_id, validity_date, attachment, drive_link, created_by)
+                 VALUES (?, ?, ?, ?, ?, ?)"
             );
             if (!$stmt) throw new \RuntimeException('Quotation header prepare failed: ' . $this->db->error);
 
-            $stmt->bind_param('iissi',
+            $driveLinkVal = !empty($data['drive_link']) ? $data['drive_link'] : null;
+            $stmt->bind_param('iisssi',
                 $data['request_id'],
                 $data['vendor_id'],
                 $data['validity_date'],
                 $data['attachment'],
+                $driveLinkVal,
                 $data['created_by']
             );
             if (!$stmt->execute()) throw new \RuntimeException('Quotation header execute failed: ' . $stmt->error);
@@ -277,14 +284,16 @@ class Con_Quotation extends Model
             // Update quotation header
             $stmt = $this->db->prepare(
                 "UPDATE {$this->table}
-                 SET validity_date = ?, attachment = ?, created_by = ?
+                 SET validity_date = ?, attachment = ?, drive_link = ?, created_by = ?
                  WHERE id = ?"
             );
             if (!$stmt) throw new \RuntimeException('Quotation header update prepare failed: ' . $this->db->error);
 
-            $stmt->bind_param('ssii',
+            $driveLinkVal = !empty($data['drive_link']) ? $data['drive_link'] : null;
+            $stmt->bind_param('sssii',
                 $data['validity_date'],
                 $data['attachment'],
+                $driveLinkVal,
                 $data['created_by'],
                 $quotationId
             );

@@ -434,7 +434,7 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
                                         <?php endif; ?>
                                     </p>
                                     <?php 
-                                    $canApproveDept = ($sessionUserId == ($req['requester_reporting_boss_id'] ?? 0) || in_array($sessionRoleId, [1, 3]));
+                                    $canApproveDept = ($sessionUserId == ($req['requester_reporting_boss_id'] ?? 0) || (!empty($req['department_id']) && in_array((int)$req['department_id'], $deptHeadDeptIds ?? [], true)) || in_array($sessionRoleId, [1, 3, 33]));
                                     if ($req['status'] === 'pending_dept' && $canApproveDept): 
                                     ?>
                                         <button class="btn btn-sm btn-warning text-dark mt-2 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#deptApproveModal">
@@ -456,7 +456,7 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
                                     <p class="fs-12 text-muted mb-0 mt-1">
                                         Awaiting approval from QC & Internal Audit Head (Role 24).
                                     </p>
-                                    <?php if (in_array($sessionRoleId, [24, 1, 3])): ?>
+                                    <?php if (in_array($sessionRoleId, [13, 24, 25, 1, 3])): ?>
                                         <button class="btn btn-sm btn-info text-white mt-2 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#qcApproveModal">
                                             <i class="fa-solid fa-stamp me-1"></i> QC Head Approve / Reject
                                         </button>

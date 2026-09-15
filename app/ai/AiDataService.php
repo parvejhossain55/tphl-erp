@@ -3,108 +3,636 @@
 class AiDataService
 {
     /**
-     * Gets project expense details grouped by category.
+     * Categorizes an expense item intelligently based on original category, item name, and source module.
+     */
+    private static function categorizeProjectExpense(string $originalCategory, string $itemName, string $sourceModule): string
+    {
+        $itemLower = strtolower(trim($itemName));
+        $catLower = strtolower(trim($originalCategory));
+
+        // 1. Contractor & Civil Works (both legacy contractor PO items and modern contractor bills)
+        if ($sourceModule === 'contractor_bill' || strpos($itemLower, 'contractor') !== false || strpos($itemLower, 'contracter') !== false) {
+            return 'Contractor & Civil Works';
+        }
+
+        // 2. Labor & Daily Wages (SE labor requisitions or legacy labor items)
+        if ($sourceModule === 'labor_bill' || strpos($itemLower, 'labor') !== false || strpos($itemLower, 'labour') !== false) {
+            return 'Site Labor & Daily Wages';
+        }
+
+        // 3. Utility Bills (Electricity, Internet, Wifi, Water, Site Running)
+        if (strpos($itemLower, 'electric') !== false || strpos($itemLower, 'current') !== false || 
+            strpos($itemLower, 'internet') !== false || strpos($itemLower, 'wifi') !== false || 
+            $catLower === 'utility bill' || strpos($itemLower, 'utility') !== false) {
+            return 'Utility Bill (Electricity, Internet & Site Running)';
+        }
+
+        // 4. Site Cashouts & Petty Cash
+        if ($sourceModule === 'cashout') {
+            return 'Site Cashout & Petty Cash';
+        }
+
+        // 5. Expense Adjustments & Settlements
+        if ($sourceModule === 'expense_adjustment') {
+            return 'Expense Adjustments & Settlements';
+        }
+
+        // 6. Project Other Costs (Site Overhead & Miscellaneous)
+        if ($sourceModule === 'project_other_cost') {
+            return 'Project Other Costs & Miscellaneous';
+        }
+
+        // 7. Normalize Standard Material Categories
+        if (!empty($originalCategory) && $originalCategory !== 'Uncategorized') {
+            if (strcasecmp($originalCategory, 'shutter') === 0) {
+                return 'Shuttering Material';
+            }
+            return $originalCategory;
+        }
+
+        return 'Others (Site Development & Construction Cost)';
+    }
+
+    /**
+     * Gets project expense details grouped by category across all project expense modules:
+     * 1. Vendor Payments & Material Purchases
+     * 2. Contractor Bills
+     * 3. Labor Requisitions
+     * 4. Project Other Costs
+     * 5. Cashout Requests (Project Linked)
+     * 6. Expense Adjustments (Project Linked Settlements)
      */
     public static function getProjectExpenseDetails(\mysqli $db, int $projectId): array
     {
-        $sql = "
-            SELECT 
-                COALESCE(c.name, 'Uncategorized') as category_name,
-                m.name as expense_name,
-                v.name as vendor_name,
-                poi.quantity as qty,
-                m.unit,
-                poi.unit_price,
-                (poi.quantity * poi.unit_price) as total_amount,
-                COALESCE(ft.transaction_date_str, DATE(po.created_at)) as payment_date
-            FROM purchase_order_items poi
-            JOIN purchase_orders po ON poi.purchase_order_id = po.id
-            JOIN purchase_requests pr ON po.request_id = pr.id
-            JOIN con_materials m ON poi.material_id = m.id
-            LEFT JOIN con_material_categories c ON m.category_id = c.id
-            LEFT JOIN vendors v ON po.vendor_id = v.id
-            LEFT JOIN vendor_payment_requests vpr ON vpr.purchase_order_id = po.id
-            LEFT JOIN con_financial_transactions ft ON ft.ref_type = 'vendor_payment' AND ft.ref_id = vpr.id
-            WHERE pr.project_id = ?
-            ORDER BY payment_date DESC
-        ";
-
-        $stmt = $db->prepare($sql);
-        $stmt->bind_param("i", $projectId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
         $breakdown = [];
-        $totalExpense = 0;
+        $moduleTotals = [
+            'vendor_payments'     => 0.0,
+            'contractor_bills'    => 0.0,
+            'labor_bills'         => 0.0,
+            'project_other_costs' => 0.0,
+            'cashouts'            => 0.0,
+            'expense_adjustments' => 0.0
+        ];
+        $moduleDues = [
+            'vendor_payments'     => 0.0,
+            'contractor_bills'    => 0.0,
+            'labor_bills'         => 0.0,
+            'project_other_costs' => 0.0,
+            'cashouts'            => 0.0
+        ];
+        $totalExpense = 0.0;
+        $totalDue = 0.0;
 
-        while ($row = $result->fetch_assoc()) {
-            $cat = $row['category_name'];
-            if (!isset($breakdown[$cat])) {
-                $breakdown[$cat] = [];
-            }
-            
-            $breakdown[$cat][] = [
-                'expense_name' => $row['expense_name'],
-                'vendor_name' => $row['vendor_name'] ?? 'Unknown',
-                'qty' => (float)$row['qty'],
-                'unit' => $row['unit'],
-                'unit_price' => (float)$row['unit_price'],
-                'total_amount' => (float)$row['total_amount'],
-                'payment_date' => $row['payment_date']
-            ];
-            
-            $totalExpense += (float)$row['total_amount'];
-        }
+        // -------------------------------------------------------------
+        // 1. VENDOR PAYMENTS & MATERIAL PURCHASES (PO ITEMS - STRICT PAID)
+        // -------------------------------------------------------------
+        $vprSql = "
+            SELECT 
+                vpr.id as vpr_id,
+                vpr.purchase_order_id,
+                vpr.approved_amount,
+                vpr.invoice_amount,
+                vpr.due_amount,
+                vpr.status as vpr_status,
+                COALESCE(ft.transaction_date_str, DATE(vpr.created_at)) as payment_date,
+                COALESCE(v.name, 'Unknown') as vendor_name
+            FROM vendor_payment_requests vpr
+            LEFT JOIN vendors v ON vpr.vendor_id = v.id
+            LEFT JOIN con_financial_transactions ft ON ft.ref_type = 'vendor_payment' AND ft.ref_id = vpr.id
+            WHERE vpr.project_id = ?
+            ORDER BY payment_date DESC, vpr.id DESC
+        ";
+        $stmt = $db->prepare($vprSql);
+        if ($stmt) {
+            $stmt->bind_param("i", $projectId);
+            $stmt->execute();
+            $result = $stmt->get_result();
 
-        $formattedBreakdown = [];
-        foreach ($breakdown as $catName => $items) {
-            $formattedBreakdown[] = [
-                'category_name' => $catName,
-                'items' => $items
-            ];
-        }
+            while ($v = $result->fetch_assoc()) {
+                $st = $v['vpr_status'];
+                $app = (float)($v['approved_amount'] ?: $v['invoice_amount']);
+                $due = (float)($v['due_amount'] ?? 0);
+                $paid = 0.0;
 
-        $pStmt = $db->prepare("SELECT total_share, floor_wise_unit_meta FROM projects WHERE id = ?");
-        $pStmt->bind_param("i", $projectId);
-        $pStmt->execute();
-        $pResult = $pStmt->get_result()->fetch_assoc();
-        
-        $totalSqft = 0;
-        $totalShare = 0;
-        $costPerSqft = 0;
-        
-        if ($pResult) {
-            $totalShare = (float)$pResult['total_share'];
-            $meta = json_decode($pResult['floor_wise_unit_meta'] ?? '{}', true);
-            
-            $floorSqft = 0;
-            if (isset($meta['typical_floor']) && is_array($meta['typical_floor'])) {
-                foreach ($meta['typical_floor'] as $unit) {
-                    $sqftVal = $unit['sqft'] ?? $unit['size'] ?? 0;
-                    $floorSqft += (float)$sqftVal;
+                if (in_array($st, ['Paid', 'Fully_Paid'])) {
+                    $paid = $app;
+                } elseif ($st === 'Partially_Paid') {
+                    $paid = max(0.0, $app - $due);
+                    $moduleDues['vendor_payments'] += $due;
+                } elseif (in_array($st, ['Approved', 'QC Approved'])) {
+                    $moduleDues['vendor_payments'] += ($due > 0 ? $due : $app);
                 }
-            } else {
-                if (is_array($meta)) {
-                    foreach ($meta as $unit) {
-                        if (is_array($unit)) {
-                            $sqftVal = $unit['sqft'] ?? $unit['size'] ?? 0;
-                            $floorSqft += (float)$sqftVal;
+
+                if ($paid <= 0) {
+                    continue;
+                }
+
+                $moduleTotals['vendor_payments'] += $paid;
+                $totalExpense += $paid;
+
+                // Fetch PO items for item-level category breakdown
+                $poId = (int)$v['purchase_order_id'];
+                $itemsAdded = false;
+
+                if ($poId > 0) {
+                    $poiSql = "
+                        SELECT 
+                            poi.quantity as qty,
+                            poi.unit_price,
+                            (poi.quantity * poi.unit_price) as item_total,
+                            m.name as expense_name,
+                            COALESCE(m.unit, 'Unit') as unit,
+                            COALESCE(c.name, 'Uncategorized') as category_name
+                        FROM purchase_order_items poi
+                        JOIN con_materials m ON poi.material_id = m.id
+                        LEFT JOIN con_material_categories c ON m.category_id = c.id
+                        WHERE poi.purchase_order_id = ?
+                    ";
+                    $pStmt = $db->prepare($poiSql);
+                    if ($pStmt) {
+                        $pStmt->bind_param("i", $poId);
+                        $pStmt->execute();
+                        $poiRes = $pStmt->get_result();
+                        $poiRows = [];
+                        $poSum = 0.0;
+
+                        while ($pRow = $poiRes->fetch_assoc()) {
+                            $poiRows[] = $pRow;
+                            $poSum += (float)$pRow['item_total'];
+                        }
+                        $pStmt->close();
+
+                        if (!empty($poiRows) && $poSum > 0) {
+                            $ratio = $paid / $poSum;
+                            $runningSum = 0.0;
+                            $rowCount = count($poiRows);
+
+                            foreach ($poiRows as $idx => $pRow) {
+                                if ($idx === $rowCount - 1) {
+                                    $itemPaid = round($paid - $runningSum, 2);
+                                } else {
+                                    $itemPaid = round((float)$pRow['item_total'] * $ratio, 2);
+                                    $runningSum += $itemPaid;
+                                }
+
+                                if ($itemPaid <= 0) continue;
+
+                                $category = self::categorizeProjectExpense($pRow['category_name'], $pRow['expense_name'], 'vendor_payment');
+                                if (!isset($breakdown[$category])) {
+                                    $breakdown[$category] = [];
+                                }
+
+                                $breakdown[$category][] = [
+                                    'expense_name' => $pRow['expense_name'],
+                                    'vendor_name'  => $v['vendor_name'],
+                                    'qty'          => (float)$pRow['qty'],
+                                    'unit'         => $pRow['unit'],
+                                    'unit_price'   => (float)$pRow['unit_price'],
+                                    'total_amount' => $itemPaid,
+                                    'payment_date' => $v['payment_date'],
+                                    'source_module'=> 'vendor_payment'
+                                ];
+                                $itemsAdded = true;
+                            }
                         }
                     }
                 }
+
+                if (!$itemsAdded) {
+                    $category = 'Others (Site Development & Construction Cost)';
+                    if (!isset($breakdown[$category])) {
+                        $breakdown[$category] = [];
+                    }
+                    $breakdown[$category][] = [
+                        'expense_name' => 'Vendor Payment Request #' . $v['vpr_id'],
+                        'vendor_name'  => $v['vendor_name'],
+                        'qty'          => 1.0,
+                        'unit'         => 'Payment',
+                        'unit_price'   => $paid,
+                        'total_amount' => $paid,
+                        'payment_date' => $v['payment_date'],
+                        'source_module'=> 'vendor_payment'
+                    ];
+                }
             }
+            $stmt->close();
+        }
+
+        // -------------------------------------------------------------
+        // 2. CONTRACTOR BILLS (STRICT PAID)
+        // -------------------------------------------------------------
+        $cbSql = "
+            SELECT 
+                cbr.id,
+                COALESCE(c.name, 'Contractor') as contractor_name,
+                cbr.bill_type,
+                cbr.bill_date,
+                cbr.work_description,
+                cbr.bill_amount,
+                cbr.approved_amount,
+                cbr.due_amount,
+                cbr.status,
+                COALESCE(ft.transaction_date_str, cbr.bill_date, DATE(cbr.updated_at)) as payment_date
+            FROM contractor_bill_requests cbr
+            LEFT JOIN contractors c ON cbr.operator_id = c.id
+            LEFT JOIN con_financial_transactions ft ON ft.ref_type = 'contractor_bill' AND ft.ref_id = cbr.id
+            WHERE cbr.project_id = ?
+            ORDER BY payment_date DESC
+        ";
+        $stmt = $db->prepare($cbSql);
+        if ($stmt) {
+            $stmt->bind_param("i", $projectId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            while ($row = $result->fetch_assoc()) {
+                $st = strtolower($row['status']);
+                $approvedAmt = (float)($row['approved_amount'] ?: $row['bill_amount']);
+                $dueAmt = (float)($row['due_amount'] ?? 0);
+                $paidAmount = 0.0;
+
+                if (in_array($st, ['paid', 'fully_paid'])) {
+                    $paidAmount = $approvedAmt;
+                } elseif ($st === 'partially_paid') {
+                    $paidAmount = max(0.0, $approvedAmt - $dueAmt);
+                    $moduleDues['contractor_bills'] += $dueAmt;
+                } elseif ($st === 'approved') {
+                    $moduleDues['contractor_bills'] += ($dueAmt > 0 ? $dueAmt : $approvedAmt);
+                }
+
+                if ($paidAmount <= 0) continue;
+
+                $expName = (!empty($row['work_description'])) 
+                    ? trim($row['work_description']) . " (Bill Type: " . $row['bill_type'] . ")"
+                    : "Contractor Bill #" . $row['id'] . " (" . $row['bill_type'] . ")";
+
+                $category = self::categorizeProjectExpense('', $expName, 'contractor_bill');
+                if (!isset($breakdown[$category])) {
+                    $breakdown[$category] = [];
+                }
+
+                $breakdown[$category][] = [
+                    'expense_name' => $expName,
+                    'vendor_name'  => $row['contractor_name'],
+                    'qty'          => 1.0,
+                    'unit'         => 'Bill',
+                    'unit_price'   => $paidAmount,
+                    'total_amount' => $paidAmount,
+                    'payment_date' => $row['payment_date'],
+                    'source_module'=> 'contractor_bill'
+                ];
+
+                $totalExpense += $paidAmount;
+                $moduleTotals['contractor_bills'] += $paidAmount;
+            }
+            $stmt->close();
+        }
+
+        // -------------------------------------------------------------
+        // 3. LABOR REQUISITIONS (STRICT PAID)
+        // -------------------------------------------------------------
+        $lrSql = "
+            SELECT 
+                lr.id,
+                lr.requisition_no,
+                lr.labor_type,
+                lr.labor_count,
+                lr.working_days,
+                lr.per_labor_rate,
+                lr.total_amount,
+                lr.approved_amount,
+                lr.paid_amount,
+                lr.total_paid,
+                lr.purpose,
+                lr.status,
+                COALESCE(lr.payment_date, DATE(lr.labor_disbursed_at), DATE(lr.created_at)) as payment_date
+            FROM con_labor_requisitions lr
+            WHERE lr.project_id = ?
+            ORDER BY payment_date DESC
+        ";
+        $stmt = $db->prepare($lrSql);
+        if ($stmt) {
+            $stmt->bind_param("i", $projectId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            while ($row = $result->fetch_assoc()) {
+                $st = strtolower($row['status']);
+                $totalPaid = (float)($row['total_paid'] ?: $row['paid_amount']);
+                $app = (float)($row['approved_amount'] ?: $row['total_amount']);
+
+                if (in_array($st, ['management_approved', 'partially_paid'])) {
+                    $moduleDues['labor_bills'] += max(0.0, $app - $totalPaid);
+                }
+
+                if ($totalPaid <= 0) continue;
+
+                $expName = sprintf("[%s] %s Labor - %s", $row['requisition_no'], $row['labor_type'], $row['purpose'] ?: 'Site work');
+                $category = self::categorizeProjectExpense('', $expName, 'labor_bill');
+                if (!isset($breakdown[$category])) {
+                    $breakdown[$category] = [];
+                }
+
+                $breakdown[$category][] = [
+                    'expense_name' => $expName,
+                    'vendor_name'  => 'Site Labor (' . $row['labor_type'] . ')',
+                    'qty'          => (float)($row['labor_count'] ?: 1),
+                    'unit'         => 'Person(s)',
+                    'unit_price'   => (float)($row['per_labor_rate'] ?: $totalPaid),
+                    'total_amount' => $totalPaid,
+                    'payment_date' => $row['payment_date'],
+                    'source_module'=> 'labor_bill'
+                ];
+
+                $totalExpense += $totalPaid;
+                $moduleTotals['labor_bills'] += $totalPaid;
+            }
+            $stmt->close();
+        }
+
+        // -------------------------------------------------------------
+        // 4. PROJECT OTHER COSTS (STRICT PAID)
+        // -------------------------------------------------------------
+        $pocSql = "
+            SELECT 
+                poc.id,
+                poc.rcost_type,
+                poc.purpose,
+                poc.request_amount,
+                poc.approved_amount,
+                poc.payment_amount,
+                poc.status,
+                COALESCE(DATE(poc.payment_at), DATE(poc.created_at)) as payment_date
+            FROM project_other_costs poc
+            WHERE poc.project_id = ?
+            ORDER BY payment_date DESC
+        ";
+        $stmt = $db->prepare($pocSql);
+        if ($stmt) {
+            $stmt->bind_param("i", $projectId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            while ($row = $result->fetch_assoc()) {
+                $st = strtolower($row['status']);
+                $amt = (float)($row['payment_amount'] ?: ($row['approved_amount'] ?: $row['request_amount']));
+
+                if ($st === 'management_approved') {
+                    $moduleDues['project_other_costs'] += $amt;
+                }
+
+                if ($st !== 'paid' || $amt <= 0) continue;
+
+                $expName = sprintf("[%s] %s", ucwords(str_replace('_', ' ', $row['rcost_type'])), $row['purpose']);
+                $category = self::categorizeProjectExpense('', $expName, 'project_other_cost');
+                if (!isset($breakdown[$category])) {
+                    $breakdown[$category] = [];
+                }
+
+                $breakdown[$category][] = [
+                    'expense_name' => $expName,
+                    'vendor_name'  => 'Site Office / Miscellaneous',
+                    'qty'          => 1.0,
+                    'unit'         => 'Item',
+                    'unit_price'   => $amt,
+                    'total_amount' => $amt,
+                    'payment_date' => $row['payment_date'],
+                    'source_module'=> 'project_other_cost'
+                ];
+
+                $totalExpense += $amt;
+                $moduleTotals['project_other_costs'] += $amt;
+            }
+            $stmt->close();
+        }
+
+        // -------------------------------------------------------------
+        // 5. CASHOUT REQUESTS (PROJECT WISE CASHOUT ADVANCES - STRICT PAID)
+        // -------------------------------------------------------------
+        $coSql = "
+            SELECT 
+                co.id,
+                co.project_id,
+                co.office,
+                co.purpose_paid_to,
+                co.amount,
+                co.approved_amount,
+                co.due_amount,
+                co.description,
+                co.status,
+                DATE(co.created_at) as payment_date
+            FROM cashout_requests co
+            WHERE (co.project_id = ? OR co.project_id LIKE ?)
+            ORDER BY payment_date DESC
+        ";
+        $stmt = $db->prepare($coSql);
+        if ($stmt) {
+            $likePid = "%," . $projectId . ",%";
+            $stmt->bind_param("is", $projectId, $likePid);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            while ($row = $result->fetch_assoc()) {
+                $st = strtolower($row['status']);
+                $approvedAmt = (float)($row['approved_amount'] ?: $row['amount']);
+                $dueAmt = (float)($row['due_amount'] ?? 0);
+                $paidAmount = 0.0;
+
+                if (in_array($st, ['paid', 'fully_paid'])) {
+                    $paidAmount = $approvedAmt;
+                } elseif ($st === 'partially_paid') {
+                    $paidAmount = max(0.0, $approvedAmt - $dueAmt);
+                    $moduleDues['cashouts'] += $dueAmt;
+                } elseif ($st === 'approved') {
+                    $moduleDues['cashouts'] += ($dueAmt > 0 ? $dueAmt : $approvedAmt);
+                }
+
+                if ($paidAmount <= 0) continue;
+
+                $expName = sprintf("Cashout #%d: %s (%s)", $row['id'], $row['purpose_paid_to'], $row['description'] ?: 'Site Expense Advance');
+                $category = self::categorizeProjectExpense('', $expName, 'cashout');
+                if (!isset($breakdown[$category])) {
+                    $breakdown[$category] = [];
+                }
+
+                $breakdown[$category][] = [
+                    'expense_name' => $expName,
+                    'vendor_name'  => $row['purpose_paid_to'] ?: 'Site Cash Advance',
+                    'qty'          => 1.0,
+                    'unit'         => 'Advance',
+                    'unit_price'   => $paidAmount,
+                    'total_amount' => $paidAmount,
+                    'payment_date' => $row['payment_date'],
+                    'source_module'=> 'cashout'
+                ];
+
+                $totalExpense += $paidAmount;
+                $moduleTotals['cashouts'] += $paidAmount;
+            }
+            $stmt->close();
+        }
+
+        // -------------------------------------------------------------
+        // 6. EXPENSE ADJUSTMENTS / SETTLEMENTS (STRICT PAID)
+        // -------------------------------------------------------------
+        $eaSql = "
+            SELECT 
+                ea.id,
+                ea.project_id,
+                ea.parent_type,
+                ea.adjustment_type,
+                ea.title,
+                ea.description,
+                ea.amount,
+                ea.approved_amount,
+                ea.due_amount,
+                ea.status,
+                DATE(ea.created_at) as payment_date
+            FROM expense_adjustments ea
+            WHERE ea.project_id = ?
+              AND ea.status IN ('fully_paid', 'partially_paid')
+            ORDER BY payment_date DESC
+        ";
+        $stmt = $db->prepare($eaSql);
+        if ($stmt) {
+            $stmt->bind_param("i", $projectId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            while ($row = $result->fetch_assoc()) {
+                $approvedAmt = (float)($row['approved_amount'] ?: $row['amount']);
+                $dueAmt = (float)($row['due_amount'] ?? 0);
+                $netAmt = ($row['status'] === 'partially_paid') ? max(0.0, $approvedAmt - $dueAmt) : $approvedAmt;
+
+                if ($netAmt <= 0) continue;
+
+                $isReturn = ($row['adjustment_type'] === 'return');
+                $effectiveAmount = $isReturn ? (-1 * $netAmt) : $netAmt;
+
+                $expName = sprintf("Adjustment #%d [%s]: %s (%s)", 
+                    $row['id'], 
+                    strtoupper($row['adjustment_type']), 
+                    $row['title'], 
+                    $isReturn ? 'Refund/Return to Company' : 'Extra Expense'
+                );
+                $category = self::categorizeProjectExpense('', $expName, 'expense_adjustment');
+                if (!isset($breakdown[$category])) {
+                    $breakdown[$category] = [];
+                }
+
+                $breakdown[$category][] = [
+                    'expense_name' => $expName,
+                    'vendor_name'  => 'Settlement (' . ucwords($row['parent_type']) . ')',
+                    'qty'          => 1.0,
+                    'unit'         => 'Adjustment',
+                    'unit_price'   => $effectiveAmount,
+                    'total_amount' => $effectiveAmount,
+                    'payment_date' => $row['payment_date'],
+                    'source_module'=> 'expense_adjustment'
+                ];
+
+                $totalExpense += $effectiveAmount;
+                $moduleTotals['expense_adjustments'] += $effectiveAmount;
+            }
+            $stmt->close();
+        }
+
+        $totalDue = array_sum($moduleDues);
+
+        // -------------------------------------------------------------
+        // FORMAT CATEGORY BREAKDOWN
+        // -------------------------------------------------------------
+        $formattedBreakdown = [];
+        foreach ($breakdown as $catName => $items) {
+            $catTotal = array_sum(array_column($items, 'total_amount'));
+            $formattedBreakdown[] = [
+                'category_name' => $catName,
+                'category_total'=> round($catTotal, 2),
+                'item_count'    => count($items),
+                'items'         => $items
+            ];
+        }
+
+        // -------------------------------------------------------------
+        // PROJECT SUMMARY & SQFT METRICS
+        // -------------------------------------------------------------
+        $pStmt = $db->prepare("SELECT total_share, floor_wise_unit_meta FROM projects WHERE id = ?");
+        $totalSqft = 0;
+        $totalShare = 0;
+        $costPerSqft = 0;
+
+        if ($pStmt) {
+            $pStmt->bind_param("i", $projectId);
+            $pStmt->execute();
+            $pResult = $pStmt->get_result()->fetch_assoc();
             
-            $totalSqft = $floorSqft * $totalShare;
-            if ($totalSqft > 0) {
-                $costPerSqft = $totalExpense / $totalSqft;
+            if ($pResult) {
+                $totalShare = (float)$pResult['total_share'];
+                $meta = json_decode($pResult['floor_wise_unit_meta'] ?? '{}', true);
+                
+                $floorSqft = 0;
+                if (isset($meta['typical_floor']) && is_array($meta['typical_floor'])) {
+                    foreach ($meta['typical_floor'] as $unit) {
+                        $sqftVal = $unit['sqft'] ?? $unit['size'] ?? 0;
+                        $floorSqft += (float)$sqftVal;
+                    }
+                } else {
+                    if (is_array($meta)) {
+                        foreach ($meta as $unit) {
+                            if (is_array($unit)) {
+                                $sqftVal = $unit['sqft'] ?? $unit['size'] ?? 0;
+                                $floorSqft += (float)$sqftVal;
+                            }
+                        }
+                    }
+                }
+                
+                $totalSqft = $floorSqft * $totalShare;
             }
+            $pStmt->close();
+        }
+
+        // Fallback: If totalSqft is still 0, calculate from flats table
+        if ($totalSqft <= 0) {
+            $fStmt = $db->prepare("SELECT SUM(sqft) as total_sqft FROM flats WHERE project_id = ?");
+            if ($fStmt) {
+                $fStmt->bind_param("i", $projectId);
+                $fStmt->execute();
+                $fRes = $fStmt->get_result()->fetch_assoc();
+                if ($fRes && (float)$fRes['total_sqft'] > 0) {
+                    $totalSqft = (float)$fRes['total_sqft'];
+                }
+                $fStmt->close();
+            }
+        }
+
+        if ($totalSqft > 0) {
+            $costPerSqft = $totalExpense / $totalSqft;
         }
 
         return [
             'summary' => [
-                'total_expense'  => $totalExpense,
-                'total_sqft'     => $totalSqft,
-                'cost_per_sqft'  => $costPerSqft
+                'total_expense'      => round($totalExpense, 2),
+                'total_due_expense'  => round($totalDue, 2),
+                'total_sqft'         => round($totalSqft, 2),
+                'cost_per_sqft'      => round($costPerSqft, 2),
+                'total_share'        => $totalShare,
+                'cost_per_share'     => $totalShare > 0 ? round($totalExpense / $totalShare, 2) : 0,
+                'module_summary'     => [
+                    'vendor_payments'     => round($moduleTotals['vendor_payments'], 2),
+                    'contractor_bills'    => round($moduleTotals['contractor_bills'], 2),
+                    'labor_bills'         => round($moduleTotals['labor_bills'], 2),
+                    'project_other_costs' => round($moduleTotals['project_other_costs'], 2),
+                    'cashouts'            => round($moduleTotals['cashouts'], 2),
+                    'expense_adjustments' => round($moduleTotals['expense_adjustments'], 2),
+                ],
+                'module_due_summary' => [
+                    'vendor_payments'     => round($moduleDues['vendor_payments'], 2),
+                    'contractor_bills'    => round($moduleDues['contractor_bills'], 2),
+                    'labor_bills'         => round($moduleDues['labor_bills'], 2),
+                    'project_other_costs' => round($moduleDues['project_other_costs'], 2),
+                    'cashouts'            => round($moduleDues['cashouts'], 2),
+                ]
             ],
             'breakdown' => $formattedBreakdown
         ];

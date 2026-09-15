@@ -619,6 +619,359 @@ if ($status === 'Draft') {
     </div>
 </div>
 
+<!-- Selected Vendor & CST (Comparative Statement) Details Section -->
+<?php
+$resolveAttUrl = function($att, $type = 'vendor_quotation') use ($base_url) {
+    if (empty($att)) return '';
+    $att = trim($att);
+    if (preg_match('/^https?:\/\//i', $att)) return $att;
+    if (strpos($att, 'public/') === 0 || strpos($att, '/public/') === 0) {
+        return $base_url . '/' . ltrim($att, '/');
+    }
+    if (strpos($att, 'uploads/') === 0 || strpos($att, '/uploads/') === 0) {
+        return $base_url . '/' . ltrim($att, '/');
+    }
+    if ($type === 'purchase_requests') {
+        return $base_url . '/public/uploads/purchase_requests/' . ltrim($att, '/');
+    }
+    return $base_url . '/public/uploads/vendor_quotation/' . ltrim($att, '/');
+};
+
+$isImg = function($file) {
+    if (empty($file)) return false;
+    $ext = strtolower(pathinfo(parse_url($file, PHP_URL_PATH), PATHINFO_EXTENSION));
+    return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
+};
+
+$selVenId = $selectedVendor['id'] ?? ($request['vendor_id'] ?? null);
+$prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requests') : null;
+?>
+
+<div class="card custom-card mb-4 border-0 shadow-sm">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="avatar avatar-sm rounded bg-primary-subtle text-primary p-2">
+                <i class="bi bi-briefcase-fill fs-5"></i>
+            </span>
+            <div>
+                <h6 class="card-title mb-0 fw-bold text-dark">
+                    Selected Vendor & CST (Comparative Statement) Details
+                </h6>
+                <div class="text-muted small">
+                    PO Reference: <strong class="text-primary">#<?= htmlspecialchars($request['purchase_order_id'] ?? '—') ?></strong>
+                    <?php if (!empty($poDetails['request_id'])): ?>
+                        &nbsp;|&nbsp; PR Reference: <strong class="text-primary">#<?= htmlspecialchars($poDetails['request_id']) ?></strong>
+                    <?php endif; ?>
+                    <?php if (!empty($cstInfo['prepared_by_name'])): ?>
+                        &nbsp;|&nbsp; CST Prepared By: <strong class="text-dark"><?= htmlspecialchars($cstInfo['prepared_by_name']) ?></strong>
+                        <?php if (!empty($cstInfo['created_at'])): ?>
+                            <span class="text-muted">(<?= date('d M Y, h:i A', strtotime($cstInfo['created_at'])) ?>)</span>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <?php if (!empty($cstMatrix) && !empty($cstMatrix['vendors'])): ?>
+                <button type="button" class="btn btn-sm btn-primary fw-bold px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#vprCstMatrixModal">
+                    <i class="bi bi-table me-1"></i> View Full CST Matrix
+                </button>
+            <?php endif; ?>
+            <?php if (!empty($prAttUrl)): ?>
+                <a href="<?= htmlspecialchars($prAttUrl) ?>" target="_blank" class="btn btn-sm btn-outline-secondary fw-semibold">
+                    <i class="bi bi-paperclip me-1"></i> PR Attachment
+                </a>
+            <?php endif; ?>
+        </div>
+    </div>
+    <div class="card-body p-4">
+        <!-- 1. Selected Vendor Full Details Box -->
+        <div class="p-3 mb-4 rounded-3 border" style="background: linear-gradient(135deg, rgba(13,110,253,0.03) 0%, rgba(25,135,84,0.04) 100%); border-color: rgba(13,110,253,0.2) !important;">
+            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-success px-2 py-1 fs-7 shadow-sm">
+                        <i class="bi bi-check-circle-fill me-1"></i> Selected Vendor in CST / PO
+                    </span>
+                    <span class="fw-bold fs-6 text-dark">
+                        <?= !empty($selectedVendor['name']) ? htmlspecialchars($selectedVendor['name']) : '<span class="text-muted fst-italic">null</span>' ?>
+                    </span>
+                    <?php if (!empty($selectedVendor['company_name'])): ?>
+                        <span class="text-muted small">(<?= htmlspecialchars($selectedVendor['company_name']) ?>)</span>
+                    <?php endif; ?>
+                </div>
+                <div class="badge bg-light text-dark border px-2 py-1 small">
+                    <i class="bi bi-tag-fill me-1 text-primary"></i> Vendor ID: <strong><?= isset($selectedVendor['id']) && $selectedVendor['id'] !== '' ? '#' . htmlspecialchars($selectedVendor['id']) : 'null' ?></strong>
+                </div>
+            </div>
+
+            <!-- Exact required fields: [id], [name], [phone], [email], [address], [company_name] -->
+            <div class="row ">
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <label class="form-label text-uppercase text-muted fw-bold mb-1" style="font-size: 11px; letter-spacing: 0.5px;">Vendor ID [id]</label>
+                    <div class="fw-bold text-dark fs-6 font-monospace">
+                        <?= isset($selectedVendor['id']) && $selectedVendor['id'] !== '' ? '#' . htmlspecialchars($selectedVendor['id']) : '<span class="badge bg-secondary-subtle text-muted">null</span>' ?>
+                    </div>
+                </div>
+                <div class="col-l col-md-4 col-sm-6">
+                    <label class="form-label text-uppercase text-muted fw-bold mb-1" style="font-size: 11px; letter-spacing: 0.5px;">Name [name]</label>
+                    <div class="fw-semibold text-dark">
+                        <?= !empty($selectedVendor['name']) ? htmlspecialchars($selectedVendor['name']) : '<span class="text-muted fst-italic">null</span>' ?>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <label class="form-label text-uppercase text-muted fw-bold mb-1" style="font-size: 11px; letter-spacing: 0.5px;">Phone [phone]</label>
+                    <div class="fw-semibold text-dark">
+                        <?php if (!empty($selectedVendor['phone'])): ?>
+                            <a href="tel:<?= htmlspecialchars($selectedVendor['phone']) ?>" class="text-decoration-none text-dark">
+                                <i class="bi bi-telephone-fill text-success me-1 small"></i><?= htmlspecialchars($selectedVendor['phone']) ?>
+                            </a>
+                        <?php else: ?>
+                            <span class="text-muted fst-italic">null</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <label class="form-label text-uppercase text-muted fw-bold mb-1" style="font-size: 11px; letter-spacing: 0.5px;">Email [email]</label>
+                    <div class="fw-semibold text-dark text-truncate" title="<?= htmlspecialchars($selectedVendor['email'] ?? '') ?>">
+                        <?php if (!empty($selectedVendor['email'])): ?>
+                            <a href="mailto:<?= htmlspecialchars($selectedVendor['email']) ?>" class="text-decoration-none text-primary">
+                                <i class="bi bi-envelope-fill me-1 small"></i><?= htmlspecialchars($selectedVendor['email']) ?>
+                            </a>
+                        <?php else: ?>
+                            <span class="text-muted fst-italic">null</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="col-l col-md-4 col-sm-6">
+                    <label class="form-label text-uppercase text-muted fw-bold mb-1" style="font-size: 11px; letter-spacing: 0.5px;">Company [company_name]</label>
+                    <div class="fw-semibold text-dark">
+                        <?= !empty($selectedVendor['company_name']) ? htmlspecialchars($selectedVendor['company_name']) : '<span class="text-muted fst-italic">null</span>' ?>
+                    </div>
+                </div>
+                <div class="col-12 mt-2 pt-2 border-top">
+                    <label class="form-label text-uppercase text-muted fw-bold mb-1" style="font-size: 11px; letter-spacing: 0.5px;">Address [address]</label>
+                    <div class="text-dark">
+                        <?php if (!empty($selectedVendor['address'])): ?>
+                            <i class="bi bi-geo-alt-fill text-danger me-1 small"></i><?= nl2br(htmlspecialchars($selectedVendor['address'])) ?>
+                        <?php else: ?>
+                            <span class="text-muted fst-italic">null</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. CST Participating Vendors Table -->
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0 text-dark" style="font-size: 13.5px;">
+                <i class="bi bi-diagram-3-fill me-1 text-primary"></i> Participating Vendors in Comparative Statement (CST)
+            </h6>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                <?= count($cstQuotations) ?> Vendor Quote(s) Found
+            </span>
+        </div>
+
+        <?php if (!empty($cstQuotations)): ?>
+            <div class="table-responsive mb-4">
+                <table class="table table-bordered table-hover align-middle mb-0" style="font-size: 12.5px;">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3" style="width: 50px;">#</th>
+                            <th>Vendor Details</th>
+                            <th>Company Name</th>
+                            <th>Contact Info</th>
+                            <th class="text-end">Quoted Total</th>
+                            <th class="text-center">Quotation Attachment</th>
+                            <th class="text-center">CST Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($cstQuotations as $idx => $q): ?>
+                            <?php
+                            $isThisSelected = ($selVenId && (int)$q['vendor_id'] === (int)$selVenId);
+                            $qAttUrl = $resolveAttUrl($q['attachment'] ?? null);
+                            $qIsImg = $isImg($q['attachment'] ?? null);
+                            ?>
+                            <tr class="<?= $isThisSelected ? 'table-success bg-opacity-25' : '' ?>">
+                                <td class="ps-3 fw-bold"><?= $idx + 1 ?></td>
+                                <td>
+                                    <div class="fw-bold text-dark">
+                                        <?= !empty($q['vendor_name']) ? htmlspecialchars($q['vendor_name']) : 'null' ?>
+                                    </div>
+                                    <div class="text-muted small font-monospace">
+                                        Vendor ID: #<?= !empty($q['vendor_id']) ? htmlspecialchars($q['vendor_id']) : 'null' ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <?= !empty($q['vendor_company_name']) ? htmlspecialchars($q['vendor_company_name']) : '<span class="text-muted fst-italic">null</span>' ?>
+                                </td>
+                                <td>
+                                    <div>
+                                        <i class="bi bi-telephone text-muted me-1 small"></i>
+                                        <?= !empty($q['vendor_phone']) ? htmlspecialchars($q['vendor_phone']) : '<span class="text-muted fst-italic">null</span>' ?>
+                                    </div>
+                                    <div class="small text-truncate" style="max-width: 200px;">
+                                        <i class="bi bi-envelope text-muted me-1 small"></i>
+                                        <?= !empty($q['vendor_email']) ? htmlspecialchars($q['vendor_email']) : '<span class="text-muted fst-italic">null</span>' ?>
+                                    </div>
+                                </td>
+                                <td class="text-end fw-bold">
+                                    <?php if (isset($q['total_quoted_amount'])): ?>
+                                        ৳ <?= number_format((float)$q['total_quoted_amount'], 2) ?>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-flex flex-column gap-1 align-items-center justify-content-center">
+                                        <?php if (!empty($qAttUrl)): ?>
+                                            <a href="<?= htmlspecialchars($qAttUrl) ?>" target="_blank" class="btn btn-xs btn-outline-primary px-2 py-1" style="font-size: 11px;">
+                                                <?php if ($qIsImg): ?>
+                                                    <i class="bi bi-file-earmark-image me-1 text-info"></i> View Image
+                                                <?php else: ?>
+                                                    <i class="bi bi-file-earmark-pdf me-1 text-danger"></i> View Document
+                                                <?php endif; ?>
+                                            </a>
+                                        <?php endif; ?>
+                                        <?php if (!empty($q['drive_link'])): ?>
+                                            <a href="<?= htmlspecialchars($q['drive_link']) ?>" target="_blank" class="btn btn-xs btn-outline-info px-2 py-1" style="font-size: 11px;" title="Open Google Drive / External Link">
+                                                <i class="bi bi-link-45deg me-1"></i> Drive Link
+                                            </a>
+                                        <?php endif; ?>
+                                        <?php if (empty($qAttUrl) && empty($q['drive_link'])): ?>
+                                            <span class="badge bg-light text-muted border py-1 px-2" style="font-size: 10px;">
+                                                <i class="bi bi-file-earmark-x me-1"></i> No file
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <?php if ($isThisSelected): ?>
+                                        <span class="badge bg-success text-white px-2 py-1 shadow-sm">
+                                            <i class="bi bi-check-circle-fill me-1"></i> Selected Vendor
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge bg-light text-secondary border px-2 py-1">
+                                            Alternative
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php else: ?>
+            <div class="alert alert-light border text-center text-muted py-3 mb-4">
+                <i class="bi bi-info-circle me-1"></i> No CST quotation records found for this purchase request.
+            </div>
+        <?php endif; ?>
+
+        <!-- 3. Price Quotation & PR Attachments Gallery -->
+        <?php
+        $hasAttachments = false;
+        if (!empty($prAttUrl)) $hasAttachments = true;
+        foreach ($cstQuotations as $q) {
+            if (!empty($q['attachment']) || !empty($q['drive_link'])) {
+                $hasAttachments = true;
+                break;
+            }
+        }
+        ?>
+
+        <?php if ($hasAttachments): ?>
+            <div class="pt-2 border-top">
+                <h6 class="fw-bold mb-3 text-dark d-flex align-items-center" style="font-size: 13px;">
+                    <i class="bi bi-images me-2 text-primary"></i> Price Quotations, Drive Links & PR Attachments
+                </h6>
+                <div class="row ">
+                    <?php if (!empty($prAttUrl)): ?>
+                        <?php $prIsImg = $isImg($prAttachment); ?>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="card h-100 border shadow-none bg-light-subtle rounded-3 p-2 text-center position-relative">
+                                <span class="badge bg-secondary position-absolute top-0 start-0 m-2" style="font-size: 10px;">PR Attachment</span>
+                                <div class="py-3">
+                                    <?php if ($prIsImg): ?>
+                                        <a href="<?= htmlspecialchars($prAttUrl) ?>" target="_blank">
+                                            <img src="<?= htmlspecialchars($prAttUrl) ?>" alt="PR Attachment" class="img-fluid rounded border" style="max-height: 100px; object-fit: cover;">
+                                        </a>
+                                    <?php else: ?>
+                                        <i class="bi bi-file-earmark-pdf-fill text-danger" style="font-size: 3rem;"></i>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="small fw-semibold text-truncate mb-2" title="Purchase Request Attachment">
+                                    PR #<?= htmlspecialchars($poDetails['request_id'] ?? '') ?> Document
+                                </div>
+                                <a href="<?= htmlspecialchars($prAttUrl) ?>" target="_blank" class="btn btn-sm btn-outline-secondary w-100" style="font-size: 11px;">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i> Open PR File
+                                </a>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php foreach ($cstQuotations as $q): ?>
+                        <?php if (!empty($q['attachment']) || !empty($q['drive_link'])): ?>
+                            <?php
+                            $qUrl = !empty($q['attachment']) ? $resolveAttUrl($q['attachment']) : null;
+                            $imgCheck = !empty($q['attachment']) ? $isImg($q['attachment']) : false;
+                            $isAwarded = ($selVenId && (int)$q['vendor_id'] === (int)$selVenId);
+                            ?>
+                            <div class="col-md-3 col-sm-6 mb-3">
+                                <div class="card h-100 border <?= $isAwarded ? 'border-success' : '' ?> shadow-none bg-light-subtle rounded-3 p-2 text-center position-relative">
+                                    <?php if ($isAwarded): ?>
+                                        <span class="badge bg-success position-absolute top-0 start-0 m-2" style="font-size: 10px;">
+                                            <i class="bi bi-check-circle-fill me-1"></i> Selected
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary position-absolute top-0 start-0 m-2" style="font-size: 10px;">Quote</span>
+                                    <?php endif; ?>
+                                    <div class="py-3">
+                                        <?php if ($imgCheck): ?>
+                                            <a href="<?= htmlspecialchars($qUrl) ?>" target="_blank">
+                                                <img src="<?= htmlspecialchars($qUrl) ?>" alt="Quotation Attachment" class="img-fluid rounded border" style="max-height: 100px; object-fit: cover;">
+                                            </a>
+                                        <?php elseif (!empty($qUrl)): ?>
+                                            <i class="bi bi-file-earmark-text-fill text-primary" style="font-size: 3rem;"></i>
+                                        <?php else: ?>
+                                            <i class="bi bi-cloud-arrow-up-fill text-info" style="font-size: 3rem;"></i>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="small fw-bold text-truncate" title="<?= htmlspecialchars($q['vendor_name'] ?? '') ?>">
+                                        <?= htmlspecialchars($q['vendor_name'] ?? 'Vendor Quote') ?>
+                                    </div>
+                                    <div class="text-muted small mb-2 font-monospace" style="font-size: 10.5px;">
+                                        <?= !empty($q['total_quoted_amount']) ? '৳ ' . number_format((float)$q['total_quoted_amount'], 2) : '' ?>
+                                    </div>
+                                    <?php if (!empty($qUrl)): ?>
+                                        <a href="<?= htmlspecialchars($qUrl) ?>" target="_blank" class="btn btn-sm btn-outline-primary w-100 mb-1" style="font-size: 11px;">
+                                            <i class="bi bi-box-arrow-up-right me-1"></i> View Quotation File
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if (!empty($q['drive_link'])): ?>
+                                        <a href="<?= htmlspecialchars($q['drive_link']) ?>" target="_blank" class="btn btn-sm btn-outline-info w-100" style="font-size: 11px;">
+                                            <i class="bi bi-link-45deg me-1"></i> Open Drive Link
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php else: ?>
+            <div class="pt-3 border-top mt-2">
+                <div class="alert alert-light border d-flex align-items-center gap-3 py-3 px-3 mb-0" style="border-radius:10px; background:#f8fafc">
+                    <div class="text-secondary fs-4"><i class="bi bi-file-earmark-x"></i></div>
+                    <div class="small text-muted">
+                        <strong class="text-dark">No Quotation or PR Attachments Uploaded:</strong><br>
+                        No price quotation documents (PDF / Image) or PR attachments were uploaded during CST quotation entry for this request.
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
 <!-- Material Receiving Logs (GRN) Section -->
 <div class="card custom-card mb-4 border-0 shadow-sm">
     <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
@@ -1315,6 +1668,105 @@ if ($status === 'Draft') {
         </div>
     </div>
 <?php endif; ?>
+
+<!-- CST Matrix Modal for Vendor Payment Request -->
+<?php if (!empty($cstMatrix) && !empty($cstMatrix['vendors'])): ?>
+<div class="modal fade" id="vprCstMatrixModal" tabindex="-1" aria-labelledby="vprCstMatrixModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content" style="border-radius:14px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
+      <div class="modal-header bg-light border-bottom">
+        <h5 class="modal-title fw-bold text-primary" id="vprCstMatrixModalLabel">
+          <i class="bi bi-table me-2"></i>Comparative Statement (CST) Matrix
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-3">
+        <?php
+        $materials = $cstMatrix['materials'] ?? [];
+        $vendors   = $cstMatrix['vendors']   ?? [];
+        $matrix    = $cstMatrix['matrix']    ?? [];
+        $totals    = $cstMatrix['totals']    ?? [];
+        $vendorIds = array_keys($vendors);
+        $selectedVendorId = $selVenId;
+        ?>
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle text-center mb-0" style="font-size:12px">
+            <thead class="table-dark">
+              <tr>
+                <th class="text-start" style="width:5%;">#</th>
+                <th class="text-start" style="width:25%;">Material</th>
+                <th style="width:10%;">PR Qty</th>
+                <?php foreach ($vendors as $vid => $vname): ?>
+                  <th style="min-width:130px;" class="<?= ($vid == $selectedVendorId) ? 'bg-success text-white border-success' : '' ?>">
+                    <?= htmlspecialchars($vname) ?>
+                    <?php if ($vid == $selectedVendorId): ?>
+                      <br><span class="badge bg-white text-success mt-1 px-2" style="font-size:9px"><i class="bi bi-check-circle-fill me-1"></i>Selected Vendor</span>
+                    <?php endif; ?>
+                  </th>
+                <?php endforeach; ?>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($materials as $idx => $mat): ?>
+              <?php
+              $mid = $mat['material_id'];
+              $lowestPrice  = PHP_FLOAT_MAX;
+              $lowestVendor = 0;
+              foreach ($vendorIds as $vid) {
+                  if (isset($matrix[$mid][$vid])) {
+                      if ($matrix[$mid][$vid]['unit_price'] < $lowestPrice) {
+                          $lowestPrice  = $matrix[$mid][$vid]['unit_price'];
+                          $lowestVendor = $vid;
+                      }
+                  }
+              }
+              ?>
+              <tr>
+                  <td class="text-start fw-bold"><?= $idx + 1 ?></td>
+                  <td class="text-start fw-bold">
+                      <?= htmlspecialchars($mat['material_name']) ?>
+                      <span class="text-muted small">(<?= $mat['unit'] ?>)</span>
+                  </td>
+                  <td><?= number_format($mat['quantity'], 3) ?></td>
+                  <?php foreach ($vendorIds as $vid): ?>
+                      <?php
+                      $cell = $matrix[$mid][$vid] ?? null;
+                      $isLowest = ($vid === $lowestVendor && $cell);
+                      $isSelectedVendor = ($vid == $selectedVendorId);
+                      ?>
+                      <td class="<?= $isLowest ? 'table-success fw-bold' : '' ?> <?= $isSelectedVendor ? 'border-success' : '' ?>" style="<?= $isSelectedVendor ? 'border-left-width:2px;border-right-width:2px;background:rgba(25,135,84,0.06);' : '' ?>">
+                          <?php if ($cell): ?>
+                              ৳ <?= number_format($cell['unit_price'], 2) ?>
+                              <div class="small text-muted" style="margin-top:2px">
+                                  Total: ৳ <?= number_format($cell['total_price'], 2) ?>
+                              </div>
+                          <?php else: ?>
+                              <span class="text-muted">—</span>
+                          <?php endif; ?>
+                      </td>
+                  <?php endforeach; ?>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+            <tfoot class="table-light">
+                <tr class="fw-bold">
+                    <td colspan="3" class="text-end">Vendor Totals:</td>
+                    <?php foreach ($vendorIds as $vid): ?>
+                        <td class="<?= ($vid == $selectedVendorId) ? 'text-success' : '' ?>">৳ <?= number_format($totals[$vid] ?? 0, 2) ?></td>
+                    <?php endforeach; ?>
+                </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close Window</button>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {

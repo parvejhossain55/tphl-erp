@@ -55,30 +55,85 @@ class FundRequisitionController extends Controller {
         }
     }
 
+    /**
+     * Helper to get all department IDs where a user is the designated department head (is_dept_head = 1)
+     */
+    private function getUserDeptHeadDepartmentIds(int $userId): array {
+        $deptIds = [];
+        $res = $this->db->query("
+            SELECT department_id FROM employees 
+            WHERE (user_id = $userId OR id = (SELECT employee_id FROM users WHERE id = $userId LIMIT 1))
+              AND is_dept_head = 1 
+              AND department_id IS NOT NULL 
+              AND department_id > 0
+        ");
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $deptIds[] = (int)$row['department_id'];
+            }
+        }
+        return $deptIds;
+    }
+
+    /**
+     * Check if a user is authorized to view a specific fund requisition
+     */
+    private function canUserViewRequisition(array $req, int $userId, int $roleId, array $deptHeadDeptIds = []): bool {
+        // Management (1, 3, 33, 34, 35), Accounts (6, 30), Operation Head (20, 32), QC & Internal Audit (13, 24, 25)
+        if (in_array($roleId, [1, 3, 33, 34, 35, 6, 30, 20, 32, 13, 24, 25], true)) {
+            return true;
+        }
+
+        // Requester themselves
+        if ((int)($req['requested_by'] ?? 0) === $userId) {
+            return true;
+        }
+
+        // Requester's reporting boss
+        $reportingBossId = (int)($req['requester_reporting_boss_id'] ?? $req['reporting_user_id'] ?? 0);
+        if ($reportingBossId === $userId) {
+            return true;
+        }
+
+        // Department Head of the requisition's department
+        $reqDeptId = (int)($req['department_id'] ?? 0);
+        if ($reqDeptId > 0) {
+            if (in_array($reqDeptId, $deptHeadDeptIds, true)) {
+                return true;
+            }
+            if (empty($deptHeadDeptIds)) {
+                $userDepts = $this->getUserDeptHeadDepartmentIds($userId);
+                if (in_array($reqDeptId, $userDepts, true)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     public function index() {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Management (role 3), Admin (role 1), Accounts (role 6, 30), Operations (role 20, 12, 19, 23, 32), QC & Internal Audit (role 24) see everything
+        // Management (1, 3, 33, 34, 35), Accounts (6, 30), Operation Head (20, 32), QC & Internal Audit (13, 24, 25) see everything
+        $allAccessRoles = [1, 3, 33, 34, 35, 6, 30, 20, 32, 13, 24, 25];
+        $deptHeadDeptIds = $this->getUserDeptHeadDepartmentIds($userId);
+
         $where = "1=1";
-        if (!in_array($roleId, [1, 3, 33, 6, 12, 19, 20, 23, 24, 30, 32])) {
-            // Start with: own requisitions
-            $conditions = ["fr.requested_by = $userId"];
+        if (!in_array($roleId, $allAccessRoles, true)) {
+            // General requester: only their own requests, or requests where they are the designated Department Head / Reporting Boss
+            $userConditions = [
+                "fr.requested_by = $userId",
+                "e_req.reporting_user_id = $userId"
+            ];
 
-            // Include requisitions where this user is the designated Reporting Boss
-            $conditions[] = "e_req.reporting_user_id = $userId";
-
-            // Include General / Office / Non-project requisitions (where project_id is NULL)
-            $conditions[] = "fr.project_id IS NULL";
-
-            // Also include requisitions for projects they are assigned to
-            $assignedIds = $this->getAssignedProjectIds($userId);
-            if (!empty($assignedIds)) {
-                $idList = implode(',', $assignedIds);
-                $conditions[] = "fr.project_id IN ($idList)";
+            if (!empty($deptHeadDeptIds)) {
+                $deptList = implode(',', $deptHeadDeptIds);
+                $userConditions[] = "fr.department_id IN ($deptList)";
             }
 
-            $where = '(' . implode(' OR ', $conditions) . ')';
+            $where = '(' . implode(' OR ', $userConditions) . ')';
         }
 
         $startDate = $_GET['start_date'] ?? '';
@@ -102,6 +157,8 @@ class FundRequisitionController extends Controller {
         if (!empty($statusFilter)) {
             if ($statusFilter === 'pending') {
                 $where .= " AND fr.status IN ('pending', 'pending_dept', 'pending_qc')";
+            } elseif ($statusFilter === 'pending_qc') {
+                $where .= " AND fr.status = 'pending_qc'";
             } else {
                 $where .= " AND fr.status = ?";
                 $params[] = $statusFilter;
@@ -118,13 +175,22 @@ class FundRequisitionController extends Controller {
             $types .= "ssss";
         }
 
-        // Limit to 10 by default if no filter is applied
+        $selectedProject = $_GET['project_id'] ?? '';
+        $selectedType = $_GET['requisition_type'] ?? '';
+
+        if (!empty($selectedProject)) {
+            $where .= " AND fr.project_id = ?";
+            $params[] = (int)$selectedProject;
+            $types .= "i";
+        }
+        if (!empty($selectedType)) {
+            $where .= " AND fr.requisition_type = ?";
+            $params[] = $selectedType;
+            $types .= "s";
+        }
+
         $limitClause = "";
         $isDefaultLimit = false;
-        if (empty($startDate) && empty($endDate) && empty($statusFilter) && empty($searchQuery)) {
-            $limitClause = " LIMIT 10";
-            $isDefaultLimit = true;
-        }
 
         // Auto-check and add asset_id to fund_requisitions if missing
         $checkCol = $this->db->query("SHOW COLUMNS FROM fund_requisitions LIKE 'asset_id'");
@@ -140,19 +206,21 @@ class FundRequisitionController extends Controller {
 
         // Determine what status requires the current user's action
         $pendingCondition = "0";
-        if (in_array($roleId, [1, 3])) { // Admin / Management
+        if (in_array($roleId, [1, 3, 33, 34, 35], true)) { // Admin / Management
             $pendingCondition = "fr.status IN ('pending_dept', 'pending_qc', 'pending', 'partially_approved', 'partially_paid')";
-        } elseif ($roleId == 24) { // QC
+        } elseif (in_array($roleId, [13, 24, 25], true)) { // QC
             $pendingCondition = "fr.status = 'pending_qc'";
-        } elseif (in_array($roleId, [20, 32])) { // Operation Head
+        } elseif (in_array($roleId, [20, 32], true)) { // Operation Head
             $pendingCondition = "(fr.status IN ('pending', 'partially_approved', 'partially_paid') AND COALESCE(fr.qc_approved_amount, fr.amount) <= 100000)";
-        } elseif (in_array($roleId, [6, 30])) { // Accounts
+        } elseif (in_array($roleId, [6, 30], true)) { // Accounts
             $pendingCondition = "fr.status IN ('approved', 'partially_approved', 'partially_paid')";
         }
 
+        $deptHeadMatch = "e_req.reporting_user_id = $userId" . (!empty($deptHeadDeptIds) ? " OR fr.department_id IN (" . implode(',', $deptHeadDeptIds) . ")" : "");
+
         $pendingActionSql = "(
             ($pendingCondition) OR 
-            (fr.status = 'pending_dept' AND e_req.reporting_user_id = $userId) OR 
+            (fr.status = 'pending_dept' AND ($deptHeadMatch)) OR 
             (fr.status IN ('paid', 'partially_paid') AND (fr.is_received IS NULL OR fr.is_received = 0) AND fr.requested_by = $userId)
         )";
 
@@ -196,9 +264,7 @@ class FundRequisitionController extends Controller {
             LEFT JOIN designations des_boss ON des_boss.id = COALESCE(e_boss.designation_id, u_boss.designation_id)
             {$assetJoin}
             WHERE $where
-            ORDER BY 
-                CASE WHEN {$pendingActionSql} THEN 0 ELSE 1 END ASC,
-                fr.id DESC
+            ORDER BY fr.id DESC
             $limitClause
         ";
 
@@ -247,7 +313,10 @@ class FundRequisitionController extends Controller {
             'endDate' => $endDate,
             'statusFilter' => $statusFilter,
             'searchQuery' => $searchQuery,
-            'isDefaultLimit' => $isDefaultLimit
+            'selectedProject' => $selectedProject,
+            'selectedType' => $selectedType,
+            'isDefaultLimit' => $isDefaultLimit,
+            'deptHeadDeptIds' => $deptHeadDeptIds
         ]);
     }
 
@@ -338,6 +407,13 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
+        $deptHeadDeptIds = $this->getUserDeptHeadDepartmentIds($sessionUserId);
+        if (!$this->canUserViewRequisition($req, $sessionUserId, $sessionRoleId, $deptHeadDeptIds)) {
+            setError('You are not authorized to view this requisition.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
         // Auto-heal if approved but approved_amount is 0 or null
         if (in_array($req['status'], ['approved', 'paid']) && (empty($req['approved_amount']) || (float)$req['approved_amount'] <= 0)) {
             $effectiveAmt = (!empty($req['qc_approved_amount']) && (float)$req['qc_approved_amount'] > 0)
@@ -402,6 +478,7 @@ class FundRequisitionController extends Controller {
             'effectiveApprovedAmount' => $effectiveApprovedAmount,
             'sessionUserId'           => $sessionUserId,
             'sessionRoleId'           => $sessionRoleId,
+            'deptHeadDeptIds'         => $deptHeadDeptIds,
         ]);
     }
 
@@ -588,10 +665,13 @@ class FundRequisitionController extends Controller {
         }
 
         $reportingBossId = (int)($req['reporting_user_id'] ?? 0);
-        $isAllowed = ($sessionUserId === $reportingBossId || in_array($roleId, [1, 3, 33]));
+        $deptId = (int)($req['department_id'] ?? 0);
+        $deptHeadDeptIds = $this->getUserDeptHeadDepartmentIds($sessionUserId);
+        $isDeptHead = ($deptId > 0 && in_array($deptId, $deptHeadDeptIds, true));
+        $isAllowed = ($sessionUserId === $reportingBossId || $isDeptHead || in_array($roleId, [1, 3, 33], true));
 
         if (!$isAllowed) {
-            setError('Only the designated Reporting Boss or Admin can approve this stage.');
+            setError('Only the designated Department Head, Reporting Boss, or Admin can approve this stage.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
         }
@@ -1217,6 +1297,8 @@ class FundRequisitionController extends Controller {
 
     public function show($id) {
         $id = (int)$id;
+        $sessionUserId = (int)($_SESSION['user']['id'] ?? 0);
+        $sessionRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         
         // Fetch requisition details
         $sql = "
@@ -1225,11 +1307,13 @@ class FundRequisitionController extends Controller {
                    d.name as department_name,
                    u_req.full_name as requester_name,
                    u_app.full_name as approved_by_name,
-                   u_paid.full_name as paid_by_name
+                   u_paid.full_name as paid_by_name,
+                   e_req.reporting_user_id as requester_reporting_boss_id
             FROM fund_requisitions fr
             LEFT JOIN projects p ON fr.project_id = p.id
             LEFT JOIN departments d ON fr.department_id = d.id
             LEFT JOIN users u_req ON fr.requested_by = u_req.id
+            LEFT JOIN employees e_req ON (e_req.user_id = u_req.id OR e_req.id = u_req.employee_id)
             LEFT JOIN users u_app ON fr.approved_by = u_app.id
             LEFT JOIN users u_paid ON fr.paid_by = u_paid.id
             WHERE fr.id = $id
@@ -1238,6 +1322,12 @@ class FundRequisitionController extends Controller {
         if (!$req) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'Requisition not found']);
+            exit;
+        }
+
+        if (!$this->canUserViewRequisition($req, $sessionUserId, $sessionRoleId)) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'You are not authorized to view this requisition.']);
             exit;
         }
 
@@ -1341,10 +1431,17 @@ class FundRequisitionController extends Controller {
         $other_project_name = null;
 
         $userId = (int)$_SESSION['user']['id'];
+        $roleId = (int)$_SESSION['user']['role_id'];
 
         // Validate that the requisition exists and is paid
         if (!$req || $req['status'] !== 'paid') {
             setError('Expenses can only be logged for paid requisitions.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+            exit;
+        }
+
+        if (!$this->canUserViewRequisition($req, $userId, $roleId)) {
+            setError('Unauthorized to log expenses for this requisition.');
             header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
             exit;
         }

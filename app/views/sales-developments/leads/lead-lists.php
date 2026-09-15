@@ -438,7 +438,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                                 <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
                             </a>
 
-                            <button type="button" class="btn btn-outline-success btn-sm px-3 py-1.5" id="exportLeadsExcelBtn" title="Export searched/filtered leads to Excel">
+                            <button type="button" class="d-none btn btn-outline-success btn-sm px-3 py-1.5" id="exportLeadsExcelBtn" title="Export searched/filtered leads to Excel">
                                 <i class="fa-solid fa-file-excel me-1"></i> Export Excel
                             </button>
 
