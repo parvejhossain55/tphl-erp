@@ -78,7 +78,8 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
                         <label for="status" class="form-label fs-12 fw-semibold mb-1">Approval / Payout Status</label>
                         <select name="status" id="status" class="form-select form-select-sm" onchange="this.form.submit()">
                             <option value="">All Statuses (Pending, Approved, Paid)</option>
-                            <option value="pending" <?= ($statusFilter ?? '') === 'pending' ? 'selected' : '' ?>>Pending Review / Dept Approval</option>
+                            <option value="pending" <?= ($statusFilter ?? '') === 'pending' ? 'selected' : '' ?>>All Pending Review</option>
+                            <option value="pending_qc" <?= ($statusFilter ?? '') === 'pending_qc' ? 'selected' : '' ?>>Pending QC Approval</option>
                             <option value="approved" <?= ($statusFilter ?? '') === 'approved' ? 'selected' : '' ?>> Management Approved (Pending Payout)</option>
                             <option value="paid" <?= ($statusFilter ?? '') === 'paid' ? 'selected' : '' ?>> Paid & Settled</option>
                             <option value="rejected" <?= ($statusFilter ?? '') === 'rejected' ? 'selected' : '' ?>> Rejected</option>
@@ -1693,7 +1694,7 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
                 <?php endif; ?>
 
                 <?php 
-                $canApproveDept = ($userId == ($req['requester_reporting_boss_id'] ?? 0) || in_array($roleId, [1, 3]));
+                $canApproveDept = ($userId == ($req['requester_reporting_boss_id'] ?? 0) || (!empty($req['department_id']) && in_array((int)$req['department_id'], $deptHeadDeptIds ?? [], true)) || in_array($roleId, [1, 3, 33]));
                 if ($req['status'] === 'pending_dept' && $canApproveDept): 
                 ?>
                     <button type="button" class="btn btn-sm btn-warning d-inline-flex align-items-center gap-1 text-dark" 
@@ -1704,7 +1705,7 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
 
                 <!-- QC Head Approval button -->
                 <?php 
-                $canApproveQc = in_array($roleId, [24, 1, 3]);
+                $canApproveQc = in_array($roleId, [13, 24, 25, 1, 3]);
                 if ($req['status'] === 'pending_qc' && $canApproveQc): 
                 ?>
                     <button type="button" class="btn btn-sm btn-info d-inline-flex align-items-center gap-1 text-white" 
@@ -1713,16 +1714,16 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer) {
                     </button>
                 <?php endif; ?>
 
-                <!-- Management Approval button (role 1, 3, 20 for pending requisitions) -->
-                <?php if (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) && in_array($roleId, [1, 3, 20])): ?>
+                <!-- Management Approval button (role 1, 3, 20, 32, 33 for pending requisitions) -->
+                <?php if (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) && in_array($roleId, [1, 3, 20, 32, 33])): ?>
                     <button type="button" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1" 
                             onclick="window.location.href='<?= $GLOBALS['base_url'] ?>/fund-requisitions/view/<?= $req['id'] ?>'">
                         <i class="fa-solid fa-stamp"></i> <?= $req['status'] === 'pending' ? 'Approve' : 'Approve Remaining' ?>
                     </button>
                 <?php endif; ?>
 
-                <!-- Accounts Payment button (role 1, 6 for approved requisitions) -->
-                <?php if (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid']) && in_array($roleId, [1, 6])): ?>
+                <!-- Accounts Payment button (role 1, 6, 30 for approved requisitions) -->
+                <?php if (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid']) && in_array($roleId, [1, 6, 30])): ?>
                     <button type="button" class="btn btn-sm btn-success d-inline-flex align-items-center gap-1" 
                             onclick="window.location.href='<?= $GLOBALS['base_url'] ?>/fund-requisitions/view/<?= $req['id'] ?>'">
                         <i class="fa-solid fa-file-invoice-dollar"></i> <?= $req['status'] === 'approved' ? 'Pay' : 'Pay Remaining' ?>
