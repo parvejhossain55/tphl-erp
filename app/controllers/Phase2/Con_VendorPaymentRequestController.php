@@ -608,13 +608,20 @@ class Con_VendorPaymentRequestController extends Controller
             if ($poDetails && !empty($poDetails['request_id'])) {
                 $prId = (int)$poDetails['request_id'];
 
-                // 1. Fetch PR Attachment
-                $prStmt = $this->db->prepare("SELECT id, attachment FROM purchase_requests WHERE id = ?");
+                // 1. Fetch PR Details & Attachment
+                $prDetails = null;
+                $prStmt = $this->db->prepare("
+                    SELECT pr.*, u.full_name AS requester_name, p.name AS pr_project_name 
+                    FROM purchase_requests pr 
+                    LEFT JOIN users u ON u.id = pr.created_by 
+                    LEFT JOIN projects p ON p.id = pr.project_id 
+                    WHERE pr.id = ?
+                ");
                 if ($prStmt) {
                     $prStmt->bind_param('i', $prId);
                     $prStmt->execute();
-                    $prRow = $prStmt->get_result()->fetch_assoc();
-                    $prAttachment = $prRow['attachment'] ?? null;
+                    $prDetails = $prStmt->get_result()->fetch_assoc();
+                    $prAttachment = $prDetails['attachment'] ?? null;
                 }
 
                 // 2. Fetch CST Comparison Header
@@ -691,6 +698,7 @@ class Con_VendorPaymentRequestController extends Controller
             'cstQuotations'     => $cstQuotations,
             'prAttachment'      => $prAttachment,
             'poDetails'         => $poDetails,
+            'prDetails'         => $prDetails,
         ]);
     }
 

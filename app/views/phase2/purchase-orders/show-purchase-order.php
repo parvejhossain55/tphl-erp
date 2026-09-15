@@ -140,7 +140,14 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
   <div class="po-hero-inner">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
       <div>
-        <div class="po-badge-top"><i class="fal fa-file-contract"></i>Purchase Order</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          <div class="po-badge-top" style="margin-bottom:0"><i class="fal fa-file-contract me-1"></i>Purchase Order</div>
+          <?php if (!empty($po['request_id'])): ?>
+            <a href="<?= $base_url ?>/con-purchase-request/<?= $po['request_id'] ?>" target="_blank" class="badge text-decoration-none shadow-sm" style="background:rgba(255,193,7,0.25);border:1px solid rgba(255,193,7,0.55);color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;display:inline-flex;align-items:center;gap:5px" title="View Source Purchase Request">
+              <i class="fal fa-file-invoice text-warning"></i> Against PR #<?= htmlspecialchars($po['request_id']) ?> <i class="fal fa-external-link ms-1" style="font-size:9px"></i>
+            </a>
+          <?php endif; ?>
+        </div>
         <h4 style="font-size:24px;font-weight:900;color:#fff;margin:0 0 4px">PO-<?= $po['id'] ?></h4>
         <p style="font-size:12px;color:rgba(255,255,255,.65);margin:0">
           <i class="fal fa-building me-1"></i><?= htmlspecialchars($po['project_name'] ?? '—') ?>
@@ -148,9 +155,20 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
           <i class="fal fa-calendar me-1"></i><?= !empty($po['order_date']) ? date('d M Y', strtotime($po['order_date'])) : '—' ?>
           &nbsp;·&nbsp;
           <i class="fal fa-user me-1"></i><?= htmlspecialchars($po['created_by_name'] ?? 'N/A') ?>
+          <?php if (!empty($po['request_id'])): ?>
+            &nbsp;·&nbsp;
+            <a href="<?= $base_url ?>/con-purchase-request/<?= $po['request_id'] ?>" target="_blank" style="color:#ffeb3b;font-weight:700;text-decoration:underline" title="View Source Requisition">
+              <i class="fal fa-file-alt me-1"></i>Requisition: PR #<?= htmlspecialchars($po['request_id']) ?>
+            </a>
+          <?php endif; ?>
         </p>
         <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
           <button onclick="window.print()" class="po-btn-w"><i class="fal fa-print"></i>Print</button>
+          <?php if (!empty($po['request_id'])): ?>
+            <a href="<?= $base_url ?>/con-purchase-request/<?= $po['request_id'] ?>" target="_blank" class="po-btn-w" style="background:rgba(255,193,7,0.25);border-color:rgba(255,193,7,0.55);color:#fff" title="Open Source Purchase Request">
+              <i class="fal fa-file-alt text-warning"></i> View PR #<?= htmlspecialchars($po['request_id']) ?>
+            </a>
+          <?php endif; ?>
           <a href="<?= $base_url ?>/con-purchase-orders" class="po-btn-w"><i class="fal fa-arrow-left"></i>Back</a>
         </div>
       </div>
@@ -743,6 +761,65 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
 
   <!-- Right: Approval Panel -->
   <div class="col-xl-4">
+
+    <!-- Source Purchase Request (Requisition) Panel -->
+    <?php if (!empty($po['request_id'])): ?>
+    <div class="po-panel shadow-sm" style="border-left: 4px solid #f59e0b !important; border-color: rgba(245,158,11,0.3); background: #fffcf5;">
+      <div class="po-panel-title d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex align-items-center gap-2">
+          <div class="po-dot" style="background:#f59e0b"></div>
+          <span style="color:#1e293b; font-size:11.5px; font-weight:700">Source Purchase Request</span>
+        </div>
+        <span class="badge bg-warning text-dark font-monospace" style="font-size:11px; font-weight:700">PR #<?= htmlspecialchars($po['request_id']) ?></span>
+      </div>
+      
+      <div style="font-size:12px; margin-bottom:10px; line-height: 1.6;">
+        <div class="d-flex justify-content-between py-1 border-bottom border-light">
+          <span style="color:var(--text-muted)">PR Order No:</span>
+          <strong style="color:#0284c7; font-family:monospace">PR-<?= htmlspecialchars($po['request_id']) ?> (ID: #<?= htmlspecialchars($po['request_id']) ?>)</strong>
+        </div>
+        <?php if (!empty($prDetails['purpose'])): ?>
+        <div class="d-flex justify-content-between py-1 border-bottom border-light">
+          <span style="color:var(--text-muted)">Purpose:</span>
+          <span style="font-weight:600; color:#1e293b; text-align:right; max-width:65%"><?= htmlspecialchars($prDetails['purpose']) ?></span>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($prDetails['required_date'])): ?>
+        <div class="d-flex justify-content-between py-1 border-bottom border-light">
+          <span style="color:var(--text-muted)">Required Date:</span>
+          <span style="color:#1e293b"><?= date('d M Y', strtotime($prDetails['required_date'])) ?></span>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($prDetails['requester_name'])): ?>
+        <div class="d-flex justify-content-between py-1 border-bottom border-light">
+          <span style="color:var(--text-muted)">Requested By:</span>
+          <span style="font-weight:600; color:#1e293b"><?= htmlspecialchars($prDetails['requester_name']) ?></span>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($prDetails['status'])): ?>
+        <div class="d-flex justify-content-between py-1">
+          <span style="color:var(--text-muted)">Requisition Status:</span>
+          <span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size:10.5px"><?= htmlspecialchars($prDetails['status']) ?></span>
+        </div>
+        <?php endif; ?>
+      </div>
+
+      <div class="d-flex gap-2">
+        <a href="<?= $base_url ?>/con-purchase-request/<?= $po['request_id'] ?>" target="_blank"
+           class="btn btn-sm w-100 fw-bold d-flex align-items-center justify-content-center gap-1 shadow-sm"
+           style="background:rgba(245,158,11,0.18); color:#b45309; border:1px solid rgba(245,158,11,0.4); border-radius:8px; font-size:11.5px; padding:7px">
+          <i class="fal fa-external-link"></i> View Purchase Request #<?= htmlspecialchars($po['request_id']) ?>
+        </a>
+        <?php if (!empty($poPrAttUrl)): ?>
+          <a href="<?= htmlspecialchars($poPrAttUrl) ?>" target="_blank"
+             class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center"
+             style="border-radius:8px; font-size:11.5px; padding:7px 10px" title="View PR Document Attachment">
+            <i class="fal fa-paperclip"></i>
+          </a>
+        <?php endif; ?>
+      </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Vendor Selection Info -->
     <?php 

@@ -70,15 +70,32 @@ $advancePaid = (float) ($advance_paid ?? 0);
 <!-- Header -->
 <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
     <div class="my-auto">
-        <h3 class="page-title fw-semibold fs-18 mb-0">Vendor Payment Request #<?= $request['id'] ?></h4>
-            <nav>
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-vendor-payment-requests">Payment
-                            Requests</a></li>
-                    <li class="breadcrumb-item active">VPR-<?= $request['id'] ?></li>
-                </ol>
-            </nav>
+        <h3 class="page-title fw-semibold fs-18 mb-0 d-flex align-items-center flex-wrap gap-2">
+            <span>Vendor Payment Request #<?= $request['id'] ?></span>
+            <?php if (!empty($poDetails['request_id'])): ?>
+                <a href="<?= $base_url ?>/con-purchase-request/<?= $poDetails['request_id'] ?>" target="_blank" class="badge bg-warning-subtle text-dark border border-warning-subtle fs-12 px-2.5 py-1 text-decoration-none shadow-sm" title="Originating Purchase Request">
+                    <i class="bi bi-file-earmark-text text-warning me-1"></i>Against PR #<?= htmlspecialchars($poDetails['request_id']) ?> <i class="bi bi-box-arrow-up-right ms-1" style="font-size: 9px;"></i>
+                </a>
+            <?php endif; ?>
+            <?php if (!empty($request['purchase_order_id'])): ?>
+                <a href="<?= $base_url ?>/con-purchase-order/<?= $request['purchase_order_id'] ?>" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle fs-12 px-2.5 py-1 text-decoration-none shadow-sm" title="Originating Purchase Order">
+                    <i class="bi bi-file-earmark-check me-1"></i>PO-<?= $request['purchase_order_id'] ?> <i class="bi bi-box-arrow-up-right ms-1" style="font-size: 9px;"></i>
+                </a>
+            <?php endif; ?>
+        </h3>
+        <nav>
+            <ol class="breadcrumb mb-0 mt-1">
+                <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-dashboard">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-vendor-payment-requests">Payment Requests</a></li>
+                <?php if (!empty($poDetails['request_id'])): ?>
+                    <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-purchase-request/<?= $poDetails['request_id'] ?>" target="_blank"><i class="bi bi-file-earmark-text text-warning me-1"></i>PR #<?= $poDetails['request_id'] ?></a></li>
+                <?php endif; ?>
+                <?php if (!empty($request['purchase_order_id'])): ?>
+                    <li class="breadcrumb-item"><a href="<?= $base_url ?>/con-purchase-order/<?= $request['purchase_order_id'] ?>" target="_blank">PO-<?= $request['purchase_order_id'] ?></a></li>
+                <?php endif; ?>
+                <li class="breadcrumb-item active">VPR-<?= $request['id'] ?></li>
+            </ol>
+        </nav>
     </div>
     <div class="d-flex gap-2 align-items-center flex-wrap">
         <?php if (!empty($payments) || $totalPaid > 0): ?>
@@ -382,12 +399,47 @@ if ($status === 'Draft') {
                         </div>
                     </div>
                     <?php if (!empty($request['purchase_order_id']) && $request['purchase_order_id'] > 0): ?>
-                        <div class="col-md-6">
-                            <div class="info-label text-uppercase text-muted small fw-bold">Purchase Order</div>
-                            <div class="">
-                                <a
-                                    href="<?= $base_url ?>/con-purchase-order/<?= $request['purchase_order_id'] ?>">PO-<?= $request['purchase_order_id'] ?></a>
+                        <div class="col-md-6 mb-2">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Purchase Order (PO)</div>
+                            <div class="d-flex align-items-center gap-2 mt-0.5">
+                                <a href="<?= $base_url ?>/con-purchase-order/<?= $request['purchase_order_id'] ?>" class="fw-bold text-primary text-decoration-none" target="_blank">
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 font-monospace" style="font-size: 12px;">
+                                        <i class="bi bi-file-earmark-check me-1"></i>PO-<?= $request['purchase_order_id'] ?>
+                                    </span>
+                                </a>
+                                <a href="<?= $base_url ?>/con-purchase-order/<?= $request['purchase_order_id'] ?>" target="_blank" class="btn btn-xs btn-outline-primary py-0.5 px-2" style="font-size: 11px;" title="View Purchase Order Details">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>View PO
+                                </a>
                             </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php 
+                    $linkedPrId = $poDetails['request_id'] ?? null;
+                    if (!empty($linkedPrId)): 
+                    ?>
+                        <div class="col-md-6 mb-2">
+                            <div class="info-label text-uppercase text-muted small fw-bold">Purchase Request (Requisition)</div>
+                            <div class="d-flex align-items-center gap-2 mt-0.5 flex-wrap">
+                                <a href="<?= $base_url ?>/con-purchase-request/<?= $linkedPrId ?>" class="fw-bold text-dark text-decoration-none" target="_blank">
+                                    <span class="badge bg-warning text-dark px-2 py-1 font-monospace" style="font-size: 12px;">
+                                        <i class="bi bi-file-earmark-text me-1"></i>PR #<?= htmlspecialchars($linkedPrId) ?>
+                                    </span>
+                                </a>
+                                <a href="<?= $base_url ?>/con-purchase-request/<?= $linkedPrId ?>" target="_blank" class="btn btn-xs btn-outline-warning text-dark py-0.5 px-2" style="font-size: 11px;" title="View Source Purchase Request">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>View PR
+                                </a>
+                                <?php if (!empty($prAttachment)): ?>
+                                    <a href="<?= $resolveAttUrl($prAttachment, 'purchase_requests') ?>" target="_blank" class="badge bg-light text-muted border text-decoration-none" title="PR Attached Document">
+                                        <i class="bi bi-paperclip me-1"></i>Doc
+                                    </a>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!empty($prDetails['purpose'])): ?>
+                                <small class="text-muted d-block mt-1" style="font-size: 11.5px;">
+                                    <strong>Purpose:</strong> <?= htmlspecialchars($prDetails['purpose']) ?>
+                                </small>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                     <div class="col-md-6">
@@ -657,13 +709,23 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                 <h6 class="card-title mb-0 fw-bold text-dark">
                     Selected Vendor & CST (Comparative Statement) Details
                 </h6>
-                <div class="text-muted small">
-                    PO Reference: <strong class="text-primary">#<?= htmlspecialchars($request['purchase_order_id'] ?? '—') ?></strong>
+                <div class="text-muted small d-flex align-items-center flex-wrap gap-2 mt-1">
+                    <?php if (!empty($request['purchase_order_id'])): ?>
+                        <span>PO Reference: 
+                            <a href="<?= $base_url ?>/con-purchase-order/<?= $request['purchase_order_id'] ?>" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle text-decoration-none px-2 py-0.5" title="View Originating Purchase Order">
+                                <i class="bi bi-file-earmark-check me-1"></i>PO-<?= htmlspecialchars($request['purchase_order_id']) ?> <i class="bi bi-box-arrow-up-right ms-1" style="font-size: 9px;"></i>
+                            </a>
+                        </span>
+                    <?php endif; ?>
                     <?php if (!empty($poDetails['request_id'])): ?>
-                        &nbsp;|&nbsp; PR Reference: <strong class="text-primary">#<?= htmlspecialchars($poDetails['request_id']) ?></strong>
+                        <span>&nbsp;|&nbsp; Source PR Requisition: 
+                            <a href="<?= $base_url ?>/con-purchase-request/<?= $poDetails['request_id'] ?>" target="_blank" class="badge bg-warning-subtle text-dark border border-warning-subtle text-decoration-none px-2 py-0.5" title="View Source Purchase Request">
+                                <i class="bi bi-file-earmark-text text-warning me-1"></i>PR #<?= htmlspecialchars($poDetails['request_id']) ?> <i class="bi bi-box-arrow-up-right ms-1" style="font-size: 9px;"></i>
+                            </a>
+                        </span>
                     <?php endif; ?>
                     <?php if (!empty($cstInfo['prepared_by_name'])): ?>
-                        &nbsp;|&nbsp; CST Prepared By: <strong class="text-dark"><?= htmlspecialchars($cstInfo['prepared_by_name']) ?></strong>
+                        <span class="text-muted">&nbsp;|&nbsp; CST Prepared By: <strong class="text-dark"><?= htmlspecialchars($cstInfo['prepared_by_name']) ?></strong></span>
                         <?php if (!empty($cstInfo['created_at'])): ?>
                             <span class="text-muted">(<?= date('d M Y, h:i A', strtotime($cstInfo['created_at'])) ?>)</span>
                         <?php endif; ?>
