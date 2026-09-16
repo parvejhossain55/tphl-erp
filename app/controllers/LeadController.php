@@ -1046,6 +1046,8 @@ class LeadController extends Controller
         $redirectUrl  = $GLOBALS['base_url'] . '/lead-lists' . $queryString;
         if (!empty($_POST['return_url'])) {
             $redirectUrl = $_POST['return_url'];
+        } elseif (!empty($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], 'my-all-assigned-leads') !== false) {
+            $redirectUrl = $_SERVER['HTTP_REFERER'];
         }
 
         if (!$userId || !$leadIds) {

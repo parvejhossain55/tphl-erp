@@ -900,14 +900,6 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
             <div class="section-header-title">PROCESSING INFORMATION</div>
             <div class="processing-grid">
                 <div class="proc-box">
-                    <span class="proc-label">Payment Method:</span>
-                    <span class="proc-value"><?= $paymentMethod ?></span>
-                </div>
-                <div class="proc-box">
-                    <span class="proc-label">Bank Name:</span>
-                    <span class="proc-value"><?= htmlspecialchars($displayBank) ?></span>
-                </div>
-                <div class="proc-box">
                     <span class="proc-label">Created By:</span>
                     <span class="proc-value"><?= htmlspecialchars($createdByName) ?></span>
                 </div>

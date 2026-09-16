@@ -309,7 +309,7 @@ $show_breadcrumb = true;
                                     <td>
                                         <div class="d-flex align-items-center justify-content-start gap-10">
                                             <button class="table__icon download"
-                                                onclick="openProjectsModal(<?= $client['lead_id'] ?>, '<?= htmlspecialchars($client['client_name'], ENT_QUOTES) ?>')"
+                                                onclick="openProjectsModal(<?= $client['lead_id'] ?>, '<?= htmlspecialchars(trim(preg_replace('/\s+/', ' ', $client['client_name'])), ENT_QUOTES) ?>')"
                                                 title="View Projects">
                                                 <i class="fa-regular fa-eye"></i>
                                             </button>
