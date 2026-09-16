@@ -1,4 +1,4 @@
-﻿-- MySQL dump 10.13  Distrib 8.0.46, for Linux (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.46, for Linux (x86_64)
 --
 -- Host: localhost    Database: final_erp_db
 -- ------------------------------------------------------
@@ -354,7 +354,7 @@ CREATE TABLE `boq_master` (
   `approved_at` timestamp NULL DEFAULT NULL,
   `created_by` int NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTlead_payments e ki emi_service % jacche eta upoAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_boq_project` (`project_id`),
   KEY `idx_boq_approved_by` (`approved_by`),
