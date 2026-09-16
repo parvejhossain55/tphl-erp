@@ -1986,6 +1986,9 @@ class Lead extends Model
         $visibility = $data['visibility'] ?? 'public';
         $status = $data['status'] ?? 'active';
         $lead_quality = $data['lead_quality'] ?? 'Pending';
+        if (!in_array($lead_quality, ['Pending', 'Prospect', 'Not Interested'])) {
+            $lead_quality = 'Pending';
+        }
         $lead_type = (!empty($data['lead_type']) && trim((string)$data['lead_type']) !== '') ? trim((string)$data['lead_type']) : null;
         $company_name = isset($data['company_name']) ? mb_substr((string)$data['company_name'], 0, 255, 'UTF-8') : null;
         $team_id = $data['team_id'] ?? null;
@@ -2212,6 +2215,9 @@ class Lead extends Model
         $nationality          = $nn('nationality') ?? 'Bangladeshi';
         $religion             = $nn('religion');
         $residency_type       = $nn('residency_type');
+        if (!empty($residency_type)) {
+            $residency_type = in_array(strtolower($residency_type), ['nrb', 'expatriate']) ? 'expatriate' : 'local';
+        }
         $nid_or_passport      = $nn('nid_or_passport');
         $identity_type        = $nn('identity_type');
 
@@ -2246,6 +2252,9 @@ class Lead extends Model
         $pref_location_id     = $ni('pref_location_id');
         $lead_type            = $nn('lead_type');
         $lead_quality         = $nn('lead_quality');
+        if (!empty($lead_quality) && !in_array($lead_quality, ['Pending', 'Prospect', 'Not Interested'])) {
+            $lead_quality = 'Pending';
+        }
         $visibility           = $nn('visibility') ?? 'public';
         $status               = $nn('status') ?? 'active';
         $call_status          = $nn('call_status');

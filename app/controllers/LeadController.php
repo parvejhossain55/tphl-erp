@@ -1200,7 +1200,7 @@ class LeadController extends Controller
             "locations" => $locations,
             "projects" => $projects,
             "teams" => $teams,
-
+            "redirect" => $_GET['redirect'] ?? $_SERVER['HTTP_REFERER'] ?? '',
         ]);
     }
 
@@ -1209,6 +1209,8 @@ class LeadController extends Controller
     public function store()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        
+        $redirect = $_POST['redirect'] ?? '';
 
         $leadData = [
             // CSV / new fields
@@ -1260,7 +1262,11 @@ class LeadController extends Controller
 
             setSuccess("Lead created successfully!");
 
-            if ($loggedInRoleId === 1 || $loggedInRoleId === 5 || $loggedInRoleId === 3 || $loggedInRoleId === 9) {
+            if (!empty($redirect)) {
+                header("Location: " . $redirect);
+            } elseif ($loggedInRoleId === 8) {
+                header("Location: {$GLOBALS['base_url']}/my-assigned-leads");
+            } elseif ($loggedInRoleId === 1 || $loggedInRoleId === 5 || $loggedInRoleId === 3 || $loggedInRoleId === 9) {
                 header("Location: {$GLOBALS['base_url']}/lead-lists");
             } else {
                 header("Location: {$GLOBALS['base_url']}/today-leads");
@@ -1314,7 +1320,7 @@ class LeadController extends Controller
             "teams"             => $teams,
             "projectCategories" => $projectCategories,
             "show_breadcrumb"   => true,
-            "redirect"          => $_GET['redirect'] ?? '',
+            "redirect"          => $_GET['redirect'] ?? $_SERVER['HTTP_REFERER'] ?? '',
         ]);
     }
 
@@ -1333,10 +1339,15 @@ class LeadController extends Controller
             $this->leadModel->update($id, $leadData);
             setSuccess("Lead updated successfully!");
             
+            $loggedInRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
             if (!empty($redirect)) {
                 header("Location: " . $redirect);
-            } else {
+            } elseif ($loggedInRoleId === 8) {
+                header("Location: {$GLOBALS['base_url']}/my-assigned-leads");
+            } elseif ($loggedInRoleId === 1 || $loggedInRoleId === 5 || $loggedInRoleId === 3 || $loggedInRoleId === 9) {
                 header("Location: {$GLOBALS['base_url']}/lead-lists");
+            } else {
+                header("Location: {$GLOBALS['base_url']}/today-leads");
             }
             exit;
         } catch (Exception $e) {

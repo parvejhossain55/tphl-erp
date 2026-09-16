@@ -214,103 +214,77 @@ class ClientRefundController extends Controller
             $documentPath = $existingRefund['document'];
         }
 
-        // Determine if Accounts is completing payout
-        $isAccounts = in_array($this->userRole, [1, 3, 6, 10, 30]);
-
         $this->db->begin_transaction();
         try {
             $refundId = null;
 
             if ($existingRefund) {
                 $refundId = (int)$existingRefund['id'];
-                $newStatus = $isAccounts ? 'refunded' : 'pending';
-                $refundedAt = $isAccounts ? date('Y-m-d H:i:s') : null;
 
                 $upStmt = $this->db->prepare("UPDATE client_refund_requests 
-                    SET total_paid = ?, retention_amount = ?, refund_amount = ?, reason = ?, document = ?, 
-                        status = ?, refunded_at = ?, approved_by = IFNULL(approved_by, ?) 
+                    SET total_paid = ?, retention_amount = ?, refund_amount = ?, reason = ?, document = IFNULL(?, document), 
+                        status = 'pending', approved_by = NULL, approved_at = NULL, refunded_at = NULL 
                     WHERE id = ?");
-                $upStmt->bind_param("dddssssii", $totalPaid, $retentionAmount, $refundAmount, $reason, $documentPath, $newStatus, $refundedAt, $this->userId, $refundId);
+                $upStmt->bind_param("dddssi", $totalPaid, $retentionAmount, $refundAmount, $reason, $documentPath, $refundId);
                 $upStmt->execute();
             } else {
-                $newStatus = $isAccounts ? 'refunded' : 'pending';
-                $refundedAt = $isAccounts ? date('Y-m-d H:i:s') : null;
-
                 $inStmt = $this->db->prepare("INSERT INTO client_refund_requests 
-                    (booking_id, lead_id, project_id, flat_id, total_paid, retention_amount, refund_amount, reason, document, requested_by, status, refunded_at, approved_by, approved_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+                    (booking_id, lead_id, project_id, flat_id, total_paid, retention_amount, refund_amount, reason, document, requested_by, status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
                 $leadId = (int)$booking['lead_id'];
                 $projId = (int)$booking['project_id'];
                 $flatId = (int)$booking['flat_id'];
-                $inStmt->bind_param("iiiidddssissi", $bookingId, $leadId, $projId, $flatId, $totalPaid, $retentionAmount, $refundAmount, $reason, $documentPath, $this->userId, $newStatus, $refundedAt, $this->userId);
+                $inStmt->bind_param("iiiidddssi", $bookingId, $leadId, $projId, $flatId, $totalPaid, $retentionAmount, $refundAmount, $reason, $documentPath, $this->userId);
                 $inStmt->execute();
                 $refundId = $inStmt->insert_id;
             }
 
-            // If Accounts processed the payout, record the refund deduction in lead_payments
-            if ($isAccounts && $refundAmount > 0) {
-                // Release flat if not yet released
-                if (!empty($booking['flat_id'])) {
-                    $flatId = (int)$booking['flat_id'];
-                    $fStmt = $this->db->prepare("UPDATE flats SET status = 'available', is_booked = 0 WHERE id = ?");
-                    $fStmt->bind_param("i", $flatId);
-                    $fStmt->execute();
-                }
+            // Ensure flat is available and booking is cancelled
+            if (!empty($booking['flat_id'])) {
+                $flatId = (int)$booking['flat_id'];
+                $fStmt = $this->db->prepare("UPDATE flats SET status = 'available', is_booked = 0 WHERE id = ?");
+                $fStmt->bind_param("i", $flatId);
+                $fStmt->execute();
+            }
 
-                // Ensure booking is refunded
-                $lbStmt = $this->db->prepare("UPDATE lead_bookings SET booking_status = 'refunded', landshare_status = 'cancelled' WHERE id = ?");
-                $lbStmt->bind_param("i", $bookingId);
-                $lbStmt->execute();
+            $lbStmt = $this->db->prepare("UPDATE lead_bookings SET booking_status = 'refunded', landshare_status = 'cancelled' WHERE id = ?");
+            $lbStmt->bind_param("i", $bookingId);
+            $lbStmt->execute();
 
-                // Cancel pending EMIs
-                $emiStmt = $this->db->prepare("UPDATE emi_schedules SET status = 'cancelled' WHERE lead_booking_id = ? AND status IN ('pending', 'missed')");
-                $emiStmt->bind_param("i", $bookingId);
-                $emiStmt->execute();
+            // Cancel pending EMIs
+            $emiStmt = $this->db->prepare("UPDATE emi_schedules SET status = 'cancelled' WHERE lead_booking_id = ? AND status IN ('pending', 'missed')");
+            $emiStmt->bind_param("i", $bookingId);
+            $emiStmt->execute();
 
-                // Insert negative refund entry in lead_payments to reduce cash in
-                $negAmount = -abs($refundAmount);
-                $txnRef = 'Refund Payout #' . $refundId . ($chequeNo !== '' ? ' (Ref: ' . $chequeNo . ')' : '');
+            // Create or update approval request for Management & Role 20
+            $arCheck = $this->db->prepare("SELECT id FROM approval_requests WHERE source_table = 'client_refund_requests' AND source_id = ? LIMIT 1");
+            $arCheck->bind_param("i", $refundId);
+            $arCheck->execute();
+            $existingAr = $arCheck->get_result()->fetch_assoc();
 
-                $payStmt = $this->db->prepare("INSERT INTO lead_payments 
-                    (booking_id, payment_type, amount, payment_method, cheque_no, payment_status, verification_status, verified_by, payment_date, transaction_ref, created_by) 
-                    VALUES (?, 'refund', ?, ?, ?, 'paid', 'verified', ?, CURDATE(), ?, ?)");
-                $payStmt->bind_param("idssisi", $bookingId, $negAmount, $paymentMethod, $chequeNo, $this->userId, $txnRef, $this->userId);
-                $payStmt->execute();
-
-                // Update approval_requests to approved
-                $arStmt = $this->db->prepare("UPDATE approval_requests SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE source_table = 'client_refund_requests' AND source_id = ?");
-                $arStmt->bind_param("ii", $this->userId, $refundId);
-                $arStmt->execute();
+            if ($existingAr) {
+                $arUpdate = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, status = 'pending', approved_by = NULL, approved_at = NULL WHERE id = ?");
+                $arUpdate->bind_param("di", $refundAmount, $existingAr['id']);
+                $arUpdate->execute();
             } else {
-                // Create approval request if not exists
-                $arCheck = $this->db->prepare("SELECT id FROM approval_requests WHERE source_table = 'client_refund_requests' AND source_id = ? LIMIT 1");
-                $arCheck->bind_param("i", $refundId);
-                $arCheck->execute();
-                if (!$arCheck->get_result()->fetch_assoc()) {
-                    $this->approvalModel->create([
-                        'department'     => 'accounts',
-                        'request_type'   => 'client_refund',
-                        'title'          => 'Client Refund — ' . ($booking['client_name'] ?? '') . ' | ' . ($booking['flat_name'] ?? '') . ' | ' . ($booking['project_name'] ?? ''),
-                        'source_table'   => 'client_refund_requests',
-                        'source_id'      => $refundId,
-                        'requested_days' => 0,
-                        'requested_by'   => $this->userId,
-                        'approve_role'   => 'management',
-                        'meta_data'      => null,
-                        'request_amount' => $refundAmount,
-                    ]);
-                }
+                $this->approvalModel->create([
+                    'department'     => 'accounts',
+                    'request_type'   => 'client_refund',
+                    'title'          => 'Client Refund — ' . ($booking['client_name'] ?? '') . ' | ' . ($booking['flat_name'] ?? '') . ' | ' . ($booking['project_name'] ?? ''),
+                    'source_table'   => 'client_refund_requests',
+                    'source_id'      => $refundId,
+                    'requested_days' => 0,
+                    'requested_by'   => $this->userId,
+                    'approve_role'   => 'management',
+                    'meta_data'      => null,
+                    'request_amount' => $refundAmount,
+                ]);
             }
 
             $this->db->commit();
 
-            if ($isAccounts) {
-                setSuccess('Refund payout completed! ৳' . number_format($refundAmount, 2) . ' disbursed to client and deducted from cash-in.');
-                header("Location: {$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}");
-            } else {
-                setSuccess('Refund request submitted for approval. Refund Amount: ৳' . number_format($refundAmount, 2));
-                header("Location: {$GLOBALS['base_url']}/client-refund/{$refundId}");
-            }
+            setSuccess('Refund payment request of ৳' . number_format($refundAmount, 2) . ' (Retention: ৳' . number_format($retentionAmount, 2) . ') submitted. Awaiting approval from Management and Role 20.');
+            header("Location: {$GLOBALS['base_url']}/client-refund/{$refundId}");
         } catch (\Exception $e) {
             $this->db->rollback();
             error_log("Refund store failed: " . $e->getMessage());
@@ -521,6 +495,129 @@ class ClientRefundController extends Controller
             setSuccess('Refund request rejected.');
         } else {
             setError('Failed to reject refund request.');
+        }
+
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+        exit;
+    }
+
+    // =========================================================================
+    // DISBURSE PAYMENT (Accounts pays after Management & Role 20 approval)
+    // =========================================================================
+
+    public function disbursePayment($id)
+    {
+        // Authorized: Accounts (6, 10, 30) or Admin (1, 3)
+        if (!in_array($this->userRole, [1, 3, 6, 10, 30])) {
+            setError('You are not authorized to disburse refund payments.');
+            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            exit;
+        }
+
+        $refund = $this->model->find($id);
+        if (!$refund) {
+            setError('Refund request not found.');
+            header("Location: {$GLOBALS['base_url']}/client-refunds");
+            exit;
+        }
+
+        if ($refund['status'] !== 'approved') {
+            setError('Refund request is not approved yet.');
+            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            exit;
+        }
+
+        $paymentMethod  = trim($_POST['payment_method'] ?? 'cash');
+        $chequeNo       = trim($_POST['cheque_no'] ?? '');
+        $paymentDate    = !empty($_POST['payment_date']) ? $_POST['payment_date'] : date('Y-m-d');
+        $transactionRef = trim($_POST['transaction_ref'] ?? '');
+        $bankName       = trim($_POST['bank_name'] ?? '');
+        $bankAccountNo  = trim($_POST['bank_account_no'] ?? '');
+        $remarks        = trim($_POST['remarks'] ?? '');
+        $refundAmount   = (float)$refund['refund_amount'];
+        $bookingId      = (int)$refund['booking_id'];
+
+        // Mandatory attachment / payment proof
+        if (empty($_FILES['disbursement_proof']['name'])) {
+            setError('Disbursement proof attachment (cheque copy / voucher / receipt) is required.');
+            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}?pay=1");
+            exit;
+        }
+
+        $allowedTypes = ['doc', 'docx', 'pdf', 'jpg', 'jpeg', 'png'];
+        $fileExt = strtolower(pathinfo($_FILES['disbursement_proof']['name'], PATHINFO_EXTENSION));
+        if (!in_array($fileExt, $allowedTypes)) {
+            setError('Invalid attachment format. Allowed formats: JPG, PNG, PDF, DOC, DOCX.');
+            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}?pay=1");
+            exit;
+        }
+
+        if ($_FILES['disbursement_proof']['size'] > 10 * 1024 * 1024) {
+            setError('Attachment exceeds 10MB limit.');
+            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}?pay=1");
+            exit;
+        }
+
+        $newFileName = 'refund_voucher_' . $id . '_' . time() . '.' . $fileExt;
+        $uploadPath  = 'uploads/refunds/' . $newFileName;
+        $fullPath    = __DIR__ . '/../../public/' . $uploadPath;
+        if (!is_dir(dirname($fullPath))) {
+            mkdir(dirname($fullPath), 0777, true);
+        }
+
+        if (!move_uploaded_file($_FILES['disbursement_proof']['tmp_name'], $fullPath)) {
+            setError('Failed to upload disbursement proof document.');
+            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}?pay=1");
+            exit;
+        }
+        $proofPath = $uploadPath;
+
+        $this->db->begin_transaction();
+        try {
+            // 1. Update client_refund_requests status to 'refunded'
+            $upStmt = $this->db->prepare("UPDATE client_refund_requests 
+                SET status = 'refunded', refunded_at = NOW(), document = ? 
+                WHERE id = ?");
+            $upStmt->bind_param("si", $proofPath, $id);
+            $upStmt->execute();
+
+            // 2. Insert negative payment entry in lead_payments to reduce cash-in balance
+            $negAmount = -abs($refundAmount);
+            $fullRef = 'Refund Payout #' . $id . ($chequeNo !== '' ? ' (Cheque: ' . $chequeNo . ')' : ($transactionRef !== '' ? ' (Ref: ' . $transactionRef . ')' : ''));
+            if ($remarks !== '') {
+                $fullRef .= ' | ' . $remarks;
+            }
+
+            $payStmt = $this->db->prepare("INSERT INTO lead_payments 
+                (booking_id, amount, payment_method, cheque_no, payment_status, verification_status, verified_by, verified_at, payment_date, transaction_ref, attachment_image, created_by) 
+                VALUES (?, ?, ?, ?, 'paid', 'verified', ?, NOW(), ?, ?, ?, ?)");
+            $payStmt->bind_param("idssissis", $bookingId, $negAmount, $paymentMethod, $chequeNo, $this->userId, $paymentDate, $fullRef, $proofPath, $this->userId);
+            $payStmt->execute();
+
+            // 3. If linked cashout request exists, record in cashout_payments and set fully_paid
+            if (!empty($refund['cashout_request_id'])) {
+                $cId = (int)$refund['cashout_request_id'];
+                $cpStmt = $this->db->prepare("INSERT INTO cashout_payments 
+                    (cashout_request_id, amount, payment_method, cheque_no, payment_date, transaction_ref, bank_name, bank_account_no, disbursement_proof, created_by, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+                $proofJson = json_encode([$proofPath]);
+                $cpStmt->bind_param("idsssssssi", $cId, $refundAmount, $paymentMethod, $chequeNo, $paymentDate, $transactionRef, $bankName, $bankAccountNo, $proofJson, $this->userId);
+                $cpStmt->execute();
+
+                $this->db->query("UPDATE cashout_requests SET status = 'fully_paid', due_amount = 0 WHERE id = {$cId}");
+            }
+
+            $this->db->commit();
+            setSuccess('Refund payment of ৳' . number_format($refundAmount, 2) . ' disbursed successfully with attachment! Client cash-in has been adjusted.');
+        } catch (\Exception $e) {
+            $this->db->rollback();
+            error_log("Refund disbursePayment failed: " . $e->getMessage());
+            setError('Failed to disburse refund payment: ' . $e->getMessage());
         }
 
         header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");

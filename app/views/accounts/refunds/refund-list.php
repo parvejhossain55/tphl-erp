@@ -100,7 +100,7 @@ $statusMap = [
                                     <i class="bi bi-eye"></i> View
                                 </a>
                                 <?php if ($r['status'] === 'approved' && in_array($userRole, [1, 3, 6, 10, 30])): ?>
-                                    <a href="<?= $base_url ?>/client-refund-create/<?= $r['booking_id'] ?>" class="btn btn-sm btn-outline-danger mb-1">
+                                    <a href="<?= $base_url ?>/client-refund/<?= $r['id'] ?>?pay=1" class="btn btn-sm btn-outline-success mb-1">
                                         <i class="bi bi-cash-stack"></i> Pay Refund
                                     </a>
                                 <?php endif; ?>

@@ -238,7 +238,7 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                 </div>
             </div>
 
-            <!-- Approval Actions (Management only, pending status) -->
+            <!-- Approval Actions (Management & Role 20 only, pending status) -->
             <?php if ($canApproveReq && $isPending): ?>
             <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #ffc107 !important; background: #fffdf5;">
                 <div class="card-body p-3">
@@ -247,16 +247,16 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                             <i class="bi bi-shield-lock-fill fs-6"></i>
                         </div>
                         <div>
-                            <h6 class="card-title mb-0 fw-bold text-dark fs-14">ম্যানেজমেন্ট অনুমোদন</h6>
+                            <h6 class="card-title mb-0 fw-bold text-dark fs-14">ম্যানেজমেন্ট ও Role 20 অনুমোদন</h6>
                             <span class="badge bg-warning text-dark font-monospace" style="font-size: 10px;">Approval Action</span>
                         </div>
                     </div>
                     
                     <div class="p-2.5 rounded-2 bg-white border border-light-subtle small mb-3 text-secondary" style="font-size: 12px; line-height: 1.6;">
                         <span class="fw-semibold text-dark d-block mb-1">অনুমোদনের প্রভাব:</span>
-                        • অ্যাকাউন্টস পে-আউটের জন্য রিকোয়েস্টটি সক্রিয় হবে<br>
-                        • ফ্ল্যাট রিলিজ ও বুকিং ক্যানসেলেশন কনফার্ম হবে<br>
-                        • ৳ <?= number_format($refund['refund_amount'], 2) ?> টাকার অনুমোদন প্রদান করা হবে
+                        • অ্যাকাউন্টস কর্তৃক অ্যাটাচমেন্ট সহ পে-আউট করার অনুমতি পাবে<br>
+                        • নিট রিফান্ড অ্যামাউন্ট: ৳ <?= number_format($refund['refund_amount'], 2) ?><br>
+                        • কোম্পানি রিটেনশন: ৳ <?= number_format($refund['retention_amount'], 2) ?>
                     </div>
 
                     <form action="<?= $base_url ?>/client-refund-approve/<?= $refund['id'] ?>" method="POST" class="mb-2" id="approveForm">
@@ -286,7 +286,7 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                             <i class="bi bi-hourglass-split fs-6"></i>
                         </div>
                         <div>
-                            <h6 class="mb-0 fw-bold fs-13 text-primary">ম্যানেজমেন্ট অনুমোদনের অপেক্ষায়</h6>
+                            <h6 class="mb-0 fw-bold fs-13 text-primary">ম্যানেজমেন্ট ও Role 20 অনুমোদনের অপেক্ষায়</h6>
                             <span class="badge bg-warning text-dark font-monospace" style="font-size: 10px;">Pending Approval</span>
                         </div>
                     </div>
@@ -295,7 +295,7 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                         <div class="fw-semibold text-dark mb-1">
                             <i class="bi bi-shield-check text-success me-1"></i> রিটেনশন ও পেমেন্ট নির্দেশিকা:
                         </div>
-                        ম্যানেজমেন্ট (Role 3, 9, 20, 33 বা Admin) কর্তৃক এই রিকোয়েস্টটি <strong>Approve</strong> করার পর, অ্যাকাউন্টস ডিপার্টমেন্ট এখানে রিটেনশন ফি (কোম্পানি চার্জ) কেটে সরাসরি ক্লায়েন্টকে রিফান্ড পেইড করার অপশন পাবে।
+                        এই রিফান্ড রিকোয়েস্টটি <strong>ম্যানেজমেন্ট ও Role 20</strong> এর অনুমোদনের জন্য অপেক্ষমান। অনুমোদন পাওয়ার পর অ্যাকাউন্টস ডিপার্টমেন্ট ভাউচার/চেক অ্যাটাচমেন্ট আপলোড করে ক্লায়েন্টকে রিফান্ড পেইড করতে পারবে।
                     </div>
                 </div>
             </div>
@@ -316,33 +316,164 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                     </div>
                     <div class="p-2.5 rounded-2 bg-white border border-light-subtle small mt-2 mb-3 text-secondary" style="font-size: 12.5px; line-height: 1.6;">
                         <span class="fw-semibold text-dark d-block mb-1">অ্যাকাউন্টস ডিপার্টমেন্টের করণীয়:</span>
-                        রিটেনশন ফি (কোম্পানি চার্জ) নির্ধারণ করে ক্লায়েন্টের নিট রিফান্ড অর্থ প্রদান সম্পন্ন করুন।
+                        ম্যানেজমেন্ট ও Role 20 কর্তৃক অনুমোদিত হয়েছে। এখন ভাউচার/চেক অ্যাটাচমেন্ট সহ রিফান্ড পেমেন্ট পরিশোধ করুন।
                     </div>
-                    <a href="<?= $base_url ?>/client-refund-create/<?= $refund['booking_id'] ?>" class="btn btn-danger w-100 fw-bold py-2 shadow-sm d-flex align-items-center justify-content-center gap-2">
-                        <i class="bi bi-cash-coin fs-6"></i> Pay Refund & Deduct Retention
-                    </a>
+                    <button type="button" class="btn btn-success w-100 fw-bold py-2 shadow-sm d-flex align-items-center justify-content-center gap-2" data-bs-toggle="modal" data-bs-target="#disburseRefundModal">
+                        <i class="bi bi-cash-stack fs-6"></i> Pay Refund (with Attachment)
+                    </button>
                 </div>
             </div>
             <?php endif; ?>
 
             <!-- Refund Completed -->
             <?php if ($status === 'refunded'): ?>
-            <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #0d6efd !important; background: #f8faff;">
+            <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #198754 !important; background: #f4fbf7;">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center mb-2.5">
-                        <div class="rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0" style="width: 34px; height: 34px; background: rgba(13, 110, 253, 0.12); color: #0d6efd;">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0" style="width: 34px; height: 34px; background: rgba(25, 135, 84, 0.15); color: #198754;">
                             <i class="bi bi-check-all fs-5"></i>
                         </div>
                         <div>
-                            <h6 class="mb-0 fw-bold fs-14 text-primary">রিফান্ড পরিশোধ সম্পন্ন</h6>
-                            <span class="badge bg-secondary text-white font-monospace" style="font-size: 10px;">Refunded Paid</span>
+                            <h6 class="mb-0 fw-bold fs-14 text-success">রিফান্ড পরিশোধ সম্পন্ন</h6>
+                            <span class="badge bg-success text-white font-monospace" style="font-size: 10px;">Refunded Paid</span>
                         </div>
                     </div>
-                    <p class="small text-secondary mb-0 mt-2" style="font-size: 12.5px; line-height: 1.6;">
+                    <p class="small text-secondary mb-2 mt-2" style="font-size: 12.5px; line-height: 1.6;">
                         এই রিফান্ডটি অ্যাকাউন্টস কর্তৃক পরিশোধ সম্পন্ন হয়েছে এবং ক্লায়েন্ট লেজার থেকে <strong>৳ <?= number_format($refund['refund_amount'], 2) ?></strong> সমন্বয় করা হয়েছে।
                     </p>
+                    <?php if (!empty($refund['document'])): ?>
+                    <div class="mt-2 pt-2 border-top">
+                        <a href="<?= $base_url ?>/<?= htmlspecialchars($refund['document']) ?>" target="_blank" class="btn btn-sm btn-outline-success w-100 fw-semibold">
+                            <i class="bi bi-file-earmark-arrow-down me-1"></i> View Payment Voucher / Attachment
+                        </a>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
+            <?php endif; ?>
+
+            <!-- Modal: Disburse Refund Payment with Attachment -->
+            <?php if ($status === 'approved' && in_array($userRole, [1, 3, 6, 10, 30])): ?>
+            <div class="modal fade" id="disburseRefundModal" tabindex="-1" aria-labelledby="disburseRefundModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header bg-success text-white">
+                            <h5 class="modal-title fs-15 fw-bold text-white" id="disburseRefundModalLabel">
+                                <i class="bi bi-cash-coin me-2"></i>Disburse Refund Payment
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form action="<?= $base_url ?>/client-refund-disburse/<?= $refund['id'] ?>" method="POST" enctype="multipart/form-data" id="disburseForm">
+                            <div class="modal-body">
+                                <!-- Financial Summary Box -->
+                                <div class="p-3 rounded-2 bg-light border mb-3">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="text-muted small">Total Verified Paid:</span>
+                                        <span class="fw-semibold">৳ <?= number_format($refund['total_paid'], 2) ?></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="text-muted small">Retention (Company Cut):</span>
+                                        <span class="fw-semibold text-danger">৳ <?= number_format($refund['retention_amount'], 2) ?></span>
+                                    </div>
+                                    <hr class="my-1">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="fw-bold text-dark">Approved Net Refund to Pay:</span>
+                                        <span class="fw-bold text-success fs-16">৳ <?= number_format($refund['refund_amount'], 2) ?></span>
+                                    </div>
+                                </div>
+
+                                <!-- Payment Method -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold small">Payment Method <span class="text-danger">*</span></label>
+                                    <select name="payment_method" class="form-select" id="disburseMethod" required onchange="toggleDisburseFields(this.value)">
+                                        <option value="cash">Cash</option>
+                                        <option value="bank">Bank Transfer</option>
+                                        <option value="cheque">Cheque</option>
+                                    </select>
+                                </div>
+
+                                <!-- Cheque / Ref No -->
+                                <div class="mb-3" id="disburseChequeRow" style="display:none;">
+                                    <label class="form-label fw-semibold small" id="disburseChequeLabel">Cheque / Voucher No <span class="text-danger">*</span></label>
+                                    <input type="text" name="cheque_no" class="form-control" placeholder="Enter cheque or voucher number">
+                                </div>
+
+                                <!-- Bank Details -->
+                                <div class="row g-2 mb-3" id="disburseBankRow" style="display:none;">
+                                    <div class="col-6">
+                                        <label class="form-label fw-semibold small">Bank Name</label>
+                                        <input type="text" name="bank_name" class="form-control" placeholder="Company Bank">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-semibold small">Account No</label>
+                                        <input type="text" name="bank_account_no" class="form-control" placeholder="Account Number">
+                                    </div>
+                                </div>
+
+                                <!-- Payment Date -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold small">Payment Date <span class="text-danger">*</span></label>
+                                    <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                                </div>
+
+                                <!-- MANDATORY ATTACHMENT -->
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold small">
+                                        <i class="bi bi-paperclip text-primary"></i> Payment Proof / Voucher / Cheque Copy <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="file" name="disbursement_proof" class="form-control" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" required>
+                                    <small class="text-muted d-block mt-0.5" style="font-size: 11px;">
+                                        বাধ্যতামূলক: চেক কপি, মানি রিসিট বা সাইন্ড ভাউচারের স্ক্যান/ছবি আপলোড করুন (Max 10MB)।
+                                    </small>
+                                </div>
+
+                                <!-- Remarks -->
+                                <div class="mb-2">
+                                    <label class="form-label fw-semibold small">Remarks / Notes</label>
+                                    <textarea name="remarks" class="form-control" rows="2" placeholder="Optional payment notes..."></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-success fw-bold btn-sm px-3" onclick="return confirm('Confirm payment disbursement of ৳ <?= number_format($refund['refund_amount'], 2) ?>?');">
+                                    <i class="bi bi-check2-circle me-1"></i> Disburse & Record Payment
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+            function toggleDisburseFields(method) {
+                var chqRow = document.getElementById('disburseChequeRow');
+                var bnkRow = document.getElementById('disburseBankRow');
+                if (method === 'cheque') {
+                    if (chqRow) chqRow.style.display = 'block';
+                    if (bnkRow) bnkRow.style.display = 'none';
+                    var lbl = document.getElementById('disburseChequeLabel');
+                    if (lbl) lbl.innerText = 'Cheque Number *';
+                } else if (method === 'bank') {
+                    if (chqRow) chqRow.style.display = 'block';
+                    if (bnkRow) bnkRow.style.display = 'flex';
+                    var lbl = document.getElementById('disburseChequeLabel');
+                    if (lbl) lbl.innerText = 'Transaction Ref / Voucher No *';
+                } else {
+                    if (chqRow) chqRow.style.display = 'none';
+                    if (bnkRow) bnkRow.style.display = 'none';
+                }
+            }
+            document.addEventListener('DOMContentLoaded', function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('pay') === '1') {
+                    var modalEl = document.getElementById('disburseRefundModal');
+                    if (modalEl) {
+                        var m = new bootstrap.Modal(modalEl);
+                        m.show();
+                    }
+                }
+            });
+            </script>
             <?php endif; ?>
 
             <script>

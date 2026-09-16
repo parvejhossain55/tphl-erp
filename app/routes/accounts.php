@@ -225,6 +225,7 @@ return [
     'client-refund/(\d+)' => ['controller' => 'ClientRefundController', 'method' => 'show'],
     'client-refund-approve/(\d+)' => ['controller' => 'ClientRefundController', 'method' => 'approve'],
     'client-refund-reject/(\d+)' => ['controller' => 'ClientRefundController', 'method' => 'reject'],
+    'client-refund-disburse/(\d+)' => ['controller' => 'ClientRefundController', 'method' => 'disbursePayment'],
     'client-refund-delete/(\d+)' => ['controller' => 'ClientRefundController', 'method' => 'delete'],
 
     // =========================================================================

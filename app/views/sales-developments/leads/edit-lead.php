@@ -35,8 +35,8 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Full Name (English) <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="full_name" required value="<?= htmlspecialchars($leadData['full_name'] ?? $leadData['lead_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                        <label class="form-label fw-semibold">Full Name (English)</label>
+                        <input type="text" class="form-control" name="full_name" value="<?= htmlspecialchars($leadData['full_name'] ?? $leadData['lead_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     </div>
 
                     <div class="col-md-6">
@@ -88,7 +88,7 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
                         <label class="form-label fw-semibold">Residency Type</label>
                         <select name="residency_type" class="form-select">
                             <option value="local" <?= ($leadData['residency_type'] ?? '') === 'local' ? 'selected' : '' ?>>Local Resident</option>
-                            <option value="nrb" <?= ($leadData['residency_type'] ?? '') === 'nrb' ? 'selected' : '' ?>>NRB (Non-Resident)</option>
+                            <option value="expatriate" <?= ($leadData['residency_type'] ?? '') === 'expatriate' ? 'selected' : '' ?>>NRB (Non-Resident)</option>
                         </select>
                     </div>
 
@@ -281,11 +281,8 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Lead Quality</label>
                         <select name="lead_quality" class="form-select">
-                            <option value="">-- Select Quality --</option>
                             <option value="Pending" <?= ($leadData['lead_quality'] ?? '') === 'Pending' ? 'selected' : '' ?>>Pending</option>
-                            <option value="High Quality" <?= ($leadData['lead_quality'] ?? '') === 'High Quality' ? 'selected' : '' ?>>High Quality</option>
-                            <option value="Medium Quality" <?= ($leadData['lead_quality'] ?? '') === 'Medium Quality' ? 'selected' : '' ?>>Medium Quality</option>
-                            <option value="Low Quality" <?= ($leadData['lead_quality'] ?? '') === 'Low Quality' ? 'selected' : '' ?>>Low Quality</option>
+                            <option value="Prospect" <?= ($leadData['lead_quality'] ?? '') === 'Prospect' ? 'selected' : '' ?>>Prospect</option>
                             <option value="Not Interested" <?= ($leadData['lead_quality'] ?? '') === 'Not Interested' ? 'selected' : '' ?>>Not Interested</option>
                         </select>
                     </div>
@@ -603,7 +600,7 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
                     <button type="submit" class="btn btn-primary btn-lg px-5">
                         <i class="fa-solid fa-save me-2"></i> Update Lead Information
                     </button>
-                    <a href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $leadData['id'] ?>" class="btn btn-secondary btn-lg px-4 ms-2">
+                    <a href="<?= htmlspecialchars($redirect ?: $GLOBALS['base_url'] . '/view-lead/' . $leadData['id'], ENT_QUOTES, 'UTF-8') ?>" class="btn btn-secondary btn-lg px-4 ms-2">
                         <i class="fa-solid fa-times me-2"></i> Cancel
                     </a>
                 </div>
