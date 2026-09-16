@@ -1676,7 +1676,7 @@ ORDER BY lb.booking_date DESC
             WHERE lp.is_trashed = 0 AND lp.booking_id = ?
               AND lp.payment_type = 'emi'
               AND lp.due_emi_amount > 0
-              AND lp.verification_status = 'verified'
+              AND lp.verification_status IN ('verified', 'unverified', 'pending')
               AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement')
               AND NOT EXISTS (
                   SELECT 1 FROM lead_payments child
@@ -1751,12 +1751,22 @@ ORDER BY lb.booking_date DESC
                 uh.full_name as handover_to_name,
                 uu.full_name as updated_by_name,
                 es.emi_no,
+                parent_es.emi_no as parent_emi_no,
                 es.emi_amount,
                 es.due_emi_amount,
                 es.due_date as emi_due_date,
                 es.status as emi_status,
                 es.service_fee as emi_service_fee,
                 CASE 
+                    WHEN lp.settlement_type = 'emi_due_settlement' AND parent_es.emi_no IS NOT NULL 
+                    THEN CONCAT('SETTLEMENT (', parent_es.emi_no, 
+                        CASE 
+                            WHEN parent_es.emi_no % 100 IN (11,12,13) THEN 'th'
+                            WHEN parent_es.emi_no % 10 = 1 THEN 'st'
+                            WHEN parent_es.emi_no % 10 = 2 THEN 'nd'
+                            WHEN parent_es.emi_no % 10 = 3 THEN 'rd'
+                            ELSE 'th'
+                        END, ')')
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI SETTLEMENT'
                     WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
                     THEN CONCAT(es.emi_no, 
@@ -1778,6 +1788,15 @@ ORDER BY lb.booking_date DESC
                     ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
                 END as installment_label,
                 CASE 
+                    WHEN lp.settlement_type = 'emi_due_settlement' AND parent_es.emi_no IS NOT NULL 
+                    THEN CONCAT('EMI Due Settlement for ', parent_es.emi_no, 
+                        CASE 
+                            WHEN parent_es.emi_no % 100 IN (11,12,13) THEN 'th'
+                            WHEN parent_es.emi_no % 10 = 1 THEN 'st'
+                            WHEN parent_es.emi_no % 10 = 2 THEN 'nd'
+                            WHEN parent_es.emi_no % 10 = 3 THEN 'rd'
+                            ELSE 'th'
+                        END, ' Installment')
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI Due Settlement'
                     WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
                     WHEN lp.payment_type = 'registration' THEN 'Registration Money'
@@ -1801,6 +1820,7 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN users u ON u.id = lp.created_by
             LEFT JOIN users uv ON uv.id = lp.verified_by
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
+            LEFT JOIN emi_schedules parent_es ON parent_es.lead_payment_id = lp.parent_payment_id
             LEFT JOIN company_bank_accounts cb ON cb.id = lp.bank_id
             LEFT JOIN users uh ON uh.id = lp.handover_to
             LEFT JOIN users uu ON uu.id = lp.updated_by
@@ -1889,6 +1909,7 @@ ORDER BY lb.booking_date DESC
                 uv.full_name as verified_by_name,
                 uu.full_name as updated_by_name,
                 es.emi_no,
+                parent_es.emi_no as parent_emi_no,
                 es.emi_amount,
                 es.due_emi_amount,
                 es.due_date as emi_due_date,
@@ -1896,6 +1917,15 @@ ORDER BY lb.booking_date DESC
                 lb.discount_amount,
                 lb.booking_date as booking_date,
                 CASE 
+                    WHEN lp.settlement_type = 'emi_due_settlement' AND parent_es.emi_no IS NOT NULL 
+                    THEN CONCAT('SETTLEMENT (', parent_es.emi_no, 
+                        CASE 
+                            WHEN parent_es.emi_no % 100 IN (11,12,13) THEN 'th'
+                            WHEN parent_es.emi_no % 10 = 1 THEN 'st'
+                            WHEN parent_es.emi_no % 10 = 2 THEN 'nd'
+                            WHEN parent_es.emi_no % 10 = 3 THEN 'rd'
+                            ELSE 'th'
+                        END, ')')
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI SETTLEMENT'
                     WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
                     THEN CONCAT(es.emi_no, 
@@ -1916,6 +1946,15 @@ ORDER BY lb.booking_date DESC
                     ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
                 END as installment_label,
                 CASE 
+                    WHEN lp.settlement_type = 'emi_due_settlement' AND parent_es.emi_no IS NOT NULL 
+                    THEN CONCAT('EMI Due Settlement for ', parent_es.emi_no, 
+                        CASE 
+                            WHEN parent_es.emi_no % 100 IN (11,12,13) THEN 'th'
+                            WHEN parent_es.emi_no % 10 = 1 THEN 'st'
+                            WHEN parent_es.emi_no % 10 = 2 THEN 'nd'
+                            WHEN parent_es.emi_no % 10 = 3 THEN 'rd'
+                            ELSE 'th'
+                        END, ' Installment')
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI Due Settlement'
                     WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
                     WHEN lp.payment_type = 'registration' THEN 'Registration Money'
@@ -1937,6 +1976,7 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN users uv ON uv.id = lp.verified_by
             LEFT JOIN users uu ON uu.id = lp.updated_by
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
+            LEFT JOIN emi_schedules parent_es ON parent_es.lead_payment_id = lp.parent_payment_id
             LEFT JOIN banks b ON b.id = lp.bank_id
             WHERE lp.is_trashed = 0 AND lp.booking_id = ?
         ";
