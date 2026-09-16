@@ -415,7 +415,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                             <?php endif; ?>
 
                             <div class="form-check form-switch p-2 bg-light border rounded mt-2">
-                                <input class="form-check-input ms-0 me-2" type="checkbox" name="is_testing_mode" id="isTestingMode" value="1">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" name="is_testing_mode" id="isTestingMode" value="1" checked>
                                 <label class="form-check-label fw-semibold text-warning" for="isTestingMode">
                                     <i class="fa-solid fa-vial me-1"></i> Testing Mode (Skip SMS & Bypass Phone Validation)
                                 </label>

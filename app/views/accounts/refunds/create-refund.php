@@ -164,24 +164,6 @@ $payments  = $payments ?? [];
                             </div>
                         </div>
 
-                        <?php if (!empty($is_accounts_payout)): ?>
-                            <!-- Payment Method -->
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Payment Method <span class="text-danger">*</span></label>
-                                <select name="payment_method" class="form-select" required>
-                                    <option value="cash">Cash</option>
-                                    <option value="bank">Bank Transfer</option>
-                                    <option value="cheque">Cheque</option>
-                                </select>
-                            </div>
-
-                            <!-- Cheque / Transaction Ref -->
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Cheque / Voucher No</label>
-                                <input type="text" name="cheque_no" class="form-control" placeholder="Cheque / Voucher / Reference No (Optional)">
-                            </div>
-                        <?php endif; ?>
-
                         <!-- Document Upload -->
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Supporting Document</label>
@@ -193,22 +175,22 @@ $payments  = $payments ?? [];
 
                         <!-- Reason -->
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold">Reason / Justification <span class="text-danger">*</span></label>
                             <textarea name="reason" class="form-control" rows="3" 
-                                      placeholder="Enter the reason for refund..." required><?= htmlspecialchars($existing_refund['reason'] ?? '') ?></textarea>
+                                      placeholder="Enter the reason for refund and retention calculation..." required><?= htmlspecialchars($existing_refund['reason'] ?? '') ?></textarea>
                         </div>
 
-                        <?php if (!empty($is_accounts_payout)): ?>
-                            <button type="submit" class="btn btn-danger w-100 fw-bold"
-                                    onclick="return confirm('Confirm and process this refund payout? This will record deduction from cash-in balance.');">
-                                <i class="bi bi-cash-stack me-1"></i> Confirm & Process Refund Payout
+                        <div class="mb-3">
+                            <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm"
+                                    onclick="return confirm('Submit this refund request for Management and Role 20 approval?');">
+                                <i class="bi bi-send-check me-1"></i> Submit for Management & Role 20 Approval
                             </button>
-                        <?php else: ?>
-                            <button type="submit" class="btn btn-warning w-100 fw-bold text-dark"
-                                    onclick="return confirm('Submit this refund request for approval?');">
-                                <i class="bi bi-send me-1"></i> Submit Refund Request
-                            </button>
-                        <?php endif; ?>
+                        </div>
+
+                        <div class="rounded-2 p-2 bg-light border small text-muted" style="font-size: 11.5px; line-height: 1.5;">
+                            <i class="bi bi-info-circle text-primary me-1"></i>
+                            সাবমিট করার পর রিকোয়েস্টটি <strong>ম্যানেজমেন্ট ও Role 20</strong> এর অনুমোদনের জন্য যাবে। অনুমোদন সম্পন্ন হলে অ্যাকাউন্টস ভাউচার/চেক কপি অ্যাটাচ করে রিফান্ড পরিশোধ করতে পারবে।
+                        </div>
                     </form>
                 </div>
             </div>

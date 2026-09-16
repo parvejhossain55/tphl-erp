@@ -5,14 +5,15 @@ $page = "create Lead"
 <div class="row">
     <div class="card__wrapper">
         <form action="<?= $GLOBALS['base_url'] ?>/store-lead" method="POST">
+            <input type="hidden" name="redirect" value="<?= htmlspecialchars($redirect ?? '') ?>">
             <div class="row gy-10">
 
 
                 <!-- Lead Name -->
                 <div class="col-lg-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="leadName">Lead Name <span class="text-danger">*</span></label>
-                        <input class="form-control" name="full_name" id="leadName" type="text" required>
+                        <label class="form__input-title" for="leadName">Lead Name <span class="text-mute">(optional)</span></label>
+                        <input class="form-control" name="full_name" id="leadName" type="text">
                     </div>
                 </div>
                 <div class="col-lg-6">
@@ -158,9 +159,9 @@ $page = "create Lead"
 
                 <!-- Source -->
                 <div class="col-xl-6">
-                    <label>Lead Source <span class="text-danger">*</span></label>
+                    <label>Lead Source <span class="text-mute">(optional)</span></label>
                     <div class="d-flex gap-2">
-                        <select name="source_type_id" class="form-control" style="flex:1;" required>
+                        <select name="source_type_id" class="form-control" style="flex:1;">
                             <option value="">Select Source </option>
                             <?php foreach ($sources as $source): ?>
                                 <option value="<?= $source['id']; ?>"><?= $source['name']; ?></option>
@@ -178,9 +179,9 @@ $page = "create Lead"
                 <!-- Preferred Location -->
                 <div class="col-md-6">
                     <div class="from__input-box">
-                        <label>Preferred Location <span class="text-danger">*</span></label>
+                        <label>Preferred Location <span class="text-mute">(optional)</span></label>
                         <div class="d-flex gap-2">
-                            <select name="pref_location_id" class="form-control" required style="flex:1;">
+                            <select name="pref_location_id" class="form-control" style="flex:1;">
                                 <option value="">Select Location</option>
                                 <?php foreach ($locations as $location): ?>
                                     <option value="<?= $location['id']; ?>"><?= $location['name']; ?></option>
@@ -256,7 +257,7 @@ $page = "create Lead"
                 <!-- Address -->
                 <div class="col-md-6">
                     <div class="from__input-box">
-                        <label>Present Address <span class="text-danger">*</span></label>
+                        <label>Present Address <span class="text-mute">(optional)</span></label>
                         <textarea class="form-control" name="address"></textarea>
                     </div>
                 </div>
@@ -326,7 +327,8 @@ $page = "create Lead"
             </div>
 
             <div class="submit__btn text-center mt-4">
-                <button class="btn btn-primary">Submit</button>
+                <button type="submit" class="btn btn-primary">Submit</button>
+                <a href="<?= htmlspecialchars($redirect ?: $GLOBALS['base_url'] . '/lead-lists', ENT_QUOTES, 'UTF-8') ?>" class="btn btn-secondary ms-2">Cancel</a>
             </div>
         </form>
     </div>
