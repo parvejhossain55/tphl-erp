@@ -585,13 +585,14 @@ class Lead extends Model
         lpc.name AS project_category_name,
         lf.next_action,
         lf.follow_up_type,
-        lf.next_follow_up_date
+        lf.next_follow_up_date,
+        lf.discussion_note
     FROM leads AS l
     LEFT JOIN users AS u ON l.assigned_id = u.id
     LEFT JOIN users AS u_by ON l.created_by = u_by.id
     LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
     LEFT JOIN (
-        SELECT lf1.lead_id, lf1.next_action, lf1.follow_up_type, lf1.next_follow_up_date
+        SELECT lf1.lead_id, lf1.next_action, lf1.follow_up_type, lf1.next_follow_up_date, lf1.discussion_note
         FROM lead_follow_ups lf1
         WHERE lf1.id = (
             SELECT MAX(lf2.id) FROM lead_follow_ups lf2
@@ -1178,7 +1179,7 @@ class Lead extends Model
 
         return $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
     }
-    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $limit = null, $offset = null)
+    public function getAllMyLeads(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $from_date = null, $to_date = null, $uncontacted = false, $limit = null, $offset = null)
     {
         $sql = "SELECT leads.*, 
         u_by.full_name AS assigned_by_name,
@@ -1258,6 +1259,24 @@ class Lead extends Model
                       AND lf.next_follow_up_date > '1000-01-01'
                       AND DATE(lf.next_follow_up_date) <= CURDATE()
                       AND lf.deleted_at IS NULL";
+        }
+
+        if ($uncontacted) {
+            $sql .= " AND (SELECT COUNT(*) FROM lead_follow_ups WHERE lead_id = leads.id) = 0";
+        }
+        if (!empty($from_date) && !empty($to_date)) {
+            $sql .= " AND DATE(leads.assigned_at) BETWEEN ? AND ?";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types .= "ss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND DATE(leads.assigned_at) >= ?";
+            $params[] = $from_date;
+            $types .= "s";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND DATE(leads.assigned_at) <= ?";
+            $params[] = $to_date;
+            $types .= "s";
         }
 
         if (!empty($projectId)) {
@@ -1388,7 +1407,7 @@ class Lead extends Model
         return $leads;
     }
 
-    public function getAllMyLeadsCount(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null)
+    public function getAllMyLeadsCount(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $from_date = null, $to_date = null, $uncontacted = false)
     {
         $sql = "SELECT COUNT(DISTINCT leads.id) as total_count
     FROM leads
@@ -1455,6 +1474,24 @@ class Lead extends Model
                       AND lf.next_follow_up_date > '1000-01-01'
                       AND DATE(lf.next_follow_up_date) <= CURDATE()
                       AND lf.deleted_at IS NULL";
+        }
+
+        if ($uncontacted) {
+            $sql .= " AND (SELECT COUNT(*) FROM lead_follow_ups WHERE lead_id = leads.id) = 0";
+        }
+        if (!empty($from_date) && !empty($to_date)) {
+            $sql .= " AND DATE(leads.assigned_at) BETWEEN ? AND ?";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types .= "ss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND DATE(leads.assigned_at) >= ?";
+            $params[] = $from_date;
+            $types .= "s";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND DATE(leads.assigned_at) <= ?";
+            $params[] = $to_date;
+            $types .= "s";
         }
 
         if (!empty($projectId)) {
@@ -1550,7 +1587,7 @@ class Lead extends Model
         return (int)($row['total_count'] ?? 0);
     }
 
-    public function getMyAssignedLeadsSummaryCards(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null)
+    public function getMyAssignedLeadsSummaryCards(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $from_date = null, $to_date = null, $uncontacted = false)
     {
         $contactedCond = "(LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked') OR leads.call_status IN ('called', 'received') OR (leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select') OR lf.id IS NOT NULL)";
 
@@ -1559,7 +1596,8 @@ class Lead extends Model
             SUM(CASE WHEN {$contactedCond} THEN 1 ELSE 0 END) as contacted_leads,
             SUM(CASE WHEN NOT {$contactedCond} THEN 1 ELSE 0 END) as not_contacted_leads,
             SUM(CASE WHEN LOWER(leads.last_lead_action) = 'booked' THEN 1 ELSE 0 END) as booked_leads,
-            SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE() THEN 1 ELSE 0 END) as upcoming_follow_ups
+            SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND DATE(lf.next_follow_up_date) >= CURDATE() THEN 1 ELSE 0 END) as upcoming_follow_ups,
+            SUM(CASE WHEN lf.next_follow_up_date IS NOT NULL AND lf.next_follow_up_date > '1000-01-01' AND DATE(lf.next_follow_up_date) <= CURDATE() AND lf.deleted_at IS NULL THEN 1 ELSE 0 END) as missing_follow_ups
         FROM leads
         LEFT JOIN (
             SELECT t1.*
@@ -1567,11 +1605,12 @@ class Lead extends Model
             INNER JOIN (
                 SELECT lead_id, MAX(id) AS max_id
                 FROM lead_follow_ups
+                WHERE deleted_at IS NULL
                 GROUP BY lead_id
             ) t2 
             ON t1.id = t2.max_id AND t1.lead_id = t2.lead_id
         ) lf ON lf.lead_id = leads.id
-        WHERE leads.assigned_id = ?";
+        WHERE leads.assigned_id = ? AND leads.deleted_at IS NULL";
 
         $params = [$userId];
         $types  = "i";
@@ -1600,6 +1639,25 @@ class Lead extends Model
             $types .= "ii";
         }
 
+        if ($uncontacted) {
+            $sql .= " AND (SELECT COUNT(*) FROM lead_follow_ups WHERE lead_id = leads.id) = 0";
+        }
+
+        if (!empty($from_date) && !empty($to_date)) {
+            $sql .= " AND DATE(leads.assigned_at) BETWEEN ? AND ?";
+            $params[] = $from_date;
+            $params[] = $to_date;
+            $types .= "ss";
+        } elseif (!empty($from_date)) {
+            $sql .= " AND DATE(leads.assigned_at) >= ?";
+            $params[] = $from_date;
+            $types .= "s";
+        } elseif (!empty($to_date)) {
+            $sql .= " AND DATE(leads.assigned_at) <= ?";
+            $params[] = $to_date;
+            $types .= "s";
+        }
+
         if (!empty($lastAction)) {
             if (strtolower($lastAction) === 'contacted') {
                 $sql .= " AND " . $contactedCond;
@@ -1615,13 +1673,6 @@ class Lead extends Model
             $sql .= " AND lf.lead_status = ?";
             $params[] = $lead_status;
             $types .= "s";
-        }
-
-        if ($only_missing_followup) {
-            $sql .= " AND lf.next_follow_up_date IS NOT NULL
-                      AND lf.next_follow_up_date > '1000-01-01'
-                      AND DATE(lf.next_follow_up_date) <= CURDATE()
-                      AND lf.deleted_at IS NULL";
         }
 
         if (!empty($projectId)) {
@@ -1692,28 +1743,17 @@ class Lead extends Model
             $types .= "s";
         }
 
-        if (!empty($filter_card)) {
-            if ($filter_card === 'contacted') {
-                $sql .= " AND " . $contactedCond;
-            } elseif ($filter_card === 'not_called' || $filter_card === 'not_contacted') {
-                $sql .= " AND NOT " . $contactedCond;
-            } elseif ($filter_card === 'booked') {
-                $sql .= " AND LOWER(leads.last_lead_action) = 'booked'";
-            }
-        }
-
-
         $stmt = $this->db->prepare($sql);
-        if (!$stmt) return ['total_leads' => 0, 'contacted_leads' => 0, 'not_contacted_leads' => 0, 'booked_leads' => 0];
+        if (!$stmt) return ['total_leads' => 0, 'contacted_leads' => 0, 'not_contacted_leads' => 0, 'booked_leads' => 0, 'upcoming_follow_ups' => 0, 'missing_follow_ups' => 0];
         
         $stmt->bind_param($types, ...$params);
-        if (!$stmt->execute()) return ['total_leads' => 0, 'contacted_leads' => 0, 'not_contacted_leads' => 0, 'booked_leads' => 0];
+        if (!$stmt->execute()) return ['total_leads' => 0, 'contacted_leads' => 0, 'not_contacted_leads' => 0, 'booked_leads' => 0, 'upcoming_follow_ups' => 0, 'missing_follow_ups' => 0];
         
         $result = $stmt->get_result();
         $row = $result->fetch_assoc();
         $stmt->close();
         
-        return $row ?: ['total_leads' => 0, 'contacted_leads' => 0, 'not_contacted_leads' => 0, 'booked_leads' => 0];
+        return $row ?: ['total_leads' => 0, 'contacted_leads' => 0, 'not_contacted_leads' => 0, 'booked_leads' => 0, 'upcoming_follow_ups' => 0, 'missing_follow_ups' => 0];
     }
 
     public function getSalesTeamKpiData(array $options = [])

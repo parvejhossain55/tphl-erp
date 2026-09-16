@@ -55,67 +55,17 @@ foreach ($myAllleads as $lead) {
         border-bottom: 1px solid #eee;
     }
 
-    /* Column Specific Widths */
-    .multiple_tables th:nth-child(1),
-    .multiple_tables td:nth-child(1) {
-        min-width: 110px !important;
+    .project-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        background-color: #f1f5f9;
+        color: #334155;
     }
-
-    /* Date */
-    .multiple_tables th:nth-child(2),
-    .multiple_tables td:nth-child(2) {
-        min-width: 150px !important;
-    }
-
-    /* Name */
-    .multiple_tables th:nth-child(3),
-    .multiple_tables td:nth-child(3) {
-        min-width: 130px !important;
-    }
-
-    /* Phone */
-    .multiple_tables th:nth-child(4),
-    .multiple_tables td:nth-child(4) {
-        min-width: 180px !important;
-    }
-
-    /* Project Campaign */
-    .multiple_tables th:nth-child(5),
-    .multiple_tables td:nth-child(5) {
-        min-width: 220px !important;
-    }
-
-    /* Last Follow Project */
-    .multiple_tables th:nth-child(6),
-    .multiple_tables td:nth-child(6) {
-        min-width: 150px !important;
-    }
-
-    /* Action Dropdown */
-    .multiple_tables th:nth-child(7),
-    .multiple_tables td:nth-child(7) {
-        min-width: 150px !important;
-    }
-
-    /* Communicate Type */
-    .multiple_tables th:nth-child(8),
-    .multiple_tables td:nth-child(8) {
-        min-width: 200px !important;
-    }
-
-    /* Note */
-    .multiple_tables th:nth-child(9),
-    .multiple_tables td:nth-child(9) {
-        min-width: 130px !important;
-    }
-
-    /* Next Follow Up */
-    .multiple_tables th:nth-child(10),
-    .multiple_tables td:nth-child(10) {
-        min-width: 180px !important;
-    }
-
-    /* Action Buttons */
 
     /* Badge and Note Styles Refinement */
     .bd-badge-custom {
@@ -248,6 +198,25 @@ foreach ($myAllleads as $lead) {
     }
 </style>
 
+<?php
+if (!function_exists('getMyAssignedStatCardLink')) {
+    function getMyAssignedStatCardLink($cardType) {
+        $params = $_GET;
+        if ($cardType === 'total_leads') {
+            unset($params['filter_card'], $params['filter']);
+        } elseif ($cardType === 'missing_followup') {
+            unset($params['filter_card']);
+            $params['filter'] = 'missing_followup';
+        } else {
+            unset($params['filter']);
+            $params['filter_card'] = $cardType;
+        }
+        unset($params['page'], $params['url']);
+        return $GLOBALS['base_url'] . '/my-all-assigned-leads' . ($params ? '?' . http_build_query($params) : '');
+    }
+}
+?>
+
 <!-- Breadcrumb -->
 <div class="container-fluid mt-3">
     <nav aria-label="breadcrumb">
@@ -262,7 +231,7 @@ foreach ($myAllleads as $lead) {
 <div class="row mb-4 align-items-stretch">
     <!-- Total My Leads Card -->
     <div class="col-6 col-md-4 col-xl mb-2">
-        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads" class="stat-card-link">
+        <a href="<?= getMyAssignedStatCardLink('total_leads') ?>" class="stat-card-link">
             <div class="card__wrapper stat-card shadow-sm <?= (empty($filterCard) && empty($selectedAction) && empty($selectedCallStatus) && empty($search) && empty($followup_date) && !($isFilterMissing ?? false)) ? 'border-primary' : '' ?>" 
                  style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1.5px solid #bfdbfe !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-primary"></i></span>
@@ -280,7 +249,7 @@ foreach ($myAllleads as $lead) {
 
     <!-- Contacted Card (Includes Contacted & Follow Up) -->
     <div class="col-6 col-md-4 col-xl mb-2">
-        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=contacted" class="stat-card-link">
+        <a href="<?= getMyAssignedStatCardLink('contacted') ?>" class="stat-card-link">
             <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'contacted' || ($selectedAction ?? '') === 'Contacted') ? 'border-success' : '' ?>" 
                  style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1.5px solid #bbf7d0 !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-success"></i></span>
@@ -298,7 +267,7 @@ foreach ($myAllleads as $lead) {
 
     <!-- Not Contacted Card -->
     <div class="col-6 col-md-4 col-xl mb-2">
-        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=not_contacted" class="stat-card-link">
+        <a href="<?= getMyAssignedStatCardLink('not_contacted') ?>" class="stat-card-link">
             <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'not_contacted' || ($filterCard ?? '') === 'not_called' || ($selectedCallStatus ?? '') === 'not_called') ? 'border-warning' : '' ?>" 
                  style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border: 1.5px solid #fed7aa !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-warning"></i></span>
@@ -316,7 +285,7 @@ foreach ($myAllleads as $lead) {
 
     <!-- Booked Card -->
     <div class="col-6 col-md-4 col-xl mb-2">
-        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=booked" class="stat-card-link">
+        <a href="<?= getMyAssignedStatCardLink('booked') ?>" class="stat-card-link">
             <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'booked' || ($selectedAction ?? '') === 'Booked') ? 'border-purple' : '' ?>" 
                  style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border: 1.5px solid #e9d5ff !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-purple"></i></span>
@@ -334,7 +303,7 @@ foreach ($myAllleads as $lead) {
 
     <!-- Upcoming Follow-ups Card -->
     <div class="col-6 col-md-4 col-xl mb-2">
-        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter_card=upcoming_follow_ups" class="stat-card-link">
+        <a href="<?= getMyAssignedStatCardLink('upcoming_follow_ups') ?>" class="stat-card-link">
             <div class="card__wrapper stat-card shadow-sm <?= (($filterCard ?? '') === 'upcoming_follow_ups') ? 'border-info' : '' ?>" 
                  style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1.5px solid #bae6fd !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-info"></i></span>
@@ -352,7 +321,7 @@ foreach ($myAllleads as $lead) {
 
     <!-- Missing Follow-ups Stats Card -->
     <div class="col-6 col-md-4 col-xl mb-2">
-        <a href="<?= $GLOBALS['base_url'] ?>/my-all-assigned-leads?filter=missing_followup" class="stat-card-link">
+        <a href="<?= getMyAssignedStatCardLink('missing_followup') ?>" class="stat-card-link">
             <div class="card__wrapper stat-card shadow-sm <?= ($isFilterMissing ?? false) ? 'border-danger' : '' ?>" 
                  style="background: linear-gradient(135deg, #fff5f5 0%, #ffe3e3 100%); border: 1.5px solid <?= ($isFilterMissing ?? false) ? '#dc3545' : '#fecaca' ?> !important; min-height: 85px;">
                 <span class="card-nav-arrow"><i class="fa-solid fa-arrow-right text-danger"></i></span>
@@ -448,6 +417,32 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
         <form action="" method="get">
 
             <div class="row g-2 align-items-center flex-wrap">
+
+                <!-- From Date Filter -->
+                <div class="col-12 col-sm-6 col-md-auto">
+                    <div class="input-group input-group-sm" title="Assigned From Date">
+                        <span class="input-group-text " style="font-size: 11px;"><i class="bi bi-calendar me-1"></i> From</span>
+                        <input type="date" name="from_date" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['from_date'] ?? '') ?>">
+                    </div>
+                </div>
+
+                <!-- To Date Filter -->
+                <div class="col-12 col-sm-6 col-md-auto">
+                    <div class="input-group input-group-sm" title="Assigned To Date">
+                        <span class="input-group-text " style="font-size: 11px;"><i class="bi bi-calendar me-1"></i> To</span>
+                        <input type="date" name="to_date" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['to_date'] ?? '') ?>">
+                    </div>
+                </div>
+
+                <!-- Uncontacted Filter -->
+                <div class="col-12 col-sm-6 col-md-auto">
+                    <div class="form-check mt-1">
+                        <input class="form-check-input" type="checkbox" name="uncontacted" id="uncontactedFilter" value="1" <?= isset($_GET['uncontacted']) ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="uncontactedFilter" style="font-size: 12px; font-weight: bold;">
+                            Uncontacted
+                        </label>
+                    </div>
+                </div>
 
                 <!-- Follow Up Date Filter -->
                 <div class="col-12 col-sm-6 col-md-auto">
@@ -599,25 +594,76 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
     </div>
 
         <!-- Table -->
+        <!-- Desktop Assign Card -->
+        <?php if (!empty($teamMembers)): ?>
+            <div class="col-md-12 mb-2">
+                <div id="assignCard" class="card__wrapper shadow-sm p-3 my-2" style="display:none; border-radius:12px;">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <label class="fw-bold mb-0">Assign Selected Leads to: <span id="selectedCount" class="badge bg-primary ms-2">0</span></label>
+                        <select id="assignUserSelect" class="form-select form-select-sm select2" style="min-width:200px; width:auto;">
+                            <option value="">Select User</option>
+                            <?php foreach ($teamMembers as $user): ?>
+                                <option value="<?= $user['id'] ?>">
+                                    <?= htmlspecialchars($user['full_name']) ?> - <?= htmlspecialchars($user['role_name']) ?>
+                                </option>
+                            <?php endforeach ?>
+                        </select>
+                        <input type="date" id="assignedDate" class="form-control form-control-sm" style="width:auto;" value="<?= date('Y-m-d') ?>">
+                        <button type="button" id="assignUserBtn" class="btn btn-primary btn-sm px-3"><i class="fa-solid fa-user-plus me-1"></i> Assign Leads</button>
+                        <span id="assignFeedback" class="badge bg-success ms-2 p-2" style="display:none;">Assigned!</span>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2 mt-2">
+            <div>
+                <p class="fw-bold fs-6 mb-0 text-dark">Lead Lists</p>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <label class="d-flex align-items-center gap-2 mb-0 text-muted" style="font-size: 0.85rem;">
+                    Show 
+                    <select id="tableLengthSelect" class="form-select form-select-sm" style="width: auto; min-width: 80px; display: inline-block;">
+                        <option value="25" <?= (($limit ?? 25) == 25) ? 'selected' : '' ?>>25</option>
+                        <option value="50" <?= (($limit ?? 25) == 50) ? 'selected' : '' ?>>50</option>
+                        <option value="100" <?= (($limit ?? 25) == 100) ? 'selected' : '' ?>>100</option>
+                        <option value="200" <?= (($limit ?? 25) == 200) ? 'selected' : '' ?>>200</option>
+                        <option value="-1" <?= (($limit ?? 25) == -1) ? 'selected' : '' ?>>All</option>
+                    </select>
+                    entries
+                </label>
+                <span class="text-muted small">
+                    <?php 
+                    $totalTableCount = $totalTableLeads ?? count($myAllleads);
+                    $startCount = $totalTableCount > 0 ? (($offset ?? 0) + 1) : 0;
+                    $endCount = min((($offset ?? 0) + count($myAllleads)), $totalTableCount);
+                    ?>
+                    Showing <?= $startCount ?> to <?= $endCount ?> of <?= number_format($totalTableCount) ?> entries
+                </span>
+            </div>
+        </div>
+
         <div class="col-xxl-12">
             <div class="card__wrapper">
                 <div class="table__wrapper table-responsive">
-                    <table id="assignedLeadsTable" class="table no-border-table mb-20 multiple_tables">
+                    <table id="assignedLeadsTable" class="table no-border-table mb-20">
                         <thead>
                             <tr class="table__title table__sort">
                                 <th style="min-width:60px;">
                                     <input type="checkbox" id="selectAllLeads" title="Select All">
                                     S/L
                                 </th>
-                                <th style="min-width: 140px;">Assigned Date & By</th>
-                                <th style="min-width: 130px;">Duplicate</th>
-                                <th style="min-width: 160px;">Lead Name $ Job /Company name</th>
-                                <th style="min-width: 160px;">Best Time & Address</th>
-                                <th style="min-width: 180px;">Project Campaign</th>
-
-                                <th style="min-width: 160px;" class="text-center">Last Lead Status</th>
-
-                                <th style="min-width: 140px;">Next Follow-Up</th>
+                                <th style="min-width: 120px;">Lead Date</th>
+                                <th style="min-width: 180px;">Lead Name & Job title/Company</th>
+                                <th style="min-width: 150px;">Address & City</th>
+                                <th style="min-width: 110px;">Lead Uploaded</th>
+                                <th style="min-width: 120px;">Phone</th>
+                                <th style="min-width: 130px;">Best Time to Contact</th>
+                                <th style="min-width: 170px;">Project Campaign</th>
+                                <th style="min-width: 120px;">Status</th>
+                                <th style="min-width: 130px;">Next Follow-Up</th>
+                                <th style="min-width: 180px;">Sales Executive & Note</th>
+                                <th style="min-width: 120px;">Assigned By</th>
                                 <th style="min-width: 180px;">Action</th>
                             </tr>
                         </thead>
@@ -647,106 +693,107 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                  $isDup = count($leadDuplicates) > 1;
                                  ?>
                                 <tr id="lead-<?= $lead['id'] ?>" data-id="<?= $lead['id'] ?>" data-is-duplicate="<?= $isDup ? '1' : '0' ?>">
+                                    <!-- 1. S/L -->
                                     <td>
                                         <input type="checkbox" class="me-2 selectedId" data-id="<?= $lead['id'] ?>">
                                         <?= (($currentPage - 1) * (($limit ?? 25) === -1 ? 0 : ($limit ?? 25))) + $key + 1 ?>
                                     </td>
-                                    <?php
-                                    $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
-                                        ? $lead['assigned_at']
-                                        : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
-                                    ?>
+
+                                    <!-- 2. Lead Date -->
                                     <td>
-                                        <div class="fw-medium"><?= $assignedRaw ? date('d F, Y, h:i A', strtotime($assignedRaw)) : '' ?></div>
-                                        <div class="mt-1">
-                                            <span class="badge bg-secondary-subtle text-dark border px-2 py-1" style="font-size: 11px;">
-                                                <i class="bi bi-person-check me-1"></i><?= htmlspecialchars($lead['assigned_by_name'] ?? 'System') ?>
-                                            </span>
+                                        <div class="fw-medium">
+                                            <?= (!empty($lead['created_at']) && $lead['created_at'] !== '0000-00-00 00:00:00') ? date('d M, Y, h:i A', strtotime($lead['created_at'])) : '—' ?>
                                         </div>
                                     </td>
-                                    
-                                    <!-- Duplicate Status -->
+
+                                    <!-- 3. Lead Name & Job title/Company -->
                                     <td>
-                                        <?php if ($isDup): ?>
-                                            <span class="badge bg-danger cursor-pointer duplicate-badge-click" 
-                                                  data-duplicates="<?= htmlspecialchars(json_encode($leadDuplicates), ENT_QUOTES, 'UTF-8') ?>"
-                                                  data-current-lead-id="<?= $lead['id'] ?>"
-                                                  style="cursor: pointer;"
-                                                  title="Click to view duplicate history">
-                                                Duplicate (<?= count($leadDuplicates) ?>)
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="text-muted small">Unique</span>
+                                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                                            <strong><?= htmlspecialchars($lead['full_name'] ?? '') ?></strong>
+                                            <?php if ($isDup): ?>
+                                                <span class="badge bg-danger cursor-pointer duplicate-badge-click" 
+                                                      data-duplicates="<?= htmlspecialchars(json_encode($leadDuplicates), ENT_QUOTES, 'UTF-8') ?>"
+                                                      data-current-lead-id="<?= $lead['id'] ?>"
+                                                      style="cursor: pointer; font-size: 10px; padding: 2px 5px;"
+                                                      title="Click to view duplicate history">
+                                                    Duplicate (<?= count($leadDuplicates) ?>)
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php
+                                        $jt = !empty($lead['job_title']) ? $lead['job_title'] : (!empty($lead['designation']) ? $lead['designation'] : '');
+                                        $co = !empty($lead['company_name']) ? $lead['company_name'] : (!empty($lead['company']) ? $lead['company'] : '');
+                                        if ($jt !== '' || $co !== ''):
+                                        ?>
+                                        <div class="text-muted fs-11 mt-1">
+                                            <i class="bi bi-briefcase me-1"></i>
+                                            <?= htmlspecialchars($jt) ?><?= ($jt !== '' && $co !== '') ? ' at ' : '' ?><strong><?= htmlspecialchars($co) ?></strong>
+                                        </div>
                                         <?php endif; ?>
                                     </td>
 
-                                     <td>
-                                         <strong><?= htmlspecialchars($lead['full_name'] ?? '') ?></strong>
-                                         <?php
-                                         $phone = $lead['phone_number'] ?? $lead['phone'] ?? '';
-                                         $phone = preg_replace('/[^0-9]/', '', $phone);
-
-                                         if (substr($phone, 0, 2) === '01') {
-                                             $phone = '880' . substr($phone, 1);
-                                         }
-                                         ?>
-                                         <div class="mt-1">
-                                             <a href="https://wa.me/<?= $phone ?>" target="_blank">
-                                                 <?= htmlspecialchars($lead['phone_number'] ?? $lead['phone'] ?? '') ?>
-                                             </a>
-                                         </div>
-                                         <?php
-                                         $jt = !empty($lead['job_title']) ? $lead['job_title'] : (!empty($lead['designation']) ? $lead['designation'] : '');
-                                         $co = !empty($lead['company_name']) ? $lead['company_name'] : (!empty($lead['company']) ? $lead['company'] : '');
-                                         if ($jt !== '' || $co !== ''):
-                                         ?>
-                                         <div class="text-muted fs-11 mt-1">
-                                             <i class="bi bi-briefcase me-1"></i>
-                                             <?= htmlspecialchars($jt) ?><?= ($jt !== '' && $co !== '') ? ' at ' : '' ?><strong><?= htmlspecialchars($co) ?></strong>
-                                         </div>
-                                         <?php endif; ?>
-                                     </td>
-
-                                     <!-- Best Time & Address -->
-                                     <td>
-                                         <div class="mb-1 text-muted" style="font-size: 11px;">
-                                             <i class="bi bi-clock me-1"></i><?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? '—') ?>
-                                         </div>
-                                         <?php 
-                                         $addrParts = [];
-                                         if (!empty($lead['country'])) $addrParts[] = trim($lead['country']);
-                                         if (!empty($lead['address'])) $addrParts[] = trim($lead['address']);
-                                         if (!empty($lead['city'])) $addrParts[] = trim($lead['city']);
-                                         $addr = implode(', ', $addrParts);
-                                         ?>
-                                         <div class="fs-12">
-                                             <i class="bi bi-geo-alt me-1 text-muted"></i><?= htmlspecialchars($addr !== '' ? $addr : '—') ?>
-                                         </div>
-                                     </td>
-
-                                    <?php
-                                    $displayName = !empty($lead['campaign_name'])
-                                        ? $lead['campaign_name']
-                                        : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
-                                    if (!empty($lead['project_category_name'])) {
-                                        $displayName .= ' (' . $lead['project_category_name'] . ')';
-                                    }
-
-                                    $plainText = strip_tags($displayName ?? '');
-                                    ?>
-
-
+                                    <!-- 4. Address & City -->
                                     <td>
+                                        <?php 
+                                        $addrParts = [];
+                                        if (!empty($lead['address'])) $addrParts[] = trim($lead['address']);
+                                        if (!empty($lead['city'])) $addrParts[] = trim($lead['city']);
+                                        $addr = implode(', ', $addrParts);
+                                        if (!empty($lead['country']) && strpos($addr, $lead['country']) === false) {
+                                            $addr = trim($lead['country'] . ($addr !== '' ? ', ' . $addr : ''));
+                                        }
+                                        ?>
+                                        <span class="fs-12"><?= htmlspecialchars($addr !== '' ? $addr : '—') ?></span>
+                                    </td>
+
+                                    <!-- 5. Lead Uploaded -->
+                                    <td>
+                                        <span class="bd-badge bg-success" style="white-space: nowrap;">
+                                            <?= htmlspecialchars(!empty($lead['uploaded_from']) ? $lead['uploaded_from'] : '—') ?>
+                                        </span>
+                                    </td>
+
+                                    <!-- 6. Phone -->
+                                    <td>
+                                        <?php
+                                        $rawPhone = $lead['phone_number'] ?? $lead['phone'] ?? '';
+                                        $cleanPhoneDigits = preg_replace('/[^0-9]/', '', $rawPhone);
+                                        if (substr($cleanPhoneDigits, 0, 2) === '01') {
+                                            $cleanPhoneDigits = '880' . substr($cleanPhoneDigits, 1);
+                                        }
+                                        ?>
+                                        <a href="https://wa.me/<?= $cleanPhoneDigits ?>" target="_blank" class="text-decoration-none" style="white-space: nowrap;">
+                                            <i class="bi bi-whatsapp text-success me-1"></i><?= htmlspecialchars($rawPhone ?: '—') ?>
+                                        </a>
+                                    </td>
+
+                                    <!-- 7. Best Time to Contact -->
+                                    <td>
+                                        <div class="text-muted fs-12" style="white-space: nowrap;">
+                                            <i class="bi bi-clock me-1"></i><?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? '—') ?>
+                                        </div>
+                                    </td>
+
+                                    <!-- 8. Project Campaign -->
+                                    <td>
+                                        <?php
+                                        $displayName = !empty($lead['campaign_name'])
+                                            ? $lead['campaign_name']
+                                            : (!empty($lead['project_name']) ? $lead['project_name'] : '-');
+                                        if (!empty($lead['project_category_name'])) {
+                                            $displayName .= ' (' . $lead['project_category_name'] . ')';
+                                        }
+                                        $plainText = strip_tags($displayName ?? '');
+                                        ?>
                                         <div class="d-flex align-items-center gap-2 flex-nowrap">
                                             <span class="project-badge mb-0">
                                                 <i class="bi bi-building"></i>
                                                 <?= truncateText($displayName, 15) ?>
                                             </span>
-
                                             <?php if (mb_strlen($plainText) > 15): ?>
                                                 <button type="button"
                                                     id="viewCampaignBtn<?= $lead['id'] ?>"
-                                                    class="btn btn-sm btn-outline-primary flex-shrink-0"
+                                                    class="btn btn-sm btn-outline-primary flex-shrink-0 viewCampaignBtnDynamic"
                                                     data-description="<?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>"
                                                     data-bs-toggle="modal"
                                                     data-bs-target="#viewProjectCampaignName">
@@ -755,30 +802,41 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                             <?php endif; ?>
                                         </div>
                                     </td>
-                                    <?php
-                                    $statusVal = $lead['lead_type'] ?? 'Pending';
 
-                                    $class = '';
-                                    if ($statusVal == 'Prospect' || $statusVal == 'High Prospect') {
-                                        $class = 'bg-received';
-                                    } elseif ($statusVal == 'Not Interested' || $statusVal == "Don't Call Again" || $statusVal == 'Cold' || $statusVal == 'Refund') {
-                                        $class = 'bg-not-received';
-                                    }
-                                    ?>
-
+                                    <!-- 9. Status (Action Select + Lead Status Badge) -->
                                     <td>
-                                        <input type="text"
-                                            class="<?= $class ?> form-control select-form text-center"
-                                            value="<?= htmlspecialchars($statusVal) ?>"
-                                            readonly style="cursor: default; pointer-events: none;">
+                                        <?php
+                                        $last_action = $lead['last_lead_action'] ?? 'not_called';
+                                        $statusVal = $lead['lead_type'] ?? 'Pending';
+                                        $badgeClass = 'bg-secondary';
+                                        if ($statusVal == 'Prospect' || $statusVal == 'High Prospect') {
+                                            $badgeClass = 'bg-received';
+                                        } elseif ($statusVal == 'Not Interested' || $statusVal == "Don't Call Again" || $statusVal == 'Cold' || $statusVal == 'Refund') {
+                                            $badgeClass = 'bg-not-received';
+                                        } elseif ($statusVal == 'Warm') {
+                                            $badgeClass = 'bg-warning text-dark';
+                                        }
+                                        ?>
+                                        <select name="last_lead_action" 
+                                                class="form-select form-select-sm last-action-select last-action-select-ajax action-<?= str_replace(' ', '_', $last_action) ?> mb-1" 
+                                                data-lead-id="<?= $lead['id'] ?>"
+                                                style="min-width: 110px;">
+                                            <option value="">Update action</option>
+                                            <option value="contacted" <?= $last_action == 'contacted' ? 'selected' : '' ?>>Contacted</option>
+                                            <option value="new" <?= $last_action == 'new' ? 'selected' : '' ?>>New</option>
+                                            <option value="booked" <?= $last_action == 'booked' ? 'selected' : '' ?>>Booked</option>
+                                            <option value="follow up" <?= $last_action == 'follow up' ? 'selected' : '' ?>>Follow Up</option>
+                                            <option value="visited" <?= $last_action == 'visited' ? 'selected' : '' ?>>Visited</option>
+                                            <option value="cancel" <?= $last_action == 'cancel' ? 'selected' : '' ?>>Cancel</option>
+                                        </select>
+                                        <div class="text-center">
+                                            <span class="badge <?= $badgeClass ?> px-2 py-1" style="font-size: 10px;"><?= htmlspecialchars($statusVal) ?></span>
+                                        </div>
                                     </td>
 
-
-
-
-                                    <!-- Next Follow-up -->
+                                    <!-- 10. Next Follow-Up -->
                                     <td>
-                                        <div class="d-flex align-items-center gap-2">
+                                        <div class="d-flex align-items-center gap-2 flex-nowrap">
                                             <div class="next-followup-badge">
                                                 <i class="bi bi-calendar-check me-1"></i>
                                                 <span class="next-date-display"><?= formatDate($lead['next_follow_up_date'] ?? 'No Schedule') ?></span>
@@ -786,10 +844,10 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                             <div class="position-relative d-inline-block">
                                                 <button type="button" 
                                                         class="btn btn-sm rounded-circle d-flex align-items-center justify-content-center border-0 shadow-sm"
-                                                        style="width: 32px; height: 32px; background-color: #e0f2fe; color: #0284c7; cursor: pointer;"
+                                                        style="width: 30px; height: 30px; background-color: #e0f2fe; color: #0284c7; cursor: pointer;"
                                                         onclick="if(this.nextElementSibling.showPicker){this.nextElementSibling.showPicker()}else{this.nextElementSibling.click()}"
                                                         title="Click to view / pick calendar date">
-                                                    <i class="bi bi-calendar3 fs-6"></i>
+                                                    <i class="bi bi-calendar3" style="font-size: 12px;"></i>
                                                 </button>
                                                 <input type="date" 
                                                        class="position-absolute start-0 top-0 opacity-0 pe-none"
@@ -799,9 +857,49 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                             </div>
                                         </div>
                                     </td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1">
 
+                                    <!-- 11. Sales Executive & Note -->
+                                    <td>
+                                        <div class="d-flex align-items-start gap-2 flex-nowrap">
+                                            <div>
+                                                <?php if (empty($lead['agent_name'])): ?>
+                                                    <span class="bd-badge text-danger text-truncate" style="max-width: 150px; background-color: #fde8e8; border: 1px solid #f8b4b4;">No Agent Assigned</span>
+                                                <?php else: ?>
+                                                    <span class="bd-badge bg-primary text-truncate" style="max-width: 150px;"><?= htmlspecialchars($lead['agent_name']) ?></span>
+                                                    <?php
+                                                    $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
+                                                        ? $lead['assigned_at']
+                                                        : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
+                                                    ?>
+                                                    <?php if ($assignedRaw): ?>
+                                                    <div class="text-muted" style="font-size:11px; margin-top:3px;">
+                                                        <i class="bi bi-calendar-event me-1"></i>Assigned: <?= date('d M, Y, h:i A', strtotime($assignedRaw)) ?>
+                                                    </div>
+                                                    <?php endif; ?>
+                                                <?php endif; ?>
+                                            </div>
+                                            <span class="bd-badge bg-success">
+                                                <?php 
+                                                $callNote = !empty($lead['call_note']) ? $lead['call_note'] : (!empty($lead['discussion_note']) ? $lead['discussion_note'] : '');
+                                                if (!empty($callNote)): ?>
+                                                    <button type="button" class="btn btn-sm p-0 note-view-btn text-white" style="font-size:11px;" data-note="<?= htmlspecialchars($callNote, ENT_QUOTES, 'UTF-8') ?>" data-bs-toggle="modal" data-bs-target="#viewNoteModal">View Note</button>
+                                                <?php else: ?>
+                                                    No Note
+                                                <?php endif; ?>
+                                            </span>
+                                        </div>
+                                    </td>
+
+                                    <!-- 12. Assigned By -->
+                                    <td>
+                                        <span class="bd-badge bg-secondary text-truncate" style="max-width: 150px;">
+                                            <i class="bi bi-person-check me-1"></i><?= htmlspecialchars($lead['assigned_by_name'] ?? 'System') ?>
+                                        </span>
+                                    </td>
+
+                                    <!-- 13. Action -->
+                                    <td>
+                                        <div class="d-flex align-items-center gap-1 flex-nowrap">
                                             <!-- Follow Up -->
                                             <button type="button" 
                                                 class="btn btn-primary btn-sm position-relative create-followup-btn"
@@ -811,7 +909,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                                 data-lead-id="<?= $lead['id'] ?>">
                                                 Follow Up
                                                 <?php if (!empty($followUpCounts[$lead['id']])): ?>
-                                                    <span class="action-badge" style="">
+                                                    <span class="action-badge">
                                                         <?= $followUpCounts[$lead['id']] ?>
                                                     </span>
                                                 <?php endif; ?>
@@ -829,10 +927,10 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 
                                             <!-- Booking -->
                                             <a href="<?= $GLOBALS['base_url'] ?>/booking-leads/<?= $lead['id'] ?>"
-                                                class="btn btn-secondary btn-sm position-relative"
+                                                class="btn btn-secondary btn-sm position-relative ms-1"
                                                 style="white-space:nowrap;">
                                                 <?= !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking' ?>
-                                                <span class="action-badge" style="">
+                                                <span class="action-badge">
                                                     <?= $bookingCount[$lead['id']] ?? 0 ?>
                                                 </span>
                                             </a>
@@ -840,18 +938,16 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
-
                         </tbody>
                     </table>
                 </div>
                 
-                <?php if (isset($totalPages) && $totalPages > 1): ?>
+                <?php if (isset($totalPages) && $totalPages > 1 && ($limit ?? 25) !== -1): ?>
                 <div class="d-flex justify-content-end mt-3 mb-2">
                     <?= paginateLinksSecondary($paginationRoute ?? ($base_url . "/my-all-assigned-leads"), $currentPage, $totalPages); ?>
                 </div>
                 <?php endif; ?>
             </div>
-
         </div>
     </div>
 
@@ -869,6 +965,26 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
             <form action="" method="get" class="p-2 border rounded ">
 
                 <div class="d-flex flex-column gap-2">
+
+                    <!-- From Date Filter -->
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="bi bi-calendar me-1"></i> From</span>
+                        <input type="date" name="from_date" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['from_date'] ?? '') ?>">
+                    </div>
+
+                    <!-- To Date Filter -->
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="bi bi-calendar me-1"></i> To</span>
+                        <input type="date" name="to_date" class="form-control form-control-sm" value="<?= htmlspecialchars($_GET['to_date'] ?? '') ?>">
+                    </div>
+
+                    <!-- Uncontacted Filter -->
+                    <div class="form-check mt-1">
+                        <input class="form-check-input" type="checkbox" name="uncontacted" id="uncontactedFilterMobile" value="1" <?= isset($_GET['uncontacted']) ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="uncontactedFilterMobile" style="font-size: 12px; font-weight: bold;">
+                            Uncontacted
+                        </label>
+                    </div>
 
                     <!-- Follow Up Date Filter -->
                     <div class="input-group input-group-sm">
@@ -1148,6 +1264,26 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 
 </div>
 
+<?php if ((isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 33])) || isSalesCoLeader()): ?>
+    <!-- Mobile Assign Card (sticky bottom) -->
+    <div class="mobile-only mb-2" id="assignCardMobile" style="display:none; position:sticky; bottom:0; z-index:1000; background:#fff; padding:10px; border-top:1px solid #ccc;">
+        <div class="text-center small mb-1 fw-bold text-primary">Selected: <span id="selectedCountMobile">0</span> leads</div>
+        <div class="d-flex flex-column gap-2">
+            <select id="assignUserSelectMobile" class="form-select form-select-sm select2">
+                <option value="">Select User</option>
+                <?php foreach ($teamMembers as $user): ?>
+                    <option value="<?= $user['id'] ?>">
+                        <?= htmlspecialchars($user['full_name']) ?> - <?= htmlspecialchars($user['role_name']) ?>
+                    </option>
+                <?php endforeach ?>
+            </select>
+            <input type="date" id="assignedDateMobile" class="form-control form-control-sm" value="<?= date('Y-m-d') ?>">
+            <button type="button" id="assignUserBtnMobile" class="btn btn-primary btn-sm w-100"><i class="fa-solid fa-user-plus me-1"></i> Assign</button>
+            <div id="assignFeedbackMobile" class="text-success text-center fw-bold small mt-1" style="display:none;">Successfully Assigned!</div>
+        </div>
+    </div>
+<?php endif; ?>
+
 <!-- CSV Import Modal -->
 <div class="modal fade" id="importCsvModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-md">
@@ -1212,6 +1348,23 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
     </div>
 </div>
 
+<!-- View Call Note Modal -->
+<div id="viewNoteModal" class="modal custom-modal fade">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Call Note</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <textarea id="view_note_text" class="form-control" rows="4" readonly></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>";
@@ -1252,78 +1405,8 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
 
     // campaign full show
 </script>
-<!-- assigned user select  -->
-<script>
-    const assignUserBtn = document.getElementById('assignUserBtn');
-    if (assignUserBtn) {
-        assignUserBtn.addEventListener('click', function() {
-            const userId = document.getElementById('assignUserSelect').value;
-            const selectedLeads = [];
-
-            document.querySelectorAll('.selectedId:checked').forEach(cb => {
-                const tr = cb.closest('tr');
-                if (tr) selectedLeads.push(tr.dataset.id || tr.querySelector('.selectedId').dataset.id);
-            });
-
-            // If nothing selected, just return
-            if (!userId || selectedLeads.length === 0) {
-                return; // no alert
-            }
-
-            // Create a form dynamically and submit
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '<?= $base_url ?>/assign-multiple-leads';
-
-            const inputUser = document.createElement('input');
-            inputUser.type = 'hidden';
-            inputUser.name = 'user_id';
-            inputUser.value = userId;
-            form.appendChild(inputUser);
-
-            const inputLeads = document.createElement('input');
-            inputLeads.type = 'hidden';
-            inputLeads.name = 'lead_ids';
-            inputLeads.value = selectedLeads.join(',');
-            form.appendChild(inputLeads);
-
-            document.body.appendChild(form);
-            form.submit();
-        });
-    }
-</script>
-
 
 <script>
-    const selectAll = document.getElementById('selectAllLeads');
-    const assignCard = document.getElementById('assignCard');
-
-    if (selectAll) {
-        selectAll.addEventListener('change', function() {
-            const checkboxes = document.querySelectorAll('.selectedId');
-            checkboxes.forEach(cb => cb.checked = this.checked);
-
-            if (this.checked) {
-                if (assignCard) assignCard.style.display = 'flex';
-            } else {
-                const anyChecked = Array.from(document.querySelectorAll('.selectedId')).some(c => c.checked);
-                if (assignCard) assignCard.style.display = anyChecked ? 'flex' : 'none';
-            }
-        });
-    }
-
-    document.querySelectorAll('.selectedId').forEach(cb => {
-        cb.addEventListener('change', function() {
-            const anyChecked = Array.from(document.querySelectorAll('.selectedId')).some(c => c.checked);
-            if (assignCard) assignCard.style.display = anyChecked ? 'flex' : 'none';
-
-            if (selectAll) {
-                const allChecked = Array.from(document.querySelectorAll('.selectedId')).every(c => c.checked);
-                selectAll.checked = allChecked;
-            }
-        });
-    });
-
     // --- Interactive Column AJAX Logic ---
     // Call status update
     document.querySelectorAll('.call-status').forEach(select => {
@@ -2442,6 +2525,209 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+    });
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let selectedLeadsSet = new Set();
+    const selectAllLeads = document.getElementById('selectAllLeads');
+    const selectAllLeadsMobile = document.getElementById('selectAllLeadsMobile');
+    
+    function updateAssignUIData() {
+        // Desktop
+        const desktopCard = document.getElementById('assignCard');
+        const desktopCount = document.getElementById('selectedCount');
+        if (desktopCard && desktopCount) {
+            if (selectedLeadsSet.size > 0) {
+                desktopCard.style.display = 'block';
+                desktopCount.textContent = selectedLeadsSet.size;
+            } else {
+                desktopCard.style.display = 'none';
+            }
+        }
+        
+        // Mobile
+        const mobileCard = document.getElementById('assignCardMobile');
+        const mobileCount = document.getElementById('selectedCountMobile');
+        if (mobileCard && mobileCount) {
+            if (selectedLeadsSet.size > 0) {
+                mobileCard.style.display = 'block';
+                mobileCount.textContent = selectedLeadsSet.size;
+            } else {
+                mobileCard.style.display = 'none';
+            }
+        }
+        
+        // Update checkboxes
+        document.querySelectorAll('.selectedId').forEach(cb => {
+            cb.checked = selectedLeadsSet.has(cb.dataset.id);
+        });
+        document.querySelectorAll('.selectedIdMobile').forEach(cb => {
+            cb.checked = selectedLeadsSet.has(cb.dataset.id);
+        });
+    }
+
+    // Delegate checkbox clicks
+    document.body.addEventListener('change', function(e) {
+        if (e.target.classList.contains('selectedId') || e.target.classList.contains('selectedIdMobile')) {
+            const id = e.target.dataset.id;
+            if (e.target.checked) {
+                selectedLeadsSet.add(id);
+            } else {
+                selectedLeadsSet.delete(id);
+                if (selectAllLeads) selectAllLeads.checked = false;
+                if (selectAllLeadsMobile) selectAllLeadsMobile.checked = false;
+            }
+            updateAssignUIData();
+        }
+    });
+
+    if (selectAllLeads) {
+        selectAllLeads.addEventListener('change', function() {
+            const isChecked = this.checked;
+            document.querySelectorAll('.selectedId').forEach(cb => {
+                const id = cb.dataset.id;
+                if (isChecked) {
+                    selectedLeadsSet.add(id);
+                } else {
+                    selectedLeadsSet.delete(id);
+                }
+            });
+            updateAssignUIData();
+        });
+    }
+
+    if (selectAllLeadsMobile) {
+        selectAllLeadsMobile.addEventListener('change', function() {
+            const isChecked = this.checked;
+            document.querySelectorAll('.selectedIdMobile').forEach(cb => {
+                const id = cb.dataset.id;
+                if (isChecked) {
+                    selectedLeadsSet.add(id);
+                } else {
+                    selectedLeadsSet.delete(id);
+                }
+            });
+            updateAssignUIData();
+        });
+    }
+
+    // Submit Assignment (Desktop)
+    const assignBtn = document.getElementById('assignUserBtn');
+    if (assignBtn) {
+        assignBtn.addEventListener('click', function() {
+            handleBulkAssign('assignUserSelect', 'assignedDate', 'assignFeedback', 'assignCard');
+        });
+    }
+
+    // Submit Assignment (Mobile)
+    const assignBtnMobile = document.getElementById('assignUserBtnMobile');
+    if (assignBtnMobile) {
+        assignBtnMobile.addEventListener('click', function() {
+            handleBulkAssign('assignUserSelectMobile', 'assignedDateMobile', 'assignFeedbackMobile', 'assignCardMobile');
+        });
+    }
+
+    function submitAssignForm(userId, selectedLeads, assignedDate, routeMode = 'new') {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '<?= $GLOBALS['base_url'] ?>/assign-multiple-leads';
+        const addHidden = (name, val) => {
+            const inp = document.createElement('input');
+            inp.type = 'hidden'; inp.name = name; inp.value = val;
+            form.appendChild(inp);
+        };
+        addHidden('user_id',       userId);
+        addHidden('lead_ids',      selectedLeads.join(','));
+        addHidden('assigned_date', assignedDate);
+        addHidden('route_mode',    routeMode);
+        addHidden('return_url',    window.location.href);
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    function handleBulkAssign(selectId, dateId, feedbackId, cardId) {
+        const userId = document.getElementById(selectId).value;
+        const assignedDate = document.getElementById(dateId).value;
+        const leads = Array.from(selectedLeadsSet);
+        
+        if (!userId || leads.length === 0) {
+            alert('Select leads and a user.');
+            return;
+        }
+
+        const fd = new FormData();
+        fd.append('lead_ids', leads.join(','));
+
+        fetch(base_url + '/check-leads-duplicates', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(data => {
+                if (data.has_duplicates) {
+                    let dupInfo = data.duplicates.map(d => 
+                        `• <strong>${d.current_lead_name}</strong> is already assigned to <strong>${d.original_assignee_name}</strong> (${d.original_team_name || 'No Team'})`
+                    ).join('<br>');
+                    
+                    Swal.fire({
+                        title: 'Duplicate Leads Detected',
+                        html: `<div class="text-start mb-3" style="font-size:0.85rem;">
+                                Some of the selected leads are already assigned:<br><br>
+                                ${dupInfo}<br><br>
+                                Please choose how to assign them:<br><br>
+                                • <strong>Split Assign:</strong> Assign duplicate leads back to their <strong>Existing Executive(s)</strong>, and assign the remaining leads to the <strong>New Executive</strong>.<br><br>
+                                • <strong>Assign All to New:</strong> Override and assign all selected leads (including duplicates) to the <strong>New Executive</strong>.
+                               </div>`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        showDenyButton: true,
+                        confirmButtonText: 'Split Assign (Existing + Rest to New)',
+                        denyButtonText: 'Assign All to New',
+                        cancelButtonText: 'Cancel',
+                        confirmButtonColor: '#198754',
+                        denyButtonColor: '#0d6efd',
+                        cancelButtonColor: '#6c757d'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            submitAssignForm(userId, leads, assignedDate, 'existing');
+                        } else if (result.isDenied) {
+                            submitAssignForm(userId, leads, assignedDate, 'new');
+                        }
+                    });
+                } else {
+                    submitAssignForm(userId, leads, assignedDate, 'new');
+                }
+            })
+            .catch(e => {
+                console.error(e);
+                submitAssignForm(userId, leads, assignedDate, 'new');
+            });
+    }
+
+    // ── Table Length Select (Show 25, 50, 100, 200, All entries) ──
+    const lengthSelect = document.getElementById('tableLengthSelect');
+    if (lengthSelect) {
+        lengthSelect.addEventListener('change', function() {
+            const url = new URL(window.location.href);
+            url.searchParams.set('limit', this.value);
+            url.searchParams.set('page', 1);
+            window.location.href = url.toString();
+        });
+    }
+
+    // ── Note view modal handler ──
+    $(document).on('click', '.note-view-btn', function () {
+        const noteEl = document.getElementById('view_note_text');
+        if (noteEl) {
+            noteEl.value = this.getAttribute('data-note') || 'No note available.';
+        }
+    });
+
+    // ── Campaign view modal handler ──
+    $(document).on('click', '.viewCampaignBtnDynamic, [id^="viewCampaignBtn"]', function () {
+        const camEl = document.getElementById('view_campaign_id');
+        if (camEl) {
+            camEl.value = this.getAttribute('data-description') || '';
+        }
     });
 });
 </script>

@@ -405,7 +405,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                             <?php if (!$isPhoneValid): ?>
                                 <div class="alert alert-warning d-flex align-items-center justify-content-between p-2 mb-2 mt-2">
                                     <div class="small d-flex align-items-center">
-                                        <i class="fa-solid fa-triangle-exclamation me-2 fs-5"></i>
+                                    
                                         <div>
                                             <strong>Invalid Client Phone:</strong> Client phone (<?= htmlspecialchars($clientPhone ?: 'Empty') ?>) is missing or not a valid 11-digit mobile number.
                                         </div>
@@ -414,7 +414,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                 </div>
                             <?php endif; ?>
 
-                            <div class="form-check form-switch p-2 bg-light border rounded mt-2">
+                            <div class="d-none form-check form-switch p-2 bg-light border rounded mt-2">
                                 <input class="form-check-input ms-0 me-2" type="checkbox" name="is_testing_mode" id="isTestingMode" value="1" checked>
                                 <label class="form-check-label fw-semibold text-warning" for="isTestingMode">
                                     <i class="fa-solid fa-vial me-1"></i> Testing Mode (Skip SMS & Bypass Phone Validation)

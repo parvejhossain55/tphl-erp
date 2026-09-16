@@ -239,10 +239,11 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                                             <?php 
                                                 $isBookingVerified = (!empty($or['verified_payment_count']) && (int)$or['verified_payment_count'] > 0);
+                                                $isManagementOrSalesHead = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 9, 20, 33]);
                                             ?>
 
-                                            <!-- Edit & Delete (Enabled only if payments not verified) -->
-                                            <?php if (!$isBookingVerified && !in_array($or['booking_status'] ?? '', ['refunded', 'cancelled'])): ?>
+                                            <!-- Edit & Delete (Enabled only if payments not verified, OR if user is Management/Sales Head) -->
+                                            <?php if ((!$isBookingVerified || $isManagementOrSalesHead) && !in_array($or['booking_status'] ?? '', ['refunded', 'cancelled'])): ?>
                                                 <button type="button"
                                                     class="btn btn-sm btn-outline-primary editBookingBtn"
                                                     data-bs-toggle="modal"
@@ -255,15 +256,18 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                                     data-discount="<?= $or['discount_amount'] ?? 0 ?>"
                                                     data-approval="<?= $or['approval_status'] ?? '' ?>"
                                                     data-approved-amt="<?= $or['approved_amount'] ?? '' ?>"
-                                                    data-status="<?= $or['booking_status'] ?>">
+                                                    data-status="<?= $or['booking_status'] ?>"
+                                                    data-sales-agent="<?= $or['sales_by_id'] ?? '' ?>">
                                                     <i class="fa-solid fa-pen-to-square"></i> Edit
                                                 </button>
 
+                                                <?php if (!$isBookingVerified): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/booking-delete/<?= $or['id'] ?>"
                                                     class="btn btn-sm btn-outline-danger"
                                                     onclick="return confirm('Are you sure you want to delete this booking? All unverified payment records will be removed and the flat will be reset to available status.');">
                                                     <i class="fa-solid fa-trash"></i> Delete
                                                 </a>
+                                                <?php endif; ?>
                                             <?php endif; ?>
 
                                             <!-- Payments -->
@@ -462,6 +466,29 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                 <i class="fa-solid fa-info-circle"></i> Discount was already approved by management and cannot be modified.
                             </small>
                         </div>
+                        
+                        <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 9, 20, 33])): ?>
+                        <!-- Sales Agent Update -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Sales By (Agent)</label>
+                            <select name="sales_by_id" id="edit_sales_agent" class="form-select select2" data-placeholder="Select Sales Agent">
+                                <option value="">Select Sales Agent</option>
+                                <?php if(!empty($salesUsers)): ?>
+                                    <?php foreach($salesUsers as $su): ?>
+                                        <option value="<?= $su['id'] ?>">
+                                            <?php
+                                                $rname = $su['role_name'] ?? '';
+                                                $sname = $su['sec_role_name'] ?? '';
+                                                $displayRole = $rname ?: $sname ?: 'Sales';
+                                            ?>
+                                            <?= htmlspecialchars($su['full_name']) ?> (<?= htmlspecialchars($displayRole) ?>)
+                                        </option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </select>
+                        </div>
+                        <?php endif; ?>
+                        
                     </div>
 
                     <div class="text-end mt-3">
@@ -677,6 +704,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 const date = this.dataset.date;
                 const discount = this.dataset.discount;
                 const approval = this.dataset.approval;
+                const salesAgent = this.dataset.salesAgent;
 
                 currentEditingFlatId = flatId;
 
@@ -707,6 +735,12 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                 $(editProjectSelect).val(projectId);
                 refreshSelect2(editProjectSelect);
+
+                const salesAgentSelect = document.getElementById('edit_sales_agent');
+                if (salesAgentSelect) {
+                    $(salesAgentSelect).val(salesAgent);
+                    refreshSelect2(salesAgentSelect);
+                }
 
                 loadEditFlats(projectId, flatId);
             });

@@ -580,6 +580,9 @@ class UserDashboardController extends Controller
         $followup_date        = $_GET['followup_date'] ?? null;
         $filterCard           = $_GET['filter_card']   ?? null;
         $assignedHours        = $_GET['assigned_hours'] ?? null;
+        $from_date            = $_GET['from_date'] ?? null;
+        $to_date              = $_GET['to_date'] ?? null;
+        $uncontacted          = isset($_GET['uncontacted']) ? true : false;
 
         $onlyMissingFollowup = isset($_GET['filter']) && $_GET['filter'] === 'missing_followup';
 
@@ -603,7 +606,7 @@ class UserDashboardController extends Controller
         if ($currentPage < 1) $currentPage = 1;
         $offset = ($currentPage - 1) * $sqlLimit;
 
-        $totalTableLeads = $this->leadModel->getAllMyLeadsCount($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours);
+        $totalTableLeads = $this->leadModel->getAllMyLeadsCount($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $from_date, $to_date, $uncontacted);
         $totalPages = ceil($totalTableLeads / $sqlLimit);
 
         // Build pagination route query string (excluding 'page' and routing 'url')
@@ -614,7 +617,7 @@ class UserDashboardController extends Controller
 
         // Fetch assigned leads for the user (PAGINATED)
         $myAssignedClients = $this->leadModel
-            ->getAllMyLeads($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $sqlLimit, $offset);
+            ->getAllMyLeads($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $from_date, $to_date, $uncontacted, $sqlLimit, $offset);
 
         // Fetch specific booking & follow-up counts ONLY for the user's leads (FAST!)
         $leadIds = !empty($myAssignedClients) ? array_column($myAssignedClients, 'id') : [];
@@ -639,14 +642,13 @@ class UserDashboardController extends Controller
         }
 
         // Calculate card statistics efficiently
-        $summaryCards = $this->leadModel->getMyAssignedLeadsSummaryCards($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours);
-        $totalLeadsCount        = $summaryCards['total_leads'] ?? 0;
-        $contactedLeadsCount    = $summaryCards['contacted_leads'] ?? 0;
-        $notContactedLeadsCount = $summaryCards['not_contacted_leads'] ?? 0;
-        $bookedLeadsCount       = $summaryCards['booked_leads'] ?? 0;
-        $upcomingFollowUpsCount = $summaryCards['upcoming_follow_ups'] ?? 0;
-
-        $missingFollowUpCount = $followUpModel->getMissingFollowUpCount($userId);
+        $summaryCards = $this->leadModel->getMyAssignedLeadsSummaryCards($userId, $year, $month, $lastAction, $lead_status, $onlyMissingFollowup, $search, $followup_date, $filterCard, $filterProjectId, $filterCategoryId, $filterCountry, $assignedHours, $from_date, $to_date, $uncontacted);
+        $totalLeadsCount        = (int)($summaryCards['total_leads'] ?? 0);
+        $contactedLeadsCount    = (int)($summaryCards['contacted_leads'] ?? 0);
+        $notContactedLeadsCount = (int)($summaryCards['not_contacted_leads'] ?? 0);
+        $bookedLeadsCount       = (int)($summaryCards['booked_leads'] ?? 0);
+        $upcomingFollowUpsCount = (int)($summaryCards['upcoming_follow_ups'] ?? 0);
+        $missingFollowUpCount   = (int)($summaryCards['missing_follow_ups'] ?? 0);
 
         // ── Duplicate Leads Detection (Optimized JOIN Query) ───────────────────
         $duplicateGroups = [];
@@ -812,12 +814,19 @@ class UserDashboardController extends Controller
         $teamModel = new Team($this->db);
         $teams = $teamModel->getAll();
 
+        $userModel = new User($this->db);
         $teamId = $_SESSION['user']['team_id'] ?? null;
-        if (!empty($teamId)) {
-            $userModel = new User($this->db);
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if ($userRoleId === 9 || in_array($userRoleId, [1, 3, 32, 33])) {
+            $teamMembers = $userModel->getAllRoleUser();
+        } elseif (!empty($teamId)) {
             $teamMembers = $userModel->getUsersByTeamAndRole($teamId);
+            if (empty($teamMembers)) {
+                $teamMembers = $userModel->getAllRoleUser();
+            }
         } else {
-            $teamMembers = [];
+            $teamMembers = $userModel->getAllRoleUser();
         }
 
         $this->view('sales-executive/my-assigned-leads', [
@@ -854,101 +863,9 @@ class UserDashboardController extends Controller
             'totalPages'          => $totalPages,
             'paginationRoute'     => $paginationRoute,
             'limit'               => $limit,
-            'page_script'         => "
-                $('#assignedLeadsTable').DataTable().destroy();
-                const table = $('#assignedLeadsTable').DataTable({
-                    paging: true,
-                    info: true,
-                    searching: true,
-                    lengthChange: true,
-                    lengthMenu: [[10, 25, 50, 100, 200, 500, -1], [10, 25, 50, 100, 200, 500, 'All']],
-                    pageLength: " . ($limit ?? 25) . ",
-                    order: [],
-                    search: {
-                        search: '" . addslashes($search ?? '') . "'
-                    },
-                    drawCallback: function () {
-                        // Hide DataTables own pagination to avoid duplicating the custom PHP pagination
-                        $('.dataTables_paginate').hide();
-                        
-                        if (!window.hasScrolledToTarget) {
-                            const hash = window.location.hash;
-                            if (hash && hash.startsWith('#lead-')) {
-                                const targetEl = $(hash);
-                                if (targetEl.length > 0) {
-                                    window.hasScrolledToTarget = true;
-                                    $('html, body').animate({
-                                        scrollTop: targetEl.offset().top - 100
-                                    }, 500);
-                                }
-                            }
-                        }
-                    }
-                });
-
-                // Listen for 'Show X entries' change
-                $('#assignedLeadsTable').on('length.dt', function (e, settings, len) {
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('limit', len);
-                    url.searchParams.set('page', 1);
-                    window.location.href = url.toString();
-                });
-
-                // Listen for Search input enter key or delay
-                let searchTimeout;
-                $('.dataTables_filter input').unbind().bind('keyup', function(e) {
-                    const val = this.value;
-                    clearTimeout(searchTimeout);
-                    searchTimeout = setTimeout(function() {
-                        const url = new URL(window.location.href);
-                        if (val) {
-                            url.searchParams.set('search', val);
-                        } else {
-                            url.searchParams.delete('search');
-                        }
-                        url.searchParams.set('page', 1);
-                        
-                        // Visual cue for loading
-                        $('#assignedLeadsTable tbody, .mobile-only').css('opacity', '0.4');
-                        
-                        $.ajax({
-                            url: url.toString(),
-                            type: 'GET',
-                            success: function(response) {
-                                const parser = new DOMParser();
-                                const doc = parser.parseFromString(response, 'text/html');
-                                
-                                // 1. Update Table (Desktop)
-                                const table = $('#assignedLeadsTable').DataTable();
-                                const newRows = $(doc).find('#assignedLeadsTable tbody tr');
-                                table.clear();
-                                newRows.each(function() {
-                                    table.row.add(this);
-                                });
-                                table.draw(false);
-                                $('#assignedLeadsTable tbody').css('opacity', '1');
-                                
-                                // 2. Update Mobile View
-                                const newMobile = $(doc).find('.mobile-only').html();
-                                $('.mobile-only').html(newMobile).css('opacity', '1');
-                                
-                                // 3. Update Summary Cards
-                                const newSummary = $(doc).find('.stat-card').first().closest('.row').html();
-                                if (newSummary) {
-                                    $('.stat-card').first().closest('.row').html(newSummary);
-                                }
-                                
-                                // Update URL history silently
-                                window.history.pushState({path: url.toString()}, '', url.toString());
-                            },
-                            error: function() {
-                                // Fallback to full reload on error
-                                window.location.href = url.toString();
-                            }
-                        });
-                    }, 600);
-                });
-            ",
+            'totalTableLeads'     => $totalTableLeads,
+            'offset'              => $offset,
+            'page_script'         => ''
         ]);
     }
     public function myUpcomingFollowLeads()

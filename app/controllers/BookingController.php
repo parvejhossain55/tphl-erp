@@ -148,11 +148,26 @@ class BookingController extends Controller
             }
         }
 
+        $salesUsers = [];
+        $salesRes = $this->db->query("SELECT u.id, u.full_name, r1.name as role_name, r2.name as sec_role_name 
+                                      FROM users u 
+                                      LEFT JOIN roles r1 ON u.role_id = r1.id 
+                                      LEFT JOIN roles r2 ON u.secondary_role_id = r2.id 
+                                      WHERE r1.name LIKE '%sale%' OR r1.name LIKE '%sales%' 
+                                         OR r2.name LIKE '%sale%' OR r2.name LIKE '%sales%'
+                                      ORDER BY u.full_name ASC");
+        if ($salesRes) {
+            while ($row = $salesRes->fetch_assoc()) {
+                $salesUsers[] = $row;
+            }
+        }
+
         $this->view("sales-developments/booking-leads/bookingLeads", [
             "lead" => $lead,
             "projects" => $projects,
             "flats" => $flats,
             "managementUsers" => $managementUsers,
+            "salesUsers" => $salesUsers,
             "bookingRecords" => $bookingRecords,
             "selected_lead_id" => $lead_id,
             "current_route" => "booking-leads",
@@ -317,7 +332,8 @@ class BookingController extends Controller
             exit;
         }
 
-        if ($this->bookingModel->hasVerifiedPayment($id)) {
+        $isManagementOrSalesHead = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 9, 20, 33]);
+        if (!$isManagementOrSalesHead && $this->bookingModel->hasVerifiedPayment($id)) {
             setError("Cannot edit booking because payments have already been verified by Accounts!");
             header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
             exit;
@@ -337,6 +353,10 @@ class BookingController extends Controller
             'approval_status' => $approvalStatus,
             'approved_amount' => $approvedAmount,
         ];
+        
+        if (isset($_POST['sales_by_id'])) {
+            $bookingData['sales_by_id'] = (int)$_POST['sales_by_id'];
+        }
 
         $res = $this->bookingModel->updateBooking($id, $bookingData);
         if ($res['success']) {

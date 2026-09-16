@@ -655,7 +655,8 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
     public function updateBooking($id, $data)
     {
-        if ($this->hasVerifiedPayment($id)) {
+        $isManagementOrSalesHead = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 9, 20, 33]);
+        if (!$isManagementOrSalesHead && $this->hasVerifiedPayment($id)) {
             return ['success' => false, 'message' => 'Cannot edit booking because payments have already been verified by Accounts.'];
         }
 
@@ -719,16 +720,18 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                     booking_date = ?,
                     discount_amount = ?,
                     approved_amount = ?,
-                    approval_status = ?
+                    approval_status = ?,
+                    sales_by_id = ?
                 WHERE id = ?
             ");
 
             $projectId = (int)($data['project_id'] ?? $existing['project_id']);
             $agreementVal = (float)($data['agreement_value'] ?? $existing['agreement_value']);
             $bookingDate = $data['booking_date'] ?? $existing['booking_date'];
+            $salesById = isset($data['sales_by_id']) ? (int)$data['sales_by_id'] : $existing['sales_by_id'];
 
             $stmt->bind_param(
-                "iidssdsi",
+                "iidssdsii",
                 $projectId,
                 $newFlatId,
                 $agreementVal,
@@ -736,11 +739,25 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 $discount,
                 $approvedAmt,
                 $approvalStatus,
+                $salesById,
                 $id
             );
 
+
             if (!$stmt->execute()) {
                 throw new Exception("Booking update failed: " . $stmt->error);
+            }
+
+            // Update leads assigned_id if sales_by_id was changed
+            if (isset($data['sales_by_id']) && $data['sales_by_id'] != $existing['sales_by_id']) {
+                $leadId = $existing['lead_id'] ?? 0;
+                if ($leadId > 0) {
+                    $stmtLead = $this->db->prepare("UPDATE leads SET assigned_id = ? WHERE id = ?");
+                    if ($stmtLead) {
+                        $stmtLead->bind_param("ii", $salesById, $leadId);
+                        $stmtLead->execute();
+                    }
+                }
             }
 
             $this->db->commit();
