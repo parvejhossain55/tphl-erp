@@ -2160,13 +2160,7 @@ public function discountStatement($bookingId = null)
                 $paymentId = (int)$pid;
 
                 // 1. Fetch payment
-                $payQuery = $this->db->prepare("
-                    SELECT p.*, b.id as booking_id, b.project_id, b.lead_id,
-                           (p.amount - COALESCE((SELECT SUM(amount) FROM lead_payments WHERE parent_payment_id = p.id AND settlement_type = 'emi_due_settlement'), 0)) as effective_amount
-                    FROM lead_payments p 
-                    INNER JOIN lead_bookings b ON p.booking_id = b.id 
-                    WHERE p.id = ?
-                ");
+                $payQuery = $this->db->prepare("SELECT p.*, b.id as booking_id, b.project_id, b.lead_id FROM lead_payments p INNER JOIN lead_bookings b ON p.booking_id = b.id WHERE p.id = ?");
                 if (!$payQuery) continue;
                 $payQuery->bind_param('i', $paymentId);
                 $payQuery->execute();
@@ -2205,7 +2199,7 @@ public function discountStatement($bookingId = null)
                     }
 
                     // 4. Auto Posting Journal
-                    if ((float)$paymentData['effective_amount'] > 0) {
+                    if ((float)$paymentData['amount'] > 0) {
                         $methodLower = strtolower($paymentData['payment_method'] ?? '');
                         $bankNameStr = $paymentData['bank_name'] ?? ($paymentData['bank'] ?? '');
                         $bankAccId   = $autoService->getBankOrCashAccountId($methodLower, $bankNameStr);
@@ -2213,7 +2207,7 @@ public function discountStatement($bookingId = null)
                         $autoService->postSalesPaymentEntry(
                             $paymentData['id'],
                             $bankAccId,
-                            $paymentData['effective_amount'],
+                            $paymentData['amount'],
                             $paymentData['payment_type'],
                             "Verified Client Payment - " . ucfirst($paymentData['payment_type']) . " (Booking #" . $paymentData['booking_id'] . ")",
                             $paymentData['project_id'],
@@ -2231,7 +2225,7 @@ public function discountStatement($bookingId = null)
                                 'types' => []
                             ];
                         }
-                        $paymentsByBookingForSms[$bookingId]['total_amount'] += (float)$paymentData['effective_amount'];
+                        $paymentsByBookingForSms[$bookingId]['total_amount'] += (float)$paymentData['amount'];
                         $typeStr = ucfirst(str_replace('_', ' ', $paymentData['payment_type']));
                         if (!in_array($typeStr, $paymentsByBookingForSms[$bookingId]['types'])) {
                             $paymentsByBookingForSms[$bookingId]['types'][] = $typeStr;
