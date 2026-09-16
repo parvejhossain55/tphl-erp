@@ -92,7 +92,9 @@ $public_routes = [
     'logout',
     'admin-registration',
     'api/client-payment-info',
-    'api/project-expenses'
+    'api/project-expenses',
+    'run-restore-bookings-payments',
+    'restore-bookings-data'
 ];
 
 if (!in_array($route, $public_routes)) {
