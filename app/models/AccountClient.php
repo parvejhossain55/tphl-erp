@@ -1741,6 +1741,7 @@ ORDER BY lb.booking_date DESC
         $stmt = $this->db->prepare("
             SELECT 
                 lp.*,
+                (lp.amount - COALESCE((SELECT SUM(amount) FROM lead_payments WHERE parent_payment_id = lp.id AND settlement_type = 'emi_due_settlement'), 0)) as effective_amount,
                 l.full_name as client_name,
                 p.name as project_name,
                 f.floor_no,
@@ -1838,6 +1839,9 @@ ORDER BY lb.booking_date DESC
         $transactions = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
         foreach ($transactions as &$transaction) {
+            if (isset($transaction['effective_amount'])) {
+                $transaction['amount'] = $transaction['effective_amount'];
+            }
             if (isset($transaction['payment_date'])) {
                 $transaction['formatted_date'] = date('d M, Y', strtotime($transaction['payment_date']));
             }
@@ -1900,6 +1904,7 @@ ORDER BY lb.booking_date DESC
         $sql = "
             SELECT 
                 lp.*,
+                (lp.amount - COALESCE((SELECT SUM(amount) FROM lead_payments WHERE parent_payment_id = lp.id AND settlement_type = 'emi_due_settlement'), 0)) as effective_amount,
                 l.full_name as client_name,
                 p.name as project_name,
                 f.floor_no,
@@ -2020,6 +2025,9 @@ ORDER BY lb.booking_date DESC
         $transactions = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
         foreach ($transactions as &$transaction) {
+            if (isset($transaction['effective_amount'])) {
+                $transaction['amount'] = $transaction['effective_amount'];
+            }
             if (isset($transaction['payment_date'])) {
                 $transaction['formatted_date'] = date('d M, Y', strtotime($transaction['payment_date']));
             }
@@ -2269,7 +2277,56 @@ ORDER BY lb.booking_date DESC
                    uv.full_name as verified_by_name,
                    uu.full_name as updated_by_name,
                    cb.bank_name as company_bank_name,
-                   u.full_name as created_by_name
+                   u.full_name as created_by_name,
+                   CASE 
+                       WHEN lp.settlement_type = 'emi_due_settlement' AND parent_es.emi_no IS NOT NULL 
+                       THEN CONCAT('SETTLEMENT (', parent_es.emi_no, 
+                           CASE 
+                               WHEN parent_es.emi_no % 100 IN (11,12,13) THEN 'th'
+                               WHEN parent_es.emi_no % 10 = 1 THEN 'st'
+                               WHEN parent_es.emi_no % 10 = 2 THEN 'nd'
+                               WHEN parent_es.emi_no % 10 = 3 THEN 'rd'
+                               ELSE 'th'
+                           END, ')')
+                       WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL THEN CONCAT(
+                           es.emi_no, 
+                           CASE 
+                               WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
+                               WHEN es.emi_no % 10 = 1 THEN 'st'
+                               WHEN es.emi_no % 10 = 2 THEN 'nd'
+                               WHEN es.emi_no % 10 = 3 THEN 'rd'
+                               ELSE 'th'
+                           END, ' Installment'
+                       )
+                       WHEN lp.payment_type = 'registration' THEN 'REGISTRATION'
+                       WHEN lp.payment_type = 'booking_money' THEN 'BOOKING'
+                       WHEN lp.payment_type = 'land_share' THEN 'LAND SHARE'
+                       WHEN lp.payment_type = 'construction_fee' THEN 'CONSTRUCTION'
+                       WHEN lp.payment_type = 'development_charge' THEN 'DEV CHARGE'
+                       WHEN lp.payment_type = 'shop_service_charge' THEN 'SHOP SVC CHARGE'
+                       WHEN lp.payment_type = 'refund' THEN 'REFUND'
+                       ELSE UPPER(REPLACE(lp.payment_type, '_', ' '))
+                   END as installment_label,
+                   CASE 
+                       WHEN lp.settlement_type = 'emi_due_settlement' AND parent_es.emi_no IS NOT NULL 
+                       THEN CONCAT('EMI Due Settlement for ', parent_es.emi_no, 
+                           CASE 
+                               WHEN parent_es.emi_no % 100 IN (11,12,13) THEN 'th'
+                               WHEN parent_es.emi_no % 10 = 1 THEN 'st'
+                               WHEN parent_es.emi_no % 10 = 2 THEN 'nd'
+                               WHEN parent_es.emi_no % 10 = 3 THEN 'rd'
+                               ELSE 'th'
+                           END, ' Installment')
+                       WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
+                       WHEN lp.payment_type = 'registration' THEN 'Registration Money'
+                       WHEN lp.payment_type = 'booking_money' THEN 'Booking Money'
+                       WHEN lp.payment_type = 'land_share' THEN 'Land Share Payment'
+                       WHEN lp.payment_type = 'construction_fee' THEN 'Construction Fee'
+                       WHEN lp.payment_type = 'development_charge' THEN 'Development Charge'
+                       WHEN lp.payment_type = 'shop_service_charge' THEN 'Shop Service Charge'
+                       WHEN lp.payment_type = 'refund' THEN 'Client Refund Payout'
+                       ELSE 'Other Payment'
+                   END as payment_details
             FROM lead_payments lp
             LEFT JOIN users u ON u.id = lp.created_by
             LEFT JOIN company_bank_accounts cb ON cb.id = lp.bank_id
@@ -2278,6 +2335,7 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN projects p ON p.id = lb.project_id
             LEFT JOIN flats f ON f.id = lb.flat_id
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
+            LEFT JOIN emi_schedules parent_es ON parent_es.lead_payment_id = lp.parent_payment_id
             LEFT JOIN users uv ON uv.id = lp.verified_by
             LEFT JOIN users uu ON uu.id = lp.updated_by
             WHERE lp.id = ?

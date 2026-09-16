@@ -26,7 +26,7 @@ foreach ($validTransactions as $t) {
     if (in_array($st, ['failed','pending'], true)) continue;
     $amt = (float)($t['amount'] ?? 0);
     $due = (float)($t['due_emi_amount'] ?? 0);
-    $actualPaid += ($st === 'partially_paid') ? max(0, $amt - $due) : $amt;
+    $actualPaid += $amt;
 }
 ?>
 <!DOCTYPE html>
