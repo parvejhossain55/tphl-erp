@@ -1565,7 +1565,7 @@ ORDER BY lb.booking_date DESC
             $bookingId = (int) $bookingId;
 
             // Verify the payment exists and belongs to this booking
-            $chk = $this->db->prepare("SELECT id, payment_type, parent_payment_id, amount, verification_status FROM lead_payments WHERE id = ? AND booking_id = ?");
+            $chk = $this->db->prepare("SELECT id, payment_type, settlement_type, parent_payment_id, amount, verification_status FROM lead_payments WHERE id = ? AND booking_id = ?");
             $chk->bind_param("ii", $paymentId, $bookingId);
             $chk->execute();
             $row = $chk->get_result()->fetch_assoc();
@@ -1575,10 +1575,12 @@ ORDER BY lb.booking_date DESC
             }
 
             $paymentType = $row['payment_type'];
+            $settlementType = $row['settlement_type'] ?? null;
+            $isSettlement = ($paymentType === 'emi_due_settlement' || $settlementType === 'emi_due_settlement' || !empty($row['parent_payment_id']));
 
             // 0. If deleting a settlement, restore the parent EMI's outstanding due
             // Only restore if the settlement was NOT rejected (because rejection already restores it)
-            if ($paymentType === 'emi_due_settlement' && !empty($row['parent_payment_id']) && $row['verification_status'] !== 'rejected') {
+            if ($isSettlement && !empty($row['parent_payment_id']) && $row['verification_status'] !== 'rejected') {
                 $parentId = (int) $row['parent_payment_id'];
                 $settlementAmount = (float) $row['amount'];
 
@@ -1595,8 +1597,8 @@ ORDER BY lb.booking_date DESC
                 }
             }
 
-            // 1. Delete associated emi_schedule row (if EMI)
-            if ($paymentType === 'emi') {
+            // 1. Delete associated emi_schedule row (if EMI and not a settlement)
+            if ($paymentType === 'emi' && !$isSettlement) {
                 $delSched = $this->db->prepare("DELETE FROM emi_schedules WHERE lead_payment_id = ? AND lead_booking_id = ?");
                 $delSched->bind_param("ii", $paymentId, $bookingId);
                 $delSched->execute();
@@ -1741,7 +1743,6 @@ ORDER BY lb.booking_date DESC
         $stmt = $this->db->prepare("
             SELECT 
                 lp.*,
-                (lp.amount - COALESCE((SELECT SUM(amount) FROM lead_payments WHERE parent_payment_id = lp.id AND settlement_type = 'emi_due_settlement'), 0)) as effective_amount,
                 l.full_name as client_name,
                 p.name as project_name,
                 f.floor_no,
@@ -1839,9 +1840,6 @@ ORDER BY lb.booking_date DESC
         $transactions = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
         foreach ($transactions as &$transaction) {
-            if (isset($transaction['effective_amount'])) {
-                $transaction['amount'] = $transaction['effective_amount'];
-            }
             if (isset($transaction['payment_date'])) {
                 $transaction['formatted_date'] = date('d M, Y', strtotime($transaction['payment_date']));
             }
@@ -1904,7 +1902,6 @@ ORDER BY lb.booking_date DESC
         $sql = "
             SELECT 
                 lp.*,
-                (lp.amount - COALESCE((SELECT SUM(amount) FROM lead_payments WHERE parent_payment_id = lp.id AND settlement_type = 'emi_due_settlement'), 0)) as effective_amount,
                 l.full_name as client_name,
                 p.name as project_name,
                 f.floor_no,
@@ -2025,9 +2022,6 @@ ORDER BY lb.booking_date DESC
         $transactions = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
         foreach ($transactions as &$transaction) {
-            if (isset($transaction['effective_amount'])) {
-                $transaction['amount'] = $transaction['effective_amount'];
-            }
             if (isset($transaction['payment_date'])) {
                 $transaction['formatted_date'] = date('d M, Y', strtotime($transaction['payment_date']));
             }
