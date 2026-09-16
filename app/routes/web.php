@@ -226,6 +226,12 @@ return [
     'run-live-coa-migration' => ['controller' => 'LiveCoaMigrationController', 'method' => 'run'],
     'live_coa_and_journal_migration.php' => ['controller' => 'LiveCoaMigrationController', 'method' => 'run'],
     'update-fr-journals' => ['controller' => 'LiveCoaMigrationController', 'method' => 'updateFrJournals'],
+
+    // =========================================================================
+    // Live Restore Bookings, Payments & EMI Routes
+    // =========================================================================
+    'run-restore-bookings-payments' => ['controller' => 'LiveRestoreBookingsController', 'method' => 'run'],
+    'restore-bookings-data' => ['controller' => 'LiveRestoreBookingsController', 'method' => 'run'],
     // =========================================================================
     // Controller: SalesActivityReportController
     // =========================================================================

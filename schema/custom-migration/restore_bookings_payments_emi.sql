@@ -230,7 +230,7 @@ UNLOCK TABLES;
 -- --------------------------------------------------------
 -- Sync flat booked statuses with restored bookings
 -- --------------------------------------------------------
-UPDATE flats SET is_booked = 0, status = 'available';
+UPDATE flats SET is_booked = 0, status = 'available' WHERE status = 'booked';
 UPDATE flats f JOIN lead_bookings lb ON f.id = lb.flat_id SET f.is_booked = 1, f.status = 'booked';
 
 COMMIT;
