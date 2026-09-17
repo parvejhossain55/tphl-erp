@@ -143,12 +143,12 @@ $show_breadcrumb = true;
                     <th scope="col">Email</th>
                     <th scope="col">Phone</th>
                     <th scope="col">ERP Status</th>
-                    <th scope="col" style="width: 100px;">Actions</th>
+                    <th scope="col" style="min-width: 170px;">Actions</th>
                 </tr>
             </thead>
             <tbody id="employeesTableBody">
                 <tr>
-                    <td colspan="8" class="text-center py-5">
+                    <td colspan="9" class="text-center py-5">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
@@ -262,6 +262,144 @@ $show_breadcrumb = true;
     </div>
 </div>
 
+<!-- Quick Register in ERP Modal -->
+<div class="modal fade" id="quickRegisterModal" tabindex="-1" aria-labelledby="quickRegisterModalLabel" aria-hidden="true" style="z-index: 100000;">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-width: 820px; width: 95%; margin: 1.75rem auto;">
+        <div class="modal-content" style="border-radius: 12px; border: 1px solid #dee2e6; overflow: hidden; background-color: #ffffff; width: 100%; box-shadow: 0 15px 35px rgba(0,0,0,0.25);">
+            <div class="modal-header bg-success text-white py-3 px-4" style="border-bottom: 1px solid rgba(0,0,0,0.1);">
+                <h5 class="modal-title fw-bold text-white mb-0" id="quickRegisterModalLabel">
+                    <i class="bi bi-person-plus-fill me-2"></i>Register Tipsoi Employee in ERP
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" style="background-color: #f8f9fa;">
+                <div id="quickRegisterAlert"></div>
+                <form id="quickRegisterForm">
+                    <!-- Tipsoi Profile Details -->
+                    <div class="mb-3 p-3 bg-white" style="border: 1px solid #e2e8f0; border-radius: 10px;">
+                        <div class="d-flex align-items-center gap-2 mb-3 text-primary fw-bold">
+                            <i class="bi bi-person-badge fs-5"></i>
+                            <span>Employee Information (From Tipsoi)</span>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Employee Office ID <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="employee_id" id="quickEmpId" required readonly style="background-color: #f1f3f5;">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Full Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="full_name" id="quickFullName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Email Address</label>
+                                <input type="email" class="form-control" name="email" id="quickEmail" placeholder="employee@company.com">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Contact Number</label>
+                                <input type="text" class="form-control" name="phone" id="quickPhone" placeholder="017XXXXXXXX">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ERP Employment Details -->
+                    <div class="mb-3 p-3 bg-white" style="border: 1px solid #e2e8f0; border-radius: 10px;">
+                        <div class="d-flex align-items-center gap-2 mb-3 text-primary fw-bold">
+                            <i class="bi bi-building-gear fs-5"></i>
+                            <span>ERP Employment Details</span>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Department <span class="text-danger">*</span></label>
+                                <select class="form-select" name="department_id" id="quickDepartmentId" required>
+                                    <option value="">Select Department</option>
+                                    <?php if (!empty($departments)): ?>
+                                        <?php foreach ($departments as $dept): ?>
+                                            <option value="<?= $dept['id'] ?>" data-name="<?= htmlspecialchars(strtolower(trim($dept['name']))) ?>">
+                                                <?= htmlspecialchars($dept['name']) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Designation <span class="text-danger">*</span></label>
+                                <select class="form-select" name="designation_id" id="quickDesignationId" required>
+                                    <option value="">Select Designation</option>
+                                    <?php if (!empty($designations)): ?>
+                                        <?php foreach ($designations as $desg): ?>
+                                            <option value="<?= $desg['id'] ?>" 
+                                                    data-dept-id="<?= $desg['department_id'] ?>" 
+                                                    data-name="<?= htmlspecialchars(strtolower(trim($desg['designation_name']))) ?>">
+                                                <?= htmlspecialchars($desg['designation_name']) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Workplace / Office Branch</label>
+                                <select class="form-select" name="office_branch_id" id="quickBranchId">
+                                    <?php if (!empty($branches)): ?>
+                                        <?php foreach ($branches as $branch): ?>
+                                            <option value="<?= $branch['id'] ?>" <?= ($branch['id'] == 2) ? 'selected' : '' ?>>
+                                                <?= htmlspecialchars($branch['name']) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Joining Date</label>
+                                <input type="date" class="form-control" name="joining_date" id="quickJoiningDate" value="<?= date('Y-m-d') ?>">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fw-semibold text-dark">Gross Salary (BDT)</label>
+                                <input type="number" step="0.01" class="form-control" name="gross_salary" id="quickGrossSalary" value="0.00" placeholder="0.00">
+                                <small class="text-muted">Basic Salary will automatically be set as 50% of Gross.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Account Section -->
+                    <div class="p-3 bg-white" style="border: 1px solid #e2e8f0; border-radius: 10px;">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" name="make_user" value="1" id="quickMakeUser" checked style="cursor: pointer;">
+                            <label class="form-check-label fw-semibold text-dark" for="quickMakeUser" style="cursor: pointer;">
+                                Create ERP Login User Account
+                            </label>
+                        </div>
+                        <div class="row g-3" id="quickUserFields">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">User Role</label>
+                                <select class="form-select" name="role_id" id="quickRoleId">
+                                    <?php if (!empty($roles)): ?>
+                                        <?php foreach ($roles as $r): ?>
+                                            <option value="<?= $r['id'] ?>" <?= ($r['id'] == 2) ? 'selected' : '' ?>>
+                                                <?= htmlspecialchars($r['name']) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Initial Password</label>
+                                <input type="text" class="form-control" name="password" id="quickPassword" value="12345678">
+                                <small class="text-muted">Default login password: <code>12345678</code></small>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-white border-top px-4 py-3">
+                <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success px-4 fw-semibold" id="btnSubmitQuickRegister">
+                    <i class="bi bi-check-circle-fill me-1"></i> Register in ERP
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php
 // Store custom page script to execute in master layout footer
 ob_start();
@@ -283,6 +421,16 @@ document.addEventListener("DOMContentLoaded", function () {
     const normalizeId = (id) => {
         const str = String(id || '').trim();
         return /^\d+$/.test(str) ? String(parseInt(str, 10)) : str;
+    };
+
+    // Helper to escape HTML special characters for attributes
+    const escapeHtml = (str) => {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     };
 
     // DOM Elements
@@ -479,7 +627,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!pageItems || pageItems.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="text-center py-5 text-muted">
+                    <td colspan="9" class="text-center py-5 text-muted">
                         <i class="bi bi-inbox fs-2 mb-2 d-block"></i>
                         No employees found matching the current filters.
                     </td>
@@ -490,7 +638,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         let sn = offset + 1;
         tableBody.innerHTML = pageItems.map(emp => {
-            const officeId = normalizeId(emp.employeeOfficeId || emp.employee_id);
+            const rawOfficeId = emp.employeeOfficeId || emp.employee_id || '';
+            const officeId = normalizeId(rawOfficeId);
             const empEmail = String(emp.email || '').toLowerCase().trim();
             const isRegistered = (officeId && normalizedLocalIds.includes(officeId)) ||
                                  (empEmail && normalizedLocalEmails.includes(empEmail));
@@ -499,10 +648,23 @@ document.addEventListener("DOMContentLoaded", function () {
                 ? '<span class="badge bg-success text-white px-2 py-1"><i class="bi bi-patch-check-fill me-1"></i>Registered</span>'
                 : '<span class="badge bg-danger text-white px-2 py-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Not in ERP</span>';
 
+            const quickRegisterBtn = !isRegistered ? `
+                <button class="btn btn-sm btn-success text-nowrap btn-quick-register py-1 px-2" 
+                        data-office-id="${escapeHtml(rawOfficeId)}" 
+                        data-name="${escapeHtml(emp.name || emp.full_name || '')}" 
+                        data-email="${escapeHtml(emp.email || '')}" 
+                        data-phone="${escapeHtml(emp.phoneMobile || emp.phoneOffice || emp.phone || '')}" 
+                        data-dept="${escapeHtml(emp.departmentName || emp.department_name || '')}" 
+                        data-desg="${escapeHtml(emp.designationName || emp.designation_name || '')}" 
+                        title="Register in ERP">
+                    <i class="bi bi-person-plus-fill me-1"></i>Add to ERP
+                </button>
+            ` : '';
+
             return `
                 <tr>
                     <td class="fw-semibold text-muted">${sn++}</td>
-                    <td class="fw-semibold text-dark">${emp.employeeOfficeId || emp.employee_id || 'N/A'}</td>
+                    <td class="fw-semibold text-dark">${rawOfficeId || 'N/A'}</td>
                     <td class="fw-bold">${emp.name || emp.full_name || 'N/A'}</td>
                     <td><span class="badge bg-light text-dark border">${emp.designationName || emp.designation_name || 'N/A'}</span></td>
                     <td>${emp.departmentName || emp.department_name || 'N/A'}</td>
@@ -510,11 +672,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     <td><i class="bi bi-phone me-1 text-muted"></i>${emp.phoneMobile || emp.phoneOffice || emp.phone || 'N/A'}</td>
                     <td>${statusBadge}</td>
                     <td>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-outline-primary btn-edit-employee" data-id="${emp.id}" title="Update Employee">
+                        <div class="d-flex gap-1 align-items-center">
+                            ${quickRegisterBtn}
+                            <button class="btn btn-sm btn-outline-primary btn-edit-employee py-1 px-2" data-id="${emp.id}" title="Update Tipsoi Employee">
                                 <i class="bi bi-pencil-square"></i>
                             </button>
-                            <button class="btn btn-sm btn-outline-danger btn-delete-employee" data-id="${emp.id}" title="Delete Employee">
+                            <button class="btn btn-sm btn-outline-danger btn-delete-employee py-1 px-2" data-id="${emp.id}" title="Delete Tipsoi Employee">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </div>
@@ -701,6 +864,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     tableBody.addEventListener("click", function (e) {
+        // Handle Quick Register in ERP
+        const quickBtn = e.target.closest(".btn-quick-register");
+        if (quickBtn) {
+            openQuickRegisterModal(quickBtn);
+            return;
+        }
+
         // Handle Edit
         const editBtn = e.target.closest(".btn-edit-employee");
         if (editBtn) {
@@ -889,6 +1059,192 @@ document.addEventListener("DOMContentLoaded", function () {
                 icon: 'error',
                 title: 'Error',
                 text: 'Network error occurred.'
+            });
+        });
+    }
+
+    // ==========================================
+    // Quick Register in ERP Logic
+    // ==========================================
+    let quickRegisterModalInstance = null;
+    const quickRegisterModalEl = document.getElementById('quickRegisterModal');
+    if (quickRegisterModalEl) {
+        quickRegisterModalInstance = new bootstrap.Modal(quickRegisterModalEl);
+    }
+
+    const quickDeptSelect = document.getElementById('quickDepartmentId');
+    const quickDesgSelect = document.getElementById('quickDesignationId');
+    const quickMakeUser = document.getElementById('quickMakeUser');
+    const quickUserFields = document.getElementById('quickUserFields');
+    const btnSubmitQuickRegister = document.getElementById('btnSubmitQuickRegister');
+    const quickAlert = document.getElementById('quickRegisterAlert');
+
+    // Clone all designation options to filter dynamically by department
+    const allDesgOptions = quickDesgSelect ? Array.from(quickDesgSelect.options) : [];
+
+    function filterDesignationsByDept(deptId, targetDesgName = '') {
+        if (!quickDesgSelect) return;
+        const currentVal = quickDesgSelect.value;
+        quickDesgSelect.innerHTML = '';
+        
+        allDesgOptions.forEach(opt => {
+            if (!opt.value || !deptId || opt.getAttribute('data-dept-id') == deptId) {
+                quickDesgSelect.appendChild(opt.cloneNode(true));
+            }
+        });
+
+        // Try to match target designation if provided
+        if (targetDesgName) {
+            let matched = false;
+            for (let opt of quickDesgSelect.options) {
+                const optName = (opt.getAttribute('data-name') || '').toLowerCase().trim();
+                if (optName && (optName === targetDesgName || targetDesgName.includes(optName) || optName.includes(targetDesgName))) {
+                    quickDesgSelect.value = opt.value;
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) {
+                quickDesgSelect.value = '';
+            }
+        } else {
+            quickDesgSelect.value = currentVal;
+            if (quickDesgSelect.selectedIndex === -1) {
+                quickDesgSelect.value = '';
+            }
+        }
+    }
+
+    if (quickDeptSelect) {
+        quickDeptSelect.addEventListener('change', function() {
+            filterDesignationsByDept(this.value);
+        });
+    }
+
+    if (quickMakeUser) {
+        quickMakeUser.addEventListener('change', function() {
+            if (quickUserFields) {
+                quickUserFields.style.display = this.checked ? 'flex' : 'none';
+            }
+        });
+    }
+
+    function openQuickRegisterModal(btn) {
+        if (!quickRegisterModalInstance) {
+            quickRegisterModalInstance = new bootstrap.Modal(document.getElementById('quickRegisterModal'));
+        }
+
+        quickAlert.innerHTML = '';
+        const form = document.getElementById('quickRegisterForm');
+        if (form) form.reset();
+
+        if (quickMakeUser) quickMakeUser.checked = true;
+        if (quickUserFields) quickUserFields.style.display = 'flex';
+        document.getElementById('quickPassword').value = '12345678';
+        document.getElementById('quickJoiningDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('quickGrossSalary').value = '0.00';
+
+        const rawOfficeId = btn.getAttribute('data-office-id') || '';
+        const empName = btn.getAttribute('data-name') || '';
+        const empEmail = btn.getAttribute('data-email') || '';
+        const empPhone = btn.getAttribute('data-phone') || '';
+        const tipsoiDept = (btn.getAttribute('data-dept') || '').toLowerCase().trim();
+        const tipsoiDesg = (btn.getAttribute('data-desg') || '').toLowerCase().trim();
+
+        document.getElementById('quickEmpId').value = rawOfficeId;
+        document.getElementById('quickFullName').value = empName;
+        document.getElementById('quickEmail').value = empEmail;
+        document.getElementById('quickPhone').value = empPhone;
+
+        // Auto-match department if possible
+        let matchedDeptId = '';
+        if (quickDeptSelect) {
+            for (let opt of quickDeptSelect.options) {
+                const optName = (opt.getAttribute('data-name') || '').toLowerCase().trim();
+                if (optName && tipsoiDept && (optName === tipsoiDept || tipsoiDept.includes(optName) || optName.includes(tipsoiDept))) {
+                    quickDeptSelect.value = opt.value;
+                    matchedDeptId = opt.value;
+                    break;
+                }
+            }
+            if (!matchedDeptId) {
+                quickDeptSelect.value = '';
+            }
+        }
+
+        // Filter designations by matched department (and try to match designation name)
+        filterDesignationsByDept(matchedDeptId, tipsoiDesg);
+
+        quickRegisterModalInstance.show();
+    }
+
+    if (btnSubmitQuickRegister) {
+        btnSubmitQuickRegister.addEventListener('click', function() {
+            const form = document.getElementById('quickRegisterForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const formData = new FormData(form);
+            btnSubmitQuickRegister.disabled = true;
+            btnSubmitQuickRegister.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Registering...';
+            quickAlert.innerHTML = '';
+
+            fetch(`${baseUrl}/api/hrm/quick-create-employee`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                btnSubmitQuickRegister.disabled = false;
+                btnSubmitQuickRegister.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Register in ERP';
+
+                if (data.success) {
+                    if (quickRegisterModalInstance) {
+                        quickRegisterModalInstance.hide();
+                    }
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Registered in ERP!',
+                        text: data.message || 'Employee registered successfully in ERP.',
+                        timer: 2500,
+                        showConfirmButton: false
+                    });
+
+                    // Update local memory arrays so the matching is updated immediately
+                    if (data.employee_office_id) {
+                        normalizedLocalIds.push(normalizeId(data.employee_office_id));
+                    }
+                    if (data.email) {
+                        normalizedLocalEmails.push(data.email.toLowerCase().trim());
+                    }
+
+                    // Recalculate stats and re-render current view
+                    calculateStats(allEmployees, localEmployeeIds);
+                    applyFiltersAndRender(currentPage);
+                } else {
+                    quickAlert.innerHTML = `
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-octagon-fill me-2"></i>${data.message || 'Failed to register employee.'}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                btnSubmitQuickRegister.disabled = false;
+                btnSubmitQuickRegister.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Register in ERP';
+                quickAlert.innerHTML = `
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-octagon-fill me-2"></i>Network or server error: ${err.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `;
             });
         });
     }

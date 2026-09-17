@@ -694,9 +694,18 @@ class EmployeeController extends Controller
 
     public function externalEmployeesView()
     {
+        $departments = $this->departmentModel->getAll();
+        $designations = $this->designationModel->getAll();
+        $roles = $this->roleModel->getAllFilterRole();
+        $branches = $this->getOfficeBranches();
+
         $this->view("hrm/employees/external-employees", [
             "current_route" => "hrm-external-employees",
-            "page_title" => "Tipsoi Employees"
+            "page_title" => "Tipsoi Employees",
+            "departments" => $departments,
+            "designations" => $designations,
+            "roles" => $roles,
+            "branches" => $branches
         ]);
     }
 
