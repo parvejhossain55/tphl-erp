@@ -420,23 +420,15 @@ foreach ($validTransactions as $t) {
             <table class="main-table">
                 <thead>
                     <tr>
-                        <th rowspan="2" style="width:28px;">SL</th>
-                        <th rowspan="2" style="width:78px;">Date</th>
-                        <th rowspan="2" style="width:105px;">Term</th>
-                        <th colspan="5" style="background:#e2efda;">Installment</th>
-                        <th rowspan="2">Payment<br>Type</th>
-                        <th rowspan="2">Bank Name</th>
-                        <th rowspan="2">Cheque /<br>Txn ID</th>
-                        <th rowspan="2">Discount</th>
-                        <th rowspan="2">Paid<br>Amount</th>
-                        <th rowspan="2">Remaining<br>Balance</th>
-                    </tr>
-                    <tr class="sub-header">
-                        <th>Land Share</th>
-                        <th>Dev.<br>Charge</th>
-                        <th>Installment<br>Fee</th>
-                        <th>Service Charge<br>(10%)</th>
-                        <th>Total</th>
+                        <th style="width:28px;">SL</th>
+                        <th style="width:78px;">Date</th>
+                        <th style="width:105px;">Term</th>
+                        <th>Payment<br>Type</th>
+                        <th>Bank Name</th>
+                        <th>Cheque /<br>Txn ID</th>
+                        <th>Discount</th>
+                        <th>Paid<br>Amount</th>
+                        <th>Remaining<br>Balance</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -523,11 +515,6 @@ foreach ($validTransactions as $t) {
                             <td class="center"><?= $sl ?></td>
                             <td class="center"><?= $payDate ?></td>
                             <td><?= htmlspecialchars($term) ?></td>
-                            <td class="amount"><?= $colLandShare > 0 ? number_format($colLandShare, 0) : '' ?></td>
-                            <td class="amount"><?= $colDevCharge > 0 ? number_format($colDevCharge, 0) : '' ?></td>
-                            <td class="amount"><?= $colInstFee > 0 ? number_format($colInstFee, 0) : '' ?></td>
-                            <td class="amount"><?= $colServiceFee > 0 ? number_format($colServiceFee, 0) : '' ?></td>
-                            <td class="amount"><?= number_format($amount, 0) ?></td>
                             <td class="center"><?= $payTypeDisplay ?></td>
                             <td class="center"><?= htmlspecialchars($bankName) ?></td>
                             <td class="center"><?= htmlspecialchars($chequeOrRef) ?></td>
@@ -542,7 +529,6 @@ foreach ($validTransactions as $t) {
                             <td class="center"><?= ++$sl ?></td>
                             <td class="center">—</td>
                             <td><strong>Booking Discount</strong></td>
-                            <td></td><td></td><td></td><td></td><td></td>
                             <td class="center">—</td>
                             <td></td><td></td>
                             <td class="amount"><strong><?= number_format($bookingDiscount, 0) ?></strong></td>
@@ -555,11 +541,6 @@ foreach ($validTransactions as $t) {
                         <!-- Totals Row -->
                         <tr class="total-row">
                             <td colspan="3" style="text-align:right;"><strong>TOTAL</strong></td>
-                            <td class="amount"><?= $totalLandShare > 0 ? number_format($totalLandShare, 0) : '' ?></td>
-                            <td class="amount"><?= $totalDevCharge > 0 ? number_format($totalDevCharge, 0) : '' ?></td>
-                            <td class="amount"><?= $totalInstFee > 0 ? number_format($totalInstFee, 0) : '' ?></td>
-                            <td class="amount"><?= $totalSvcFee > 0 ? number_format($totalSvcFee, 0) : '' ?></td>
-                            <td class="amount"><?= number_format($totalColTotal, 0) ?></td>
                             <td></td><td></td><td></td>
                             <td class="amount"><?= $totalDiscount > 0 ? number_format($totalDiscount, 0) : '' ?></td>
                             <td class="amount"><?= number_format($totalPaidCol, 0) ?></td>
@@ -568,7 +549,7 @@ foreach ($validTransactions as $t) {
 
                     <?php else: ?>
                         <tr>
-                            <td colspan="14" style="text-align:center; padding:20px;">
+                            <td colspan="9" style="text-align:center; padding:20px;">
                                 No transactions found for the selected period.
                             </td>
                         </tr>
@@ -577,7 +558,8 @@ foreach ($validTransactions as $t) {
             </table>
         </div>
 
-        <!-- Footer Note -->
+        <!-- 
+        Footer Note -->
         <div class="statement-footer">
             <strong>Note:</strong> This statement includes only verified transactions. Rejected and pending payments are excluded from this report.
             <?php if ($totalDiscounts > 0): ?>

@@ -144,25 +144,18 @@ class TrackerCalculationService
             || str_contains($userName, 'admin')
         );
 
-        // 2. Sales Head (Role 9, or role_name contains 'sales team head', 'sales head', or 'head of sales'):
+        // 2. Sales Head & Sales Manager
         // Must ALWAYS oversee all sales teams and all members across the company by default,
         // even if they have a team_id assigned in employees or users table.
-        $isSalesHead = (
-            $roleId === 9 
+        $isSalesManagerOrHead = (
+            in_array($roleId, [5, 9]) 
             || str_contains($roleName, 'sales team head') 
             || str_contains($roleName, 'sales head')
             || (str_contains($roleName, 'head') && str_contains($roleName, 'sales'))
+            || str_contains($roleName, 'manager')
         );
 
-        if ($isGlobalAdmin || $isSalesHead) {
-            if (!empty($filterTeamId) && (int)$filterTeamId > 0) {
-                return ['type' => 'TEAM', 'team_id' => (int)$filterTeamId];
-            }
-            return ['type' => 'ALL', 'team_id' => null];
-        }
-
-        // 3. Sales Manager (Role 5): If they don't have a specific team assigned, they oversee all sales teams
-        if ((in_array($roleId, [5]) || str_contains($roleName, 'manager')) && empty($teamId)) {
+        if ($isGlobalAdmin || $isSalesManagerOrHead) {
             if (!empty($filterTeamId) && (int)$filterTeamId > 0) {
                 return ['type' => 'TEAM', 'team_id' => (int)$filterTeamId];
             }
@@ -211,6 +204,8 @@ class TrackerCalculationService
             SELECT 
                 e.user_id,
                 e.full_name as member_name,
+                e.office_branch_id,
+                COALESCE(ob.name, 'Other') as branch_name,
                 COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0), 0) as team_id,
                 COALESCE(t.name, 'General Team') as team_name,
                 e.reporting_user_id,
@@ -238,6 +233,7 @@ class TrackerCalculationService
             FROM employees e
             INNER JOIN users u ON e.user_id = u.id
             LEFT JOIN teams t ON COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0)) = t.id
+            LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
             LEFT JOIN roles r ON u.role_id = r.id
             LEFT JOIN sales_targets st ON e.user_id = st.sales_user_id AND st.month = '$monthString'
             WHERE $empCondition
@@ -258,6 +254,8 @@ class TrackerCalculationService
                 SELECT 
                     e.user_id,
                     e.full_name as member_name,
+                    e.office_branch_id,
+                    COALESCE(ob.name, 'Other') as branch_name,
                     e.team_id,
                     'Team ' as team_name,
                     e.reporting_user_id,
@@ -284,6 +282,7 @@ class TrackerCalculationService
                     st.category_ids
                 FROM employees e
                 INNER JOIN users u ON e.user_id = u.id
+                LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
                 LEFT JOIN roles r ON u.role_id = r.id
                 LEFT JOIN sales_targets st ON e.user_id = st.sales_user_id AND st.month = '$monthString'
                 WHERE $empCondition
@@ -320,6 +319,7 @@ class TrackerCalculationService
                 $employees[$row['user_id']] = [
                     'user_id' => (int)$row['user_id'],
                     'member_name' => $row['member_name'],
+                    'branch_name' => $row['branch_name'] ?? 'Other',
                     'team_name' => $row['team_name'] ?: 'General Team',
                     'team_id' => !empty($row['team_id']) ? (int)$row['team_id'] : 0,
                     'level_designation' => $levelDesignation,
@@ -803,6 +803,7 @@ class TrackerCalculationService
                 $teams[$tid] = [
                     'team_id' => $tid,
                     'team_name' => $emp['team_name'] ?: ('Team ' . ($tid ?: 'Unassigned')),
+                    'branch_name' => $emp['branch_name'] ?? 'Other',
                     'member_count' => 0,
                     'members' => [],
                     'total_leads' => 0,
@@ -1009,6 +1010,7 @@ class TrackerCalculationService
         $query = "
             SELECT 
                 e.user_id, e.full_name as member_name, 
+                e.office_branch_id, COALESCE(ob.name, 'Other') as branch_name,
                 COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0), 0) as team_id,
                 COALESCE(t.name, 'General Team') as team_name,
                 r.name as role_name,
@@ -1034,6 +1036,7 @@ class TrackerCalculationService
                 st.category_ids
             FROM employees e
             INNER JOIN users u ON e.user_id = u.id
+            LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
             LEFT JOIN teams t ON COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0)) = t.id
             LEFT JOIN roles r ON u.role_id = r.id
             LEFT JOIN sales_targets st ON e.user_id = st.sales_user_id AND st.month = '$monthString'
@@ -1051,8 +1054,9 @@ class TrackerCalculationService
         if (!$employeesResult) {
             $query = "
                 SELECT 
-                    e.user_id, e.full_name as member_name, e.team_id,
-                    'Team ' as team_name,
+                    e.user_id, e.full_name as member_name, 
+                    e.office_branch_id, COALESCE(ob.name, 'Other') as branch_name,
+                    e.team_id, 'Team ' as team_name,
                     r.name as role_name,
                     u.role_id,
                     st.sales_role,
@@ -1076,6 +1080,7 @@ class TrackerCalculationService
                     st.category_ids
                 FROM employees e
                 INNER JOIN users u ON e.user_id = u.id
+                LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
                 LEFT JOIN roles r ON u.role_id = r.id
                 LEFT JOIN sales_targets st ON e.user_id = st.sales_user_id AND st.month = '$monthString'
                 WHERE $empCondition
@@ -1112,6 +1117,7 @@ class TrackerCalculationService
                 $employees[$row['user_id']] = [
                     'user_id' => (int)$row['user_id'],
                     'member_name' => $row['member_name'],
+                    'branch_name' => $row['branch_name'] ?? 'Other',
                     'team_name' => $row['team_name'] ?: 'General Team',
                     'team_id' => !empty($row['team_id']) ? (int)$row['team_id'] : 0,
                     'level_designation' => $levelDesignation,

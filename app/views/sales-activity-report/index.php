@@ -224,6 +224,25 @@
                             .m-rank-2 { --rank-card-bg: linear-gradient(145deg, #f8f9fa 0%, #ffffff 100%); --rank-card-border: #e2e8f0; }
                             .m-rank-3 { --rank-card-bg: linear-gradient(145deg, #fffaf5 0%, #ffffff 100%); --rank-card-border: #fed7aa; }
 
+                            /* Team Grouping Colors (Light) */
+                            :root {
+                                --team-bg-0: #f8fafc;
+                                --team-bg-1: #f0fdf4;
+                                --team-bg-2: #eff6ff;
+                                --team-bg-3: #fef2f2;
+                                --team-bg-4: #fdf4ff;
+                                --team-bg-5: #fffbeb;
+                            }
+                            /* Team Grouping Colors (Dark) */
+                            [bd-theme="bd-theme-dark"] body, [data-bs-theme="dark"] body, body.dark-mode {
+                                --team-bg-0: rgba(255, 255, 255, 0.02);
+                                --team-bg-1: rgba(16, 185, 129, 0.05);
+                                --team-bg-2: rgba(59, 130, 246, 0.05);
+                                --team-bg-3: rgba(239, 68, 68, 0.05);
+                                --team-bg-4: rgba(168, 85, 247, 0.05);
+                                --team-bg-5: rgba(245, 158, 11, 0.05);
+                            }
+
                             .modern-rank-card:hover {
                                 transform: translateY(-4px);
                                 box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
@@ -473,42 +492,59 @@
                             </div>
                         </div>
                         <div class="table-responsive">
-                            <table class="table table-bordered table-striped table-hover text-nowrap align-middle">
-                                <thead class="table-primary text-center">
+                            <table class="table table-bordered table-hover text-nowrap align-middle">
+                                <thead class="table-info text-center align-middle">
                                     <tr>
                                         <th rowspan="2">Rank</th>
-                                        <th rowspan="2">Team</th>
+                                        <th rowspan="2">Branch</th>
+                                        <th rowspan="2">Team Name</th>
                                         <th rowspan="2">Member Name</th>
                                         <th rowspan="2">Designation</th>
-                                        <th colspan="3">Targets</th>
-                                        <th colspan="4">Leads & Follow Ups</th>
-                                        <th colspan="2">Visits</th>
-                                        <th colspan="3">Sales / Volume</th>
-                                        <th rowspan="2">Perf. Score</th>
+                                        
+                                        <th colspan="3">Target</th>
+                                        
+                                        <th colspan="4">Activity (Visits & Follow-up)</th>
+                                        
+                                        <th colspan="2">Site Visit Ach.</th>
+                                        <th colspan="2">Unit Ach.</th>
+                                        <th colspan="2">Volume (Assigned / Unassigned)</th>
+                                        
+                                        <th rowspan="2">Score</th>
                                         <th rowspan="2">Action</th>
                                     </tr>
                                     <tr>
                                         <th>Unit</th>
-                                        <th>Volume</th>
+                                        <th>Vol</th>
                                         <th>Visit</th>
                                         
                                         <th>Assigned</th>
-                                        <th>Follow Up (%)</th>
-                                        <th>Contacted (%)</th>
+                                        <th>Follow Up</th>
+                                        <th>Contacted</th>
                                         <th>Interested</th>
                                         
                                         <th>Achieved</th>
                                         <th>%</th>
                                         
                                         <th>Units Sold</th>
+                                        <th>%</th>
                                         <th>Assigned Vol</th>
                                         <th>Unassigned Vol</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach($inds as $emp): ?>
-                                    <tr class="text-center">
+                                    <?php 
+                                    $tableInds = $monthlyData['table_individuals'] ?? ($monthlyData['individuals'] ?? []);
+                                    $currentTeam = null;
+                                    $colorIndex = 0;
+                                    foreach($tableInds as $emp): 
+                                        if ($currentTeam !== $emp['team_name']) {
+                                            $currentTeam = $emp['team_name'];
+                                            $colorIndex = ($colorIndex + 1) % 6;
+                                        }
+                                    ?>
+                                    <tr class="text-center" style="background-color: var(--team-bg-<?= $colorIndex ?>) !important;">
                                         <td><span class="badge bg-primary">#<?= $emp['rank'] ?></span></td>
+                                        <td><?= htmlspecialchars($emp['branch_name'] ?? 'Other') ?></td>
                                         <td><?= htmlspecialchars($emp['team_name']) ?></td>
                                         <td class="text-start fw-bold"><?= htmlspecialchars($emp['member_name']) ?></td>
                                         <td><?= htmlspecialchars($emp['level_designation']) ?></td>
@@ -574,10 +610,11 @@
                             </div>
                         </div>
                         <div class="table-responsive">
-                            <table class="table table-bordered table-striped text-nowrap align-middle">
+                            <table class="table table-bordered table-hover text-nowrap align-middle">
                                 <thead class="table-info text-center">
                                     <tr>
                                         <th>Rank</th>
+                                        <th>Branch</th>
                                         <th>Team Name</th>
                                         <th>Total Leads</th>
                                         <th>Follow Up (%)</th>
@@ -596,7 +633,13 @@
                                 <tbody>
                                     <?php 
                                     $teams = $monthlyData['teams'] ?? [];
+                                    $currentTeamName = null;
+                                    $colorIndex = 0;
                                     foreach($teams as $t): 
+                                        if ($currentTeamName !== ($t['team_name'] ?? '')) {
+                                            $currentTeamName = ($t['team_name'] ?? '');
+                                            $colorIndex = ($colorIndex + 1) % 6;
+                                        }
                                         $teamMembersPayload = [];
                                         if (!empty($t['members'])) {
                                             foreach ($t['members'] as $tm) {
@@ -616,8 +659,9 @@
                                             }
                                         }
                                     ?>
-                                    <tr class="text-center">
+                                    <tr class="text-center align-middle" style="background-color: var(--team-bg-<?= $colorIndex ?>) !important;">
                                         <td><span class="badge bg-info text-dark">#<?= $t['rank'] ?></span></td>
+                                        <td><?= htmlspecialchars($t['branch_name'] ?? 'Other') ?></td>
                                         <td class="text-start fw-bold"><?= htmlspecialchars($t['team_name']) ?></td>
                                         <td><?= $t['total_leads'] ?></td>
                                         <td><?= $t['total_follow_up'] ?> (<?= $t['follow_up_pct'] ?>%)</td>
@@ -664,7 +708,7 @@
                                     </tr>
                                     <?php endforeach; ?>
                                     <?php if(empty($teams)): ?>
-                                        <tr><td colspan="14" class="text-center">No team data found</td></tr>
+                                        <tr><td colspan="15" class="text-center">No team data found</td></tr>
                                     <?php endif; ?>
                                 </tbody>
                             </table>
@@ -687,15 +731,16 @@
                             </div>
                         </div>
                         <div class="table-responsive">
-                            <table class="table table-bordered table-striped text-nowrap align-middle">
-                                <thead class="table-secondary text-center">
+                            <table class="table table-bordered table-hover text-nowrap align-middle">
+                                <thead class="table-success text-center align-middle">
                                     <tr>
                                         <th>Member Name</th>
+                                        <th>Branch</th>
                                         <th>Designation</th>
-                                        <th>Team</th>
-                                        <th>Leads Assigned Today</th>
-                                        <th>Followed Up Today</th>
-                                        <th>Contacted Today</th>
+                                        <th>Team Name</th>
+                                        <th>Assigned Leads</th>
+                                        <th>Total Follow-up</th>
+                                        <th>Contacted</th>
                                         <th>Interested</th>
                                         <th>Not Interested</th>
                                         <th>Will Visit Today</th>
@@ -708,10 +753,17 @@
                                 <tbody>
                                     <?php 
                                     $daily = $dailyData ?? [];
+                                    $currentTeam = null;
+                                    $colorIndex = 0;
                                     foreach($daily as $emp): 
+                                        if ($currentTeam !== $emp['team_name']) {
+                                            $currentTeam = $emp['team_name'];
+                                            $colorIndex = ($colorIndex + 1) % 6;
+                                        }
                                     ?>
-                                    <tr class="text-center">
+                                    <tr class="text-center align-middle" style="background-color: var(--team-bg-<?= $colorIndex ?>) !important;">
                                         <td class="text-start fw-bold"><?= htmlspecialchars($emp['member_name']) ?></td>
+                                        <td><?= htmlspecialchars($emp['branch_name'] ?? 'Other') ?></td>
                                         <td><?= htmlspecialchars($emp['level_designation']) ?></td>
                                         <td><?= htmlspecialchars($emp['team_name']) ?></td>
                                         <td><?= $emp['assigned_leads'] ?></td>

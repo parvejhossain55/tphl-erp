@@ -211,7 +211,7 @@ class FundRequisitionController extends Controller {
         } elseif (in_array($roleId, [13, 24, 25], true)) { // QC
             $pendingCondition = "fr.status = 'pending_qc'";
         } elseif (in_array($roleId, [20, 32], true)) { // Operation Head
-            $pendingCondition = "(fr.status IN ('pending', 'partially_approved', 'partially_paid') AND COALESCE(fr.qc_approved_amount, fr.amount) <= 100000)";
+            $pendingCondition = "fr.status IN ('pending', 'partially_approved', 'partially_paid')";
         } elseif (in_array($roleId, [6, 30], true)) { // Accounts
             $pendingCondition = "fr.status IN ('approved', 'partially_approved', 'partially_paid')";
         }
@@ -264,7 +264,10 @@ class FundRequisitionController extends Controller {
             LEFT JOIN designations des_boss ON des_boss.id = COALESCE(e_boss.designation_id, u_boss.designation_id)
             {$assetJoin}
             WHERE $where
-            ORDER BY fr.id DESC
+            ORDER BY 
+                $pendingActionSql DESC, 
+                CASE WHEN fr.status IN ('pending', 'pending_dept', 'pending_qc', 'partially_approved', 'partially_paid') THEN 1 ELSE 0 END DESC, 
+                fr.id DESC
             $limitClause
         ";
 
@@ -958,18 +961,12 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
-        if (in_array($roleId, [1, 3])) {
+        if (in_array($roleId, [1, 3, 20, 32])) {
             $effectiveMax = (float)$frData['amount'];
         } else {
-            // Operation Head (20, 32)
             $effectiveMax = ($frData['qc_approved_amount'] !== null && (float)$frData['qc_approved_amount'] > 0)
                 ? (float)$frData['qc_approved_amount']
                 : (float)$frData['amount'];
-            if ($effectiveMax > 100000) {
-                setError('Operation Head can only approve requisitions up to 1,00,000 BDT.');
-                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
-                exit;
-            }
         }
 
         $cumulative_approved_amount = (float)($frData['approved_amount'] ?? 0);

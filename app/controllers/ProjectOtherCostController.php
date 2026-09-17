@@ -21,8 +21,8 @@ class ProjectOtherCostController extends Controller
         
         $approvalRequests = [];
         
-        // Approver roles: QC(13, 24, 25), Management(3, 33, 34, 35, 32, 15, 22), Accounts(6, 30), Admin(1)
-        $approverRoles = [1, 3, 6, 13, 15, 20, 22, 24, 25, 30, 32, 33, 34, 35];
+        // Approver roles: QC(13, 24, 25), Management(3, 33, 34, 35, 32, 15, 22), Accounts(6, 30), Admin(1), Land Manager(14)
+        $approverRoles = [1, 3, 6, 13, 14, 15, 20, 22, 24, 25, 30, 32, 33, 34, 35];
         
         // Check if user is a designated reporting boss for any employees
         $isReportingBoss = false;
@@ -43,8 +43,8 @@ class ProjectOtherCostController extends Controller
         
         // Allowed roles to see all under_construction projects (including Employee role 2):
         // 1(Admin), 2(Employee), 3(Management), 20(Operation Head), 33(Chief Officer), 17(Purchase Head), 22(PM Head), 23(Purchase Exec), 31(Sr Purchase Exec), 
-        // 6(Accounts), 30(Accounts Head), 24(QC Head), 25(QC Exec), 32(Admin Operation)
-        if (in_array($userRole, [1, 2, 3, 20, 33, 17, 22, 23, 31, 6, 30, 24, 25, 32])) {
+        // 6(Accounts), 30(Accounts Head), 24(QC Head), 25(QC Exec), 32(Admin Operation), 14(Land Manager)
+        if (in_array($userRole, [1, 2, 3, 14, 20, 33, 17, 22, 23, 31, 6, 30, 24, 25, 32])) {
             $pResult  = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL AND (under_construction = 1 OR is_common = 1) ORDER BY name ASC");
             if (!$pResult || $pResult->num_rows === 0) {
                 $pResult = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
@@ -96,7 +96,7 @@ class ProjectOtherCostController extends Controller
         $userId = $_SESSION['user']['id'];
         $userRole = (int)$_SESSION['user']['role_id'];
         
-        if (in_array($userRole, [1, 2, 3, 20, 33, 17, 22, 23, 31, 6, 30, 24, 25, 32])) {
+        if (in_array($userRole, [1, 2, 3, 14, 20, 33, 17, 22, 23, 31, 6, 30, 24, 25, 32])) {
             $pResult  = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL AND (under_construction = 1 OR is_common = 1) ORDER BY name ASC");
             if (!$pResult || $pResult->num_rows === 0) {
                 $pResult = $this->db->query("SELECT id, name, under_construction FROM projects WHERE deleted_at IS NULL ORDER BY name ASC");
