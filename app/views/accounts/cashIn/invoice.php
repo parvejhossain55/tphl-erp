@@ -19,6 +19,120 @@ $isVerified = isset($payment['verification_status']) && strtolower(trim($payment
 $createdByName = !empty($payment['created_by_name']) ? $payment['created_by_name'] : 'System';
 $verifiedByName = !empty($payment['verified_by_name']) ? $payment['verified_by_name'] : ($isVerified ? ($createdByName ?: 'Authorized Officer') : 'Pending');
 
+// Employee IDs for Created By and Verified By
+$createdByEmpId = !empty($payment['created_by_employee_id']) ? trim($payment['created_by_employee_id']) : '';
+$verifiedByEmpId = !empty($payment['verified_by_employee_id']) ? trim($payment['verified_by_employee_id']) : '';
+
+// If verifiedByName was defaulted to createdByName, sync employee id too
+if ($isVerified && empty($payment['verified_by_name']) && empty($verifiedByEmpId)) {
+    $verifiedByEmpId = $createdByEmpId;
+}
+
+// Fallback direct DB lookup if employee_id not present in $payment array
+if (empty($createdByEmpId) && !empty($payment['created_by']) && isset($this) && isset($this->db)) {
+    try {
+        $cStmt = $this->db->prepare("
+            SELECT e.employee_id 
+            FROM employees e 
+            LEFT JOIN users u ON (u.employee_id = e.id OR u.employee_id = e.employee_id OR e.user_id = u.id) 
+            WHERE (e.user_id = ? OR u.id = ?) 
+              AND e.deleted_at IS NULL 
+              AND e.employee_id IS NOT NULL 
+              AND TRIM(e.employee_id) != '' 
+            ORDER BY e.id DESC LIMIT 1
+        ");
+        if ($cStmt) {
+            $cStmt->bind_param("ii", $payment['created_by'], $payment['created_by']);
+            $cStmt->execute();
+            $cRes = $cStmt->get_result();
+            if ($cRow = $cRes->fetch_assoc()) {
+                $createdByEmpId = trim($cRow['employee_id'] ?? '');
+            }
+            $cStmt->close();
+        }
+    } catch (Exception $e) {}
+}
+
+if (empty($createdByEmpId) && !empty($createdByName) && $createdByName !== 'System' && isset($this) && isset($this->db)) {
+    try {
+        $cStmt = $this->db->prepare("
+            SELECT e.employee_id 
+            FROM users u
+            LEFT JOIN employees e ON (u.employee_id = e.id OR u.employee_id = e.employee_id OR e.user_id = u.id)
+            WHERE (u.full_name = ? OR u.user_name = ?)
+              AND e.deleted_at IS NULL 
+              AND e.employee_id IS NOT NULL 
+              AND TRIM(e.employee_id) != '' 
+            ORDER BY e.id DESC LIMIT 1
+        ");
+        if ($cStmt) {
+            $cStmt->bind_param("ss", $createdByName, $createdByName);
+            $cStmt->execute();
+            $cRes = $cStmt->get_result();
+            if ($cRow = $cRes->fetch_assoc()) {
+                $createdByEmpId = trim($cRow['employee_id'] ?? '');
+            }
+            $cStmt->close();
+        }
+    } catch (Exception $e) {}
+}
+
+if (empty($verifiedByEmpId) && !empty($payment['verified_by']) && isset($this) && isset($this->db)) {
+    try {
+        $vStmt = $this->db->prepare("
+            SELECT e.employee_id 
+            FROM employees e 
+            LEFT JOIN users u ON (u.employee_id = e.id OR u.employee_id = e.employee_id OR e.user_id = u.id) 
+            WHERE (e.user_id = ? OR u.id = ?) 
+              AND e.deleted_at IS NULL 
+              AND e.employee_id IS NOT NULL 
+              AND TRIM(e.employee_id) != '' 
+            ORDER BY e.id DESC LIMIT 1
+        ");
+        if ($vStmt) {
+            $vStmt->bind_param("ii", $payment['verified_by'], $payment['verified_by']);
+            $vStmt->execute();
+            $vRes = $vStmt->get_result();
+            if ($vRow = $vRes->fetch_assoc()) {
+                $verifiedByEmpId = trim($vRow['employee_id'] ?? '');
+            }
+            $vStmt->close();
+        }
+    } catch (Exception $e) {}
+}
+
+if (empty($verifiedByEmpId) && !empty($verifiedByName) && !in_array($verifiedByName, ['Pending', 'Authorized Officer', 'System']) && isset($this) && isset($this->db)) {
+    try {
+        $vStmt = $this->db->prepare("
+            SELECT e.employee_id 
+            FROM users u
+            LEFT JOIN employees e ON (u.employee_id = e.id OR u.employee_id = e.employee_id OR e.user_id = u.id)
+            WHERE (u.full_name = ? OR u.user_name = ?)
+              AND e.deleted_at IS NULL 
+              AND e.employee_id IS NOT NULL 
+              AND TRIM(e.employee_id) != '' 
+            ORDER BY e.id DESC LIMIT 1
+        ");
+        if ($vStmt) {
+            $vStmt->bind_param("ss", $verifiedByName, $verifiedByName);
+            $vStmt->execute();
+            $vRes = $vStmt->get_result();
+            if ($vRow = $vRes->fetch_assoc()) {
+                $verifiedByEmpId = trim($vRow['employee_id'] ?? '');
+            }
+            $vStmt->close();
+        }
+    } catch (Exception $e) {}
+}
+
+$createdByDisplay = htmlspecialchars($createdByName) . ' (' . (!empty($createdByEmpId) ? htmlspecialchars($createdByEmpId) : 'No ID') . ')';
+
+if ($verifiedByName !== 'Pending') {
+    $verifiedByDisplay = htmlspecialchars($verifiedByName) . ' (' . (!empty($verifiedByEmpId) ? htmlspecialchars($verifiedByEmpId) : 'No ID') . ')';
+} else {
+    $verifiedByDisplay = htmlspecialchars($verifiedByName);
+}
+
 // Verification timestamp
 $verifiedDateFormatted = 'Awaiting Verification';
 if ($isVerified) {
@@ -683,7 +797,7 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
 
         .card-meta-row {
             display: grid;
-            grid-template-columns: 1.2fr 1fr 1.3fr;
+            grid-template-columns: 1fr 1.25fr 1.25fr;
             gap: 14px;
             font-size: 12.5px;
             color: #334151;
@@ -870,57 +984,26 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
             </div>
         </div>
 
-        <!-- PAYMENT SUMMARY -->
+        <!-- PAYMENT SUMMARY (Only shown for individual payments; hidden for combined/bulk receipts) -->
+        <?php if (empty($isBulk)): ?>
         <div class="payment-summary-wrap">
             <div class="section-header-title">PAYMENT SUMMARY</div>
-            
-            <?php if (!empty($isBulk)): ?>
-                <!-- Bulk payments table -->
-                <table class="bulk-table">
-                    <thead>
-                        <tr>
-                            <th>Payment Date</th>
-                            <th>Payment Type</th>
-                            <th>Reference</th>
-                            <th style="text-align: right;">Amount (BDT)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($payments as $p): ?>
-                        <tr>
-                            <td><?= date('d M, Y', strtotime($p['payment_date'] ?? 'now')) ?></td>
-                            <td class="fw-semibold">
-                                <?php 
-                                if (($p['payment_type'] ?? '') === 'emi') echo htmlspecialchars($p['installment_label'] ?? 'EMI Payment');
-                                elseif (($p['payment_type'] ?? '') === 'booking_money') echo 'BOOKING MONEY';
-                                elseif (($p['payment_type'] ?? '') === 'registration') echo 'REGISTRATION MONEY';
-                                elseif (($p['payment_type'] ?? '') === 'development_charge') echo 'DEVELOPMENT CHARGE';
-                                else echo strtoupper(str_replace('_', ' ', $p['payment_type'] ?? 'PAYMENT'));
-                                ?>
-                            </td>
-                            <td><?= htmlspecialchars($p['transaction_ref'] ?? '-') ?></td>
-                            <td style="text-align: right; font-weight: 700;">TK. <?= number_format($p['amount'] ?? 0, 2) ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php else: ?>
-                <div class="summary-entry-row">
-                    <span class="info-label-cell">Payment Type:</span>
-                    <span class="info-value-cell"><span class="highlight-type-badge"><?= $paymentTypeLabel ?></span></span>
-                </div>
-                <div class="summary-entry-row">
-                    <span class="info-label-cell">Payment Date:</span>
-                    <span class="info-value-cell"><?= $receiptDate ?></span>
-                </div>
-                <?php if (!empty($payment['transaction_ref'])): ?>
-                <div class="summary-entry-row">
-                    <span class="info-label-cell">Transaction Ref:</span>
-                    <span class="info-value-cell"><?= htmlspecialchars($payment['transaction_ref']) ?></span>
-                </div>
-                <?php endif; ?>
+            <div class="summary-entry-row">
+                <span class="info-label-cell">Payment Type:</span>
+                <span class="info-value-cell"><span class="highlight-type-badge"><?= $paymentTypeLabel ?></span></span>
+            </div>
+            <div class="summary-entry-row">
+                <span class="info-label-cell">Payment Date:</span>
+                <span class="info-value-cell"><?= $receiptDate ?></span>
+            </div>
+            <?php if (!empty($payment['transaction_ref'])): ?>
+            <div class="summary-entry-row">
+                <span class="info-label-cell">Transaction Ref:</span>
+                <span class="info-value-cell"><?= htmlspecialchars($payment['transaction_ref']) ?></span>
+            </div>
             <?php endif; ?>
         </div>
+        <?php endif; ?>
 
         <!-- TOTAL AMOUNT PAID BANNER -->
         <div class="total-amount-banner">
@@ -943,7 +1026,7 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
             <div class="processing-grid">
                 <div class="proc-box">
                     <span class="proc-label">Created By:</span>
-                    <span class="proc-value"><?= htmlspecialchars($createdByName) ?></span>
+                    <span class="proc-value"><?= $createdByDisplay ?></span>
                 </div>
             </div>
         </div>
@@ -986,7 +1069,7 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
                 </div>
                 <div class="card-meta-item">
                     <span class="meta-label">Verified By:</span>
-                    <span class="meta-value <?= $isVerified ? '' : 'val-pending' ?>"><?= htmlspecialchars($verifiedByName) ?></span>
+                    <span class="meta-value <?= $isVerified ? '' : 'val-pending' ?>"><?= $verifiedByDisplay ?></span>
                 </div>
                 <div class="card-meta-item">
                     <span class="meta-label">Verified On:</span>

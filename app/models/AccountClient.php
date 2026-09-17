@@ -2270,9 +2270,25 @@ ORDER BY lb.booking_date DESC
                    es.service_fee as emi_service_fee,
                    es.emi_amount as emi_schedule_amount,
                    uv.full_name as verified_by_name,
+                   (SELECT ev.employee_id 
+                    FROM employees ev 
+                    LEFT JOIN users uv_sub ON (uv_sub.employee_id = ev.id OR uv_sub.employee_id = ev.employee_id OR ev.user_id = uv_sub.id)
+                    WHERE (ev.user_id = lp.verified_by OR uv_sub.id = lp.verified_by) 
+                      AND ev.deleted_at IS NULL 
+                      AND ev.employee_id IS NOT NULL 
+                      AND TRIM(ev.employee_id) != '' 
+                    ORDER BY ev.id DESC LIMIT 1) as verified_by_employee_id,
                    uu.full_name as updated_by_name,
                    cb.bank_name as company_bank_name,
                    u.full_name as created_by_name,
+                   (SELECT ec.employee_id 
+                    FROM employees ec 
+                    LEFT JOIN users uc_sub ON (uc_sub.employee_id = ec.id OR uc_sub.employee_id = ec.employee_id OR ec.user_id = uc_sub.id)
+                    WHERE (ec.user_id = lp.created_by OR uc_sub.id = lp.created_by) 
+                      AND ec.deleted_at IS NULL 
+                      AND ec.employee_id IS NOT NULL 
+                      AND TRIM(ec.employee_id) != '' 
+                    ORDER BY ec.id DESC LIMIT 1) as created_by_employee_id,
                    CASE 
                        WHEN lp.settlement_type = 'emi_due_settlement' AND parent_es.emi_no IS NOT NULL 
                        THEN CONCAT('SETTLEMENT (', parent_es.emi_no, 
