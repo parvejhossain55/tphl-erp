@@ -75,6 +75,16 @@
                                                         <?= htmlspecialchars($req['title']) ?>
                                                     <?php endif; ?>
                                                 </span>
+                                                <?php 
+                                                    $attach = $req['attachment'] ?? $req['context']['attachment'] ?? null;
+                                                    if (!empty($attach)): 
+                                                ?>
+                                                    <div class="mt-1">
+                                                        <a href="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars(ltrim($attach, '/')) ?>" target="_blank" class="badge bg-light text-primary border" onclick="event.stopPropagation();" title="View Attachment / Supporting Document">
+                                                            <i class="fal fa-paperclip me-1"></i> Attachment
+                                                        </a>
+                                                    </div>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <?php if (!empty($req['context']['requester'])): ?>
@@ -166,6 +176,17 @@
                                                                     <label class="form-label">Requested Amount</label>
                                                                     <input type="text" class="form-control" value="৳ <?= number_format($req['request_amount'], 2) ?>" disabled>
                                                                 </div>
+                                                                <?php 
+                                                                    $partialAttach = $req['attachment'] ?? $req['context']['attachment'] ?? null;
+                                                                    if (!empty($partialAttach)): 
+                                                                ?>
+                                                                    <div class="mb-3 p-2 bg-light rounded border">
+                                                                        <label class="form-label d-block text-muted small mb-1">Supporting Document / Attachment:</label>
+                                                                        <a href="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars(ltrim($partialAttach, '/')) ?>" target="_blank" class="btn btn-sm btn-outline-primary py-1 px-2">
+                                                                            <i class="fal fa-paperclip me-1"></i> View Supporting Document
+                                                                        </a>
+                                                                    </div>
+                                                                <?php endif; ?>
                                                                 <div class="mb-3">
                                                                     <label class="form-label">Approve Amount</label>
                                                                     <input type="number" class="form-control" name="approved_amount" placeholder="Enter approved amount" required <?= ($isSiteOp ?? false) ? 'max="100000"' : '' ?>>

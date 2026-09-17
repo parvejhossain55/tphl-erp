@@ -374,6 +374,7 @@ $selectedCountriesArr = is_array($selectedCountry ?? null)
     : (!empty($selectedCountry) ? (array)$selectedCountry : []);
 $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterCard) || !empty($selectedAction) || !empty($selectedCallStatus) || !empty($selectedCountriesArr) || ($isFilterMissing ?? false);
 ?>
+<div id="activeFiltersContainer">
 <?php if ($hasActiveFilters): ?>
 <div class="col-12 mb-3">
     <div class="alert alert-info border-0 shadow-sm mb-0 p-3 d-flex align-items-center justify-content-between flex-wrap gap-2"
@@ -409,6 +410,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
     </div>
 </div>
 <?php endif; ?>
+</div>
 
 <!-- Desktop View: Filters and Table -->
 <div class="desktop-only">
@@ -617,13 +619,10 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
         <?php endif; ?>
 
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2 mt-2">
-            <div>
-                <p class="fw-bold fs-6 mb-0 text-dark">Lead Lists</p>
-            </div>
             <div class="d-flex align-items-center gap-3">
                 <label class="d-flex align-items-center gap-2 mb-0 text-muted" style="font-size: 0.85rem;">
                     Show 
-                    <select id="tableLengthSelect" class="form-select form-select-sm" style="width: auto; min-width: 80px; display: inline-block;">
+                    <select id="tableLengthSelect" class="form-select form-select-sm" style="width: auto; min-width: 60px; display: inline-block;">
                         <option value="25" <?= (($limit ?? 25) == 25) ? 'selected' : '' ?>>25</option>
                         <option value="50" <?= (($limit ?? 25) == 50) ? 'selected' : '' ?>>50</option>
                         <option value="100" <?= (($limit ?? 25) == 100) ? 'selected' : '' ?>>100</option>
@@ -632,18 +631,31 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                     </select>
                     entries
                 </label>
-                <span class="text-muted small">
+            </div>
+            <div>
+                <form id="assignedLeadsSearchForm" action="" method="get" class="d-flex align-items-center gap-2 mb-0">
                     <?php 
-                    $totalTableCount = $totalTableLeads ?? count($myAllleads);
-                    $startCount = $totalTableCount > 0 ? (($offset ?? 0) + 1) : 0;
-                    $endCount = min((($offset ?? 0) + count($myAllleads)), $totalTableCount);
+                    foreach($_GET as $key => $val) {
+                        if($key !== 'search' && $key !== 'page' && $key !== 'url' && !is_array($val)) {
+                            echo '<input type="hidden" name="'.htmlspecialchars($key).'" value="'.htmlspecialchars($val).'">';
+                        }
+                        if (is_array($val)) {
+                            foreach($val as $v) {
+                                echo '<input type="hidden" name="'.htmlspecialchars($key).'[]" value="'.htmlspecialchars($v).'">';
+                            }
+                        }
+                    }
                     ?>
-                    Showing <?= $startCount ?> to <?= $endCount ?> of <?= number_format($totalTableCount) ?> entries
-                </span>
+                    <label class="mb-0 text-muted" style="font-size: 0.85rem;">Search:</label>
+                    <div class="position-relative">
+                        <input type="search" id="assignedLeadsSearchInput" name="search" class="form-control form-control-sm pe-4" style="width: 200px;" placeholder="Search..." value="<?= htmlspecialchars($_GET['search'] ?? '') ?>" autocomplete="off">
+                        <span id="searchSpinner" class="spinner-border spinner-border-sm text-primary position-absolute top-50 end-0 translate-middle-y me-2 d-none" role="status" style="width: 0.85rem; height: 0.85rem;"></span>
+                    </div>
+                </form>
             </div>
         </div>
 
-        <div class="col-xxl-12">
+        <div id="assignedLeadsContentArea" class="col-xxl-12">
             <div class="card__wrapper">
                 <div class="table__wrapper table-responsive">
                     <table id="assignedLeadsTable" class="table no-border-table mb-20">
@@ -655,19 +667,24 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                 </th>
                                 <th style="min-width: 120px;">Lead Date</th>
                                 <th style="min-width: 180px;">Lead Name & Job title/Company</th>
-                                <th style="min-width: 150px;">Address & City</th>
+                                <th style="min-width: 160px;">Address & Phone</th>
                                 <th style="min-width: 110px;">Lead Uploaded</th>
-                                <th style="min-width: 120px;">Phone</th>
                                 <th style="min-width: 130px;">Best Time to Contact</th>
                                 <th style="min-width: 170px;">Project Campaign</th>
                                 <th style="min-width: 120px;">Status</th>
                                 <th style="min-width: 130px;">Next Follow-Up</th>
-                                <th style="min-width: 180px;">Sales Executive & Note</th>
-                                <th style="min-width: 120px;">Assigned By</th>
                                 <th style="min-width: 180px;">Action</th>
                             </tr>
                         </thead>
                         <tbody>
+                            <?php if (empty($myAllleads)): ?>
+                                <tr>
+                                    <td colspan="10" class="text-center text-muted py-5">
+                                        <i class="bi bi-inbox fs-2 d-block mb-2 text-muted"></i>
+                                        <span>No matching leads found.</span>
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
                             <?php foreach ($myAllleads as $key => $lead): ?>
                                 <?php
                                  $cleanPhone = preg_replace('/[^0-9]/', '', $lead['phone_number'] ?? $lead['phone'] ?? '');
@@ -732,7 +749,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                         <?php endif; ?>
                                     </td>
 
-                                    <!-- 4. Address & City -->
+                                    <!-- 4. Address & Phone -->
                                     <td>
                                         <?php 
                                         $addrParts = [];
@@ -742,8 +759,23 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                         if (!empty($lead['country']) && strpos($addr, $lead['country']) === false) {
                                             $addr = trim($lead['country'] . ($addr !== '' ? ', ' . $addr : ''));
                                         }
+
+                                        $rawPhone = $lead['phone_number'] ?? $lead['phone'] ?? '';
+                                        $cleanPhoneDigits = preg_replace('/[^0-9]/', '', $rawPhone);
+                                        if (substr($cleanPhoneDigits, 0, 2) === '01') {
+                                            $cleanPhoneDigits = '880' . substr($cleanPhoneDigits, 1);
+                                        }
                                         ?>
-                                        <span class="fs-12"><?= htmlspecialchars($addr !== '' ? $addr : '—') ?></span>
+                                        <div>
+                                            <div class="fs-12"><?= htmlspecialchars($addr !== '' ? $addr : '—') ?></div>
+                                            <?php if (!empty($rawPhone)): ?>
+                                                <div class="mt-1">
+                                                    <a href="https://wa.me/<?= $cleanPhoneDigits ?>" target="_blank" class="text-decoration-none" style="white-space: nowrap; font-size: 12px;">
+                                                        <i class="bi bi-whatsapp text-success me-1"></i><?= htmlspecialchars($rawPhone) ?>
+                                                    </a>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
 
                                     <!-- 5. Lead Uploaded -->
@@ -751,20 +783,6 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                         <span class="bd-badge bg-success" style="white-space: nowrap;">
                                             <?= htmlspecialchars(!empty($lead['uploaded_from']) ? $lead['uploaded_from'] : '—') ?>
                                         </span>
-                                    </td>
-
-                                    <!-- 6. Phone -->
-                                    <td>
-                                        <?php
-                                        $rawPhone = $lead['phone_number'] ?? $lead['phone'] ?? '';
-                                        $cleanPhoneDigits = preg_replace('/[^0-9]/', '', $rawPhone);
-                                        if (substr($cleanPhoneDigits, 0, 2) === '01') {
-                                            $cleanPhoneDigits = '880' . substr($cleanPhoneDigits, 1);
-                                        }
-                                        ?>
-                                        <a href="https://wa.me/<?= $cleanPhoneDigits ?>" target="_blank" class="text-decoration-none" style="white-space: nowrap;">
-                                            <i class="bi bi-whatsapp text-success me-1"></i><?= htmlspecialchars($rawPhone ?: '—') ?>
-                                        </a>
                                     </td>
 
                                     <!-- 7. Best Time to Contact -->
@@ -858,45 +876,6 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                         </div>
                                     </td>
 
-                                    <!-- 11. Sales Executive & Note -->
-                                    <td>
-                                        <div class="d-flex align-items-start gap-2 flex-nowrap">
-                                            <div>
-                                                <?php if (empty($lead['agent_name'])): ?>
-                                                    <span class="bd-badge text-danger text-truncate" style="max-width: 150px; background-color: #fde8e8; border: 1px solid #f8b4b4;">No Agent Assigned</span>
-                                                <?php else: ?>
-                                                    <span class="bd-badge bg-primary text-truncate" style="max-width: 150px;"><?= htmlspecialchars($lead['agent_name']) ?></span>
-                                                    <?php
-                                                    $assignedRaw = (!empty($lead['assigned_at']) && $lead['assigned_at'] !== '0000-00-00 00:00:00' && $lead['assigned_at'] !== '0000-00-00')
-                                                        ? $lead['assigned_at']
-                                                        : (!empty($lead['updated_at']) && $lead['updated_at'] !== '0000-00-00 00:00:00' ? $lead['updated_at'] : $lead['created_at']);
-                                                    ?>
-                                                    <?php if ($assignedRaw): ?>
-                                                    <div class="text-muted" style="font-size:11px; margin-top:3px;">
-                                                        <i class="bi bi-calendar-event me-1"></i>Assigned: <?= date('d M, Y, h:i A', strtotime($assignedRaw)) ?>
-                                                    </div>
-                                                    <?php endif; ?>
-                                                <?php endif; ?>
-                                            </div>
-                                            <span class="bd-badge bg-success">
-                                                <?php 
-                                                $callNote = !empty($lead['call_note']) ? $lead['call_note'] : (!empty($lead['discussion_note']) ? $lead['discussion_note'] : '');
-                                                if (!empty($callNote)): ?>
-                                                    <button type="button" class="btn btn-sm p-0 note-view-btn text-white" style="font-size:11px;" data-note="<?= htmlspecialchars($callNote, ENT_QUOTES, 'UTF-8') ?>" data-bs-toggle="modal" data-bs-target="#viewNoteModal">View Note</button>
-                                                <?php else: ?>
-                                                    No Note
-                                                <?php endif; ?>
-                                            </span>
-                                        </div>
-                                    </td>
-
-                                    <!-- 12. Assigned By -->
-                                    <td>
-                                        <span class="bd-badge bg-secondary text-truncate" style="max-width: 150px;">
-                                            <i class="bi bi-person-check me-1"></i><?= htmlspecialchars($lead['assigned_by_name'] ?? 'System') ?>
-                                        </span>
-                                    </td>
-
                                     <!-- 13. Action -->
                                     <td>
                                         <div class="d-flex align-items-center gap-1 flex-nowrap">
@@ -942,11 +921,21 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                     </table>
                 </div>
                 
-                <?php if (isset($totalPages) && $totalPages > 1 && ($limit ?? 25) !== -1): ?>
-                <div class="d-flex justify-content-end mt-3 mb-2">
-                    <?= paginateLinksSecondary($paginationRoute ?? ($base_url . "/my-all-assigned-leads"), $currentPage, $totalPages); ?>
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3 mb-2">
+                    <div class="text-muted small">
+                        <?php 
+                        $totalTableCount = $totalTableLeads ?? count($myAllleads);
+                        $startCount = $totalTableCount > 0 ? (($offset ?? 0) + 1) : 0;
+                        $endCount = min((($offset ?? 0) + count($myAllleads)), $totalTableCount);
+                        ?>
+                        Showing <?= $startCount ?> to <?= $endCount ?> of <?= number_format($totalTableCount) ?> entries
+                    </div>
+                    <?php if (isset($totalPages) && $totalPages > 1 && ($limit ?? 25) !== -1): ?>
+                    <div>
+                        <?= paginateLinksSecondary($paginationRoute ?? ($base_url . "/my-all-assigned-leads"), $currentPage, $totalPages); ?>
+                    </div>
+                    <?php endif; ?>
                 </div>
-                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -1063,6 +1052,13 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                 </div>
             </form>
         </div>
+        <div id="assignedLeadsMobileCards">
+        <?php if (empty($myAllleads)): ?>
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-inbox fs-2 d-block mb-2 text-muted"></i>
+                <span>No matching leads found.</span>
+            </div>
+        <?php endif; ?>
         <?php foreach ($myAllleads as $key => $lead): ?>
             <?php
             $displayName = !empty($lead['campaign_name'])
@@ -1254,6 +1250,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
             <?= paginateLinksSecondary($paginationRoute ?? ($base_url . "/my-all-assigned-leads"), $currentPage, $totalPages); ?>
         </div>
         <?php endif; ?>
+        </div>
 
         <!-- FAB Button -->
         <button class="fab-button d-none">
@@ -2576,16 +2573,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectedLeadsSet.add(id);
             } else {
                 selectedLeadsSet.delete(id);
-                if (selectAllLeads) selectAllLeads.checked = false;
-                if (selectAllLeadsMobile) selectAllLeadsMobile.checked = false;
+                const allL = document.getElementById('selectAllLeads');
+                const allLM = document.getElementById('selectAllLeadsMobile');
+                if (allL) allL.checked = false;
+                if (allLM) allLM.checked = false;
             }
             updateAssignUIData();
         }
     });
 
-    if (selectAllLeads) {
-        selectAllLeads.addEventListener('change', function() {
-            const isChecked = this.checked;
+    // Delegate header "Select All" checkbox (works even after AJAX reload)
+    document.body.addEventListener('change', function(e) {
+        if (e.target && e.target.id === 'selectAllLeads') {
+            const isChecked = e.target.checked;
             document.querySelectorAll('.selectedId').forEach(cb => {
                 const id = cb.dataset.id;
                 if (isChecked) {
@@ -2595,12 +2595,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             updateAssignUIData();
-        });
-    }
+        }
+    });
 
-    if (selectAllLeadsMobile) {
-        selectAllLeadsMobile.addEventListener('change', function() {
-            const isChecked = this.checked;
+    // Delegate mobile "Select All" checkbox
+    document.body.addEventListener('change', function(e) {
+        if (e.target && e.target.id === 'selectAllLeadsMobile') {
+            const isChecked = e.target.checked;
             document.querySelectorAll('.selectedIdMobile').forEach(cb => {
                 const id = cb.dataset.id;
                 if (isChecked) {
@@ -2610,8 +2611,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             updateAssignUIData();
-        });
-    }
+        }
+    });
 
     // Submit Assignment (Desktop)
     const assignBtn = document.getElementById('assignUserBtn');
@@ -2728,6 +2729,168 @@ document.addEventListener('DOMContentLoaded', function() {
         if (camEl) {
             camEl.value = this.getAttribute('data-description') || '';
         }
+    });
+
+    // ── Live Debounced Search (Just type to search, matching lead-lists UX) ──
+    const searchInput = document.getElementById('assignedLeadsSearchInput');
+    const searchForm = document.getElementById('assignedLeadsSearchForm');
+    const searchSpinner = document.getElementById('searchSpinner');
+    let searchDebounceTimer = null;
+    let searchAbortController = null;
+
+    function doLiveSearch(searchTerm, pushToHistory = false) {
+        const url = new URL(window.location.href);
+        if (searchTerm) {
+            url.searchParams.set('search', searchTerm);
+        } else {
+            url.searchParams.delete('search');
+        }
+        url.searchParams.set('page', '1');
+
+        if (searchSpinner) searchSpinner.classList.remove('d-none');
+        const contentArea = document.getElementById('assignedLeadsContentArea');
+        if (contentArea) {
+            contentArea.style.opacity = '0.5';
+            contentArea.style.pointerEvents = 'none';
+        }
+
+        if (searchAbortController) {
+            searchAbortController.abort();
+        }
+        searchAbortController = new AbortController();
+
+        fetch(url.toString(), {
+            signal: searchAbortController.signal,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => {
+            if (!res.ok) throw new Error('Network error: ' + res.status);
+            return res.text();
+        })
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            const newContentArea = doc.getElementById('assignedLeadsContentArea');
+            if (newContentArea && contentArea) {
+                contentArea.innerHTML = newContentArea.innerHTML;
+            }
+
+            const mobileArea = document.getElementById('assignedLeadsMobileCards');
+            const newMobileArea = doc.getElementById('assignedLeadsMobileCards');
+            if (mobileArea && newMobileArea) {
+                mobileArea.innerHTML = newMobileArea.innerHTML;
+            }
+
+            const activeFilters = document.getElementById('activeFiltersContainer');
+            const newActiveFilters = doc.getElementById('activeFiltersContainer');
+            if (activeFilters && newActiveFilters) {
+                activeFilters.innerHTML = newActiveFilters.innerHTML;
+            } else if (activeFilters && !newActiveFilters) {
+                activeFilters.innerHTML = '';
+            }
+
+            if (pushToHistory) {
+                window.history.pushState({ search: searchTerm }, '', url.toString());
+            } else {
+                window.history.replaceState({ search: searchTerm }, '', url.toString());
+            }
+
+            // Re-sync checkboxes and update assign card
+            updateAssignUIData();
+        })
+        .catch(err => {
+            if (err.name === 'AbortError') return;
+            console.error('Live search error, submitting form instead:', err);
+            if (searchForm) searchForm.submit();
+        })
+        .finally(() => {
+            if (searchSpinner) searchSpinner.classList.add('d-none');
+            if (contentArea) {
+                contentArea.style.opacity = '1';
+                contentArea.style.pointerEvents = '';
+            }
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchDebounceTimer);
+            const query = this.value.trim();
+            if (query === '') {
+                // Immediate search when cleared
+                doLiveSearch('');
+            } else {
+                // Debounce 400ms while typing
+                searchDebounceTimer = setTimeout(() => {
+                    doLiveSearch(query);
+                }, 400);
+            }
+        });
+
+        if (searchForm) {
+            searchForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                clearTimeout(searchDebounceTimer);
+                doLiveSearch(searchInput.value.trim());
+            });
+        }
+    }
+
+    // Smooth AJAX Pagination within assigned leads table
+    $(document).on('click', '#assignedLeadsContentArea .pagination a.page-link', function(e) {
+        const href = $(this).attr('href');
+        if (!href || href === '#' || href.startsWith('javascript:')) return;
+        e.preventDefault();
+
+        const contentArea = document.getElementById('assignedLeadsContentArea');
+        if (contentArea) {
+            contentArea.style.opacity = '0.5';
+            contentArea.style.pointerEvents = 'none';
+        }
+        if (searchSpinner) searchSpinner.classList.remove('d-none');
+
+        fetch(href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(res => {
+                if (!res.ok) throw new Error('Network error');
+                return res.text();
+            })
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newContentArea = doc.getElementById('assignedLeadsContentArea');
+                if (newContentArea && contentArea) {
+                    contentArea.innerHTML = newContentArea.innerHTML;
+                }
+                const mobileArea = document.getElementById('assignedLeadsMobileCards');
+                const newMobileArea = doc.getElementById('assignedLeadsMobileCards');
+                if (mobileArea && newMobileArea) {
+                    mobileArea.innerHTML = newMobileArea.innerHTML;
+                }
+                window.history.pushState(null, '', href);
+                updateAssignUIData();
+                contentArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            })
+            .catch(err => {
+                window.location.href = href;
+            })
+            .finally(() => {
+                if (searchSpinner) searchSpinner.classList.add('d-none');
+                if (contentArea) {
+                    contentArea.style.opacity = '1';
+                    contentArea.style.pointerEvents = '';
+                }
+            });
+    });
+
+    // Browser back/forward navigation support
+    window.addEventListener('popstate', function() {
+        const currentUrl = new URL(window.location.href);
+        const searchVal = currentUrl.searchParams.get('search') || '';
+        if (searchInput) {
+            searchInput.value = searchVal;
+        }
+        doLiveSearch(searchVal, false);
     });
 });
 </script>

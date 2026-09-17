@@ -1052,6 +1052,36 @@ function renderApprovalContext(array $req)
                     <?php endforeach; ?>
                 <?php endif; ?>
 
+                <!-- Attachment / Document -->
+                <?php 
+                    $docAttachment = $ctx['attachment'] ?? $req['attachment'] ?? null;
+                    if (!empty($docAttachment)): 
+                        $docUrl = $GLOBALS['base_url'] . '/' . ltrim($docAttachment, '/');
+                        $fileExt = strtolower(pathinfo($docAttachment, PATHINFO_EXTENSION));
+                        $isImg = in_array($fileExt, ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+                ?>
+                    <li class="px-0 border-0 border-top py-2">
+                        <div class="row g-1 align-items-center">
+                            <div class="col-12 col-md-6 mb-1 mb-md-0">
+                                <span class="badge bg-primary ms-md-2">Attachment</span>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <a href="<?= $docUrl ?>" target="_blank" class="btn btn-sm btn-outline-primary py-1 px-2 d-inline-flex align-items-center gap-1">
+                                    <i class="fa-solid fa-paperclip"></i>
+                                    <span>View Supporting Document</span>
+                                </a>
+                                <?php if ($isImg): ?>
+                                    <div class="mt-2">
+                                        <a href="<?= $docUrl ?>" target="_blank">
+                                            <img src="<?= $docUrl ?>" alt="Attachment Preview" style="max-height: 80px; max-width: 140px; object-fit: cover; border-radius: 4px; border: 1px solid #dee2e6;">
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </li>
+                <?php endif; ?>
+
             </ul>
         </div>
     </div>

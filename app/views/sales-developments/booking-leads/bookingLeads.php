@@ -134,9 +134,18 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         <input type="number" name="discount_amount" id="discount_amount_input" class="form-control"
                             placeholder="" >
                     </div>
+
+                    <!-- Dynamic Discount Attachment (Visible when Discount Amount > 0) -->
+                    <div class="col-lg-6" id="discount_attachment_col" style="display: none;">
+                        <div class="form__input-title">
+                            <label class="form-label fw-bold">Discount Attachment / Supporting Slip</label>
+                        </div>
+                        <input type="file" name="discount_attachment" id="discount_attachment" class="form-control" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                        <small class="text-muted" style="font-size: 11px;">Upload client application, approval slip, or supporting note.</small>
+                    </div>
                     
-                    <!-- Already Approved Options -->
-                    <div class="col-lg-12 mt-3" id="already_approved_container" style="display: none;">
+                    <!-- Already Approved Options (Hidden) -->
+                    <div class="col-lg-12 mt-3 d-none" id="already_approved_container" style="display: none !important;">
                         <div class="form-check mb-2">
                             <input class="form-check-input" type="checkbox" name="is_already_approved" id="is_already_approved" value="1">
                             <label class="form-check-label" for="is_already_approved">
@@ -220,16 +229,28 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                     <td>
                                         <?php if ($or['approval_status'] === 'pending'): ?>
                                             <span class="badge bg-warning">Pending Approval</span>
+                                            <div class="mt-1" style="font-size: 12px; font-weight: 600;">৳ <?= number_format((float)($or['discount_amount'] ?? 0), 2) ?></div>
                                         <?php elseif ($or['approval_status'] === 'approved'): ?>
                                             <span class="badge bg-success">Approved</span>
-                                            <div class="mt-1" style="font-size: 12px; font-weight: 600;">৳ <?= number_format($or['approved_amount'], 2) ?></div>
+                                            <div class="mt-1" style="font-size: 12px; font-weight: 600;">৳ <?= number_format((float)($or['approved_amount'] ?? $or['discount_amount'] ?? 0), 2) ?></div>
                                         <?php elseif ($or['approval_status'] === 'partial'): ?>
                                             <span class="badge bg-success">Partial Approved</span>
-                                            <div class="mt-1" style="font-size: 12px; font-weight: 600;">৳ <?= number_format($or['approved_amount'], 2) ?></div>
+                                            <div class="mt-1" style="font-size: 12px; font-weight: 600;">৳ <?= number_format((float)($or['approved_amount'] ?? 0), 2) ?></div>
                                         <?php elseif ($or['approval_status'] === 'rejected'): ?>
                                             <span class="badge bg-danger">Rejected</span>
+                                        <?php elseif (!empty($or['discount_amount']) && (float)$or['discount_amount'] > 0): ?>
+                                            <span class="badge bg-warning">Pending Approval</span>
+                                            <div class="mt-1" style="font-size: 12px; font-weight: 600;">৳ <?= number_format((float)$or['discount_amount'], 2) ?></div>
                                         <?php else: ?>
                                             <span class="badge bg-info">No Discount</span>
+                                        <?php endif; ?>
+
+                                        <?php if (!empty($or['past_approval_attachment'])): ?>
+                                            <div class="mt-1">
+                                                <a href="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars($or['past_approval_attachment']) ?>" target="_blank" class="badge bg-light text-primary border" title="View discount attachment">
+                                                    <i class="fa-solid fa-paperclip me-1"></i> Attachment
+                                                </a>
+                                            </div>
                                         <?php endif; ?>
                                     </td>
 
@@ -237,7 +258,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                     <td>
                                         <div class="d-flex align-items-center gap-2 flex-wrap">
 
-                                            <?php 
+                                             <?php 
                                                 $isBookingVerified = (!empty($or['verified_payment_count']) && (int)$or['verified_payment_count'] > 0);
                                                 $isManagementOrSalesHead = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 9, 20, 33]);
                                             ?>
@@ -254,6 +275,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                                     data-date="<?= $or['booking_date'] ?>"
                                                     data-agreement="<?= $or['agreement_value'] ?>"
                                                     data-discount="<?= $or['discount_amount'] ?? 0 ?>"
+                                                    data-attachment="<?= htmlspecialchars($or['past_approval_attachment'] ?? '') ?>"
                                                     data-approval="<?= $or['approval_status'] ?? '' ?>"
                                                     data-approved-amt="<?= $or['approved_amount'] ?? '' ?>"
                                                     data-status="<?= $or['booking_status'] ?>"
@@ -408,7 +430,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
             <div class="modal-body">
 
-                <form action="<?= $GLOBALS['base_url'] ?>/booking-update" method="POST">
+                <form action="<?= $GLOBALS['base_url'] ?>/booking-update" method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="booking_id" id="edit_booking_id">
                     <input type="hidden" name="lead_id" value="<?= $lead['id'] ?? '' ?>">
 
@@ -465,6 +487,18 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             <small id="edit_discount_lock_help" class="text-muted d-none" style="font-size:11px;">
                                 <i class="fa-solid fa-info-circle"></i> Discount was already approved by management and cannot be modified.
                             </small>
+                        </div>
+
+                        <!-- Discount Attachment -->
+                        <div class="col-md-6 mb-3" id="edit_discount_attachment_col">
+                            <label class="form-label">Discount Attachment / Supporting Slip</label>
+                            <input type="file" name="discount_attachment" id="edit_discount_attachment" class="form-control" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                            <div id="edit_current_attachment_preview" class="mt-1 d-none">
+                                <small class="text-muted">Current Attachment: </small>
+                                <a href="" id="edit_current_attachment_link" target="_blank" class="badge bg-light text-primary border">
+                                    <i class="fa-solid fa-paperclip me-1"></i> View Document
+                                </a>
+                            </div>
                         </div>
                         
                         <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 9, 20, 33])): ?>
@@ -581,8 +615,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             });
         }
         
-        // Toggle Already Approved fields
+        // Toggle Already Approved fields and Discount Attachment
         const discountInput = document.getElementById('discount_amount_input');
+        const discountAttachmentCol = document.getElementById('discount_attachment_col');
+        const discountAttachmentInput = document.getElementById('discount_attachment');
         const alreadyApprovedContainer = document.getElementById('already_approved_container');
         const isAlreadyApprovedCheckbox = document.getElementById('is_already_approved');
         const alreadyApprovedFields = document.getElementById('already_approved_fields');
@@ -591,14 +627,14 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
         if (discountInput) {
             discountInput.addEventListener('input', function() {
-                if (parseFloat(this.value) > 0) {
-                    alreadyApprovedContainer.style.display = 'block';
+                const val = parseFloat(this.value);
+                if (val > 0) {
+                    if (discountAttachmentCol) discountAttachmentCol.style.display = 'block';
                 } else {
-                    alreadyApprovedContainer.style.display = 'none';
-                    isAlreadyApprovedCheckbox.checked = false;
-                    alreadyApprovedFields.style.display = 'none';
-                    approvedBySelect.required = false;
-                    approvalAttachmentInput.required = false;
+                    if (discountAttachmentCol) {
+                        discountAttachmentCol.style.display = 'none';
+                        if (discountAttachmentInput) discountAttachmentInput.value = '';
+                    }
                 }
             });
         }
@@ -705,6 +741,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 const discount = this.dataset.discount;
                 const approval = this.dataset.approval;
                 const salesAgent = this.dataset.salesAgent;
+                const attachment = this.dataset.attachment;
 
                 currentEditingFlatId = flatId;
 
@@ -717,6 +754,18 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 const discountInput = document.getElementById('edit_discount');
                 const lockBadge = document.getElementById('edit_discount_lock_badge');
                 const lockHelp = document.getElementById('edit_discount_lock_help');
+                const editAttachPreview = document.getElementById('edit_current_attachment_preview');
+                const editAttachLink = document.getElementById('edit_current_attachment_link');
+                const editAttachInput = document.getElementById('edit_discount_attachment');
+
+                if (editAttachInput) editAttachInput.value = '';
+
+                if (attachment && attachment.trim() !== '') {
+                    if (editAttachLink) editAttachLink.href = '<?= $GLOBALS['base_url'] ?>/' + attachment;
+                    if (editAttachPreview) editAttachPreview.classList.remove('d-none');
+                } else {
+                    if (editAttachPreview) editAttachPreview.classList.add('d-none');
+                }
 
                 if (discountInput) {
                     discountInput.value = discount || 0;

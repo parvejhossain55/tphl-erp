@@ -31,9 +31,25 @@ class ApprovalRequest extends Model
     ];
     public function create($data)
     {
+        $department = $data['department'] ?? 'General';
+        $request_type = $data['request_type'] ?? '';
+        $title = $data['title'] ?? '';
+        $source_table = $data['source_table'] ?? '';
+        $source_id = (int)($data['source_id'] ?? 0);
+        $requested_days = (int)($data['requested_days'] ?? 0);
+        $requested_by = !empty($data['requested_by']) ? (int)$data['requested_by'] : null;
+        $approve_role = $data['approve_role'] ?? 'management';
+        $meta_data = $data['meta_data'] ?? null;
+        $request_amount = (float)($data['request_amount'] ?? 0.00);
+        $attachment = !empty($data['attachment']) ? $data['attachment'] : null;
+        $status = $data['status'] ?? 'pending';
+        $approved_amount = isset($data['approved_amount']) ? (float)$data['approved_amount'] : null;
+        $approved_by = !empty($data['approved_by']) ? (int)$data['approved_by'] : null;
+        $approved_at = $data['approved_at'] ?? null;
+
         $sql = "INSERT INTO {$this->table} 
-        (department, request_type, title, source_table, source_id, requested_days, requested_by, approve_role, meta_data,request_amount)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)";
+        (department, request_type, title, source_table, source_id, requested_days, requested_by, approve_role, meta_data, request_amount, attachment, status, approved_amount, approved_by, approved_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
@@ -41,17 +57,22 @@ class ApprovalRequest extends Model
         }
 
         $stmt->bind_param(
-            "ssssiidssd",
-            $data['department'],
-            $data['request_type'],
-            $data['title'],
-            $data['source_table'],
-            $data['source_id'],
-            $data['requested_days'],
-            $data['requested_by'],
-            $data['approve_role'],
-            $data['meta_data'],
-            $data['request_amount'],
+            "ssssiiissdsdsis",
+            $department,
+            $request_type,
+            $title,
+            $source_table,
+            $source_id,
+            $requested_days,
+            $requested_by,
+            $approve_role,
+            $meta_data,
+            $request_amount,
+            $attachment,
+            $status,
+            $approved_amount,
+            $approved_by,
+            $approved_at
         );
 
         $stmt->execute();
@@ -65,6 +86,7 @@ class ApprovalRequest extends Model
 
         return $insertId;
     }
+
 
 
     private function parseMetaData(?string $meta)
@@ -192,6 +214,18 @@ class ApprovalRequest extends Model
             // Universal requested date fallback
             $details['requested_on'] = $details['requested_on']
                 ?? $approval['created_at'];
+
+            // Attachment resolution
+            $attachment = !empty($approval['attachment']) ? $approval['attachment'] : null;
+            if (!$attachment && !empty($approval['source_id']) && $approval['source_table'] === 'lead_bookings') {
+                $lbRes = $this->db->query("SELECT past_approval_attachment FROM lead_bookings WHERE id = " . (int)$approval['source_id'] . " LIMIT 1");
+                if ($lbRes && $lbRow = $lbRes->fetch_assoc()) {
+                    $attachment = $lbRow['past_approval_attachment'];
+                }
+            }
+            if ($attachment) {
+                $details['attachment'] = $attachment;
+            }
         }
 
         /* =====================
@@ -1600,6 +1634,7 @@ class ApprovalRequest extends Model
                     ar.approve_role,
                     IFNULL(ar.request_amount, 0.00) AS request_amount,
                     IFNULL(ar.approved_amount, ar.request_amount) AS approved_amount,
+                    ar.attachment,
                     ar.status,
                     ar.created_at AS requested_at,
                     ar.approved_at,
@@ -1631,6 +1666,20 @@ class ApprovalRequest extends Model
         while ($row = $result->fetch_assoc()) {
             $sourceTable = $row['source_table'];
             $sourceId = (int) $row['source_id'];
+
+            // Fallback for lead_bookings attachment if empty on approval_requests
+            if ($sourceTable === 'lead_bookings' && empty($row['attachment'])) {
+                $lbStmt = $this->db->prepare("SELECT past_approval_attachment FROM lead_bookings WHERE id = ? LIMIT 1");
+                if ($lbStmt) {
+                    $lbStmt->bind_param("i", $sourceId);
+                    $lbStmt->execute();
+                    $lbRow = $lbStmt->get_result()->fetch_assoc();
+                    $lbStmt->close();
+                    if (!empty($lbRow['past_approval_attachment'])) {
+                        $row['attachment'] = $lbRow['past_approval_attachment'];
+                    }
+                }
+            }
 
             $payoutStatus = 'N/A';
             $payoutAmount = 0.00;

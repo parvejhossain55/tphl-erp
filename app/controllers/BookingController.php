@@ -198,20 +198,28 @@ class BookingController extends Controller
             exit;
         }
 
-        $discount = $_POST['discount_amount'] ?? 0;
+        $discount = (float)($_POST['discount_amount'] ?? 0);
         
         $isAlreadyApproved = isset($_POST['is_already_approved']) && $_POST['is_already_approved'] == '1';
         $approvalAttachmentPath = null;
         
-        if ($isAlreadyApproved && isset($_FILES['approval_attachment']) && $_FILES['approval_attachment']['error'] === 0) {
-            $uploadDir = 'public/uploads/approvals/';
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0777, true);
+        $uploadedFile = null;
+        if (isset($_FILES['discount_attachment']) && $_FILES['discount_attachment']['error'] === 0) {
+            $uploadedFile = $_FILES['discount_attachment'];
+        } elseif (isset($_FILES['approval_attachment']) && $_FILES['approval_attachment']['error'] === 0) {
+            $uploadedFile = $_FILES['approval_attachment'];
+        }
+
+        if ($uploadedFile) {
+            $physicalDir = __DIR__ . '/../../public/uploads/approvals/';
+            if (!is_dir($physicalDir)) {
+                mkdir($physicalDir, 0777, true);
             }
-            $fileName = time() . '_' . basename($_FILES['approval_attachment']['name']);
-            $targetFilePath = $uploadDir . $fileName;
-            if (move_uploaded_file($_FILES['approval_attachment']['tmp_name'], $targetFilePath)) {
-                $approvalAttachmentPath = $targetFilePath;
+            $cleanName = preg_replace('/[^a-zA-Z0-9._-]/', '', basename($uploadedFile['name']));
+            $fileName = time() . '_' . $cleanName;
+            $targetFilePath = $physicalDir . $fileName;
+            if (move_uploaded_file($uploadedFile['tmp_name'], $targetFilePath)) {
+                $approvalAttachmentPath = 'public/uploads/approvals/' . $fileName;
             }
         }
 
@@ -287,11 +295,13 @@ class BookingController extends Controller
                 'source_table'   => 'lead_bookings',
                 'source_id'      => $bookingId,
                 'request_amount' => $discount,
-                'requested_by'  => $_SESSION['user']['id'],
-                'approve_role'  => 'management',
-                'meta_data'     => json_encode([
-                    'lead_id' => $_POST['lead_id'],
-                    'flat_id' => $flatId
+                'requested_by'   => $_SESSION['user']['id'],
+                'approve_role'   => 'management',
+                'attachment'     => $approvalAttachmentPath,
+                'meta_data'      => json_encode([
+                    'lead_id'    => $_POST['lead_id'],
+                    'flat_id'    => $flatId,
+                    'attachment' => $approvalAttachmentPath
                 ])
             ];
             
@@ -353,6 +363,26 @@ class BookingController extends Controller
             'approval_status' => $approvalStatus,
             'approved_amount' => $approvedAmount,
         ];
+
+        $uploadedFile = null;
+        if (isset($_FILES['discount_attachment']) && $_FILES['discount_attachment']['error'] === 0) {
+            $uploadedFile = $_FILES['discount_attachment'];
+        } elseif (isset($_FILES['approval_attachment']) && $_FILES['approval_attachment']['error'] === 0) {
+            $uploadedFile = $_FILES['approval_attachment'];
+        }
+
+        if ($uploadedFile) {
+            $physicalDir = __DIR__ . '/../../public/uploads/approvals/';
+            if (!is_dir($physicalDir)) {
+                mkdir($physicalDir, 0777, true);
+            }
+            $cleanName = preg_replace('/[^a-zA-Z0-9._-]/', '', basename($uploadedFile['name']));
+            $fileName = time() . '_' . $cleanName;
+            $targetFilePath = $physicalDir . $fileName;
+            if (move_uploaded_file($uploadedFile['tmp_name'], $targetFilePath)) {
+                $bookingData['past_approval_attachment'] = 'public/uploads/approvals/' . $fileName;
+            }
+        }
         
         if (isset($_POST['sales_by_id'])) {
             $bookingData['sales_by_id'] = (int)$_POST['sales_by_id'];

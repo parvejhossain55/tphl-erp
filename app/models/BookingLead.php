@@ -404,6 +404,8 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
         // 3 SQL
         $salesAgentOld = $data['sales_agent_old'] ?? null;
+        $pastApprovalAttachment = $data['past_approval_attachment'] ?? null;
+        $approvedAmount = isset($data['approved_amount']) && $data['approved_amount'] !== '' ? (float)$data['approved_amount'] : null;
 
         $sql = "
         INSERT INTO lead_bookings
@@ -417,10 +419,12 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             booking_status,
             discount_amount,
             approval_status,
+            approved_amount,
+            past_approval_attachment,
             sales_by_id,
             sales_agent_old
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ";
 
         $stmt = $this->db->prepare($sql);
@@ -428,20 +432,22 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             throw new Exception($this->db->error);
         }
 
-        // 4 Bind params (note: approval_status is string 's', sales_agent_old is 's')
+        // 4 Bind params
         $stmt->bind_param(
-            "iiiidsssssi",
-            $data['lead_id'],         // i
-            $data['project_id'],      // i
-            $data['flat_id'],         // i
-            $data['created_by'],      // i
-            $data['agreement_value'], // d
-            $data['booking_date'],    // s
-            $data['booking_status'],  // s
-            $discountAmount,          // s (nullable)
-            $approvalStatus,          // s
-            $data['sales_by_id'],     // i
-            $salesAgentOld            // s (nullable varchar)
+            "iiiidssdsdsis",
+            $data['lead_id'],         // 1: i
+            $data['project_id'],      // 2: i
+            $data['flat_id'],         // 3: i
+            $data['created_by'],      // 4: i
+            $data['agreement_value'], // 5: d
+            $data['booking_date'],    // 6: s
+            $data['booking_status'],  // 7: s
+            $discountAmount,          // 8: d
+            $approvalStatus,          // 9: s
+            $approvedAmount,          // 10: d
+            $pastApprovalAttachment,  // 11: s
+            $data['sales_by_id'],     // 12: i
+            $salesAgentOld            // 13: s
         );
 
         // 5 Execute
@@ -542,6 +548,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
     {
         $stmt = $this->db->prepare("
         SELECT o.*, 
+               COALESCE(o.past_approval_attachment, (SELECT ar.attachment FROM approval_requests ar WHERE ar.source_table = 'lead_bookings' AND ar.source_id = o.id AND ar.attachment IS NOT NULL AND ar.attachment != '' ORDER BY ar.id DESC LIMIT 1)) AS past_approval_attachment,
                p.name AS project_name, 
                f.floor_no,
                f.flat_name, 
@@ -628,6 +635,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
     public function getById($id)
     {
         $stmt = $this->db->prepare("SELECT lb.*, 
+               COALESCE(lb.past_approval_attachment, (SELECT ar.attachment FROM approval_requests ar WHERE ar.source_table = 'lead_bookings' AND ar.source_id = lb.id AND ar.attachment IS NOT NULL AND ar.attachment != '' ORDER BY ar.id DESC LIMIT 1)) AS past_approval_attachment,
                l.full_name, 
                COALESCE(NULLIF(TRIM(l.phone), ''), TRIM(l.phone_number)) AS phone,
                l.phone_number,
@@ -695,22 +703,31 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 $approvedAmt = null;
 
                 // Sync approval_requests
+                $pastApprovalAttachment = $data['past_approval_attachment'] ?? $existing['past_approval_attachment'];
                 if ($discount > 0) {
                     $checkApp = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'lead_bookings' AND source_id = {$id} LIMIT 1")->fetch_assoc();
                     if ($checkApp) {
-                        $this->db->query("UPDATE approval_requests SET request_amount = {$discount}, status = 'pending', approved_amount = NULL, updated_at = NOW() WHERE id = " . (int)$checkApp['id']);
+                        $appUpSql = "UPDATE approval_requests SET request_amount = {$discount}, status = 'pending', approved_amount = NULL, updated_at = NOW()";
+                        if (!empty($pastApprovalAttachment)) {
+                            $appUpSql .= ", attachment = '" . $this->db->real_escape_string($pastApprovalAttachment) . "'";
+                        }
+                        $appUpSql .= " WHERE id = " . (int)$checkApp['id'];
+                        $this->db->query($appUpSql);
                     } else {
                         $requestedBy = (int)($_SESSION['user']['id'] ?? 1);
-                        $stmtIns = $this->db->prepare("INSERT INTO approval_requests (department, request_type, title, source_table, source_id, request_amount, status, requested_by, approve_role, created_at) VALUES ('Sales', 'discount', 'Lead Booking Discount Approval', 'lead_bookings', ?, ?, 'pending', ?, 'Management', NOW())");
+                        $stmtIns = $this->db->prepare("INSERT INTO approval_requests (department, request_type, title, source_table, source_id, request_amount, status, requested_by, approve_role, attachment, created_at) VALUES ('Sales', 'discount', 'Lead Booking Discount Approval', 'lead_bookings', ?, ?, 'pending', ?, 'Management', ?, NOW())");
                         if ($stmtIns) {
-                            $stmtIns->bind_param("idi", $id, $discount, $requestedBy);
+                            $stmtIns->bind_param("idiss", $id, $discount, $requestedBy, $pastApprovalAttachment);
                             $stmtIns->execute();
+                            $stmtIns->close();
                         }
                     }
                 } else {
                     $this->db->query("DELETE FROM approval_requests WHERE source_table = 'lead_bookings' AND source_id = {$id}");
                 }
             }
+
+            $pastApprovalAttachment = $data['past_approval_attachment'] ?? $existing['past_approval_attachment'];
 
             $stmt = $this->db->prepare("
                 UPDATE lead_bookings SET
@@ -721,6 +738,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                     discount_amount = ?,
                     approved_amount = ?,
                     approval_status = ?,
+                    past_approval_attachment = ?,
                     sales_by_id = ?
                 WHERE id = ?
             ");
@@ -731,7 +749,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $salesById = isset($data['sales_by_id']) ? (int)$data['sales_by_id'] : $existing['sales_by_id'];
 
             $stmt->bind_param(
-                "iidssdsii",
+                "iidssdsisi",
                 $projectId,
                 $newFlatId,
                 $agreementVal,
@@ -739,6 +757,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 $discount,
                 $approvedAmt,
                 $approvalStatus,
+                $pastApprovalAttachment,
                 $salesById,
                 $id
             );

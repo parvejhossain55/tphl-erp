@@ -642,6 +642,13 @@
                                                 </span>
                                             </div>
                                         <?php endif; ?>
+                                        <?php if (!empty($req['attachment'])): ?>
+                                            <div class="mt-1">
+                                                <a href="<?= $base_url ?>/<?= htmlspecialchars(ltrim($req['attachment'], '/')) ?>" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle extra-small text-decoration-none" onclick="event.stopPropagation();" title="View Attachment / Supporting Document">
+                                                    <i class="fa-solid fa-paperclip me-1"></i>Attachment Document
+                                                </a>
+                                            </div>
+                                        <?php endif; ?>
                                         <span class="text-muted extra-small">Source Table:
                                             <code><?= htmlspecialchars($req['source_table']) ?></code></span>
                                     </td>
