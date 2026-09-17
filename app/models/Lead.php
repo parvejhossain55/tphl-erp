@@ -2257,13 +2257,25 @@ class Lead extends Model
         $mother_name          = $nn('mother_name');
         $mother_name_bn       = $nn('mother_name_bn');
         $nationality          = $nn('nationality') ?? 'Bangladeshi';
+        // Religion (Enum-safe)
         $religion             = $nn('religion');
+        if (!empty($religion) && !in_array($religion, ['Islam', 'Hinduism', 'Buddhism', 'Christianity', 'Other'])) {
+            $religion = null;
+        }
+
         $residency_type       = $nn('residency_type');
         if (!empty($residency_type)) {
             $residency_type = in_array(strtolower($residency_type), ['nrb', 'expatriate']) ? 'expatriate' : 'local';
+        } else {
+            $residency_type = 'local';
         }
         $nid_or_passport      = $nn('nid_or_passport');
+
+        // Identity Type (Enum-safe)
         $identity_type        = $nn('identity_type');
+        if (!empty($identity_type) && !in_array($identity_type, ['NID', 'Passport'])) {
+            $identity_type = null;
+        }
 
         // Contact & Address
         $phone                = $nn('phone') ?? $nn('phone_number');
@@ -2288,33 +2300,92 @@ class Lead extends Model
         $campaign_name        = $nn('campaign_name');
         $platform             = $nn('platform');
         $uploaded_from        = $nn('uploaded_from');
+        if (!empty($uploaded_from) && !in_array($uploaded_from, ['From Campaign', 'From Company csv', 'Manually added', ''])) {
+            $uploaded_from = 'From Campaign';
+        }
         $source_type_id       = $ni('source_type_id');
         $assigned_id          = $ni('assigned_id');
         $team_id              = $ni('team_id');
         $project_id           = $ni('project_id');
         $project_category_id  = $ni('project_category_id');
         $pref_location_id     = $ni('pref_location_id');
+
+        // Lead Type (Enum-safe)
         $lead_type            = $nn('lead_type');
+        $validLeadTypes = ['No Response', 'Pending', 'Prospect', 'High Prospect', 'Will Visit', 'Visited', 'Sold', 'Lead Transferred', 'Project Transferred', 'Not Interested', "Don't Call Again", 'Refund', 'Future', 'Cold', 'Hot', 'Warm'];
+        if (!empty($lead_type) && !in_array($lead_type, $validLeadTypes)) {
+            $lead_type = null;
+        }
+
         $lead_quality         = $nn('lead_quality');
         if (!empty($lead_quality) && !in_array($lead_quality, ['Pending', 'Prospect', 'Not Interested'])) {
             $lead_quality = 'Pending';
         }
         $visibility           = $nn('visibility') ?? 'public';
+        if (!in_array($visibility, ['public', 'private', 'selected'])) {
+            $visibility = 'public';
+        }
         $status               = $nn('status') ?? 'active';
+        if (!in_array($status, ['active', 'inactive'])) {
+            $status = 'active';
+        }
         $call_status          = $nn('call_status');
+        if (!empty($call_status) && !in_array($call_status, ['not_called', 'called', 'received', 'not_received'])) {
+            $call_status = 'not_called';
+        }
         $call_note            = $nn('call_note');
         $value_amount         = $nf('value_amount');
         $currency             = $nn('currency') ?? 'BDT';
+        if (!in_array($currency, ['USD', 'EURO', 'RUBLE', 'POUND', 'BDT'])) {
+            $currency = 'BDT';
+        }
 
         // Customer Requirements & Preferences
         $which_apt_size       = $nn('which_apartment_size_are_you_interested_in');
         $which_floor_shop     = $nn('which_floor_are_you_for_shop');
         $when_buy             = $nn('when_are_you_planning_to_buy');
         $schedule_visit       = $nn('would_you_like_to_schedule_a_site_visit');
+        
         $best_time_contact    = $nn('when_is_the_best_time_to_contact_you') ?? $nn('preferred_contact_time');
-        $preferred_contact    = $best_time_contact;
+        if ($best_time_contact !== null && mb_strlen($best_time_contact) > 50) {
+            $best_time_contact = mb_substr($best_time_contact, 0, 50);
+        }
+
+        // preferred_contact_time is an ENUM ('morning', 'afternoon', 'evening', 'night')
+        $preferred_contact = null;
+        if (!empty($best_time_contact)) {
+            $cleanContact = strtolower(trim($best_time_contact));
+            if (in_array($cleanContact, ['morning', 'afternoon', 'evening', 'night'])) {
+                $preferred_contact = $cleanContact;
+            } elseif (strpos($cleanContact, 'morn') !== false) {
+                $preferred_contact = 'morning';
+            } elseif (strpos($cleanContact, 'after') !== false || strpos($cleanContact, 'noon') !== false) {
+                $preferred_contact = 'afternoon';
+            } elseif (strpos($cleanContact, 'even') !== false || strpos($cleanContact, '6 pm') !== false || strpos($cleanContact, '7 pm') !== false || strpos($cleanContact, '8 pm') !== false) {
+                $preferred_contact = 'evening';
+            } elseif (strpos($cleanContact, 'night') !== false) {
+                $preferred_contact = 'night';
+            }
+        }
+
         $pref_flat_size       = $nn('pref_flat_size') ?? $which_apt_size;
+
+        // Communication Type (Enum-safe)
         $communication_type   = $nn('communication_type');
+        $validComm = ['WA Messaging', 'WA Conversion', 'Wa Call', 'Imo Massage', 'Imo Call', 'Phone Call', 'Phone Massage', 'Invalid Number', 'No Wa /No Imo', 'Number Off'];
+        if (!empty($communication_type) && !in_array($communication_type, $validComm)) {
+            $cleanComm = strtolower(trim($communication_type));
+            if (strpos($cleanComm, 'wa') !== false || strpos($cleanComm, 'what') !== false) {
+                $communication_type = 'WA Messaging';
+            } elseif (strpos($cleanComm, 'call') !== false || strpos($cleanComm, 'phone') !== false) {
+                $communication_type = 'Phone Call';
+            } elseif (strpos($cleanComm, 'imo') !== false) {
+                $communication_type = 'Imo Massage';
+            } else {
+                $communication_type = null;
+            }
+        }
+
         $tags                 = $nn('tags');
         $description          = $nn('description');
 
@@ -3532,6 +3603,7 @@ class Lead extends Model
         $sql = "
             SELECT 
                 DATE(l.created_at) AS report_date,
+                COALESCE(pc.name, 'Common') AS category_name,
                 SUM(CASE WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ($fbIn) THEN 1 ELSE 0 END) AS fb_count,
                 SUM(CASE WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ($waIn) THEN 1 ELSE 0 END) AS wa_count,
                 SUM(CASE WHEN LOWER(TRIM(COALESCE(l.platform, ''))) IN ($miIn) THEN 1 ELSE 0 END) AS mi_count,
@@ -3540,6 +3612,7 @@ class Lead extends Model
                 SUM(CASE WHEN LOWER(TRIM(COALESCE(l.platform, ''))) NOT IN ($allIn) THEN 1 ELSE 0 END) AS others_count,
                 COUNT(*) AS total_count
             FROM leads l
+            LEFT JOIN project_categories pc ON l.project_category_id = pc.id
             WHERE l.deleted_at IS NULL AND l.uploaded_from = 'From Campaign'
         ";
 
@@ -3579,7 +3652,7 @@ class Lead extends Model
             $types   .= "i";
         }
 
-        $sql .= " GROUP BY DATE(l.created_at) ORDER BY report_date DESC";
+        $sql .= " GROUP BY DATE(l.created_at), l.project_category_id ORDER BY report_date DESC, category_name ASC";
 
         $stmt = $this->db->prepare($sql);
         if (!$stmt) return ['rows' => [], 'totals' => []];

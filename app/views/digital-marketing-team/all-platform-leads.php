@@ -491,6 +491,7 @@ $exportQuery = http_build_query([
           <thead>
             <tr>
               <th style="min-width: 150px;"><i class="fa-regular fa-calendar-days me-1 text-primary"></i> Date</th>
+              <th style="min-width: 150px;"><i class="fa-solid fa-layer-group me-1 text-primary"></i> Project Category</th>
               <th class="text-end" style="min-width: 170px;"><i class="fa-brands fa-facebook-f me-1 text-primary"></i> Facebook Lead Form</th>
               <th class="text-end" style="min-width: 130px;"><i class="fa-brands fa-whatsapp me-1 text-success"></i> Whatsapp</th>
               <th class="text-end" style="min-width: 130px;"><i class="fa-solid fa-comments me-1 text-info"></i> Meta Inbox</th>
@@ -503,7 +504,7 @@ $exportQuery = http_build_query([
           <tbody>
             <?php if (empty($rows)): ?>
               <tr>
-                <td colspan="8" class="text-center py-5">
+                <td colspan="9" class="text-center py-5">
                   <div class="py-4">
                     <div class="mb-3 text-muted" style="font-size: 3rem;">
                       <i class="fa-solid fa-folder-open"></i>
@@ -522,48 +523,92 @@ $exportQuery = http_build_query([
                 </td>
               </tr>
             <?php else: ?>
-              <?php foreach ($rows as $r): ?>
+              <?php
+                // Group rows by date
+                $groupedRows = [];
+                foreach ($rows as $r) {
+                    $date = $r['report_date'] ?? '-';
+                    if (!isset($groupedRows[$date])) {
+                        $groupedRows[$date] = [];
+                    }
+                    $groupedRows[$date][] = $r;
+                }
+              ?>
+              <?php foreach ($groupedRows as $date => $dateRows): ?>
                 <?php
-                  $timestamp = !empty($r['report_date']) ? strtotime($r['report_date']) : null;
+                  $timestamp = $date !== '-' ? strtotime($date) : null;
                   $formattedDate = $timestamp ? date('d M Y', $timestamp) : '-';
                   $dayName       = $timestamp ? date('l', $timestamp) : '';
-                  $isToday       = $r['report_date'] === $todayDate;
+                  $isToday       = $date === $todayDate;
+                  $rowspan       = count($dateRows) + 1; // +1 for the daily sub-total row
+
+                  $dailyTotals = [
+                      'fb_count' => 0, 'wa_count' => 0, 'mi_count' => 0,
+                      'gf_count' => 0, 'bl_count' => 0, 'others_count' => 0, 'total_count' => 0
+                  ];
                 ?>
-                <tr>
-                  <td>
-                    <div class="d-flex align-items-center">
-                      <?php if ($isToday): ?>
-                        <span class="badge bg-success me-2" style="font-size: 0.65rem;">TODAY</span>
-                      <?php endif; ?>
-                      <div>
-                        <span class="fw-bold text-dark"><?= $formattedDate ?></span>
-                        <span class="text-muted d-block small" style="font-size: 0.75rem;"><?= $dayName ?></span>
+                <?php foreach ($dateRows as $index => $r): ?>
+                  <?php
+                    $dailyTotals['fb_count'] += (int)$r['fb_count'];
+                    $dailyTotals['wa_count'] += (int)$r['wa_count'];
+                    $dailyTotals['mi_count'] += (int)$r['mi_count'];
+                    $dailyTotals['gf_count'] += (int)$r['gf_count'];
+                    $dailyTotals['bl_count'] += (int)$r['bl_count'];
+                    $dailyTotals['others_count'] += (int)$r['others_count'];
+                    $dailyTotals['total_count'] += (int)$r['total_count'];
+                  ?>
+                  <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <?php if ($index === 0): ?>
+                    <td rowspan="<?= $rowspan ?>" class="align-middle" style="border-right: 1px solid #e2e8f0; border-bottom: 2px solid #cbd5e1;">
+                      <div class="d-flex align-items-center">
+                        <?php if ($isToday): ?>
+                          <span class="badge bg-success me-2" style="font-size: 0.65rem;">TODAY</span>
+                        <?php endif; ?>
+                        <div>
+                          <span class="fw-bold text-dark"><?= $formattedDate ?></span>
+                          <span class="text-muted d-block small" style="font-size: 0.75rem;"><?= $dayName ?></span>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td class="text-end count-cell <?= (int)$r['fb_count'] === 0 ? 'count-zero' : 'text-primary' ?>">
-                    <?= (int)$r['fb_count'] > 0 ? number_format($r['fb_count']) : '-' ?>
-                  </td>
-                  <td class="text-end count-cell <?= (int)$r['wa_count'] === 0 ? 'count-zero' : 'text-success' ?>">
-                    <?= (int)$r['wa_count'] > 0 ? number_format($r['wa_count']) : '-' ?>
-                  </td>
-                  <td class="text-end count-cell <?= (int)$r['mi_count'] === 0 ? 'count-zero' : '' ?>" style="<?= (int)$r['mi_count'] > 0 ? 'color: #8B5CF6;' : '' ?>">
-                    <?= (int)$r['mi_count'] > 0 ? number_format($r['mi_count']) : '-' ?>
-                  </td>
-                  <td class="text-end count-cell <?= (int)$r['gf_count'] === 0 ? 'count-zero' : 'text-danger' ?>">
-                    <?= (int)$r['gf_count'] > 0 ? number_format($r['gf_count']) : '-' ?>
-                  </td>
-                  <td class="text-end count-cell <?= (int)$r['bl_count'] === 0 ? 'count-zero' : '' ?>" style="<?= (int)$r['bl_count'] > 0 ? 'color: #0D9488;' : '' ?>">
-                    <?= (int)$r['bl_count'] > 0 ? number_format($r['bl_count']) : '-' ?>
-                  </td>
-                  <td class="text-end count-cell <?= (int)$r['others_count'] === 0 ? 'count-zero' : 'text-secondary' ?>">
-                    <?= (int)$r['others_count'] > 0 ? number_format($r['others_count']) : '-' ?>
-                  </td>
-                  <td class="text-end count-cell bg-light">
-                    <span class="badge-total-pill">
-                      <?= number_format($r['total_count']) ?>
-                    </span>
-                  </td>
+                    </td>
+                    <?php endif; ?>
+                    <td class="fw-bold text-secondary">
+                      <?= htmlspecialchars($r['category_name'] ?? 'Common') ?>
+                    </td>
+                    <td class="text-end count-cell <?= (int)$r['fb_count'] === 0 ? 'count-zero' : 'text-primary' ?>">
+                      <?= (int)$r['fb_count'] > 0 ? number_format($r['fb_count']) : '-' ?>
+                    </td>
+                    <td class="text-end count-cell <?= (int)$r['wa_count'] === 0 ? 'count-zero' : 'text-success' ?>">
+                      <?= (int)$r['wa_count'] > 0 ? number_format($r['wa_count']) : '-' ?>
+                    </td>
+                    <td class="text-end count-cell <?= (int)$r['mi_count'] === 0 ? 'count-zero' : '' ?>" style="<?= (int)$r['mi_count'] > 0 ? 'color: #8B5CF6;' : '' ?>">
+                      <?= (int)$r['mi_count'] > 0 ? number_format($r['mi_count']) : '-' ?>
+                    </td>
+                    <td class="text-end count-cell <?= (int)$r['gf_count'] === 0 ? 'count-zero' : 'text-danger' ?>">
+                      <?= (int)$r['gf_count'] > 0 ? number_format($r['gf_count']) : '-' ?>
+                    </td>
+                    <td class="text-end count-cell <?= (int)$r['bl_count'] === 0 ? 'count-zero' : '' ?>" style="<?= (int)$r['bl_count'] > 0 ? 'color: #0D9488;' : '' ?>">
+                      <?= (int)$r['bl_count'] > 0 ? number_format($r['bl_count']) : '-' ?>
+                    </td>
+                    <td class="text-end count-cell <?= (int)$r['others_count'] === 0 ? 'count-zero' : 'text-secondary' ?>">
+                      <?= (int)$r['others_count'] > 0 ? number_format($r['others_count']) : '-' ?>
+                    </td>
+                    <td class="text-end count-cell bg-light">
+                      <span class="badge-total-pill">
+                        <?= number_format($r['total_count']) ?>
+                      </span>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+                <!-- Daily Sub-total Row -->
+                <tr class="bg-light" style="border-bottom: 2px solid #cbd5e1;">
+                  <td class="fw-bold text-dark text-end">Daily Total</td>
+                  <td class="text-end fw-bold text-primary"><?= $dailyTotals['fb_count'] > 0 ? number_format($dailyTotals['fb_count']) : '-' ?></td>
+                  <td class="text-end fw-bold text-success"><?= $dailyTotals['wa_count'] > 0 ? number_format($dailyTotals['wa_count']) : '-' ?></td>
+                  <td class="text-end fw-bold" style="color: #8B5CF6;"><?= $dailyTotals['mi_count'] > 0 ? number_format($dailyTotals['mi_count']) : '-' ?></td>
+                  <td class="text-end fw-bold text-danger"><?= $dailyTotals['gf_count'] > 0 ? number_format($dailyTotals['gf_count']) : '-' ?></td>
+                  <td class="text-end fw-bold" style="color: #0D9488;"><?= $dailyTotals['bl_count'] > 0 ? number_format($dailyTotals['bl_count']) : '-' ?></td>
+                  <td class="text-end fw-bold text-secondary"><?= $dailyTotals['others_count'] > 0 ? number_format($dailyTotals['others_count']) : '-' ?></td>
+                  <td class="text-end fw-bold text-dark"><span class="badge-total-pill" style="background:#e2e8f0; color:#0f172a; border-color:#cbd5e1;"><?= number_format($dailyTotals['total_count']) ?></span></td>
                 </tr>
               <?php endforeach; ?>
             <?php endif; ?>
@@ -571,7 +616,7 @@ $exportQuery = http_build_query([
           <?php if (!empty($rows)): ?>
             <tfoot>
               <tr>
-                <th><i class="fa-solid fa-sigma me-1"></i> Total</th>
+                <th colspan="2"><i class="fa-solid fa-sigma me-1"></i> Total</th>
                 <th class="text-end text-primary"><?= number_format($totals['fb_count']) ?></th>
                 <th class="text-end text-success"><?= number_format($totals['wa_count']) ?></th>
                 <th class="text-end" style="color: #8B5CF6;"><?= number_format($totals['mi_count']) ?></th>

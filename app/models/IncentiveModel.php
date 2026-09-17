@@ -2,14 +2,13 @@
 
 require_once __DIR__ . '/../services/IncentiveCalculationEngine.php';
 
-class IncentiveModel
+class IncentiveModel extends Model
 {
-    protected $db;
     protected $engine;
 
     public function __construct($db)
     {
-        $this->db = $db;
+        parent::__construct($db);
         $this->engine = new IncentiveCalculationEngine($db);
     }
 
@@ -80,7 +79,7 @@ class IncentiveModel
         while ($row = $result->fetch_assoc()) {
             $bookingId = (int)$row['booking_id'];
             $bookingDate = $row['booking_date'];
-            $yearMonth = date('Y-m', strtotime($bookingDate));
+            $yearMonth = $this->getCycleForDate($bookingDate);
 
             // Cache monthly stats to avoid redundant DB calls
             if (!isset($monthlyStatsCache[$yearMonth])) {

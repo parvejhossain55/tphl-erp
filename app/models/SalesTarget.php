@@ -95,14 +95,18 @@ class SalesTarget extends Model
 
     public function getTargetProgress($userId, $month, $year)
     {
+        $cycle = $this->getCycleDateRange($year, $month);
+        $start = $cycle['start'];
+        $end = $cycle['end'];
+
         // Booking
         $sql1 = "SELECT COUNT(*) AS deals_closed, 
                     SUM(agreement_value - IFNULL(discount_amount,0)) AS total_value
              FROM lead_bookings
              WHERE sales_by_id = ? AND booking_status = 'completed' 
-                   AND MONTH(booking_date) = ? AND YEAR(booking_date) = ?";
+                   AND booking_date BETWEEN ? AND ?";
         $stmt1 = $this->db->prepare($sql1);
-        $stmt1->bind_param("iii", $userId, $month, $year);
+        $stmt1->bind_param("iss", $userId, $start, $end);
         $stmt1->execute();
         $booking = $stmt1->get_result()->fetch_assoc();
 
@@ -110,10 +114,9 @@ class SalesTarget extends Model
         $sql2 = "SELECT COUNT(*) AS visits_done
              FROM lead_follow_ups
              WHERE assigned_with = ? AND follow_up_type='visit' 
-                   AND status='completed' AND MONTH(follow_up_date)=? 
-                   AND YEAR(follow_up_date)=?";
+                   AND status='completed' AND follow_up_date BETWEEN ? AND ?";
         $stmt2 = $this->db->prepare($sql2);
-        $stmt2->bind_param("iii", $userId, $month, $year);
+        $stmt2->bind_param("iss", $userId, $start, $end);
         $stmt2->execute();
         $visits = $stmt2->get_result()->fetch_assoc();
 
@@ -137,11 +140,16 @@ class SalesTarget extends Model
     // Get completed site visits for a month
     public function getMonthlyVisitCompleted($userId, $month)
     {
+        list($y, $m) = explode('-', $month);
+        $cycle = $this->getCycleDateRange($y, $m);
+        $start = $cycle['start'];
+        $end = $cycle['end'];
+
         $sql = "SELECT COUNT(*) as completed FROM lead_follow_ups
                 WHERE assigned_with=? AND follow_up_type='visit' AND status='completed'
-                  AND DATE_FORMAT(follow_up_date,'%Y-%m')=?";
+                  AND follow_up_date BETWEEN ? AND ?";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("is", $userId, $month);
+        $stmt->bind_param("iss", $userId, $start, $end);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         return $result['completed'] ?? 0;
@@ -150,15 +158,20 @@ class SalesTarget extends Model
     // Get completed bookings for a month
     public function getMonthlyBookingCompleted($userId, $month)
     {
+        list($y, $m) = explode('-', $month);
+        $cycle = $this->getCycleDateRange($y, $m);
+        $start = $cycle['start'];
+        $end = $cycle['end'];
+
         $sql = "
         SELECT COUNT(*) AS total
         FROM lead_bookings
         WHERE sales_by_id = ?
-          AND DATE_FORMAT(booking_date, '%Y-%m') = ?
+          AND booking_date BETWEEN ? AND ?
           AND booking_status IN ('completed','booked')
     ";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("is", $userId, $month);
+        $stmt->bind_param("iss", $userId, $start, $end);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         return (int)($result['total'] ?? 0);
@@ -220,17 +233,22 @@ class SalesTarget extends Model
 
     public function getDealsClosed($userId, $month)
     {
+        list($y, $m) = explode('-', $month);
+        $cycle = $this->getCycleDateRange($y, $m);
+        $start = $cycle['start'];
+        $end = $cycle['end'];
+
         $sql = "
         SELECT COUNT(DISTINCT lf.lead_id) AS total
         FROM lead_follow_ups lf
         JOIN leads l ON l.id = lf.lead_id
         WHERE lf.assigned_with = ?
-          AND DATE_FORMAT(lf.follow_up_date, '%Y-%m') = ?
+          AND lf.follow_up_date BETWEEN ? AND ?
           AND lf.follow_up_type = 'visit'
           AND lf.status != 'canceled'
     ";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("is", $userId, $month);
+        $stmt->bind_param("iss", $userId, $start, $end);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         return (int)($result['total'] ?? 0);
@@ -238,15 +256,20 @@ class SalesTarget extends Model
 
     public function getDealsWon($userId, $month)
     {
+        list($y, $m) = explode('-', $month);
+        $cycle = $this->getCycleDateRange($y, $m);
+        $start = $cycle['start'];
+        $end = $cycle['end'];
+
         $sql = "
         SELECT COUNT(*) AS total
         FROM leads
         WHERE last_lead_action = 'booked'
           AND assigned_id  = ?
-          AND DATE_FORMAT(updated_at, '%Y-%m') = ?
+          AND updated_at BETWEEN ? AND ?
     ";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("is", $userId, $month);
+        $stmt->bind_param("iss", $userId, $start, $end);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         return (int)($result['total'] ?? 0);
@@ -254,19 +277,24 @@ class SalesTarget extends Model
 
     public function getDealsLost($userId, $month)
     {
+        list($y, $m) = explode('-', $month);
+        $cycle = $this->getCycleDateRange($y, $m);
+        $start = $cycle['start'];
+        $end = $cycle['end'];
+
         $sql = "
         SELECT COUNT(*) AS total
         FROM leads l
         LEFT JOIN lead_follow_ups lf ON lf.lead_id = l.id
         WHERE l.assigned_id = ?
-          AND DATE_FORMAT(l.updated_at, '%Y-%m') = ?
+          AND l.updated_at BETWEEN ? AND ?
           AND (
                l.last_lead_action = 'canceled'
                OR (lf.follow_up_type = 'visit' AND lf.status = 'canceled')
           )
     ";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("is", $userId, $month);
+        $stmt->bind_param("iss", $userId, $start, $end);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         return (int)($result['total'] ?? 0);
@@ -329,8 +357,14 @@ public function getExecutiveBookingStats($type = 'monthly')
         $dateCondition   = "1"; // always true
         $targetCondition = "1"; // always true
     } else {
-        // Default → monthly
-        $dateCondition   = "DATE_FORMAT(lb.booking_date, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')";
+        // Default → monthly (26th to 25th)
+        $y = (int)date('Y');
+        $m = (int)date('m');
+        $cycle = $this->getCycleDateRange($y, $m);
+        $start = $cycle['start'];
+        $end = $cycle['end'];
+        
+        $dateCondition   = "lb.booking_date BETWEEN '$start' AND '$end'";
         $targetCondition = "DATE_FORMAT(month, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')";
     }
 
@@ -517,18 +551,23 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
 
     public function getRangeStats($userId, $year, $startMonth, $endMonth)
     {
-        // 1. Targets
+        $cycleStart = $this->getCycleDateRange($year, $startMonth);
+        $cycleEnd = $this->getCycleDateRange($year, $endMonth);
+        $start = $cycleStart['start'];
+        $end = $cycleEnd['end'];
+
+        // 1. Targets (Targets are based on the 'month' column which acts as the cycle)
         $sql = "SELECT 
                     SUM(site_visit_target) AS site_visit_target,
                     SUM(booking_target) AS booking_target,
                     SUM(booking_value_target) AS booking_value_target
                 FROM sales_targets
                 WHERE sales_user_id = ?
-                  AND YEAR(month) = ?
-                  AND MONTH(month) >= ?
-                  AND MONTH(month) <= ?";
+                  AND month BETWEEN ? AND ?";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iiii", $userId, $year, $startMonth, $endMonth);
+        $targetStartMonth = sprintf('%04d-%02d-01', $year, $startMonth);
+        $targetEndMonth = sprintf('%04d-%02d-01', $year, $endMonth);
+        $stmt->bind_param("iss", $userId, $targetStartMonth, $targetEndMonth);
         $stmt->execute();
         $target = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -539,11 +578,9 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                 WHERE assigned_with = ? 
                   AND follow_up_type = 'visit' 
                   AND status = 'completed'
-                  AND YEAR(follow_up_date) = ?
-                  AND MONTH(follow_up_date) >= ?
-                  AND MONTH(follow_up_date) <= ?";
+                  AND follow_up_date BETWEEN ? AND ?";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iiii", $userId, $year, $startMonth, $endMonth);
+        $stmt->bind_param("iss", $userId, $start, $end);
         $stmt->execute();
         $visits = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -553,11 +590,9 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                 FROM lead_bookings
                 WHERE sales_by_id = ?
                   AND booking_status IN ('completed','booked')
-                  AND YEAR(booking_date) = ?
-                  AND MONTH(booking_date) >= ?
-                  AND MONTH(booking_date) <= ?";
+                  AND booking_date BETWEEN ? AND ?";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iiii", $userId, $year, $startMonth, $endMonth);
+        $stmt->bind_param("iss", $userId, $start, $end);
         $stmt->execute();
         $bookings = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -569,11 +604,9 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                 WHERE lf.assigned_with = ?
                   AND lf.follow_up_type = 'visit'
                   AND lf.status != 'canceled'
-                  AND YEAR(lf.follow_up_date) = ?
-                  AND MONTH(lf.follow_up_date) >= ?
-                  AND MONTH(lf.follow_up_date) <= ?";
+                  AND lf.follow_up_date BETWEEN ? AND ?";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iiii", $userId, $year, $startMonth, $endMonth);
+        $stmt->bind_param("iss", $userId, $start, $end);
         $stmt->execute();
         $dealsClosed = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -583,11 +616,9 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                 FROM leads
                 WHERE last_lead_action = 'booked'
                   AND assigned_id = ?
-                  AND YEAR(updated_at) = ?
-                  AND MONTH(updated_at) >= ?
-                  AND MONTH(updated_at) <= ?";
+                  AND updated_at BETWEEN ? AND ?";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iiii", $userId, $year, $startMonth, $endMonth);
+        $stmt->bind_param("iss", $userId, $start, $end);
         $stmt->execute();
         $dealsWon = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -597,15 +628,13 @@ public function getExecutiveFullStats($executiveId = null, $startDate = null, $e
                 FROM leads l
                 LEFT JOIN lead_follow_ups lf ON lf.lead_id = l.id
                 WHERE l.assigned_id = ?
-                  AND YEAR(l.updated_at) = ?
-                  AND MONTH(l.updated_at) >= ?
-                  AND MONTH(l.updated_at) <= ?
+                  AND l.updated_at BETWEEN ? AND ?
                   AND (
                        l.last_lead_action = 'canceled'
                        OR (lf.follow_up_type = 'visit' AND lf.status = 'canceled')
                   )";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("iiii", $userId, $year, $startMonth, $endMonth);
+        $stmt->bind_param("iss", $userId, $start, $end);
         $stmt->execute();
         $dealsLost = $stmt->get_result()->fetch_assoc();
         $stmt->close();

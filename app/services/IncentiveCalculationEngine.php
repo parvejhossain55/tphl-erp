@@ -1,12 +1,10 @@
 <?php
 
-class IncentiveCalculationEngine
+class IncentiveCalculationEngine extends Model
 {
-    protected $db;
-
     public function __construct($db)
     {
-        $this->db = $db;
+        parent::__construct($db);
     }
 
     /**
@@ -14,6 +12,11 @@ class IncentiveCalculationEngine
      */
     public function getExecutiveMonthlyStats($userId, $yearMonth)
     {
+        list($y, $m) = explode('-', $yearMonth);
+        $cycle = $this->getCycleDateRange($y, $m);
+        $start = $cycle['start'];
+        $end = $cycle['end'];
+
         // 1. Get Target for this month
         $stmt = $this->db->prepare("SELECT booking_value_target, category_id 
                                     FROM sales_targets 
@@ -32,11 +35,11 @@ class IncentiveCalculationEngine
                 JOIN projects p ON lb.project_id = p.id
                 JOIN flats f ON lb.flat_id = f.id
                 WHERE lb.sales_by_id = ? 
-                AND DATE_FORMAT(lb.booking_date, '%Y-%m') = ?
+                AND lb.booking_date BETWEEN ? AND ?
                 AND lb.deleted_at IS NULL
                 AND lb.booking_status != 'cancelled'";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("is", $userId, $yearMonth);
+        $stmt->bind_param("iss", $userId, $start, $end);
         $stmt->execute();
         $bookings = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
