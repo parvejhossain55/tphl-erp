@@ -247,6 +247,7 @@ return [
     'hrm-create-tipsoi-employee' => ['controller' => 'EmployeeController', 'method' => 'createTipsoiEmployeeView'],
     'api/hrm/employees' => ['controller' => 'HrmApiController', 'method' => 'getErpEmployees'],
     'api/hrm/external-employees' => ['controller' => 'HrmApiController', 'method' => 'getExternalEmployees'],
+    'api/hrm/quick-create-employee' => ['controller' => 'HrmApiController', 'method' => 'quickCreateEmployee'],
     'api/hrm/create-tipsoi-employee' => ['controller' => 'HrmApiController', 'method' => 'createTipsoiEmployee'],
     'api/hrm/tipsoi-dropdowns' => ['controller' => 'HrmApiController', 'method' => 'getTipsoiDropdowns'],
 

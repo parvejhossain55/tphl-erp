@@ -94,6 +94,223 @@ class HrmApiController extends Controller
     }
 
     /**
+     * POST /api/hrm/quick-create-employee
+     * Quickly registers a Tipsoi employee into the local ERP database
+     */
+    public function quickCreateEmployee()
+    {
+        header('Content-Type: application/json');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Method Not Allowed']);
+            exit;
+        }
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['user']['id'])) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'Unauthorized. Please log in to perform this action.']);
+            exit;
+        }
+
+        $employeeOfficeId = trim($_POST['employee_id'] ?? '');
+        $fullName = trim($_POST['full_name'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+        $departmentId = (int)($_POST['department_id'] ?? 0);
+        $designationId = (int)($_POST['designation_id'] ?? 0);
+        $officeBranchId = !empty($_POST['office_branch_id']) ? (int)$_POST['office_branch_id'] : 2;
+        $joiningDate = !empty($_POST['joining_date']) ? trim($_POST['joining_date']) : date('Y-m-d');
+        $grossSalary = !empty($_POST['gross_salary']) ? (float)$_POST['gross_salary'] : 0.0;
+        $basicSalary = $grossSalary > 0 ? ($grossSalary * 0.50) : 0.0;
+        $makeUser = (isset($_POST['make_user']) && (int)$_POST['make_user'] === 1) ? 1 : 0;
+        $roleId = (int)($_POST['role_id'] ?? 2);
+        $plainPassword = trim($_POST['password'] ?? '12345678');
+        if (empty($plainPassword)) {
+            $plainPassword = '12345678';
+        }
+
+        // Validation
+        if (empty($employeeOfficeId)) {
+            echo json_encode(['success' => false, 'message' => 'Employee Office ID is required.']);
+            exit;
+        }
+        if (empty($fullName)) {
+            echo json_encode(['success' => false, 'message' => 'Full Name is required.']);
+            exit;
+        }
+        if ($departmentId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Please select a valid Department.']);
+            exit;
+        }
+        if ($designationId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Please select a valid Designation.']);
+            exit;
+        }
+
+        // Check if employee already exists in ERP
+        $checkStmt = $this->db->prepare("SELECT id, employee_id, email FROM employees WHERE employee_id = ? OR (email != '' AND email = ?) LIMIT 1");
+        $checkStmt->bind_param("ss", $employeeOfficeId, $email);
+        $checkStmt->execute();
+        $checkRes = $checkStmt->get_result();
+        if ($checkRes && $checkRes->num_rows > 0) {
+            $existing = $checkRes->fetch_assoc();
+            echo json_encode([
+                'success' => false,
+                'message' => "An employee with Employee ID '{$existing['employee_id']}' already exists in ERP."
+            ]);
+            exit;
+        }
+        $checkStmt->close();
+
+        // Prepare unique username
+        $username = !empty($email) ? strtolower(explode('@', $email)[0]) : 'emp_' . $employeeOfficeId;
+        $username = preg_replace('/[^a-zA-Z0-9_]/', '', $username);
+        if (empty($username)) {
+            $username = 'emp_' . $employeeOfficeId;
+        }
+
+        $uCheck = $this->db->prepare("SELECT id FROM employees WHERE username = ? LIMIT 1");
+        $uCheck->bind_param("s", $username);
+        $uCheck->execute();
+        if ($uCheck->get_result()->num_rows > 0) {
+            $username .= '_' . $employeeOfficeId;
+        }
+        $uCheck->close();
+
+        // Workplace name from office branch
+        $workplaceName = 'Ashulia Site Office';
+        $bRes = $this->db->query("SELECT name FROM office_branches WHERE id = $officeBranchId LIMIT 1");
+        if ($bRes && $bRow = $bRes->fetch_assoc()) {
+            $workplaceName = $bRow['name'];
+        }
+
+        $this->db->begin_transaction();
+
+        try {
+            $hashedPassword = password_hash($plainPassword, PASSWORD_DEFAULT);
+            $currentUserId = (int)($_SESSION['user']['id'] ?? 1);
+
+            $employeeData = [
+                'employee_id' => $employeeOfficeId,
+                'full_name' => $fullName,
+                'username' => $username,
+                'email' => $email,
+                'father_name' => '',
+                'phone' => !empty($phone) ? $phone : '01700000000',
+                'emergency_contact' => '',
+                'qualification' => '',
+                'gross_salary' => $grossSalary,
+                'basic_salary' => $basicSalary,
+                'per_meal_amount' => 0.00,
+                'is_meal_deduction' => 0,
+                'per_meal_percentage' => 100.00,
+                'experience' => '',
+                'workplace' => $workplaceName,
+                'office_branch_id' => $officeBranchId,
+                'nid' => '',
+                'address' => $workplaceName,
+                'pass_num' => '',
+                'department_id' => $departmentId,
+                'designation_id' => $designationId,
+                'dob' => null,
+                'joining_date' => $joiningDate,
+                'resign_date' => null,
+                'account_holder_name' => '',
+                'account_number' => '',
+                'bank_name' => '',
+                'branch_name' => '',
+                'social_media1' => '',
+                'social_media2' => '',
+                'social_media3' => '',
+                'make_user' => $makeUser,
+                'password' => $hashedPassword,
+                'created_by' => $currentUserId,
+                'employee_type' => 'permanent',
+                'employee_status' => 'active',
+                'responsibilities' => '',
+                'team_id' => 0,
+                'is_sales_co_leader' => 0,
+                'is_dept_head' => 0,
+                'reporting_user_id' => null,
+            ];
+
+            // 1. Insert into employees
+            $newEmpId = $this->employeeModel->create($employeeData);
+            if (!$newEmpId) {
+                throw new Exception("Failed to insert employee into ERP database.");
+            }
+
+            // 2. Insert initial leave balances
+            $leaveTypesResult = $this->db->query("SELECT id, total_days, is_paid FROM leave_types");
+            if ($leaveTypesResult) {
+                $leaveTypes = $leaveTypesResult->fetch_all(MYSQLI_ASSOC);
+                $stmtBalance = $this->db->prepare(
+                    "INSERT INTO employee_leave_balances (employee_id, leave_type_id, remaining_days) VALUES (?, ?, ?)"
+                );
+                if ($stmtBalance) {
+                    foreach ($leaveTypes as $lt) {
+                        $remaining = ($lt['is_paid'] == 1) ? $lt['total_days'] : 0;
+                        $stmtBalance->bind_param("iii", $newEmpId, $lt['id'], $remaining);
+                        $stmtBalance->execute();
+                    }
+                    $stmtBalance->close();
+                }
+            }
+
+            // 3. Create login user if make_user is enabled
+            $newUserId = null;
+            if ($makeUser === 1) {
+                $userModel = new User($this->db);
+                $userLoginEmail = !empty($email) ? $email : $username . '@tphl.com';
+                $userData = [
+                    'full_name' => $fullName,
+                    'user_name' => $username,
+                    'phone' => !empty($phone) ? $phone : '01700000000',
+                    'email' => $userLoginEmail,
+                    'nid' => '',
+                    'designation_id' => $designationId,
+                    'address' => $workplaceName,
+                    'password' => $plainPassword,
+                    'role_id' => $roleId > 0 ? $roleId : 2,
+                    'secondary_role_id' => null,
+                    'employee_id' => $newEmpId,
+                    'team_id' => 0,
+                    'created_by' => $currentUserId,
+                ];
+
+                $newUserId = $userModel->create($userData);
+                if ($newUserId) {
+                    $this->db->query("UPDATE employees SET user_id = $newUserId, make_user = 1 WHERE id = $newEmpId");
+                }
+            }
+
+            $this->db->commit();
+
+            echo json_encode([
+                'success' => true,
+                'message' => "Employee '{$fullName}' registered in ERP successfully!",
+                'employee_office_id' => $employeeOfficeId,
+                'email' => strtolower($email),
+                'erp_id' => $newEmpId,
+                'user_id' => $newUserId
+            ]);
+        } catch (Exception $e) {
+            $this->db->rollback();
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error registering employee: ' . $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+
+    /**
      * GET /api/hrm/attendance
      * Fetch attendance logs from Tipsoi and match with local ERP employees
      */
