@@ -492,6 +492,7 @@ ORDER BY lb.booking_date DESC
                 lb.booking_status,
                 lb.landshare_status,
                 lb.service_fee_balance,
+                lb.past_approval_attachment,
                 l.id as lead_id,
                 l.full_name as client_name,
                 COALESCE(NULLIF(TRIM(l.phone), ''), TRIM(l.phone_number)) AS phone,
@@ -4556,12 +4557,15 @@ ORDER BY lb.booking_date DESC
                 $stmtApp->bind_param("ddii", $approvedDiscount, $approvedDiscount, $approvedBy, $appId);
                 $stmtApp->execute();
             } else {
+                $attRow = $this->db->query("SELECT past_approval_attachment FROM lead_bookings WHERE id = {$bookingId} LIMIT 1")->fetch_assoc();
+                $bookingAtt = $attRow['past_approval_attachment'] ?? null;
+
                 $stmtApp = $this->db->prepare("
                     INSERT INTO approval_requests 
-                    (department, request_type, title, source_table, source_id, request_amount, approved_amount, status, requested_by, approve_role, approved_by, approved_at, created_at)
-                    VALUES ('Sales', 'discount', 'Lead Booking Discount Approval', 'lead_bookings', ?, ?, ?, 'approved', ?, 'Management', ?, NOW(), NOW())
+                    (department, request_type, title, source_table, source_id, request_amount, approved_amount, status, requested_by, approve_role, attachment, approved_by, approved_at, created_at)
+                    VALUES ('Sales', 'discount', 'Lead Booking Discount Approval', 'lead_bookings', ?, ?, ?, 'approved', ?, 'Management', ?, ?, NOW(), NOW())
                 ");
-                $stmtApp->bind_param("iddii", $bookingId, $approvedDiscount, $approvedDiscount, $approvedBy, $approvedBy);
+                $stmtApp->bind_param("iddsii", $bookingId, $approvedDiscount, $approvedDiscount, $approvedBy, $bookingAtt, $approvedBy);
                 $stmtApp->execute();
             }
 

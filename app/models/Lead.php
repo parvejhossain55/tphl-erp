@@ -1199,14 +1199,16 @@ class Lead extends Model
         INNER JOIN (
             SELECT lead_id, MAX(id) AS max_id
             FROM lead_follow_ups
+            WHERE deleted_at IS NULL
             GROUP BY lead_id
         ) t2 
         ON t1.id = t2.max_id AND t1.lead_id = t2.lead_id
+        WHERE t1.deleted_at IS NULL
     ) lf ON lf.lead_id = leads.id
     LEFT JOIN projects AS p ON lf.project_id = p.id
     LEFT JOIN flats AS f ON lf.flat_id = f.id
     LEFT JOIN project_categories AS lpc ON leads.project_category_id = lpc.id
-    WHERE leads.assigned_id = ?";
+    WHERE leads.assigned_id = ? AND leads.deleted_at IS NULL";
 
         $params = [$userId];
         $types  = "i";
@@ -1417,11 +1419,13 @@ class Lead extends Model
         INNER JOIN (
             SELECT lead_id, MAX(id) AS max_id
             FROM lead_follow_ups
+            WHERE deleted_at IS NULL
             GROUP BY lead_id
         ) t2 
         ON t1.id = t2.max_id AND t1.lead_id = t2.lead_id
+        WHERE t1.deleted_at IS NULL
     ) lf ON lf.lead_id = leads.id
-    WHERE leads.assigned_id = ?";
+    WHERE leads.assigned_id = ? AND leads.deleted_at IS NULL";
 
         $params = [$userId];
         $types  = "i";

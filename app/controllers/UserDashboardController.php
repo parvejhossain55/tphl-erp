@@ -633,7 +633,7 @@ class UserDashboardController extends Controller
                                          LEFT JOIN leads l ON fu.lead_id = l.id 
                                          LEFT JOIN projects p ON fu.project_id = p.id 
                                          LEFT JOIN flats f ON fu.flat_id = f.id 
-                                         WHERE fu.lead_id IN ($idsStr) ORDER BY fu.follow_up_date DESC, fu.id DESC");
+                                         WHERE fu.lead_id IN ($idsStr) AND fu.deleted_at IS NULL ORDER BY fu.follow_up_date DESC, fu.id DESC");
             if ($fuQuery) {
                 while($row = $fuQuery->fetch_assoc()) {
                     $followUpHistories[$row['lead_id']][] = $row;

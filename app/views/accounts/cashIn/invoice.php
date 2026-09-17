@@ -49,6 +49,7 @@ if ($paymentTypeRaw === 'emi') {
 
 // Total amount calculation
 $totalAmountPaid = !empty($isBulk) ? array_sum(array_map(fn($p) => (float)($p['amount'] ?? 0), $payments)) : (float)($payment['amount'] ?? 0);
+$amountInWords = function_exists('amountInWords') ? amountInWords($totalAmountPaid) : (class_exists('FormatHelper') ? FormatHelper::amountInWords($totalAmountPaid) : '');
 
 // Bank & Payment Method Display
 $paymentMethod = strtoupper($payment['payment_method'] ?? 'CASH');
@@ -457,12 +458,15 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
             background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
             border: 1.5px solid #a7f3d0;
             border-radius: 10px;
-            padding: 18px 30px;
-            margin: 20px 0 26px 0;
+            padding: 16px 26px;
+            margin: 20px 0 24px 0;
+            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.08);
+        }
+
+        .total-banner-main {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.08);
         }
 
         .total-banner-label {
@@ -485,6 +489,36 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
             font-weight: 900;
             color: #047857;
             letter-spacing: -0.5px;
+        }
+
+        .total-banner-words {
+            margin-top: 10px;
+            padding-top: 9px;
+            border-top: 1px dashed #a7f3d0;
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .words-label {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: #047857;
+            background: rgba(16, 185, 129, 0.12);
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid #a7f3d0;
+            display: inline-block;
+        }
+
+        .words-value {
+            font-size: 13px;
+            font-weight: 700;
+            color: #065f46;
+            letter-spacing: 0.1px;
         }
 
         /* PROCESSING INFORMATION */
@@ -890,9 +924,17 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
 
         <!-- TOTAL AMOUNT PAID BANNER -->
         <div class="total-amount-banner">
-            <div class="total-banner-label">TOTAL AMOUNT PAID</div>
-            <div class="total-banner-divider"></div>
-            <div class="total-banner-amount">TK. <?= number_format($totalAmountPaid, 2) ?></div>
+            <div class="total-banner-main">
+                <div class="total-banner-label">TOTAL AMOUNT PAID</div>
+                <div class="total-banner-divider"></div>
+                <div class="total-banner-amount">TK. <?= number_format($totalAmountPaid, 2) ?></div>
+            </div>
+            <?php if (!empty($amountInWords)): ?>
+            <div class="total-banner-words">
+                <span class="words-label">In Words:</span>
+                <span class="words-value"><?= htmlspecialchars($amountInWords) ?></span>
+            </div>
+            <?php endif; ?>
         </div>
 
         <!-- PROCESSING INFORMATION -->

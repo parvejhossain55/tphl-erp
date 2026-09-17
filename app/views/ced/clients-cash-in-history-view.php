@@ -150,8 +150,13 @@ $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET
                     <div class="card__icon"><span><i class="fa-light fa-tag"></i></span></div>
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Discount Amount</h6>
-                        <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title text-success">TK.<?= number_format($paymentSummary['discount_amount'] ?? 0, 2) ?></h4>
+                        <div class="d-flex flex-wrap align-items-end justify-content-between gap-10">
+                            <h4 class="card__title text-success mb-0">TK.<?= number_format($paymentSummary['discount_amount'] ?? 0, 2) ?></h4>
+                            <?php if (!empty($clientDetails['past_approval_attachment'])): ?>
+                                <a href="<?= $GLOBALS['base_url'] ?>/<?= htmlspecialchars(ltrim($clientDetails['past_approval_attachment'], '/')) ?>" target="_blank" class="badge bg-light text-success border border-success-subtle" title="View discount supporting document">
+                                    <i class="fa-solid fa-paperclip me-1"></i> Attachment
+                                </a>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -1466,6 +1471,40 @@ $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET
                             <span class="fw-bold fs-13 text-danger">TK. <?= number_format((float)($clientDetails['remaining_land_share'] ?? 0), 2) ?></span>
                         </div>
                     </div>
+
+                    <!-- Discount Attachment Preview -->
+                    <?php if (!empty($clientDetails['past_approval_attachment'])): 
+                        $mgmtAttach = $clientDetails['past_approval_attachment'];
+                        $mgmtAttachUrl = $GLOBALS['base_url'] . '/' . ltrim($mgmtAttach, '/');
+                        $mgmtExt = strtolower(pathinfo($mgmtAttach, PATHINFO_EXTENSION));
+                        $isMgmtImg = in_array($mgmtExt, ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+                    ?>
+                        <div class="p-3 mb-3 rounded border" style="background-color: #f0fdf4; border-color: #bbf7d0 !important;">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="fw-bold text-success fs-13">
+                                    <i class="fa-solid fa-paperclip me-1"></i> Discount Supporting Document / Slip
+                                </span>
+                                <a href="<?= $mgmtAttachUrl ?>" target="_blank" class="btn btn-xs btn-outline-success py-1 px-2" style="font-size: 12px;">
+                                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Open Original File
+                                </a>
+                            </div>
+                            <?php if ($isMgmtImg): ?>
+                                <div class="text-center mt-2">
+                                    <a href="<?= $mgmtAttachUrl ?>" target="_blank">
+                                        <img src="<?= $mgmtAttachUrl ?>" alt="Discount Attachment" class="img-fluid rounded border shadow-sm" style="max-height: 180px; object-fit: contain;">
+                                    </a>
+                                </div>
+                            <?php else: ?>
+                                <div class="small text-muted">
+                                    <i class="fa-solid fa-file-lines me-1"></i> <?= htmlspecialchars(basename($mgmtAttach)) ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="p-2 mb-3 rounded bg-light border text-muted fs-12">
+                            <i class="fa-solid fa-circle-info me-1"></i> No discount attachment uploaded with this booking.
+                        </div>
+                    <?php endif; ?>
 
                     <div class="mb-3">
                         <label class="form-label fw-bold text-dark">Approved Discount Amount (TK) <span class="text-danger">*</span></label>
