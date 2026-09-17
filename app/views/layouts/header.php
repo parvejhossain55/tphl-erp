@@ -103,7 +103,7 @@
   }
 
   /* Shadow beneath house */
-  .shadow {
+  #preloader .shadow {
     width:52px; height:8px; border-radius:50%;
     background:#006837; opacity:0.15;
     margin:0 auto;
