@@ -52,23 +52,20 @@ class UserActivityLogController extends Controller
             LEFT JOIN departments dept ON dept.id = COALESCE(e.department_id, des.department_id)
             WHERE (e.employee_status IS NULL OR e.employee_status NOT IN ('Inactive', 'Resigned', 'Terminated'))
         ";
-        $uParams = [];
-        $uTypes = '';
         if ($filterDeptId !== null) {
             $userQuery .= " AND dept.id = ?";
-            $uParams[] = $filterDeptId;
-            $uTypes .= 'i';
+            $userQuery .= " ORDER BY u.full_name ASC";
+            $stmtU = $this->db->prepare($userQuery);
+            $stmtU->bind_param('i', $filterDeptId);
+            $stmtU->execute();
+            $userResult = $stmtU->get_result();
+            $allUsers = $userResult ? $userResult->fetch_all(MYSQLI_ASSOC) : [];
+            $stmtU->close();
+        } else {
+            $userQuery .= " ORDER BY u.full_name ASC";
+            $userResult = $this->db->query($userQuery);
+            $allUsers = $userResult ? $userResult->fetch_all(MYSQLI_ASSOC) : [];
         }
-        $userQuery .= " ORDER BY u.full_name ASC";
-        
-        $stmtU = $this->db->prepare($userQuery);
-        if (!empty($uParams)) {
-            $stmtU->bind_param($uTypes, ...$uParams);
-        }
-        $stmtU->execute();
-        $userResult = $stmtU->get_result();
-        $allUsers = $userResult ? $userResult->fetch_all(MYSQLI_ASSOC) : [];
-        $stmtU->close();
 
         // ── 1. Total ERP Users Base Query (Active Employees) ───────────────────
         $baseUsersSql = "
@@ -101,7 +98,11 @@ class UserActivityLogController extends Controller
 
         $stmtUsers = $this->db->prepare($baseUsersSql);
         if (!empty($usersParams)) {
-            $stmtUsers->bind_param($usersParamTypes, ...$usersParams);
+            if (count($usersParams) === 2) {
+                $stmtUsers->bind_param($usersParamTypes, $usersParams[0], $usersParams[1]);
+            } else {
+                $stmtUsers->bind_param($usersParamTypes, $usersParams[0]);
+            }
         }
         $stmtUsers->execute();
         $targetUsers = $stmtUsers->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -556,6 +557,49 @@ class UserActivityLogController extends Controller
 
         $totalMins = (int)$summary['total_minutes'];
         $sessions  = (int)$summary['total_sessions'];
+        
+        $startStr = $dateFrom ? $dateFrom . ' 00:00:00' : '1970-01-01 00:00:00';
+        $endStr = $dateTo ? $dateTo . ' 23:59:59' : '2099-12-31 23:59:59';
+        
+        // 1. Follow ups
+        $qFollowUps = "SELECT COUNT(*) as cnt FROM lead_follow_ups WHERE created_by = ? AND created_at BETWEEN ? AND ?";
+        $stmt_f = $this->db->prepare($qFollowUps);
+        if($stmt_f) {
+            $stmt_f->bind_param('iss', $userId, $startStr, $endStr);
+            $stmt_f->execute();
+            $followUps = $stmt_f->get_result()->fetch_assoc()['cnt'];
+            $stmt_f->close();
+        } else { $followUps = 0; }
+
+        // 2. Bookings
+        $qBookings = "SELECT COUNT(*) as cnt FROM lead_bookings WHERE created_by = ? AND created_at BETWEEN ? AND ?";
+        $stmt_b = $this->db->prepare($qBookings);
+        if($stmt_b) {
+            $stmt_b->bind_param('iss', $userId, $startStr, $endStr);
+            $stmt_b->execute();
+            $bookings = $stmt_b->get_result()->fetch_assoc()['cnt'];
+            $stmt_b->close();
+        } else { $bookings = 0; }
+
+        // 3. New Leads
+        $qLeads = "SELECT COUNT(*) as cnt FROM leads WHERE created_by = ? AND created_at BETWEEN ? AND ?";
+        $stmt_l = $this->db->prepare($qLeads);
+        if($stmt_l) {
+            $stmt_l->bind_param('iss', $userId, $startStr, $endStr);
+            $stmt_l->execute();
+            $leads = $stmt_l->get_result()->fetch_assoc()['cnt'];
+            $stmt_l->close();
+        } else { $leads = 0; }
+        
+        // 4. Fund Requisitions
+        $qFund = "SELECT COUNT(*) as cnt FROM fund_requisitions WHERE created_by = ? AND created_at BETWEEN ? AND ?";
+        $stmt_r = $this->db->prepare($qFund);
+        if($stmt_r) {
+            $stmt_r->bind_param('iss', $userId, $startStr, $endStr);
+            $stmt_r->execute();
+            $fundReqs = $stmt_r->get_result()->fetch_assoc()['cnt'];
+            $stmt_r->close();
+        } else { $fundReqs = 0; }
 
         echo json_encode([
             'employee' => [
@@ -563,6 +607,12 @@ class UserActivityLogController extends Controller
                 'email'            => $summary['email'],
                 'department_name'  => $summary['department_name'],
                 'designation_name' => $summary['designation_name'],
+            ],
+            'activities' => [
+                'new_leads' => $leads,
+                'follow_ups' => $followUps,
+                'bookings' => $bookings,
+                'fund_requisitions' => $fundReqs
             ],
             'total_sessions' => $sessions,
             'total_minutes'  => $totalMins,

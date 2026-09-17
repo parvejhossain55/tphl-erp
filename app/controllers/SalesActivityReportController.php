@@ -35,6 +35,65 @@ class SalesActivityReportController extends Controller
         // Daily Data (pass teamId for filtering)
         $dailyData = $this->trackerService->getDailyReport($date, $loggedInUser, $teamId);
 
+        // Custom Sorting for Tables: Branch -> Team Name -> Rank
+        $sortForTables = function($a, $b) {
+            $getBranchPriority = function($bName) {
+                $bName = strtolower($bName);
+                if (str_contains($bName, 'ashulia')) return 1;
+                if (str_contains($bName, 'gulshan')) return 2;
+                if (str_contains($bName, 'ati')) return 3;
+                return 4;
+            };
+            
+            $pA = $getBranchPriority($a['branch_name'] ?? '');
+            $pB = $getBranchPriority($b['branch_name'] ?? '');
+            if ($pA !== $pB) return $pA <=> $pB;
+            
+            $tA = $a['team_name'] ?? '';
+            $tB = $b['team_name'] ?? '';
+            if ($tA !== $tB) {
+                if (strcasecmp($tA, 'General Team') === 0) return 1;
+                if (strcasecmp($tB, 'General Team') === 0) return -1;
+                return strcmp($tA, $tB);
+            }
+            
+            return ($a['rank'] ?? 999) <=> ($b['rank'] ?? 999);
+        };
+
+        // Table specific sorted arrays
+        $tableInds = $monthlyData['individuals'] ?? [];
+        usort($tableInds, $sortForTables);
+        $monthlyData['table_individuals'] = $tableInds;
+
+        usort($dailyData, $sortForTables);
+
+        // Sort Teams array by branch then team name
+        $teamsArray = $monthlyData['teams'] ?? [];
+        usort($teamsArray, function($a, $b) use ($sortForTables) {
+            // We use the same priority logic for teams, assuming branch_name is set for teams in service
+            $getBranchPriority = function($bName) {
+                $bName = strtolower($bName);
+                if (str_contains($bName, 'ashulia')) return 1;
+                if (str_contains($bName, 'gulshan')) return 2;
+                if (str_contains($bName, 'ati')) return 3;
+                return 4;
+            };
+            
+            $pA = $getBranchPriority($a['branch_name'] ?? '');
+            $pB = $getBranchPriority($b['branch_name'] ?? '');
+            if ($pA !== $pB) return $pA <=> $pB;
+            
+            $tA = $a['team_name'] ?? '';
+            $tB = $b['team_name'] ?? '';
+            if ($tA !== $tB) {
+                if (strcasecmp($tA, 'General Team') === 0) return 1;
+                if (strcasecmp($tB, 'General Team') === 0) return -1;
+                return strcmp($tA, $tB);
+            }
+            return 0;
+        });
+        $monthlyData['teams'] = $teamsArray;
+
         // Fetch all active teams for dropdown filter
         $teamsRes = $this->db->query("SELECT id, name FROM teams ORDER BY name ASC");
         $teams = $teamsRes ? $teamsRes->fetch_all(MYSQLI_ASSOC) : [];

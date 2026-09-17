@@ -87,8 +87,8 @@ $filterDateTo = $filterDateTo ?? date('Y-m-d');
             </select>
             
             <!-- Employee Search -->
-            <select name="user_id" class="form-select form-select-sm select2" style="width: 200px;" onchange="this.form.submit()" data-placeholder="Search employee...">
-                <option value="">Search employee...</option>
+            <select name="user_id" class="form-select form-select-sm" style="width: 220px;" onchange="this.form.submit()">
+                <option value="">-- Select Employee (<?= count($allUsers) ?>) --</option>
                 <?php foreach ($allUsers as $u): ?>
                     <option value="<?= $u['id'] ?>" <?= ($filterUserId == $u['id']) ? 'selected' : '' ?>><?= htmlspecialchars($u['full_name'] . (!empty($u['employee_id']) ? ' (' . $u['employee_id'] . ')' : '')) ?></option>
                 <?php endforeach; ?>
@@ -394,13 +394,67 @@ $filterDateTo = $filterDateTo ?? date('Y-m-d');
                             <?php endif; ?>
                         </td>
                         <td class="text-end text-nowrap">
-                            <a href="javascript:void(0)" class="text-success fw-semibold text-decoration-none me-3 fs-12">View details</a>
-                            <i class="fa-solid fa-ellipsis-vertical text-muted cursor-pointer px-2"></i>
+                            <button type="button" class="btn btn-link text-success fw-semibold text-decoration-none p-0 fs-12" onclick="openActivityModal(event, <?= $p['user_id'] ?>)">View details</button>
                         </td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Details Modal -->
+<div class="modal fade" id="activityModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Activity Summary - <span id="modalUserName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="card p-3 text-center border-success bg-light">
+                            <h6 class="text-muted mb-1">New Leads</h6>
+                            <h4 class="mb-0 text-success" id="modalLeadsCount">0</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card p-3 text-center border-primary bg-light">
+                            <h6 class="text-muted mb-1">Follow-ups</h6>
+                            <h4 class="mb-0 text-primary" id="modalFollowUpsCount">0</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card p-3 text-center border-warning bg-light">
+                            <h6 class="text-muted mb-1">Bookings</h6>
+                            <h4 class="mb-0 text-warning" id="modalBookingsCount">0</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card p-3 text-center border-info bg-light">
+                            <h6 class="text-muted mb-1">Requisitions</h6>
+                            <h4 class="mb-0 text-info" id="modalFundReqsCount">0</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered" id="modalDailyTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Sessions</th>
+                                <th>First Login</th>
+                                <th>Last Active</th>
+                                <th>Active Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -576,4 +630,83 @@ document.addEventListener('DOMContentLoaded', function() {
         $('.select2').select2();
     }
 });
+
+// Handle View Details - Pure Raw JavaScript (no jQuery dependency)
+function openActivityModal(e, userId) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Get date filters using raw JS
+    var dateFrom = document.querySelector('input[name="date_from"]').value;
+    var dateTo   = document.querySelector('input[name="date_to"]').value;
+
+    // Reset modal fields
+    document.getElementById('modalUserName').textContent      = 'Loading...';
+    document.getElementById('modalLeadsCount').textContent    = '-';
+    document.getElementById('modalFollowUpsCount').textContent = '-';
+    document.getElementById('modalBookingsCount').textContent  = '-';
+    document.getElementById('modalFundReqsCount').textContent  = '-';
+    document.getElementById('modalDailyTable').querySelector('tbody').innerHTML = '';
+
+    // Show Bootstrap modal
+    var modalEl = document.getElementById('activityModal');
+    var bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    bsModal.show();
+
+    // Fetch data via raw XMLHttpRequest
+    var baseUrl = '<?= $base_url ?>';
+    var url = baseUrl + '/user-activity-log/employee-summary?user_id=' + encodeURIComponent(userId)
+            + '&date_from=' + encodeURIComponent(dateFrom)
+            + '&date_to='   + encodeURIComponent(dateTo);
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.onload = function() {
+        if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+                var response = JSON.parse(xhr.responseText);
+                if (response.error) {
+                    document.getElementById('modalUserName').textContent = response.error;
+                    return;
+                }
+                document.getElementById('modalUserName').textContent = response.employee.full_name;
+
+                if (response.activities) {
+                    document.getElementById('modalLeadsCount').textContent     = response.activities.new_leads;
+                    document.getElementById('modalFollowUpsCount').textContent = response.activities.follow_ups;
+                    document.getElementById('modalBookingsCount').textContent  = response.activities.bookings;
+                    document.getElementById('modalFundReqsCount').textContent  = response.activities.fund_requisitions;
+                }
+
+                var tbody = '';
+                if (response.daily && response.daily.length > 0) {
+                    response.daily.forEach(function(day) {
+                        var hrs  = Math.floor(day.active_minutes / 60);
+                        var mins = day.active_minutes % 60;
+                        tbody += '<tr>';
+                        tbody += '<td>' + day.log_date   + '</td>';
+                        tbody += '<td>' + day.sessions   + '</td>';
+                        tbody += '<td>' + day.first_login + '</td>';
+                        tbody += '<td>' + day.last_active + '</td>';
+                        tbody += '<td>' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm</td>';
+                        tbody += '</tr>';
+                    });
+                } else {
+                    tbody = '<tr><td colspan="5" class="text-center text-muted py-3">No activity found in this period.</td></tr>';
+                }
+                document.getElementById('modalDailyTable').querySelector('tbody').innerHTML = tbody;
+            } catch(parseErr) {
+                document.getElementById('modalUserName').textContent = 'Parse error. Check console.';
+                console.error(parseErr);
+            }
+        } else {
+            document.getElementById('modalUserName').textContent = 'Server error: ' + xhr.status;
+        }
+    };
+    xhr.onerror = function() {
+        document.getElementById('modalUserName').textContent = 'Network error. Could not load data.';
+    };
+    xhr.send();
+}
 </script>
