@@ -982,6 +982,7 @@ public function deleteBudget($id)
         // Header Columns
         $headers = [
             'Date',
+            'Project Category',
             'Facebook Lead Form',
             'Whatsapp',
             'Meta Inbox',
@@ -994,39 +995,114 @@ public function deleteBudget($id)
         $sheet->fromArray($headers, null, 'A1');
 
         $rowNum = 2;
+        $dateStartRow = 2;
+        $lastDate = null;
+        
+        $dailyTotals = [
+            'fb_count' => 0, 'wa_count' => 0, 'mi_count' => 0,
+            'gf_count' => 0, 'bl_count' => 0, 'others_count' => 0, 'total_count' => 0
+        ];
+
         foreach ($rows as $r) {
             $formattedDate = !empty($r['report_date']) ? date('d M Y', strtotime($r['report_date'])) : '-';
+
+            if ($lastDate !== null && $formattedDate !== $lastDate) {
+                // Output daily sub-total row
+                $sheet->setCellValue('A' . $rowNum, $lastDate);
+                $sheet->setCellValue('B' . $rowNum, 'Daily Total');
+                $sheet->setCellValue('C' . $rowNum, (int)$dailyTotals['fb_count']);
+                $sheet->setCellValue('D' . $rowNum, (int)$dailyTotals['wa_count']);
+                $sheet->setCellValue('E' . $rowNum, (int)$dailyTotals['mi_count']);
+                $sheet->setCellValue('F' . $rowNum, (int)$dailyTotals['gf_count']);
+                $sheet->setCellValue('G' . $rowNum, (int)$dailyTotals['bl_count']);
+                $sheet->setCellValue('H' . $rowNum, (int)$dailyTotals['others_count']);
+                $sheet->setCellValue('I' . $rowNum, (int)$dailyTotals['total_count']);
+                
+                $sheet->getStyle("A{$rowNum}:I{$rowNum}")->getFont()->setBold(true);
+                $sheet->getStyle("B{$rowNum}:I{$rowNum}")->getFill()
+                      ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                      ->getStartColor()->setARGB('FFF0F0F0');
+
+                if ($rowNum > $dateStartRow) {
+                    $sheet->mergeCells("A{$dateStartRow}:A" . $rowNum);
+                }
+
+                $rowNum++;
+                $dateStartRow = $rowNum;
+                
+                $dailyTotals = [
+                    'fb_count' => 0, 'wa_count' => 0, 'mi_count' => 0,
+                    'gf_count' => 0, 'bl_count' => 0, 'others_count' => 0, 'total_count' => 0
+                ];
+            }
+            $lastDate = $formattedDate;
+
             $sheet->setCellValue('A' . $rowNum, $formattedDate);
-            $sheet->setCellValue('B' . $rowNum, (int)$r['fb_count']);
-            $sheet->setCellValue('C' . $rowNum, (int)$r['wa_count']);
-            $sheet->setCellValue('D' . $rowNum, (int)$r['mi_count']);
-            $sheet->setCellValue('E' . $rowNum, (int)$r['gf_count']);
-            $sheet->setCellValue('F' . $rowNum, (int)$r['bl_count']);
-            $sheet->setCellValue('G' . $rowNum, (int)$r['others_count']);
-            $sheet->setCellValue('H' . $rowNum, (int)$r['total_count']);
+            $sheet->setCellValue('B' . $rowNum, $r['category_name'] ?? 'Common');
+            $sheet->setCellValue('C' . $rowNum, (int)$r['fb_count']);
+            $sheet->setCellValue('D' . $rowNum, (int)$r['wa_count']);
+            $sheet->setCellValue('E' . $rowNum, (int)$r['mi_count']);
+            $sheet->setCellValue('F' . $rowNum, (int)$r['gf_count']);
+            $sheet->setCellValue('G' . $rowNum, (int)$r['bl_count']);
+            $sheet->setCellValue('H' . $rowNum, (int)$r['others_count']);
+            $sheet->setCellValue('I' . $rowNum, (int)$r['total_count']);
+            
+            $dailyTotals['fb_count'] += (int)$r['fb_count'];
+            $dailyTotals['wa_count'] += (int)$r['wa_count'];
+            $dailyTotals['mi_count'] += (int)$r['mi_count'];
+            $dailyTotals['gf_count'] += (int)$r['gf_count'];
+            $dailyTotals['bl_count'] += (int)$r['bl_count'];
+            $dailyTotals['others_count'] += (int)$r['others_count'];
+            $dailyTotals['total_count'] += (int)$r['total_count'];
+            
+            $rowNum++;
+        }
+
+        if ($lastDate !== null) {
+            // Output final daily sub-total row
+            $sheet->setCellValue('A' . $rowNum, $lastDate);
+            $sheet->setCellValue('B' . $rowNum, 'Daily Total');
+            $sheet->setCellValue('C' . $rowNum, (int)$dailyTotals['fb_count']);
+            $sheet->setCellValue('D' . $rowNum, (int)$dailyTotals['wa_count']);
+            $sheet->setCellValue('E' . $rowNum, (int)$dailyTotals['mi_count']);
+            $sheet->setCellValue('F' . $rowNum, (int)$dailyTotals['gf_count']);
+            $sheet->setCellValue('G' . $rowNum, (int)$dailyTotals['bl_count']);
+            $sheet->setCellValue('H' . $rowNum, (int)$dailyTotals['others_count']);
+            $sheet->setCellValue('I' . $rowNum, (int)$dailyTotals['total_count']);
+            
+            $sheet->getStyle("A{$rowNum}:I{$rowNum}")->getFont()->setBold(true);
+            $sheet->getStyle("B{$rowNum}:I{$rowNum}")->getFill()
+                  ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                  ->getStartColor()->setARGB('FFF0F0F0');
+
+            if ($rowNum > $dateStartRow) {
+                $sheet->mergeCells("A{$dateStartRow}:A" . $rowNum);
+            }
             $rowNum++;
         }
 
         // Summary Total Row
         $sheet->setCellValue('A' . $rowNum, 'Total');
-        $sheet->setCellValue('B' . $rowNum, (int)$totals['fb_count']);
-        $sheet->setCellValue('C' . $rowNum, (int)$totals['wa_count']);
-        $sheet->setCellValue('D' . $rowNum, (int)$totals['mi_count']);
-        $sheet->setCellValue('E' . $rowNum, (int)$totals['gf_count']);
-        $sheet->setCellValue('F' . $rowNum, (int)$totals['bl_count']);
-        $sheet->setCellValue('G' . $rowNum, (int)$totals['others_count']);
-        $sheet->setCellValue('H' . $rowNum, (int)$totals['total_count']);
+        $sheet->mergeCells("A{$rowNum}:B{$rowNum}");
+        $sheet->setCellValue('C' . $rowNum, (int)$totals['fb_count']);
+        $sheet->setCellValue('D' . $rowNum, (int)$totals['wa_count']);
+        $sheet->setCellValue('E' . $rowNum, (int)$totals['mi_count']);
+        $sheet->setCellValue('F' . $rowNum, (int)$totals['gf_count']);
+        $sheet->setCellValue('G' . $rowNum, (int)$totals['bl_count']);
+        $sheet->setCellValue('H' . $rowNum, (int)$totals['others_count']);
+        $sheet->setCellValue('I' . $rowNum, (int)$totals['total_count']);
 
         // Column Dimensions
         $columnWidths = [
             'A' => 16,
-            'B' => 22,
-            'C' => 16,
+            'B' => 20,
+            'C' => 22,
             'D' => 16,
             'E' => 16,
-            'F' => 18,
-            'G' => 16,
+            'F' => 16,
+            'G' => 18,
             'H' => 16,
+            'I' => 16,
         ];
         foreach ($columnWidths as $col => $w) {
             $sheet->getColumnDimension($col)->setWidth($w);
@@ -1048,12 +1124,13 @@ public function deleteBudget($id)
                 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
             ],
         ];
-        $sheet->getStyle('A1:H1')->applyFromArray($headerStyle);
+        $sheet->getStyle('A1:I1')->applyFromArray($headerStyle);
         $sheet->getRowDimension(1)->setRowHeight(28);
 
         // Data Rows Alignment
-        $sheet->getStyle("A2:A{$rowNum}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle("B2:H{$rowNum}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle("A2:B{$rowNum}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("A2:A{$rowNum}")->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+        $sheet->getStyle("C2:I{$rowNum}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
 
         // Total Row Styling
         $totalStyle = [
@@ -1067,7 +1144,7 @@ public function deleteBudget($id)
                 'startColor' => ['rgb' => 'E8F5E9']
             ],
         ];
-        $sheet->getStyle("A{$rowNum}:H{$rowNum}")->applyFromArray($totalStyle);
+        $sheet->getStyle("A{$rowNum}:I{$rowNum}")->applyFromArray($totalStyle);
         $sheet->getRowDimension($rowNum)->setRowHeight(24);
 
         // Borders
@@ -1079,7 +1156,7 @@ public function deleteBudget($id)
                 ],
             ],
         ];
-        $sheet->getStyle("A1:H{$rowNum}")->applyFromArray($borderStyle);
+        $sheet->getStyle("A1:I{$rowNum}")->applyFromArray($borderStyle);
 
         // Freeze Pane
         $sheet->freezePane('A2');

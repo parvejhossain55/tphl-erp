@@ -153,55 +153,302 @@
                                     </a>
                                 </div>
                             </div>
+                            <?php
+                            if (!function_exists('formatBDMoneyUI')) {
+                                function formatBDMoneyUI($amount) {
+                                    if ($amount >= 10000000) {
+                                        return '৳<span class="fs-4 fw-bold">' . number_format($amount / 10000000, 2) . '</span> <span class="fs-6">Cr</span>';
+                                    } elseif ($amount >= 100000) {
+                                        return '৳<span class="fs-4 fw-bold">' . number_format($amount / 100000, 2) . '</span> <span class="fs-6">Lac</span>';
+                                    } elseif ($amount >= 1000) {
+                                        return '৳<span class="fs-4 fw-bold">' . number_format($amount / 1000, 2) . '</span> <span class="fs-6">K</span>';
+                                    }
+                                    return '৳<span class="fs-4 fw-bold">' . number_format($amount, 2) . '</span>';
+                                }
+                            }
+                            if (!function_exists('getInitialsUI')) {
+                                function getInitialsUI($name) {
+                                    $words = explode(' ', str_replace(['.', ',', 'MD', 'Mr'], '', $name));
+                                    $initials = '';
+                                    foreach ($words as $w) {
+                                        if (trim($w) != '') {
+                                            $initials .= strtoupper(substr(trim($w), 0, 1));
+                                        }
+                                    }
+                                    return substr($initials, 0, 2);
+                                }
+                            }
+                            ?>
+                            <style>
+                            :root {
+                                --rank-bg-color: #ffffff;
+                                --rank-text-color: #333333;
+                                --rank-border-color: #e2e8f0;
+                                --rank-muted-color: #64748b;
+                                --rank-card-bg: #f8fafc;
+                                --rank-progress-bg: #e2e8f0;
+                                
+                                --gold: #f59e0b;
+                                --gold-light: #fef3c7;
+                                --silver: #94a3b8;
+                                --silver-light: #f1f5f9;
+                                --bronze: #d97706;
+                                --bronze-light: #fef3c7;
+                                --default-rank: #334155;
+                                --default-rank-light: #f1f5f9;
+                            }
+
+                            [bd-theme="bd-theme-dark"] .modern-rank-card, [bd-theme="bd-theme-dark"] body, [data-bs-theme="dark"] body, body.dark-mode, body.dark-theme, body[class*="dark"], html[data-theme="dark"] body, html.dark body, body[data-theme="dark"] {
+                                --rank-bg-color: #1f242b;
+                                --rank-text-color: #f8fafc;
+                                --rank-border-color: #334155;
+                                --rank-muted-color: #94a3b8;
+                                --rank-card-bg: #21262d !important;
+                                --rank-card-border: #334155 !important;
+                                --rank-progress-bg: #334155;
+                            }
+
+                            .modern-rank-card {
+                                background: var(--rank-card-bg);
+                                border: 1px solid var(--rank-card-border, var(--rank-border-color));
+                                border-radius: 12px;
+                                padding: 1.25rem;
+                                color: var(--rank-text-color);
+                                position: relative;
+                                overflow: hidden;
+                                transition: transform 0.2s, box-shadow 0.2s;
+                            }
+                            
+                            /* Light Mode Shading for Top 3 */
+                            .m-rank-1 { --rank-card-bg: linear-gradient(145deg, #fffbf0 0%, #ffffff 100%); --rank-card-border: #fde68a; }
+                            .m-rank-2 { --rank-card-bg: linear-gradient(145deg, #f8f9fa 0%, #ffffff 100%); --rank-card-border: #e2e8f0; }
+                            .m-rank-3 { --rank-card-bg: linear-gradient(145deg, #fffaf5 0%, #ffffff 100%); --rank-card-border: #fed7aa; }
+
+                            .modern-rank-card:hover {
+                                transform: translateY(-4px);
+                                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+                            }
+
+                            .modern-rank-card::before {
+                                content: '';
+                                position: absolute;
+                                top: 0;
+                                left: 0;
+                                right: 0;
+                                height: 4px;
+                            }
+                            .m-rank-1::before { background-color: var(--gold); }
+                            .m-rank-2::before { background-color: var(--silver); }
+                            .m-rank-3::before { background-color: var(--bronze); }
+
+                            .avatar-circle {
+                                width: 48px;
+                                height: 48px;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-weight: bold;
+                                font-size: 1.1rem;
+                                flex-shrink: 0;
+                            }
+                            .m-rank-1 .avatar-circle { background-color: var(--gold); color: #fff; }
+                            .m-rank-2 .avatar-circle { background-color: var(--silver-light); color: var(--silver); }
+                            .m-rank-3 .avatar-circle { background-color: var(--bronze-light); color: var(--bronze); }
+                            .m-rank-other .avatar-circle { background-color: var(--default-rank-light); color: var(--default-rank); }
+
+                            .rank-badge {
+                                position: absolute;
+                                top: 1.25rem;
+                                right: 1.25rem;
+                                width: 32px;
+                                height: 32px;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-weight: 700;
+                                font-size: 0.9rem;
+                            }
+                            .m-rank-1 .rank-badge { background-color: var(--gold); color: #fff; }
+                            .m-rank-2 .rank-badge { background-color: var(--silver-light); color: var(--silver); }
+                            .m-rank-3 .rank-badge { background-color: var(--bronze-light); color: var(--bronze); }
+                            .m-rank-other .rank-badge { background-color: var(--default-rank-light); color: var(--default-rank); }
+
+                            .circular-chart {
+                                display: block;
+                                margin: 0 auto;
+                                max-width: 90px;
+                                max-height: 90px;
+                            }
+                            .circle-bg {
+                                fill: none;
+                                stroke: var(--rank-progress-bg);
+                                stroke-width: 3.8;
+                            }
+                            .circle {
+                                fill: none;
+                                stroke-width: 3.8;
+                                stroke-linecap: round;
+                                animation: progress 1s ease-out forwards;
+                            }
+                            @keyframes progress {
+                                0% { stroke-dasharray: 0 100; }
+                            }
+                            .percentage {
+                                fill: var(--rank-text-color);
+                                font-family: sans-serif;
+                                font-size: 0.45em;
+                                text-anchor: middle;
+                                font-weight: bold;
+                            }
+                            .score-label {
+                                fill: var(--rank-muted-color);
+                                font-family: sans-serif;
+                                font-size: 0.25em;
+                                text-anchor: middle;
+                            }
+                            .m-rank-1 .circle { stroke: #10b981; } 
+                            .m-rank-2 .circle { stroke: #f59e0b; } 
+                            .m-rank-3 .circle { stroke: #ef4444; } 
+                            .m-rank-other .circle { stroke: #ef4444; }
+
+                            .linear-progress-container {
+                                background-color: var(--rank-progress-bg);
+                                height: 4px;
+                                border-radius: 2px;
+                                width: 100%;
+                                margin-top: 4px;
+                                overflow: hidden;
+                            }
+                            .linear-progress-bar {
+                                height: 100%;
+                                border-radius: 2px;
+                            }
+                            .progress-green { background-color: #10b981; }
+                            .progress-orange { background-color: #f59e0b; }
+                            .progress-red { background-color: #ef4444; }
+                            
+                            @media print {
+                                .modern-rank-card {
+                                    -webkit-print-color-adjust: exact !important;
+                                    print-color-adjust: exact !important;
+                                    box-shadow: none !important;
+                                    break-inside: avoid;
+                                }
+                            }
+                            </style>
                             <?php 
                             $inds = $monthlyData['individuals'] ?? []; 
                             $count = 0;
+                            // Find max units for progress bars
+                            $maxUnitsTeam = 1;
+                            foreach($inds as $e) { if($e['units_sold'] > $maxUnitsTeam) $maxUnitsTeam = $e['units_sold']; }
+
                             foreach($inds as $emp): 
                                 if($count >= 10) break; // Top 10
-                                $badgeColor = $count == 0 ? 'bg-warning' : ($count == 1 ? 'bg-secondary' : 'bg-primary');
+                                $rank = $count + 1;
+                                
+                                $rankClass = $rank <= 3 ? "m-rank-$rank" : "m-rank-other";
+                                $iconHtml = '';
+                                if ($rank == 1) $iconHtml = '<i class="fa-solid fa-crown text-warning me-1"></i>';
+                                elseif ($rank == 2) $iconHtml = '<i class="fa-solid fa-medal text-secondary me-1"></i>';
+                                elseif ($rank == 3) $iconHtml = '<i class="fa-solid fa-medal" style="color:#d97706;"></i>';
+
+                                $initials = getInitialsUI($emp['member_name']);
+                                $achievedVolText = formatBDMoneyUI($emp['total_volume_achieved']);
+                                $targetVolText = $emp['volume_target'] > 0 ? 'Tk ' . number_format($emp['volume_target']) : 'not set';
+                                $scorePct = number_format($emp['performance_score'], 1);
+                                
+                                // Progress calculations
+                                $unitPct = ($emp['units_sold'] / $maxUnitsTeam) * 100;
+                                $unitColor = $unitPct >= 80 ? 'progress-green' : ($unitPct >= 50 ? 'progress-orange' : 'progress-red');
+                                
+                                $followUpPct = $emp['follow_up_pct'];
+                                $followUpColor = $followUpPct >= 80 ? 'progress-green' : ($followUpPct >= 50 ? 'progress-orange' : 'progress-red');
+                                $followUpText = $followUpPct >= 80 ? 'high' : ($followUpPct >= 50 ? 'fair' : 'low');
                             ?>
                             <div class="col-md-4 mb-3">
-                                <div class="card border border-primary shadow-sm h-100 ranking-performer-card" 
-                                     style="transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;"
+                                <div class="modern-rank-card <?= $rankClass ?> h-100" 
                                      data-bs-toggle="modal"
                                      data-bs-target="#rankingBreakdownModal"
-                                     data-emp='<?= htmlspecialchars(json_encode($emp), ENT_QUOTES, 'UTF-8') ?>'
-                                     title="Click card to view ranking breakdown">
-                                    <div class="card-body d-flex flex-column justify-content-between">
+                                     data-emp='<?= htmlspecialchars(json_encode($emp), ENT_QUOTES, 'UTF-8') ?>'>
+                                    
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="avatar-circle me-3"><?= $initials ?></div>
                                         <div>
-                                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                                <h5 class="mb-0 fw-bold text-dark"><?= htmlspecialchars($emp['member_name']) ?></h5>
-                                                <span class="badge <?= $badgeColor ?> fs-6 px-3 py-1">#<?= $emp['rank'] ?></span>
+                                            <h6 class="mb-0 fw-bold d-flex align-items-center" style="color: var(--rank-text-color);">
+                                                <?= $iconHtml ?> <?= htmlspecialchars($emp['member_name']) ?>
+                                            </h6>
+                                            <small style="color: var(--rank-muted-color); font-size: 11px;">
+                                                <?= htmlspecialchars($emp['level_designation']) ?> &bull; <?= htmlspecialchars($emp['team_name']) ?>
+                                            </small>
+                                        </div>
+                                        <div class="rank-badge">#<?= $rank ?></div>
+                                    </div>
+                                    
+                                    <div class="d-flex mb-3 align-items-center">
+                                        <div class="me-3" style="width: 80px;">
+                                            <svg viewBox="0 0 36 36" class="circular-chart">
+                                                <path class="circle-bg"
+                                                    d="M18 2.0845
+                                                    a 15.9155 15.9155 0 0 1 0 31.831
+                                                    a 15.9155 15.9155 0 0 1 0 -31.831"
+                                                />
+                                                <path class="circle"
+                                                    stroke-dasharray="<?= $scorePct ?>, 100"
+                                                    d="M18 2.0845
+                                                    a 15.9155 15.9155 0 0 1 0 31.831
+                                                    a 15.9155 15.9155 0 0 1 0 -31.831"
+                                                />
+                                                <text x="18" y="17" class="percentage"><?= $scorePct ?>%</text>
+                                                <text x="18" y="24" class="score-label">SCORE</text>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 10px; color: var(--rank-muted-color); font-weight: bold; letter-spacing: 0.5px;">ACHIEVED VOLUME</div>
+                                            <div class="mb-1" style="color: var(--rank-text-color);"><?= $achievedVolText ?></div>
+                                            <div style="font-size: 11px; color: var(--rank-muted-color); margin-bottom: 5px;">Tk <?= number_format($emp['total_volume_achieved'], 2) ?></div>
+                                            <span class="badge" style="background-color: var(--rank-progress-bg); color: var(--rank-text-color); font-size: 10px; font-weight: normal;"><i class="fa-solid fa-circle text-muted" style="font-size: 6px; vertical-align: middle;"></i> Target: <?= $targetVolText ?></span>
+                                        </div>
+                                    </div>
+
+                                    <hr style="border-color: var(--rank-border-color); opacity: 0.5;">
+                                    
+                                    <div class="row mb-3">
+                                        <div class="col-6 pe-2">
+                                            <div class="d-flex justify-content-between align-items-end mb-1">
+                                                <span style="font-size: 10px; color: var(--rank-muted-color); font-weight: bold;">UNITS SOLD</span>
                                             </div>
-                                            <p class="text-muted fs-12 mb-3"><?= htmlspecialchars($emp['level_designation']) ?> &bull; <?= htmlspecialchars($emp['team_name']) ?></p>
-                                            
-                                            <div class="p-2 bg-light rounded border mb-3">
-                                                <div class="d-flex justify-content-between mb-1 fs-13">
-                                                    <span class="text-muted">Total Performance Score:</span>
-                                                    <span class="fw-bold text-success fs-14"><?= number_format($emp['performance_score'], 2) ?>%</span>
-                                                </div>
-                                                <div class="d-flex justify-content-between mb-1 fs-13">
-                                                    <span class="text-muted">Achieved Volume:</span>
-                                                    <span class="fw-bold text-dark">Tk <?= number_format($emp['total_volume_achieved'], 2) ?></span>
-                                                </div>
-                                                <div class="d-flex justify-content-between mb-1 fs-13">
-                                                    <span class="text-muted">Units Sold:</span>
-                                                    <span class="fw-bold text-primary"><?= $emp['units_sold'] ?> unit(s)</span>
-                                                </div>
-                                                <div class="d-flex justify-content-between fs-13">
-                                                    <span class="text-muted">Follow Up Rate:</span>
-                                                    <span class="fw-bold"><?= $emp['follow_up_pct'] ?>%</span>
-                                                </div>
+                                            <div class="d-flex justify-content-between align-items-end">
+                                                <span class="fw-bold fs-5" style="color: var(--rank-text-color);"><?= $emp['units_sold'] ?></span>
+                                                <span style="font-size: 10px; color: var(--rank-muted-color);">of <?= $maxUnitsTeam ?> top</span>
+                                            </div>
+                                            <div class="linear-progress-container">
+                                                <div class="linear-progress-bar <?= $unitColor ?>" style="width: <?= $unitPct ?>%"></div>
                                             </div>
                                         </div>
-
-                                        <button type="button" class="btn btn-sm btn-outline-primary w-100 fw-semibold view-ranking-breakdown-btn mt-2" 
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#rankingBreakdownModal"
-                                                data-emp="<?= htmlspecialchars(json_encode($emp), ENT_QUOTES, 'UTF-8') ?>">
-                                            <i class="fa-solid fa-chart-line me-1"></i> View Ranking Breakdown
-                                        </button>
+                                        <div class="col-6 ps-2">
+                                            <div class="d-flex justify-content-between align-items-end mb-1">
+                                                <span style="font-size: 10px; color: var(--rank-muted-color); font-weight: bold;">FOLLOW UP RATE</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between align-items-end">
+                                                <span class="fw-bold fs-5" style="color: var(--rank-text-color);"><?= $followUpPct ?>%</span>
+                                                <span style="font-size: 10px; color: var(--rank-muted-color);"><?= $followUpText ?></span>
+                                            </div>
+                                            <div class="linear-progress-container">
+                                                <div class="linear-progress-bar <?= $followUpColor ?>" style="width: <?= $followUpPct ?>%"></div>
+                                            </div>
+                                        </div>
                                     </div>
+
+                                    <button type="button" class="btn w-100 fw-semibold" 
+                                            style="background-color: var(--rank-progress-bg); color: var(--rank-text-color); font-size: 13px; border: 1px solid var(--rank-border-color);"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#rankingBreakdownModal"
+                                            data-emp="<?= htmlspecialchars(json_encode($emp), ENT_QUOTES, 'UTF-8') ?>">
+                                        View Ranking Breakdown
+                                    </button>
                                 </div>
                             </div>
                             <?php $count++; endforeach; ?>

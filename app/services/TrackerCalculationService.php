@@ -567,6 +567,17 @@ class TrackerCalculationService
             }
         }
 
+        // 5. Pre-calculate Maximums for Relative Scoring (When Target is 0)
+        $maxUnitsSold = 0;
+        $maxVisits = 0;
+        $maxVolume = 0;
+        foreach ($employees as $empTemp) {
+            $vol = $empTemp['volume_assigned'] + $empTemp['volume_unassigned'];
+            if ($vol > $maxVolume) $maxVolume = $vol;
+            if ($empTemp['units_sold'] > $maxUnitsSold) $maxUnitsSold = $empTemp['units_sold'];
+            if ($empTemp['visited'] > $maxVisits) $maxVisits = $empTemp['visited'];
+        }
+
         // Calculate Percentages, Weighted Ranking Score, and Target Vs Achievement 8-Pillar Scorecard
         foreach ($employees as $uid => &$emp) {
             $emp['total_volume_achieved'] = $emp['volume_assigned'] + $emp['volume_unassigned'];
@@ -590,31 +601,50 @@ class TrackerCalculationService
                 ? min(100, round(($emp['interested'] / $emp['total_contacted']) * 100, 2)) 
                 : 0;
 
-            $emp['unit_ach_pct'] = $emp['unit_target'] > 0 
-                ? round(($emp['units_sold'] / $emp['unit_target']) * 100, 2) 
-                : ($emp['units_sold'] > 0 ? 100 : 0);
-
-            $emp['visit_ach_pct'] = $emp['visit_target'] > 0 
-                ? round(($emp['visited'] / $emp['visit_target']) * 100, 2) 
-                : ($emp['visited'] > 0 ? 100 : 0);
-
-            $emp['volume_ach_pct'] = $emp['volume_target'] > 0 
-                ? round(($emp['total_volume_achieved'] / $emp['volume_target']) * 100, 2) 
-                : ($emp['total_volume_achieved'] > 0 ? 100 : 0);
-
             // Backwards compatibility alias for older views
             $emp['total_follow_up'] = $emp['unique_leads_followed'];
 
-            // Weighted Analytical Performance Score:
-            // 45% Volume Achievement + 20% Unit Achievement + 15% Site Visits + 10% Contacted Rate + 10% Lead Coverage
-            $emp['performance_score'] = round(
-                ($emp['volume_ach_pct'] * 0.45) + 
-                ($emp['unit_ach_pct'] * 0.20) + 
-                ($emp['visit_ach_pct'] * 0.15) + 
-                ($emp['contacted_pct'] * 0.10) + 
-                ($emp['follow_up_pct'] * 0.10),
-                2
-            );
+            $hasTarget = ($emp['volume_target'] > 0 || $emp['unit_target'] > 0);
+
+            if ($hasTarget) {
+                $emp['unit_ach_pct'] = $emp['unit_target'] > 0 
+                    ? round(($emp['units_sold'] / $emp['unit_target']) * 100, 2) 
+                    : 0;
+
+                $emp['visit_ach_pct'] = $emp['visit_target'] > 0 
+                    ? round(($emp['visited'] / $emp['visit_target']) * 100, 2) 
+                    : 0;
+
+                $emp['volume_ach_pct'] = $emp['volume_target'] > 0 
+                    ? round(($emp['total_volume_achieved'] / $emp['volume_target']) * 100, 2) 
+                    : 0;
+
+                // Weighted Analytical Performance Score:
+                // 45% Volume Achievement + 20% Unit Achievement + 15% Site Visits + 10% Contacted Rate + 10% Lead Coverage
+                $emp['performance_score'] = round(
+                    ($emp['volume_ach_pct'] * 0.45) + 
+                    ($emp['unit_ach_pct'] * 0.20) + 
+                    ($emp['visit_ach_pct'] * 0.15) + 
+                    ($emp['contacted_pct'] * 0.10) + 
+                    ($emp['follow_up_pct'] * 0.10),
+                    2
+                );
+            } else {
+                // If NO target is set, score is purely based on relative performance compared to the top performer
+                $emp['unit_ach_pct'] = ($maxUnitsSold > 0) ? round(($emp['units_sold'] / $maxUnitsSold) * 100, 2) : 0;
+                $emp['visit_ach_pct'] = ($maxVisits > 0) ? round(($emp['visited'] / $maxVisits) * 100, 2) : 0;
+                $emp['volume_ach_pct'] = ($maxVolume > 0) ? round(($emp['total_volume_achieved'] / $maxVolume) * 100, 2) : 0;
+                
+                // Adjusted Weights: Since target is missing, heavily weight their raw unit and volume output
+                $emp['performance_score'] = round(
+                    ($emp['volume_ach_pct'] * 0.45) + 
+                    ($emp['unit_ach_pct'] * 0.35) + 
+                    ($emp['visit_ach_pct'] * 0.10) + 
+                    ($emp['contacted_pct'] * 0.05) + 
+                    ($emp['follow_up_pct'] * 0.05),
+                    2
+                );
+            }
 
             // -------------------------------------------------------------
             // Target Vs Achievement 8-Pillar 100% Scorecard Calculation
@@ -730,8 +760,21 @@ class TrackerCalculationService
         }
         unset($emp);
 
-        // Sort for Individual Ranking (Activity Weighted Score)
+        // Sort for Individual Ranking
         uasort($employees, function($a, $b) {
+            // 1. Sort by Achieved Volume
+            if (abs($a['total_volume_achieved'] - $b['total_volume_achieved']) > 0.01) {
+                return $b['total_volume_achieved'] <=> $a['total_volume_achieved'];
+            }
+            // 2. Sort by Units Sold if volume is equal
+            if ($a['units_sold'] != $b['units_sold']) {
+                return $b['units_sold'] <=> $a['units_sold'];
+            }
+            // 3. Sort by Visits Done if units are equal
+            if ($a['visited'] != $b['visited']) {
+                return $b['visited'] <=> $a['visited'];
+            }
+            // 4. Fallback to Performance Score
             return $b['performance_score'] <=> $a['performance_score'];
         });
 

@@ -52,6 +52,15 @@ class SalesDashboardController extends Controller
         $dashboardEndDate = $_GET['dashboard_end_date'] ?? '';
         $dateFilterType = $_GET['date_filter_type'] ?? 'custom';
 
+        // Default to current cycle if no dates are provided
+        if (empty($dashboardStartDate) && empty($dashboardEndDate) && $dateFilterType !== 'today') {
+            $y = (int)date('Y');
+            $m = (int)date('m');
+            $cycle = $this->userModel->getCycleDateRange($y, $m);
+            $dashboardStartDate = date('Y-m-d', strtotime($cycle['start']));
+            $dashboardEndDate = date('Y-m-d', strtotime($cycle['end']));
+        }
+
         if ($dateFilterType === 'today') {
             $dashboardStartDate = date('Y-m-d');
             $dashboardEndDate = date('Y-m-d');
@@ -239,7 +248,12 @@ class SalesDashboardController extends Controller
         if ($salesStartDate && $salesEndDate && preg_match('/^\d{4}-\d{2}-\d{2}$/', $salesStartDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $salesEndDate)) {
             $monthlySalesQuery .= " AND DATE(lb.booking_date) >= '" . $salesStartDate . "' AND DATE(lb.booking_date) <= '" . $salesEndDate . "'";
         } else {
-            $monthlySalesQuery .= " AND lb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+            $y = (int)date('Y');
+            $m = (int)date('m');
+            $cycle = $this->userModel->getCycleDateRange($y, $m);
+            $start = date('Y-m-d', strtotime($cycle['start']));
+            $end = date('Y-m-d', strtotime($cycle['end']));
+            $monthlySalesQuery .= " AND DATE(lb.booking_date) >= '" . $start . "' AND DATE(lb.booking_date) <= '" . $end . "'";
         }
         if (!empty($teamId)) {
             $monthlySalesQuery .= " AND l.team_id = " . (int) $teamId;
