@@ -57,7 +57,7 @@ class ApprovalRequest extends Model
         }
 
         $stmt->bind_param(
-            "ssssiiissdsdsis",
+            "ssssiiissdssdis",
             $department,
             $request_type,
             $title,

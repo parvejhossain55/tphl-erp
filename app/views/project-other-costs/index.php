@@ -30,8 +30,8 @@
         <?php 
         $userId = $_SESSION['user']['id'] ?? ($userId ?? null);
         $isApprover = in_array($roleId, [1, 3, 6, 9, 13, 15, 20, 22, 24, 25, 30, 32, 33]) || !empty($isReportingBoss);
-        $showApprovalTab = !empty($approvalRequests) || $isApprover;
-        $activeTab = ($isApprover || !empty($approvalRequests)) && empty($myRequests) ? 'approval' : ($isApprover ? 'approval' : 'my-requests');
+        $showApprovalTab = !empty($allApprovalRequests) || $isApprover;
+        $activeTab = $_GET['tab'] ?? (($isApprover || !empty($pendingApprovalRequests)) ? 'pending-approval' : 'my-requests');
         ?>
 
         <!-- Nav tabs -->
@@ -39,9 +39,14 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link <?= $activeTab === 'my-requests' ? 'active' : '' ?>" id="my-requests-tab" data-bs-toggle="tab" data-bs-target="#my-requests" type="button" role="tab" aria-controls="my-requests" aria-selected="<?= $activeTab === 'my-requests' ? 'true' : 'false' ?>">My Requests</button>
             </li>
+            <?php if($isApprover || !empty($pendingApprovalRequests)): ?>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link <?= $activeTab === 'pending-approval' ? 'active' : '' ?>" id="pending-approval-tab" data-bs-toggle="tab" data-bs-target="#pending-approval" type="button" role="tab" aria-controls="pending-approval" aria-selected="<?= $activeTab === 'pending-approval' ? 'true' : 'false' ?>">Pending My Approval</button>
+            </li>
+            <?php endif; ?>
             <?php if($showApprovalTab): ?>
             <li class="nav-item" role="presentation">
-                <button class="nav-link <?= $activeTab === 'approval' ? 'active' : '' ?>" id="approval-tab" data-bs-toggle="tab" data-bs-target="#approval" type="button" role="tab" aria-controls="approval" aria-selected="<?= $activeTab === 'approval' ? 'true' : 'false' ?>">Approval Requests</button>
+                <button class="nav-link <?= $activeTab === 'all-approval' ? 'active' : '' ?>" id="all-approval-tab" data-bs-toggle="tab" data-bs-target="#all-approval" type="button" role="tab" aria-controls="all-approval" aria-selected="<?= $activeTab === 'all-approval' ? 'true' : 'false' ?>">All Processed / Requests</button>
             </li>
             <?php endif; ?>
         </ul>
@@ -138,9 +143,9 @@
                 </div>
             </div>
 
-            <!-- Approval Requests Tab -->
-            <?php if($showApprovalTab): ?>
-            <div class="tab-pane fade <?= $activeTab === 'approval' ? 'show active' : '' ?>" id="approval" role="tabpanel" aria-labelledby="approval-tab">
+            <!-- Pending Approval Requests Tab -->
+            <?php if($isApprover || !empty($pendingApprovalRequests)): ?>
+            <div class="tab-pane fade <?= $activeTab === 'pending-approval' ? 'show active' : '' ?>" id="pending-approval" role="tabpanel" aria-labelledby="pending-approval-tab">
                 <div class="card shadow-sm">
                     <div class="card-body mt-3 table-responsive">
                         <table class="table table-hover table-striped custom-table mb-0 datatable">
@@ -158,19 +163,14 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if (!empty($approvalRequests)): ?>
-                                    <?php foreach ($approvalRequests as $index => $row): ?>
+                                <?php if (!empty($pendingApprovalRequests)): ?>
+                                    <?php foreach ($pendingApprovalRequests as $index => $row): ?>
                                         <tr>
                                             <td><?= $index + 1 ?></td>
                                             <td><?= htmlspecialchars($row['project_name']) ?></td>
                                             <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $row['rcost_type']))) ?></td>
                                             <td><?= number_format($row['request_amount'], 2) ?></td>
-                                            <td>
-                                                <?= $row['approved_amount'] ? number_format($row['approved_amount'], 2) : '-' ?>
-                                                <?php if ($row['status'] === 'paid' && !empty($row['payment_amount'])): ?>
-                                                    <small class="text-primary d-block font-monospace fw-bold">Paid: <?= number_format($row['payment_amount'], 2) ?></small>
-                                                <?php endif; ?>
-                                            </td>
+                                            <td><?= !empty($row['approved_amount']) ? number_format($row['approved_amount'], 2) : '-' ?></td>
                                             <td>
                                                 <?php if (!empty($row['attachment'])): ?>
                                                     <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= $row['attachment'] ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View</a>
@@ -179,24 +179,18 @@
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <?php if ($row['dept_head_status'] === 'pending'): ?>
-                                                    <span class="badge bg-warning text-dark mb-1">
-                                                        <i class="bi bi-clock me-1"></i>Dept Head Pending
-                                                    </span>
-                                                    <?php if (!empty($row['designated_dh_name'])): ?>
-                                                        <div class="text-muted" style="font-size: 0.75rem;">
-                                                            Approver: <strong><?= htmlspecialchars($row['designated_dh_name']) ?></strong>
-                                                        </div>
-                                                    <?php endif; ?>
-                                                <?php else: ?>
-                                                    <span class="badge bg-<?= $row['status'] == 'pending' ? 'warning' : ($row['status'] == 'paid' ? 'success' : ($row['status'] == 'rejected' ? 'danger' : 'info')) ?>">
-                                                        <?= ucfirst(str_replace('_', ' ', $row['status'])) ?>
-                                                    </span>
-                                                    <?php if ($row['dept_head_status'] === 'approved'): ?>
-                                                        <div class="text-success" style="font-size: 0.75rem;">
-                                                            <i class="bi bi-check-circle"></i> Dept Head Approved
-                                                        </div>
-                                                    <?php endif; ?>
+                                                <?php if ($row['status'] == 'pending'): ?>
+                                                    <span class="badge bg-warning text-dark mb-1">Pending</span>
+                                                <?php elseif ($row['status'] == 'qc_approved'): ?>
+                                                    <span class="badge bg-info text-white mb-1">Qc approved</span>
+                                                <?php elseif ($row['status'] == 'management_approved'): ?>
+                                                    <span class="badge bg-primary text-white mb-1">Management approved</span>
+                                                <?php endif; ?>
+                                                
+                                                <?php if ($row['dept_head_status'] === 'approved'): ?>
+                                                    <div class="text-success" style="font-size: 0.75rem;">
+                                                        <i class="bi bi-check-circle"></i> Dept Head Approved
+                                                    </div>
                                                 <?php endif; ?>
                                             </td>
                                             <td>
@@ -218,11 +212,105 @@
                                                     ?>
                                                     
                                                     <?php if ($canApprove): ?>
-                                                        <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs/review/<?= $row['id'] ?>" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm">
+                                                        <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs/review/<?= $row['id'] ?>" class="btn btn-sm btn-success rounded-2 px-3 shadow-sm">
                                                             <i class="fa-solid fa-up-right-from-square me-1"></i>Review / Process
                                                         </a>
                                                     <?php else: ?>
-                                                        <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs/review/<?= $row['id'] ?>" class="btn btn-sm btn-info rounded-2 px-3 shadow-sm">
+                                                        <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs/review/<?= $row['id'] ?>" class="btn btn-sm btn-info rounded-2 px-3 shadow-sm text-white">
+                                                            <i class="bi bi-eye me-1"></i>View Module Page
+                                                        </a>
+                                                    <?php endif; ?>
+                                                    
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- All Approval Requests Tab -->
+            <?php if($showApprovalTab): ?>
+            <div class="tab-pane fade <?= $activeTab === 'all-approval' ? 'show active' : '' ?>" id="all-approval" role="tabpanel" aria-labelledby="all-approval-tab">
+                <div class="card shadow-sm">
+                    <div class="card-body mt-3 table-responsive">
+                        <table class="table table-hover table-striped custom-table mb-0 datatable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Project</th>
+                                    <th>Cost Type</th>
+                                    <th>Request Amount</th>
+                                    <th>Approved Amount</th>
+                                    <th>Attachment</th>
+                                    <th>Status</th>
+                                    <th>Created By & Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($allApprovalRequests)): ?>
+                                    <?php foreach ($allApprovalRequests as $index => $row): ?>
+                                        <tr>
+                                            <td><?= $index + 1 ?></td>
+                                            <td><?= htmlspecialchars($row['project_name']) ?></td>
+                                            <td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $row['rcost_type']))) ?></td>
+                                            <td><?= number_format($row['request_amount'], 2) ?></td>
+                                            <td><?= !empty($row['approved_amount']) ? number_format($row['approved_amount'], 2) : '-' ?></td>
+                                            <td>
+                                                <?php if (!empty($row['attachment'])): ?>
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= $row['attachment'] ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View</a>
+                                                <?php else: ?>
+                                                    -
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?php if ($row['status'] == 'pending'): ?>
+                                                    <span class="badge bg-warning text-dark mb-1">Pending</span>
+                                                <?php elseif ($row['status'] == 'qc_approved'): ?>
+                                                    <span class="badge bg-info text-white mb-1">Qc approved</span>
+                                                <?php elseif ($row['status'] == 'management_approved'): ?>
+                                                    <span class="badge bg-primary text-white mb-1">Management approved</span>
+                                                <?php elseif ($row['status'] == 'paid'): ?>
+                                                    <span class="badge bg-success mb-1">Paid</span>
+                                                <?php elseif ($row['status'] == 'rejected'): ?>
+                                                    <span class="badge bg-danger mb-1">Rejected</span>
+                                                <?php endif; ?>
+                                                
+                                                <?php if ($row['dept_head_status'] === 'approved'): ?>
+                                                    <div class="text-success" style="font-size: 0.75rem;">
+                                                        <i class="bi bi-check-circle"></i> Dept Head Approved
+                                                    </div>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <div class="fw-bold"><?= htmlspecialchars($row['created_by_name'] ?? 'N/A') ?></div>
+                                                <div class="text-muted" style="font-size: 0.85rem;"><?= date('d M Y h:i A', strtotime($row['created_at'])) ?></div>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex gap-2">
+                                                    <?php
+                                                     $canApprove = false;
+                                                    
+                                                    $creatorReportingUserId = (int)($row['creator_reporting_user_id'] ?? 0);
+                                                    $isDeptHead = ($row['dept_head_status'] === 'pending' && ($creatorReportingUserId === (int)$userId || $roleId === 1));
+                                                    
+                                                    if ($isDeptHead) $canApprove = true;
+                                                    if ($row['status'] == 'pending' && $row['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25, 1])) $canApprove = true;
+                                                    if ($row['status'] == 'qc_approved' && in_array($roleId, [3, 15, 20, 22, 32, 1])) $canApprove = true;
+                                                    if ($row['status'] == 'management_approved' && in_array($roleId, [6, 30, 1])) $canApprove = true;
+                                                    ?>
+                                                    
+                                                    <?php if ($canApprove): ?>
+                                                        <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs/review/<?= $row['id'] ?>" class="btn btn-sm btn-success rounded-2 px-3 shadow-sm">
+                                                            <i class="fa-solid fa-up-right-from-square me-1"></i>Review / Process
+                                                        </a>
+                                                    <?php else: ?>
+                                                        <a href="<?= $GLOBALS['base_url'] ?>/project-other-costs/review/<?= $row['id'] ?>" class="btn btn-sm btn-info rounded-2 px-3 shadow-sm text-white">
                                                             <i class="bi bi-eye me-1"></i>View Module Page
                                                         </a>
                                                     <?php endif; ?>
@@ -245,7 +333,6 @@
                                                 </div>
                                             </td>
                                         </tr>
-
                                     <?php endforeach; ?>
                                 <?php endif; ?>
                             </tbody>

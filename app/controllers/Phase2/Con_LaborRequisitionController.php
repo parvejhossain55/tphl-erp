@@ -165,8 +165,10 @@ class Con_LaborRequisitionController extends Controller
 
         $attachment = null;
         if (!empty($_FILES['attachment']['name'])) {
-            $uploadDir = 'public/uploads/labor_requisitions/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/labor_requisitions/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
             $ext  = strtolower(pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION));
             $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'];
             if (in_array($ext, $allowedExts)) {

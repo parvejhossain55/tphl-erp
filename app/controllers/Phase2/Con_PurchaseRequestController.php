@@ -192,7 +192,7 @@ class Con_PurchaseRequestController extends Controller
 
         $attachment = null;
         if (!empty($_FILES['attachment']['name'])) {
-            $uploadDir = 'public/uploads/pr_attachments/';
+            $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/pr_attachments/';
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0777, true);
             }

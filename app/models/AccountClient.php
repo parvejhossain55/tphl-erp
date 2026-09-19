@@ -1772,15 +1772,18 @@ ORDER BY lb.booking_date DESC
                         END, ')')
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI SETTLEMENT'
                     WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
-                    THEN CONCAT(es.emi_no, 
-                        CASE 
-                            WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
-                            WHEN es.emi_no % 10 = 1 THEN 'st'
-                            WHEN es.emi_no % 10 = 2 THEN 'nd'
-                            WHEN es.emi_no % 10 = 3 THEN 'rd'
-                            ELSE 'th'
-                        END, ' Installment'
-                    )
+                    THEN CASE 
+                        WHEN lp.due_emi_amount > 0.01 OR EXISTS (SELECT 1 FROM lead_payments child WHERE child.parent_payment_id = lp.id AND child.settlement_type = 'emi_due_settlement') THEN 'Installment Advance'
+                        ELSE CONCAT(es.emi_no, 
+                            CASE 
+                                WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
+                                WHEN es.emi_no % 10 = 1 THEN 'st'
+                                WHEN es.emi_no % 10 = 2 THEN 'nd'
+                                WHEN es.emi_no % 10 = 3 THEN 'rd'
+                                ELSE 'th'
+                            END, ' Installment'
+                        )
+                    END
                     WHEN lp.payment_type = 'registration' THEN 'REGISTRATION'
                     WHEN lp.payment_type = 'booking_money' THEN 'BOOKING'
                     WHEN lp.payment_type = 'land_share' THEN 'LAND SHARE'
@@ -1931,15 +1934,18 @@ ORDER BY lb.booking_date DESC
                         END, ')')
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI SETTLEMENT'
                     WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
-                    THEN CONCAT(es.emi_no, 
-                        CASE 
-                            WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
-                            WHEN es.emi_no % 10 = 1 THEN 'st'
-                            WHEN es.emi_no % 10 = 2 THEN 'nd'
-                            WHEN es.emi_no % 10 = 3 THEN 'rd'
-                            ELSE 'th'
-                        END, ' Installment'
-                    )
+                    THEN CASE 
+                        WHEN lp.due_emi_amount > 0.01 OR EXISTS (SELECT 1 FROM lead_payments child WHERE child.parent_payment_id = lp.id AND child.settlement_type = 'emi_due_settlement') THEN 'Installment Advance'
+                        ELSE CONCAT(es.emi_no, 
+                            CASE 
+                                WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
+                                WHEN es.emi_no % 10 = 1 THEN 'st'
+                                WHEN es.emi_no % 10 = 2 THEN 'nd'
+                                WHEN es.emi_no % 10 = 3 THEN 'rd'
+                                ELSE 'th'
+                            END, ' Installment'
+                        )
+                    END
                     WHEN lp.payment_type = 'registration' THEN 'REGISTRATION'
                     WHEN lp.payment_type = 'booking_money' THEN 'BOOKING'
                     WHEN lp.payment_type = 'land_share' THEN 'LAND SHARE'
@@ -2299,16 +2305,19 @@ ORDER BY lb.booking_date DESC
                                WHEN parent_es.emi_no % 10 = 3 THEN 'rd'
                                ELSE 'th'
                            END, ')')
-                       WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL THEN CONCAT(
-                           es.emi_no, 
-                           CASE 
-                               WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
-                               WHEN es.emi_no % 10 = 1 THEN 'st'
-                               WHEN es.emi_no % 10 = 2 THEN 'nd'
-                               WHEN es.emi_no % 10 = 3 THEN 'rd'
-                               ELSE 'th'
-                           END, ' Installment'
-                       )
+                       WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL THEN CASE 
+                           WHEN lp.due_emi_amount > 0.01 OR EXISTS (SELECT 1 FROM lead_payments child WHERE child.parent_payment_id = lp.id AND child.settlement_type = 'emi_due_settlement') THEN 'Installment Advance'
+                           ELSE CONCAT(
+                               es.emi_no, 
+                               CASE 
+                                   WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
+                                   WHEN es.emi_no % 10 = 1 THEN 'st'
+                                   WHEN es.emi_no % 10 = 2 THEN 'nd'
+                                   WHEN es.emi_no % 10 = 3 THEN 'rd'
+                                   ELSE 'th'
+                               END, ' Installment'
+                           )
+                       END
                        WHEN lp.payment_type = 'registration' THEN 'REGISTRATION'
                        WHEN lp.payment_type = 'booking_money' THEN 'BOOKING'
                        WHEN lp.payment_type = 'land_share' THEN 'LAND SHARE'
@@ -2511,10 +2520,11 @@ ORDER BY lb.booking_date DESC
                 if ($pool > 0) $paymentType = 'development_charge';
             }
             
-            if (in_array($paymentType, ['development_charge', 'shop_service_charge'])) {
+            if (in_array($paymentType, ['development_charge', 'shop_service_charge', 'emi'])) {
                 if ($devRemaining > 0) {
                     $payAmount = min($pool, $devRemaining);
-                    $paymentsToInsert[] = ['type' => $paymentType, 'amount' => $payAmount];
+                    $actualType = ($paymentType === 'emi') ? 'development_charge' : $paymentType;
+                    $paymentsToInsert[] = ['type' => $actualType, 'amount' => $payAmount];
                     $pool -= $payAmount;
                 }
                 if ($pool > 0) $paymentType = 'emi';
@@ -2622,10 +2632,6 @@ ORDER BY lb.booking_date DESC
                 if ($p['type'] === 'development_charge' || $p['type'] === 'shop_service_charge') $devPaidInThisTx += $p['amount'];
             }
             $devRemainingAfterTx = $devRemaining - $devPaidInThisTx;
-
-            if (empty($summary['is_dev_charge_completed']) && $devRemainingAfterTx > 0.01) {
-                throw new Exception("Development charge must be fully paid before EMI. Remaining: ৳" . number_format($devRemainingAfterTx, 2));
-            }
 
             // Service charge on FULL amount (user's answer: YES)
             $serviceChargeRate = (float) ($summary['service_charge_per_emi'] ?? 0);
