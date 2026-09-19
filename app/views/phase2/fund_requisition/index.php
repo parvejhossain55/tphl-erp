@@ -154,7 +154,44 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
         <div class="row">
             <div class="col-xxl-12">
                 <div class="card__wrapper">
-                    <!-- Quick Filter Tabs -->
+                    <?php
+                    $viewMode = $viewMode ?? '';
+                    $base = $GLOBALS['base_url'];
+                    // Determine if this user has a role-specific default view
+                    $hasRoleDefaultView = in_array($roleId, [20, 32, 13, 24, 25, 6, 30]);
+                    // Build base query string without view_mode
+                    $baseQs = http_build_query(array_filter([
+                        'start_date' => $startDate ?? '',
+                        'end_date' => $endDate ?? '',
+                        'status' => $statusFilter ?? '',
+                        'search' => $searchQuery ?? '',
+                        'project_id' => $selectedProject ?? '',
+                        'requisition_type' => $selectedType ?? '',
+                    ]));
+                    ?>
+                    <?php if ($hasRoleDefaultView): ?>
+                    <div class="d-flex align-items-center gap-2 mb-3 no-print">
+                        <a href="<?= $base ?>/fund-requisitions<?= $baseQs ? '?' . $baseQs : '' ?>" 
+                           class="btn btn-sm <?= ($viewMode !== 'all' && ($statusFilter ?? '') === '') ? 'btn-primary' : 'btn-outline-primary' ?>">
+                            <i class="fa-solid fa-clock-rotate-left me-1"></i> My Pending Action
+                            <?php if ($viewMode !== 'all' && ($statusFilter ?? '') === ''): ?>
+                                <span class="badge bg-white text-primary ms-1"><?= count($requests ?? []) ?></span>
+                            <?php endif; ?>
+                        </a>
+                        <a href="<?= $base ?>/fund-requisitions?view_mode=all<?= $baseQs ? '&' . $baseQs : '' ?>" 
+                           class="btn btn-sm <?= $viewMode === 'all' ? 'btn-secondary' : 'btn-outline-secondary' ?>">
+                            <i class="fa-solid fa-list me-1"></i> All Requisitions
+                        </a>
+                        <?php if (in_array($roleId, [1, 6, 30, 20, 32])): ?>
+                        <a href="<?= $base ?>/fund-requisitions?view_mode=all&status=approved<?= $baseQs ? '&' . $baseQs : '' ?>" 
+                           class="btn btn-sm btn-outline-success">
+                            <i class="fa-solid fa-file-invoice-dollar me-1"></i> Payment Pending
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Quick Filter Tabs (Petty Cash / General) -->
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom no-print">
                         <ul class="nav nav-tabs nav-tabs-bordered mb-0" id="fundTabs" role="tablist">
                             <li class="nav-item">
@@ -1722,8 +1759,12 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
                     </button>
                 <?php endif; ?>
 
-                <!-- Management Approval button (role 1, 3, 20, 32, 33 for pending requisitions) -->
-                <?php if (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) && in_array($roleId, [1, 3, 20, 32, 33])): ?>
+                <?php 
+                // Management/Operation Approval button
+                // Role 1,3: any amount | Role 20,32: only <= 100000
+                $canApproveInList = (in_array($roleId, [1, 3, 33])) ||
+                                    (in_array($roleId, [20, 32]) && (float)($req['amount'] ?? 0) <= 100000);
+                if (in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) && $canApproveInList): ?>
                     <button type="button" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1" 
                             onclick="window.location.href='<?= $GLOBALS['base_url'] ?>/fund-requisitions/view/<?= $req['id'] ?>'">
                         <i class="fa-solid fa-stamp"></i> <?= $req['status'] === 'pending' ? 'Approve' : 'Approve Remaining' ?>

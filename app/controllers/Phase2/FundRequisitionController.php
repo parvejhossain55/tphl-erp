@@ -140,6 +140,25 @@ class FundRequisitionController extends Controller {
         $endDate = $_GET['end_date'] ?? '';
         $statusFilter = $_GET['status'] ?? '';
         $searchQuery = trim($_GET['search'] ?? '');
+        $viewMode = $_GET['view_mode'] ?? ''; // 'all', 'my_pending', 'payment_pending', or '' (default = role-based)
+
+        // --- Role-based default view filter (when no explicit status filter and no 'all' view mode) ---
+        // Each role sees only the items THEY need to act on by default.
+        // To see everything, the user can switch to 'all' view.
+        if (empty($statusFilter) && $viewMode !== 'all') {
+            if (in_array($roleId, [20, 32], true)) {
+                // Operation Head: show only management-pending items by default (up to 1 Lakh)
+                $where .= " AND fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 100000";
+            } elseif (in_array($roleId, [13, 24, 25], true)) {
+                // QC & Internal Audit: show only QC-pending items by default
+                $where .= " AND fr.status = 'pending_qc'";
+            } elseif (in_array($roleId, [6, 30], true)) {
+                // Accounts: show only approved (ready for payment) by default
+                $where .= " AND fr.status IN ('approved', 'partially_approved', 'partially_paid')";
+            } elseif ($viewMode === 'payment_pending') {
+                $where .= " AND fr.status IN ('approved', 'partially_approved')";
+            }
+        }
 
         $params = [];
         $types = "";
@@ -319,7 +338,8 @@ class FundRequisitionController extends Controller {
             'selectedProject' => $selectedProject,
             'selectedType' => $selectedType,
             'isDefaultLimit' => $isDefaultLimit,
-            'deptHeadDeptIds' => $deptHeadDeptIds
+            'deptHeadDeptIds' => $deptHeadDeptIds,
+            'viewMode' => $viewMode,
         ]);
     }
 
