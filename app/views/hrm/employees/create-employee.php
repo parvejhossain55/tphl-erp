@@ -287,7 +287,7 @@ $show_breadcrumb = true;
                                 </div>
                                 <div class="form__input">
                                     <input class="form-control" name="per_meal_amount" id="per_meal_amount"
-                                        type="number" step="0.01">
+                                        type="number" step="0.01" value="120.00">
                                 </div>
                             </div>
                         </div>
@@ -311,7 +311,7 @@ $show_breadcrumb = true;
                                 </div>
                                 <div class="form__input">
                                     <input class="form-control" name="per_meal_percentage" id="per_meal_percentage"
-                                        type="number" step="0.01" min="0" max="100" value="100.00" placeholder="e.g. 100.00">
+                                        type="number" step="0.01" min="0" max="100" placeholder="e.g. 100.00">
                                 </div>
                             </div>
                         </div>
@@ -495,11 +495,20 @@ $show_breadcrumb = true;
                                     <label for="reporting_user_id">Report To (Reporting Boss)</label>
                                 </div>
                                 <div class="form__input">
-                                    <select name="reporting_user_id" id="reporting_user_id" class="form-select select2">
+                                    <select name="reporting_user_id" id="reporting_user_id" class="form-select select2" data-placeholder="-- Select Reporting Boss --">
                                         <option value="">-- Select Reporting Boss --</option>
                                         <?php foreach ($reportingBosses as $boss): ?>
+                                            <?php
+                                                $bossLabel = $boss['full_name'];
+                                                if (!empty($boss['emp_code'])) {
+                                                    $bossLabel .= ' [' . $boss['emp_code'] . ']';
+                                                }
+                                                if (!empty($boss['designation_name'])) {
+                                                    $bossLabel .= ' (' . trim($boss['designation_name']) . ')';
+                                                }
+                                            ?>
                                             <option value="<?= $boss['id'] ?>">
-                                                <?= htmlspecialchars($boss['full_name'] . (!empty($boss['designation_name']) ? ' (' . $boss['designation_name'] . ')' : '')) ?>
+                                                <?= htmlspecialchars($bossLabel) ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>

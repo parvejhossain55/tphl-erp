@@ -145,7 +145,7 @@
                  </div>
                  <!-- Designation -->
                  <div class="col-lg-6"><label>Gross Salary <span>*</span></label><input class="form-control" name="gross_salary" id="gross_salary" type="number" value="<?= $employee['gross_salary'] ?>"></div>
-                 <div class="col-lg-6"><label>Per Meal Amount</label><input class="form-control" name="per_meal_amount" id="per_meal_amount" type="number" step="0.01" value="<?= $employee['per_meal_amount'] ?? '' ?>"></div>
+                 <div class="col-lg-6"><label>Per Meal Amount</label><input class="form-control" name="per_meal_amount" id="per_meal_amount" type="number" step="0.01" value="<?= isset($employee['per_meal_amount']) && $employee['per_meal_amount'] !== '' ? htmlspecialchars($employee['per_meal_amount']) : '120.00' ?>"></div>
                  <div class="col-lg-6">
                      <label>Meal Deduction Service</label>
                      <select class="form-control" name="is_meal_deduction" id="is_meal_deduction">
@@ -155,7 +155,7 @@
                  </div>
                  <div class="col-lg-6">
                      <label>Per Meal Rate Percentage (%)</label>
-                     <input class="form-control" name="per_meal_percentage" id="per_meal_percentage" type="number" step="0.01" min="0" max="100" value="<?= $employee['per_meal_percentage'] ?? '100.00' ?>" placeholder="e.g. 100.00">
+                     <input class="form-control" name="per_meal_percentage" id="per_meal_percentage" type="number" step="0.01" min="0" max="100" value="<?= isset($employee['per_meal_percentage']) && $employee['per_meal_percentage'] !== '' ? htmlspecialchars($employee['per_meal_percentage']) : '' ?>" placeholder="e.g. 100.00">
                  </div>
                  <div class="col-lg-6"><label>Basic Salary <span>*</span></label>
                      <input class="form-control" name="basic_salary" id="basic_salary" type="number"
@@ -360,12 +360,21 @@
                              <label for="reporting_user_id">Report To (Reporting Boss)</label>
                          </div>
                          <div class="form__input">
-                             <select name="reporting_user_id" id="reporting_user_id" class="form-select select2">
+                             <select name="reporting_user_id" id="reporting_user_id" class="form-select select2" data-placeholder="-- Select Reporting Boss --">
                                  <option value="">-- Select Reporting Boss --</option>
                                  <?php foreach ($reportingBosses as $boss): ?>
+                                     <?php
+                                         $bossLabel = $boss['full_name'];
+                                         if (!empty($boss['emp_code'])) {
+                                             $bossLabel .= ' [' . $boss['emp_code'] . ']';
+                                         }
+                                         if (!empty($boss['designation_name'])) {
+                                             $bossLabel .= ' (' . trim($boss['designation_name']) . ')';
+                                         }
+                                     ?>
                                      <option value="<?= $boss['id'] ?>"
                                          <?= (isset($employee['reporting_user_id']) && $employee['reporting_user_id'] == $boss['id']) ? 'selected' : '' ?>>
-                                         <?= htmlspecialchars($boss['full_name'] . (!empty($boss['designation_name']) ? ' (' . $boss['designation_name'] . ')' : '')) ?>
+                                         <?= htmlspecialchars($bossLabel) ?>
                                      </option>
                                  <?php endforeach; ?>
                              </select>

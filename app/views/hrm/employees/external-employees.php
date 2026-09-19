@@ -26,6 +26,12 @@ $show_breadcrumb = true;
     transform: translateY(-3px);
     box-shadow: 0 8px 15px rgba(0,0,0,0.12) !important;
 }
+#quickRegisterModal .select2-container {
+    z-index: 100005 !important;
+}
+#quickRegisterModal .select2-container .select2-dropdown {
+    z-index: 100005 !important;
+}
 </style>
 
 <!-- Info Indicator Card -->
@@ -365,6 +371,14 @@ $show_breadcrumb = true;
                                 </select>
                             </div>
                             <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Per Meal Amount (BDT)</label>
+                                <input type="number" step="0.01" class="form-control" name="per_meal_amount" id="quickPerMealAmount" value="120.00" placeholder="120.00">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Per Meal Rate Percentage (%)</label>
+                                <input type="number" step="0.01" min="0" max="100" class="form-control" name="per_meal_percentage" id="quickPerMealPercentage" placeholder="e.g. 100.00">
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label fw-semibold text-dark">Is Department Head?</label>
                                 <div class="pt-2">
                                     <div class="form-check">
@@ -377,12 +391,21 @@ $show_breadcrumb = true;
                             </div>
                             <div class="col-md-6" id="quickReportingBossContainer">
                                 <label class="form-label fw-semibold text-dark" for="quickReportingUserId">Report To (Reporting Boss)</label>
-                                <select class="form-select" name="reporting_user_id" id="quickReportingUserId">
-                                    <option value="">Select option</option>
+                                <select class="form-select select2" name="reporting_user_id" id="quickReportingUserId" data-placeholder="-- Select Reporting Boss --" style="width: 100%;">
+                                    <option value="">-- Select Reporting Boss --</option>
                                     <?php if (!empty($reportingBosses)): ?>
                                         <?php foreach ($reportingBosses as $boss): ?>
+                                            <?php
+                                                $bossLabel = $boss['full_name'];
+                                                if (!empty($boss['emp_code'])) {
+                                                    $bossLabel .= ' [' . $boss['emp_code'] . ']';
+                                                }
+                                                if (!empty($boss['designation_name'])) {
+                                                    $bossLabel .= ' (' . trim($boss['designation_name']) . ')';
+                                                }
+                                            ?>
                                             <option value="<?= $boss['id'] ?>">
-                                                <?= htmlspecialchars($boss['full_name'] . (!empty($boss['designation_name']) ? ' (' . $boss['designation_name'] . ')' : '')) ?>
+                                                <?= htmlspecialchars($bossLabel) ?>
                                             </option>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
@@ -1164,15 +1187,34 @@ document.addEventListener("DOMContentLoaded", function () {
     const quickReportingBossContainer = document.getElementById('quickReportingBossContainer');
     const quickReportingUserId = document.getElementById('quickReportingUserId');
     const quickMealDeduction = document.getElementById('quickMealDeduction');
+    const quickPerMealAmount = document.getElementById('quickPerMealAmount');
+    const quickPerMealPercentage = document.getElementById('quickPerMealPercentage');
 
     if (quickIsDeptHead) {
         quickIsDeptHead.addEventListener('change', function() {
             if (this.checked) {
                 if (quickReportingBossContainer) quickReportingBossContainer.style.display = 'none';
-                if (quickReportingUserId) quickReportingUserId.value = '';
+                if (quickReportingUserId) {
+                    quickReportingUserId.value = '';
+                    if (typeof $ !== 'undefined' && $.fn.select2) {
+                        $('#quickReportingUserId').val('').trigger('change');
+                    }
+                }
             } else {
                 if (quickReportingBossContainer) quickReportingBossContainer.style.display = 'block';
             }
+        });
+    }
+
+    // Initialize Select2 when quickRegisterModal is shown
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('#quickRegisterModal').on('shown.bs.modal', function () {
+            $('#quickReportingUserId').select2({
+                dropdownParent: $('#quickRegisterModal'),
+                width: '100%',
+                placeholder: '-- Select Reporting Boss --',
+                allowClear: true
+            });
         });
     }
 
@@ -1190,10 +1232,17 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('quickPassword').value = '12345678';
         document.getElementById('quickJoiningDate').value = new Date().toISOString().split('T')[0];
         document.getElementById('quickGrossSalary').value = '0.00';
+        if (quickPerMealAmount) quickPerMealAmount.value = '120.00';
+        if (quickPerMealPercentage) quickPerMealPercentage.value = '';
         if (quickMealDeduction) quickMealDeduction.value = '0';
         if (quickIsDeptHead) quickIsDeptHead.checked = false;
         if (quickReportingBossContainer) quickReportingBossContainer.style.display = 'block';
-        if (quickReportingUserId) quickReportingUserId.value = '';
+        if (quickReportingUserId) {
+            quickReportingUserId.value = '';
+            if (typeof $ !== 'undefined' && $.fn.select2) {
+                $('#quickReportingUserId').val('').trigger('change');
+            }
+        }
 
         const rawOfficeId = btn.getAttribute('data-office-id') || '';
         const empName = btn.getAttribute('data-name') || '';
