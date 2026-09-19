@@ -281,7 +281,7 @@ $show_breadcrumb = true;
                             <i class="bi bi-person-badge fs-5"></i>
                             <span>Employee Information (From Tipsoi)</span>
                         </div>
-                        <div class="row g-3">
+                        <div class="row">
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold text-dark">Employee Office ID <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" name="employee_id" id="quickEmpId" required readonly style="background-color: #f1f3f5;">
@@ -307,7 +307,7 @@ $show_breadcrumb = true;
                             <i class="bi bi-building-gear fs-5"></i>
                             <span>ERP Employment Details</span>
                         </div>
-                        <div class="row g-3">
+                        <div class="row">
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold text-dark">Department <span class="text-danger">*</span></label>
                                 <select class="form-select" name="department_id" id="quickDepartmentId" required>
@@ -352,10 +352,41 @@ $show_breadcrumb = true;
                                 <label class="form-label fw-semibold text-dark">Joining Date</label>
                                 <input type="date" class="form-control" name="joining_date" id="quickJoiningDate" value="<?= date('Y-m-d') ?>">
                             </div>
-                            <div class="col-md-12">
+                            <div class="col-md-6">
                                 <label class="form-label fw-semibold text-dark">Gross Salary (BDT)</label>
                                 <input type="number" step="0.01" class="form-control" name="gross_salary" id="quickGrossSalary" value="0.00" placeholder="0.00">
                                 <small class="text-muted">Basic Salary will automatically be set as 50% of Gross.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Meal Deduction Service</label>
+                                <select class="form-select" name="is_meal_deduction" id="quickMealDeduction">
+                                    <option value="1">Enabled (চালু - মিল ট্র্যাকারে অন্তর্ভুক্ত)</option>
+                                    <option value="0" selected>Disabled (বন্ধ - মিল ট্র্যাকারে অন্তর্ভুক্ত নয়)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-dark">Is Department Head?</label>
+                                <div class="pt-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="is_dept_head" id="quickIsDeptHead" value="1" style="cursor: pointer;">
+                                        <label class="form-check-label text-dark" for="quickIsDeptHead" style="cursor: pointer;">
+                                            Yes, this employee is a Department Head
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6" id="quickReportingBossContainer">
+                                <label class="form-label fw-semibold text-dark" for="quickReportingUserId">Report To (Reporting Boss)</label>
+                                <select class="form-select" name="reporting_user_id" id="quickReportingUserId">
+                                    <option value="">Select option</option>
+                                    <?php if (!empty($reportingBosses)): ?>
+                                        <?php foreach ($reportingBosses as $boss): ?>
+                                            <option value="<?= $boss['id'] ?>">
+                                                <?= htmlspecialchars($boss['full_name'] . (!empty($boss['designation_name']) ? ' (' . $boss['designation_name'] . ')' : '')) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -368,7 +399,7 @@ $show_breadcrumb = true;
                                 Create ERP Login User Account
                             </label>
                         </div>
-                        <div class="row g-3" id="quickUserFields">
+                        <div class="row " id="quickUserFields">
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold text-dark">User Role</label>
                                 <select class="form-select" name="role_id" id="quickRoleId">
@@ -1129,6 +1160,22 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    const quickIsDeptHead = document.getElementById('quickIsDeptHead');
+    const quickReportingBossContainer = document.getElementById('quickReportingBossContainer');
+    const quickReportingUserId = document.getElementById('quickReportingUserId');
+    const quickMealDeduction = document.getElementById('quickMealDeduction');
+
+    if (quickIsDeptHead) {
+        quickIsDeptHead.addEventListener('change', function() {
+            if (this.checked) {
+                if (quickReportingBossContainer) quickReportingBossContainer.style.display = 'none';
+                if (quickReportingUserId) quickReportingUserId.value = '';
+            } else {
+                if (quickReportingBossContainer) quickReportingBossContainer.style.display = 'block';
+            }
+        });
+    }
+
     function openQuickRegisterModal(btn) {
         if (!quickRegisterModalInstance) {
             quickRegisterModalInstance = new bootstrap.Modal(document.getElementById('quickRegisterModal'));
@@ -1143,6 +1190,10 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('quickPassword').value = '12345678';
         document.getElementById('quickJoiningDate').value = new Date().toISOString().split('T')[0];
         document.getElementById('quickGrossSalary').value = '0.00';
+        if (quickMealDeduction) quickMealDeduction.value = '0';
+        if (quickIsDeptHead) quickIsDeptHead.checked = false;
+        if (quickReportingBossContainer) quickReportingBossContainer.style.display = 'block';
+        if (quickReportingUserId) quickReportingUserId.value = '';
 
         const rawOfficeId = btn.getAttribute('data-office-id') || '';
         const empName = btn.getAttribute('data-name') || '';

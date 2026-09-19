@@ -127,6 +127,9 @@ class HrmApiController extends Controller
         $joiningDate = !empty($_POST['joining_date']) ? trim($_POST['joining_date']) : date('Y-m-d');
         $grossSalary = !empty($_POST['gross_salary']) ? (float)$_POST['gross_salary'] : 0.0;
         $basicSalary = $grossSalary > 0 ? ($grossSalary * 0.50) : 0.0;
+        $isMealDeduction = isset($_POST['is_meal_deduction']) ? (int)$_POST['is_meal_deduction'] : 0;
+        $isDeptHead = (isset($_POST['is_dept_head']) && (int)$_POST['is_dept_head'] === 1) ? 1 : 0;
+        $reportingUserId = ($isDeptHead === 1) ? null : (!empty($_POST['reporting_user_id']) ? (int)$_POST['reporting_user_id'] : null);
         $makeUser = (isset($_POST['make_user']) && (int)$_POST['make_user'] === 1) ? 1 : 0;
         $roleId = (int)($_POST['role_id'] ?? 2);
         $plainPassword = trim($_POST['password'] ?? '12345678');
@@ -207,7 +210,7 @@ class HrmApiController extends Controller
                 'gross_salary' => $grossSalary,
                 'basic_salary' => $basicSalary,
                 'per_meal_amount' => 0.00,
-                'is_meal_deduction' => 0,
+                'is_meal_deduction' => $isMealDeduction,
                 'per_meal_percentage' => 100.00,
                 'experience' => '',
                 'workplace' => $workplaceName,
@@ -235,8 +238,8 @@ class HrmApiController extends Controller
                 'responsibilities' => '',
                 'team_id' => 0,
                 'is_sales_co_leader' => 0,
-                'is_dept_head' => 0,
-                'reporting_user_id' => null,
+                'is_dept_head' => $isDeptHead,
+                'reporting_user_id' => $reportingUserId,
             ];
 
             // 1. Insert into employees
@@ -262,7 +265,25 @@ class HrmApiController extends Controller
                 }
             }
 
-            // 3. Create login user if make_user is enabled
+            // 3. Insert initial salary breakdown items based on payslip_items configuration
+            $payslipItemsResult = $this->db->query("SELECT id, percentage FROM payslip_items");
+            if ($payslipItemsResult) {
+                $stmtSalaryItem = $this->db->prepare(
+                    "INSERT INTO employee_salary_items (employee_id, payslip_item_id, amount) VALUES (?, ?, ?)"
+                );
+                if ($stmtSalaryItem) {
+                    while ($pi = $payslipItemsResult->fetch_assoc()) {
+                        $pct = (float)($pi['percentage'] ?? 0);
+                        $amount = ($basicSalary > 0 && $pct > 0) ? round(($basicSalary * $pct) / 100, 2) : 0.00;
+                        $itemId = (int)$pi['id'];
+                        $stmtSalaryItem->bind_param("iid", $newEmpId, $itemId, $amount);
+                        $stmtSalaryItem->execute();
+                    }
+                    $stmtSalaryItem->close();
+                }
+            }
+
+            // 4. Create login user if make_user is enabled
             $newUserId = null;
             if ($makeUser === 1) {
                 $userModel = new User($this->db);
