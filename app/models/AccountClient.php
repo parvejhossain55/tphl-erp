@@ -1762,14 +1762,14 @@ ORDER BY lb.booking_date DESC
                 es.service_fee as emi_service_fee,
                 CASE 
                     WHEN lp.settlement_type = 'emi_due_settlement' AND parent_es.emi_no IS NOT NULL 
-                    THEN CONCAT('SETTLEMENT (', parent_es.emi_no, 
+                    THEN CONCAT(parent_es.emi_no, 
                         CASE 
                             WHEN parent_es.emi_no % 100 IN (11,12,13) THEN 'th'
                             WHEN parent_es.emi_no % 10 = 1 THEN 'st'
                             WHEN parent_es.emi_no % 10 = 2 THEN 'nd'
                             WHEN parent_es.emi_no % 10 = 3 THEN 'rd'
                             ELSE 'th'
-                        END, ')')
+                        END, ' Installment(Settlement)')
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI SETTLEMENT'
                     WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
                     THEN CASE 
@@ -1924,14 +1924,14 @@ ORDER BY lb.booking_date DESC
                 lb.booking_date as booking_date,
                 CASE 
                     WHEN lp.settlement_type = 'emi_due_settlement' AND parent_es.emi_no IS NOT NULL 
-                    THEN CONCAT('SETTLEMENT (', parent_es.emi_no, 
+                    THEN CONCAT(parent_es.emi_no, 
                         CASE 
                             WHEN parent_es.emi_no % 100 IN (11,12,13) THEN 'th'
                             WHEN parent_es.emi_no % 10 = 1 THEN 'st'
                             WHEN parent_es.emi_no % 10 = 2 THEN 'nd'
                             WHEN parent_es.emi_no % 10 = 3 THEN 'rd'
                             ELSE 'th'
-                        END, ')')
+                        END, ' Installment(Settlement)')
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI SETTLEMENT'
                     WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
                     THEN CASE 
@@ -2297,14 +2297,14 @@ ORDER BY lb.booking_date DESC
                     ORDER BY ec.id DESC LIMIT 1) as created_by_employee_id,
                    CASE 
                        WHEN lp.settlement_type = 'emi_due_settlement' AND parent_es.emi_no IS NOT NULL 
-                       THEN CONCAT('SETTLEMENT (', parent_es.emi_no, 
+                       THEN CONCAT(parent_es.emi_no, 
                            CASE 
                                WHEN parent_es.emi_no % 100 IN (11,12,13) THEN 'th'
                                WHEN parent_es.emi_no % 10 = 1 THEN 'st'
                                WHEN parent_es.emi_no % 10 = 2 THEN 'nd'
                                WHEN parent_es.emi_no % 10 = 3 THEN 'rd'
                                ELSE 'th'
-                           END, ')')
+                           END, ' Installment(Settlement)')
                        WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL THEN CASE 
                            WHEN lp.due_emi_amount > 0.01 OR EXISTS (SELECT 1 FROM lead_payments child WHERE child.parent_payment_id = lp.id AND child.settlement_type = 'emi_due_settlement') THEN 'Installment Advance'
                            ELSE CONCAT(

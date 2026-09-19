@@ -167,6 +167,14 @@ $amountInWords = function_exists('amountInWords') ? amountInWords($totalAmountPa
 
 // Bank & Payment Method Display
 $paymentMethod = strtoupper($payment['payment_method'] ?? 'CASH');
+
+$isCashPayment = !in_array($paymentMethod, ['BANK', 'CHEQUE', 'CHECK', 'ONLINE']);
+$verifiedLabelMain = $isCashPayment ? 'Payment Verified' : 'Bank Verified';
+$pendingLabelMain = $isCashPayment ? 'Subject to Verification' : 'Subject to Bank Verification';
+$verifiedCardTitle = $isCashPayment ? 'VERIFIED PAYMENT RECEIPT' : 'BANK-VERIFIED PAYMENT RECEIPT';
+$pendingCardTitle = $isCashPayment ? 'SUBJECT TO VERIFICATION' : 'SUBJECT TO BANK VERIFICATION';
+$pendingCardDesc = $isCashPayment ? 'This payment is subject to verification and confirmation.' : 'This payment is subject to bank verification and confirmation.';
+$verifiedStampText = $isCashPayment ? "PAYMENT<br>VERIFIED" : "BANK<br>VERIFIED";
 $displayBank = !empty($payment['company_bank_name']) 
     ? $payment['company_bank_name'] 
     : (!empty($payment['bank_name']) 
@@ -929,7 +937,7 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
                         </div>
                         <div class="status-meta-info">
                             <span class="status-sub-title verified-sub">PAYMENT STATUS</span>
-                            <span class="status-main-label verified-main">Bank Verified</span>
+                            <span class="status-main-label verified-main"><?= $verifiedLabelMain ?></span>
                             <span class="status-desc-text verified-desc">Payment confirmation completed successfully.</span>
                         </div>
                     </div>
@@ -940,7 +948,7 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
                         </div>
                         <div class="status-meta-info">
                             <span class="status-sub-title pending-sub">PAYMENT STATUS</span>
-                            <span class="status-main-label pending-main">Subject to Bank Verification</span>
+                            <span class="status-main-label pending-main"><?= $pendingLabelMain ?></span>
                             <span class="status-desc-text pending-desc">Confirmation will be issued after verification.</span>
                         </div>
                     </div>
@@ -1020,16 +1028,12 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
                 </div>
                 <?php if (in_array($paymentMethod, ['BANK', 'CHEQUE', 'CHECK', 'ONLINE'])): ?>
                 <div class="proc-box">
-                    <span class="proc-label">Client Bank:</span>
-                    <span class="proc-value"><?= htmlspecialchars(!empty($payment['bank_name']) ? $payment['bank_name'] : 'N/A') ?></span>
+                    <span class="proc-label">Bank Name:</span>
+                    <span class="proc-value"><?= htmlspecialchars($displayBank) ?></span>
                 </div>
                 <div class="proc-box">
                     <span class="proc-label"><?= $paymentMethod === 'CHEQUE' ? 'Cheque No:' : 'Trx Ref:' ?></span>
                     <span class="proc-value"><?= htmlspecialchars(!empty($payment['cheque_no']) && $paymentMethod === 'CHEQUE' ? $payment['cheque_no'] : (!empty($payment['transaction_ref']) ? $payment['transaction_ref'] : 'N/A')) ?></span>
-                </div>
-                <div class="proc-box">
-                    <span class="proc-label">Company Bank:</span>
-                    <span class="proc-value"><?= htmlspecialchars(!empty($payment['company_bank_name']) ? $payment['company_bank_name'] : 'N/A') ?></span>
                 </div>
                 <?php endif; ?>
             </div>
@@ -1045,12 +1049,12 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
                     </div>
                     <div class="card-title-group">
                         <div class="card-main-title <?= $isVerified ? 'title-verified' : 'title-pending' ?>">
-                            <?= $isVerified ? 'BANK-VERIFIED PAYMENT RECEIPT' : 'SUBJECT TO BANK VERIFICATION' ?>
+                            <?= $isVerified ? $verifiedCardTitle : $pendingCardTitle ?>
                         </div>
                         <div class="card-sub-desc">
                             <?= $isVerified 
                                 ? 'This payment has been reviewed and confirmed through the system.' 
-                                : 'This payment is subject to bank verification and confirmation.' ?>
+                                : $pendingCardDesc ?>
                         </div>
                     </div>
                 </div>
@@ -1060,7 +1064,7 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
                     <div class="stamp-inner-ring">
                         <span class="stamp-org-code">TPHL</span>
                         <div class="stamp-line"></div>
-                        <span class="stamp-label-text"><?= $isVerified ? "BANK<br>VERIFIED" : "SUBJECT TO<br>VERIFY" ?></span>
+                        <span class="stamp-label-text"><?= $isVerified ? $verifiedStampText : "SUBJECT TO<br>VERIFY" ?></span>
                     </div>
                 </div>
             </div>

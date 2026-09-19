@@ -98,6 +98,7 @@ public function indexTwo($bookingId = null)
                 'amount' => $clientDetails['booking_money'],
                 'land_share_amount' => $clientDetails['booking_money'],
                 'service_fee' => 0,
+                'bulk_emi_discount' => $clientDetails['discount_amount'] ?? 0,
                 'payment_status' => 'paid',
                 'status_class' => 'bg-success',
                 'status_text' => 'Paid',

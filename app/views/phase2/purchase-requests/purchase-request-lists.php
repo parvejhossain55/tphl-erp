@@ -19,7 +19,7 @@
     <div class="card__wrapper shadow-sm">
         <div class="card__body p-0">
             <div class="table-responsive">
-                <table class="table table-hover table-striped custom-table mb-0 multiple-table">
+                <table class="table table-hover table-striped custom-table mb-0" id="purchaseRequestsTable">
                     <thead class="table-light">
                         <tr>
                             <th>#</th>
@@ -170,3 +170,52 @@
         </div>
     </div>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.DataTable !== 'undefined') {
+        jQuery('#purchaseRequestsTable').DataTable({
+            destroy: true,
+            responsive: true,
+            pageLength: 50,
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+            order: [], // Preserve controller's ranking & SQL order
+            columnDefs: [
+                { orderable: false, searchable: false, targets: 0 },  // # serial column
+                { orderable: false, searchable: false, targets: -1 } // Actions column
+            ],
+            language: {
+                search: "_INPUT_",
+                searchPlaceholder: "Quick filter in table...",
+                lengthMenu: "Show _MENU_ entries",
+                info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                infoEmpty: "Showing 0 to 0 of 0 entries",
+                infoFiltered: "(filtered from _MAX_ total entries)",
+                emptyTable: "No purchase requests found.",
+                paginate: {
+                    first: '<i class="fa-solid fa-angles-left"></i>',
+                    previous: '<i class="fa-solid fa-angle-left"></i>',
+                    next: '<i class="fa-solid fa-angle-right"></i>',
+                    last: '<i class="fa-solid fa-angles-right"></i>'
+                }
+            },
+            drawCallback: function(settings) {
+                var api = this.api();
+                var startIndex = api.context[0]._iDisplayStart;
+                api.column(0, {search:'applied', order:'applied'}).nodes().each(function(cell, i) {
+                    // Update the serial number while keeping the PR- format inside the span
+                    var prNum = $(cell).text().trim();
+                    if(prNum.startsWith('PR-')){
+                        // Don't overwrite PR ID if it's there, or we can just let it be.
+                        // Actually, PR list shows PR-ID in the first column, not serial number!
+                        // In Purchase orders, column 0 is Serial, column 1 is PO-ID.
+                        // Here, column 0 is PR-ID. So we shouldn't overwrite it with a serial number.
+                    } else {
+                        cell.innerHTML = startIndex + i + 1;
+                    }
+                });
+            }
+        });
+    }
+});
+</script>

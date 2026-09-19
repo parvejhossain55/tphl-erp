@@ -199,20 +199,19 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                     if (!empty($pr['attachment'])): 
                         $rootPath = dirname(dirname(dirname(dirname(__DIR__))));
                         $att = $pr['attachment'];
+                        $cleanAtt = basename($att);
                         
-                        // Check various possible locations due to historical path issues
-                        // Some paths contain the prefix already, some don't.
-                        $cleanAtt = basename($att); // get just the filename
-                        
+                        $fileExists = false;
                         if (file_exists($rootPath . '/public/uploads/pr_attachments/' . $cleanAtt)) {
                             $downloadLink = $GLOBALS['base_url'] . '/public/uploads/pr_attachments/' . htmlspecialchars($cleanAtt);
+                            $fileExists = true;
                         } elseif (file_exists($rootPath . '/public/uploads/purchase_requests/' . $cleanAtt)) {
                             $downloadLink = $GLOBALS['base_url'] . '/public/uploads/purchase_requests/' . htmlspecialchars($cleanAtt);
+                            $fileExists = true;
                         } elseif (file_exists($rootPath . '/public/public/uploads/pr_attachments/' . $cleanAtt)) {
                             $downloadLink = $GLOBALS['base_url'] . '/public/public/uploads/pr_attachments/' . htmlspecialchars($cleanAtt);
+                            $fileExists = true;
                         } else {
-                            // Default fallback
-                            // If it starts with /public, just prepend base_url
                             if (strpos($att, '/public/') === 0) {
                                 $downloadLink = $GLOBALS['base_url'] . htmlspecialchars($att);
                             } else {
@@ -220,17 +219,23 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                             }
                         }
                     ?>
-                    <div class="alert alert-info border d-flex align-items-center justify-content-between mb-3 p-3" style="background: rgba(13, 202, 240, 0.08); border-color: rgba(13, 202, 240, 0.3) !important; border-radius: 10px;">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-file-earmark-text fs-4 text-info"></i>
+                    <div class="alert <?= $fileExists ? 'alert-info' : 'alert-warning' ?> border d-flex flex-wrap align-items-center justify-content-between mb-3 p-3" style="background: <?= $fileExists ? 'rgba(13, 202, 240, 0.08)' : 'rgba(255, 193, 7, 0.08)' ?>; border-color: <?= $fileExists ? 'rgba(13, 202, 240, 0.3)' : 'rgba(255, 193, 7, 0.3)' ?> !important; border-radius: 10px; gap: 15px;">
+                        <div class="d-flex align-items-center gap-3">
+                            <i class="fa-solid fa-file-invoice fs-4 <?= $fileExists ? 'text-info' : 'text-warning' ?> flex-shrink-0"></i>
                             <div>
                                 <strong class="d-block text-dark">Attached Document / Requisition File:</strong>
                                 <span class="text-muted small"><?= htmlspecialchars(basename($pr['attachment'])) ?></span>
                             </div>
                         </div>
-                        <a href="<?= $downloadLink ?>" target="_blank" class="btn btn-outline-info btn-sm">
-                            <i class="bi bi-eye me-1"></i> View / Download Document
-                        </a>
+                        <?php if ($fileExists): ?>
+                            <a href="<?= $downloadLink ?>" target="_blank" class="btn btn-outline-info btn-sm flex-shrink-0">
+                                <i class="fa-solid fa-eye me-1"></i> View / Download
+                            </a>
+                        <?php else: ?>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-warning text-dark border border-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i> File Missing</span>
+                            </div>
+                        <?php endif; ?>
                     </div>
                     <?php endif; ?>
 
