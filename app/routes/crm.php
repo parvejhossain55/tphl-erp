@@ -64,6 +64,9 @@ return [
     'update-onboard-client/(\d+)' => ['controller' => 'OnboardClientController', 'method' => 'update'],
     'get-lead-booking-details/(\d+)' => ['controller' => 'OnboardClientController', 'method' => 'getLeadBookingDetails'],
     'assign-onboard-client' => ['controller' => 'OnboardClientController', 'method' => 'assignMultipleLeads'],
+    'onboard-client-bulk-upload' => ['controller' => 'OnboardClientController', 'method' => 'bulkUploadForm'],
+    'onboard-client-bulk-preview' => ['controller' => 'OnboardClientController', 'method' => 'bulkPreview'],
+    'onboard-client-bulk-store' => ['controller' => 'OnboardClientController', 'method' => 'bulkStore'],
 
     // =========================================================================
     // Controller: BookingController

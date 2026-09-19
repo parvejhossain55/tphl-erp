@@ -1,0 +1,72 @@
+Must be updated these 2 database files using the mentioned name:
+1. drop_table.sql
+2. tphl_db.sql
+
+
+
+
+Bulk Upload Onboard Clients Feature
+This feature allows users to bulk upload client login credentials using a CSV file. It includes a dry-run preview to validate data before final insertion into the database.
+
+User Review Required
+IMPORTANT
+
+The CSV file MUST have the following columns in exactly this order or with exactly these headers:
+
+name (Client's Full Name)
+phone (Client's Phone Number)
+login_email (Email to use for login)
+password (Password)
+contact_email (Optional)
+Please confirm if this column structure works for you.
+
+Proposed Changes
+Routes
+We need to add three new routes to handle the upload, preview, and storage phases.
+
+[MODIFY] 
+crm.php
+Add the following routes under the OnboardClientController section:
+
+GET onboard-client-bulk-upload -> bulkUploadForm
+POST onboard-client-bulk-preview -> bulkPreview
+POST onboard-client-bulk-store -> bulkStore
+Controllers
+The controller needs new methods to handle the parsing, validation, and saving logic.
+
+[MODIFY] 
+OnboardClientController.php
+bulkUploadForm(): Loads the CSV upload form.
+bulkPreview(): Parses the uploaded CSV. For each row:
+Uses Lead::findDuplicate($name, $phone) to check if the lead exists.
+Checks if the lead has any bookings using BookingLead::countBookingsByLeadId().
+Validates that the lead isn't already in onboard_clients.
+Renders a preview table categorizing rows as "Ready" or showing specific errors.
+bulkStore(): Receives a JSON payload of only the "Ready" rows from the preview form and inserts them into the onboard_clients table, hashing passwords.
+Models
+We need a helper method to efficiently count bookings.
+
+[MODIFY] 
+BookingLead.php
+Add countBookingsByLeadId($leadId): Runs a fast COUNT(*) query on lead_bookings where lead_id = ? and booking_status IN ('booked', 'completed') and deleted_at IS NULL.
+Views
+We need two new UI pages and a button on the existing list page.
+
+[MODIFY] 
+access-onboard-clients.php
+Add a "Bulk Upload CSV" button next to the "Add Access client" button.
+[NEW] 
+bulk-upload.php
+A form with a file input (accept .csv) and a "Preview Upload" button.
+Includes a sample table showing the expected CSV format.
+[NEW] 
+bulk-preview.php
+Displays a data table of the parsed CSV.
+Shows Row No, Name, Phone, Login Email, Booking Count, and Status (Green for OK, Red for Error with reasons).
+A hidden <input type="hidden" name="valid_data"> to securely pass only the valid rows to the bulkStore method.
+A "Confirm & Upload" button.
+Verification Plan
+Manual Verification
+I will create a dummy sample.csv with a mix of valid clients, clients with no bookings, and invalid clients.
+We will upload the CSV and verify the Preview Table correctly identifies errors and counts bookings.
+We will click "Confirm" and verify that ONLY the valid rows are saved in the database with correctly hashed passwords.

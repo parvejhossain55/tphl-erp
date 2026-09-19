@@ -35,8 +35,14 @@ $show_breadcrumb = true;
 
                     <!-- Email -->
                     <div class="col-lg-6 col-12 mb-3">
-                        <label for="email">Email <span>*</span></label>
+                        <label for="email">Contact Email</label>
                         <input class="form-control" name="email" id="email" type="email">
+                    </div>
+                    
+                    <!-- Login Email -->
+                    <div class="col-lg-6 col-12 mb-3">
+                        <label for="login_email">Login Email <span>*</span></label>
+                        <input class="form-control" name="login_email" id="login_email" type="email">
                     </div>
 
                     <!-- Password -->
@@ -46,24 +52,27 @@ $show_breadcrumb = true;
                     </div>
 
 
-                    <!-- camera Link 2 -->
-                    <div class="col-lg-6 col-12 mb-3">
-                        <label for="designation">camera Link 2<span></span></label>
-                        <input class="form-control" name="cameraLink2" id="cameraLink2" type="text">
-                    </div>
                     <!-- camera Link 1 -->
                     <div class="col-lg-6 mb-3">
-                        <label for="designation">camera Link 1<span></span></label>
+                        <label for="cameraLink1">Camera Link 1</label>
                         <input class="form-control" name="cameraLink1" id="cameraLink1" type="text">
                     </div>
-                    <!-- purchaseDetailsLink -->
+                    
+                    <!-- camera Link 2 -->
                     <div class="col-lg-6 col-12 mb-3">
-                        <label for="designation">Purchase Details Link<span></span></label>
+                        <label for="cameraLink2">Camera Link 2</label>
+                        <input class="form-control" name="cameraLink2" id="cameraLink2" type="text">
+                    </div>
+
+                    <!-- purchaseDetailsLink -->
+                    <div class="col-lg-12 col-12 mb-3">
+                        <label for="purchaseDetailsLink">Purchase Details Link</label>
                         <input class="form-control" name="purchaseDetailsLink" id="purchaseDetailsLink" type="text">
                     </div>
+
                     <!-- media_link2 -->
                     <div class="col-lg-12 col-12 mb-3">
-                        <label for="media_link1">Money Receipt Link <span></span></label>
+                        <label for="moneyReceiptLink">Money Receipt Link</label>
                         <input class="form-control" name="moneyReceiptLink" id="moneyReceiptLink" type="text">
                     </div>
 

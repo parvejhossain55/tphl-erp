@@ -83,6 +83,9 @@ $show_breadcrumb = true;
                         <a href="<?= $GLOBALS['base_url'] ?>/onboard-access-client-lists" class="btn btn-success  w-100">
                             Reset
                         </a>
+                        <a href="<?= $GLOBALS['base_url'] ?>/onboard-client-bulk-upload" class="btn btn-warning w-100">
+                            Bulk Upload CSV
+                        </a>
                         <a href="<?= $GLOBALS['base_url'] ?>/create-onboard-client" class="btn btn-primary  w-100">
                             Add Access client
                         </a>
@@ -105,7 +108,8 @@ $show_breadcrumb = true;
                             <th class="th_1">Client Name</th>
                             <th>Phone</th>
                             <!-- <th>Alt Phone</th> -->
-                            <th>Email</th>
+                            <th>Contact Email</th>
+                            <th>Login Email</th>
                             <th>Project</th>
                             <th>Unit/ Share</th>
                             <th>Booking amount pay</th>
@@ -122,6 +126,7 @@ $show_breadcrumb = true;
                                 <td class="td_1"><?= $client['client_name'] ?? '' ?></td>
                                 <td><?= $client['client_phone'] ?? '' ?></td>
                                 <td><?= $client['email'] ?? '' ?></td>
+                                <td><?= $client['login_email'] ?? '' ?></td>
 
                                 <td><?= $client['project_names'] ?? '' ?></td>
                                 <td>
