@@ -497,10 +497,14 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
 
         .info-entry-row {
             display: grid;
-            grid-template-columns: 105px 1fr;
+            grid-template-columns: 90px 1fr;
             margin-bottom: 10px;
             align-items: baseline;
             font-size: 13.5px;
+        }
+
+        .info-entry-row.prop-row {
+            grid-template-columns: 60px 1fr;
         }
 
         .info-label-cell {
@@ -642,7 +646,7 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
 
         .processing-grid {
             display: grid;
-            grid-template-columns: 1fr 1.5fr 1fr;
+            grid-template-columns: repeat(4, 1fr);
             gap: 20px;
             background-color: #f8fafc;
             padding: 14px 20px;
@@ -969,46 +973,32 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
             <!-- PROPERTY INFORMATION -->
             <div class="col-info-card">
                 <div class="section-header-title">PROPERTY INFORMATION</div>
-                <div class="info-entry-row">
+                <div class="info-entry-row prop-row">
                     <span class="info-label-cell">Project:</span>
                     <span class="info-value-cell"><?= htmlspecialchars($projectName) ?></span>
                 </div>
-                <div class="info-entry-row">
+                <div class="info-entry-row prop-row">
                     <span class="info-label-cell">Unit:</span>
-                    <span class="info-value-cell"><?= (!empty($unitName) && $unitName !== 'N/A' && stripos($unitName, 'UNIT') === false) ? 'UNIT ' : '' ?><?= htmlspecialchars($unitName) ?></span>
+                    <span class="info-value-cell"><?= htmlspecialchars(trim(preg_replace('/^unit\s+/i', '', $unitName))) ?></span>
                 </div>
-                <div class="info-entry-row">
-                    <span class="info-label-cell">Flat:</span>
-                    <span class="info-value-cell"><?= (!empty($flatNo) && $flatNo !== 'N/A' && stripos($flatNo, 'FLOOR') === false) ? 'FLOOR ' : '' ?><?= htmlspecialchars($flatNo) ?></span>
+                <div class="info-entry-row prop-row">
+                    <span class="info-label-cell">Floor:</span>
+                    <span class="info-value-cell"><?= htmlspecialchars(trim(preg_replace('/^floor\s+/i', '', $flatNo))) ?></span>
                 </div>
             </div>
         </div>
 
-        <!-- PAYMENT SUMMARY (Only shown for individual payments; hidden for combined/bulk receipts) -->
-        <?php if (empty($isBulk)): ?>
-        <div class="payment-summary-wrap">
-            <div class="section-header-title">PAYMENT SUMMARY</div>
-            <div class="summary-entry-row">
-                <span class="info-label-cell">Payment Type:</span>
-                <span class="info-value-cell"><span class="highlight-type-badge"><?= $paymentTypeLabel ?></span></span>
-            </div>
-            <div class="summary-entry-row">
-                <span class="info-label-cell">Payment Date:</span>
-                <span class="info-value-cell"><?= $receiptDate ?></span>
-            </div>
-            <?php if (!empty($payment['transaction_ref'])): ?>
-            <div class="summary-entry-row">
-                <span class="info-label-cell">Transaction Ref:</span>
-                <span class="info-value-cell"><?= htmlspecialchars($payment['transaction_ref']) ?></span>
-            </div>
-            <?php endif; ?>
-        </div>
-        <?php endif; ?>
+        <!-- PAYMENT SUMMARY REMOVED AS PER REQUEST -->
 
         <!-- TOTAL AMOUNT PAID BANNER -->
         <div class="total-amount-banner">
             <div class="total-banner-main">
-                <div class="total-banner-label">TOTAL AMOUNT PAID</div>
+                <div class="total-banner-label" style="display:flex; align-items:center;">
+                    TOTAL AMOUNT PAID BY 
+                    <span style="display:inline-block; background-color:#0b6638; color:#ffffff; padding:4px 12px; border-radius:6px; margin-left:8px; font-size:12px; font-weight:800; letter-spacing:0.5px;">
+                        <?= htmlspecialchars($paymentMethod) ?>
+                    </span>
+                </div>
                 <div class="total-banner-divider"></div>
                 <div class="total-banner-amount">TK. <?= number_format($totalAmountPaid, 2) ?></div>
             </div>
@@ -1028,10 +1018,25 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
                     <span class="proc-label">Created By:</span>
                     <span class="proc-value"><?= $createdByDisplay ?></span>
                 </div>
+                <?php if (in_array($paymentMethod, ['BANK', 'CHEQUE', 'CHECK', 'ONLINE'])): ?>
+                <div class="proc-box">
+                    <span class="proc-label">Client Bank:</span>
+                    <span class="proc-value"><?= htmlspecialchars(!empty($payment['bank_name']) ? $payment['bank_name'] : 'N/A') ?></span>
+                </div>
+                <div class="proc-box">
+                    <span class="proc-label"><?= $paymentMethod === 'CHEQUE' ? 'Cheque No:' : 'Trx Ref:' ?></span>
+                    <span class="proc-value"><?= htmlspecialchars(!empty($payment['cheque_no']) && $paymentMethod === 'CHEQUE' ? $payment['cheque_no'] : (!empty($payment['transaction_ref']) ? $payment['transaction_ref'] : 'N/A')) ?></span>
+                </div>
+                <div class="proc-box">
+                    <span class="proc-label">Company Bank:</span>
+                    <span class="proc-value"><?= htmlspecialchars(!empty($payment['company_bank_name']) ? $payment['company_bank_name'] : 'N/A') ?></span>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
 
         <!-- BOTTOM VERIFICATION CARD -->
+        <?php if ($paymentMethod !== 'CASH'): ?>
         <div class="verification-card <?= $isVerified ? 'card-verified' : 'card-pending' ?>">
             <div class="card-top-row">
                 <div class="card-left-brand">
@@ -1081,6 +1086,7 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
                 This system-generated receipt is valid without a physical signature.
             </div>
         </div>
+        <?php endif; ?>
 
         <!-- FOOTER SECTION -->
         <hr class="green-divider" style="margin-top: 0; margin-bottom: 12px;">

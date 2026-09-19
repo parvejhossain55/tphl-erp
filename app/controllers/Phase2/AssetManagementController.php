@@ -421,7 +421,7 @@ class AssetManagementController extends Controller
         $isGlobalViewer = in_array($roleId, [1, 3, 33, 34, 35, 6, 17, 20, 24, 25, 30, 31, 32]);
         $isApprover     = $isGlobalViewer && !$isChiefOfficer;
 
-        $activeTab  = $_GET['tab'] ?? ($isApprover ? 'all_requests' : 'my_requests');
+        $activeTab  = $_GET['tab'] ?? ($isApprover ? 'pending_approval' : 'my_requests');
 
         $filters = [
             'department_id'    => $_GET['department_id'] ?? '',

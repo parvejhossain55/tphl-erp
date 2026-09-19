@@ -195,16 +195,40 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                         </div>
                     </div>
 
-                    <?php if (!empty($pr['attachment'])): ?>
+                    <?php 
+                    if (!empty($pr['attachment'])): 
+                        $rootPath = dirname(dirname(dirname(dirname(__DIR__))));
+                        $att = $pr['attachment'];
+                        
+                        // Check various possible locations due to historical path issues
+                        // Some paths contain the prefix already, some don't.
+                        $cleanAtt = basename($att); // get just the filename
+                        
+                        if (file_exists($rootPath . '/public/uploads/pr_attachments/' . $cleanAtt)) {
+                            $downloadLink = $GLOBALS['base_url'] . '/public/uploads/pr_attachments/' . htmlspecialchars($cleanAtt);
+                        } elseif (file_exists($rootPath . '/public/uploads/purchase_requests/' . $cleanAtt)) {
+                            $downloadLink = $GLOBALS['base_url'] . '/public/uploads/purchase_requests/' . htmlspecialchars($cleanAtt);
+                        } elseif (file_exists($rootPath . '/public/public/uploads/pr_attachments/' . $cleanAtt)) {
+                            $downloadLink = $GLOBALS['base_url'] . '/public/public/uploads/pr_attachments/' . htmlspecialchars($cleanAtt);
+                        } else {
+                            // Default fallback
+                            // If it starts with /public, just prepend base_url
+                            if (strpos($att, '/public/') === 0) {
+                                $downloadLink = $GLOBALS['base_url'] . htmlspecialchars($att);
+                            } else {
+                                $downloadLink = $GLOBALS['base_url'] . '/public/uploads/pr_attachments/' . htmlspecialchars($att);
+                            }
+                        }
+                    ?>
                     <div class="alert alert-info border d-flex align-items-center justify-content-between mb-3 p-3" style="background: rgba(13, 202, 240, 0.08); border-color: rgba(13, 202, 240, 0.3) !important; border-radius: 10px;">
                         <div class="d-flex align-items-center gap-2">
                             <i class="bi bi-file-earmark-text fs-4 text-info"></i>
                             <div>
                                 <strong class="d-block text-dark">Attached Document / Requisition File:</strong>
-                                <span class="text-muted small"><?= htmlspecialchars($pr['attachment']) ?></span>
+                                <span class="text-muted small"><?= htmlspecialchars(basename($pr['attachment'])) ?></span>
                             </div>
                         </div>
-                        <a href="<?= $base_url ?>/public/uploads/pr_attachments/<?= htmlspecialchars($pr['attachment']) ?>" target="_blank" class="btn btn-outline-info btn-sm">
+                        <a href="<?= $downloadLink ?>" target="_blank" class="btn btn-outline-info btn-sm">
                             <i class="bi bi-eye me-1"></i> View / Download Document
                         </a>
                     </div>
