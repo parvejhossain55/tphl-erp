@@ -128,6 +128,8 @@ class HrmApiController extends Controller
         $grossSalary = !empty($_POST['gross_salary']) ? (float)$_POST['gross_salary'] : 0.0;
         $basicSalary = $grossSalary > 0 ? ($grossSalary * 0.50) : 0.0;
         $isMealDeduction = isset($_POST['is_meal_deduction']) ? (int)$_POST['is_meal_deduction'] : 0;
+        $perMealAmount = (isset($_POST['per_meal_amount']) && is_numeric($_POST['per_meal_amount'])) ? (float)$_POST['per_meal_amount'] : 120.00;
+        $perMealPercentage = (isset($_POST['per_meal_percentage']) && $_POST['per_meal_percentage'] !== '') ? (float)$_POST['per_meal_percentage'] : 100.00;
         $isDeptHead = (isset($_POST['is_dept_head']) && (int)$_POST['is_dept_head'] === 1) ? 1 : 0;
         $reportingUserId = ($isDeptHead === 1) ? null : (!empty($_POST['reporting_user_id']) ? (int)$_POST['reporting_user_id'] : null);
         $makeUser = (isset($_POST['make_user']) && (int)$_POST['make_user'] === 1) ? 1 : 0;
@@ -209,9 +211,9 @@ class HrmApiController extends Controller
                 'qualification' => '',
                 'gross_salary' => $grossSalary,
                 'basic_salary' => $basicSalary,
-                'per_meal_amount' => 0.00,
+                'per_meal_amount' => $perMealAmount,
                 'is_meal_deduction' => $isMealDeduction,
-                'per_meal_percentage' => 100.00,
+                'per_meal_percentage' => $perMealPercentage,
                 'experience' => '',
                 'workplace' => $workplaceName,
                 'office_branch_id' => $officeBranchId,

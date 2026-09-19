@@ -158,7 +158,7 @@ class EmployeeController extends Controller
                 'qualification' => trim($_POST['qualification'] ?? ''),
                 'gross_salary' => $grossSalary,
                 'basic_salary' => $basicSalary,
-                'per_meal_amount' => !empty($_POST['per_meal_amount']) ? (float) $_POST['per_meal_amount'] : 0.00,
+                'per_meal_amount' => (isset($_POST['per_meal_amount']) && is_numeric($_POST['per_meal_amount'])) ? (float) $_POST['per_meal_amount'] : 120.00,
                 'is_meal_deduction' => isset($_POST['is_meal_deduction']) ? (int)$_POST['is_meal_deduction'] : 0,
                 'per_meal_percentage' => (isset($_POST['per_meal_percentage']) && $_POST['per_meal_percentage'] !== '') ? (float)$_POST['per_meal_percentage'] : 100.00,
                 'experience' => trim($_POST['experience'] ?? ''),
