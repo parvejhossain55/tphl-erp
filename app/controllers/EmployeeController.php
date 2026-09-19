@@ -698,6 +698,7 @@ class EmployeeController extends Controller
         $designations = $this->designationModel->getAll();
         $roles = $this->roleModel->getAllFilterRole();
         $branches = $this->getOfficeBranches();
+        $reportingBosses = $this->userModel->getPotentialReportingBosses();
 
         $this->view("hrm/employees/external-employees", [
             "current_route" => "hrm-external-employees",
@@ -705,7 +706,8 @@ class EmployeeController extends Controller
             "departments" => $departments,
             "designations" => $designations,
             "roles" => $roles,
-            "branches" => $branches
+            "branches" => $branches,
+            "reportingBosses" => $reportingBosses
         ]);
     }
 

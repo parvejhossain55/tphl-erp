@@ -423,49 +423,61 @@
                               <div class="col-lg-6">
                                   <h6 class="mb-3 text-success"><i class="fa-solid fa-circle-plus me-2"></i>Earnings / Allowances</h6>
                                   <div class="row g-3">
-                                       <?php foreach ($payslipItems as $item): ?>
-                                           <?php if ($item['type'] === 'earning'): ?>
-                                               <div class="col-12 mb-2">
-                                                   <label for="allowance_<?= $item['id'] ?>">
-                                                       <?= htmlspecialchars($item['name']) ?>
-                                                       <?php if (!empty($item['percentage']) && $item['percentage'] > 0): ?>
-                                                           <span class="badge bg-info-transparent text-info ms-1" style="font-size:11px;"><?= number_format($item['percentage'], 2) ?>%</span>
-                                                       <?php endif; ?>
-                                                   </label>
-                                                   <input class="form-control salary-item-input" 
-                                                       name="salary_items[<?= $item['id'] ?>]" 
-                                                       id="allowance_<?= $item['id'] ?>" 
-                                                       type="number" step="0.01" 
-                                                       data-percentage="<?= $item['percentage'] ?? '' ?>" 
-                                                       value="<?= number_format($existingItems[$item['id']] ?? 0, 2, '.', '') ?>">
-                                               </div>
-                                           <?php endif; ?>
-                                       <?php endforeach; ?>
-                                   </div>
-                               </div>
+                                        <?php foreach ($payslipItems as $item): ?>
+                                            <?php if ($item['type'] === 'earning'): ?>
+                                                <?php
+                                                $itemVal = $existingItems[$item['id']] ?? null;
+                                                if (($itemVal === null || (empty($employeeSalaryItems) && (float)$itemVal == 0)) && !empty($item['percentage']) && (float)$item['percentage'] > 0 && !empty($employee['basic_salary']) && (float)$employee['basic_salary'] > 0) {
+                                                    $itemVal = ((float)$employee['basic_salary'] * (float)$item['percentage']) / 100;
+                                                }
+                                                ?>
+                                                <div class="col-12 mb-2">
+                                                    <label for="allowance_<?= $item['id'] ?>">
+                                                        <?= htmlspecialchars($item['name']) ?>
+                                                        <?php if (!empty($item['percentage']) && $item['percentage'] > 0): ?>
+                                                            <span class="badge bg-info-transparent text-info ms-1" style="font-size:11px;"><?= number_format($item['percentage'], 2) ?>%</span>
+                                                        <?php endif; ?>
+                                                    </label>
+                                                    <input class="form-control salary-item-input" 
+                                                        name="salary_items[<?= $item['id'] ?>]" 
+                                                        id="allowance_<?= $item['id'] ?>" 
+                                                        type="number" step="0.01" 
+                                                        data-percentage="<?= $item['percentage'] ?? '' ?>" 
+                                                        value="<?= number_format((float)($itemVal ?? 0), 2, '.', '') ?>">
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
 
-                               <!-- Deductions -->
-                               <div class="col-lg-6">
-                                   <h6 class="mb-3 text-danger"><i class="fa-solid fa-circle-minus me-2"></i>Deductions</h6>
-                                   <div class="row g-3">
-                                       <?php foreach ($payslipItems as $item): ?>
-                                           <?php if ($item['type'] === 'deduction'): ?>
-                                               <div class="col-12 mb-2">
-                                                   <label for="deduction_<?= $item['id'] ?>">
-                                                       <?= htmlspecialchars($item['name']) ?>
-                                                       <?php if (!empty($item['percentage']) && $item['percentage'] > 0): ?>
-                                                           <span class="badge bg-warning-transparent text-warning ms-1" style="font-size:11px;"><?= number_format($item['percentage'], 2) ?>%</span>
-                                                       <?php endif; ?>
-                                                   </label>
-                                                   <input class="form-control salary-item-input" 
-                                                       name="salary_items[<?= $item['id'] ?>]" 
-                                                       id="deduction_<?= $item['id'] ?>" 
-                                                       type="number" step="0.01" 
-                                                       data-percentage="<?= $item['percentage'] ?? '' ?>" 
-                                                       value="<?= number_format($existingItems[$item['id']] ?? 0, 2, '.', '') ?>">
-                                               </div>
-                                           <?php endif; ?>
-                                       <?php endforeach; ?>
+                                <!-- Deductions -->
+                                <div class="col-lg-6">
+                                    <h6 class="mb-3 text-danger"><i class="fa-solid fa-circle-minus me-2"></i>Deductions</h6>
+                                    <div class="row g-3">
+                                        <?php foreach ($payslipItems as $item): ?>
+                                            <?php if ($item['type'] === 'deduction'): ?>
+                                                <?php
+                                                $itemVal = $existingItems[$item['id']] ?? null;
+                                                if (($itemVal === null || (empty($employeeSalaryItems) && (float)$itemVal == 0)) && !empty($item['percentage']) && (float)$item['percentage'] > 0 && !empty($employee['basic_salary']) && (float)$employee['basic_salary'] > 0) {
+                                                    $itemVal = ((float)$employee['basic_salary'] * (float)$item['percentage']) / 100;
+                                                }
+                                                ?>
+                                                <div class="col-12 mb-2">
+                                                    <label for="deduction_<?= $item['id'] ?>">
+                                                        <?= htmlspecialchars($item['name']) ?>
+                                                        <?php if (!empty($item['percentage']) && $item['percentage'] > 0): ?>
+                                                            <span class="badge bg-warning-transparent text-warning ms-1" style="font-size:11px;"><?= number_format($item['percentage'], 2) ?>%</span>
+                                                        <?php endif; ?>
+                                                    </label>
+                                                    <input class="form-control salary-item-input" 
+                                                        name="salary_items[<?= $item['id'] ?>]" 
+                                                        id="deduction_<?= $item['id'] ?>" 
+                                                        type="number" step="0.01" 
+                                                        data-percentage="<?= $item['percentage'] ?? '' ?>" 
+                                                        value="<?= number_format((float)($itemVal ?? 0), 2, '.', '') ?>">
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
                                    </div>
                                </div>
                            </div>
@@ -569,6 +581,24 @@
           basicSalaryInput.addEventListener("input", calculateSalaryBreakdown);
           basicSalaryInput.addEventListener("change", calculateSalaryBreakdown);
       }
+
+      // Auto-calculate breakdown on load if basic salary exists but breakdown fields are all zero
+      (function() {
+          const basic = parseFloat(basicSalaryInput ? basicSalaryInput.value : 0) || 0;
+          if (basic > 0) {
+              let hasNonZeroBreakdown = false;
+              document.querySelectorAll(".salary-item-input[data-percentage]").forEach(function(input) {
+                  const val = parseFloat(input.value) || 0;
+                  const pct = parseFloat(input.getAttribute("data-percentage")) || 0;
+                  if (pct > 0 && val > 0) {
+                      hasNonZeroBreakdown = true;
+                  }
+              });
+              if (!hasNonZeroBreakdown) {
+                  calculateSalaryBreakdown();
+              }
+          }
+      })();
 
       // Fallback for flatpickr initialization in case main.js is cached by the browser
       if (typeof $ !== 'undefined' && $.fn.flatpickr) {
