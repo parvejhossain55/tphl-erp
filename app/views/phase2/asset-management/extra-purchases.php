@@ -371,7 +371,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 if (!$isCreator) {
                                                     if (($isReporterBoss || $isAdminOrMgmt) && $rowDhStatus === 'pending') {
                                                         $canApprove = true; $step = 'dept_head';
-                                                    } elseif ($isOperations && in_array($rowDhStatus, ['approved', 'not_required']) && $r['operations_status'] === 'pending') {
+                                                    } elseif (($isAdminOrMgmt || $isRole20Eligible) && in_array($rowDhStatus, ['approved', 'not_required']) && $r['operations_status'] === 'pending') {
                                                         $canApprove = true; $step = 'operations';
                                                     } elseif ($isPurchaseHead && $r['operations_status'] === 'approved' && $r['purchase_head_status'] === 'pending') {
                                                         $canApprove = true; $step = 'purchase_head';

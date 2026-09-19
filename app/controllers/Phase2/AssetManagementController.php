@@ -515,7 +515,7 @@ class AssetManagementController extends Controller
                     $dhStatus = $autoOpenRequest['dept_head_status'] ?? 'not_required';
                     if (($isReporterBoss || $isSuperAdmin) && $dhStatus === 'pending') {
                         $canApprove = true; $step = 'dept_head';
-                    } elseif ($isOperations && in_array($dhStatus, ['approved', 'not_required']) && $autoOpenRequest['operations_status'] === 'pending') {
+                    } elseif (($isOperations && $isSuperAdmin || $isRole20Eligible) && in_array($dhStatus, ['approved', 'not_required']) && $autoOpenRequest['operations_status'] === 'pending') {
                         $canApprove = true; $step = 'operations';
                     } elseif ($isPurchaseHead && $autoOpenRequest['operations_status'] === 'approved' && $autoOpenRequest['purchase_head_status'] === 'pending') {
                         $canApprove = true; $step = 'purchase_head';

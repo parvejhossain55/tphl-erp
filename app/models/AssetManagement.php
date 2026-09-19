@@ -833,7 +833,12 @@ class AssetManagement
                     $conds[] = "(pea.reporting_user_id = {$userId} AND pea.dept_head_status = 'pending')";
 
                     if (!empty($filters['is_operations'])) {
-                        $conds[] = "(pea.dept_head_status IN ('approved', 'not_required') AND pea.operations_status = 'pending')";
+                        $roleId = (int)($filters['role_id'] ?? 0);
+                        if ($roleId === 20 || $roleId === 32) {
+                            $conds[] = "(pea.total_price <= 100000 AND pea.dept_head_status IN ('approved', 'not_required') AND pea.operations_status = 'pending')";
+                        } else {
+                            $conds[] = "(pea.dept_head_status IN ('approved', 'not_required') AND pea.operations_status = 'pending')";
+                        }
                     }
                     if (!empty($filters['is_purchase_head'])) {
                         $conds[] = "(pea.operations_status = 'approved' AND pea.purchase_head_status = 'pending')";

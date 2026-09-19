@@ -829,27 +829,60 @@ class ApprovalRequest extends Model
         }
 
         if ($sourceTable === 'project_extra_assets') {
-            $mgmtStatus = ($status === 'approved') ? 'approved' : 'rejected';
-            $overallStatus = ($status === 'approved') ? 'approved' : 'rejected';
-            $qcStatus = ($status === 'approved') ? 'approved' : 'rejected';
+            $approveRole = strtolower($request['approve_role'] ?? 'management');
+            
+            // Determine which step is being approved
+            $step = 'mgmt';
+            if (strpos($approveRole, 'dept_head') === 0) {
+                $step = 'dept_head';
+            } elseif ($approveRole === 'operations') {
+                $step = 'operations';
+            } elseif (in_array($approveRole, ['purchase_head', 'purchase'])) {
+                $step = 'purchase_head';
+            } elseif ($approveRole === 'qc') {
+                $step = 'qc_audit';
+            }
+
+            $stepStatus = ($status === 'approved') ? 'approved' : 'rejected';
+            
+            $statusCol = $step . '_status';
+            $byCol = $step . '_by';
+            $atCol = $step . '_at';
+            $noteCol = $step . '_note';
+
+            // Special fast-track logic for management approving while QC is pending (retaining old behavior)
+            if ($step === 'mgmt') {
+                $qcStatusUpdate = ", qc_audit_status = CASE WHEN qc_audit_status = 'pending' THEN '{$stepStatus}' ELSE qc_audit_status END";
+            } else {
+                $qcStatusUpdate = "";
+            }
 
             $stmtPea = $this->db->prepare(
                 "UPDATE project_extra_assets 
-                 SET qc_audit_status = CASE WHEN qc_audit_status = 'pending' THEN ? ELSE qc_audit_status END,
-                     mgmt_status = ?,
-                     mgmt_by = ?,
-                     mgmt_at = NOW(),
-                     mgmt_note = ?,
-                     overall_status = ?
+                 SET {$statusCol} = ?,
+                     {$byCol} = ?,
+                     {$atCol} = NOW(),
+                     {$noteCol} = ?
+                     {$qcStatusUpdate}
                  WHERE id = ?"
             );
+
             if ($stmtPea) {
-                $stmtPea->bind_param('ssissi', $qcStatus, $mgmtStatus, $approvedBy, $approvalNote, $overallStatus, $sourceId);
+                $stmtPea->bind_param('sisi', $stepStatus, $approvedBy, $approvalNote, $sourceId);
                 $stmtPea->execute();
                 $stmtPea->close();
             }
 
-            if ($status === 'approved') {
+            // Update overall_status
+            if ($stepStatus === 'rejected') {
+                $this->db->query("UPDATE project_extra_assets SET overall_status = 'rejected' WHERE id = {$sourceId}");
+            } elseif ($step === 'mgmt' && $stepStatus === 'approved') {
+                $this->db->query("UPDATE project_extra_assets SET overall_status = 'approved' WHERE id = {$sourceId}");
+            } else {
+                $this->db->query("UPDATE project_extra_assets SET overall_status = 'in_review' WHERE id = {$sourceId}");
+            }
+
+            if ($step === 'mgmt' && $status === 'approved') {
                 try {
                     require_once dirname(__DIR__) . '/services/AutoPostingService.php';
                     $autoPosting = new \AutoPostingService($this->db);

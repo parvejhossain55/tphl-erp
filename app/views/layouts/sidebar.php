@@ -86,8 +86,8 @@
                 $pendingApprovalCount = (int) ($resApp->fetch_assoc()['total'] ?? 0);
             }
         } elseif ($loggedUserRoleId === 20 || $loggedUserRoleId === 32) {
-            // Role 20 / 32 (Site Operator / Operation Head): management approvals with amount <= 100,000
-            $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role = 'management' AND (request_amount <= 100000 OR request_amount IS NULL OR request_amount = 0)");
+            // Role 20 / 32 (Site Operator / Operation Head): management & operations approvals with amount <= 100,000
+            $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role IN ('management', 'operations') AND (request_amount <= 100000 OR request_amount IS NULL OR request_amount = 0)");
             if (isset($resApp) && $resApp) {
                 $pendingApprovalCount = (int) ($resApp->fetch_assoc()['total'] ?? 0);
             }
@@ -196,45 +196,56 @@
             $stmt->close();
         }
 
-        // Calculate pending Fund Requisition action counts for logged-in user
-        $pendingFundReqDeptCount = 0;
-        $pendingFundReqMgmtCount = 0;
-        $pendingFundReqAccountsCount = 0;
+        // Calculate pending Fund Requisition action counts — role-specific
         $pendingFundReqTotalCount = 0;
 
         $loggedUserId = (int) $_SESSION['user']['id'];
         $loggedRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
 
-        // 1. Dept Head Pending Count (waiting for this user's approval or Admin)
-        $resDept = $db->query("
-            SELECT COUNT(DISTINCT fr.id) AS total 
-            FROM fund_requisitions fr
-            LEFT JOIN users u ON fr.requested_by = u.id
-            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
-            WHERE fr.status = 'pending_dept' 
-              AND (e.reporting_user_id = $loggedUserId OR $loggedRoleId IN (1, 3))
-        ");
-        if ($resDept) {
-            $pendingFundReqDeptCount = (int) ($resDept->fetch_assoc()['total'] ?? 0);
-        }
+        if (in_array($loggedRoleId, [1, 3, 33, 34, 35])) {
+            // Admin / Full Management: count ALL types of pending
+            // 1. Dept head pending (awaiting their approval)
+            $resDept = $db->query("
+                SELECT COUNT(DISTINCT fr.id) AS total 
+                FROM fund_requisitions fr
+                LEFT JOIN users u ON fr.requested_by = u.id
+                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                WHERE fr.status = 'pending_dept' 
+                  AND (e.reporting_user_id = $loggedUserId OR $loggedRoleId IN (1, 3))
+            ");
+            if ($resDept) $pendingFundReqTotalCount += (int)($resDept->fetch_assoc()['total'] ?? 0);
 
-        // 2. Management Pending Count (Management roles 1, 3, 20)
-        if (in_array($loggedRoleId, [1, 3, 20, 32])) {
+            // 2. Management pending
             $resMgmt = $db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status = 'pending'");
-            if ($resMgmt) {
-                $pendingFundReqMgmtCount = (int) ($resMgmt->fetch_assoc()['total'] ?? 0);
-            }
-        }
+            if ($resMgmt) $pendingFundReqTotalCount += (int)($resMgmt->fetch_assoc()['total'] ?? 0);
 
-        // 3. Accounts Pending Pay Count (Accounts roles 1, 6, 30)
-        if (in_array($loggedRoleId, [1, 6, 30])) {
+        } elseif (in_array($loggedRoleId, [20, 32])) {
+            // Operation Head: only management-pending (status = 'pending') up to 1 lakh
+            $resMgmt = $db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status = 'pending' AND amount <= 100000");
+            if ($resMgmt) $pendingFundReqTotalCount = (int)($resMgmt->fetch_assoc()['total'] ?? 0);
+
+        } elseif (in_array($loggedRoleId, [13, 24, 25])) {
+            // QC & Internal Audit: only QC-pending
+            $resQc = $db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status = 'pending_qc'");
+            if ($resQc) $pendingFundReqTotalCount = (int)($resQc->fetch_assoc()['total'] ?? 0);
+
+        } elseif (in_array($loggedRoleId, [6, 30])) {
+            // Accounts: only approved (ready for payment)
             $resAccts = $db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status = 'approved'");
-            if ($resAccts) {
-                $pendingFundReqAccountsCount = (int) ($resAccts->fetch_assoc()['total'] ?? 0);
-            }
-        }
+            if ($resAccts) $pendingFundReqTotalCount = (int)($resAccts->fetch_assoc()['total'] ?? 0);
 
-        $pendingFundReqTotalCount = $pendingFundReqDeptCount + $pendingFundReqMgmtCount + $pendingFundReqAccountsCount;
+        } else {
+            // Regular employee / Dept Head: pending_dept for their department or reporting boss
+            $resDept = $db->query("
+                SELECT COUNT(DISTINCT fr.id) AS total 
+                FROM fund_requisitions fr
+                LEFT JOIN users u ON fr.requested_by = u.id
+                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                WHERE fr.status = 'pending_dept' 
+                  AND e.reporting_user_id = $loggedUserId
+            ");
+            if ($resDept) $pendingFundReqTotalCount = (int)($resDept->fetch_assoc()['total'] ?? 0);
+        }
     }
 
     // Calculate pending Purchase Requests & Purchase Orders count for sidebar red badges
