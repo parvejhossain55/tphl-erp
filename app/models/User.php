@@ -317,13 +317,16 @@ public function getUsersByTeamAndRole($teamId)
 
     public function getPotentialReportingBosses()
     {
-        $sql = "SELECT u.id, u.full_name, e.employee_id as emp_code, r.name as role_name, d.name as designation_name
+        $sql = "SELECT u.id, u.full_name,
+                       COALESCE(e1.employee_id, e2.employee_id) AS emp_code,
+                       r.name AS role_name,
+                       d.name AS designation_name
                 FROM users u
-                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                LEFT JOIN employees e1 ON e1.user_id = u.id
+                LEFT JOIN employees e2 ON e2.id = u.employee_id
                 LEFT JOIN roles r ON r.id = u.role_id
                 LEFT JOIN designations d ON d.id = u.designation_id
                 WHERE u.role_id NOT IN (1, 2, 8, 23) OR u.role_id IS NULL
-                GROUP BY u.id
                 ORDER BY u.full_name ASC";
         $stmt = $this->db->prepare($sql);
         if (!$stmt || !$stmt->execute()) {
