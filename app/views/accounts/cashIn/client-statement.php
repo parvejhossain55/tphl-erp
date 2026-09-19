@@ -37,7 +37,7 @@ foreach ($validTransactions as $t) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Account Statement - <?= htmlspecialchars($clientDetails['client_name'] ?? 'N/A') ?></title>
     <style>
-        @page { size: A4 landscape; margin: 10mm; }
+        @page { size: A4 portrait; margin: 10mm; }
 
         @media print {
             .no-print { display: none !important; }
@@ -78,11 +78,13 @@ foreach ($validTransactions as $t) {
 
             /* Summary strip – force single row */
             .summary-strip {
-                grid-template-columns: repeat(5, 1fr) !important;
+                display: flex !important;
+                flex-wrap: nowrap !important;
                 margin-bottom: 3mm !important;
                 page-break-inside: avoid;
             }
-            .summary-cell { padding: 4px 5px !important; }
+            .summary-cell { padding: 4px 5px !important; border-bottom: none !important; border-right: 1px solid #000 !important; flex: 1 1 auto !important; }
+            .summary-cell:last-child { border-right: none !important; }
             .summary-cell .s-label { font-size: 6pt !important; }
             .summary-cell .s-value { font-size: 10pt !important; }
 
@@ -167,8 +169,9 @@ foreach ($validTransactions as $t) {
 
         .info-box { border: 1px solid #000; padding: 10px; font-size: 11px; }
         .info-title { font-weight: bold; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px solid #000; text-transform: uppercase; font-size: 11px; }
-        .info-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
-        .info-val { font-weight: bold; text-align: right; }
+        .info-row { display: flex; justify-content: flex-start; gap: 10px; margin-bottom: 4px; }
+        .info-row > span:first-child { min-width: 45px; }
+        .info-val { font-weight: bold; text-align: left; }
 
         /* ─── Financial Summary Strip (TOP) ─── */
         .summary-strip {
@@ -220,8 +223,7 @@ foreach ($validTransactions as $t) {
         .main-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 10px;
-            min-width: 950px;
+            font-size: 9px;
         }
 
         .main-table th, .main-table td {
@@ -370,25 +372,27 @@ foreach ($validTransactions as $t) {
         </div>
 
         <!-- Client & Property Details -->
-        <div class="info-grid">
-            <div class="info-box">
-                <div class="info-title">Client Information</div>
-                <div class="info-row"><span>Name:</span><span class="info-val"><?= htmlspecialchars($clientDetails['client_name'] ?? 'N/A') ?></span></div>
-                <div class="info-row"><span>Phone:</span><span class="info-val"><?= htmlspecialchars($clientDetails['phone'] ?? 'N/A') ?></span></div>
-                <div class="info-row"><span>Email:</span><span class="info-val"><?= htmlspecialchars($clientDetails['email'] ?? 'N/A') ?></span></div>
-            </div>
-            <div class="info-box">
-                <div class="info-title">Property Details</div>
-                <div class="info-row"><span>Project:</span><span class="info-val"><?= htmlspecialchars($clientDetails['project_name'] ?? 'N/A') ?></span></div>
-                <div class="info-row"><span>Unit:</span><span class="info-val"><?= htmlspecialchars($clientDetails['unit_name'] ?? 'N/A') ?></span></div>
-                <div class="info-row"><span>Floor:</span><span class="info-val"><?= htmlspecialchars($clientDetails['flat_no'] ?? 'N/A') ?></span></div>
+        <div class="info-box" style="margin-bottom: 12px; padding: 0;">
+            <div class="info-grid" style="margin-bottom: 0; gap: 0;">
+                <div style="padding: 10px; border-right: 1px solid #000;">
+                    <div class="info-title">Client Information</div>
+                    <div class="info-row"><span>Name:</span><span class="info-val"><?= htmlspecialchars($clientDetails['client_name'] ?? 'N/A') ?></span></div>
+                    <div class="info-row"><span>Phone:</span><span class="info-val"><?= htmlspecialchars($clientDetails['phone'] ?? 'N/A') ?></span></div>
+                    <div class="info-row"><span>Email:</span><span class="info-val"><?= htmlspecialchars($clientDetails['email'] ?? 'N/A') ?></span></div>
+                </div>
+                <div style="padding: 10px;">
+                    <div class="info-title">Property Details</div>
+                    <div class="info-row"><span>Project:</span><span class="info-val"><?= htmlspecialchars($clientDetails['project_name'] ?? 'N/A') ?></span></div>
+                    <div class="info-row"><span>Unit:</span><span class="info-val"><?= htmlspecialchars($clientDetails['unit_name'] ?? 'N/A') ?></span></div>
+                    <div class="info-row"><span>Floor:</span><span class="info-val"><?= htmlspecialchars($clientDetails['flat_no'] ?? 'N/A') ?></span></div>
+                </div>
             </div>
         </div>
 
         <!-- ═══ FINANCIAL SUMMARY (TOP) ═══ -->
         <div class="summary-strip">
             <div class="summary-cell">
-                <div class="s-label">Total Price</div>
+                <div class="s-label">Total Price <span style="text-transform:none; font-size:7px;">(Approximate)</span></div>
                 <div class="s-value">৳<?= number_format($totalPrice, 2) ?></div>
             </div>
             <div class="summary-cell positive">
@@ -404,7 +408,7 @@ foreach ($validTransactions as $t) {
                 <div class="s-value"><?= count($validTransactions) ?></div>
             </div>
             <div class="summary-cell highlight">
-                <div class="s-label">Outstanding Balance</div>
+                <div class="s-label">Outstanding Balance <span style="text-transform:none; font-size:7px;">(Approximate)</span></div>
                 <div class="s-value">
                     <?php if ($remainingBalance <= 0): ?>
                         FULLY PAID
@@ -423,12 +427,13 @@ foreach ($validTransactions as $t) {
                         <th style="width:28px;">SL</th>
                         <th style="width:78px;">Date</th>
                         <th style="width:105px;">Term</th>
+                        <th>Money Receipt<br>No.</th>
                         <th>Payment<br>Type</th>
                         <th>Bank Name</th>
                         <th>Cheque /<br>Txn ID</th>
                         <th>Discount</th>
                         <th>Paid<br>Amount</th>
-                        <th>Remaining<br>Balance</th>
+                        <th>Remaining<br>Balance<br><span style="text-transform:none; font-size:7px; font-weight:normal;">(Approximate)</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -448,12 +453,19 @@ foreach ($validTransactions as $t) {
                             $sl++;
                             $amount        = (float)($txn['amount'] ?? 0);
                             $serviceFee    = (float)($txn['service_fee'] ?? 0);
-                            $discount      = (float)($txn['bulk_emi_discount'] ?? 0);
                             $paymentType   = $txn['payment_type'] ?? '';
+                            $discount      = (float)($txn['bulk_emi_discount'] ?? 0);
+                            
+                            // Apply booking discount to the booking money row
+                            if ($paymentType === 'booking_money' && $bookingDiscount > 0) {
+                                $discount = $bookingDiscount;
+                                $bookingDiscountApplied = true;
+                            }
+                            
                             $emiNo         = $txn['emi_no'] ?? null;
                             $chequeNo      = $txn['cheque_no'] ?? '';
                             $transRef      = $txn['transaction_ref'] ?? '';
-                            $bankName      = $txn['bank_display_name'] ?? ($txn['bank_name'] ?? '');
+                            $bankName      = !empty($txn['bank_name']) ? $txn['bank_name'] : ($txn['bank_display_name'] ?? '');
                             $payMethod     = ucfirst($txn['payment_method'] ?? '');
                             $payDate       = isset($txn['payment_date']) ? date('d-M-Y', strtotime($txn['payment_date'])) : '';
 
@@ -479,7 +491,11 @@ foreach ($validTransactions as $t) {
                                 $term = 'Dev. Charge';
                                 $colDevCharge = $amount;
                             } elseif ($paymentType === 'emi' || $paymentType === 'emi_due_settlement') {
-                                if ($emiNo) {
+                                if (!empty($txn['settlement_type']) && $txn['settlement_type'] === 'emi_due_settlement') {
+                                    $term = $txn['installment_label'] ?? $term;
+                                } elseif (!empty($txn['installment_label']) && $txn['installment_label'] === 'Installment Advance') {
+                                    $term = 'Installment Advance';
+                                } elseif ($emiNo) {
                                     $term = 'Installment ' . $emiNo;
                                 }
                                 $colInstFee    = $amount - $serviceFee;
@@ -500,6 +516,9 @@ foreach ($validTransactions as $t) {
 
                             // Cheque/Transaction ID
                             $chequeOrRef = !empty($chequeNo) ? $chequeNo : $transRef;
+                            
+                            // Money Receipt No
+                            $receiptNo = 'REC-' . str_pad($txn['id'] ?? '0', 6, '0', STR_PAD_LEFT);
 
                             // Running balance
                             $runningBalance -= ($amount + $discount);
@@ -515,6 +534,7 @@ foreach ($validTransactions as $t) {
                             <td class="center"><?= $sl ?></td>
                             <td class="center"><?= $payDate ?></td>
                             <td><?= htmlspecialchars($term) ?></td>
+                            <td class="center"><?= htmlspecialchars($receiptNo) ?></td>
                             <td class="center"><?= $payTypeDisplay ?></td>
                             <td class="center"><?= htmlspecialchars($bankName) ?></td>
                             <td class="center"><?= htmlspecialchars($chequeOrRef) ?></td>
@@ -524,11 +544,12 @@ foreach ($validTransactions as $t) {
                         </tr>
                         <?php endforeach; ?>
 
-                        <?php if ($bookingDiscount > 0): ?>
+                        <?php if ($bookingDiscount > 0 && empty($bookingDiscountApplied)): ?>
                         <tr class="discount-row">
                             <td class="center"><?= ++$sl ?></td>
                             <td class="center">—</td>
                             <td><strong>Booking Discount</strong></td>
+                            <td class="center">—</td>
                             <td class="center">—</td>
                             <td></td><td></td>
                             <td class="amount"><strong><?= number_format($bookingDiscount, 0) ?></strong></td>
@@ -540,7 +561,7 @@ foreach ($validTransactions as $t) {
 
                         <!-- Totals Row -->
                         <tr class="total-row">
-                            <td colspan="3" style="text-align:right;"><strong>TOTAL</strong></td>
+                            <td colspan="4" style="text-align:right;"><strong>TOTAL</strong></td>
                             <td></td><td></td><td></td>
                             <td class="amount"><?= $totalDiscount > 0 ? number_format($totalDiscount, 0) : '' ?></td>
                             <td class="amount"><?= number_format($totalPaidCol, 0) ?></td>
@@ -549,7 +570,7 @@ foreach ($validTransactions as $t) {
 
                     <?php else: ?>
                         <tr>
-                            <td colspan="9" style="text-align:center; padding:20px;">
+                            <td colspan="10" style="text-align:center; padding:20px;">
                                 No transactions found for the selected period.
                             </td>
                         </tr>
