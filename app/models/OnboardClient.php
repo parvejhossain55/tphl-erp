@@ -15,6 +15,7 @@ class OnboardClient extends Model
                    l.full_name AS client_name,
                    l.phone AS client_phone,
                    oc.email,
+                   oc.login_email,
                    GROUP_CONCAT(DISTINCT p.name SEPARATOR ', ') AS project_names,
                    GROUP_CONCAT(DISTINCT CONCAT(f.flat_name, ' (', f.sqft, ' sqft)') SEPARATOR ', ') AS flat_names,
                    SUM(lp.amount) AS total_paid
@@ -58,7 +59,7 @@ class OnboardClient extends Model
      * @param array $links Optional camera/money/purchase links
      */
     // Create onboard client
-    public function create($leadId, $email, $password, $links = [], $created_by = null)
+    public function create($leadId, $email, $password, $links = [], $created_by = null, $login_email = null)
     {
         if (!$leadId) return false;
 
@@ -78,16 +79,17 @@ class OnboardClient extends Model
 
         // Insert login
         $sql = "INSERT INTO onboard_clients
-        ( lead_id, email, password, cameraLink1, cameraLink2, moneyReceiptLink, purchaseDetailsLink, created_by)
-        VALUES (?,  ?, ?, ?, ?, ?, ?, ?)";
+        ( lead_id, email, login_email, password, cameraLink1, cameraLink2, moneyReceiptLink, purchaseDetailsLink, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $this->db->prepare($sql);
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
 
         $stmt->bind_param(
-            "issssssi",
+            "isssssssi",
             $leadId,
             $email,
+            $login_email,
             $hashedPassword,
             $cameraLink1,
             $cameraLink2,
@@ -127,21 +129,22 @@ class OnboardClient extends Model
         $cameraLink2 = $data['cameraLink2'] ?? null;
         $moneyReceiptLink = $data['moneyReceiptLink'] ?? null;
         $purchaseDetailsLink = $data['purchaseDetailsLink'] ?? null;
+        $login_email = $data['login_email'] ?? null;
 
         if ($password) {
             $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
             $sql = "UPDATE onboard_clients 
-                SET email = ?, password = ?, cameraLink1 = ?, cameraLink2 = ?, moneyReceiptLink = ?, purchaseDetailsLink = ?
+                SET email = ?, login_email = ?, password = ?, cameraLink1 = ?, cameraLink2 = ?, moneyReceiptLink = ?, purchaseDetailsLink = ?
                 WHERE id = ?";
             $stmt = $this->db->prepare($sql);
-            $stmt->bind_param("ssssssi", $email, $hashedPassword, $cameraLink1, $cameraLink2, $moneyReceiptLink, $purchaseDetailsLink, $id);
+            $stmt->bind_param("sssssssi", $email, $login_email, $hashedPassword, $cameraLink1, $cameraLink2, $moneyReceiptLink, $purchaseDetailsLink, $id);
         } else {
             // Do not update password if blank
             $sql = "UPDATE onboard_clients 
-                SET email = ?, cameraLink1 = ?, cameraLink2 = ?, moneyReceiptLink = ?, purchaseDetailsLink = ?
+                SET email = ?, login_email = ?, cameraLink1 = ?, cameraLink2 = ?, moneyReceiptLink = ?, purchaseDetailsLink = ?
                 WHERE id = ?";
             $stmt = $this->db->prepare($sql);
-            $stmt->bind_param("sssssi", $email, $cameraLink1, $cameraLink2, $moneyReceiptLink, $purchaseDetailsLink, $id);
+            $stmt->bind_param("ssssssi", $email, $login_email, $cameraLink1, $cameraLink2, $moneyReceiptLink, $purchaseDetailsLink, $id);
         }
 
         if ($stmt->execute()) {

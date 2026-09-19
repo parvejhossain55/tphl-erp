@@ -17,8 +17,14 @@ $show_breadcrumb = true;
 
                     <!-- Email -->
                     <div class="col-lg-6 mb-3">
-                        <label for="email">Email <span>*</span></label>
+                        <label for="email">Contact Email</label>
                         <input class="form-control" name="email" id="email" type="email" value="<?= $onboardClient['email'] ?>">
+                    </div>
+
+                    <!-- Login Email -->
+                    <div class="col-lg-6 mb-3">
+                        <label for="login_email">Login Email <span>*</span></label>
+                        <input class="form-control" name="login_email" id="login_email" type="email" value="<?= $onboardClient['login_email'] ?>">
                     </div>
 
                     <!-- Password -->

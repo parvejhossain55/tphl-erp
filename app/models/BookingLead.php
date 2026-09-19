@@ -11,6 +11,19 @@ class BookingLead extends Model
     }
 
     // Get all follow-ups with related lead, project, flat, and creator info
+    
+    public function countBookingsByLeadId($leadId)
+    {
+        $sql = "SELECT COUNT(*) as total FROM lead_bookings WHERE lead_id = ? AND booking_status IN ('booked', 'completed') AND deleted_at IS NULL";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return 0;
+        $stmt->bind_param("i", $leadId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        return $row ? (int)$row['total'] : 0;
+    }
+
     public function getAllOnBoard()
     {
         $sql = "SELECT lb.*, 

@@ -2001,14 +2001,8 @@ ORDER BY lb.booking_date DESC
         }
 
         $sql .= " ORDER BY 
-            CASE 
-                WHEN lp.payment_type = 'booking_money' THEN 1
-                WHEN lp.payment_type = 'registration' THEN 2
-                WHEN lp.payment_type = 'land_share' THEN 3
-                ELSE 4
-            END,
-            es.emi_no ASC,
-            lp.payment_date ASC
+            lp.payment_date ASC,
+            lp.id ASC
         ";
 
         $stmt = $this->db->prepare($sql);
