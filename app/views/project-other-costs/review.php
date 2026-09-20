@@ -36,6 +36,33 @@
                         <h5 class="card-title mb-0">Request Details</h5>
                     </div>
                     <div class="card-body">
+                        <?php 
+                        $creatorAttachment = !empty($request['creator_attachment']) ? $request['creator_attachment'] : (!empty($request['attachment']) ? $request['attachment'] : null);
+                        $creatorFileDetails = getProjectOtherCostFileDetails($creatorAttachment);
+                        if (!empty($creatorAttachment)): 
+                            $fileExists = $creatorFileDetails['exists'];
+                            $downloadLink = $creatorFileDetails['url'];
+                        ?>
+                        <div class="alert <?= $fileExists ? 'alert-info' : 'alert-warning' ?> border d-flex flex-wrap align-items-center justify-content-between mt-3 mb-3 p-3" style="background: <?= $fileExists ? 'rgba(13, 202, 240, 0.08)' : 'rgba(255, 193, 7, 0.08)' ?>; border-color: <?= $fileExists ? 'rgba(13, 202, 240, 0.3)' : 'rgba(255, 193, 7, 0.3)' ?> !important; border-radius: 10px; gap: 15px;">
+                            <div class="d-flex align-items-center gap-3">
+                                <i class="fa-solid fa-file-invoice fs-4 <?= $fileExists ? 'text-info' : 'text-warning' ?> flex-shrink-0"></i>
+                                <div>
+                                    <strong class="d-block text-dark">Attached Document / Requisition File:</strong>
+                                    <span class="text-muted small"><?= htmlspecialchars($creatorFileDetails['filename']) ?></span>
+                                </div>
+                            </div>
+                            <?php if ($fileExists): ?>
+                                <a href="<?= $downloadLink ?>" target="_blank" class="btn btn-outline-info btn-sm flex-shrink-0">
+                                    <i class="fa-solid fa-eye me-1"></i> View / Download
+                                </a>
+                            <?php else: ?>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-warning text-dark border border-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i> File Missing</span>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+
                         <table class="table table-bordered mt-3">
                             <tbody>
                                 <tr>
@@ -54,11 +81,21 @@
                                     <th class="bg-light">Request Amount</th>
                                     <td class="text-primary fw-bold">৳ <?= number_format($request['request_amount'], 2) ?></td>
                                 </tr>
-                                <?php if(!empty($request['attachment'])): ?>
+                                <?php if(!empty($creatorAttachment)): ?>
                                 <tr>
                                     <th class="bg-light">Attachment</th>
                                     <td>
-                                        <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= htmlspecialchars($request['attachment']) ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View File</a>
+                                        <?php if ($creatorFileDetails['exists']): ?>
+                                            <a href="<?= $creatorFileDetails['url'] ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View File</a>
+                                            <span class="text-muted small ms-2"><?= htmlspecialchars($creatorFileDetails['filename']) ?></span>
+                                        <?php else: ?>
+                                            <div class="d-inline-flex align-items-center gap-2">
+                                                <span class="badge bg-warning text-dark border border-warning">
+                                                    <i class="fa-solid fa-triangle-exclamation me-1"></i> File Missing
+                                                </span>
+                                                <span class="text-muted small"><?= htmlspecialchars($creatorFileDetails['filename']) ?></span>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                                 <?php endif; ?>
@@ -114,11 +151,18 @@
                             <li class="list-group-item">
                                 <strong>Created By:</strong> <?= htmlspecialchars($request['creator_name'] ?? 'N/A') ?><br>
                                 <small class="text-muted"><?= date('d M Y h:i A', strtotime($request['created_at'])) ?></small>
-                                <?php if (!empty($request['attachment'])): ?>
+                                <?php if (!empty($creatorAttachment)): ?>
                                     <br>
-                                    <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= htmlspecialchars($request['attachment']) ?>" target="_blank" class="badge bg-secondary text-white mt-1 text-decoration-none">
-                                        <i class="bi bi-paperclip me-1"></i> View Attached File
-                                    </a>
+                                    <?php if ($creatorFileDetails['exists']): ?>
+                                        <a href="<?= $creatorFileDetails['url'] ?>" target="_blank" class="badge bg-success text-white mt-1 text-decoration-none">
+                                            <i class="bi bi-paperclip me-1"></i> View Attached File
+                                        </a>
+                                    <?php else: ?>
+                                        <div class="mt-1 d-inline-flex align-items-center gap-1">
+                                            <span class="badge bg-warning text-dark border border-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i> File Missing</span>
+                                            <span class="text-muted small ms-1"><?= htmlspecialchars($creatorFileDetails['filename']) ?></span>
+                                        </div>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </li>
                             <li class="list-group-item">
@@ -177,11 +221,22 @@
                                     <span class="text-success"><i class="bi bi-check-circle"></i> Paid & Settled</span> by <?= htmlspecialchars($request['pay_name'] ?? 'N/A') ?><br>
                                     <small class="text-muted"><i class="bi bi-cash me-1"></i> Amount: ৳<?= number_format($request['payment_amount'] ?? $request['approved_amount'], 2) ?></small><br>
                                     <small class="text-muted"><i class="bi bi-calendar me-1"></i> Date: <?= date('d M Y h:i A', strtotime($request['payment_at'])) ?></small>
-                                    <?php if(!empty($request['attachment'])): ?>
+                                    <?php 
+                                    $paymentAttachment = (!empty($request['attachment']) && $request['attachment'] !== ($request['creator_attachment'] ?? '')) ? $request['attachment'] : null;
+                                    if(!empty($paymentAttachment)): 
+                                        $paymentFileDetails = getProjectOtherCostFileDetails($paymentAttachment);
+                                    ?>
                                         <br>
-                                        <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= htmlspecialchars($request['attachment']) ?>" target="_blank" class="badge bg-primary text-white mt-1 text-decoration-none">
-                                            <i class="bi bi-paperclip me-1"></i> View Attachment
-                                        </a>
+                                        <?php if ($paymentFileDetails['exists']): ?>
+                                            <a href="<?= $paymentFileDetails['url'] ?>" target="_blank" class="badge bg-primary text-white mt-1 text-decoration-none">
+                                                <i class="bi bi-paperclip me-1"></i> View Attachment
+                                            </a>
+                                        <?php else: ?>
+                                            <div class="mt-1 d-inline-flex align-items-center gap-1">
+                                                <span class="badge bg-warning text-dark border border-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i> Receipt Missing</span>
+                                                <span class="text-muted small ms-1"><?= htmlspecialchars($paymentFileDetails['filename']) ?></span>
+                                            </div>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 <?php else: ?>
                                     <span class="text-warning"><i class="bi bi-clock"></i> Pending Accounts Payout</span>

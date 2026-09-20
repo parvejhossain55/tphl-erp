@@ -121,6 +121,18 @@ foreach ($routes as $pattern => $routeInfo) {
 }
 
 if (!$matched) {
+    if (strpos($route, 'public/uploads/') === 0 || strpos($route, 'uploads/') === 0) {
+        http_response_code(404);
+        header('Content-Type: text/html; charset=utf-8');
+        echo "<!DOCTYPE html><html><head><title>File Not Found</title><link rel='stylesheet' href='{$GLOBALS['base_url']}/assets/css/vendor/bootstrap.min.css'></head><body class='bg-light d-flex align-items-center justify-content-center' style='min-height:80vh;'>";
+        echo "<div class='text-center p-4 bg-white rounded shadow-sm border' style='max-width:520px;'>";
+        echo "<h4 class='text-warning fw-bold mb-2'>Attached File Not Found</h4>";
+        echo "<p class='text-muted mb-3'>The requested file was not found on the server or has been removed.</p>";
+        echo "<div class='p-2 bg-light text-break rounded small text-secondary font-monospace mb-4'>" . htmlspecialchars(basename(urldecode($route))) . "</div>";
+        echo "<a href='javascript:history.back()' class='btn btn-outline-primary btn-sm px-4'>&larr; Go Back</a>";
+        echo "</div></body></html>";
+        exit;
+    }
     die("404 - Route not found: $route");
 }
 

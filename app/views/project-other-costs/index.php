@@ -88,8 +88,14 @@
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <?php if (!empty($row['attachment'])): ?>
-                                                    <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= $row['attachment'] ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View</a>
+                                                <?php if (!empty($row['attachment'])): 
+                                                    $rowAtt = getProjectOtherCostFileDetails($row['attachment']);
+                                                ?>
+                                                    <?php if ($rowAtt['exists']): ?>
+                                                        <a href="<?= $rowAtt['url'] ?>" target="_blank" class="btn btn-sm btn-outline-primary" title="<?= htmlspecialchars($rowAtt['filename']) ?>"><i class="bi bi-paperclip"></i> View</a>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-warning text-dark border border-warning" title="File Missing: <?= htmlspecialchars($rowAtt['filename']) ?>"><i class="fa-solid fa-triangle-exclamation me-1"></i> Missing</span>
+                                                    <?php endif; ?>
                                                 <?php else: ?>
                                                     -
                                                 <?php endif; ?>
@@ -172,8 +178,14 @@
                                             <td><?= number_format($row['request_amount'], 2) ?></td>
                                             <td><?= !empty($row['approved_amount']) ? number_format($row['approved_amount'], 2) : '-' ?></td>
                                             <td>
-                                                <?php if (!empty($row['attachment'])): ?>
-                                                    <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= $row['attachment'] ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View</a>
+                                                <?php if (!empty($row['attachment'])): 
+                                                    $rowAtt = getProjectOtherCostFileDetails($row['attachment']);
+                                                ?>
+                                                    <?php if ($rowAtt['exists']): ?>
+                                                        <a href="<?= $rowAtt['url'] ?>" target="_blank" class="btn btn-sm btn-outline-primary" title="<?= htmlspecialchars($rowAtt['filename']) ?>"><i class="bi bi-paperclip"></i> View</a>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-warning text-dark border border-warning" title="File Missing: <?= htmlspecialchars($rowAtt['filename']) ?>"><i class="fa-solid fa-triangle-exclamation me-1"></i> Missing</span>
+                                                    <?php endif; ?>
                                                 <?php else: ?>
                                                     -
                                                 <?php endif; ?>
@@ -262,8 +274,14 @@
                                             <td><?= number_format($row['request_amount'], 2) ?></td>
                                             <td><?= !empty($row['approved_amount']) ? number_format($row['approved_amount'], 2) : '-' ?></td>
                                             <td>
-                                                <?php if (!empty($row['attachment'])): ?>
-                                                    <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/project_other_costs/<?= $row['attachment'] ?>" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-paperclip"></i> View</a>
+                                                <?php if (!empty($row['attachment'])): 
+                                                    $rowAtt = getProjectOtherCostFileDetails($row['attachment']);
+                                                ?>
+                                                    <?php if ($rowAtt['exists']): ?>
+                                                        <a href="<?= $rowAtt['url'] ?>" target="_blank" class="btn btn-sm btn-outline-primary" title="<?= htmlspecialchars($rowAtt['filename']) ?>"><i class="bi bi-paperclip"></i> View</a>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-warning text-dark border border-warning" title="File Missing: <?= htmlspecialchars($rowAtt['filename']) ?>"><i class="fa-solid fa-triangle-exclamation me-1"></i> Missing</span>
+                                                    <?php endif; ?>
                                                 <?php else: ?>
                                                     -
                                                 <?php endif; ?>

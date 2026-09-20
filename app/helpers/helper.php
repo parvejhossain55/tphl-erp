@@ -1255,3 +1255,88 @@ function canApproveProcess(): bool
     }
     return true;
 }
+
+/**
+ * Check if an uploaded file exists in public/uploads/{module}/ and return URL and existence status.
+ *
+ * @param string $module
+ * @param string|null $filename
+ * @return array ['exists' => bool, 'url' => string, 'filename' => string, 'cleanName' => string]
+ */
+function getUploadFileDetails($module, $filename): array
+{
+    if (empty($filename)) {
+        return [
+            'exists' => false,
+            'url' => '',
+            'filename' => '',
+            'cleanName' => ''
+        ];
+    }
+
+    $rootPath = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
+    $module = trim($module, '/\\');
+    $cleanName = basename($filename);
+    $decodedName = basename(urldecode($filename));
+
+    $candidates = array_unique([
+        $cleanName,
+        $decodedName,
+        rawurlencode($decodedName),
+        str_replace(' ', '%20', $cleanName),
+        str_replace('%20', ' ', $cleanName),
+    ]);
+
+    $baseDirs = [
+        $rootPath . "/public/uploads/{$module}/",
+        $rootPath . "/uploads/{$module}/",
+        $rootPath . "/public/public/uploads/{$module}/",
+    ];
+
+    $foundFile = null;
+    $foundDirType = null;
+
+    foreach ($baseDirs as $dir) {
+        foreach ($candidates as $cand) {
+            if (file_exists($dir . $cand)) {
+                $foundFile = $cand;
+                $foundDirType = $dir;
+                break 2;
+            }
+        }
+    }
+
+    $baseUrl = $GLOBALS['base_url'] ?? '';
+
+    if ($foundFile !== null) {
+        if (strpos($foundDirType, '/public/public/uploads/') !== false) {
+            $prefix = $baseUrl . "/public/public/uploads/{$module}/";
+        } elseif (strpos($foundDirType, '/uploads/' . $module) !== false && strpos($foundDirType, '/public/uploads/') === false) {
+            $prefix = $baseUrl . "/uploads/{$module}/";
+        } else {
+            $prefix = $baseUrl . "/public/uploads/{$module}/";
+        }
+
+        return [
+            'exists' => true,
+            'url' => $prefix . rawurlencode(basename(urldecode($foundFile))),
+            'filename' => $decodedName,
+            'cleanName' => $cleanName
+        ];
+    }
+
+    return [
+        'exists' => false,
+        'url' => $baseUrl . "/public/uploads/{$module}/" . rawurlencode($decodedName),
+        'filename' => $decodedName,
+        'cleanName' => $cleanName
+    ];
+}
+
+/**
+ * Convenience wrapper for Project Other Costs attachments
+ */
+function getProjectOtherCostFileDetails($filename): array
+{
+    return getUploadFileDetails('project_other_costs', $filename);
+}
