@@ -37,10 +37,14 @@ class OnboardClient extends Model
             $types .= "ss";
         }
 
-        $sql .= " GROUP BY oc.lead_id, oc.email, l.full_name, l.phone
+        $sql .= " GROUP BY oc.id, oc.lead_id, oc.email, oc.login_email, l.full_name, l.phone
               ORDER BY l.full_name ASC";
 
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("OnboardClient::getAll prepare error: " . $this->db->error);
+            return [];
+        }
         if (!empty($params)) {
             $stmt->bind_param($types, ...$params);
         }
