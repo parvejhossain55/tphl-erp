@@ -220,8 +220,14 @@ class OnboardClientController extends Controller
             }
         }
 
+        // Strip BOM from first header if present
+        if (isset($headers[0])) {
+            $headers[0] = preg_replace('/^\xEF\xBB\xBF/', '', $headers[0]);
+        }
+
         $previewData = [];
         $validData   = [];
+        $seenLeadIds = []; // Track duplicate leads in same CSV
         $rowNum      = 1;
 
         while (($data = fgetcsv($handle)) !== FALSE) {
@@ -247,6 +253,13 @@ class OnboardClientController extends Controller
             if (empty($projectName) || empty($flatName) || empty($loginEmail) || empty($password)) {
                 $error = "project_name, flat_name, login_email, and password are required.";
             } else {
+                // If flat_name has +, comma or / (e.g. "6-A+B", "5A,5B"), use the first flat for booking lookup
+                $searchFlat = $flatName;
+                if (preg_match('/[\+,\/&]/', $searchFlat)) {
+                    $parts = preg_split('/[\+,\/&]/', $searchFlat);
+                    $searchFlat = trim($parts[0]);
+                }
+
                 // ── Find lead_id via lead_bookings → projects → flats ──────────
                 $sql = "SELECT lb.id AS booking_id, lb.lead_id,
                                l.full_name AS lead_name, l.phone AS lead_phone,
@@ -260,10 +273,41 @@ class OnboardClientController extends Controller
                           AND lb.deleted_at IS NULL
                         LIMIT 1";
                 $stmt = $this->db->prepare($sql);
-                $stmt->bind_param("ss", $projectName, $flatName);
+                $stmt->bind_param("ss", $projectName, $searchFlat);
                 $stmt->execute();
                 $bookingRow = $stmt->get_result()->fetch_assoc();
                 $stmt->close();
+
+                // Fallback lookup: handle hyphen variations, spacing, and project aliases
+                if (!$bookingRow) {
+                    $cleanFlat = preg_replace('/[^a-zA-Z0-9]/', '', $searchFlat);
+                    $projectAliases = [
+                        'the premium floral haven' => 'The Premium Floral Heaven',
+                        'the premium lakeview terrace' => 'The Premium Lake View Terrace',
+                        'the premium studio suits- tpss 4.0' => 'The Premium Studio Suite 4.0',
+                        'the premium studio suits- tpss 5.0' => 'The Premium Studio Suite 5.0',
+                        'the premium sunleaf garden' => 'THE PREMIUM SUNLEAF GARDEN',
+                    ];
+                    $cleanProject = $projectAliases[strtolower($projectName)] ?? $projectName;
+
+                    $fallbackSql = "SELECT lb.id AS booking_id, lb.lead_id,
+                                           l.full_name AS lead_name, l.phone AS lead_phone,
+                                           p.name AS project_name, f.flat_name
+                                    FROM lead_bookings lb
+                                    JOIN projects p ON p.id = lb.project_id
+                                    JOIN flats    f ON f.id = lb.flat_id
+                                    JOIN leads    l ON l.id = lb.lead_id
+                                    WHERE (p.name = ? OR p.name = ?)
+                                      AND (f.flat_name = ? OR REPLACE(REPLACE(f.flat_name, '-', ''), ' ', '') = ?)
+                                      AND lb.booking_status IN ('booked','completed')
+                                      AND lb.deleted_at IS NULL
+                                    LIMIT 1";
+                    $fallbackStmt = $this->db->prepare($fallbackSql);
+                    $fallbackStmt->bind_param("ssss", $projectName, $cleanProject, $searchFlat, $cleanFlat);
+                    $fallbackStmt->execute();
+                    $bookingRow = $fallbackStmt->get_result()->fetch_assoc();
+                    $fallbackStmt->close();
+                }
 
                 if (!$bookingRow) {
                     $error = "No booked/completed booking found for Project: \"$projectName\", Flat: \"$flatName\".";
@@ -276,7 +320,7 @@ class OnboardClientController extends Controller
                     // Count total bookings for this lead
                     $bookingCount = $this->leadBookingModel->countBookingsByLeadId($leadId);
 
-                    // Check if already onboarded
+                    // Check if already onboarded in database
                     $checkSql  = "SELECT id FROM onboard_clients WHERE lead_id = ?";
                     $checkStmt = $this->db->prepare($checkSql);
                     $checkStmt->bind_param("i", $leadId);
@@ -285,6 +329,16 @@ class OnboardClientController extends Controller
                         $error = "This lead (\"$leadName\") is already onboarded.";
                     }
                     $checkStmt->close();
+
+                    // Check if already encountered in this same CSV
+                    if (!$error) {
+                        if (isset($seenLeadIds[$leadId])) {
+                            $prevRow = $seenLeadIds[$leadId];
+                            $error = "Duplicate Client: Row #$prevRow-এ ইতিমধ্যে অন্তর্ভুক্ত। ক্লায়েন্ট তার ১টি লগইনেই সব ফ্ল্যাট দেখতে পারবেন।";
+                        } else {
+                            $seenLeadIds[$leadId] = $rowNum;
+                        }
+                    }
                 }
             }
 
@@ -335,19 +389,63 @@ class OnboardClientController extends Controller
         $createdBy    = $_SESSION['user']['id'] ?? null;
         $successCount = 0;
 
+        // Load static user.json if available to auto-populate existing links (video, sheets, drive)
+        $staticUsers = [];
+        $userJsonPaths = [
+            dirname(__DIR__, 4) . '/premiumbackend/storage/app/json/user.json',
+            'C:/xampp/htdocs/premiumbackend/storage/app/json/user.json',
+        ];
+        foreach ($userJsonPaths as $ujPath) {
+            if (file_exists($ujPath)) {
+                $jsonRaw = @file_get_contents($ujPath);
+                $decoded = json_decode($jsonRaw, true);
+                if (!empty($decoded['users'])) {
+                    $staticUsers = $decoded['users'];
+                    break;
+                }
+            }
+        }
+
         foreach ($validData as $row) {
             $leadId     = $row['lead_id'];
             $email      = $row['contact_email'];
             $loginEmail = $row['login_email'];
             $password   = $row['password'];
 
-            // Empty links for bulk upload (can be filled later via edit)
+            // Auto-populate links from user.json if matched, otherwise null
             $links = [
                 'cameraLink1'        => null,
                 'cameraLink2'        => null,
                 'moneyReceiptLink'   => null,
                 'purchaseDetailsLink'=> null,
             ];
+
+            if (!empty($staticUsers)) {
+                $cleanLoginEmail = strtolower(trim($loginEmail));
+                $cleanRowPhone = preg_replace('/[^0-9]/', '', $row['lead_phone'] ?? '');
+
+                foreach ($staticUsers as $su) {
+                    $match = false;
+                    if ($cleanLoginEmail && strtolower(trim($su['email'] ?? '')) === $cleanLoginEmail) {
+                        $match = true;
+                    }
+                    if (!$match && strlen($cleanRowPhone) >= 8) {
+                        $suPhone = preg_replace('/[^0-9]/', '', $su['phone'] ?? '');
+                        if ($suPhone && (str_ends_with($suPhone, substr($cleanRowPhone, -8)) || str_ends_with($cleanRowPhone, substr($suPhone, -8)))) {
+                            $match = true;
+                        }
+                    }
+
+                    if ($match && !empty($su['savedProperties'][0])) {
+                        $sp = $su['savedProperties'][0];
+                        $links['cameraLink1']         = !empty($sp['videoLink']) ? $sp['videoLink'] : null;
+                        $links['cameraLink2']         = !empty($sp['videoLink2']) ? $sp['videoLink2'] : null;
+                        $links['moneyReceiptLink']    = !empty($sp['moneyReceiptLink']) ? $sp['moneyReceiptLink'] : null;
+                        $links['purchaseDetailsLink'] = !empty($sp['purchaseDetailsLink']) ? $sp['purchaseDetailsLink'] : null;
+                        break;
+                    }
+                }
+            }
 
             $newId = $this->onboardClient->create($leadId, $email, $password, $links, $createdBy, $loginEmail);
             if ($newId) {
