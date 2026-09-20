@@ -130,8 +130,37 @@ public function store()
         'next_follow_up_plan_notes' => $_POST['next_follow_up_plan_notes'] ?? null,
     ];
 
-    // Handle Team Re-assignment
-    if ($followUpData['lead_status'] === 'Lead Transferred' && !empty($_POST['team_id'])) {
+    // Handle User-level Transfer (transfer_to_user_id takes priority)
+    if ($followUpData['lead_status'] === 'Lead Transferred' && !empty($_POST['transfer_to_user_id'])) {
+        $transfer_to_user_id = (int)$_POST['transfer_to_user_id'];
+        $lead_id = $followUpData['lead_id'];
+
+        // Look up the target user's team_id
+        $userStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ? LIMIT 1");
+        $newTeamId = null;
+        if ($userStmt) {
+            $userStmt->bind_param("i", $transfer_to_user_id);
+            $userStmt->execute();
+            $userResult = $userStmt->get_result()->fetch_assoc();
+            $newTeamId = $userResult['team_id'] ?? null;
+        }
+
+        if ($newTeamId) {
+            $updateLead = $this->db->prepare("UPDATE leads SET assigned_id = ?, assigned_at = CURRENT_TIMESTAMP, team_id = ? WHERE id = ?");
+            if ($updateLead) {
+                $updateLead->bind_param("iii", $transfer_to_user_id, $newTeamId, $lead_id);
+                $updateLead->execute();
+            }
+        } else {
+            $updateLead = $this->db->prepare("UPDATE leads SET assigned_id = ?, assigned_at = CURRENT_TIMESTAMP WHERE id = ?");
+            if ($updateLead) {
+                $updateLead->bind_param("ii", $transfer_to_user_id, $lead_id);
+                $updateLead->execute();
+            }
+        }
+    }
+    // Handle Team Re-assignment (team-level, when no specific user selected)
+    elseif ($followUpData['lead_status'] === 'Lead Transferred' && !empty($_POST['team_id'])) {
         $team_id = (int)$_POST['team_id'];
         $lead_id = $followUpData['lead_id'];
         

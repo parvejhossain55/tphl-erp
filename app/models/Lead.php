@@ -1063,9 +1063,11 @@ class Lead extends Model
             p.name AS project_name,
             lpc.name AS project_category_name,
             lf.status AS last_follow_up_status,
+            lf.lead_status AS last_follow_up_lead_status,
             lf.discussion_note AS last_follow_up_note,
             lf.next_follow_up_date,
-            lf.follow_up_type
+            lf.follow_up_type,
+            u_transfer.full_name AS transfer_from_name
         FROM leads AS l
         LEFT JOIN users AS u_by ON l.created_by = u_by.id
         LEFT JOIN projects AS p ON l.project_id = p.id
@@ -1079,6 +1081,7 @@ class Lead extends Model
                 GROUP BY lead_id
             ) t2 ON t1.id = t2.max_id AND t1.lead_id = t2.lead_id
         ) lf ON lf.lead_id = l.id
+        LEFT JOIN users u_transfer ON lf.created_by = u_transfer.id
         WHERE l.assigned_id = {$userId}
           AND l.deleted_at IS NULL
           AND (
@@ -1186,11 +1189,13 @@ class Lead extends Model
         lf.next_action,
         lf.follow_up_type,
         lf.status AS last_follow_up_status,
+        lf.lead_status AS last_follow_up_lead_status,
         lf.discussion_note AS last_follow_up_note,
         p.name AS project_name,
         lpc.name AS project_category_name,
         f.flat_name,
-        lf.next_follow_up_date
+        lf.next_follow_up_date,
+        u_transfer.full_name AS transfer_from_name
     FROM leads
     LEFT JOIN users AS u_by ON leads.created_by = u_by.id
     LEFT JOIN (
@@ -1205,6 +1210,7 @@ class Lead extends Model
         ON t1.id = t2.max_id AND t1.lead_id = t2.lead_id
         WHERE t1.deleted_at IS NULL
     ) lf ON lf.lead_id = leads.id
+    LEFT JOIN users u_transfer ON lf.created_by = u_transfer.id
     LEFT JOIN projects AS p ON lf.project_id = p.id
     LEFT JOIN flats AS f ON lf.flat_id = f.id
     LEFT JOIN project_categories AS lpc ON leads.project_category_id = lpc.id

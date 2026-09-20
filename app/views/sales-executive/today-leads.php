@@ -1077,8 +1077,20 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                         readonly style="cursor: default; pointer-events: none;">
                 </div>
 
+                <!-- Transfer Leads Badge & Transfer From -->
+                <?php if (($lead['last_follow_up_lead_status'] ?? '') === 'Lead Transferred'): ?>
+                <div class="mt-2">
+                    <span class="badge bg-warning text-dark px-2 py-1" style="font-size: 0.7rem;">
+                        <i class="bi bi-arrow-left-right me-1"></i>Transferred
+                    </span>
+                    <?php if (!empty($lead['transfer_from_name'])): ?>
+                    <div class="text-muted small mt-1">
+                        <i class="bi bi-person-fill me-1"></i>From: <strong><?= htmlspecialchars($lead['transfer_from_name']) ?></strong>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
 
-                
 
             </div>
         <?php endforeach; ?>
@@ -2032,6 +2044,21 @@ document.addEventListener('DOMContentLoaded', function () {
                             </select>
                         </div>
 
+                        <!-- Transfer To User (Hidden by default, shown when Lead Transferred) -->
+                        <div class="col-lg-6" id="createModalTransferUserDiv" style="display: none;">
+                            <label class="form__input-title">Transfer To (User)</label>
+                            <select name="transfer_to_user_id" id="createModalTransferUserId" class="form-select select2">
+                                <option value="">Search user...</option>
+                                <?php foreach (($transferableUsers ?? []) as $u): ?>
+                                    <option value="<?= (int)$u['id'] ?>">
+                                        <?= htmlspecialchars($u['full_name']) ?>
+                                        <?php if (!empty($u['employee_id'])): ?>#EMP-<?= (int)$u['employee_id'] ?><?php endif; ?>
+                                        (<?= htmlspecialchars($u['role_name'] ?? '') ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
                         <!-- Follow Up Status -->
                         <div class="col-lg-6">
                             <label class="form__input-title">Follow Up Status</label>
@@ -2195,6 +2222,8 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#createFollowUpForm')[0].reset();
         $('#createFollowUpLeadId').val(leadId);
         $('#createModalReassignTeamDiv').hide();
+        $('#createModalTransferUserDiv').hide();
+        $('#createModalTransferUserId').val('').trigger('change');
         $('#createFollowUpFlatSelect').html('<option value="">Select Flat</option>');
         $('#createFollowUpProjectSelect').val('');
         if ($('#createFollowUpProjectSelect').hasClass('select2-hidden-accessible')) {
@@ -2279,9 +2308,20 @@ document.addEventListener('DOMContentLoaded', function() {
         if (this.value === 'Lead Transferred') {
             $('#createModalReassignTeamDiv').show();
             $('#createModalReassignTeamId').prop('required', true);
+            $('#createModalTransferUserDiv').show();
+            // Init Select2 for transfer user if not already
+            if (!$('#createModalTransferUserId').hasClass('select2-hidden-accessible')) {
+                $('#createModalTransferUserId').select2({
+                    placeholder: 'Search user...',
+                    allowClear: true,
+                    dropdownParent: $('#createFollowUpModal')
+                });
+            }
         } else {
             $('#createModalReassignTeamDiv').hide();
             $('#createModalReassignTeamId').prop('required', false);
+            $('#createModalTransferUserDiv').hide();
+            $('#createModalTransferUserId').val('');
         }
     });
 
@@ -2316,9 +2356,12 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#createFollowUpForm select[name="follow_up_type"]').val(item.follow_up_type || '');
         $('#createModalLeadStatus').val(item.lead_status || '');
 
+        $('#createModalTransferUserId').val(item.transfer_user_id || '');
+        $('#createModalTransferUserDiv').hide();
         if (item.lead_status === 'Lead Transferred') {
             $('#createModalReassignTeamDiv').show();
             $('#createModalReassignTeamId').prop('required', true).val(item.team_id || '');
+            $('#createModalTransferUserDiv').show();
         } else {
             $('#createModalReassignTeamDiv').hide();
             $('#createModalReassignTeamId').prop('required', false).val('');

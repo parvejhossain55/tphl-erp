@@ -149,6 +149,8 @@ class UserDashboardController extends Controller
             }
         }
 
+        $transferableUsers = $this->userModel->getSalesTransferableUsers();
+
         $this->view("sales-executive/today-leads", [
             "current_route" => "today-leads",
             "page_title"    => "Leads Today Assign",
@@ -164,6 +166,7 @@ class UserDashboardController extends Controller
             "countries"       => $countries,
             "selectedCountry" => $filterCountry,
             "assignedUsers"   => $assignedUsers,
+            "transferableUsers" => $transferableUsers,
         ]);
     }
 
@@ -829,6 +832,8 @@ class UserDashboardController extends Controller
             $teamMembers = $userModel->getAllRoleUser();
         }
 
+        $transferableUsers = $userModel->getSalesTransferableUsers();
+
         $this->view('sales-executive/my-assigned-leads', [
             'page_title'          => 'My Assigned Leads',
             'myAllleads'          => $myAssignedClients,
@@ -850,6 +855,7 @@ class UserDashboardController extends Controller
             'emailMap'            => $emailMap,
             'teams'               => $teams,
             'teamMembers'         => $teamMembers,
+            'transferableUsers'   => $transferableUsers,
             'totalLeadsCount'        => $totalLeadsCount,
             'contactedLeadsCount'    => $contactedLeadsCount,
             'notContactedLeadsCount' => $notContactedLeadsCount,
