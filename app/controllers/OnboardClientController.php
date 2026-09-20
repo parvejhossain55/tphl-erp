@@ -210,7 +210,8 @@ class OnboardClientController extends Controller
         $headers = array_map('trim', $headers);
         $headers = array_map('strtolower', $headers);
 
-        $requiredHeaders = ['name', 'phone', 'login_email', 'password'];
+        // New required columns: project_name + flat_name to find lead_id from lead_bookings
+        $requiredHeaders = ['project_name', 'flat_name', 'login_email', 'password'];
         foreach ($requiredHeaders as $req) {
             if (!in_array($req, $headers)) {
                 setError("Missing required column: " . $req);
@@ -220,8 +221,8 @@ class OnboardClientController extends Controller
         }
 
         $previewData = [];
-        $validData = [];
-        $rowNum = 1;
+        $validData   = [];
+        $rowNum      = 1;
 
         while (($data = fgetcsv($handle)) !== FALSE) {
             $rowNum++;
@@ -229,59 +230,80 @@ class OnboardClientController extends Controller
                 continue; // Skip malformed rows
             }
 
-            $rowData = array_combine($headers, array_map('trim', $data));
-            
-            $name = $rowData['name'] ?? '';
-            $phone = $rowData['phone'] ?? '';
-            $loginEmail = $rowData['login_email'] ?? '';
-            $password = $rowData['password'] ?? '';
-            $contactEmail = $rowData['contact_email'] ?? '';
-            
-            $error = null;
-            $bookingCount = 0;
-            $leadId = null;
+            $rowData      = array_combine($headers, array_map('trim', $data));
+            $projectName  = $rowData['project_name']  ?? '';
+            $flatName     = $rowData['flat_name']      ?? '';
+            $loginEmail   = $rowData['login_email']    ?? '';
+            $password     = $rowData['password']       ?? '';
+            $contactEmail = $rowData['contact_email']  ?? '';
 
-            if (empty($name) || empty($phone) || empty($loginEmail) || empty($password)) {
-                $error = "Name, phone, login_email, and password are required.";
+            $error        = null;
+            $leadId       = null;
+            $leadName     = '';
+            $leadPhone    = '';
+            $bookingCount = 0;
+            $bookingId    = null;
+
+            if (empty($projectName) || empty($flatName) || empty($loginEmail) || empty($password)) {
+                $error = "project_name, flat_name, login_email, and password are required.";
             } else {
-                // Find Lead
-                $leadInfo = $this->leadModel->findDuplicate($name, $phone);
-                if (!$leadInfo) {
-                    $error = "Lead not found in database for Name: $name, Phone: $phone";
+                // ── Find lead_id via lead_bookings → projects → flats ──────────
+                $sql = "SELECT lb.id AS booking_id, lb.lead_id,
+                               l.full_name AS lead_name, l.phone AS lead_phone,
+                               p.name AS project_name, f.flat_name
+                        FROM lead_bookings lb
+                        JOIN projects p ON p.id = lb.project_id
+                        JOIN flats    f ON f.id = lb.flat_id
+                        JOIN leads    l ON l.id = lb.lead_id
+                        WHERE p.name = ? AND f.flat_name = ?
+                          AND lb.booking_status IN ('booked','completed')
+                          AND lb.deleted_at IS NULL
+                        LIMIT 1";
+                $stmt = $this->db->prepare($sql);
+                $stmt->bind_param("ss", $projectName, $flatName);
+                $stmt->execute();
+                $bookingRow = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+
+                if (!$bookingRow) {
+                    $error = "No booked/completed booking found for Project: \"$projectName\", Flat: \"$flatName\".";
                 } else {
-                    $leadId = $leadInfo['id'];
-                    
+                    $leadId    = $bookingRow['lead_id'];
+                    $leadName  = $bookingRow['lead_name'];
+                    $leadPhone = $bookingRow['lead_phone'];
+                    $bookingId = $bookingRow['booking_id'];
+
+                    // Count total bookings for this lead
+                    $bookingCount = $this->leadBookingModel->countBookingsByLeadId($leadId);
+
                     // Check if already onboarded
-                    $checkSql = "SELECT id FROM onboard_clients WHERE lead_id = ?";
+                    $checkSql  = "SELECT id FROM onboard_clients WHERE lead_id = ?";
                     $checkStmt = $this->db->prepare($checkSql);
                     $checkStmt->bind_param("i", $leadId);
                     $checkStmt->execute();
                     if ($checkStmt->get_result()->fetch_assoc()) {
-                        $error = "Client is already onboarded.";
-                    } else {
-                        // Check bookings
-                        $bookingCount = $this->leadBookingModel->countBookingsByLeadId($leadId);
-                        if ($bookingCount == 0) {
-                            $error = "Lead found, but no completed/booked bookings exist.";
-                        }
+                        $error = "This lead (\"$leadName\") is already onboarded.";
                     }
+                    $checkStmt->close();
                 }
             }
 
             $previewRow = [
-                'row_num' => $rowNum,
-                'name' => $name,
-                'phone' => $phone,
-                'login_email' => $loginEmail,
-                'contact_email' => $contactEmail,
-                'password' => $password,
+                'row_num'       => $rowNum,
+                'project_name'  => $projectName,
+                'flat_name'     => $flatName,
+                'lead_id'       => $leadId,
+                'lead_name'     => $leadName,
+                'lead_phone'    => $leadPhone,
+                'booking_id'    => $bookingId,
                 'booking_count' => $bookingCount,
-                'lead_id' => $leadId,
-                'error' => $error
+                'login_email'   => $loginEmail,
+                'contact_email' => $contactEmail,
+                'password'      => $password,
+                'error'         => $error,
             ];
 
             $previewData[] = $previewRow;
-            
             if (!$error) {
                 $validData[] = $previewRow;
             }
@@ -291,7 +313,7 @@ class OnboardClientController extends Controller
 
         $this->view("sales-developments/accessOnboardClient/bulk-preview", [
             'previewData' => $previewData,
-            'validData' => $validData
+            'validData'   => $validData,
         ]);
     }
 
@@ -310,21 +332,21 @@ class OnboardClientController extends Controller
             exit;
         }
 
-        $createdBy = $_SESSION['user']['id'] ?? null;
+        $createdBy    = $_SESSION['user']['id'] ?? null;
         $successCount = 0;
 
         foreach ($validData as $row) {
-            $leadId = $row['lead_id'];
-            $email = $row['contact_email'];
+            $leadId     = $row['lead_id'];
+            $email      = $row['contact_email'];
             $loginEmail = $row['login_email'];
-            $password = $row['password'];
-            
-            // Empty links for bulk upload
+            $password   = $row['password'];
+
+            // Empty links for bulk upload (can be filled later via edit)
             $links = [
-                'cameraLink1' => null,
-                'cameraLink2' => null,
-                'moneyReceiptLink' => null,
-                'purchaseDetailsLink' => null
+                'cameraLink1'        => null,
+                'cameraLink2'        => null,
+                'moneyReceiptLink'   => null,
+                'purchaseDetailsLink'=> null,
             ];
 
             $newId = $this->onboardClient->create($leadId, $email, $password, $links, $createdBy, $loginEmail);

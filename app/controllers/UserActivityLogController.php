@@ -381,47 +381,270 @@ class UserActivityLogController extends Controller
         }
         usort($deptAdoptionRates, function($a, $b) { return $b['rate'] <=> $a['rate']; });
 
+        // ── 4. Fetch Sales Team Performance Data ──────────────────────────────
+        $activeTab = $_GET['tab'] ?? (($filterDeptId === 1) ? 'sales' : 'adoption');
+
+        $salesUsersSql = "
+            SELECT u.id, u.full_name, u.email, r.name as role_name, u.role_id,
+                   dept.id as department_id, dept.name as department_name, 
+                   des.name as designation_name, e.employee_id
+            FROM users u
+            LEFT JOIN roles r ON r.id = u.role_id
+            LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN designations des ON des.id = COALESCE(e.designation_id, u.designation_id)
+            LEFT JOIN departments dept ON dept.id = COALESCE(e.department_id, des.department_id)
+            WHERE (e.employee_status IS NULL OR e.employee_status NOT IN ('Inactive', 'Resigned', 'Terminated'))
+              AND (u.role_id IN (5, 8, 9) OR dept.id = 1)
+        ";
+        $salesUsersParams = [];
+        $salesUsersParamTypes = '';
+
+        if ($filterDeptId !== null) {
+            $salesUsersSql .= " AND dept.id = ?";
+            $salesUsersParams[] = $filterDeptId;
+            $salesUsersParamTypes .= 'i';
+        }
+        if ($filterUserId !== null) {
+            $salesUsersSql .= " AND u.id = ?";
+            $salesUsersParams[] = $filterUserId;
+            $salesUsersParamTypes .= 'i';
+        }
+        $salesUsersSql .= " GROUP BY u.id, u.full_name, u.email, r.name, u.role_id, dept.id, dept.name, des.name, e.employee_id ORDER BY u.role_id ASC, u.full_name ASC";
+
+        $stmtSalesUsers = $this->db->prepare($salesUsersSql);
+        if (!empty($salesUsersParams)) {
+            $stmtSalesUsers->bind_param($salesUsersParamTypes, ...$salesUsersParams);
+        }
+        $stmtSalesUsers->execute();
+        $salesUsers = $stmtSalesUsers->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmtSalesUsers->close();
+
+        $salesTeamPerformance = [];
+        $salesTotals = [
+            'total_sales_users'     => count($salesUsers),
+            'total_assigned_leads'  => 0,
+            'total_followups'       => 0,
+            'total_visited'         => 0,
+            'total_hot'             => 0,
+            'total_cold'            => 0,
+            'total_no_followup'     => 0,
+            'total_booked'          => 0,
+            'total_land_share_value'=> 0.0
+        ];
+
+        if (!empty($salesUsers)) {
+            $salesUserIds = array_column($salesUsers, 'id');
+            $sIdPlaceholders = implode(',', array_fill(0, count($salesUserIds), '?'));
+            $sTypes = str_repeat('i', count($salesUserIds));
+
+            // 1. Leads counts & status breakdown
+            $sLeadsSql = "
+                SELECT 
+                    l.assigned_id,
+                    COUNT(l.id) as assigned_leads_count,
+                    SUM(CASE WHEN l.lead_type = 'Visited' THEN 1 ELSE 0 END) as visited_count,
+                    SUM(CASE WHEN l.lead_type = 'Hot' THEN 1 ELSE 0 END) as hot_count,
+                    SUM(CASE WHEN l.lead_type = 'Cold' THEN 1 ELSE 0 END) as cold_count,
+                    MAX(l.updated_at) as last_status_update
+                FROM leads l
+                WHERE l.assigned_id IN ($sIdPlaceholders)
+                  AND (DATE(l.assigned_at) BETWEEN ? AND ? OR (l.assigned_at IS NULL AND DATE(l.created_at) BETWEEN ? AND ?))
+                GROUP BY l.assigned_id
+            ";
+            $stmtSL = $this->db->prepare($sLeadsSql);
+            $slParams = array_merge($salesUserIds, [$filterDateFrom, $filterDateTo, $filterDateFrom, $filterDateTo]);
+            $stmtSL->bind_param($sTypes . 'ssss', ...$slParams);
+            $stmtSL->execute();
+            $sLeadsRes = $stmtSL->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmtSL->close();
+            $sLeadsMap = [];
+            foreach ($sLeadsRes as $sl) {
+                $sLeadsMap[$sl['assigned_id']] = $sl;
+            }
+
+            // 2. Follow-ups made in date range
+            $sFuSql = "
+                SELECT 
+                    lfu.created_by,
+                    COUNT(lfu.id) as total_followups
+                FROM lead_follow_ups lfu
+                WHERE lfu.created_by IN ($sIdPlaceholders)
+                  AND (DATE(lfu.created_at) BETWEEN ? AND ? OR lfu.follow_up_date BETWEEN ? AND ?)
+                GROUP BY lfu.created_by
+            ";
+            $stmtSFu = $this->db->prepare($sFuSql);
+            $sfuParams = array_merge($salesUserIds, [$filterDateFrom, $filterDateTo, $filterDateFrom, $filterDateTo]);
+            $stmtSFu->bind_param($sTypes . 'ssss', ...$sfuParams);
+            $stmtSFu->execute();
+            $sFuRes = $stmtSFu->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmtSFu->close();
+            $sFuMap = [];
+            foreach ($sFuRes as $sfu) {
+                $sFuMap[$sfu['created_by']] = (int)$sfu['total_followups'];
+            }
+
+            // 3. Contacted leads count (leads that have at least 1 follow up in date range)
+            $sContactedSql = "
+                SELECT l.assigned_id, COUNT(DISTINCT l.id) as contacted_leads_count
+                FROM leads l
+                JOIN lead_follow_ups lfu ON lfu.lead_id = l.id
+                WHERE l.assigned_id IN ($sIdPlaceholders)
+                  AND (DATE(l.assigned_at) BETWEEN ? AND ? OR (l.assigned_at IS NULL AND DATE(l.created_at) BETWEEN ? AND ?))
+                  AND (DATE(lfu.created_at) BETWEEN ? AND ? OR lfu.follow_up_date BETWEEN ? AND ?)
+                GROUP BY l.assigned_id
+            ";
+            $stmtSCont = $this->db->prepare($sContactedSql);
+            $sContParams = array_merge($salesUserIds, [$filterDateFrom, $filterDateTo, $filterDateFrom, $filterDateTo, $filterDateFrom, $filterDateTo, $filterDateFrom, $filterDateTo]);
+            $stmtSCont->bind_param($sTypes . 'ssssssss', ...$sContParams);
+            $stmtSCont->execute();
+            $sContRes = $stmtSCont->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmtSCont->close();
+            $sContMap = [];
+            foreach ($sContRes as $sc) {
+                $sContMap[$sc['assigned_id']] = (int)$sc['contacted_leads_count'];
+            }
+
+            // 4. Bookings in date range by lead_bookings.booking_date
+            $sBookingsSql = "
+                SELECT 
+                    lb.sales_by_id,
+                    COUNT(DISTINCT lb.id) as total_booked,
+                    COALESCE(SUM(f.land_share_value), 0) as total_land_share_value
+                FROM lead_bookings lb
+                JOIN flats f ON f.id = lb.flat_id
+                WHERE lb.booking_date BETWEEN ? AND ?
+                  AND lb.deleted_at IS NULL
+                  AND lb.sales_by_id IN ($sIdPlaceholders)
+                GROUP BY lb.sales_by_id
+            ";
+            $stmtSBook = $this->db->prepare($sBookingsSql);
+            $sBookParams = array_merge([$filterDateFrom, $filterDateTo], $salesUserIds);
+            $stmtSBook->bind_param('ss' . $sTypes, ...$sBookParams);
+            $stmtSBook->execute();
+            $sBookRes = $stmtSBook->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmtSBook->close();
+            $sBookMap = [];
+            foreach ($sBookRes as $sb) {
+                $sBookMap[$sb['sales_by_id']] = $sb;
+            }
+
+            // 5. Assemble sales performance data
+            foreach ($salesUsers as $su) {
+                $uid = $su['id'];
+                $lData = $sLeadsMap[$uid] ?? [];
+                $assignedCount = (int)($lData['assigned_leads_count'] ?? 0);
+                $contactedCount = (int)($sContMap[$uid] ?? 0);
+                $noFollowUpCount = max(0, $assignedCount - $contactedCount);
+                $bData = $sBookMap[$uid] ?? [];
+                $bookedCount = (int)($bData['total_booked'] ?? 0);
+                $landShareVal = (float)($bData['total_land_share_value'] ?? 0);
+                $fuCount = (int)($sFuMap[$uid] ?? 0);
+                $visCount = (int)($lData['visited_count'] ?? 0);
+                $hotCount = (int)($lData['hot_count'] ?? 0);
+                $coldCount = (int)($lData['cold_count'] ?? 0);
+                $lastUpdate = $lData['last_status_update'] ?? null;
+
+                $words = explode(" ", $su['full_name']);
+                $initials = "";
+                foreach ($words as $w) {
+                    if (mb_strlen($initials) >= 2) break;
+                    $initials .= mb_substr($w, 0, 1);
+                }
+                $initials = strtoupper($initials);
+
+                $displayName = $su['full_name'] . (!empty($su['employee_id']) ? ' (' . $su['employee_id'] . ')' : '');
+
+                $salesTeamPerformance[] = [
+                    'user_id'                => $uid,
+                    'full_name'              => $displayName,
+                    'raw_name'               => $su['full_name'],
+                    'employee_id'            => $su['employee_id'] ?? '',
+                    'initials'               => $initials,
+                    'role_name'              => $su['role_name'] ?: ($su['designation_name'] ?: 'Sales'),
+                    'department_name'        => $su['department_name'] ?: 'Sales',
+                    'assigned_leads'         => $assignedCount,
+                    'total_followups'        => $fuCount,
+                    'visited'                => $visCount,
+                    'hot'                    => $hotCount,
+                    'cold'                   => $coldCount,
+                    'no_followup_leads'      => $noFollowUpCount,
+                    'total_booked'           => $bookedCount,
+                    'total_land_share_value' => $landShareVal,
+                    'last_status_update'     => $lastUpdate
+                ];
+
+                $salesTotals['total_assigned_leads'] += $assignedCount;
+                $salesTotals['total_followups'] += $fuCount;
+                $salesTotals['total_visited'] += $visCount;
+                $salesTotals['total_hot'] += $hotCount;
+                $salesTotals['total_cold'] += $coldCount;
+                $salesTotals['total_no_followup'] += $noFollowUpCount;
+                $salesTotals['total_booked'] += $bookedCount;
+                $salesTotals['total_land_share_value'] += $landShareVal;
+            }
+
+            usort($salesTeamPerformance, function($a, $b) {
+                if ($a['total_booked'] != $b['total_booked']) {
+                    return $b['total_booked'] - $a['total_booked'];
+                }
+                return $b['assigned_leads'] - $a['assigned_leads'];
+            });
+        }
+
         // ── Export Trigger ────────────────────────────────────────────────────
         if (isset($_GET['export'])) {
             $exportType = $_GET['export'];
-            if ($exportType === 'excel') {
-                $this->exportExcel($personWiseData, $filterDateFrom, $filterDateTo);
-            } elseif ($exportType === 'pdf') {
-                $this->exportPdf($personWiseData, $filterDateFrom, $filterDateTo);
+            $exportTarget = $_GET['export_target'] ?? ($activeTab === 'sales' ? 'sales' : 'adoption');
+            if ($exportTarget === 'sales') {
+                if ($exportType === 'excel') {
+                    $this->exportSalesExcel($salesTeamPerformance, $filterDateFrom, $filterDateTo, $salesTotals);
+                } elseif ($exportType === 'pdf') {
+                    $this->exportSalesPdf($salesTeamPerformance, $filterDateFrom, $filterDateTo, $salesTotals);
+                }
+            } else {
+                if ($exportType === 'excel') {
+                    $this->exportExcel($personWiseData, $filterDateFrom, $filterDateTo);
+                } elseif ($exportType === 'pdf') {
+                    $this->exportPdf($personWiseData, $filterDateFrom, $filterDateTo);
+                }
             }
         }
 
         $data = [
-            "current_route"    => "user-activity-log",
-            "page_title"       => "ERP Usage & Adoption",
-            "departments"      => $departments,
-            "allUsers"         => $allUsers,
+            "current_route"         => "user-activity-log",
+            "page_title"            => "ERP Usage & Adoption",
+            "departments"           => $departments,
+            "allUsers"              => $allUsers,
             
-            "filterDeptId"     => $filterDeptId,
-            "filterUserId"     => $filterUserId,
-            "filterDateFrom"   => $filterDateFrom,
-            "filterDateTo"     => $filterDateTo,
+            "activeTab"             => $activeTab,
+            "filterDeptId"          => $filterDeptId,
+            "filterUserId"          => $filterUserId,
+            "filterDateFrom"        => $filterDateFrom,
+            "filterDateTo"          => $filterDateTo,
             
-            "totalUsers"       => $totalUsersCount,
-            "activeToday"      => $totalActiveUsersInPeriod,
-            "adoptionScore"    => $adoptionScore,
-            "meetingStandard"  => $meetingStandardCount,
-            "belowStandard"    => $belowStandardCount,
-            "noUsageToday"     => $usageHealth['No Usage'],
-            "avgProductiveMins"=> $avgProductiveMins,
+            "totalUsers"            => $totalUsersCount,
+            "activeToday"           => $totalActiveUsersInPeriod,
+            "adoptionScore"         => $adoptionScore,
+            "meetingStandard"       => $meetingStandardCount,
+            "belowStandard"         => $belowStandardCount,
+            "noUsageToday"          => $usageHealth['No Usage'],
+            "avgProductiveMins"     => $avgProductiveMins,
             
-            "hourlyLabels"     => json_encode($hourlyChartLabels),
-            "hourlyData"       => json_encode($hourlyChartData),
-            "usageHealthData"  => json_encode([
+            "hourlyLabels"          => json_encode($hourlyChartLabels),
+            "hourlyData"            => json_encode($hourlyChartData),
+            "usageHealthData"       => json_encode([
                 $usageHealth['Healthy'],
                 $usageHealth['Moderate'],
                 $usageHealth['Low Usage'],
                 $usageHealth['No Usage']
             ]),
             
-            "deptAdoptionRates"=> $deptAdoptionRates,
-            "attentionRequired"=> $attentionRequired,
-            "personWiseData"   => $personWiseData
+            "deptAdoptionRates"     => $deptAdoptionRates,
+            "attentionRequired"     => $attentionRequired,
+            "personWiseData"        => $personWiseData,
+
+            "salesTeamPerformance"  => $salesTeamPerformance,
+            "salesTotals"           => $salesTotals
         ];
 
         $this->view("hrm/user-activity-log", $data);
@@ -719,6 +942,207 @@ class UserActivityLogController extends Controller
         $dompdf->setPaper('A4', 'landscape');
         $dompdf->render();
         $dompdf->stream("ERP_Adoption_Report_" . date('Ymd_His') . ".pdf", ["Attachment" => true]);
+        exit;
+    }
+
+    private function exportSalesExcel($salesData, $dateFrom, $dateTo, $totals)
+    {
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Sales Team Performance');
+
+        // Title styling
+        $sheet->setCellValue('A1', 'TPHL - Sales Team Performance & Lead Activity Report');
+        $sheet->mergeCells('A1:L1');
+        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('111827'));
+        $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        $sheet->setCellValue('A2', 'Period: ' . $dateFrom . ' to ' . $dateTo . ' | Generated: ' . date('d M Y, h:i A'));
+        $sheet->mergeCells('A2:L2');
+        $sheet->getStyle('A2')->getFont()->setSize(10)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('4B5563'));
+        $sheet->getStyle('A2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        $headerStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 10],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E3A8A']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => 'D1D5DB']]],
+        ];
+
+        $headers = [
+            'SL', 'Employee Name', 'Role', 'Assigned Leads', 
+            'Follow-ups Done', 'Visited', 'Hot', 'Cold', 
+            'No Follow-up (Untouched)', 'Total Booked', 'Land Share Value (BDT)', 'Last Status Update'
+        ];
+        $col = 'A';
+        foreach ($headers as $header) {
+            $sheet->setCellValue($col . '4', $header);
+            $col++;
+        }
+        $sheet->getStyle('A4:L4')->applyFromArray($headerStyle);
+        $sheet->getRowDimension(4)->setRowHeight(28);
+
+        $rowNum = 5;
+        $serial = 1;
+        foreach ($salesData as $s) {
+            $lastUp = $s['last_status_update'] ? date('d M Y, h:i A', strtotime($s['last_status_update'])) : '—';
+
+            $sheet->setCellValue('A' . $rowNum, $serial++);
+            $sheet->setCellValue('B' . $rowNum, $s['full_name']);
+            $sheet->setCellValue('C' . $rowNum, $s['role_name']);
+            $sheet->setCellValue('D' . $rowNum, $s['assigned_leads']);
+            $sheet->setCellValue('E' . $rowNum, $s['total_followups']);
+            $sheet->setCellValue('F' . $rowNum, $s['visited']);
+            $sheet->setCellValue('G' . $rowNum, $s['hot']);
+            $sheet->setCellValue('H' . $rowNum, $s['cold']);
+            $sheet->setCellValue('I' . $rowNum, $s['no_followup_leads']);
+            $sheet->setCellValue('J' . $rowNum, $s['total_booked']);
+            $sheet->setCellValue('K' . $rowNum, $s['total_land_share_value']);
+            $sheet->setCellValue('L' . $rowNum, $lastUp);
+
+            $sheet->getStyle('D' . $rowNum . ':J' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle('K' . $rowNum)->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet->getStyle('K' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+            $rowNum++;
+        }
+
+        // Summary row
+        $totalStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => '111827']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F3F4F6']],
+            'borders' => [
+                'top' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_DOUBLE, 'color' => ['rgb' => '111827']],
+                'bottom' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_DOUBLE, 'color' => ['rgb' => '111827']],
+            ]
+        ];
+        $sheet->setCellValue('A' . $rowNum, 'TOTAL');
+        $sheet->mergeCells('A' . $rowNum . ':C' . $rowNum);
+        $sheet->getStyle('A' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->setCellValue('D' . $rowNum, $totals['total_assigned_leads']);
+        $sheet->setCellValue('E' . $rowNum, $totals['total_followups']);
+        $sheet->setCellValue('F' . $rowNum, $totals['total_visited']);
+        $sheet->setCellValue('G' . $rowNum, $totals['total_hot']);
+        $sheet->setCellValue('H' . $rowNum, $totals['total_cold']);
+        $sheet->setCellValue('I' . $rowNum, $totals['total_no_followup']);
+        $sheet->setCellValue('J' . $rowNum, $totals['total_booked']);
+        $sheet->setCellValue('K' . $rowNum, $totals['total_land_share_value']);
+        $sheet->setCellValue('L' . $rowNum, '—');
+        $sheet->getStyle('D' . $rowNum . ':J' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('K' . $rowNum)->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle('K' . $rowNum)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle('A' . $rowNum . ':L' . $rowNum)->applyFromArray($totalStyle);
+
+        foreach (range('A', 'L') as $c) {
+            $sheet->getColumnDimension($c)->setAutoSize(true);
+        }
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="Sales_Team_Report_' . date('Ymd_His') . '.xlsx"');
+        header('Cache-Control: max-age=0');
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
+    private function exportSalesPdf($salesData, $dateFrom, $dateTo, $totals)
+    {
+        $dompdf = new \Dompdf\Dompdf(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
+
+        $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+            body { font-family: "DejaVu Sans", sans-serif; font-size: 10px; color: #1f2937; margin: 15px; }
+            .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #1E3A8A; padding-bottom: 10px; }
+            .title { font-size: 16px; font-weight: bold; color: #1E3A8A; margin: 0; }
+            .subtitle { font-size: 10px; color: #6b7280; margin-top: 4px; }
+            .summary-cards { margin-bottom: 15px; width: 100%; }
+            .summary-cards td { background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 10px; text-align: center; border-radius: 4px; }
+            .card-label { font-size: 8px; color: #64748b; text-transform: uppercase; font-weight: bold; }
+            .card-val { font-size: 13px; font-weight: bold; color: #0f172a; margin-top: 2px; }
+            table.report-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+            table.report-table th, table.report-table td { border: 1px solid #cbd5e1; padding: 5px 6px; text-align: left; }
+            table.report-table th { background-color: #1E3A8A; color: #ffffff; font-size: 9px; font-weight: bold; text-align: center; }
+            table.report-table tr:nth-child(even) { background-color: #f8fafc; }
+            .num-cell { text-align: center; }
+            .val-cell { text-align: right; font-weight: bold; }
+            .total-row { background-color: #e2e8f0 !important; font-weight: bold; }
+            .badge-hot { color: #dc2626; font-weight: bold; }
+            .badge-vis { color: #16a34a; font-weight: bold; }
+            .badge-cold { color: #0284c7; font-weight: bold; }
+            .badge-un { color: #ea580c; font-weight: bold; }
+        </style></head><body>
+            <div class="header">
+                <div class="title">TPHL - Sales Team Performance & Lead Activity Report</div>
+                <div class="subtitle">Period: ' . htmlspecialchars($dateFrom) . ' to ' . htmlspecialchars($dateTo) . ' | Generated on: ' . date('d M Y, h:i A') . '</div>
+            </div>
+
+            <table class="summary-cards">
+                <tr>
+                    <td><div class="card-label">Assigned Leads</div><div class="card-val">' . number_format($totals['total_assigned_leads']) . '</div></td>
+                    <td><div class="card-label">Follow-ups Done</div><div class="card-val">' . number_format($totals['total_followups']) . '</div></td>
+                    <td><div class="card-label">Visited</div><div class="card-val" style="color:#16a34a;">' . number_format($totals['total_visited']) . '</div></td>
+                    <td><div class="card-label">Hot Leads</div><div class="card-val" style="color:#dc2626;">' . number_format($totals['total_hot']) . '</div></td>
+                    <td><div class="card-label">No Follow-up</div><div class="card-val" style="color:#ea580c;">' . number_format($totals['total_no_followup']) . '</div></td>
+                    <td><div class="card-label">Total Booked</div><div class="card-val" style="color:#1e40af;">' . number_format($totals['total_booked']) . '</div></td>
+                    <td><div class="card-label">Land Share Value</div><div class="card-val" style="color:#047857;">Tk ' . number_format($totals['total_land_share_value'], 2) . '</div></td>
+                </tr>
+            </table>
+
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th style="width: 25px;">SL</th>
+                        <th>Employee</th>
+                        <th>Role</th>
+                        <th>Assigned</th>
+                        <th>Follow-ups</th>
+                        <th>Visited</th>
+                        <th>Hot</th>
+                        <th>Cold</th>
+                        <th>No Contact</th>
+                        <th>Booked</th>
+                        <th>Land Share Value (Tk)</th>
+                        <th>Last Update</th>
+                    </tr>
+                </thead>
+                <tbody>';
+
+        $serial = 1;
+        foreach ($salesData as $s) {
+            $lastUp = $s['last_status_update'] ? date('d M Y', strtotime($s['last_status_update'])) : '—';
+            $html .= '<tr>
+                <td class="num-cell">' . $serial++ . '</td>
+                <td><strong>' . htmlspecialchars($s['full_name']) . '</strong></td>
+                <td>' . htmlspecialchars($s['role_name']) . '</td>
+                <td class="num-cell">' . $s['assigned_leads'] . '</td>
+                <td class="num-cell">' . $s['total_followups'] . '</td>
+                <td class="num-cell badge-vis">' . $s['visited'] . '</td>
+                <td class="num-cell badge-hot">' . $s['hot'] . '</td>
+                <td class="num-cell badge-cold">' . $s['cold'] . '</td>
+                <td class="num-cell badge-un">' . $s['no_followup_leads'] . '</td>
+                <td class="num-cell" style="font-weight:bold; color:#1e40af;">' . $s['total_booked'] . '</td>
+                <td class="val-cell">' . number_format($s['total_land_share_value'], 2) . '</td>
+                <td style="font-size: 8px;">' . $lastUp . '</td>
+            </tr>';
+        }
+
+        $html .= '<tr class="total-row">
+            <td colspan="3" style="text-align:center;">TOTAL</td>
+            <td class="num-cell">' . number_format($totals['total_assigned_leads']) . '</td>
+            <td class="num-cell">' . number_format($totals['total_followups']) . '</td>
+            <td class="num-cell badge-vis">' . number_format($totals['total_visited']) . '</td>
+            <td class="num-cell badge-hot">' . number_format($totals['total_hot']) . '</td>
+            <td class="num-cell badge-cold">' . number_format($totals['total_cold']) . '</td>
+            <td class="num-cell badge-un">' . number_format($totals['total_no_followup']) . '</td>
+            <td class="num-cell" style="color:#1e40af;">' . number_format($totals['total_booked']) . '</td>
+            <td class="val-cell" style="color:#047857;">' . number_format($totals['total_land_share_value'], 2) . '</td>
+            <td>—</td>
+        </tr>';
+
+        $html .= '</tbody></table></body></html>';
+
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+        $dompdf->stream("Sales_Team_Report_" . date('Ymd_His') . ".pdf", ["Attachment" => true]);
         exit;
     }
 }
