@@ -785,6 +785,32 @@ public function getSalesTeams($roleId = null, $teamId = null, $userId = null)
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 }
 
+    // Get users for Lead Transfer
+    public function getSalesTransferableUsers()
+    {
+        $sql = "SELECT 
+                    u.id, u.full_name, u.phone, 
+                    e.employee_id AS employee_id,
+                    IF(r.id IN (5,8,9), r.name, sr.name) AS role_name
+                FROM users u
+                LEFT JOIN employees e ON e.user_id = u.id
+                LEFT JOIN roles r ON r.id = u.role_id
+                LEFT JOIN roles sr ON sr.id = u.secondary_role_id
+                WHERE (
+                    (u.role_id IN (5, 8, 9))
+                    OR
+                    (u.secondary_role_id IN (5, 8, 9))
+                )
+                AND (e.employee_status IS NULL OR e.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+                ORDER BY u.full_name ASC";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+
     // Get all CED Employees
     public function getCedEmployees()
     {
