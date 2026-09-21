@@ -412,6 +412,7 @@ return [
     // =========================================================================
     'con-purchase-orders' => ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'index'],
     'con-purchase-order/(\d+)' => ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'show'],
+    'con-purchase-order-print/(\d+)' => ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'printPO'],
     'con-purchase-order-generate/(\d+)' => ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'generate'],
     'con-purchase-order-approve/(\d+)' => ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'approvePO'],
     'con-purchase-order-reject/(\d+)' => ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'rejectPO'],
