@@ -89,6 +89,7 @@ if ($current_server == 3) {
         "db_host" => "127.0.0.1",
         "db_user" => "final_erp_user",
         "db_pass" => "finaltPhl@#5672dhKL%sd10",
+
         "db_name" => "final_erp_db",
 
         // AI Assistant Read-Only database connection

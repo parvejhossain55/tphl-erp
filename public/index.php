@@ -93,11 +93,13 @@ $public_routes = [
     'admin-registration',
     'api/client-payment-info',
     'api/project-expenses',
+    'api/client-authenticate',
+    'api/client-details',
     'run-restore-bookings-payments',
     'restore-bookings-data'
 ];
 
-if (!in_array($route, $public_routes)) {
+if (!in_array($route, $public_routes) && !str_starts_with($route, 'api/')) {
     checkLogin();
 } else {
     // logged in user cannot see login page

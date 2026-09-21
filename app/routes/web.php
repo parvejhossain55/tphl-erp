@@ -181,6 +181,8 @@ return [
     'api/financial-summary' => ['controller' => 'ApiController', 'method' => 'financialSummary'],
     'api/client-payment-info' => ['controller' => 'ApiController', 'method' => 'clientPaymentInfo'],
     'api/project-expenses' => ['controller' => 'ApiController', 'method' => 'projectExpenses'],
+    'api/client-authenticate' => ['controller' => 'ApiController', 'method' => 'clientAuthenticate'],
+    'api/client-details' => ['controller' => 'ApiController', 'method' => 'clientDetails'],
 
     // =========================================================================
     // Controller: ErpTrackerController
