@@ -54,6 +54,11 @@ class PaymentBookingController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
 
+        $bankName = !empty($_POST['bank_name']) ? trim($_POST['bank_name']) : null;
+        if (in_array($bankName, ['Other Bank', 'Other Country / Foreign Bank', 'Foreign Bank', 'Other Country Bank']) && !empty($_POST['custom_bank_name'])) {
+            $bankName = trim($_POST['custom_bank_name']);
+        }
+
         $data = [
             'booking_id'          => $_POST['booking_id'] ?? 0,
             'payment_type'        => $_POST['payment_type'] ?? 'booking_money',
@@ -63,7 +68,7 @@ class PaymentBookingController extends Controller
             'payment_date'        => $_POST['payment_date'] ?? date('Y-m-d'),
             'transaction_ref'     => $_POST['transaction_ref'] ?? null,
             'bank_id'             => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
-            'bank_name'           => $_POST['bank_name'] ?? null,
+            'bank_name'           => $bankName,
             'bank_account_no'     => $_POST['bank_account_no'] ?? null,
             'total_emi_no'        => $_POST['total_emi_no'] ?? null,
             'cheque_no'           => $_POST['cheque_no'] ?? null,
@@ -1087,6 +1092,11 @@ class PaymentBookingController extends Controller
             exit;
         }
 
+        $bankName = !empty($_POST['bank_name']) ? trim($_POST['bank_name']) : null;
+        if (in_array($bankName, ['Other Bank', 'Other Country / Foreign Bank', 'Foreign Bank', 'Other Country Bank']) && !empty($_POST['custom_bank_name'])) {
+            $bankName = trim($_POST['custom_bank_name']);
+        }
+
         $data = [
             'id'              => $id,
             'amount'          => floatval($_POST['amount'] ?? 0),
@@ -1094,7 +1104,7 @@ class PaymentBookingController extends Controller
             'payment_date'    => $_POST['payment_date'] ?? date('Y-m-d'),
             'transaction_ref' => $_POST['transaction_ref'] ?? null,
             'bank_id'         => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
-            'bank_name'       => $_POST['bank_name'] ?? null,
+            'bank_name'       => $bankName,
             'bank_account_no' => $_POST['bank_account_no'] ?? null,
             'cheque_no'       => $_POST['cheque_no'] ?? null,
             'online_type'     => $_POST['online_type'] ?? null,

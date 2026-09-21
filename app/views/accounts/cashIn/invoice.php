@@ -168,13 +168,32 @@ $amountInWords = function_exists('amountInWords') ? amountInWords($totalAmountPa
 // Bank & Payment Method Display
 $paymentMethod = strtoupper($payment['payment_method'] ?? 'CASH');
 
-$isCashPayment = !in_array($paymentMethod, ['BANK', 'CHEQUE', 'CHECK', 'ONLINE']);
-$verifiedLabelMain = $isCashPayment ? 'Payment Verified' : 'Bank Verified';
-$pendingLabelMain = $isCashPayment ? 'Subject to Verification' : 'Subject to Bank Verification';
-$verifiedCardTitle = $isCashPayment ? 'VERIFIED PAYMENT RECEIPT' : 'BANK-VERIFIED PAYMENT RECEIPT';
-$pendingCardTitle = $isCashPayment ? 'SUBJECT TO VERIFICATION' : 'SUBJECT TO BANK VERIFICATION';
-$pendingCardDesc = $isCashPayment ? 'This payment is subject to verification and confirmation.' : 'This payment is subject to bank verification and confirmation.';
-$verifiedStampText = $isCashPayment ? "PAYMENT<br>VERIFIED" : "BANK<br>VERIFIED";
+$isCashPayment = ($paymentMethod === 'CASH');
+$isOnlinePayment = ($paymentMethod === 'ONLINE');
+
+if ($isCashPayment) {
+    $verifiedLabelMain = 'Cash Verified';
+    $pendingLabelMain  = 'Subject to Verification';
+    $verifiedCardTitle = 'CASH-VERIFIED PAYMENT RECEIPT';
+    $pendingCardTitle  = 'SUBJECT TO VERIFICATION';
+    $pendingCardDesc   = 'This cash payment is subject to verification and confirmation.';
+    $verifiedStampText = "CASH<br>VERIFIED";
+} elseif ($isOnlinePayment) {
+    $verifiedLabelMain = 'Online Verified';
+    $pendingLabelMain  = 'Subject to Online Verification';
+    $verifiedCardTitle = 'ONLINE-VERIFIED PAYMENT RECEIPT';
+    $pendingCardTitle  = 'SUBJECT TO ONLINE VERIFICATION';
+    $pendingCardDesc   = 'This online payment is subject to verification and confirmation.';
+    $verifiedStampText = "ONLINE<br>VERIFIED";
+} else {
+    $verifiedLabelMain = 'Bank Verified';
+    $pendingLabelMain  = 'Subject to Bank Verification';
+    $verifiedCardTitle = 'BANK-VERIFIED PAYMENT RECEIPT';
+    $pendingCardTitle  = 'SUBJECT TO BANK VERIFICATION';
+    $pendingCardDesc   = 'This payment is subject to bank verification and confirmation.';
+    $verifiedStampText = "BANK<br>VERIFIED";
+}
+
 $displayBank = !empty($payment['company_bank_name']) 
     ? $payment['company_bank_name'] 
     : (!empty($payment['bank_name']) 
@@ -194,6 +213,110 @@ $flatNo = !empty($clientDetails['flat_no']) ? $clientDetails['flat_no'] : (!empt
 
 $receiptNo = '#REC-' . str_pad($payment['id'] ?? '0', 6, '0', STR_PAD_LEFT);
 $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
+
+// Banking Information Resolution (Sender Bank vs Receiver Bank & Ref Number)
+$senderBankName = 'N/A';
+$receiverBankName = 'The Premium Homes Ltd.';
+$receiverAccountNo = 'N/A';
+$clientAccountNo = !empty($payment['bank_account_no']) && !in_array(strtolower(trim($payment['bank_account_no'])), ['n/a', '0', '00', 'none', 'null']) ? trim($payment['bank_account_no']) : 'N/A';
+
+$rawBankName = trim($payment['bank_name'] ?? '');
+$companyBankName = trim($payment['company_bank_name'] ?? '');
+$bankId = $payment['bank_id'] ?? null;
+
+// Determine Reference Number & Label
+$refLabel = ($paymentMethod === 'CHEQUE') ? 'Cheque No:' : 'Ref Number:';
+$refNumber = !empty($payment['transaction_ref']) ? trim($payment['transaction_ref']) : (!empty($payment['cheque_no']) ? trim($payment['cheque_no']) : 'N/A');
+if (!empty($payment['transaction_ref']) && !empty($payment['cheque_no']) && $payment['transaction_ref'] !== $payment['cheque_no']) {
+    $refNumber = $payment['transaction_ref'] . ' (Chq: ' . $payment['cheque_no'] . ')';
+}
+
+if (!$isCashPayment) {
+    $cbList = [];
+    if (isset($this) && isset($this->db)) {
+        try {
+            $cbQuery = $this->db->query("SELECT id, bank_name, account_name, account_number FROM company_bank_accounts ORDER BY LENGTH(account_name) DESC");
+            if ($cbQuery) {
+                while ($cbRow = $cbQuery->fetch_assoc()) {
+                    $cbList[] = $cbRow;
+                }
+            }
+        } catch (Exception $e) {}
+    }
+
+    // Pattern 1: rawBankName has hyphen like "DBBL-The Premium It Solution", "BRAC-MD. Mainul Hasan Dulon", "EBL-The Premium Homes Ltd."
+    if (strpos($rawBankName, '-') !== false) {
+        $parts = explode('-', $rawBankName, 2);
+        $bankPrefix = trim($parts[0]);
+        $receiverPart = trim($parts[1]);
+
+        $prefixLower = strtolower($bankPrefix);
+        if ($prefixLower === 'dbbl' || strpos($prefixLower, 'dutch') !== false) {
+            $senderBankName = 'Dutch-Bangla Bank (DBBL)';
+        } elseif ($prefixLower === 'brac') {
+            $senderBankName = 'BRAC Bank';
+        } elseif ($prefixLower === 'ebl' || strpos($prefixLower, 'eastern') !== false) {
+            $senderBankName = 'Eastern Bank (EBL)';
+        } elseif ($prefixLower === 'bkash') {
+            $senderBankName = 'bKash';
+        } else {
+            $senderBankName = $bankPrefix;
+        }
+
+        $receiverBankName = !empty($receiverPart) ? $receiverPart : 'The Premium Homes Ltd.';
+
+        // Look up receiver account number from company_bank_accounts
+        foreach ($cbList as $cb) {
+            $cbBank = strtolower($cb['bank_name']);
+            if (($prefixLower === 'dbbl' || strpos($prefixLower, 'dutch') !== false) && strpos($cbBank, 'dutch') === false) continue;
+            if ($prefixLower === 'brac' && strpos($cbBank, 'brac') === false) continue;
+            if (($prefixLower === 'ebl' || strpos($prefixLower, 'eastern') !== false) && strpos($cbBank, 'eastern') === false) continue;
+
+            if (stripos($cb['account_name'], $receiverPart) !== false || stripos($receiverPart, $cb['account_name']) !== false) {
+                $receiverAccountNo = $cb['account_number'];
+                break;
+            }
+        }
+    } else {
+        // Pattern 2: Single bank name, with or without bank_id
+        $matchedCb = null;
+        if (!empty($bankId)) {
+            foreach ($cbList as $cb) {
+                if ($cb['id'] == $bankId) {
+                    $matchedCb = $cb;
+                    break;
+                }
+            }
+        }
+
+        if ($matchedCb) {
+            $receiverBankName = $matchedCb['account_name'];
+            $receiverAccountNo = $matchedCb['account_number'];
+            $senderBankName = !empty($rawBankName) && !in_array(strtolower($rawBankName), ['0', 'n/a', 'none', 'cash']) ? $rawBankName : 'N/A';
+        } elseif (!empty($companyBankName)) {
+            $receiverBankName = $companyBankName;
+            $senderBankName = !empty($rawBankName) ? $rawBankName : 'N/A';
+        } elseif (!empty($rawBankName)) {
+            // Check if rawBankName matches a company bank
+            foreach ($cbList as $cb) {
+                if (stripos($rawBankName, $cb['account_name']) !== false) {
+                    $matchedCb = $cb;
+                    break;
+                }
+            }
+            if ($matchedCb) {
+                $receiverBankName = $matchedCb['account_name'];
+                $receiverAccountNo = $matchedCb['account_number'];
+                $senderBankName = $matchedCb['bank_name'];
+            } else {
+                $senderBankName = $rawBankName;
+                $receiverBankName = 'The Premium Homes Ltd.';
+            }
+        }
+    }
+
+    $displayBank = $receiverBankName;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -206,7 +329,7 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        /* CSS RESET & BOX SIZING */
+        /*CSS RESET & BOX SIZING */
         *, *::before, *::after {
             box-sizing: border-box;
             margin: 0;
@@ -649,15 +772,15 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
 
         /* PROCESSING INFORMATION */
         .processing-info-wrap {
-            margin-bottom: 24px;
+            margin-bottom: 22px;
         }
 
         .processing-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
+            gap: 14px 20px;
             background-color: #f8fafc;
-            padding: 14px 20px;
+            padding: 16px 20px;
             border-radius: 8px;
             border: 1px solid #e2e8f0;
         }
@@ -667,20 +790,43 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
             flex-direction: column;
         }
 
+        .proc-box-col2 {
+            grid-column: span 2;
+        }
+
+        .proc-box-col3 {
+            grid-column: span 3;
+        }
+
+        .proc-divider {
+            grid-column: 1 / -1;
+            height: 1px;
+            background-color: #e2e8f0;
+            margin: 2px 0;
+        }
+
         .proc-label {
-            font-size: 11.5px;
+            font-size: 11px;
             color: #64748b;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
 
         .proc-value {
-            font-size: 14.5px;
+            font-size: 13.5px;
             font-weight: 800;
             color: #0f172a;
+            line-height: 1.35;
             word-break: break-word;
+        }
+
+        .proc-sub {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #475569;
+            margin-top: 3px;
         }
 
         /* BOTTOM VERIFICATION CARD */
@@ -1026,21 +1172,35 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
                     <span class="proc-label">Created By:</span>
                     <span class="proc-value"><?= $createdByDisplay ?></span>
                 </div>
-                <?php if (in_array($paymentMethod, ['BANK', 'CHEQUE', 'CHECK', 'ONLINE'])): ?>
+                <?php if ($isCashPayment): ?>
+                <div class="proc-box proc-box-col3">
+                    <span class="proc-label">Payment Method:</span>
+                    <span class="proc-value">Cash in Hand / Office</span>
+                </div>
+                <?php else: ?>
                 <div class="proc-box">
-                    <span class="proc-label">Bank Name:</span>
-                    <span class="proc-value"><?= htmlspecialchars($displayBank) ?></span>
+                    <span class="proc-label">Sender Bank Name:</span>
+                    <span class="proc-value"><?= htmlspecialchars($senderBankName) ?></span>
+                    <?php if (!empty($clientAccountNo) && $clientAccountNo !== 'N/A'): ?>
+                        <span class="proc-sub">A/C: <?= htmlspecialchars($clientAccountNo) ?></span>
+                    <?php endif; ?>
                 </div>
                 <div class="proc-box">
-                    <span class="proc-label"><?= $paymentMethod === 'CHEQUE' ? 'Cheque No:' : 'Trx Ref:' ?></span>
-                    <span class="proc-value"><?= htmlspecialchars(!empty($payment['cheque_no']) && $paymentMethod === 'CHEQUE' ? $payment['cheque_no'] : (!empty($payment['transaction_ref']) ? $payment['transaction_ref'] : 'N/A')) ?></span>
+                    <span class="proc-label">Receiver Bank Name:</span>
+                    <span class="proc-value"><?= htmlspecialchars($receiverBankName) ?></span>
+                    <?php if (!empty($receiverAccountNo) && $receiverAccountNo !== 'N/A'): ?>
+                        <span class="proc-sub">A/C: <?= htmlspecialchars($receiverAccountNo) ?></span>
+                    <?php endif; ?>
+                </div>
+                <div class="proc-box">
+                    <span class="proc-label"><?= $refLabel ?></span>
+                    <span class="proc-value"><?= htmlspecialchars($refNumber) ?></span>
                 </div>
                 <?php endif; ?>
             </div>
         </div>
 
         <!-- BOTTOM VERIFICATION CARD -->
-        <?php if ($paymentMethod !== 'CASH'): ?>
         <div class="verification-card <?= $isVerified ? 'card-verified' : 'card-pending' ?>">
             <div class="card-top-row">
                 <div class="card-left-brand">
@@ -1090,7 +1250,6 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
                 This system-generated receipt is valid without a physical signature.
             </div>
         </div>
-        <?php endif; ?>
 
         <!-- FOOTER SECTION -->
         <hr class="green-divider" style="margin-top: 0; margin-bottom: 12px;">
