@@ -135,6 +135,9 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
   }
 </style>
 
+<!-- SCREEN VIEW CONTAINER (Hidden on Print) -->
+<div class="po-screen-container">
+
 <!-- HERO -->
 <div class="po-hero">
   <div class="po-hero-inner">
@@ -164,6 +167,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
         </p>
         <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
           <button onclick="window.print()" class="po-btn-w"><i class="fal fa-print"></i>Print</button>
+          <a href="<?= $base_url ?>/con-purchase-order-print/<?= $po['id'] ?>" target="_blank" class="po-btn-w" style="background:rgba(255,255,255,0.22);border-color:rgba(255,255,255,0.4)" title="Open Standalone Printable Document in New Tab"><i class="fal fa-external-link"></i>Print View</a>
           <?php if (!empty($po['request_id'])): ?>
             <a href="<?= $base_url ?>/con-purchase-request/<?= $po['request_id'] ?>" target="_blank" class="po-btn-w" style="background:rgba(255,193,7,0.25);border-color:rgba(255,193,7,0.55);color:#fff" title="Open Source Purchase Request">
               <i class="fal fa-file-alt text-warning"></i> View PR #<?= htmlspecialchars($po['request_id']) ?>
@@ -1370,25 +1374,107 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<style>
-  @media print {
+</div><!-- /.po-screen-container -->
 
-    .po-hero .d-flex.gap-2,
-    .po-btn-w,
+<!-- DEDICATED PRINT CONTAINER (Visible only when printing) -->
+<div id="po-print-sheet" class="po-print-sheet">
+  <div style="background:#fff;padding:0;">
+    <?php require __DIR__ . '/print-po-sheet.php'; ?>
+  </div>
+</div>
+
+<style>
+  /* Screen: hide the dedicated print sheet */
+  .po-print-sheet {
+    display: none;
+  }
+
+  @media print {
+    @page {
+      size: A4 portrait;
+      margin: 8mm 10mm 8mm 10mm;
+    }
+
+    html, body {
+      background: #fff !important;
+      color: #0f172a !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: visible !important;
+      font-family: 'Inter', Arial, sans-serif !important;
+    }
+
+    /* Completely hide universal print pad from master layout */
+    .universal-print-pad,
+    .upp-header,
+    .upp-footer,
+    .upp-left-border,
+    .upp-right-border,
+    .upp-watermark {
+      display: none !important;
+    }
+
+    /* Hide master layout headers, sidebars, navigation, footers, settings */
     .app-sidebar,
     .sidebar,
     .app__header__area,
     .main-header-container,
-    .main-footer {
+    .main-footer,
+    .header,
+    .navigation,
+    .no-print,
+    .theme-customizer,
+    .setting-box,
+    .color-customizer,
+    .floating-settings,
+    .dark-mode-toggler,
+    [class*="theme-setting"],
+    [class*="mode-switch"],
+    button.theme-toggle {
       display: none !important;
     }
 
+    /* Hide the entire interactive dashboard UI */
+    .po-screen-container,
+    .modal,
+    .modal-backdrop,
+    .btn,
+    .po-btn-w {
+      display: none !important;
+    }
+
+    /* Reset master slide wrappers */
+    .app__slide-wrapper,
+    .main-content,
     .page__full-wrapper,
-    .page__body-wrapper {
+    .page__body-wrapper,
+    .content-wrapper,
+    .container-fluid,
+    .container {
       margin: 0 !important;
       padding: 0 !important;
       width: 100% !important;
       max-width: 100% !important;
+      background: transparent !important;
+      position: static !important;
+      box-shadow: none !important;
+      border: none !important;
+    }
+
+    /* Show only the dedicated PO print sheet */
+    .po-print-sheet {
+      display: block !important;
+      visibility: visible !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #fff !important;
+    }
+
+    .po-print-sheet * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
   }
 </style>

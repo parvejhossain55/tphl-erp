@@ -344,6 +344,12 @@ class Con_PurchaseOrderController extends Controller
             }
         }
 
+        $siteSettings = null;
+        $sQuery = $this->db->query("SELECT * FROM site_settings LIMIT 1");
+        if ($sQuery) {
+            $siteSettings = $sQuery->fetch_assoc();
+        }
+
         $this->view('phase2/purchase-orders/show-purchase-order', [
             'current_route'       => 'con-purchase-orders',
             'page_title'          => 'Purchase Order #' . $id,
@@ -376,7 +382,168 @@ class Con_PurchaseOrderController extends Controller
             'cstInfo'             => $cstInfo,
             'prAttachment'        => $prAttachment,
             'prDetails'           => $prDetails,
+            'siteSettings'        => $siteSettings,
         ]);
+    }
+
+    // =========================================================================
+    // PRINT PO (Clean, Standalone Print Layout)
+    // =========================================================================
+
+    public function printPO($id)
+    {
+        $po = $this->poModel->find($id);
+        if (!$po) {
+            setError('Purchase Order not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-orders");
+            exit;
+        }
+
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        $creatorRole   = (int)($po['creator_role_id'] ?? 0);
+        $phNeeded      = in_array($creatorRole, [23, 31]);
+        $phApproved    = !empty($po['purchase_head_approved_by_id']);
+        $qcApproved    = !empty($po['qc_approved_by_id']);
+        $opApproved    = !empty($po['op_head_approved_by_id']);
+        $fullyApproved = ($phNeeded ? $phApproved : true) && $qcApproved && $opApproved;
+
+        $items = $this->poModel->getItems($id);
+
+        // Fetch vendor selection data
+        $vendorSelectionData = null;
+        if (!empty($po['request_id']) && !empty($po['vendor_id'])) {
+            $cstQuery = $this->db->prepare("
+                SELECT q.attachment, q.drive_link, qc.prepared_by, u.full_name AS selector_name
+                FROM quotations q
+                LEFT JOIN quotation_comparisons qc ON qc.request_id = q.request_id
+                LEFT JOIN users u ON u.id = qc.prepared_by
+                WHERE q.request_id = ? AND q.vendor_id = ?
+                LIMIT 1
+            ");
+            $cstQuery->bind_param('ii', $po['request_id'], $po['vendor_id']);
+            $cstQuery->execute();
+            $vendorSelectionData = $cstQuery->get_result()->fetch_assoc();
+        }
+
+        // Fetch Comparative Statement (CST) matrix
+        require_once __DIR__ . '/../../models/Con_Quotation.php';
+        $quotModel = new \Con_Quotation($this->db);
+        $cstMatrix = $quotModel->buildComparison($po['request_id']);
+
+        // Fetch Negotiation / Observation Notes
+        $notesQuery = $this->db->prepare("
+            SELECT n.*, u.full_name AS author_name, u.role_id AS author_role
+            FROM po_negotiation_notes n
+            JOIN users u ON u.id = n.user_id
+            WHERE n.purchase_order_id = ?
+            ORDER BY n.created_at DESC
+        ");
+        $negotiationNotes = [];
+        if ($notesQuery) {
+            $notesQuery->bind_param('i', $id);
+            $notesQuery->execute();
+            $negotiationNotes = $notesQuery->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+
+        $poTotalValue = 0;
+        foreach ($items as $itm) {
+            $poTotalValue += (float)($itm['quantity'] * $itm['unit_price']);
+        }
+
+        // Selected Vendor Full Details
+        $selectedVendor = null;
+        if (!empty($po['vendor_id'])) {
+            $vStmt = $this->db->prepare("SELECT id, name, phone, email, address, company_name FROM vendors WHERE id = ?");
+            if ($vStmt) {
+                $vStmt->bind_param('i', $po['vendor_id']);
+                $vStmt->execute();
+                $selectedVendor = $vStmt->get_result()->fetch_assoc();
+            }
+        }
+
+        // Fetch PR Details & CST info
+        $quotationsList = [];
+        $cstInfo        = null;
+        $prDetails      = null;
+
+        if (!empty($po['request_id'])) {
+            $prId = (int)$po['request_id'];
+
+            $prStmt = $this->db->prepare("
+                SELECT pr.*, u.full_name AS requester_name, p.name AS pr_project_name 
+                FROM purchase_requests pr 
+                LEFT JOIN users u ON u.id = pr.created_by 
+                LEFT JOIN projects p ON p.id = pr.project_id 
+                WHERE pr.id = ?
+            ");
+            if ($prStmt) {
+                $prStmt->bind_param('i', $prId);
+                $prStmt->execute();
+                $prDetails = $prStmt->get_result()->fetch_assoc();
+            }
+
+            $cstStmt = $this->db->prepare("
+                SELECT qc.*, u.full_name AS prepared_by_name 
+                FROM quotation_comparisons qc 
+                LEFT JOIN users u ON u.id = qc.prepared_by 
+                WHERE qc.request_id = ?
+                LIMIT 1
+            ");
+            if ($cstStmt) {
+                $cstStmt->bind_param('i', $prId);
+                $cstStmt->execute();
+                $cstInfo = $cstStmt->get_result()->fetch_assoc();
+            }
+
+            $qStmt = $this->db->prepare("
+                SELECT q.*, 
+                       v.name AS vendor_name, 
+                       v.phone AS vendor_phone, 
+                       v.email AS vendor_email, 
+                       v.address AS vendor_address, 
+                       v.company_name AS vendor_company_name,
+                       u.full_name AS quoted_by_name,
+                       (SELECT SUM(qi.quantity * qi.unit_price) FROM quotation_items qi WHERE qi.quotation_id = q.id) AS total_quoted_amount
+                FROM quotations q 
+                LEFT JOIN vendors v ON v.id = q.vendor_id 
+                LEFT JOIN users u ON u.id = q.created_by
+                WHERE q.request_id = ?
+                ORDER BY q.id ASC
+            ");
+            if ($qStmt) {
+                $qStmt->bind_param('i', $prId);
+                $qStmt->execute();
+                $quotationsList = $qStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            }
+        }
+
+        // Fetch Site Settings
+        $siteSettings = null;
+        $sQuery = $this->db->query("SELECT * FROM site_settings LIMIT 1");
+        if ($sQuery) {
+            $siteSettings = $sQuery->fetch_assoc();
+        }
+
+        $this->view('phase2/purchase-orders/print-purchase-order', [
+            'page_title'          => 'Print Purchase Order #' . $id,
+            'po'                  => $po,
+            'items'               => $items,
+            'phNeeded'            => $phNeeded,
+            'phApproved'          => $phApproved,
+            'qcApproved'          => $qcApproved,
+            'opApproved'          => $opApproved,
+            'fullyApproved'       => $fullyApproved,
+            'vendorSelectionData' => $vendorSelectionData,
+            'cstMatrix'           => $cstMatrix,
+            'negotiationNotes'    => $negotiationNotes,
+            'poTotalValue'        => $poTotalValue,
+            'selectedVendor'      => $selectedVendor,
+            'quotationsList'      => $quotationsList,
+            'cstInfo'             => $cstInfo,
+            'prDetails'           => $prDetails,
+            'siteSettings'        => $siteSettings,
+        ], false); // $useMaster = false (standalone document)
     }
 
     // =========================================================================
