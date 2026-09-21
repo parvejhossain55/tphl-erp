@@ -1,6 +1,6 @@
 <?php
-$current_server = 3;
-/////////////////////////
+
+$current_server =3;
 // Local Development Server
 if ($current_server == 1) {
     return [
@@ -89,6 +89,7 @@ if ($current_server == 3) {
         "db_host" => "127.0.0.1",
         "db_user" => "final_erp_user",
         "db_pass" => "finaltPhl@#5672dhKL%sd10",
+
         "db_name" => "final_erp_db",
 
         // AI Assistant Read-Only database connection
@@ -139,3 +140,4 @@ if ($current_server == 3) {
 
 // INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
 // WHERE lb.project_id = 45 AND lp.payment_type IN ('emi', 'emi_due_settlement', 'development_charge');
+//////////////

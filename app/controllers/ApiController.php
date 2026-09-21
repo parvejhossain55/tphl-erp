@@ -517,4 +517,275 @@ class ApiController extends Controller
         exit;
     }
 
+
+    /**
+     * POST /api/client-authenticate
+     * Authenticates client from onboard_clients and returns full profile + savedProperties
+     */
+    public function clientAuthenticate()
+    {
+        header('Content-Type: application/json');
+
+        // 1. Authenticate API Key
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
+        $apiKey = $headers['x-api-key'] ?? $headers['X-Api-Key'] ?? $_SERVER['HTTP_X_API_KEY'] ?? null;
+        
+        global $config;
+        $validKey = $config['premium_homes_api_key'] ?? 'tphl_erp_key_9f8e7d6c5b4a392817065';
+        if ($apiKey !== $validKey) {
+            http_response_code(401);
+            echo json_encode(["success" => false, "message" => "Unauthorized API Key"]);
+            exit;
+        }
+
+        $rawInput = file_get_contents('php://input');
+        $inputData = json_decode($rawInput, true) ?: [];
+        $email = trim($_POST['email'] ?? $inputData['email'] ?? $_REQUEST['email'] ?? '');
+        $password = trim($_POST['password'] ?? $inputData['password'] ?? $_REQUEST['password'] ?? '');
+
+        if (empty($email) || empty($password)) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Email and password are required!"]);
+            exit;
+        }
+
+        $cleanEmail = strtolower($email);
+        $escapedEmail = $this->db->real_escape_string($cleanEmail);
+
+        $query = "SELECT * FROM onboard_clients WHERE LOWER(login_email) = '$escapedEmail' OR LOWER(email) = '$escapedEmail' LIMIT 1";
+        $res = $this->db->query($query);
+        if (!$res || $res->num_rows === 0) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Client not found in ERP."]);
+            exit;
+        }
+
+        $onboard = $res->fetch_assoc();
+
+        $isPasswordValid = false;
+        if (password_verify($password, $onboard['password'])) {
+            $isPasswordValid = true;
+        } elseif ($onboard['password'] === $password) {
+            $isPasswordValid = true;
+        }
+
+        if (!$isPasswordValid) {
+            http_response_code(401);
+            echo json_encode(["success" => false, "message" => "Invalid credentials!"]);
+            exit;
+        }
+
+        $leadId = (int)$onboard['lead_id'];
+        if (!$leadId && !empty($onboard['lead_booking_id'])) {
+            $bRes = $this->db->query("SELECT lead_id FROM lead_bookings WHERE id = " . (int)$onboard['lead_booking_id'] . " LIMIT 1");
+            if ($bRes && $bRes->num_rows > 0) {
+                $bRow = $bRes->fetch_assoc();
+                $leadId = (int)$bRow['lead_id'];
+            }
+        }
+
+        $clientData = $this->buildClientData($leadId, $onboard);
+
+        echo json_encode([
+            "success" => true,
+            "message" => "Authentication successful.",
+            "client"  => $clientData
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    /**
+     * GET /api/client-details
+     * Returns full profile + savedProperties for identifier (lead_id, email, phone)
+     */
+    public function clientDetails()
+    {
+        header('Content-Type: application/json');
+
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
+        $apiKey = $headers['x-api-key'] ?? $headers['X-Api-Key'] ?? $_SERVER['HTTP_X_API_KEY'] ?? null;
+        
+        global $config;
+        $validKey = $config['premium_homes_api_key'] ?? 'tphl_erp_key_9f8e7d6c5b4a392817065';
+        if ($apiKey !== $validKey) {
+            http_response_code(401);
+            echo json_encode(["success" => false, "message" => "Unauthorized API Key"]);
+            exit;
+        }
+
+        $identifier = trim($_GET['identifier'] ?? $_REQUEST['identifier'] ?? '');
+        if (empty($identifier)) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Identifier required!"]);
+            exit;
+        }
+
+        $cleanId = is_numeric($identifier) ? (int)$identifier : null;
+        $escaped = $this->db->real_escape_string($identifier);
+
+        $onboard = null;
+        $q = "SELECT * FROM onboard_clients WHERE LOWER(login_email) = LOWER('$escaped') OR LOWER(email) = LOWER('$escaped')";
+        if ($cleanId) {
+            $q .= " OR lead_id = $cleanId OR id = $cleanId";
+        }
+        $q .= " LIMIT 1";
+
+        $res = $this->db->query($q);
+        if ($res && $res->num_rows > 0) {
+            $onboard = $res->fetch_assoc();
+        }
+
+        $leadId = $onboard ? (int)$onboard['lead_id'] : ($cleanId ?: 0);
+        if (!$leadId && !$onboard) {
+            $lRes = $this->db->query("SELECT * FROM leads WHERE email = '$escaped' OR phone LIKE '%$escaped%' OR phone_number LIKE '%$escaped%' LIMIT 1");
+            if ($lRes && $lRes->num_rows > 0) {
+                $lead = $lRes->fetch_assoc();
+                $leadId = (int)$lead['id'];
+            }
+        }
+
+        if (!$leadId && !$onboard) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Client not found."]);
+            exit;
+        }
+
+        $clientData = $this->buildClientData($leadId, $onboard);
+        echo json_encode([
+            "success" => true,
+            "client"  => $clientData
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    private function buildClientData($leadId, $onboard = null)
+    {
+        $lead = null;
+        if ($leadId) {
+            $lRes = $this->db->query("SELECT * FROM leads WHERE id = " . (int)$leadId . " LIMIT 1");
+            if ($lRes && $lRes->num_rows > 0) {
+                $lead = $lRes->fetch_assoc();
+            }
+        }
+
+        $name = $lead ? $lead['full_name'] : ($onboard['login_email'] ?? $onboard['email'] ?? 'Client');
+        $phone = $lead ? ($lead['phone'] ?: ($lead['phone_number'] ?? '')) : '';
+        $email = $onboard ? ($onboard['login_email'] ?: $onboard['email']) : ($lead['email'] ?? '');
+
+        // Fetch bookings for this lead
+        $bookings = [];
+        if ($leadId) {
+            $bRes = $this->db->query("SELECT * FROM lead_bookings WHERE lead_id = " . (int)$leadId . " AND booking_status != 'cancelled' AND (deleted_at IS NULL OR deleted_at = '')");
+            if ($bRes) {
+                while ($b = $bRes->fetch_assoc()) {
+                    $bookings[] = $b;
+                }
+            }
+        }
+
+        $savedProperties = [];
+        foreach ($bookings as $b) {
+            $projectId = (int)$b['project_id'];
+            $flatId = (int)$b['flat_id'];
+            $bookingId = (int)$b['id'];
+
+            $project = null;
+            if ($projectId) {
+                $pRes = $this->db->query("SELECT * FROM projects WHERE id = $projectId LIMIT 1");
+                if ($pRes && $pRes->num_rows > 0) $project = $pRes->fetch_assoc();
+            }
+
+            $flat = null;
+            if ($flatId) {
+                $fRes = $this->db->query("SELECT * FROM flats WHERE id = $flatId LIMIT 1");
+                if ($fRes && $fRes->num_rows > 0) $flat = $fRes->fetch_assoc();
+            }
+
+            $flatPrice = $flat ? (float)$flat['price_value'] : 0;
+            if ($flatPrice <= 0) {
+                $flatPrice = (float)$b['agreement_value'];
+            }
+            $discountAmount = (float)$b['discount_amount'];
+            $totalPayable = $flatPrice - $discountAmount;
+
+            $totalPaid = 0;
+            $bookingMoneyPaid = 0;
+            $landSharePaid = 0;
+            $devChargePaid = 0;
+            $emiPaid = 0;
+            $totalServiceFee = 0;
+
+            $pRes = $this->db->query("SELECT * FROM lead_payments WHERE booking_id = $bookingId AND payment_status IN ('paid', 'partially_paid') AND verification_status = 'verified'");
+            if ($pRes) {
+                while ($p = $pRes->fetch_assoc()) {
+                    $amt = (float)$p['amount'];
+                    $totalPaid += $amt;
+                    if ($p['payment_type'] === 'booking_money') $bookingMoneyPaid += $amt;
+                    if (in_array($p['payment_type'], ['booking_money', 'registration', 'mutation_cost', 'land_share'])) {
+                        $landSharePaid += $amt;
+                    }
+                    if ($p['payment_type'] === 'development_charge') $devChargePaid += $amt;
+                    if (in_array($p['payment_type'], ['emi', 'emi_due_settlement'])) {
+                        $emiPaid += $amt;
+                        $totalServiceFee += (float)($p['service_fee'] ?? 0);
+                    }
+                }
+            }
+
+            $totalDue = max(0, $totalPayable - $totalPaid);
+
+            $videoLink = $onboard['cameraLink1'] ?? '';
+            $videoLink2 = $onboard['cameraLink2'] ?? '';
+            $moneyReceiptLink = $onboard['moneyReceiptLink'] ?? '';
+            $purchaseDetailsLink = $onboard['purchaseDetailsLink'] ?? '';
+
+            $image = '';
+            if ($project && !empty($project['image'])) {
+                $image = str_starts_with($project['image'], 'http')
+                    ? $project['image']
+                    : "https://api.dpremiumhomes.com/assets/Property/" . $project['image'];
+            }
+
+            $savedProperties[] = [
+                "id"                   => (int)($project['id'] ?? $b['project_id']),
+                "slug"                 => $project['slug'] ?? '',
+                "name"                 => $project['name'] ?? '',
+                "location"             => $project['location'] ?? '',
+                "image"                => $image,
+                "flatNo"               => $flat['flat_name'] ?? '',
+                "flatSize"             => $flat && !empty($flat['sqft']) ? $flat['sqft'] . ' sqft' : '',
+                "price"                => number_format($totalPayable),
+                "partial_payment"      => number_format($totalPaid),
+                "due_payment"          => number_format($totalDue),
+                "discount"             => $discountAmount ? number_format($discountAmount) : '',
+                "emi_per_month"        => '',
+                "total_emi_paid"       => $emiPaid ? number_format($emiPaid) : '',
+                "remaining_emi"        => '',
+                "emi_duration"         => '',
+                "emi_completed"        => '',
+                "emi_remaining"        => '',
+                "next_emi_date"        => '',
+                "booking_money"        => $bookingMoneyPaid ? number_format($bookingMoneyPaid) : '',
+                "land_share"           => $landSharePaid ? number_format($landSharePaid) : '',
+                "development_charges"  => $devChargePaid ? number_format($devChargePaid) : '',
+                "construction_cost"    => '',
+                "service_charges"      => $totalServiceFee ? number_format($totalServiceFee) : '',
+                "videoLink"            => $videoLink,
+                "videoLink2"           => $videoLink2,
+                "moneyReceiptLink"     => $moneyReceiptLink,
+                "purchaseDetailsLink"  => $purchaseDetailsLink,
+                "estimatedDate"        => '2028',
+            ];
+        }
+
+        return [
+            'id'              => (int)($leadId ?: ($onboard['id'] ?? 0)),
+            'lead_id'         => (int)$leadId,
+            'email'           => $email,
+            'name'            => $name,
+            'phone'           => $phone,
+            'savedProperties' => $savedProperties,
+            'lastUpdated'     => date('Y-m-d')
+        ];
+    }
 }

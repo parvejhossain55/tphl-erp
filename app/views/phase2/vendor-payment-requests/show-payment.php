@@ -65,6 +65,28 @@ $typeBadge = match ($request['payment_type'] ?? 'Final') {
 $penaltyAmt = (float) ($request['penalty_amount'] ?? 0);
 $invoiceAmt = (float) ($request['invoice_amount'] ?? 0);
 $advancePaid = (float) ($advance_paid ?? 0);
+
+$resolveAttUrl = function($att, $type = 'vendor_quotation') use ($base_url) {
+    if (empty($att)) return '';
+    $att = trim($att);
+    if (preg_match('/^https?:\/\//i', $att)) return $att;
+    if (strpos($att, 'public/') === 0 || strpos($att, '/public/') === 0) {
+        return $base_url . '/' . ltrim($att, '/');
+    }
+    if (strpos($att, 'uploads/') === 0 || strpos($att, '/uploads/') === 0) {
+        return $base_url . '/' . ltrim($att, '/');
+    }
+    if ($type === 'purchase_requests') {
+        return $base_url . '/public/uploads/purchase_requests/' . ltrim($att, '/');
+    }
+    return $base_url . '/public/uploads/vendor_quotation/' . ltrim($att, '/');
+};
+
+$isImg = function($file) {
+    if (empty($file)) return false;
+    $ext = strtolower(pathinfo(parse_url($file, PHP_URL_PATH), PATHINFO_EXTENSION));
+    return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
+};
 ?>
 
 <!-- Header -->
@@ -673,28 +695,6 @@ if ($status === 'Draft') {
 
 <!-- Selected Vendor & CST (Comparative Statement) Details Section -->
 <?php
-$resolveAttUrl = function($att, $type = 'vendor_quotation') use ($base_url) {
-    if (empty($att)) return '';
-    $att = trim($att);
-    if (preg_match('/^https?:\/\//i', $att)) return $att;
-    if (strpos($att, 'public/') === 0 || strpos($att, '/public/') === 0) {
-        return $base_url . '/' . ltrim($att, '/');
-    }
-    if (strpos($att, 'uploads/') === 0 || strpos($att, '/uploads/') === 0) {
-        return $base_url . '/' . ltrim($att, '/');
-    }
-    if ($type === 'purchase_requests') {
-        return $base_url . '/public/uploads/purchase_requests/' . ltrim($att, '/');
-    }
-    return $base_url . '/public/uploads/vendor_quotation/' . ltrim($att, '/');
-};
-
-$isImg = function($file) {
-    if (empty($file)) return false;
-    $ext = strtolower(pathinfo(parse_url($file, PHP_URL_PATH), PATHINFO_EXTENSION));
-    return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
-};
-
 $selVenId = $selectedVendor['id'] ?? ($request['vendor_id'] ?? null);
 $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requests') : null;
 ?>
