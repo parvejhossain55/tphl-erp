@@ -1340,3 +1340,90 @@ function getProjectOtherCostFileDetails($filename): array
 {
     return getUploadFileDetails('project_other_costs', $filename);
 }
+
+/**
+ * Return list of all scheduled & operating banks in Bangladesh
+ */
+function getBangladeshBanks(): array
+{
+    $banks = [
+        // State-owned Commercial Banks
+        "Agrani Bank PLC",
+        "Bangladesh Development Bank PLC (BDBL)",
+        "BASIC Bank Limited",
+        "Janata Bank PLC",
+        "Rupali Bank PLC",
+        "Sonali Bank PLC",
+
+        // Specialized Banks
+        "Ansar-VDP Unnayan Bank",
+        "Bangladesh Krishi Bank",
+        "Grameen Bank",
+        "Karmasangsthan Bank",
+        "Probashi Kallyan Bank",
+        "Rajshahi Krishi Unnayan Bank (RAKUB)",
+
+        // Private Commercial Banks (Conventional)
+        "AB Bank PLC",
+        "Bank Asia PLC",
+        "Bengal Commercial Bank PLC",
+        "BRAC Bank PLC",
+        "Citizens Bank PLC",
+        "City Bank PLC",
+        "Community Bank Bangladesh PLC",
+        "Dhaka Bank PLC",
+        "Dutch-Bangla Bank PLC",
+        "Eastern Bank PLC (EBL)",
+        "IFIC Bank PLC",
+        "Jamuna Bank PLC",
+        "Meghna Bank PLC",
+        "Mercantile Bank PLC",
+        "Midland Bank PLC",
+        "Modhumoti Bank PLC",
+        "Mutual Trust Bank PLC (MTB)",
+        "National Bank Limited",
+        "NCC Bank PLC",
+        "NRB Bank PLC",
+        "NRB Commercial Bank PLC (NRBC Bank)",
+        "ONE Bank PLC",
+        "Padma Bank PLC",
+        "Premier Bank PLC",
+        "Prime Bank PLC",
+        "Pubali Bank PLC",
+        "Shimanto Bank PLC",
+        "South Bangla Agriculture & Commerce Bank PLC (SBAC Bank)",
+        "Southeast Bank PLC",
+        "Standard Bank PLC",
+        "Trust Bank Limited",
+        "United Commercial Bank PLC (UCB)",
+        "Uttara Bank PLC",
+
+        // Private Commercial Banks (Islami Shariah-based)
+        "Al-Arafah Islami Bank PLC",
+        "EXIM Bank PLC",
+        "First Security Islami Bank PLC",
+        "Global Islami Bank PLC",
+        "ICB Islamic Bank Limited",
+        "Islami Bank Bangladesh PLC",
+        "Shahjalal Islami Bank PLC",
+        "Social Islami Bank PLC (SIBL)",
+        "Union Bank PLC",
+
+        // Foreign Commercial Banks
+        "Bank Alfalah",
+        "Citibank N.A.",
+        "Commercial Bank of Ceylon",
+        "Habib Bank Limited",
+        "HSBC Bangladesh",
+        "National Bank of Pakistan",
+        "Standard Chartered Bank",
+        "State Bank of India",
+        "Woori Bank",
+    ];
+
+    sort($banks);
+    $banks[] = "Other Country / Foreign Bank";
+    $banks[] = "Other Bank";
+    return $banks;
+}
+

@@ -2280,6 +2280,8 @@ ORDER BY lb.booking_date DESC
                     ORDER BY ev.id DESC LIMIT 1) as verified_by_employee_id,
                    uu.full_name as updated_by_name,
                    cb.bank_name as company_bank_name,
+                   cb.account_name as company_account_name,
+                   cb.account_number as company_account_number,
                    u.full_name as created_by_name,
                    (SELECT ec.employee_id 
                     FROM employees ec 

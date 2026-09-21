@@ -314,7 +314,7 @@ class ApiController extends Controller
             $devChargeHistory = [];
 
             // Query updated to order by date for correct history timeline
-            $pRes = $this->db->query("SELECT * FROM lead_payments WHERE booking_id = $bookingId AND payment_status IN ('paid', 'partially_paid') ORDER BY payment_date ASC, id ASC");
+            $pRes = $this->db->query("SELECT * FROM lead_payments WHERE booking_id = $bookingId AND payment_status IN ('paid', 'partially_paid', 'pending') AND (verification_status != 'rejected' OR verification_status IS NULL) ORDER BY payment_date ASC, id ASC");
             if ($pRes) {
                 while ($p = $pRes->fetch_assoc()) {
                     $amt = (float)$p['amount'];
@@ -343,7 +343,7 @@ class ApiController extends Controller
                         ];
                     }
 
-                    if ($vStatus === 'verified') {
+                    if ($vStatus !== 'rejected') {
                         $totalPaid += $amt;
 
                         if ($ptype === 'booking_money') $bookingMoneyPaid += $amt;
@@ -359,9 +359,11 @@ class ApiController extends Controller
                         $totalDueEmi += (float)$p['due_emi_amount'];
                         $bulkEmiDiscount += (float)$p['bulk_emi_discount'];
                         $penaltyCharged += (float)$p['penalty_amount'];
-                    } else {
-                        if (in_array($ptype, ['emi', 'emi_due_settlement'])) {
-                            $unverifiedEmiPaid += $amt;
+
+                        if ($vStatus !== 'verified') {
+                            if (in_array($ptype, ['emi', 'emi_due_settlement'])) {
+                                $unverifiedEmiPaid += $amt;
+                            }
                         }
                     }
                     $penaltyPaid += (float)$p['penalty_paid'];
@@ -406,7 +408,7 @@ class ApiController extends Controller
                 LEFT JOIN emi_schedules es ON lp.id = es.lead_payment_id 
                 WHERE lp.booking_id = $bookingId 
                   AND lp.payment_type IN ('emi', 'emi_due_settlement')
-                  AND lp.payment_status IN ('paid', 'partially_paid')
+                  AND lp.payment_status IN ('paid', 'partially_paid', 'pending') AND (lp.verification_status != 'rejected' OR lp.verification_status IS NULL)
                 ORDER BY lp.payment_date ASC, lp.id ASC
             ");
             
@@ -672,13 +674,45 @@ class ApiController extends Controller
         $phone = $lead ? ($lead['phone'] ?: ($lead['phone_number'] ?? '')) : '';
         $email = $onboard ? ($onboard['login_email'] ?: $onboard['email']) : ($lead['email'] ?? '');
 
-        // Fetch bookings for this lead
+        // Fetch bookings for this lead (by lead_id, lead_booking_id, or phone match)
         $bookings = [];
+        $bookingIds = [];
+
         if ($leadId) {
-            $bRes = $this->db->query("SELECT * FROM lead_bookings WHERE lead_id = " . (int)$leadId . " AND booking_status != 'cancelled' AND (deleted_at IS NULL OR deleted_at = '')");
+            $bRes = $this->db->query("SELECT * FROM lead_bookings WHERE lead_id = " . (int)$leadId . " AND booking_status != 'cancelled'");
             if ($bRes) {
                 while ($b = $bRes->fetch_assoc()) {
+                    if (!in_array($b['id'], $bookingIds)) {
+                        $bookings[] = $b;
+                        $bookingIds[] = $b['id'];
+                    }
+                }
+            }
+        }
+
+        if (!empty($onboard['lead_booking_id'])) {
+            $bRes = $this->db->query("SELECT * FROM lead_bookings WHERE id = " . (int)$onboard['lead_booking_id'] . " AND booking_status != 'cancelled' LIMIT 1");
+            if ($bRes && $bRes->num_rows > 0) {
+                $b = $bRes->fetch_assoc();
+                if (!in_array($b['id'], $bookingIds)) {
                     $bookings[] = $b;
+                    $bookingIds[] = $b['id'];
+                }
+            }
+        }
+
+        if (empty($bookings) && !empty($phone)) {
+            $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+            if (strlen($cleanPhone) >= 8) {
+                $last8 = substr($cleanPhone, -8);
+                $bRes = $this->db->query("SELECT lb.* FROM lead_bookings lb INNER JOIN leads l ON lb.lead_id = l.id WHERE (l.phone LIKE '%$last8%' OR l.phone_number LIKE '%$last8%') AND lb.booking_status != 'cancelled'");
+                if ($bRes) {
+                    while ($b = $bRes->fetch_assoc()) {
+                        if (!in_array($b['id'], $bookingIds)) {
+                            $bookings[] = $b;
+                            $bookingIds[] = $b['id'];
+                        }
+                    }
                 }
             }
         }
@@ -715,7 +749,7 @@ class ApiController extends Controller
             $emiPaid = 0;
             $totalServiceFee = 0;
 
-            $pRes = $this->db->query("SELECT * FROM lead_payments WHERE booking_id = $bookingId AND payment_status IN ('paid', 'partially_paid') AND verification_status = 'verified'");
+            $pRes = $this->db->query("SELECT * FROM lead_payments WHERE booking_id = $bookingId AND payment_status IN ('paid', 'partially_paid', 'pending') AND (verification_status != 'rejected' OR verification_status IS NULL)");
             if ($pRes) {
                 while ($p = $pRes->fetch_assoc()) {
                     $amt = (float)$p['amount'];
@@ -734,8 +768,27 @@ class ApiController extends Controller
 
             $totalDue = max(0, $totalPayable - $totalPaid);
 
-            $videoLink = $onboard['cameraLink1'] ?? '';
-            $videoLink2 = $onboard['cameraLink2'] ?? '';
+            // Project-wise camera resolution from cameras table
+            $projectVideoLink1 = '';
+            $projectVideoLink2 = '';
+            if ($projectId) {
+                $camRes = $this->db->query("SELECT * FROM cameras WHERE project_id = " . (int)$projectId . " AND status = 'active' ORDER BY id ASC LIMIT 2");
+                if ($camRes && $camRes->num_rows > 0) {
+                    $cams = [];
+                    while ($camRow = $camRes->fetch_assoc()) {
+                        $rawCam = trim($camRow['hls_path'] ?: ($camRow['rtsp_url'] ?? ''));
+                        if ($rawCam) {
+                            $cams[] = str_starts_with($rawCam, 'http') ? $rawCam : ('https://tphlcamera.xyz/' . ltrim($rawCam, '/'));
+                        }
+                    }
+                    if (!empty($cams[0])) $projectVideoLink1 = $cams[0];
+                    if (!empty($cams[1])) $projectVideoLink2 = $cams[1];
+                }
+            }
+
+            // Priority: cameras table (Project-wise) -> onboard_clients -> empty
+            $videoLink = !empty($projectVideoLink1) ? $projectVideoLink1 : (!empty($onboard['cameraLink1']) ? $onboard['cameraLink1'] : '');
+            $videoLink2 = !empty($projectVideoLink2) ? $projectVideoLink2 : (!empty($onboard['cameraLink2']) ? $onboard['cameraLink2'] : '');
             $moneyReceiptLink = $onboard['moneyReceiptLink'] ?? '';
             $purchaseDetailsLink = $onboard['purchaseDetailsLink'] ?? '';
 
