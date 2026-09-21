@@ -592,7 +592,24 @@ $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET
                         <tbody>
                             <?php foreach ($transactions as $transaction): ?>
                                 <tr data-payment-type="<?= htmlspecialchars($transaction['payment_type'] ?? '') ?>">
-                                    <td><?php echo $transaction['formatted_date']; ?></td>
+                                    <td>
+                                        <span><?php echo $transaction['formatted_date']; ?></span>
+                                        <?php if (in_array($transaction['payment_type'] ?? '', ['booking_money', 'registration'])): ?>
+                                            <button type="button" class="btn btn-link p-0 ms-1 text-primary btn-edit-payment-date"
+                                                    style="text-decoration:none; vertical-align: middle;"
+                                                    data-payment-id="<?= htmlspecialchars($transaction['id'] ?? '') ?>"
+                                                    data-booking-id="<?= htmlspecialchars($bookingId ?? '') ?>"
+                                                    data-payment-type="<?= htmlspecialchars($transaction['payment_type'] ?? '') ?>"
+                                                    data-payment-label="<?= htmlspecialchars($transaction['installment_label'] ?? '') ?>"
+                                                    data-payment-details="<?= htmlspecialchars($transaction['payment_details'] ?? '') ?>"
+                                                    data-amount="<?= htmlspecialchars(number_format((float)($transaction['amount'] ?? 0), 2)) ?>"
+                                                    data-payment-date="<?= htmlspecialchars($transaction['payment_date'] ?? '') ?>"
+                                                    data-formatted-date="<?= htmlspecialchars($transaction['formatted_date'] ?? '') ?>"
+                                                    title="Edit Date">
+                                                <i class="fa-solid fa-pen-to-square" style="font-size:12px;"></i>
+                                            </button>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <span class="badge bg-primary">
                                             <?php echo $transaction['installment_label']; ?>
@@ -777,6 +794,27 @@ $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET
                                                 </span>
                                             <?php else: ?>
                                                 <span class="text-muted">—</span>
+                                            <?php endif; ?>
+
+                                            <?php
+                                                $pType = $transaction['payment_type'] ?? '';
+                                                $isEligibleDateEdit = in_array($pType, ['booking_money', 'registration']);
+                                            ?>
+                                            <?php if ($isEligibleDateEdit): ?>
+                                                <button type="button"
+                                                        class="table__icon edit border-0 btn-edit-payment-date"
+                                                        style="color:#fff;background-color:#0284c7;cursor:pointer;"
+                                                        data-payment-id="<?= htmlspecialchars($transaction['id'] ?? '') ?>"
+                                                        data-booking-id="<?= htmlspecialchars($bookingId ?? '') ?>"
+                                                        data-payment-type="<?= htmlspecialchars($pType) ?>"
+                                                        data-payment-label="<?= htmlspecialchars($transaction['installment_label'] ?? '') ?>"
+                                                        data-payment-details="<?= htmlspecialchars($transaction['payment_details'] ?? '') ?>"
+                                                        data-amount="<?= htmlspecialchars(number_format((float)($transaction['amount'] ?? 0), 2)) ?>"
+                                                        data-payment-date="<?= htmlspecialchars($transaction['payment_date'] ?? '') ?>"
+                                                        data-formatted-date="<?= htmlspecialchars($transaction['formatted_date'] ?? '') ?>"
+                                                        title="Edit Payment Date (<?= $pType === 'booking_money' ? 'Booking' : 'Registration' ?>)">
+                                                    <i class="fa-solid fa-calendar-days"></i>
+                                                </button>
                                             <?php endif; ?>
 
                                             <?php if ($hasId && !$isVerified): ?>
@@ -1538,6 +1576,67 @@ $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET
 </div>
 <?php endif; ?>
 
+<!-- Modal: Edit Payment Date (Booking & Registration Only) -->
+<div class="modal fade" id="editPaymentDateModal" tabindex="-1" aria-labelledby="editPaymentDateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff;">
+                <h5 class="modal-title text-white" id="editPaymentDateModalLabel">
+                    <i class="fa-solid fa-calendar-pen me-2"></i>Edit Payment Date
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="<?= $GLOBALS['base_url'] ?>/update-payment-date" method="POST">
+                <input type="hidden" name="payment_id" id="epd_payment_id" value="">
+                <input type="hidden" name="booking_id" id="epd_booking_id" value="<?= htmlspecialchars($bookingId ?? '') ?>">
+                <input type="hidden" name="payment_type" id="epd_payment_type" value="">
+                <input type="hidden" name="redirect_to" value="clients-cash-in-history-view/<?= htmlspecialchars($bookingId ?? '') ?>">
+
+                <div class="modal-body p-4 bg-light">
+                    <!-- Summary Card -->
+                    <div class="p-3 mb-3 bg-white rounded border shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted fs-13">Payment Type:</span>
+                            <span class="badge bg-primary fs-12 px-2 py-1" id="epd_badge">BOOKING</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted fs-13">Details:</span>
+                            <strong class="text-dark fs-13" id="epd_details">Booking Money</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted fs-13">Amount:</span>
+                            <strong class="text-success fs-14" id="epd_amount">TK. 0.00</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted fs-13">Current Date:</span>
+                            <span class="badge bg-secondary-subtle text-secondary border fs-12" id="epd_current_date">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Date Picker -->
+                    <div class="mb-2">
+                        <label class="form-label fw-bold text-dark fs-14">
+                            New Payment Date <span class="text-danger">*</span>
+                        </label>
+                        <input type="date" name="payment_date" id="epd_payment_date" class="form-control form-control-lg" required>
+                        <small class="text-muted mt-2 d-block" style="font-size: 12px; line-height: 1.4;">
+                            <i class="fa-solid fa-circle-info text-info me-1"></i>
+                            Only the payment date will be updated. Paid amounts, verification status, and ledger records remain unchanged.
+                        </small>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-white border-top py-3">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-semibold">
+                        <i class="fa-solid fa-check me-1"></i> Update Date
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal: Edit Unverified Transaction -->
 <div class="modal fade" id="editUnverifiedPaymentModal" tabindex="-1" aria-labelledby="editUnverifiedPaymentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -1720,6 +1819,48 @@ document.addEventListener('DOMContentLoaded', function() {
             toggleEditFields();
 
             const modalEl = document.getElementById('editUnverifiedPaymentModal');
+            if (modalEl) {
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            }
+        });
+    });
+
+    // Handle Edit Payment Date click for Booking & Registration
+    document.querySelectorAll('.btn-edit-payment-date').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const pId = this.dataset.paymentId || '';
+            const bId = this.dataset.bookingId || '';
+            const pType = this.dataset.paymentType || '';
+            const pLabel = this.dataset.paymentLabel || (pType === 'booking_money' ? 'BOOKING' : 'REGISTRATION');
+            const pDetails = this.dataset.paymentDetails || (pType === 'booking_money' ? 'Booking Money' : 'Registration Money');
+            const amount = this.dataset.amount || '0.00';
+            const pDate = this.dataset.paymentDate || '';
+            const fDate = this.dataset.formattedDate || pDate;
+
+            const idInput = document.getElementById('epd_payment_id');
+            if (idInput) idInput.value = pId;
+            const bInput = document.getElementById('epd_booking_id');
+            if (bInput) bInput.value = bId;
+            const typeInput = document.getElementById('epd_payment_type');
+            if (typeInput) typeInput.value = pType;
+
+            const badge = document.getElementById('epd_badge');
+            if (badge) badge.textContent = pLabel;
+            const details = document.getElementById('epd_details');
+            if (details) details.textContent = pDetails;
+            const amt = document.getElementById('epd_amount');
+            if (amt) amt.textContent = 'TK. ' + amount;
+            const curDate = document.getElementById('epd_current_date');
+            if (curDate) curDate.textContent = fDate;
+
+            const dateInput = document.getElementById('epd_payment_date');
+            if (dateInput) {
+                dateInput.value = pDate;
+            }
+
+            const modalEl = document.getElementById('editPaymentDateModal');
             if (modalEl) {
                 const modal = new bootstrap.Modal(modalEl);
                 modal.show();
