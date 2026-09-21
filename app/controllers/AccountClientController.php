@@ -2985,4 +2985,117 @@ public function discountStatement($bookingId = null)
         header("Location: {$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}");
         exit;
     }
+
+    /**
+     * Update payment date strictly for booking_money and registration payments
+     */
+    public function updatePaymentDate()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/clients-cashin-view");
+            exit;
+        }
+
+        $paymentId = $_POST['payment_id'] ?? null;
+        $bookingId = (int)($_POST['booking_id'] ?? 0);
+        $newDate   = trim($_POST['payment_date'] ?? '');
+        $paymentType = trim($_POST['payment_type'] ?? '');
+
+        $redirectUrl = !empty($_POST['redirect_to']) 
+            ? "{$GLOBALS['base_url']}/" . ltrim($_POST['redirect_to'], '/')
+            : ($bookingId > 0 ? "{$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}" : "{$GLOBALS['base_url']}/clients-cashin-view");
+
+        if (!$bookingId || empty($newDate)) {
+            setError("Invalid booking ID or payment date provided.");
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+
+        // Strict restriction: Only allow editing date for booking_money and registration
+        if (!in_array($paymentType, ['booking_money', 'registration'])) {
+            setError("Permission denied: Only Booking Money and Registration payment dates can be edited.");
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+
+        // Validate date format YYYY-MM-DD
+        $d = DateTime::createFromFormat('Y-m-d', $newDate);
+        if (!$d || $d->format('Y-m-d') !== $newDate) {
+            setError("Invalid date format. Please use a valid calendar date.");
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+
+        $userId = (int)($_SESSION['user']['id'] ?? 1);
+
+        // Virtual agreement record handling: 'booking-{id}'
+        if (!empty($paymentId) && strpos((string)$paymentId, 'booking-') !== false) {
+            $stmt = $this->db->prepare("UPDATE lead_bookings SET booking_date = ?, updated_at = NOW() WHERE id = ?");
+            if ($stmt) {
+                $stmt->bind_param('si', $newDate, $bookingId);
+                $stmt->execute();
+                setSuccess("Booking agreement date updated to " . date('d M, Y', strtotime($newDate)) . " successfully!");
+            } else {
+                setError("Failed to update booking date in database.");
+            }
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+
+        $numericPaymentId = (int)$paymentId;
+        if ($numericPaymentId <= 0) {
+            setError("Invalid payment reference ID.");
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+
+        // Fetch existing payment to confirm type and booking_id
+        $checkStmt = $this->db->prepare("SELECT id, booking_id, payment_type FROM lead_payments WHERE id = ? AND booking_id = ?");
+        if (!$checkStmt) {
+            setError("Database query error.");
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+
+        $checkStmt->bind_param('ii', $numericPaymentId, $bookingId);
+        $checkStmt->execute();
+        $existing = $checkStmt->get_result()->fetch_assoc();
+
+        if (!$existing || !in_array($existing['payment_type'], ['booking_money', 'registration'])) {
+            setError("Transaction not found or not eligible for date modification.");
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+
+        // Update payment_date in lead_payments
+        $upStmt = $this->db->prepare("UPDATE lead_payments SET payment_date = ?, updated_by = ? WHERE id = ?");
+        if ($upStmt) {
+            $upStmt->bind_param('sii', $newDate, $userId, $numericPaymentId);
+            $res = $upStmt->execute();
+
+            if ($res) {
+                // If it is booking_money, also sync booking_date in lead_bookings
+                if ($existing['payment_type'] === 'booking_money') {
+                    $bStmt = $this->db->prepare("UPDATE lead_bookings SET booking_date = ?, updated_at = NOW() WHERE id = ?");
+                    if ($bStmt) {
+                        $bStmt->bind_param('si', $newDate, $bookingId);
+                        $bStmt->execute();
+                    }
+                }
+                $typeLabel = $existing['payment_type'] === 'booking_money' ? 'Booking Money' : 'Registration Money';
+                setSuccess("{$typeLabel} payment date updated to " . date('d M, Y', strtotime($newDate)) . " successfully!");
+            } else {
+                setError("Failed to update payment date in database.");
+            }
+        } else {
+            setError("Database query preparation failed.");
+        }
+
+        header("Location: {$redirectUrl}");
+        exit;
+    }
 }
