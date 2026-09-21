@@ -111,6 +111,101 @@ $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET
         $devTarget = (float)($paymentSummary['flat_development_charges'] ?? 0);
         $devPaid   = (float)($paymentSummary['development_charge_paid']  ?? 0);
         $devRemain = max(0, $devTarget - $devPaid);
+
+        // Compute all Due / Expired / Overdue EMIs
+        $dueEmisList = [];
+        $today = new \DateTime();
+        $totalDueEmiAmount = 0;
+        
+        $outstandingDues = $accountModel->getOutstandingEmiDues($clientDetails['booking_id'] ?? 0);
+        if (!empty($outstandingDues)) {
+            foreach ($outstandingDues as $od) {
+                $emiNo = (int)($od['emi_no'] ?? 0);
+                $dueDateStr = $od['payment_date'] ?? null;
+                $dueAmt = (float)($od['due_emi_amount'] ?? 0);
+                if ($dueAmt > 0) {
+                    $isExpired = false;
+                    $daysDiff = 0;
+                    $monthsDiff = 0;
+                    if (!empty($dueDateStr)) {
+                        $dObj = new \DateTime($dueDateStr);
+                        if ($dObj < $today) {
+                            $isExpired = true;
+                            $diff = $today->diff($dObj);
+                            $daysDiff = $diff->days;
+                            $monthsDiff = ($diff->y * 12) + $diff->m;
+                        }
+                    }
+                    $dueEmisList[$emiNo] = [
+                        'emi_no' => $emiNo,
+                        'due_date' => $dueDateStr,
+                        'due_amount' => $dueAmt,
+                        'paid_amount' => (float)($od['amount'] ?? 0),
+                        'type' => 'partial',
+                        'type_label' => 'Partial Balance Due',
+                        'badge_class' => 'bg-warning text-dark',
+                        'is_expired' => $isExpired,
+                        'days_expired' => $daysDiff,
+                        'months_expired' => $monthsDiff,
+                        'penalty_amount' => 0,
+                        'total_payable' => $dueAmt
+                    ];
+                    $totalDueEmiAmount += $dueAmt;
+                }
+            }
+        }
+
+        if (!empty($virtualEmiSchedule)) {
+            foreach ($virtualEmiSchedule as $vEmi) {
+                $emiNo = (int)$vEmi['emi_no'];
+                $maturity = $vEmi['maturity_status'] ?? '';
+                $dueAmt = (float)($vEmi['due_amount'] ?? 0);
+                $dueDateStr = $vEmi['due_date'] ?? null;
+
+                $isExpired = false;
+                $daysDiff = 0;
+                $monthsDiff = 0;
+                if (!empty($dueDateStr)) {
+                    $dObj = new \DateTime($dueDateStr);
+                    if ($dObj < $today) {
+                        $isExpired = true;
+                        $diff = $today->diff($dObj);
+                        $daysDiff = $diff->days;
+                        $monthsDiff = ($diff->y * 12) + $diff->m;
+                    }
+                }
+
+                if (($maturity === 'due' || ($maturity === 'pending' && $isExpired)) && $dueAmt > 0) {
+                    if (isset($dueEmisList[$emiNo])) {
+                        if (!empty($dueDateStr)) {
+                            $dueEmisList[$emiNo]['due_date'] = $dueDateStr;
+                        }
+                        $dueEmisList[$emiNo]['months_expired'] = $vEmi['months_overdue'] ?? $dueEmisList[$emiNo]['months_expired'];
+                        $dueEmisList[$emiNo]['penalty_amount'] = $vEmi['penalty_amount'] ?? 0;
+                        $dueEmisList[$emiNo]['total_payable'] = $vEmi['total_payable'] ?? $dueAmt;
+                        $dueEmisList[$emiNo]['is_expired'] = true;
+                        if ($daysDiff > 0) $dueEmisList[$emiNo]['days_expired'] = $daysDiff;
+                    } else {
+                        $dueEmisList[$emiNo] = [
+                            'emi_no' => $emiNo,
+                            'due_date' => $dueDateStr,
+                            'due_amount' => $dueAmt,
+                            'paid_amount' => (float)($vEmi['paid_amount'] ?? 0),
+                            'type' => 'overdue',
+                            'type_label' => $maturity === 'due' ? 'Expired / Overdue' : 'Current Month (Expired)',
+                            'badge_class' => 'bg-danger text-white',
+                            'is_expired' => $isExpired,
+                            'days_expired' => $daysDiff,
+                            'months_expired' => $vEmi['months_overdue'] ?? $monthsDiff,
+                            'penalty_amount' => $vEmi['penalty_amount'] ?? 0,
+                            'total_payable' => $vEmi['total_payable'] ?? $dueAmt
+                        ];
+                        $totalDueEmiAmount += $dueAmt;
+                    }
+                }
+            }
+        }
+        ksort($dueEmisList);
     ?>
     <div class="row">
 
@@ -361,6 +456,13 @@ $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET
                                     </span>
                                 </div>
                             <?php endif; ?>
+                            <?php if (!empty($dueEmisList)): ?>
+                                <div style="margin-top: 4px;">
+                                    <span class="badge bg-danger text-white" style="font-size:11px; font-weight:600; padding:4px 8px;" title="Due / Overdue EMI numbers">
+                                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Due: <?= implode(', ', array_map(fn($n) => "#{$n}", array_keys($dueEmisList))) ?>
+                                    </span>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -482,25 +584,108 @@ $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET
     </div>
 
 
-    <!-- Outstanding EMI Due Alert -->
-    <?php
-        $totalEmiDue = $paymentSummary['total_emi_due'] ?? 0;
-        $outstandingDues = $accountModel->getOutstandingEmiDues($clientDetails['booking_id'] ?? 0);
-    ?>
-    <?php if ($totalEmiDue > 0): ?>
-    <div class="col-xxl-12 mb-3">
-        <div class="d-flex align-items-center justify-content-between mb-0 p-3"
-             style="border-radius:10px;background:rgba(108,95,252,0.1);border:1px solid rgba(108,95,252,0.25);box-shadow:0 2px 10px rgba(108,95,252,0.1);">
-            <div>
-                <i class="fa-light fa-info-circle me-2" style="color:#6c5ffc;"></i>
-                <strong style="color:#6c5ffc;">Outstanding EMI Due: TK.<?= number_format($totalEmiDue, 2) ?></strong>
-                &mdash; <?= count($outstandingDues) ?> EMI payment(s) have unpaid balances.
-                <small class="d-block mt-1 text-muted">This will be <strong>automatically cleared</strong> from the next EMI payment (oldest due first).</small>
+    <!-- Overdue & Due EMI Cards Breakdown Section -->
+    <?php if (!empty($dueEmisList)): ?>
+    <div class="col-xxl-12 mb-4">
+        <div class="card__wrapper p-3" style="border-left: 4px solid #ef4444; background: #fffcfc; border-radius: 12px; box-shadow: 0 2px 12px rgba(239, 68, 68, 0.08);">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-danger-subtle text-danger p-2" style="font-size: 16px; border-radius: 8px;">
+                        <i class="fa-solid fa-calendar-xmark"></i>
+                    </span>
+                    <div>
+                        <h6 class="mb-0 text-danger fw-bold" style="font-size: 15px;">
+                            Overdue & Due Installments (বকেয়া ও মেয়াদোত্তীর্ণ কিস্তিসমূহ)
+                        </h6>
+                        <small class="text-muted">
+                            Total <strong><?= count($dueEmisList) ?></strong> EMI installment(s) currently due / expired.
+                        </small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-danger text-white px-3 py-2" style="font-size: 13px; font-weight: 600;">
+                        <i class="fa-solid fa-sack-dollar me-1"></i> Total Due: TK. <?= number_format($totalDueEmiAmount, 2) ?>
+                    </span>
+                    <a href="<?= $GLOBALS['base_url'] ?>/ced-add-transaction-form?booking_id=<?= $clientDetails['booking_id'] ?>"
+                       class="btn btn-sm text-white" style="background:#ef4444; border-color:#ef4444; font-weight: 600;">
+                        <i class="fa-light fa-plus me-1"></i> Add EMI Payment
+                    </a>
+                </div>
             </div>
-            <a href="<?= $GLOBALS['base_url'] ?>/ced-add-transaction-form?booking_id=<?= $clientDetails['booking_id'] ?>"
-               class="btn btn-sm text-white" style="background:#6c5ffc;border-color:#6c5ffc;">
-                <i class="fa-light fa-plus me-1"></i> Add EMI Payment
-            </a>
+
+            <!-- Cards Grid for Each Due EMI -->
+            <div class="row ">
+                <?php foreach ($dueEmisList as $item): ?>
+                    <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12">
+                        <div class="card h-100 shadow-none border" style="border-radius: 10px; border-color: #fca5a5 !important; background: #ffffff;">
+                            <div class="card-body p-3 d-flex flex-column justify-content-between">
+                                <div>
+                                    <!-- EMI Badge & Status -->
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <span class="badge bg-danger fs-12 px-2 py-1" style="font-weight: 700;">
+                                            <i class="fa-solid fa-receipt me-1"></i>EMI #<?= $item['emi_no'] ?>
+                                        </span>
+                                        <span class="badge <?= $item['badge_class'] ?>" style="font-size: 10px; font-weight: 600;">
+                                            <?= $item['type_label'] ?>
+                                        </span>
+                                    </div>
+
+                                    <!-- Due Amount -->
+                                    <div class="my-2">
+                                        <div class="text-muted" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Due Amount</div>
+                                        <h4 class="text-danger mb-0 font-monospace" style="font-weight: 700;">
+                                            TK. <?= number_format($item['due_amount'], 2) ?>
+                                        </h4>
+                                        <?php if ($item['paid_amount'] > 0): ?>
+                                            <div class="text-muted" style="font-size: 11px; margin-top: 2px;">
+                                                Paid: TK. <?= number_format($item['paid_amount'], 2) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <!-- Date & Expiration Detail -->
+                                    <div class="pt-2 border-top" style="font-size: 12px;">
+                                        <div class="text-secondary mb-1">
+                                            <i class="fa-regular fa-calendar-xmark text-danger me-1"></i>
+                                            Expired / Due Date: <strong class="text-dark"><?= !empty($item['due_date']) ? date('d M, Y', strtotime($item['due_date'])) : 'N/A' ?></strong>
+                                        </div>
+                                        <?php if ($item['is_expired']): ?>
+                                            <div class="text-danger fw-semibold" style="font-size: 11px;">
+                                                <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                                                Expired <strong><?= $item['days_expired'] ?></strong> days ago <?= $item['months_expired'] > 0 ? "({$item['months_expired']} mo overdue)" : "" ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="text-warning fw-semibold" style="font-size: 11px;">
+                                                <i class="fa-solid fa-clock me-1"></i> Due this month
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <?php if (!empty($item['penalty_amount']) && $item['penalty_amount'] > 0): ?>
+                                            <div class="text-muted mt-1" style="font-size: 11px;">
+                                                <i class="fa-solid fa-percent text-danger me-1"></i> Penalty: TK. <?= number_format($item['penalty_amount'], 2) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+
+                                <!-- Action Button -->
+                                <div class="mt-3 pt-2 border-top">
+                                    <a href="<?= $GLOBALS['base_url'] ?>/ced-add-transaction-form?booking_id=<?= $clientDetails['booking_id'] ?>"
+                                       class="btn btn-sm btn-outline-danger w-100 py-1 d-flex align-items-center justify-content-center gap-1"
+                                       style="font-size: 11px; font-weight: 600;">
+                                        <i class="fa-light fa-plus-circle"></i> Pay EMI #<?= $item['emi_no'] ?>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="mt-2 pt-2 border-top text-muted" style="font-size: 11px;">
+                <i class="fa-light fa-info-circle me-1 text-primary"></i>
+                This outstanding balance will be <strong>automatically cleared</strong> from the next EMI payment (oldest due first).
+            </div>
         </div>
     </div>
     <?php endif; ?>
@@ -1021,7 +1206,7 @@ $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET
                     if (!data.files || data.files.length === 0) {
                         html += `<div class="alert alert-info"><i class="fa-light fa-info-circle me-1"></i>No documents attached to this transaction.</div>`;
                     } else {
-                        html += `<div class="row g-3">`;
+                        html += `<div class="row ">`;
                         data.files.forEach((filePath, idx) => {
                             const fullUrl  = BASE_URL_CED + '/public/' + filePath;
                             const ext      = filePath.split('.').pop().toLowerCase();
@@ -1660,7 +1845,7 @@ $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET
                         </div>
                     </div>
 
-                    <div class="row g-3">
+                    <div class="row ">
                         <!-- Payment Type -->
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Payment Type <span class="text-danger">*</span></label>

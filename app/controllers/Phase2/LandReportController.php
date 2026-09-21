@@ -18,7 +18,7 @@ class LandReportController extends Controller {
     public function index() {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $projectFilter = in_array($roleId, [1, 3, 33, 6, 30]) ? "p.landman_id IS NOT NULL" : "p.landman_id = $userId";
+        $projectFilter = in_array($roleId, [1, 3, 14, 15, 22, 33, 6, 30]) ? "1=1" : "p.landman_id = $userId";
         
         $from_date = $_GET['from_date'] ?? date('Y-m-01');
         $to_date = $_GET['to_date'] ?? date('Y-m-t');
@@ -128,7 +128,7 @@ class LandReportController extends Controller {
             exit;
         }
 
-        $projectFilter = in_array($roleId, [1, 3, 33, 6, 30]) ? "p.landman_id IS NOT NULL" : "p.landman_id = $userId";
+        $projectFilter = in_array($roleId, [1, 3, 14, 15, 22, 33, 6, 30]) ? "1=1" : "p.landman_id = $userId";
 
         $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
         $selectedAcqId = isset($_GET['land_acquisition_id']) && $_GET['land_acquisition_id'] !== '' ? (int)$_GET['land_acquisition_id'] : null;

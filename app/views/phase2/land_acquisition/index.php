@@ -122,6 +122,23 @@ unset($_SESSION['land_csv_import_skipped']); // clear after reading
 <div class="row">
     <div class="col-12">
         <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h5 class="mb-0">All Land Acquisitions</h5>
+                <form method="GET" action="<?= $base_url ?>/con-land-acquisitions" class="d-flex align-items-center gap-2">
+                    <label class="form-label mb-0 small text-muted text-nowrap">Filter by Project:</label>
+                    <select name="project_id" class="form-select form-select-sm select2-filter-project" style="min-width: 240px;">
+                        <option value="">All Projects (<?= count($projects) ?>)</option>
+                        <?php foreach ($projects as $p): ?>
+                            <option value="<?= $p['id'] ?>" <?= ($selectedProjectId ?? 0) == $p['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($p['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php if (!empty($selectedProjectId)): ?>
+                        <a href="<?= $base_url ?>/con-land-acquisitions" class="btn btn-sm btn-outline-secondary">Reset</a>
+                    <?php endif; ?>
+                </form>
+            </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
@@ -218,8 +235,8 @@ unset($_SESSION['land_csv_import_skipped']); // clear after reading
                                                 <label>Assign to Project <span class="text-danger">*</span></label>
                                             </div>
                                             <div class="form__input">
-                                                <select class="form-control" name="project_id" required>
-                                                    <option value="" disabled selected>Select Project...</option>
+                                                <select class="form-control select2-project-modal" name="project_id" required data-placeholder="Search or Select Project...">
+                                                    <option value="" disabled selected>Search or Select Project...</option>
                                                     <?php foreach ($projects as $p): ?>
                                                         <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
                                                     <?php endforeach; ?>
@@ -396,5 +413,27 @@ unset($_SESSION['land_csv_import_skipped']); // clear after reading
     </div>
 </div>
 
+<?php
+$page_script = "
+$(document).ready(function() {
+    if (typeof $.fn.select2 !== 'undefined') {
+        // Searchable filter
+        $('.select2-filter-project').select2({
+            width: '260px',
+            placeholder: 'Search Project...'
+        }).on('select2:select', function() {
+            $(this).closest('form').submit();
+        });
 
-
+        // Searchable dropdown inside #addLandModal
+        $('#addLandModal').on('shown.bs.modal', function() {
+            $(this).find('.select2-project-modal').select2({
+                dropdownParent: $('#addLandModal'),
+                width: '100%',
+                placeholder: 'Search or Select Project...'
+            });
+        });
+    }
+});
+";
+?>

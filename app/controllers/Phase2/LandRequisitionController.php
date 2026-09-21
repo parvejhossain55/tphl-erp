@@ -21,16 +21,21 @@ class LandRequisitionController extends Controller {
 
         // Fetch query based on role
         // Management (role 3) and Admin (role 1) see everything
-        // Accounts (role 6) see approved and paid ones
-        // Land Officers (role 14) see their own or all
+        // Accounts (role 6, 30) see approved and paid ones
+        // Land Officers (role 14) and PMs (15, 22) see all
         $where = "1=1";
-        if (!in_array($roleId, [1, 2, 3, 33, 6, 30])) {
+        if (!in_array($roleId, [1, 2, 3, 14, 15, 22, 33, 6, 30])) {
             $where = "lfr.requested_by = $userId";
+        }
+
+        $selectedProjectId = (int)($_GET['project_id'] ?? 0);
+        if ($selectedProjectId > 0) {
+            $where .= " AND la.project_id = $selectedProjectId";
         }
 
         $sql = "
             SELECT lfr.*, 
-                   la.land_owner_name, la.total_area, la.area_unit, la.location,
+                   la.land_owner_name, la.total_area, la.area_unit, la.location, la.project_id,
                    p.name as project_name,
                    u_req.full_name as requester_name,
                    u_mgmt.full_name as mgmt_name,
@@ -47,14 +52,17 @@ class LandRequisitionController extends Controller {
         
         $requisitions = $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
 
+        // Fetch all active projects from project lists
+        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+
         // Fetch land acquisitions for dropdown
-        $projectFilter = in_array($roleId, [1, 3, 33, 6, 30]) ? "1=1" : "(p.landman_id = $userId OR la.created_by = $userId)";
+        $projectFilter = in_array($roleId, [1, 3, 14, 15, 22, 33, 6, 30]) ? "1=1" : "(p.landman_id = $userId OR la.created_by = $userId)";
         $acquisitions = $this->db->query("
-            SELECT la.id, la.land_owner_name, p.name as project_name
+            SELECT la.id, la.project_id, la.land_owner_name, p.name as project_name
             FROM land_acquisitions la
             LEFT JOIN projects p ON la.project_id = p.id
             WHERE la.status != 'cancelled' AND $projectFilter
-            ORDER BY la.id DESC
+            ORDER BY p.name ASC, la.id DESC
         ")->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/land_requisition/index', [
@@ -62,6 +70,8 @@ class LandRequisitionController extends Controller {
             'page_title' => 'Land Fund Requisitions',
             'requisitions' => $requisitions,
             'acquisitions' => $acquisitions,
+            'projects' => $projects,
+            'selectedProjectId' => $selectedProjectId,
             'roleId' => $roleId
         ]);
     }
@@ -69,31 +79,51 @@ class LandRequisitionController extends Controller {
     public function create() {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $projectFilter = in_array($roleId, [1, 3, 33, 6, 30]) ? "1=1" : "(p.landman_id = $userId OR la.created_by = $userId)";
+        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        $projectFilter = in_array($roleId, [1, 3, 14, 15, 22, 33, 6, 30]) ? "1=1" : "(p.landman_id = $userId OR la.created_by = $userId)";
         $acquisitions = $this->db->query("
-            SELECT la.id, la.land_owner_name, p.name as project_name
+            SELECT la.id, la.project_id, la.land_owner_name, p.name as project_name
             FROM land_acquisitions la
             LEFT JOIN projects p ON la.project_id = p.id
             WHERE la.status != 'cancelled' AND $projectFilter
-            ORDER BY la.id DESC
+            ORDER BY p.name ASC, la.id DESC
         ")->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/land_requisition/create', [
             'current_route' => 'con-land-requisitions',
             'page_title' => 'Create Land Fund Requisition',
-            'acquisitions' => $acquisitions
+            'acquisitions' => $acquisitions,
+            'projects' => $projects
         ]);
     }
 
     public function store() {
         $land_acquisition_id = (int)($_POST['land_acquisition_id'] ?? 0);
+        $project_id = (int)($_POST['project_id'] ?? 0);
         $requisition_type = $_POST['requisition_type'] ?? 'Other';
         $requested_amount = (float)($_POST['requested_amount'] ?? 0);
         $purpose = $_POST['purpose'] ?? '';
         $requested_by = (int)$_SESSION['user']['id'];
 
+        // If no land_acquisition_id was directly selected but project_id is given
+        if (!$land_acquisition_id && $project_id > 0) {
+            $chkLa = $this->db->query("SELECT id FROM land_acquisitions WHERE project_id = $project_id AND status != 'cancelled' ORDER BY id DESC LIMIT 1");
+            if ($chkLa && $rowLa = $chkLa->fetch_assoc()) {
+                $land_acquisition_id = (int)$rowLa['id'];
+            } else {
+                $pNameRow = $this->db->query("SELECT name FROM projects WHERE id = $project_id LIMIT 1")->fetch_assoc();
+                $pName = $pNameRow['name'] ?? 'Project';
+                $ownerName = !empty($_POST['new_landowner_name']) ? trim($_POST['new_landowner_name']) : "Land Acquisition - {$pName}";
+                $stmtNewLa = $this->db->prepare("INSERT INTO land_acquisitions (project_id, land_owner_name, total_area, area_unit, price_per_unit, total_amount, status, created_by) VALUES (?, ?, 0, 'decimal', 0, 0, 'selected', ?)");
+                $stmtNewLa->bind_param("isi", $project_id, $ownerName, $requested_by);
+                $stmtNewLa->execute();
+                $land_acquisition_id = $this->db->insert_id;
+                $stmtNewLa->close();
+            }
+        }
+
         if (!$land_acquisition_id || $requested_amount <= 0 || empty($purpose)) {
-            setError('Please fill in all required fields and provide a valid amount.');
+            setError('Please select a project / land portfolio and provide a valid amount and purpose.');
             header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
             exit;
         }
@@ -156,6 +186,11 @@ class LandRequisitionController extends Controller {
         $stmt->bind_param("isdssi", $land_acquisition_id, $requisition_type, $requested_amount, $purpose, $req_attachment_path, $requested_by);
 
         if ($stmt->execute()) {
+            if (!class_exists('ApprovalRequest')) {
+                require_once __DIR__ . '/../../models/ApprovalRequest.php';
+            }
+            $approvalModel = new \ApprovalRequest($this->db);
+            $approvalModel->syncMissingLandFundRequisitions();
             setSuccess("Land Fund Requisition submitted successfully.");
         } else {
             setError("Failed to submit requisition: " . $this->db->error);
@@ -192,6 +227,18 @@ class LandRequisitionController extends Controller {
         $stmt->bind_param("sisi", $status, $mgmt_by, $note, $id);
 
         if ($stmt->execute()) {
+            $newAppRole = ($status === 'Approved') ? 'accounts' : 'rejected';
+            $newArStatus = ($status === 'Approved') ? 'approved' : 'rejected';
+            $stmtAr = $this->db->prepare("
+                UPDATE approval_requests 
+                SET approve_role = ?, status = ?, approved_by = ?, approved_at = NOW(), approval_note = ?
+                WHERE source_table IN ('land_fund_requisitions', 'con_land_requisitions') AND source_id = ?
+            ");
+            if ($stmtAr) {
+                $stmtAr->bind_param("ssisi", $newAppRole, $newArStatus, $mgmt_by, $note, $id);
+                $stmtAr->execute();
+                $stmtAr->close();
+            }
             setSuccess("Requisition status updated to " . $status);
         } else {
             setError("Failed to update requisition status: " . $this->db->error);
@@ -259,6 +306,18 @@ class LandRequisitionController extends Controller {
                 $autoPoster = new \AutoPostingService($this->db);
                 $autoPoster->postLandRequisitionJournal($id);
             }
+            $newAppRole = ($status === 'Paid') ? 'completed' : 'rejected';
+            $newArStatus = ($status === 'Paid') ? 'approved' : 'rejected';
+            $stmtAr = $this->db->prepare("
+                UPDATE approval_requests 
+                SET approve_role = ?, status = ?, approved_by = ?, approved_at = NOW(), approval_note = ?
+                WHERE source_table IN ('land_fund_requisitions', 'con_land_requisitions') AND source_id = ?
+            ");
+            if ($stmtAr) {
+                $stmtAr->bind_param("ssisi", $newAppRole, $newArStatus, $accounts_by, $note, $id);
+                $stmtAr->execute();
+                $stmtAr->close();
+            }
             setSuccess("Payment recorded successfully.");
         } else {
             setError("Failed to record payment: " . $this->db->error);
@@ -279,6 +338,7 @@ class LandRequisitionController extends Controller {
         $id = (int)($_POST['id'] ?? 0);
         if ($id) {
             $this->db->query("DELETE FROM land_fund_requisitions WHERE id = $id");
+            $this->db->query("DELETE FROM approval_requests WHERE source_table IN ('land_fund_requisitions', 'con_land_requisitions') AND source_id = $id");
             setSuccess("Requisition deleted.");
         } else {
             setError("Invalid record ID.");

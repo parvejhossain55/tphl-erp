@@ -67,83 +67,101 @@ $show_breadcrumb = true;
                     <i class="fa-solid fa-list-check me-1"></i> View Project-Wise Breakdown
                 </button>
             </div>
-            <div class="card-body p-3">
-                <div class="row g-3">
+            <div class="card-body p-2 p-md-3">
+                <div class="row g-2 g-md-3">
                     <!-- Total Collected -->
-                    <div class="col-xl col-md-4 col-sm-6">
-                        <div class="card__wrapper border-start border-4 border-primary h-100 p-3" style="cursor: pointer;" onclick="openProjectCollectionModal('total')" title="Click to view project breakdown (Verified + Unverified)">
+                    <div class="col-xxl-2 col-xl-4 col-md-4 col-sm-6">
+                        <div class="card__wrapper border-start border-4 border-primary h-100 p-2 px-3" style="cursor: pointer;" onclick="openProjectCollectionModal('total')" title="Click to view project breakdown (Verified + Unverified)">
                             <div class="d-flex align-items-center gap-2">
-                                <div class="card__icon" style="background: rgba(13, 110, 253, 0.1); color: #0d6efd; padding: 10px; border-radius: 8px;">
+                                <div class="card__icon" style="background: rgba(13, 110, 253, 0.1); color: #0d6efd; padding: 8px; border-radius: 8px;">
                                     <span><i class="fa-solid fa-vault fs-5"></i></span>
                                 </div>
                                 <div class="card__title-wrap">
-                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold">Total Collected</h6>
-                                    <h5 class="fw-bold mb-0 text-primary">৳<?= number_format($collectionStats['total_collected'] ?? 0, 2) ?></h5>
-                                    <small class="text-muted extra-small d-block" style="font-size: 10px;"><i class="fa-solid fa-circle-info me-1 text-primary"></i>Verified + Unverified (View Breakdown)</small>
+                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Total Collected</h6>
+                                    <h6 class="fw-bold mb-0 text-primary fs-15">৳<?= number_format($collectionStats['total_collected'] ?? 0, 2) ?></h6>
+                                    <small class="text-muted extra-small d-block" style="font-size: 9.5px;"><i class="fa-solid fa-circle-info me-1 text-primary"></i>Verified + Unverified</small>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Land Share Collected -->
-                    <div class="col-xl col-md-4 col-sm-6">
-                        <div class="card__wrapper border-start border-4 border-info h-100 p-3" style="cursor: pointer;" onclick="openProjectCollectionModal('land_share')" title="Click to view land share breakdown (Booking Money + Registration Fee)">
+                    <div class="col-xxl-2 col-xl-4 col-md-4 col-sm-6">
+                        <div class="card__wrapper border-start border-4 border-info h-100 p-2 px-3" style="cursor: pointer;" onclick="openProjectCollectionModal('land_share')" title="Click to view land share breakdown (Booking Money + Registration Fee)">
                             <div class="d-flex align-items-center gap-2">
-                                <div class="card__icon" style="background: rgba(13, 202, 240, 0.1); color: #0dcaf0; padding: 10px; border-radius: 8px;">
+                                <div class="card__icon" style="background: rgba(13, 202, 240, 0.1); color: #0dcaf0; padding: 8px; border-radius: 8px;">
                                     <span><i class="fa-solid fa-map-location-dot fs-5"></i></span>
                                 </div>
                                 <div class="card__title-wrap">
-                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold">Land Share Collected</h6>
-                                    <h5 class="fw-bold mb-0 text-info">৳<?= number_format($collectionStats['total_land_share_collected'] ?? 0, 2) ?></h5>
-                                    <small class="text-muted extra-small d-block" style="font-size: 10px;"><i class="fa-solid fa-circle-info me-1 text-info"></i>Booking + Reg Fee (View Breakdown)</small>
+                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Land Share Collected</h6>
+                                    <h6 class="fw-bold mb-0 text-info fs-15">৳<?= number_format($collectionStats['total_land_share_collected'] ?? 0, 2) ?></h6>
+                                    <small class="text-muted extra-small d-block" style="font-size: 9.5px;"><i class="fa-solid fa-circle-info me-1 text-info"></i>Booking + Reg Fee</small>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Total EMI Collected -->
-                    <div class="col-xl col-md-4 col-sm-6">
-                        <div class="card__wrapper border-start border-4 border-secondary h-100 p-3" style="cursor: pointer;" onclick="openProjectCollectionModal('emi')" title="Click to view total EMI breakdown (Verified + Unverified)">
+                    <div class="col-xxl-2 col-xl-4 col-md-4 col-sm-6">
+                        <div class="card__wrapper border-start border-4 border-secondary h-100 p-2 px-3" style="cursor: pointer;" onclick="openProjectCollectionModal('emi')" title="Click to view total EMI breakdown (Verified + Unverified)">
                             <div class="d-flex align-items-center gap-2">
-                                <div class="card__icon" style="background: rgba(108, 117, 125, 0.1); color: #6c757d; padding: 10px; border-radius: 8px;">
+                                <div class="card__icon" style="background: rgba(108, 117, 125, 0.1); color: #6c757d; padding: 8px; border-radius: 8px;">
                                     <span><i class="fa-solid fa-receipt fs-5"></i></span>
                                 </div>
                                 <div class="card__title-wrap">
-                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold">Total EMI Collected</h6>
-                                    <h5 class="fw-bold mb-0 text-dark">৳<?= number_format($collectionStats['total_emi_collected'] ?? 0, 2) ?></h5>
-                                    <small class="text-muted extra-small d-block" style="font-size: 10px;"><i class="fa-solid fa-circle-info me-1 text-secondary"></i>Verified + Unverified (View Breakdown)</small>
+                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Total EMI Collected</h6>
+                                    <h6 class="fw-bold mb-0 text-dark fs-15">৳<?= number_format($collectionStats['total_emi_collected'] ?? 0, 2) ?></h6>
+                                    <small class="text-muted extra-small d-block" style="font-size: 9.5px;"><i class="fa-solid fa-circle-info me-1 text-secondary"></i>Verified + Unverified</small>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Verified EMI Collected -->
-                    <div class="col-xl col-md-6 col-sm-6">
-                        <div class="card__wrapper border-start border-4 border-success h-100 p-3" style="cursor: pointer;" onclick="openProjectCollectionModal('verified')" title="Click to view verified EMI breakdown">
+                    <div class="col-xxl-2 col-xl-4 col-md-4 col-sm-6">
+                        <div class="card__wrapper border-start border-4 border-success h-100 p-2 px-3" style="cursor: pointer;" onclick="openProjectCollectionModal('verified')" title="Click to view verified EMI breakdown">
                             <div class="d-flex align-items-center gap-2">
-                                <div class="card__icon" style="background: rgba(25, 135, 84, 0.1); color: #198754; padding: 10px; border-radius: 8px;">
+                                <div class="card__icon" style="background: rgba(25, 135, 84, 0.1); color: #198754; padding: 8px; border-radius: 8px;">
                                     <span><i class="fa-solid fa-circle-check fs-5"></i></span>
                                 </div>
                                 <div class="card__title-wrap">
-                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold">Verified EMI</h6>
-                                    <h5 class="fw-bold mb-0 text-success">৳<?= number_format($collectionStats['total_verified_emi_collected'] ?? 0, 2) ?></h5>
-                                    <small class="text-muted extra-small"><i class="fa-solid fa-hand-pointer me-1"></i>View Breakdown</small>
+                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Verified EMI</h6>
+                                    <h6 class="fw-bold mb-0 text-success fs-15">৳<?= number_format($collectionStats['total_verified_emi_collected'] ?? 0, 2) ?></h6>
+                                    <small class="text-muted extra-small" style="font-size: 9.5px;"><i class="fa-solid fa-hand-pointer me-1"></i>View Breakdown</small>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Unverified EMI Collected -->
-                    <div class="col-xl col-md-6 col-sm-6">
-                        <div class="card__wrapper border-start border-4 border-warning h-100 p-3" style="cursor: pointer;" onclick="openProjectCollectionModal('unverified')" title="Click to view unverified EMI breakdown">
+                    <div class="col-xxl-2 col-xl-4 col-md-4 col-sm-6">
+                        <div class="card__wrapper border-start border-4 border-warning h-100 p-2 px-3" style="cursor: pointer;" onclick="openProjectCollectionModal('unverified')" title="Click to view unverified EMI breakdown">
                             <div class="d-flex align-items-center gap-2">
-                                <div class="card__icon" style="background: rgba(255, 193, 7, 0.1); color: #ffc107; padding: 10px; border-radius: 8px;">
+                                <div class="card__icon" style="background: rgba(255, 193, 7, 0.1); color: #ffc107; padding: 8px; border-radius: 8px;">
                                     <span><i class="fa-solid fa-clock-rotate-left fs-5"></i></span>
                                 </div>
                                 <div class="card__title-wrap">
-                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold">Unverified EMI</h6>
-                                    <h5 class="fw-bold mb-0 text-warning">৳<?= number_format($collectionStats['total_unverified_emi_collected'] ?? 0, 2) ?></h5>
-                                    <small class="text-muted extra-small"><i class="fa-solid fa-hand-pointer me-1"></i>View Breakdown</small>
+                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Unverified EMI</h6>
+                                    <h6 class="fw-bold mb-0 text-warning fs-15">৳<?= number_format($collectionStats['total_unverified_emi_collected'] ?? 0, 2) ?></h6>
+                                    <small class="text-muted extra-small" style="font-size: 9.5px;"><i class="fa-solid fa-hand-pointer me-1"></i>View Breakdown</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total EMI Due -->
+                    <div class="col-xxl-2 col-xl-4 col-md-4 col-sm-6">
+                        <div class="card__wrapper border-start border-4 border-danger h-100 p-2 px-3" style="cursor: pointer;" onclick="openDueEmisModal()" title="Click to view all clients with due/overdue EMIs">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="card__icon" style="background: rgba(220, 53, 69, 0.1); color: #dc3545; padding: 8px; border-radius: 8px;">
+                                    <span><i class="fa-solid fa-triangle-exclamation fs-5"></i></span>
+                                </div>
+                                <div class="card__title-wrap">
+                                    <h6 class="card__sub-title mb-1 text-muted extra-small text-uppercase fw-bold" style="font-size: 10px;">Total EMI Due</h6>
+                                    <h6 class="fw-bold mb-0 text-danger fs-15">৳<?= number_format($dueStats['total_due_amount'] ?? 0, 2) ?></h6>
+                                    <small class="text-danger extra-small d-block fw-semibold" style="font-size: 9.5px;">
+                                        <i class="fa-solid fa-users me-1"></i><?= $dueStats['total_due_clients_count'] ?? 0 ?> Clients (<?= $dueStats['total_due_emis_count'] ?? 0 ?> EMIs)
+                                    </small>
                                 </div>
                             </div>
                         </div>
@@ -353,13 +371,27 @@ $show_breadcrumb = true;
                                     <td>
                                         <?php 
                                             $cms = $client['current_month_status'] ?? 'N/A';
-                                            if ($cms === 'paid') echo '<span class="badge bg-success">Paid</span>';
-                                            elseif ($cms === 'matured') echo '<span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;">Matured</span>';
-                                            elseif ($cms === 'pending') echo '<span class="badge bg-warning text-dark">Pending</span>';
-                                            elseif ($cms === 'due') echo '<span class="badge bg-danger">Due</span>';
-                                            elseif ($cms === 'future') echo '<span class="badge bg-secondary">Future</span>';
-                                            else echo '<span class="text-muted">-</span>';
-                                        ?>
+                                            $hasDueEmis = !empty($client['due_emis']);
+                                            if ($hasDueEmis): ?>
+                                                <span class="badge bg-danger text-white mb-1" title="Due EMIs: <?= htmlspecialchars($client['due_summary_text']) ?>">
+                                                    <i class="fa-solid fa-triangle-exclamation me-1"></i>Due: <?= htmlspecialchars($client['due_summary_text']) ?>
+                                                </span>
+                                                <small class="d-block text-danger fw-bold" style="font-size: 11px;">
+                                                    ৳<?= number_format($client['total_due_amount'] ?? 0, 2) ?>
+                                                </small>
+                                            <?php elseif ($cms === 'paid'): ?>
+                                                <span class="badge bg-success">Paid</span>
+                                            <?php elseif ($cms === 'matured'): ?>
+                                                <span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;">Matured</span>
+                                            <?php elseif ($cms === 'pending'): ?>
+                                                <span class="badge bg-warning text-dark">Pending</span>
+                                            <?php elseif ($cms === 'due'): ?>
+                                                <span class="badge bg-danger">Due</span>
+                                            <?php elseif ($cms === 'future'): ?>
+                                                <span class="badge bg-secondary">Future</span>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
                                     </td>
                                     <td>
                                         <button class="btn btn-sm btn-outline-primary py-0 px-2"
@@ -1608,6 +1640,149 @@ $show_breadcrumb = true;
     </div>
 </div>
 
+<!-- ══ DUE EMIS BREAKDOWN MODAL ══ -->
+<div class="modal fade" id="dueEmisModal" tabindex="-1" aria-labelledby="dueEmisModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fs-4"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                    <div>
+                        <h5 class="modal-title text-white fw-bold mb-0" id="dueEmisModalLabel">
+                            Clients EMI Due & Overdue Breakdown (বকেয়া ও মেয়াদোত্তীর্ণ কিস্তি তালিকা)
+                        </h5>
+                        <small class="text-white-50">
+                            Clients with overdue installments or partial payment balances
+                        </small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body pb-0 pt-3">
+                <div class="row g-2 align-items-center justify-content-between mb-3">
+                    <div class="col-md-auto d-flex flex-wrap gap-2">
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 fs-13">
+                            <i class="fa-solid fa-users me-1"></i> Due Clients: <strong><?= $dueStats['total_due_clients_count'] ?? 0 ?></strong>
+                        </span>
+                        <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-3 py-2 fs-13">
+                            <i class="fa-solid fa-receipt me-1"></i> Total Due EMIs: <strong><?= $dueStats['total_due_emis_count'] ?? 0 ?></strong>
+                        </span>
+                        <span class="badge bg-danger text-white px-3 py-2 fs-13">
+                            <i class="fa-solid fa-sack-dollar me-1"></i> Total Due Amount: <strong>৳<?= number_format($dueStats['total_due_amount'] ?? 0, 2) ?></strong>
+                        </span>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light"><i class="fa-solid fa-search"></i></span>
+                            <input type="text" id="dueEmisSearch" class="form-control" placeholder="Search client, phone, or project..." onkeyup="filterDueEmisTable()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table__wrapper table-responsive" style="max-height: 550px; overflow-y: auto;">
+                    <table class="table table-hover table-bordered align-middle" id="dueEmisTable">
+                        <thead class="table-light sticky-top" style="z-index: 2;">
+                            <tr style="font-size: 13px;">
+                                <th style="width: 45px;" class="text-center">#</th>
+                                <th>Client Name</th>
+                                <th>Phone</th>
+                                <th>Project & Flat / Unit</th>
+                                <th>Due EMI(s)</th>
+                                <th>Due / Expired Dates</th>
+                                <th class="text-end text-danger">Total Due (৳)</th>
+                                <th class="text-center" style="width: 110px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody style="font-size: 13px;">
+                            <?php if (empty($dueClientsList)): ?>
+                                <tr>
+                                    <td colspan="8" class="text-center py-4 text-muted">
+                                        <i class="fa-solid fa-circle-check text-success fs-3 d-block mb-2"></i>
+                                        All clear! No clients currently have overdue or pending EMI balances.
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($dueClientsList as $dIdx => $dClient): ?>
+                                    <tr class="due-client-row">
+                                        <td class="text-center text-muted fw-bold"><?= $dIdx + 1 ?></td>
+                                        <td class="fw-bold text-dark due-client-name">
+                                            <?= htmlspecialchars($dClient['client_name']) ?>
+                                        </td>
+                                        <td class="due-client-phone">
+                                            <a href="tel:<?= htmlspecialchars($dClient['phone']) ?>" class="text-decoration-none text-primary">
+                                                <i class="fa-solid fa-phone me-1" style="font-size: 11px;"></i><?= htmlspecialchars($dClient['phone']) ?>
+                                            </a>
+                                        </td>
+                                        <td class="due-client-project">
+                                            <?php 
+                                            if (!empty($dClient['project_flats'])) {
+                                                $props = explode(';;', $dClient['project_flats']);
+                                                foreach($props as $prop) {
+                                                    $parts = explode('||', $prop);
+                                                    $pName = $parts[0] ?? '';
+                                                    $fName = $parts[1] ?? '';
+                                                    echo '<div class="property-chip mb-1">
+                                                            <span class="project-name"><i class="fa-solid fa-building me-1"></i>' . htmlspecialchars($pName) . '</span>
+                                                            ' . (!empty($fName) ? '<span class="flat-name">' . htmlspecialchars($fName) . '</span>' : '') . '
+                                                          </div>';
+                                                }
+                                            } else {
+                                                echo '<span class="text-muted">-</span>';
+                                            }
+                                            ?>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                <?php foreach ($dClient['due_emis'] as $dEmi): ?>
+                                                    <span class="badge <?= $dEmi['badge_class'] ?? 'bg-danger text-white' ?> py-1 px-2" style="font-size: 11px;" title="<?= $dEmi['type_label'] ?? '' ?>: ৳<?= number_format($dEmi['due_amount'], 2) ?>">
+                                                        EMI #<?= $dEmi['emi_no'] ?>: ৳<?= number_format($dEmi['due_amount'], 0) ?>
+                                                    </span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <?php foreach ($dClient['due_emis'] as $dEmi): ?>
+                                                <div class="small text-nowrap" style="font-size: 11px;">
+                                                    <strong class="text-dark">#<?= $dEmi['emi_no'] ?>:</strong> 
+                                                    <?= !empty($dEmi['due_date']) ? date('d M, Y', strtotime($dEmi['due_date'])) : 'N/A' ?>
+                                                    <?php if (!empty($dEmi['is_expired'])): ?>
+                                                        <span class="text-danger fw-semibold">(<?= $dEmi['days_expired'] ?>d ago)</span>
+                                                    <?php else: ?>
+                                                        <span class="text-warning fw-semibold">(this month)</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </td>
+                                        <td class="text-end fw-bold text-danger font-monospace fs-14">
+                                            ৳<?= number_format($dClient['total_due_amount'], 2) ?>
+                                        </td>
+                                        <td class="text-center">
+                                            <?php if (!empty($dClient['booking_id'])): ?>
+                                                <a href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history-view/<?= $dClient['booking_id'] ?>"
+                                                   class="btn btn-xs btn-outline-primary py-1 px-2"
+                                                   title="View Cash In History & Pay">
+                                                    <i class="fa-solid fa-eye me-1"></i>View
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     /* ── Property Chips ── */
     .property-chip {
@@ -1712,6 +1887,33 @@ function filterProjectBreakdownTable() {
             } else {
                 row.style.display = 'none';
             }
+        }
+    });
+}
+
+function openDueEmisModal() {
+    const modalEl = document.getElementById('dueEmisModal');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+function filterDueEmisTable() {
+    const input = document.getElementById('dueEmisSearch');
+    const filter = input ? input.value.toLowerCase() : '';
+    const rows = document.querySelectorAll('.due-client-row');
+
+    rows.forEach(row => {
+        const nameText = row.querySelector('.due-client-name')?.textContent || '';
+        const phoneText = row.querySelector('.due-client-phone')?.textContent || '';
+        const projectText = row.querySelector('.due-client-project')?.textContent || '';
+        const combined = (nameText + ' ' + phoneText + ' ' + projectText).toLowerCase();
+
+        if (combined.indexOf(filter) > -1) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
         }
     });
 }

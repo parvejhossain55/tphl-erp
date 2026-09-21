@@ -120,8 +120,13 @@
                                         <div class="mt-1">
                                             <small class="text-muted fw-normal" style="font-size: 0.75rem;">
                                                 <i class="bi bi-cash me-1"></i>Disbursed by <?= htmlspecialchars($request['pay_name'] ?? 'Accounts') ?>
-                                                <?php if(!empty($request['payment_at'])): ?>
-                                                    on <?= date('d M Y h:i A', strtotime($request['payment_at'])) ?>
+                                                <?php 
+                                                $paymentAtDisplay = !empty($request['payment_at']) ? $request['payment_at'] : null;
+                                                if ($paymentAtDisplay && date('H:i:s', strtotime($paymentAtDisplay)) === '00:00:00' && !empty($request['updated_at'])) {
+                                                    $paymentAtDisplay = date('Y-m-d', strtotime($paymentAtDisplay)) . ' ' . date('H:i:s', strtotime($request['updated_at']));
+                                                }
+                                                if (!empty($paymentAtDisplay)): ?>
+                                                    on <?= date('d M Y h:i A', strtotime($paymentAtDisplay)) ?>
                                                 <?php endif; ?>
                                             </small>
                                         </div>
@@ -220,7 +225,14 @@
                                 <?php if($request['payment_by_id']): ?>
                                     <span class="text-success"><i class="bi bi-check-circle"></i> Paid & Settled</span> by <?= htmlspecialchars($request['pay_name'] ?? 'N/A') ?><br>
                                     <small class="text-muted"><i class="bi bi-cash me-1"></i> Amount: ৳<?= number_format($request['payment_amount'] ?? $request['approved_amount'], 2) ?></small><br>
-                                    <small class="text-muted"><i class="bi bi-calendar me-1"></i> Date: <?= date('d M Y h:i A', strtotime($request['payment_at'])) ?></small>
+                                    <?php 
+                                    $paymentAtDisplay = !empty($request['payment_at']) ? $request['payment_at'] : null;
+                                    if ($paymentAtDisplay && date('H:i:s', strtotime($paymentAtDisplay)) === '00:00:00' && !empty($request['updated_at'])) {
+                                        $paymentAtDisplay = date('Y-m-d', strtotime($paymentAtDisplay)) . ' ' . date('H:i:s', strtotime($request['updated_at']));
+                                    }
+                                    if (!empty($paymentAtDisplay)): ?>
+                                        <small class="text-muted"><i class="bi bi-calendar me-1"></i> Date: <?= date('d M Y h:i A', strtotime($paymentAtDisplay)) ?></small>
+                                    <?php endif; ?>
                                     <?php 
                                     $paymentAttachment = (!empty($request['attachment']) && $request['attachment'] !== ($request['creator_attachment'] ?? '')) ? $request['attachment'] : null;
                                     if(!empty($paymentAttachment)): 
@@ -323,8 +335,8 @@
                                         <small class="text-muted d-block mt-1"><i class="bi bi-shield-check text-success me-1"></i>Approved limit: <strong>৳ <?= number_format($maxPay, 2) ?></strong> (cannot exceed this amount)</small>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label fw-bold">Payment Date</label>
-                                        <input type="date" class="form-control" name="payment_at" value="<?= date('Y-m-d') ?>" required>
+                                        <label class="form-label fw-bold">Payment Date & Time</label>
+                                        <input type="datetime-local" class="form-control" name="payment_at" value="<?= date('Y-m-d\TH:i') ?>" required>
                                     </div>
                                     <div class="mb-4">
                                         <label class="form-label fw-bold">Attachment (Optional)</label>

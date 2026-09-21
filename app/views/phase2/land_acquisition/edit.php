@@ -34,7 +34,7 @@ $canModify = in_array($roleId, [1, 3, 14]);
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Project</label>
-                            <select class="form-select" name="project_id" <?= !$canModify ? 'disabled' : '' ?> required>
+                            <select class="form-select select2" name="project_id" <?= !$canModify ? 'disabled' : '' ?> required>
                                 <?php foreach ($projects as $p): ?>
                                     <option value="<?= $p['id'] ?>" <?= $acquisition['project_id'] == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
                                 <?php endforeach; ?>
@@ -329,3 +329,16 @@ $canModify = in_array($roleId, [1, 3, 14]);
         </div>
     </div>
 </div>
+
+<?php
+$page_script = "
+$(document).ready(function() {
+    if (typeof $.fn.select2 !== 'undefined') {
+        $('.select2').select2({
+            width: '100%',
+            placeholder: 'Search or Select Project...'
+        });
+    }
+});
+";
+?>
