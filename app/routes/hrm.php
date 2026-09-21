@@ -57,6 +57,7 @@ return [
     'update-task-progress-employee' => ['controller' => 'EmployeeDashboardController', 'method' => 'updateTaskProgress'],
     'tipsoi-pending-requests' => ['controller' => 'EmployeeDashboardController', 'method' => 'tipsoiPendingRequests'],
     'api/employee/tipsoi-pending-requests' => ['controller' => 'EmployeeDashboardController', 'method' => 'getTipsoiPendingRequests'],
+    'api/employee/my-pending-approvals' => ['controller' => 'EmployeeDashboardController', 'method' => 'getMyPendingApprovals'],
 
     // =========================================================================
     // Controller: EmpAttendanceController
