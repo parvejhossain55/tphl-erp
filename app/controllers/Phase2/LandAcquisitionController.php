@@ -44,8 +44,13 @@ class LandAcquisitionController extends Controller {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $where = "1=1";
-        if (!in_array($roleId, [1, 3, 33, 6, 30])) {
+        if (!in_array($roleId, [1, 3, 14, 15, 22, 33, 6, 30])) {
             $where = "(p.landman_id = $userId OR la.created_by = $userId)";
+        }
+
+        $selectedProjectId = (int)($_GET['project_id'] ?? 0);
+        if ($selectedProjectId > 0) {
+            $where .= " AND la.project_id = $selectedProjectId";
         }
 
         $result = $this->db->query("
@@ -58,24 +63,21 @@ class LandAcquisitionController extends Controller {
         ");
         $acquisitions = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
-        // For modals / forms
-        $projectFilter = in_array($roleId, [1, 3, 33, 6, 30]) ? "landman_id IS NOT NULL" : "landman_id = $userId";
-        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND $projectFilter ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        // All active projects from project lists
+        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/land_acquisition/index', [
             'current_route' => 'con-land-acquisitions',
             'page_title' => 'Land Acquisitions Portfolio',
             'stats' => $stats,
             'acquisitions' => $acquisitions,
-            'projects' => $projects
+            'projects' => $projects,
+            'selectedProjectId' => $selectedProjectId
         ]);
     }
 
     public function create() {
-        $userId = (int)($_SESSION['user']['id'] ?? 0);
-        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $projectFilter = in_array($roleId, [1, 3, 33, 6, 30]) ? "landman_id IS NOT NULL" : "landman_id = $userId";
-        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND $projectFilter ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
         $this->view('phase2/land_acquisition/create', [
             'current_route' => 'con-land-acquisitions',
             'page_title' => 'Add Land Acquisition',
@@ -85,7 +87,7 @@ class LandAcquisitionController extends Controller {
 
     public function store() {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        if (!in_array($roleId, [1, 3, 33, 14])) {
+        if (!in_array($roleId, [1, 3, 14, 15, 22, 33])) {
             setError('Unauthorized. Only Land Officers or Admin can add land acquisitions.');
             header("Location: " . $GLOBALS['base_url'] . "/con-land-acquisitions");
             exit;
@@ -151,10 +153,7 @@ class LandAcquisitionController extends Controller {
             WHERE lr.land_acquisition_id = $id
         ")->fetch_assoc();
 
-        $userId = (int)($_SESSION['user']['id'] ?? 0);
-        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $projectFilter = in_array($roleId, [1, 3, 33, 6, 30]) ? "landman_id IS NOT NULL" : "landman_id = $userId";
-        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL AND $projectFilter ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
 
         // Calculate total bayana budget approved by accounts (Paid requisitions of type Bayana)
         $bayanaReqResult = $this->db->query("

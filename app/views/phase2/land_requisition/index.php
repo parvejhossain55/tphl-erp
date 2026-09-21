@@ -24,6 +24,23 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 22]);
 <div class="row">
     <div class="col-12">
         <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h5 class="mb-0">All Land Fund Requisitions</h5>
+                <form method="GET" action="<?= $base_url ?>/con-land-requisitions" class="d-flex align-items-center gap-2">
+                    <label class="form-label mb-0 small text-muted text-nowrap">Filter by Project:</label>
+                    <select name="project_id" class="form-select form-select-sm select2-filter-project" style="min-width: 240px;">
+                        <option value="">All Projects (<?= count($projects ?? []) ?>)</option>
+                        <?php foreach (($projects ?? []) as $p): ?>
+                            <option value="<?= $p['id'] ?>" <?= ($selectedProjectId ?? 0) == $p['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($p['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php if (!empty($selectedProjectId)): ?>
+                        <a href="<?= $base_url ?>/con-land-requisitions" class="btn btn-sm btn-outline-secondary">Reset</a>
+                    <?php endif; ?>
+                </form>
+            </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
@@ -134,7 +151,7 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 22]);
                                                 <?php endif; ?>
 
                                                 <!-- Accounts Action -->
-                                                <?php if ($row['mgmt_status'] === 'Approved' && $row['accounts_status'] === 'Pending' && in_array($roleId, [1, 6])): ?>
+                                                <?php if ($row['mgmt_status'] === 'Approved' && $row['accounts_status'] === 'Pending' && in_array($roleId, [1, 6, 30])): ?>
                                                     <button type="button" class="btn btn-sm btn-success" 
                                                             data-bs-toggle="modal" data-bs-target="#accountsPayModal"
                                                             data-id="<?= $row['id'] ?>" data-amount="<?= $row['requested_amount'] ?>">
@@ -188,16 +205,35 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 22]);
                                     <div class="col-lg-12">
                                         <div class="from__input-box">
                                             <div class="form__input-title">
-                                                <label>Select Land Acquisition Portfolio <span class="text-danger">*</span></label>
+                                                <label>Select Project <span class="text-danger">*</span></label>
                                             </div>
                                             <div class="form__input">
-                                                <select class="form-control" name="land_acquisition_id" required>
-                                                    <option value="" disabled selected>Select Portfolio...</option>
-                                                    <?php foreach ($acquisitions as $la): ?>
-                                                        <option value="<?= $la['id'] ?>"><?= htmlspecialchars($la['project_name']) ?> — Owner: <?= htmlspecialchars($la['land_owner_name']) ?></option>
+                                                <select class="form-control select2-project-req-modal" name="project_id" id="modal_req_project_id" required data-placeholder="Search or Select Project...">
+                                                    <option value="" disabled selected>Search or Select Project...</option>
+                                                    <?php foreach ($projects as $p): ?>
+                                                        <option value="<?= $p['id'] ?>" <?= ($selectedProjectId ?? 0) == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
                                                     <?php endforeach; ?>
                                                 </select>
                                             </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-lg-12" id="portfolio_select_group">
+                                        <div class="from__input-box">
+                                            <div class="form__input-title">
+                                                <label>Select Land Acquisition Portfolio / Landowner</label>
+                                            </div>
+                                            <div class="form__input">
+                                                <select class="form-control" name="land_acquisition_id" id="modal_req_la_id">
+                                                    <option value="0">-- Direct / Default Portfolio for Project --</option>
+                                                    <?php foreach ($acquisitions as $la): ?>
+                                                        <option value="<?= $la['id'] ?>" data-project-id="<?= $la['project_id'] ?>">
+                                                            <?= htmlspecialchars($la['project_name']) ?> — Owner: <?= htmlspecialchars($la['land_owner_name']) ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <small class="text-muted" style="font-size: 11px;">If this project has existing land acquisition deals, select the landowner portfolio or leave default.</small>
                                         </div>
                                     </div>
 
@@ -438,12 +474,85 @@ $page_script = "(function() {
         if (accountsPayModal) {
             accountsPayModal.addEventListener('show.bs.modal', function (event) {
                 const button = event.relatedTarget;
+                if (!button) return;
                 const id = button.getAttribute('data-id');
                 const amount = button.getAttribute('data-amount');
                 
                 document.getElementById('accounts_req_id').value = id;
                 document.getElementById('accounts_req_amount').textContent = parseFloat(amount).toLocaleString('en-US', {minimumFractionDigits: 2});
             });
+
+            // Auto-open modal if pay_id or req_id is in URL query parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetPayId = urlParams.get('pay_id') || urlParams.get('req_id');
+            if (targetPayId) {
+                const payBtn = document.querySelector('button[data-bs-target=\"#accountsPayModal\"][data-id=\"' + targetPayId + '\"]');
+                if (payBtn) {
+                    setTimeout(function() {
+                        payBtn.click();
+                    }, 250);
+                }
+            }
+        }
+
+        // Initialize Select2 for Project filter and Modal Project select
+        if (typeof $ !== 'undefined' && $.fn && $.fn.select2) {
+            $('.select2-filter-project').select2({
+                width: '260px',
+                placeholder: 'Search Project...'
+            }).on('select2:select', function() {
+                $(this).closest('form').submit();
+            });
+
+            $('#requestFundModal').on('shown.bs.modal', function() {
+                $('#modal_req_project_id').select2({
+                    dropdownParent: $('#requestFundModal'),
+                    width: '100%',
+                    placeholder: 'Search or Select Project...'
+                });
+            });
+        }
+
+        // Filter Land Acquisition Portfolios based on selected project
+        const projSelect = document.getElementById('modal_req_project_id');
+        const laSelect = document.getElementById('modal_req_la_id');
+        if (projSelect && laSelect) {
+            const filterPortfolios = function() {
+                const selProjId = projSelect.value;
+                const options = laSelect.querySelectorAll('option');
+                let matchCount = 0;
+                options.forEach(function(opt) {
+                    const optProj = opt.getAttribute('data-project-id');
+                    if (!optProj) {
+                        opt.style.display = '';
+                    } else if (optProj === selProjId) {
+                        opt.style.display = '';
+                        matchCount++;
+                    } else {
+                        opt.style.display = 'none';
+                    }
+                });
+                if (matchCount > 0) {
+                    for (let i = 0; i < options.length; i++) {
+                        if (options[i].getAttribute('data-project-id') === selProjId) {
+                            laSelect.value = options[i].value;
+                            break;
+                        }
+                    }
+                } else {
+                    laSelect.value = '0';
+                }
+            };
+
+            if (typeof $ !== 'undefined') {
+                $('#modal_req_project_id').on('change select2:select', filterPortfolios);
+            } else {
+                projSelect.addEventListener('change', filterPortfolios);
+            }
+
+            if (projSelect.value) {
+                filterPortfolios();
+            }
         }
     }
 

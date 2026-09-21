@@ -258,12 +258,138 @@ public function indexTwo($bookingId = null)
             }
         }
 
+        $today = new \DateTime();
+        $totalDueAmountSum = 0;
+        $totalDueEmisCount = 0;
+        $dueClientsList = [];
+
         foreach ($clients as &$client) {
-            $schedule = $this->clientModel->getVirtualEmiSchedule($client['booking_id']);
+            $bookingId = (int)($client['booking_id'] ?? 0);
+            $schedule = $bookingId > 0 ? $this->clientModel->getVirtualEmiSchedule($bookingId) : [];
             $client['current_month_status'] = $this->calculateCurrentMonthStatus($schedule, $client['last_payment_date'] ?? null);
             $client['total_emi_count'] = count($schedule) > 0 ? count($schedule) : 36;
-            $client['total_followup_count'] = $this->clientModel->getTotalFollowupCount($client['booking_id']);
+            $client['total_followup_count'] = $bookingId > 0 ? $this->clientModel->getTotalFollowupCount($bookingId) : 0;
+
+            // Calculate Due EMIs for this client
+            $clientDueEmis = [];
+            $clientDueTotal = 0;
+
+            // 1. Partial dues from lead_payments
+            $outstandingDues = $bookingId > 0 ? $this->clientModel->getOutstandingEmiDues($bookingId) : [];
+            if (!empty($outstandingDues)) {
+                foreach ($outstandingDues as $od) {
+                    $emiNo = (int)($od['emi_no'] ?? 0);
+                    $dueDateStr = $od['payment_date'] ?? null;
+                    $dueAmt = (float)($od['due_emi_amount'] ?? 0);
+                    if ($dueAmt > 0) {
+                        $isExpired = false;
+                        $daysDiff = 0;
+                        $monthsDiff = 0;
+                        if (!empty($dueDateStr)) {
+                            $dObj = new \DateTime($dueDateStr);
+                            if ($dObj < $today) {
+                                $isExpired = true;
+                                $diff = $today->diff($dObj);
+                                $daysDiff = $diff->days;
+                                $monthsDiff = ($diff->y * 12) + $diff->m;
+                            }
+                        }
+                        $clientDueEmis[$emiNo] = [
+                            'emi_no' => $emiNo,
+                            'due_date' => $dueDateStr,
+                            'due_amount' => $dueAmt,
+                            'paid_amount' => (float)($od['amount'] ?? 0),
+                            'type_label' => 'Partial Balance Due',
+                            'badge_class' => 'bg-warning text-dark',
+                            'is_expired' => $isExpired,
+                            'days_expired' => $daysDiff,
+                            'months_expired' => $monthsDiff,
+                        ];
+                        $clientDueTotal += $dueAmt;
+                    }
+                }
+            }
+
+            // 2. Schedule Overdue EMIs
+            if (!empty($schedule)) {
+                foreach ($schedule as $vEmi) {
+                    $emiNo = (int)$vEmi['emi_no'];
+                    $maturity = $vEmi['maturity_status'] ?? '';
+                    $dueAmt = (float)($vEmi['due_amount'] ?? 0);
+                    $dueDateStr = $vEmi['due_date'] ?? null;
+
+                    $isExpired = false;
+                    $daysDiff = 0;
+                    $monthsDiff = 0;
+                    if (!empty($dueDateStr)) {
+                        $dObj = new \DateTime($dueDateStr);
+                        if ($dObj < $today) {
+                            $isExpired = true;
+                            $diff = $today->diff($dObj);
+                            $daysDiff = $diff->days;
+                            $monthsDiff = ($diff->y * 12) + $diff->m;
+                        }
+                    }
+
+                    if (($maturity === 'due' || ($maturity === 'pending' && $isExpired)) && $dueAmt > 0) {
+                        if (isset($clientDueEmis[$emiNo])) {
+                            if (!empty($dueDateStr)) {
+                                $clientDueEmis[$emiNo]['due_date'] = $dueDateStr;
+                            }
+                            $clientDueEmis[$emiNo]['months_expired'] = $vEmi['months_overdue'] ?? $clientDueEmis[$emiNo]['months_expired'];
+                            $clientDueEmis[$emiNo]['is_expired'] = true;
+                            if ($daysDiff > 0) $clientDueEmis[$emiNo]['days_expired'] = $daysDiff;
+                        } else {
+                            $clientDueEmis[$emiNo] = [
+                                'emi_no' => $emiNo,
+                                'due_date' => $dueDateStr,
+                                'due_amount' => $dueAmt,
+                                'paid_amount' => (float)($vEmi['paid_amount'] ?? 0),
+                                'type_label' => $maturity === 'due' ? 'Expired / Overdue' : 'Due This Month',
+                                'badge_class' => 'bg-danger text-white',
+                                'is_expired' => $isExpired,
+                                'days_expired' => $daysDiff,
+                                'months_expired' => $vEmi['months_overdue'] ?? $monthsDiff,
+                            ];
+                            $clientDueTotal += $dueAmt;
+                        }
+                    }
+                }
+            }
+            ksort($clientDueEmis);
+
+            $client['due_emis'] = $clientDueEmis;
+            $client['due_count'] = count($clientDueEmis);
+            $client['total_due_amount'] = $clientDueTotal;
+            $client['due_summary_text'] = !empty($clientDueEmis) 
+                ? implode(', ', array_map(fn($n) => "EMI #{$n}", array_keys($clientDueEmis)))
+                : '';
+
+            if ($client['due_count'] > 0) {
+                $totalDueAmountSum += $clientDueTotal;
+                $totalDueEmisCount += $client['due_count'];
+                $dueClientsList[] = [
+                    'lead_id' => $client['lead_id'] ?? 0,
+                    'booking_id' => $bookingId,
+                    'client_name' => $client['client_name'] ?? 'N/A',
+                    'phone' => $client['phone'] ?? 'N/A',
+                    'email' => $client['email'] ?? 'N/A',
+                    'project_flats' => $client['project_flats_combined'] ?? '',
+                    'due_count' => $client['due_count'],
+                    'due_summary_text' => $client['due_summary_text'],
+                    'total_due_amount' => $clientDueTotal,
+                    'due_emis' => $clientDueEmis,
+                    'last_payment_date' => $client['last_payment_date'] ?? null
+                ];
+            }
         }
+        unset($client);
+
+        $dueStats = [
+            'total_due_amount' => $totalDueAmountSum,
+            'total_due_clients_count' => count($dueClientsList),
+            'total_due_emis_count' => $totalDueEmisCount,
+        ];
 
         $this->view("ced/clients-cashin-view", [
             "current_route" => "clients-cashin-view",
@@ -278,7 +404,9 @@ public function indexTwo($bookingId = null)
             "selectedProjectName" => $selectedProjectName,
             "flatStats" => $flatStats,
             "bookedFlats" => $bookedFlats,
-            "availableFlats" => $availableFlats
+            "availableFlats" => $availableFlats,
+            "dueStats" => $dueStats,
+            "dueClientsList" => $dueClientsList
         ]);
     }
 

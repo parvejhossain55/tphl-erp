@@ -326,7 +326,15 @@ class ProjectOtherCostController extends Controller
             }
 
             $paymentAmount = (float)($_POST['payment_amount'] ?? 0);
-            $paymentAt = $_POST['payment_at'] ?? date('Y-m-d H:i:s');
+            $rawPaymentAt = trim($_POST['payment_at'] ?? '');
+            if (empty($rawPaymentAt)) {
+                $paymentAt = date('Y-m-d H:i:s');
+            } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawPaymentAt)) {
+                // If only date is provided (YYYY-MM-DD), append the current disbursement time
+                $paymentAt = $rawPaymentAt . ' ' . date('H:i:s');
+            } else {
+                $paymentAt = date('Y-m-d H:i:s', strtotime($rawPaymentAt));
+            }
             $maxAllowed = (float)(!empty($request['approved_amount']) ? $request['approved_amount'] : $request['request_amount']);
 
             if ($paymentAmount <= 0) {

@@ -27,7 +27,9 @@ class ApprovalRequest extends Model
         'project_other_costs',
         'project_extra_assets',
         'con_labor_requisitions',
-        'expense_adjustments'
+        'expense_adjustments',
+        'land_fund_requisitions',
+        'con_land_requisitions'
     ];
     public function create($data)
     {
@@ -392,6 +394,7 @@ class ApprovalRequest extends Model
         $this->syncMissingLaborRequisitions();
         $this->syncMissingVendorPaymentRequests();
         $this->syncMissingContractorBills();
+        $this->syncMissingLandFundRequisitions();
 
         $roles = array_map('strtolower', $roles);
 
@@ -702,6 +705,31 @@ class ApprovalRequest extends Model
                 $stmtPoc->bind_param('sidsi', $pocStatus, $approvedBy, $pocAppAmt, $approvalNote, $sourceId);
                 $stmtPoc->execute();
                 $stmtPoc->close();
+            }
+            return true;
+        }
+
+        if ($sourceTable === 'land_fund_requisitions' || $sourceTable === 'con_land_requisitions') {
+            $lfrStatus = ($status === 'approved') ? 'Approved' : 'Rejected';
+            $stmtLfr = $this->db->prepare(
+                "UPDATE land_fund_requisitions 
+                 SET mgmt_status = ?, 
+                     mgmt_by = ?, 
+                     mgmt_approved_at = NOW(), 
+                     mgmt_note = ?,
+                     updated_at = NOW() 
+                 WHERE id = ?"
+            );
+            if ($stmtLfr) {
+                $stmtLfr->bind_param('sisi', $lfrStatus, $approvedBy, $approvalNote, $sourceId);
+                $stmtLfr->execute();
+                $stmtLfr->close();
+            }
+
+            if ($status === 'approved') {
+                $this->db->query("UPDATE {$this->table} SET approve_role = 'accounts', status = 'approved', approved_by = {$approvedBy}, approved_at = NOW(), approval_note = '" . $this->db->real_escape_string($approvalNote) . "' WHERE id = {$id}");
+            } else {
+                $this->db->query("UPDATE {$this->table} SET approve_role = 'rejected', status = 'rejected', approved_by = {$approvedBy}, approved_at = NOW(), approval_note = '" . $this->db->real_escape_string($approvalNote) . "' WHERE id = {$id}");
             }
             return true;
         }
@@ -1056,6 +1084,7 @@ class ApprovalRequest extends Model
         $this->syncMissingContractorBills();
         $this->syncMissingAdvanceSalaries();
         $this->syncMissingCashoutRequests();
+        $this->syncMissingLandFundRequisitions();
 
         $sql = "SELECT 
                     COUNT(*) AS total_requests,
@@ -1069,14 +1098,15 @@ class ApprovalRequest extends Model
         $res = $this->db->query($sql);
         $row = $res ? $res->fetch_assoc() : [];
 
-        // Check Accounts total disbursed across incentive payments, vendor payment requests, fund requisitions, office procurement, labor requisitions & project other costs
+        // Check Accounts total disbursed across incentive payments, vendor payment requests, fund requisitions, office procurement, labor requisitions, project other costs & land fund requisitions
         $sqlDisbursed = "SELECT 
                             (SELECT IFNULL(SUM(payment_amount), 0) FROM project_incentive_payments) + 
                             (SELECT IFNULL(SUM(approved_amount), 0) FROM vendor_payment_requests WHERE status = 'Approved') +
                             (SELECT IFNULL(SUM(amount), 0) FROM fund_requisitions WHERE status = 'paid') +
                             (SELECT IFNULL(SUM(paid_amount), 0) FROM project_extra_assets WHERE payment_status = 'paid') +
                             (SELECT IFNULL(SUM(total_paid), 0) FROM con_labor_requisitions WHERE status IN ('paid', 'partially_paid', 'labor_disbursed')) +
-                            (SELECT IFNULL(SUM(COALESCE(payment_amount, approved_amount, request_amount)), 0) FROM project_other_costs WHERE status = 'paid') AS total_disbursed";
+                            (SELECT IFNULL(SUM(COALESCE(payment_amount, approved_amount, request_amount)), 0) FROM project_other_costs WHERE status = 'paid') +
+                            (SELECT IFNULL(SUM(requested_amount), 0) FROM land_fund_requisitions WHERE accounts_status = 'Paid') AS total_disbursed";
         $resD = $this->db->query($sqlDisbursed);
         $totalDisbursed = $resD ? (float) ($resD->fetch_assoc()['total_disbursed'] ?? 0) : 0.00;
 
@@ -1133,7 +1163,7 @@ class ApprovalRequest extends Model
             return "(
                 LOWER({$prefix}approve_role) != 'completed' AND (
                     ({$prefix}status IN ('pending', 'partially_approved', '') AND LOWER({$prefix}approve_role) = 'accounts')
-                    OR ({$prefix}status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets', 'expense_adjustments')))
+                    OR ({$prefix}status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets', 'expense_adjustments', 'land_fund_requisitions', 'con_land_requisitions')))
                 )
             )";
         } elseif ($isSiteOperator && !$isManagement) {
@@ -1179,6 +1209,7 @@ class ApprovalRequest extends Model
         $this->syncMissingAdvanceSalaries();
         $this->syncMissingCashoutRequests();
         $this->syncMissingExpenseAdjustments();
+        $this->syncMissingLandFundRequisitions();
 
         $moduleDefs = [
             'contractor_bill_requests' => [
@@ -1290,6 +1321,16 @@ class ApprovalRequest extends Model
                 'accent_hex'  => '#eab308',
                 'portal_url'  => 'incentive-management',
                 'portal_name' => 'Incentives'
+            ],
+            'land_fund_requisitions' => [
+                'key'         => 'land_fund_requisitions',
+                'name'        => 'Land Fund Requisitions',
+                'dept'        => 'Land & Construction',
+                'icon'        => 'fa-solid fa-mountain-city',
+                'badge_color' => 'success',
+                'accent_hex'  => '#059669',
+                'portal_url'  => 'con-land-requisitions',
+                'portal_name' => 'Land Requisitions'
             ],
         ];
 
@@ -1431,6 +1472,16 @@ class ApprovalRequest extends Model
         if ($picRes && $row = $picRes->fetch_assoc()) {
             $paidData['project_incentive_claims'] = (float)($row['paid'] ?? 0);
             $dueData['project_incentive_claims'] = (float)($row['due'] ?? 0);
+        }
+
+        // Land Fund Requisitions
+        $lfrRes = $this->db->query("SELECT 
+            SUM(CASE WHEN accounts_status = 'Paid' THEN requested_amount ELSE 0 END) as paid,
+            SUM(CASE WHEN mgmt_status = 'Approved' AND accounts_status != 'Paid' THEN requested_amount ELSE 0 END) as due
+        FROM land_fund_requisitions");
+        if ($lfrRes && $row = $lfrRes->fetch_assoc()) {
+            $paidData['land_fund_requisitions'] = (float)($row['paid'] ?? 0);
+            $dueData['land_fund_requisitions'] = (float)($row['due'] ?? 0);
         }
 
         // 3. Dynamic Pending Calculations: Actionable for Current User vs All Department Pending
@@ -1609,6 +1660,7 @@ class ApprovalRequest extends Model
         $this->syncMissingAdvanceSalaries();
         $this->syncMissingCashoutRequests();
         $this->syncMissingExpenseAdjustments();
+        $this->syncMissingLandFundRequisitions();
 
         $where = ["1=1"];
         $params = [];
@@ -2037,6 +2089,50 @@ class ApprovalRequest extends Model
                             $payoutStatus = 'Pending Accounts Payout';
                             $pendingStageLabel = 'Pending Accounts Payout';
                             $pendingForText = 'Accounts & Finance';
+                        }
+                    }
+                }
+            } else if ($sourceTable === 'land_fund_requisitions' || $sourceTable === 'con_land_requisitions') {
+                $lfrSql = "SELECT lfr.*, u_acc.full_name as accounts_name, u_mgmt.full_name as mgmt_name
+                           FROM land_fund_requisitions lfr
+                           LEFT JOIN users u_acc ON lfr.accounts_by = u_acc.id
+                           LEFT JOIN users u_mgmt ON lfr.mgmt_by = u_mgmt.id
+                           WHERE lfr.id = ? LIMIT 1";
+                $lfrStmt = $this->db->prepare($lfrSql);
+                if ($lfrStmt) {
+                    $lfrStmt->bind_param("i", $sourceId);
+                    $lfrStmt->execute();
+                    $lfrRow = $lfrStmt->get_result()->fetch_assoc();
+                    $lfrStmt->close();
+                    if ($lfrRow) {
+                        $mgmtSt = $lfrRow['mgmt_status'] ?? 'Pending';
+                        $accSt = $lfrRow['accounts_status'] ?? 'Pending';
+                        $row['approved_amount'] = (float)($lfrRow['requested_amount'] ?? 0);
+
+                        if ($mgmtSt === 'Rejected' || $accSt === 'Rejected') {
+                            $row['status'] = 'rejected';
+                            $row['approve_role'] = 'rejected';
+                            $pendingStageLabel = 'Rejected';
+                            $pendingForText = 'Rejected';
+                        } elseif ($accSt === 'Paid') {
+                            $row['status'] = 'approved';
+                            $row['approve_role'] = 'completed';
+                            $payoutStatus = 'Paid & Settled';
+                            $payoutAmount = (float)$lfrRow['requested_amount'];
+                            $payoutDate = $lfrRow['accounts_paid_at'] ?? $lfrRow['updated_at'];
+                            $pendingStageLabel = 'Paid & Settled';
+                            $pendingForText = !empty($lfrRow['accounts_name']) ? 'Paid by ' . $lfrRow['accounts_name'] : 'Settled';
+                        } elseif ($mgmtSt === 'Approved') {
+                            $row['status'] = 'approved';
+                            $row['approve_role'] = 'accounts';
+                            $payoutStatus = 'Pending Accounts Payout';
+                            $pendingStageLabel = 'Pending Accounts Payout';
+                            $pendingForText = 'Accounts & Finance';
+                        } else {
+                            $row['status'] = 'pending';
+                            $row['approve_role'] = 'management';
+                            $pendingStageLabel = 'Pending Management';
+                            $pendingForText = 'Management Approval';
                         }
                     }
                 }
@@ -3508,6 +3604,110 @@ class ApprovalRequest extends Model
                 OR (ea.adjustment_type = 'extra' AND ea.status = 'qc_approved' AND (ar.approve_role != 'management' OR ar.status != 'pending'))
                 OR (ea.adjustment_type = 'extra' AND ea.status = 'approved' AND (ar.approve_role != 'accounts' OR ar.status != 'approved'))
                 OR (ar.status = '' OR ar.status IS NULL)
+        ";
+        @$this->db->query($syncSql);
+    }
+
+    public function syncMissingLandFundRequisitions()
+    {
+        // 1. Insert missing land_fund_requisitions into approval_requests
+        $sql = "
+            SELECT lfr.*, la.land_owner_name, p.name AS project_name, u.full_name AS requester_name
+            FROM land_fund_requisitions lfr
+            LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
+            LEFT JOIN projects p ON la.project_id = p.id
+            LEFT JOIN users u ON lfr.requested_by = u.id
+            LEFT JOIN approval_requests ar ON (ar.source_table = 'land_fund_requisitions' AND ar.source_id = lfr.id)
+            WHERE ar.id IS NULL
+        ";
+        $res = $this->db->query($sql);
+        if ($res && $res->num_rows > 0) {
+            while ($row = $res->fetch_assoc()) {
+                $sourceId = (int)$row['id'];
+                $deptName = 'Land';
+                $reqTypeLabel = !empty($row['requisition_type']) ? $row['requisition_type'] : 'Land Requisition';
+                $ownerName = !empty($row['land_owner_name']) ? $row['land_owner_name'] : 'Land Owner';
+                $projectName = !empty($row['project_name']) ? $row['project_name'] : 'Land Project';
+                $title = "Land Fund: {$reqTypeLabel} — {$ownerName} | {$projectName}";
+                $amount = (float)($row['requested_amount'] ?? 0);
+                $approvedAmount = $amount;
+                $requestedBy = !empty($row['requested_by']) ? (int)$row['requested_by'] : 1;
+
+                $mgmtSt = $row['mgmt_status'] ?? 'Pending';
+                $accSt = $row['accounts_status'] ?? 'Pending';
+
+                if ($mgmtSt === 'Rejected' || $accSt === 'Rejected') {
+                    $status = 'rejected';
+                    $approveRole = 'rejected';
+                    $approvedBy = !empty($row['mgmt_by']) ? (int)$row['mgmt_by'] : (!empty($row['accounts_by']) ? (int)$row['accounts_by'] : null);
+                    $approvedAt = !empty($row['mgmt_approved_at']) ? $row['mgmt_approved_at'] : (!empty($row['updated_at']) ? $row['updated_at'] : null);
+                    $approvalNote = !empty($row['mgmt_note']) ? $row['mgmt_note'] : (!empty($row['accounts_note']) ? $row['accounts_note'] : null);
+                } elseif ($accSt === 'Paid') {
+                    $status = 'approved';
+                    $approveRole = 'completed';
+                    $approvedBy = !empty($row['mgmt_by']) ? (int)$row['mgmt_by'] : (!empty($row['accounts_by']) ? (int)$row['accounts_by'] : null);
+                    $approvedAt = !empty($row['accounts_paid_at']) ? $row['accounts_paid_at'] : (!empty($row['mgmt_approved_at']) ? $row['mgmt_approved_at'] : (!empty($row['updated_at']) ? $row['updated_at'] : null));
+                    $approvalNote = !empty($row['accounts_note']) ? $row['accounts_note'] : (!empty($row['mgmt_note']) ? $row['mgmt_note'] : null);
+                } elseif ($mgmtSt === 'Approved') {
+                    $status = 'approved';
+                    $approveRole = 'accounts';
+                    $approvedBy = !empty($row['mgmt_by']) ? (int)$row['mgmt_by'] : null;
+                    $approvedAt = !empty($row['mgmt_approved_at']) ? $row['mgmt_approved_at'] : (!empty($row['updated_at']) ? $row['updated_at'] : null);
+                    $approvalNote = !empty($row['mgmt_note']) ? $row['mgmt_note'] : null;
+                } else {
+                    $status = 'pending';
+                    $approveRole = 'management';
+                    $approvedBy = null;
+                    $approvedAt = null;
+                    $approvalNote = null;
+                }
+
+                $metaData = json_encode([
+                    'purpose' => $row['purpose'] ?? '',
+                    'land_owner_name' => $row['land_owner_name'] ?? '',
+                    'project_name' => $row['project_name'] ?? '',
+                    'requisition_type' => $row['requisition_type'] ?? ''
+                ]);
+                $createdAt = !empty($row['created_at']) ? $row['created_at'] : date('Y-m-d H:i:s');
+
+                $stmt = $this->db->prepare("
+                    INSERT INTO approval_requests 
+                    (department, request_type, title, source_table, source_id, request_amount, approved_amount, requested_by, approve_role, status, approved_by, approved_at, approval_note, meta_data, created_at)
+                    VALUES (?, 'land_fund_requisitions', ?, 'land_fund_requisitions', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                if ($stmt) {
+                    $stmt->bind_param("ssiddississss", $deptName, $title, $sourceId, $amount, $approvedAmount, $requestedBy, $approveRole, $status, $approvedBy, $approvedAt, $approvalNote, $metaData, $createdAt);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+            }
+        }
+
+        // 2. Sync status for existing land_fund_requisitions in approval_requests
+        $syncSql = "
+            UPDATE approval_requests ar
+            INNER JOIN land_fund_requisitions lfr ON (ar.source_table = 'land_fund_requisitions' AND ar.source_id = lfr.id)
+            SET ar.approve_role = CASE 
+                    WHEN lfr.mgmt_status = 'Rejected' OR lfr.accounts_status = 'Rejected' THEN 'rejected'
+                    WHEN lfr.accounts_status = 'Paid' THEN 'completed'
+                    WHEN lfr.mgmt_status = 'Approved' THEN 'accounts'
+                    ELSE 'management'
+                END,
+                ar.status = CASE 
+                    WHEN lfr.mgmt_status = 'Rejected' OR lfr.accounts_status = 'Rejected' THEN 'rejected'
+                    WHEN lfr.mgmt_status = 'Approved' OR lfr.accounts_status = 'Paid' THEN 'approved'
+                    ELSE 'pending'
+                END,
+                ar.approved_by = COALESCE(lfr.mgmt_by, ar.approved_by),
+                ar.approved_at = COALESCE(lfr.accounts_paid_at, lfr.mgmt_approved_at, lfr.updated_at, ar.approved_at),
+                ar.approval_note = COALESCE(lfr.accounts_note, lfr.mgmt_note, ar.approval_note),
+                ar.request_amount = lfr.requested_amount,
+                ar.approved_amount = lfr.requested_amount
+            WHERE ar.status = '' 
+               OR ar.status IS NULL 
+               OR (lfr.accounts_status = 'Paid' AND ar.approve_role != 'completed')
+               OR (lfr.mgmt_status = 'Approved' AND lfr.accounts_status != 'Paid' AND (ar.approve_role != 'accounts' OR ar.status != 'approved'))
+               OR (lfr.mgmt_status = 'Rejected' AND ar.status != 'rejected')
         ";
         @$this->db->query($syncSql);
     }

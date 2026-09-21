@@ -344,6 +344,7 @@
                         <option value="con_work_orders" <?= ($filters['source_table'] ?? '') === 'con_work_orders' ? 'selected' : '' ?>>Work Orders (Construction)</option>
                         <option value="lead_bookings" <?= ($filters['source_table'] ?? '') === 'lead_bookings' ? 'selected' : '' ?>>Booking Discounts (Sales)</option>
                         <option value="manpower_requisitions" <?= ($filters['source_table'] ?? '') === 'manpower_requisitions' ? 'selected' : '' ?>>Manpower Requisitions</option>
+                        <option value="land_fund_requisitions" <?= in_array($filters['source_table'] ?? '', ['land_fund_requisitions', 'con_land_requisitions']) ? 'selected' : '' ?>>Land Fund Requisitions</option>
                     </select>
                 </div>
 
@@ -450,8 +451,8 @@
                                     $targetUrl = $base_url . '/con-vendor-payment-show/' . $req['source_id'];
                                 } elseif ($sourceTable === 'contractor_bill_requests') {
                                     $targetUrl = $base_url . '/con-contractor-bill/' . $req['source_id'];
-                                } elseif ($sourceTable === 'con_land_requisitions') {
-                                    $targetUrl = $base_url . '/con-land-requisitions';
+                                } elseif ($sourceTable === 'con_land_requisitions' || $sourceTable === 'land_fund_requisitions') {
+                                    $targetUrl = $base_url . '/con-land-requisitions?pay_id=' . $req['source_id'];
                                 } elseif ($sourceTable === 'con_labor_requisitions') {
                                     $targetUrl = $base_url . '/con-labor-requisition/' . $req['source_id'];
                                 } elseif ($sourceTable === 'con_work_orders') {
