@@ -16,6 +16,10 @@
         {
             "url": "https://hrm.tipsoi.pro/inovace-client/api/v1",
             "description": "Live Server"
+        },
+        {
+            "url": "https://app.tipsoi.ai/inovace-client/api/v1",
+            "description": "Live Server New"
         }
     ],
     "components": {

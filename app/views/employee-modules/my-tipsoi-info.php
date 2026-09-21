@@ -1698,8 +1698,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // ── Approval Pending Tab Logic ──
     let allTipsoiRequests = [];
-    let loggedUserApproverInfo = null;
-    let hrEmployeeOfficeIds = [];
 
     function loadApprovalsData() {
         const tbody = document.getElementById("approvalsTableBody");
@@ -1709,20 +1707,17 @@ document.addEventListener("DOMContentLoaded", function() {
             <tr>
                 <td colspan="12" class="text-center py-4 text-muted">
                     <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-                    Fetching pending approval requests from Tipsoi API...
+                    Fetching your pending approval requests directly from Tipsoi API...
                 </td>
             </tr>
         `;
 
-        fetch(`${baseUrl}/api/hrm/tipsoi-requests`)
+        fetch(`${baseUrl}/api/employee/my-pending-approvals`)
         .then(res => res.json())
         .then(res => {
             if (res.success) {
                 allTipsoiRequests = res.data || [];
-                console.log("Fetched Tipsoi Requests Data:", allTipsoiRequests);
-                loggedUserApproverInfo = res.logged_user || null;
-                hrEmployeeOfficeIds = res.hr_employee_office_ids || [];
-                console.log("Logged User Approver Info:", loggedUserApproverInfo);
+                console.log("Fetched User Pending Approvals:", allTipsoiRequests);
                 renderApprovalsTable();
             } else {
                 tbody.innerHTML = `<tr><td colspan="12" class="text-center text-danger py-4">${res.message || 'Failed to load requests'}</td></tr>`;
@@ -1761,16 +1756,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
         if (!tbody) return;
 
-        const loggedUser = loggedUserApproverInfo;
-        const userEmail = loggedUser ? (loggedUser.email || '').toLowerCase().trim() : '';
-        const userOfficeId = loggedUser ? (loggedUser.employee_id || loggedUser.tipsoi_office_id || '').trim() : '';
-        const userName = loggedUser ? (loggedUser.full_name || '').toLowerCase().trim() : '';
-        const userTipsoiId = loggedUser ? String(loggedUser.tipsoi_id || '') : '';
-        const isHr = loggedUser ? loggedUser.is_hr : false;
-
-        const normalizeName = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const normUser = normalizeName(userName);
-
         const matchedRecords = allTipsoiRequests.filter(rec => {
             if (typeFilter !== 'all') {
                 if (rec.requestType !== typeFilter && rec.subType !== typeFilter) return false;
@@ -1786,71 +1771,13 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             }
 
-            const firstAppName = String(rec.firstApproverName || '').trim();
-            const normFirst = normalizeName(firstAppName);
-            const firstAppId = String(rec.firstApproverId || '');
-            const firstAppOfficeId = String(rec.firstApproverOfficeId || '').trim();
-            const firstStatus = rec.firstApprovalStatus;
-
-            const secondAppName = String(rec.secondApproverName || '').trim();
-            const normSecond = normalizeName(secondAppName);
-            const secondAppId = String(rec.secondApproverId || '');
-            const secondAppOfficeId = String(rec.secondApproverOfficeId || '').trim();
-            const secondStatus = rec.secondApprovalStatus;
-
-            const isFirstApprover = (userTipsoiId && firstAppId && userTipsoiId === firstAppId) ||
-                (userOfficeId && firstAppOfficeId && userOfficeId === firstAppOfficeId) ||
-                (userOfficeId && firstAppName && firstAppName.includes(userOfficeId)) ||
-                (normUser && normFirst && normFirst.length >= 3 && (normUser.includes(normFirst) || normFirst.includes(normUser)));
-
-            const isSecondApprover = (userTipsoiId && secondAppId && userTipsoiId === secondAppId) ||
-                (userOfficeId && secondAppOfficeId && userOfficeId === secondAppOfficeId) ||
-                (userOfficeId && secondAppName && secondAppName.includes(userOfficeId)) ||
-                (normUser && normSecond && normSecond.length >= 3 && (normUser.includes(normSecond) || normSecond.includes(normUser)));
-
-            // Do NOT show user's own requests in this "Requests Pending My Approval" tab
-            const isMyOwnRequest = (userOfficeId && String(rec.employeeOfficeId || '') === userOfficeId) || 
-                                   (normUser && normUser === normalizeName(rec.employeeName));
-            if (isMyOwnRequest) {
+            if (stageFilter === 'first' && rec.firstApprovalStatus != 0) {
+                return false;
+            } else if (stageFilter === 'second' && rec.secondApprovalStatus != 0) {
                 return false;
             }
 
-            // CRITICAL RULE: One HR cannot see or approve another HR's requests!
-            // Check if applicant is in HR department
-            const applicantDept = String(rec.departmentName || '').toLowerCase();
-            const applicantOfficeId = String(rec.employeeOfficeId || '');
-            const isApplicantHr = applicantDept.includes('human') || applicantDept.includes('hr') || hrEmployeeOfficeIds.includes(applicantOfficeId);
-
-            // Check if logged in user is in HR department
-            const loggedUserDept = String(loggedUser ? (loggedUser.department_name || '') : '').toLowerCase();
-            const isLoggedUserHr = loggedUser ? (loggedUser.is_hr_dept || loggedUserDept.includes('human') || loggedUserDept.includes('hr') || hrEmployeeOfficeIds.includes(userOfficeId)) : false;
-
-            // If the applicant is in HR, other HR personnel MUST NEVER see or approve it!
-            // (Only Management like DCEO/CEO/Super Admin can see and approve HR personnel requests)
-            if (isApplicantHr && isLoggedUserHr) {
-                return false;
-            }
-
-            let isForMe = false;
-            
-            // If the user is the first approver (and it's pending)
-            if (isFirstApprover && firstStatus == 0) {
-                isForMe = true;
-            }
-            
-            // If the user is the second approver (and it's pending)
-            if (isSecondApprover && secondStatus == 0) {
-                isForMe = true;
-            }
-
-            // Apply dropdown stage filter if selected
-            if (isForMe && stageFilter === 'first' && firstStatus != 0) {
-                isForMe = false;
-            } else if (isForMe && stageFilter === 'second' && secondStatus != 0) {
-                isForMe = false;
-            }
-
-            return isForMe;
+            return true;
         });
 
         if (badge) badge.textContent = `Total Pending: ${matchedRecords.length}`;
@@ -1863,8 +1790,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
         if (noMsg) noMsg.classList.add("d-none");
 
-        const getApproverBadge = (status, name) => {
-            if (!name) return '<span class="text-muted">—</span>';
+        const getApproverBadge = (status, name, isSecond = false) => {
+            if (!name) return isSecond ? '<span class="badge bg-light text-muted border">N/A</span>' : '<span class="text-muted">—</span>';
             if (status === 1) return `<div class="text-success fw-semibold"><i class="fa-solid fa-circle-check me-1"></i>${name} <small class="text-success">(Approved)</small></div>`;
             if (status === 2) return `<div class="text-danger fw-semibold"><i class="fa-solid fa-circle-xmark me-1"></i>${name} <small class="text-danger">(Rejected)</small></div>`;
             return `<div class="text-warning fw-semibold"><i class="fa-solid fa-hourglass-half me-1"></i>${name} <small class="text-warning">(Pending)</small></div>`;
@@ -1873,8 +1800,8 @@ document.addEventListener("DOMContentLoaded", function() {
         let sn = 1;
         tbody.innerHTML = matchedRecords.map(rec => {
             const datePeriod = (rec.startDate === rec.endDate) ? rec.startDate : `${rec.startDate} to ${rec.endDate}`;
-            const firstAppBadge = getApproverBadge(rec.firstApprovalStatus, rec.firstApproverName);
-            const secondAppBadge = getApproverBadge(rec.secondApprovalStatus, rec.secondApproverName);
+            const firstAppBadge = getApproverBadge(rec.firstApprovalStatus, rec.firstApproverName, false);
+            const secondAppBadge = getApproverBadge(rec.secondApprovalStatus, rec.secondApproverName, true);
 
             // Determine approval & rejection endpoints
             let approveEndpoint = '';
@@ -1921,9 +1848,11 @@ document.addEventListener("DOMContentLoaded", function() {
         }).join('');
     }
 
-    document.getElementById("approvals-tab")?.addEventListener("click", function() {
-        loadApprovalsData();
-    });
+    const apprTabEl = document.getElementById("approvals-tab");
+    if (apprTabEl) {
+        apprTabEl.addEventListener("click", loadApprovalsData);
+        apprTabEl.addEventListener("shown.bs.tab", loadApprovalsData);
+    }
     document.getElementById("btnRefreshApprovals")?.addEventListener("click", function() {
         loadApprovalsData();
     });
@@ -1941,7 +1870,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const reqId = approveBtn.getAttribute("data-id");
             const reqType = approveBtn.getAttribute("data-type") || "Request";
             const endpoint = approveBtn.getAttribute("data-endpoint");
-            const approverName = loggedUserApproverInfo ? (loggedUserApproverInfo.full_name || 'Approver') : 'Approver';
+            const approverName = <?= json_encode($employee['full_name'] ?? 'Approver') ?>;
 
             const doApprove = () => {
                 approveBtn.disabled = true;
@@ -2027,7 +1956,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const reqId = rejectBtn.getAttribute("data-id");
             const reqType = rejectBtn.getAttribute("data-type") || "Request";
             const endpoint = rejectBtn.getAttribute("data-endpoint");
-            const approverName = loggedUserApproverInfo ? (loggedUserApproverInfo.full_name || 'Approver') : 'Approver';
+            const approverName = <?= json_encode($employee['full_name'] ?? 'Approver') ?>;
 
             const doReject = (reason) => {
                 rejectBtn.disabled = true;

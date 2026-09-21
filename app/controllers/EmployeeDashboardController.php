@@ -2161,4 +2161,326 @@ class EmployeeDashboardController extends Controller
         }
         exit;
     }
+
+    // ─── Get My Pending Approvals API (Exclusively using the logged-in user's token)
+    public function getMyPendingApprovals()
+    {
+        header('Content-Type: application/json');
+
+        $data = $this->getSessionEmployee();
+        if (!$data) {
+            echo json_encode(['success' => false, 'message' => 'Employee session not found.']);
+            exit;
+        }
+
+        $employee = $data['employee'];
+        $localOfficeId = trim($employee['employee_id'] ?? '');
+        $localEmail = strtolower(trim($employee['email'] ?? ''));
+
+        try {
+            // STRICT RULE: Only use user's personal token, NEVER fallback to master token
+            $token = $this->externalApiService->getUserBearerToken(false);
+            if (!$token) {
+                echo json_encode([
+                    'success' => false,
+                    'credentialsMismatch' => true,
+                    'message' => 'Tipsoi user token not found or session expired. Please re-login to synchronize your Tipsoi session.'
+                ]);
+                exit;
+            }
+
+            // Resolve calling user's own Tipsoi employee ID
+            $tipsoiId = $_SESSION['user']['tipsoi_id'] ?? null;
+            if (!$tipsoiId && $token) {
+                $tokenParts = explode('.', $token);
+                if (isset($tokenParts[1])) {
+                    $payloadJson = base64_decode(str_pad(strtr($tokenParts[1], '-_', '+/'), strlen($tokenParts[1]) % 4, '=', STR_PAD_RIGHT));
+                    $jwtPayload = json_decode($payloadJson, true);
+                    if (!empty($jwtPayload['sub'])) {
+                        $tipsoiId = $jwtPayload['sub'];
+                        $_SESSION['user']['tipsoi_id'] = $tipsoiId;
+                    }
+                }
+            }
+
+            // Helper to make curl request using ONLY the user's token
+            $callTipsoiWithUserToken = function($endpoint) use ($token) {
+                $url = "https://app.tipsoi.ai/inovace-client/api/v1" . $endpoint;
+                $ch = curl_init($url);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'Authorization: Bearer ' . $token,
+                    'Accept: application/json'
+                ]);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+                $res = curl_exec($ch);
+                curl_close($ch);
+                return json_decode($res, true) ?: [];
+            };
+
+            // If tipsoiId is still not found, try to resolve via user-scoped employee call
+            if (!$tipsoiId) {
+                $myInfo = $callTipsoiWithUserToken("/employee?order=asc&pageNumber=0&perPage=50&status=1&keyword=" . urlencode($localOfficeId));
+                $empList = $myInfo['data'] ?? $myInfo['employees'] ?? $myInfo['content'] ?? [];
+                foreach ($empList as $ext) {
+                    $extOid = trim((string)($ext['employeeOfficeId'] ?? $ext['officeId'] ?? ''));
+                    $extMail = strtolower(trim($ext['email'] ?? ''));
+                    if (($localOfficeId !== '' && $extOid === $localOfficeId) || ($localEmail !== '' && $extMail === $localEmail)) {
+                        $tipsoiId = $ext['employeeId'] ?? $ext['id'] ?? null;
+                        $_SESSION['user']['tipsoi_id'] = $tipsoiId;
+                        break;
+                    }
+                }
+            }
+
+            // Fetch local employee details to enrich missing office IDs / departments
+            $localEmpMap = [];
+            $q = $this->db->query("SELECT e.employee_id, e.full_name, d.name AS dept_name, deg.name AS desig_name FROM employees e LEFT JOIN departments d ON e.department_id = d.id LEFT JOIN designations deg ON e.designation_id = deg.id");
+            if ($q) {
+                while ($r = $q->fetch_assoc()) {
+                    $cleanName = strtolower(trim($r['full_name']));
+                    $localEmpMap[$cleanName] = [
+                        'office_id' => trim($r['employee_id'] ?? ''),
+                        'department' => trim($r['dept_name'] ?? '—'),
+                        'designation' => trim($r['desig_name'] ?? '—')
+                    ];
+                }
+            }
+
+            // Helper to resolve 1st and 2nd approver names and statuses cleanly
+            $resolveApprovers = function($item, $loggedUserName) {
+                $firstApp = trim($item['firstApproverName'] ?? ($item['firstManualApproverName'] ?? ($item['firstLateApproverName'] ?? '')));
+                $secondApp = trim($item['secondApproverName'] ?? ($item['secondManualApproverName'] ?? ($item['secondLateApproverName'] ?? '')));
+                $otherApp = trim($item['otherApproverName'] ?? '');
+                $otherStatus = $item['otherApproverStatus'] ?? null;
+                $firstStatus = (int)($item['firstApprovalStatus'] ?? ($item['firstManualEntryApprovalStatus'] ?? ($item['firstLateApprovalStatus'] ?? 0)));
+                $secondStatus = (int)($item['secondApprovalStatus'] ?? ($item['secondManualEntryApprovalStatus'] ?? ($item['secondLateApprovalStatus'] ?? 0)));
+
+                if ($firstApp !== '' || $secondApp !== '') {
+                    return [
+                        'firstApproverName' => $firstApp ?: $loggedUserName,
+                        'firstApprovalStatus' => $firstStatus,
+                        'secondApproverName' => $secondApp ?: $otherApp,
+                        'secondApprovalStatus' => $secondStatus,
+                    ];
+                }
+
+                if (empty($otherApp)) {
+                    return [
+                        'firstApproverName' => $loggedUserName,
+                        'firstApprovalStatus' => 0,
+                        'secondApproverName' => '',
+                        'secondApprovalStatus' => 0,
+                    ];
+                }
+
+                $isOtherApproved = ($otherStatus === 'Accepted' || $otherStatus === 'Approved' || $otherStatus === 1 || $otherStatus === '1' || $firstStatus === 1);
+                if ($isOtherApproved) {
+                    return [
+                        'firstApproverName' => $otherApp,
+                        'firstApprovalStatus' => 1,
+                        'secondApproverName' => $loggedUserName,
+                        'secondApprovalStatus' => 0,
+                    ];
+                }
+
+                return [
+                    'firstApproverName' => $loggedUserName,
+                    'firstApprovalStatus' => 0,
+                    'secondApproverName' => $otherApp,
+                    'secondApprovalStatus' => 0,
+                ];
+            };
+
+            $pendingRequests = [];
+
+            // 1. Fetch Manual Entry / Missing Punch / Field Visit (Personal Approver endpoint: GET /employee/profile/manual/approver)
+            $manualRes = $callTipsoiWithUserToken("/employee/profile/manual/approver");
+            $manualApps = $manualRes['manualEntryApplications'] ?? $manualRes['data'] ?? [];
+            if (is_array($manualApps)) {
+                foreach ($manualApps as $man) {
+                    $id = $man['manualEntryId'] ?? $man['id'] ?? null;
+                    if (!$id) continue;
+
+                    $empName = trim($man['employeeName'] ?? '—');
+                    $officeId = trim($man['employeeOfficeId'] ?? '');
+                    $deptName = trim($man['departmentName'] ?? '');
+                    $desigName = trim($man['designationName'] ?? '');
+
+                    $lookupKey = strtolower($empName);
+                    if (isset($localEmpMap[$lookupKey])) {
+                        if (empty($officeId)) $officeId = $localEmpMap[$lookupKey]['office_id'];
+                        if (empty($deptName) || $deptName === '—') $deptName = $localEmpMap[$lookupKey]['department'];
+                        if (empty($desigName) || $desigName === '—') $desigName = $localEmpMap[$lookupKey]['designation'];
+                    }
+
+                    $typeVal = (int)($man['type'] ?? ($man['manualEntryType'] ?? 1));
+                    $reqType = ($typeVal === 1) ? 'Manual Entry' : (($typeVal === 2) ? 'Missing Punch' : (($typeVal === 3) ? 'Field Visit' : 'Manual Entry'));
+                    $subType = $man['typeText'] ?? $reqType;
+                    if ($typeVal === 3 && !empty($man['area'])) {
+                        $subType = 'Field Visit (' . $man['area'] . ')';
+                    }
+
+                    $sDateVal = $man['startDateLong'] ?? $man['startDate'] ?? $man['entryTimeLong'] ?? $man['entryTime'] ?? null;
+                    $eDateVal = $man['endDateLong'] ?? $man['endDate'] ?? $man['exitTimeLong'] ?? $man['exitTime'] ?? $sDateVal;
+                    $sDateStr = '—';
+                    $eDateStr = '—';
+                    if (!empty($sDateVal)) {
+                        $sDateStr = is_numeric($sDateVal) ? date('Y-m-d', (int)($sDateVal / 1000)) : date('Y-m-d', strtotime($sDateVal));
+                    }
+                    if (!empty($eDateVal)) {
+                        $eDateStr = is_numeric($eDateVal) ? date('Y-m-d', (int)($eDateVal / 1000)) : date('Y-m-d', strtotime($eDateVal));
+                    } else {
+                        $eDateStr = $sDateStr;
+                    }
+
+                    $inTimeVal = $man['entryTimeLong'] ?? $man['entryTime'] ?? null;
+                    $outTimeVal = $man['exitTimeLong'] ?? $man['exitTime'] ?? null;
+                    $inTimeStr = ($inTimeVal && is_numeric($inTimeVal)) ? date('h:i A', (int)($inTimeVal / 1000)) : '—';
+                    $outTimeStr = ($outTimeVal && is_numeric($outTimeVal)) ? date('h:i A', (int)($outTimeVal / 1000)) : '—';
+
+                    $appr = $resolveApprovers($man, $employee['full_name'] ?? 'Approver');
+
+                    $pendingRequests[] = [
+                        'id' => $id,
+                        'employeeOfficeId' => $officeId,
+                        'employeeName' => $empName,
+                        'departmentName' => $deptName ?: '—',
+                        'designationName' => $desigName ?: '—',
+                        'requestType' => $reqType,
+                        'subType' => $subType,
+                        'startDate' => $sDateStr,
+                        'endDate' => $eDateStr,
+                        'entryTime' => $inTimeStr,
+                        'exitTime' => $outTimeStr,
+                        'reason' => $man['reason'] ?? '—',
+                        'firstApproverName' => $appr['firstApproverName'],
+                        'firstApprovalStatus' => $appr['firstApprovalStatus'],
+                        'secondApproverName' => $appr['secondApproverName'],
+                        'secondApprovalStatus' => $appr['secondApprovalStatus'],
+                        'status' => 0
+                    ];
+                }
+            }
+
+            // 2. Fetch Late Request Applications (GET /late-approval-management/approval-requests/{yourOwnTipsoiEmployeeId})
+            if ($tipsoiId) {
+                $lateRes = $callTipsoiWithUserToken("/late-approval-management/approval-requests/" . urlencode($tipsoiId));
+                $lateApps = $lateRes['lateApprovalApplications'] ?? $lateRes['data'] ?? [];
+                if (is_array($lateApps)) {
+                    foreach ($lateApps as $late) {
+                        $id = $late['lateApprovalLogId'] ?? $late['id'] ?? null;
+                        if (!$id) continue;
+
+                        $empName = trim($late['employeeName'] ?? '—');
+                        $officeId = trim($late['employeeOfficeId'] ?? '');
+                        $deptName = trim($late['departmentName'] ?? '');
+                        $desigName = trim($late['designationName'] ?? '');
+
+                        $lookupKey = strtolower($empName);
+                        if (isset($localEmpMap[$lookupKey])) {
+                            if (empty($officeId)) $officeId = $localEmpMap[$lookupKey]['office_id'];
+                            if (empty($deptName) || $deptName === '—') $deptName = $localEmpMap[$lookupKey]['department'];
+                            if (empty($desigName) || $desigName === '—') $desigName = $localEmpMap[$lookupKey]['designation'];
+                        }
+
+                        $rawDate = $late['attendanceTime'] ?? $late['attendanceDate'] ?? $late['date'] ?? null;
+                        $dateStr = '—';
+                        if (!empty($rawDate)) {
+                            $dateStr = is_numeric($rawDate) ? date('Y-m-d', (int)($rawDate / 1000)) : date('Y-m-d', strtotime($rawDate));
+                        }
+
+                        $subType = 'Late Excuse';
+                        if (!empty($late['lateBy'])) {
+                            $subType .= ' (' . $late['lateBy'] . ')';
+                        }
+
+                        $appr = $resolveApprovers($late, $employee['full_name'] ?? 'Approver');
+
+                        $pendingRequests[] = [
+                            'id' => $id,
+                            'employeeOfficeId' => $officeId,
+                            'employeeName' => $empName,
+                            'departmentName' => $deptName ?: '—',
+                            'designationName' => $desigName ?: '—',
+                            'requestType' => 'Late Excuse',
+                            'subType' => $subType,
+                            'startDate' => $dateStr,
+                            'endDate' => $dateStr,
+                            'entryTime' => '—',
+                            'exitTime' => '—',
+                            'reason' => $late['reason'] ?? '—',
+                            'firstApproverName' => $appr['firstApproverName'],
+                            'firstApprovalStatus' => $appr['firstApprovalStatus'],
+                            'secondApproverName' => $appr['secondApproverName'],
+                            'secondApprovalStatus' => $appr['secondApprovalStatus'],
+                            'status' => 0
+                        ];
+                    }
+                }
+            }
+
+            // 3. Fetch Leave Applications (GET /remaining-leave/approvers/{approverEmployeeId})
+            if ($tipsoiId) {
+                $leaveRes = $callTipsoiWithUserToken("/remaining-leave/approvers/" . urlencode($tipsoiId));
+                $leaveApps = $leaveRes['leaveApplications'] ?? $leaveRes['data'] ?? [];
+                if (is_array($leaveApps)) {
+                    foreach ($leaveApps as $leave) {
+                        $id = $leave['id'] ?? $leave['leaveLogId'] ?? null;
+                        if (!$id) continue;
+
+                        $empName = trim($leave['employeeName'] ?? '—');
+                        $officeId = trim($leave['employeeOfficeId'] ?? '');
+                        $deptName = trim($leave['employeeDepartmentName'] ?? $leave['departmentName'] ?? '');
+                        $desigName = trim($leave['employeeDesignationName'] ?? $leave['designationName'] ?? '');
+
+                        $lookupKey = strtolower($empName);
+                        if (isset($localEmpMap[$lookupKey])) {
+                            if (empty($officeId)) $officeId = $localEmpMap[$lookupKey]['office_id'];
+                            if (empty($deptName) || $deptName === '—') $deptName = $localEmpMap[$lookupKey]['department'];
+                            if (empty($desigName) || $desigName === '—') $desigName = $localEmpMap[$lookupKey]['designation'];
+                        }
+
+                        $sDate = !empty($leave['startDate']) ? (is_numeric($leave['startDate']) ? date('Y-m-d', (int)($leave['startDate'] / 1000)) : date('Y-m-d', strtotime($leave['startDate']))) : '—';
+                        $eDate = !empty($leave['endDate']) ? (is_numeric($leave['endDate']) ? date('Y-m-d', (int)($leave['endDate'] / 1000)) : date('Y-m-d', strtotime($leave['endDate']))) : $sDate;
+                        $catName = $leave['categoryName'] ?? 'Leave Request';
+
+                        $appr = $resolveApprovers($leave, $employee['full_name'] ?? 'Approver');
+
+                        $pendingRequests[] = [
+                            'id' => $id,
+                            'employeeOfficeId' => $officeId,
+                            'employeeName' => $empName,
+                            'departmentName' => $deptName ?: '—',
+                            'designationName' => $desigName ?: '—',
+                            'requestType' => 'Leave Request',
+                            'subType' => $catName,
+                            'startDate' => $sDate,
+                            'endDate' => $eDate,
+                            'entryTime' => '—',
+                            'exitTime' => '—',
+                            'reason' => $leave['reason'] ?? '—',
+                            'firstApproverName' => $appr['firstApproverName'],
+                            'firstApprovalStatus' => $appr['firstApprovalStatus'],
+                            'secondApproverName' => $appr['secondApproverName'],
+                            'secondApprovalStatus' => $appr['secondApprovalStatus'],
+                            'status' => 0
+                        ];
+                    }
+                }
+            }
+
+            echo json_encode([
+                'success' => true,
+                'data' => $pendingRequests,
+                'total' => count($pendingRequests),
+                'tipsoi_id' => $tipsoiId
+            ]);
+
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+        }
+        exit;
+    }
 }
