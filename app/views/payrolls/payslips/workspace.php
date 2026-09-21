@@ -438,10 +438,21 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                 $basic = (float) $p['emp_basic'];
                                 $daily = $gross / 30;
                                 $netSalary = (float) $p['net_salary'];
-                                $paymentMethod = strtolower($p['payment_method'] ?? 'bank');
-                                // Values from DB if exist, otherwise derived
-                                $bank = isset($p['bank_amount']) ? (float)$p['bank_amount'] : (($paymentMethod == 'bank' || $paymentMethod == 'bank transfer') ? $netSalary : 0);
-                                $cash = isset($p['cash_amount']) ? (float)$p['cash_amount'] : (($paymentMethod == 'cash') ? $netSalary : 0);
+                                $hasBankDetails = !empty(trim($p['account_number'] ?? ''));
+                                $paymentMethod = $hasBankDetails ? 'bank' : 'cash';
+                                // If split was intentionally saved, preserve it; otherwise allocate based on bank details
+                                if ($hasBankDetails) {
+                                    if (isset($p['bank_amount']) && (float)$p['bank_amount'] > 0 && isset($p['cash_amount']) && (float)$p['cash_amount'] > 0) {
+                                        $bank = (float)$p['bank_amount'];
+                                        $cash = (float)$p['cash_amount'];
+                                    } else {
+                                        $bank = $netSalary;
+                                        $cash = 0;
+                                    }
+                                } else {
+                                    $bank = 0;
+                                    $cash = $netSalary;
+                                }
 
                                 $isExisting = !empty($p['id']);
                                 $advanceSalary = $isExisting ? (float)($p['advance_salary'] ?? 0) : 0;
@@ -537,7 +548,7 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                             </td>
                                             <td class="cell-effective-days text-center">30</td>
                                             <td class="cell-net fw-bold text-primary text-nowrap"
-                                                data-payment-method="<?= htmlspecialchars($p['payment_method']) ?>">
+                                                data-payment-method="<?= $paymentMethod ?>">
                                                 <?= number_format($netSalary, 2) ?>
                                             </td>
                                             <td><input type="number" step="0.01" class="form-control form-control-sm text-end in-deduct in-tax" value="<?= round($tax, 2) ?>" style="min-width: 80px;"></td>
