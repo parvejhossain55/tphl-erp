@@ -32,9 +32,6 @@ class SalesActivityReportController extends Controller
         // Monthly Data (pass teamId for filtering)
         $monthlyData = $this->trackerService->getTrackerReport($year, $month, $loggedInUser, null, null, $teamId);
         
-        // Daily Data (pass teamId for filtering)
-        $dailyData = $this->trackerService->getDailyReport($date, $loggedInUser, $teamId);
-
         // Custom Sorting for Tables: Branch -> Team Name -> Rank
         $sortForTables = function($a, $b) {
             $getBranchPriority = function($bName) {
@@ -60,12 +57,17 @@ class SalesActivityReportController extends Controller
             return ($a['rank'] ?? 999) <=> ($b['rank'] ?? 999);
         };
 
-        // Table specific sorted arrays
+        // Table specific sorted arrays for Monthly
         $tableInds = $monthlyData['individuals'] ?? [];
         usort($tableInds, $sortForTables);
         $monthlyData['table_individuals'] = $tableInds;
 
-        usort($dailyData, $sortForTables);
+        // Daily Data (only query when daily tab is active to optimize speed and clean up requests)
+        $dailyData = [];
+        if ($activeTab === 'daily') {
+            $dailyData = $this->trackerService->getDailyReport($date, $loggedInUser, $teamId);
+            usort($dailyData, $sortForTables);
+        }
 
         // Sort Teams array by branch then team name
         $teamsArray = $monthlyData['teams'] ?? [];
