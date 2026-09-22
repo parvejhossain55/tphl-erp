@@ -165,16 +165,16 @@ class Con_LaborRequisitionController extends Controller
 
         $attachment = null;
         if (!empty($_FILES['attachment']['name'])) {
-            $uploadDir = dirname(dirname(dirname(__DIR__))) . '/public/uploads/labor_requisitions/';
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0777, true);
+            $uploadDirAbsolute = dirname(dirname(dirname(__DIR__))) . '/public/uploads/labor_requisitions/';
+            if (!is_dir($uploadDirAbsolute)) {
+                mkdir($uploadDirAbsolute, 0777, true);
             }
             $ext  = strtolower(pathinfo($_FILES['attachment']['name'], PATHINFO_EXTENSION));
             $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'];
             if (in_array($ext, $allowedExts)) {
                 $name = time() . '_' . $this->userId . '.' . $ext;
-                if (move_uploaded_file($_FILES['attachment']['tmp_name'], $uploadDir . $name)) {
-                    $attachment = $uploadDir . $name;
+                if (move_uploaded_file($_FILES['attachment']['tmp_name'], $uploadDirAbsolute . $name)) {
+                    $attachment = 'public/uploads/labor_requisitions/' . $name;
                 }
             }
         }
@@ -498,14 +498,15 @@ class Con_LaborRequisitionController extends Controller
         // Handle proof image upload
         $proofImage = null;
         if (!empty($_FILES['proof_image']['name'])) {
-            $uploadDir = 'public/uploads/labor_payment_proofs/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $uploadDirRelative = 'public/uploads/labor_payment_proofs/';
+            $uploadDirAbsolute = dirname(dirname(dirname(__DIR__))) . '/' . $uploadDirRelative;
+            if (!is_dir($uploadDirAbsolute)) mkdir($uploadDirAbsolute, 0755, true);
             $ext  = strtolower(pathinfo($_FILES['proof_image']['name'], PATHINFO_EXTENSION));
             $allowed = ['jpg','jpeg','png','gif','pdf'];
             if (in_array($ext, $allowed)) {
                 $name = 'PAY-' . (int)$id . '-' . time() . '.' . $ext;
-                if (move_uploaded_file($_FILES['proof_image']['tmp_name'], $uploadDir . $name)) {
-                    $proofImage = $uploadDir . $name;
+                if (move_uploaded_file($_FILES['proof_image']['tmp_name'], $uploadDirAbsolute . $name)) {
+                    $proofImage = $uploadDirRelative . $name;
                 }
             }
         }
@@ -569,14 +570,15 @@ class Con_LaborRequisitionController extends Controller
         // Handle proof image upload
         $proof = null;
         if (!empty($_FILES['disbursement_proof']['name'])) {
-            $uploadDir = 'public/uploads/labor_disbursement_proofs/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $uploadDirRelative = 'public/uploads/labor_disbursement_proofs/';
+            $uploadDirAbsolute = dirname(dirname(dirname(__DIR__))) . '/' . $uploadDirRelative;
+            if (!is_dir($uploadDirAbsolute)) mkdir($uploadDirAbsolute, 0755, true);
             $ext     = strtolower(pathinfo($_FILES['disbursement_proof']['name'], PATHINFO_EXTENSION));
             $allowed = ['jpg', 'jpeg', 'png', 'gif', 'pdf'];
             if (in_array($ext, $allowed)) {
                 $name = 'DISB-' . (int)$id . '-' . time() . '.' . $ext;
-                if (move_uploaded_file($_FILES['disbursement_proof']['tmp_name'], $uploadDir . $name)) {
-                    $proof = $uploadDir . $name;
+                if (move_uploaded_file($_FILES['disbursement_proof']['tmp_name'], $uploadDirAbsolute . $name)) {
+                    $proof = $uploadDirRelative . $name;
                 }
             }
         }

@@ -1621,7 +1621,7 @@
 
                 <?php if (hasPermission("Sales team Performance")): ?>
                     <!-- Sales Team Performance-->
-                    <li class="slide <?= isActive('sales-team-performance', $current_route) ?>">
+                    <li class="slide d-none <?= isActive('sales-team-performance', $current_route) ?>">
                         <a href="<?= $base_url ?>/sales-team-performance"
                             class="sidebar__menu-item <?= isActive('sales-team-performance', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>

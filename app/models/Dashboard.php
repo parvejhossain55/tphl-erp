@@ -58,6 +58,10 @@ class Dashboard extends Model
                 $startDate = '1970-01-01';
                 $endDate = '2099-12-31';
                 break;
+            case 'custom':
+                $startDate = $_GET['from_date'] ?? '1970-01-01';
+                $endDate = $_GET['to_date'] ?? '2099-12-31';
+                break;
             default:
                 $startDate = date('Y-01-01');
                 $endDate = date('Y-12-31');

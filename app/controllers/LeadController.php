@@ -244,11 +244,30 @@ class LeadController extends Controller
             }
         }
 
+        // ── FETCH TEAMS & MANAGERS FOR UNASSIGNED LEADS ──────────────────
+        $teamsQuery = "SELECT t.id as team_id, t.name as team_name, 
+                              IF(t.id = 15, 
+                                 (SELECT full_name FROM users WHERE id = 152 LIMIT 1),
+                                 (SELECT full_name FROM users WHERE role_id IN (5, 9) AND team_id = t.id ORDER BY role_id ASC LIMIT 1)
+                              ) as manager_name
+                       FROM teams t";
+        $teamsResult = $this->db->query($teamsQuery);
+        $teamsData = [];
+        if ($teamsResult) {
+            while ($tRow = $teamsResult->fetch_assoc()) {
+                $teamsData[$tRow['team_id']] = [
+                    'team_name' => $tRow['team_name'],
+                    'manager_name' => $tRow['manager_name'] // Could be null, we handle it later
+                ];
+            }
+        }
+
         $this->view("sales-developments/leads/lead-lists", [
             "current_route" => "lead-lists",
             "page_title" => "Lead List",
             "owners" => $owners,
             "leads" => $leads,
+            "teamsData" => $teamsData,
             "message" => $message,
             "followUpCounts" => $followUpCounts,
             "bookingCount" => $bookingCount,
@@ -425,6 +444,24 @@ class LeadController extends Controller
         $bookingCounts  = !empty($leadIds) ? $this->leadBookedModel->getBookingCountByLeadIds($leadIds) : [];
         $bookingCount = $bookingCounts;
 
+        // ── FETCH TEAMS & MANAGERS FOR UNASSIGNED LEADS ──────────────────
+        $teamsQuery = "SELECT t.id as team_id, t.name as team_name, 
+                              IF(t.id = 15, 
+                                 (SELECT full_name FROM users WHERE id = 152 LIMIT 1),
+                                 (SELECT full_name FROM users WHERE role_id IN (5, 9) AND team_id = t.id ORDER BY role_id ASC LIMIT 1)
+                              ) as manager_name
+                       FROM teams t";
+        $teamsResult = $this->db->query($teamsQuery);
+        $teamsData = [];
+        if ($teamsResult) {
+            while ($tRow = $teamsResult->fetch_assoc()) {
+                $teamsData[$tRow['team_id']] = [
+                    'team_name' => $tRow['team_name'],
+                    'manager_name' => $tRow['manager_name'] ?? 'No Manager'
+                ];
+            }
+        }
+
         // ── MOBILE FORMAT: return raw data for JS card rendering ─────────
         if (!empty($_GET['mobile'])) {
             $mobileData = [];
@@ -455,6 +492,8 @@ class LeadController extends Controller
                     'job_title'        => $lead['job_title'] ?? '',
                     'designation'      => $lead['designation'] ?? '',
                     'when_is_the_best_time_to_contact_you' => $lead['when_is_the_best_time_to_contact_you'] ?? '',
+                    'team_name'        => !empty($lead['team_id']) && isset($teamsData[$lead['team_id']]) ? $teamsData[$lead['team_id']]['team_name'] : '',
+                    'manager_name'     => !empty($lead['team_id']) && isset($teamsData[$lead['team_id']]) ? $teamsData[$lead['team_id']]['manager_name'] : '',
                 ];
             }
             echo json_encode([
@@ -553,7 +592,29 @@ class LeadController extends Controller
             $row[] = '<div>' . $next_date . '</div>';
 
             if (empty($lead['agent_name'])) {
-                $agentBadge = '<span class="bd-badge text-danger text-truncate" style="max-width: 150px; background-color: #fde8e8; border: 1px solid #f8b4b4;">No Agent Assigned</span>';
+                $creatorName = !empty($lead['assigned_by_name']) ? htmlspecialchars($lead['assigned_by_name']) : 'System';
+                
+                if (!empty($lead['team_id']) && isset($teamsData[$lead['team_id']])) {
+                    $tData = $teamsData[$lead['team_id']];
+                    $managerText = !empty($tData['manager_name']) ? $tData['manager_name'] : $creatorName;
+                    $teamText = htmlspecialchars($tData['team_name']);
+                } else {
+                    $managerText = $creatorName;
+                    $teamText = 'Self Added';
+                }
+                
+                $agentBadge = '<div>
+                    <span class="badge rounded-pill px-2 py-1 text-danger mb-1 text-wrap" style="font-size: 0.75rem; background-color: #fde8e8; border: 1px solid #f8b4b4;">
+                        <i class="bi bi-person me-1"></i>' . htmlspecialchars($managerText) . '
+                    </span><br>
+                    <div class="text-muted text-truncate mb-1" style="font-size: 11px; max-width: 150px;" title="' . $teamText . '">
+                        <i class="bi bi-people me-1"></i>' . $teamText . '
+                    </div>
+                    <span class="badge rounded-pill px-2 py-1 text-danger" style="font-size: 0.7rem; background-color: #ffe5e5; border: 1px solid #ffcccc;">
+                        <i class="bi bi-exclamation-circle me-1"></i>No Agent Assigned
+                    </span>
+                </div>';
+                
                 $assignedDateHtml = '';
             } else {
                 $agentBadge = '<span class="bd-badge bg-primary text-truncate" style="max-width: 150px;">' . htmlspecialchars($lead['agent_name']) . '</span>';

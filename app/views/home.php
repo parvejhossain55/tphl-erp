@@ -61,6 +61,17 @@ $hasTransactions = !empty($recentTransactions);
                 All Over
             </a>
 
+            <form action="<?= $GLOBALS['base_url'] ?>/home" method="GET" class="d-flex gap-2 ms-2 align-items-center">
+                <input type="hidden" name="period" value="custom">
+                <?php if (isset($_GET['view'])) { ?>
+                    <input type="hidden" name="view" value="<?= htmlspecialchars($_GET['view']) ?>">
+                <?php } ?>
+                <input type="date" name="from_date" class="form-control form-control-sm" value="<?= $_GET['from_date'] ?? '' ?>" required>
+                <span>to</span>
+                <input type="date" name="to_date" class="form-control form-control-sm" value="<?= $_GET['to_date'] ?? '' ?>" required>
+                <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+            </form>
+
         </div>
     </div>
 </div>

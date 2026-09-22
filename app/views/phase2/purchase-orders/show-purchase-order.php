@@ -1084,56 +1084,122 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
 
       <!-- Approve Action — Purchase Head -->
       <?php if ($canApprovePH): ?>
-        <form action="<?= $base_url ?>/con-purchase-order-approve/<?= $po['id'] ?>" method="POST" id="phApproveForm" style="margin-bottom:8px">
-          <div class="mb-2">
-            <textarea name="approval_note" class="form-control" rows="2" placeholder="Purchase Head Approval Note (optional)" style="font-size:12px;border-radius:10px"></textarea>
+        <div class="row gx-2 mb-3">
+          <div class="col-6">
+            <button type="button" class="btn w-100" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#approvePoModalPH">
+              <i class="fal fa-user-tie me-1"></i>Approve
+            </button>
           </div>
-          <button type="button" id="btnApprovePH"
-            style="width:100%;background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;border:none;
-            border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer">
-            <i class="fal fa-user-tie me-2"></i>Approve as Purchase Head
-          </button>
-        </form>
+          <div class="col-6">
+            <button type="button" class="btn btn-danger w-100" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
+              <i class="fal fa-times-circle me-1"></i>Reject
+            </button>
+          </div>
+        </div>
 
-        <button type="button" class="btn btn-outline-danger w-100" style="border-radius:10px;font-size:12px;font-weight:700;padding:8px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
-          <i class="fal fa-times-circle me-2"></i>Reject Order
-        </button>
+        <!-- Approve Modal PH -->
+        <div class="modal fade" id="approvePoModalPH" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
+              <form action="<?= $base_url ?>/con-purchase-order-approve/<?= $po['id'] ?>" method="POST">
+                <div class="modal-header border-0 pb-0">
+                  <h5 class="modal-title fw-bold" style="color:#d97706"><i class="fal fa-user-tie me-2"></i>Approve as Purchase Head</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">Approval Note (Optional)</label>
+                    <textarea class="form-control" name="approval_note" rows="3" placeholder="Add an approval note..."></textarea>
+                  </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                  <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600">Cancel</button>
+                  <button type="submit" class="btn text-white" style="background:#d97706;border-radius:10px;font-weight:600"><i class="fal fa-check-circle me-1"></i> Confirm Approval</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       <?php endif; ?>
 
       <!-- Approve Action — QC -->
       <?php if ($canApproveQC): ?>
-        <form action="<?= $base_url ?>/con-purchase-order-approve/<?= $po['id'] ?>" method="POST" id="qcApproveForm" style="margin-bottom:8px">
-          <div class="mb-2">
-            <textarea name="approval_note" class="form-control" rows="2" placeholder="QC Approval Note (optional)" style="font-size:12px;border-radius:10px"></textarea>
+        <div class="row gx-2 mb-3">
+          <div class="col-6">
+            <button type="button" class="btn w-100" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#approvePoModalQC">
+              <i class="fal fa-clipboard-check me-1"></i>Approve
+            </button>
           </div>
-          <button type="button" id="btnApproveQC"
-            style="width:100%;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;border:none;
-            border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer">
-            <i class="fal fa-clipboard-check me-2"></i>Approve as QC
-          </button>
-        </form>
+          <div class="col-6">
+            <button type="button" class="btn btn-danger w-100" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
+              <i class="fal fa-times-circle me-1"></i>Reject
+            </button>
+          </div>
+        </div>
 
-        <button type="button" class="btn btn-outline-danger w-100" style="border-radius:10px;font-size:12px;font-weight:700;padding:8px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
-          <i class="fal fa-times-circle me-2"></i>Reject Order
-        </button>
+        <!-- Approve Modal QC -->
+        <div class="modal fade" id="approvePoModalQC" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
+              <form action="<?= $base_url ?>/con-purchase-order-approve/<?= $po['id'] ?>" method="POST">
+                <div class="modal-header border-0 pb-0">
+                  <h5 class="modal-title fw-bold" style="color:#1d4ed8"><i class="fal fa-clipboard-check me-2"></i>Approve as QC</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">Approval Note (Optional)</label>
+                    <textarea class="form-control" name="approval_note" rows="3" placeholder="Add an approval note..."></textarea>
+                  </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                  <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600">Cancel</button>
+                  <button type="submit" class="btn text-white" style="background:#1d4ed8;border-radius:10px;font-weight:600"><i class="fal fa-check-circle me-1"></i> Confirm Approval</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       <?php endif; ?>
 
       <!-- Approve Action — Operation Head -->
       <?php if ($canApproveOP): ?>
-        <form action="<?= $base_url ?>/con-purchase-order-approve/<?= $po['id'] ?>" method="POST" id="opApproveForm" style="margin-bottom:8px">
-          <div class="mb-2">
-            <textarea name="approval_note" class="form-control" rows="2" placeholder="Operation Head Approval Note (optional)" style="font-size:12px;border-radius:10px"></textarea>
+        <div class="row gx-2 mb-3">
+          <div class="col-6">
+            <button type="button" class="btn w-100" style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#approvePoModalOP">
+              <i class="fal fa-user-tie me-1"></i>Approve
+            </button>
           </div>
-          <button type="button" id="btnApproveOP"
-            style="width:100%;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;
-            border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer">
-            <i class="fal fa-user-tie me-2"></i>Approve as Operation Head
-          </button>
-        </form>
+          <div class="col-6">
+            <button type="button" class="btn btn-danger w-100" style="border-radius:10px;font-size:12px;font-weight:700;padding:10px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
+              <i class="fal fa-times-circle me-1"></i>Reject
+            </button>
+          </div>
+        </div>
 
-        <button type="button" class="btn btn-outline-danger w-100" style="border-radius:10px;font-size:12px;font-weight:700;padding:8px" data-bs-toggle="modal" data-bs-target="#rejectPoModal">
-          <i class="fal fa-times-circle me-2"></i>Reject Order
-        </button>
+        <!-- Approve Modal OP -->
+        <div class="modal fade" id="approvePoModalOP" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
+              <form action="<?= $base_url ?>/con-purchase-order-approve/<?= $po['id'] ?>" method="POST">
+                <div class="modal-header border-0 pb-0">
+                  <h5 class="modal-title fw-bold" style="color:#059669"><i class="fal fa-user-tie me-2"></i>Approve as Operation Head</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">Approval Note (Optional)</label>
+                    <textarea class="form-control" name="approval_note" rows="3" placeholder="Add an approval note..."></textarea>
+                  </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                  <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600">Cancel</button>
+                  <button type="submit" class="btn text-white" style="background:#059669;border-radius:10px;font-weight:600"><i class="fal fa-check-circle me-1"></i> Confirm Approval</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       <?php endif; ?>
 
       <!-- Reject Modal -->
@@ -1314,64 +1380,6 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
   }
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var phBtn = document.getElementById('btnApprovePH');
-    if (phBtn) {
-        phBtn.addEventListener('click', function() {
-            Swal.fire({
-                title: 'Purchase Head Approval',
-                text: 'Approve this Purchase Order as Purchase Head? This will forward it to QC.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#d97706',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, Approve!'
-            }).then(function(result) {
-                if (result.isConfirmed) {
-                    document.getElementById('phApproveForm').submit();
-                }
-            });
-        });
-    }
-    var qcBtn = document.getElementById('btnApproveQC');
-    if (qcBtn) {
-        qcBtn.addEventListener('click', function() {
-            Swal.fire({
-                title: 'QC Approval',
-                text: 'Approve this Purchase Order as QC & Internal Audit? This will forward it to Operation Head.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#1d4ed8',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, Approve!'
-            }).then(function(result) {
-                if (result.isConfirmed) {
-                    document.getElementById('qcApproveForm').submit();
-                }
-            });
-        });
-    }
-    var opBtn = document.getElementById('btnApproveOP');
-    if (opBtn) {
-        opBtn.addEventListener('click', function() {
-            Swal.fire({
-                title: 'Operation Head Approval',
-                text: 'Approve this Purchase Order as Operation Head? This is the final approval step.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#059669',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, Approve!'
-            }).then(function(result) {
-                if (result.isConfirmed) {
-                    document.getElementById('opApproveForm').submit();
-                }
-            });
-        });
-    }
-});
 </script>
 
 </div><!-- /.po-screen-container -->

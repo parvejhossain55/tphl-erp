@@ -142,6 +142,11 @@ class Employee extends Model
             case 'yearly':
                 $where = "created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
                 break;
+            case 'custom':
+                $fromDate = $_GET['from_date'] ?? '1970-01-01';
+                $toDate = $_GET['to_date'] ?? '2099-12-31';
+                $where = "DATE(created_at) >= '$fromDate' AND DATE(created_at) <= '$toDate'";
+                break;
             default:
                 return $this->getTotalCount();
         }
