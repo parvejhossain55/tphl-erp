@@ -89,21 +89,24 @@ class FundRequisitionController extends Controller {
             return true;
         }
 
-        // Requester's reporting boss
+        // Requester's reporting boss - only if pending dept approval OR they already approved it
         $reportingBossId = (int)($req['requester_reporting_boss_id'] ?? $req['reporting_user_id'] ?? 0);
         if ($reportingBossId === $userId) {
-            return true;
-        }
-
-        // Department Head of the requisition's department
-        $reqDeptId = (int)($req['department_id'] ?? 0);
-        if ($reqDeptId > 0) {
-            if (in_array($reqDeptId, $deptHeadDeptIds, true)) {
+            if ($req['status'] === 'pending_dept' || (int)($req['dept_head_approved_by'] ?? 0) === $userId) {
                 return true;
             }
-            if (empty($deptHeadDeptIds)) {
+        }
+
+        // Department Head of the requisition's department - only if pending dept approval OR they already approved it
+        $reqDeptId = (int)($req['department_id'] ?? 0);
+        if ($reqDeptId > 0) {
+            $isDeptHead = in_array($reqDeptId, $deptHeadDeptIds, true);
+            if (!$isDeptHead && empty($deptHeadDeptIds)) {
                 $userDepts = $this->getUserDeptHeadDepartmentIds($userId);
-                if (in_array($reqDeptId, $userDepts, true)) {
+                $isDeptHead = in_array($reqDeptId, $userDepts, true);
+            }
+            if ($isDeptHead) {
+                if ($req['status'] === 'pending_dept' || (int)($req['dept_head_approved_by'] ?? 0) === $userId) {
                     return true;
                 }
             }
@@ -122,15 +125,21 @@ class FundRequisitionController extends Controller {
 
         $where = "1=1";
         if (!in_array($roleId, $allAccessRoles, true)) {
-            // General requester: only their own requests, or requests where they are the designated Department Head / Reporting Boss
+            // General requester: only their own requests all the time
             $userConditions = [
-                "fr.requested_by = $userId",
-                "e_req.reporting_user_id = $userId"
+                "fr.requested_by = $userId"
             ];
 
+            // Department Head or Reporting Boss: only see other people's requests if waiting for their Dept Head approval
+            $approvalConditions = [];
+            $approvalConditions[] = "e_req.reporting_user_id = $userId";
             if (!empty($deptHeadDeptIds)) {
                 $deptList = implode(',', $deptHeadDeptIds);
-                $userConditions[] = "fr.department_id IN ($deptList)";
+                $approvalConditions[] = "fr.department_id IN ($deptList)";
+            }
+
+            if (!empty($approvalConditions)) {
+                $userConditions[] = "(fr.status = 'pending_dept' AND (" . implode(' OR ', $approvalConditions) . "))";
             }
 
             $where = '(' . implode(' OR ', $userConditions) . ')';
@@ -143,18 +152,20 @@ class FundRequisitionController extends Controller {
         $viewMode = $_GET['view_mode'] ?? ''; // 'all', 'my_pending', 'payment_pending', or '' (default = role-based)
 
         // --- Role-based default view filter (when no explicit status filter and no 'all' view mode) ---
-        // Each role sees only the items THEY need to act on by default.
+        // Each role sees only the items THEY need to act on by default OR items they requested themselves.
         // To see everything, the user can switch to 'all' view.
-        if (empty($statusFilter) && $viewMode !== 'all') {
+        if ($viewMode === 'my_requests') {
+            $where .= " AND fr.requested_by = $userId";
+        } elseif (empty($statusFilter) && $viewMode !== 'all') {
             if (in_array($roleId, [20, 32], true)) {
-                // Operation Head: show only management-pending items by default (up to 1 Lakh)
-                $where .= " AND fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 100000";
+                // Operation Head: show only management-pending items by default (up to 1 Lakh) OR their own requests
+                $where .= " AND ((fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 100000) OR fr.requested_by = $userId)";
             } elseif (in_array($roleId, [13, 24, 25], true)) {
-                // QC & Internal Audit: show only QC-pending items by default
-                $where .= " AND fr.status = 'pending_qc'";
+                // QC & Internal Audit: show only QC-pending items by default OR their own requests
+                $where .= " AND (fr.status = 'pending_qc' OR fr.requested_by = $userId)";
             } elseif (in_array($roleId, [6, 30], true)) {
-                // Accounts: show only approved (ready for payment) by default
-                $where .= " AND fr.status IN ('approved', 'partially_approved', 'partially_paid')";
+                // Accounts: show only approved (ready for payment) by default OR their own requests
+                $where .= " AND (fr.status IN ('approved', 'partially_approved', 'partially_paid') OR fr.requested_by = $userId)";
             } elseif ($viewMode === 'payment_pending') {
                 $where .= " AND fr.status IN ('approved', 'partially_approved')";
             }
@@ -284,8 +295,7 @@ class FundRequisitionController extends Controller {
             {$assetJoin}
             WHERE $where
             ORDER BY 
-                $pendingActionSql DESC, 
-                CASE WHEN fr.status IN ('pending', 'pending_dept', 'pending_qc', 'partially_approved', 'partially_paid') THEN 1 ELSE 0 END DESC, 
+                CASE WHEN fr.requested_by = $userId THEN 1 ELSE 0 END DESC, 
                 fr.id DESC
             $limitClause
         ";
@@ -523,10 +533,11 @@ class FundRequisitionController extends Controller {
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $designationId = (int)($_SESSION['user']['designation_id'] ?? 0);
 
-        // Validation for Petty Cash: Only Site Engineer (role 12 or designation 38)
+        // Validation for Petty Cash: Site Engineer (role 12 or designation 38), Admin Operation / Operation Head (role 20, 32), and Admin (role 1, 3)
         if ($requisition_type === 'petty_cash') {
-            if ($roleId !== 12 && $designationId !== 38) {
-                setError('Petty Cash requisitions can only be requested by Site Engineers.');
+            $canPettyCash = in_array($roleId, [1, 3, 12, 20, 32], true) || $designationId === 38;
+            if (!$canPettyCash) {
+                setError('Petty Cash requisitions can only be requested by Site Engineers, Admin Operation, and Operation Heads.');
                 header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
                 exit;
             }

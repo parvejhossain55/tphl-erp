@@ -4,8 +4,9 @@ $userId = (int)($_SESSION['user']['id'] ?? 0);
 $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 $designationId = (int)($_SESSION['user']['designation_id'] ?? 0);
 
-// Determine if the user is a Site Engineer
+// Determine if the user is authorized to request Petty Cash (Site Engineer 12, desig 38, Admin Operation / Head 20, 32, Admin 1, 3)
 $isSiteEngineer = ($roleId === 12 || $designationId === 38);
+$canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], true));
 ?>
 
     <div class="container-fluid">
@@ -172,11 +173,15 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
                     <?php if ($hasRoleDefaultView): ?>
                     <div class="d-flex align-items-center gap-2 mb-3 no-print">
                         <a href="<?= $base ?>/fund-requisitions<?= $baseQs ? '?' . $baseQs : '' ?>" 
-                           class="btn btn-sm <?= ($viewMode !== 'all' && ($statusFilter ?? '') === '') ? 'btn-primary' : 'btn-outline-primary' ?>">
+                           class="btn btn-sm <?= ($viewMode !== 'all' && $viewMode !== 'my_requests' && ($statusFilter ?? '') === '') ? 'btn-primary' : 'btn-outline-primary' ?>">
                             <i class="fa-solid fa-clock-rotate-left me-1"></i> My Pending Action
-                            <?php if ($viewMode !== 'all' && ($statusFilter ?? '') === ''): ?>
+                            <?php if ($viewMode !== 'all' && $viewMode !== 'my_requests' && ($statusFilter ?? '') === ''): ?>
                                 <span class="badge bg-white text-primary ms-1"><?= count($requests ?? []) ?></span>
                             <?php endif; ?>
+                        </a>
+                        <a href="<?= $base ?>/fund-requisitions?view_mode=my_requests<?= $baseQs ? '&' . $baseQs : '' ?>" 
+                           class="btn btn-sm <?= $viewMode === 'my_requests' ? 'btn-info text-white' : 'btn-outline-info' ?>">
+                            <i class="fa-solid fa-user me-1"></i> My Requests
                         </a>
                         <a href="<?= $base ?>/fund-requisitions?view_mode=all<?= $baseQs ? '&' . $baseQs : '' ?>" 
                            class="btn btn-sm <?= $viewMode === 'all' ? 'btn-secondary' : 'btn-outline-secondary' ?>">
@@ -190,6 +195,7 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
+                    
 
                     <!-- Quick Filter Tabs (Petty Cash / General) -->
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom no-print">
@@ -279,13 +285,13 @@ $isSiteEngineer = ($roleId === 12 || $designationId === 38);
                         <label for="requisition_type" class="form-label">Requisition Type <span class="text-danger">*</span></label>
                         <select name="requisition_type" id="requisition_type" class="form-select" onchange="toggleRequisitionType()" required>
                             <option value="general">General / Other Expenses</option>
-                            <option value="petty_cash" <?= !$isSiteEngineer ? 'disabled' : '' ?>>
-                                Petty Cash <?= !$isSiteEngineer ? '(Site Engineers Only)' : '' ?>
+                            <option value="petty_cash" <?= !$canRequestPettyCash ? 'disabled' : '' ?>>
+                                Petty Cash <?= !$canRequestPettyCash ? '(Restricted)' : '' ?>
                             </option>
                         </select>
-                        <?php if (!$isSiteEngineer): ?>
+                        <?php if (!$canRequestPettyCash): ?>
                             <small class="text-muted d-block mt-1">
-                                <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> Petty Cash is restricted to Site Engineers.
+                                <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> Petty Cash is restricted to Site Engineers, Admin Operation, and Operation Heads.
                             </small>
                         <?php endif; ?>
                     </div>
@@ -921,7 +927,7 @@ document.getElementById('requisitionForm').addEventListener('submit', function(e
     
     if (type === 'petty_cash' && amount > 10000) {
         e.preventDefault();
-        alert('Site Engineer Petty Cash requests cannot exceed BDT 10,000.');
+        alert('Petty Cash requests cannot exceed BDT 10,000.');
         return false;
     }
 });
