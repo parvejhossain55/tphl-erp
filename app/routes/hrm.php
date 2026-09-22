@@ -340,6 +340,11 @@ return [
     'payroll-salary-report-pdf' => ['controller' => 'PayrollController', 'method' => 'exportSalaryReportPDF'],
     'payroll-salary-report-csv' => ['controller' => 'PayrollController', 'method' => 'exportSalaryReportCSV'],
 
+    // Liquidity Management Report
+    'payroll-liquidity-report' => ['controller' => 'PayrollController', 'method' => 'liquidityReport'],
+    'payroll-liquidity-report-pdf' => ['controller' => 'PayrollController', 'method' => 'exportLiquidityReportPDF'],
+    'payroll-liquidity-report-csv' => ['controller' => 'PayrollController', 'method' => 'exportLiquidityReportCSV'],
+
     // Salary Hold
     'payroll-salary-hold' => ['controller' => 'PayrollController', 'method' => 'salaryHoldPage'],
     'payroll-salary-hold-save' => ['controller' => 'PayrollController', 'method' => 'salaryHoldSave'],
