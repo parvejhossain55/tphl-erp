@@ -1761,9 +1761,9 @@
 
                     <!-- Payroll & Report -->
                     <li
-                        class="slide has-sub <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list', 'payroll-detailed-summary', 'payroll-summary-report', 'payroll-salary-report'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list', 'payroll-detailed-summary', 'payroll-summary-report', 'payroll-salary-report', 'payroll-liquidity-report'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list', 'payroll-detailed-summary', 'payroll-summary-report', 'payroll-salary-report'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['payroll-workspace', 'payroll-salary-hold', 'payroll-attendance-report', 'payroll-joining-list', 'payroll-resign-list', 'payroll-detailed-summary', 'payroll-summary-report', 'payroll-salary-report', 'payroll-liquidity-report'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-regular fa-file-excel"></i></div>
                             <span class="sidebar__menu-label">Payroll & Report</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -1808,6 +1808,11 @@
                                 <a href="<?= $base_url ?>/payroll-salary-report"
                                     class="sidebar__menu-item <?= isActive('payroll-salary-report', $current_route) ?>">Salary
                                     Report</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/payroll-liquidity-report"
+                                    class="sidebar__menu-item <?= isActive('payroll-liquidity-report', $current_route) ?>">Liquidity
+                                    Management</a>
                             </li>
                         </ul>
                     </li>
