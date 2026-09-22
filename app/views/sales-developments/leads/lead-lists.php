@@ -917,10 +917,28 @@ $activeCard = $_GET['filter_card'] ?? '';
                             <div class="info-label flex-shrink-0 mt-1">Executive Name</div>
                             <div>
                                 <?php if (empty($lead['agent_name'])): ?>
-                                    <span class="badge rounded-pill px-2 py-1 text-danger" style="font-size: 0.75rem; background-color: #fde8e8; border: 1px solid #f8b4b4;">
-                                        <i class="bi bi-person me-1"></i>
-                                        No Agent Assigned
-                                    </span>
+                                    <?php
+                                        $creatorName = !empty($lead['assigned_by_name']) ? htmlspecialchars($lead['assigned_by_name']) : 'System';
+                                        if (!empty($lead['team_id']) && isset($teamsData[$lead['team_id']])) {
+                                            $tData = $teamsData[$lead['team_id']];
+                                            $managerText = !empty($tData['manager_name']) ? $tData['manager_name'] : $creatorName;
+                                            $teamText = htmlspecialchars($tData['team_name']);
+                                        } else {
+                                            $managerText = $creatorName;
+                                            $teamText = 'Self Added';
+                                        }
+                                    ?>
+                                    <div>
+                                        <span class="badge rounded-pill px-2 py-1 text-danger mb-1 text-wrap" style="font-size: 0.75rem; background-color: #fde8e8; border: 1px solid #f8b4b4;">
+                                            <i class="bi bi-person me-1"></i><?= htmlspecialchars($managerText) ?>
+                                        </span><br>
+                                        <div class="text-muted text-truncate mb-1" style="font-size: 11px; max-width: 150px;" title="<?= $teamText ?>">
+                                            <i class="bi bi-people me-1"></i><?= $teamText ?>
+                                        </div>
+                                        <span class="badge rounded-pill px-2 py-1 text-danger" style="font-size: 0.7rem; background-color: #ffe5e5; border: 1px solid #ffcccc;">
+                                            <i class="bi bi-exclamation-circle me-1"></i>No Agent Assigned
+                                        </span>
+                                    </div>
                                 <?php else: ?>
                                     <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1" style="font-size: 0.75rem;">
                                         <i class="bi bi-person me-1"></i>
@@ -1595,9 +1613,30 @@ document.addEventListener('DOMContentLoaded', function () {
                 ${assignedAtStr ? `<div class="text-muted" style="font-size:11px; margin-top:3px;"><i class="bi bi-calendar-event me-1"></i>Assigned Date: ${assignedAtStr}</div>` : ''}
             </div>`;
         } else {
-            agentBadge = `<span class="badge rounded-pill px-2 py-1 text-danger" style="font-size:.75rem; background-color: #fde8e8; border: 1px solid #f8b4b4;">
-                <i class="bi bi-person me-1"></i>No Agent Assigned
-            </span>`;
+            const creatorName = lead.assigned_by_name ? lead.assigned_by_name.replace(/</g,'&lt;').replace(/>/g,'&gt;') : 'System';
+            let teamText = '';
+            let managerText = '';
+            
+            if (lead.team_name) {
+                const safeTeamName = lead.team_name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                managerText = lead.manager_name ? lead.manager_name.replace(/</g,'&lt;').replace(/>/g,'&gt;') : creatorName;
+                teamText = safeTeamName;
+            } else {
+                managerText = creatorName;
+                teamText = 'Self Added';
+            }
+            
+            agentBadge = `<div>
+                <span class="badge rounded-pill px-2 py-1 text-danger mb-1 text-wrap" style="font-size:.75rem; background-color: #fde8e8; border: 1px solid #f8b4b4;">
+                    <i class="bi bi-person me-1"></i>${managerText}
+                </span><br>
+                <div class="text-muted text-truncate mb-1" style="font-size: 11px; max-width: 150px;" title="${teamText}">
+                    <i class="bi bi-people me-1"></i>${teamText}
+                </div>
+                <span class="badge rounded-pill px-2 py-1 text-danger" style="font-size: 0.7rem; background-color: #ffe5e5; border: 1px solid #ffcccc;">
+                    <i class="bi bi-exclamation-circle me-1"></i>No Agent Assigned
+                </span>
+            </div>`;
         }
 
         return `

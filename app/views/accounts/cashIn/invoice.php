@@ -244,8 +244,23 @@ if (!$isCashPayment) {
         } catch (Exception $e) {}
     }
 
-    // Pattern 1: rawBankName has hyphen like "DBBL-The Premium It Solution", "BRAC-MD. Mainul Hasan Dulon", "EBL-The Premium Homes Ltd."
-    if (strpos($rawBankName, '-') !== false) {
+    // Standard Pattern: Match via bank_id first
+    $matchedCb = null;
+    if (!empty($bankId)) {
+        foreach ($cbList as $cb) {
+            if ($cb['id'] == $bankId) {
+                $matchedCb = $cb;
+                break;
+            }
+        }
+    }
+
+    if ($matchedCb) {
+        $receiverBankName = $matchedCb['bank_name'] . ' (' . $matchedCb['account_name'] . ')';
+        $receiverAccountNo = $matchedCb['account_number'];
+        $senderBankName = !empty($rawBankName) && !in_array(strtolower($rawBankName), ['0', 'n/a', 'none', 'cash']) ? $rawBankName : 'N/A';
+    } elseif (strpos($rawBankName, '-') !== false) {
+        // Pattern 1 (Legacy): rawBankName has hyphen like "DBBL-The Premium It Solution"
         $parts = explode('-', $rawBankName, 2);
         $bankPrefix = trim($parts[0]);
         $receiverPart = trim($parts[1]);
@@ -278,22 +293,8 @@ if (!$isCashPayment) {
             }
         }
     } else {
-        // Pattern 2: Single bank name, with or without bank_id
-        $matchedCb = null;
-        if (!empty($bankId)) {
-            foreach ($cbList as $cb) {
-                if ($cb['id'] == $bankId) {
-                    $matchedCb = $cb;
-                    break;
-                }
-            }
-        }
-
-        if ($matchedCb) {
-            $receiverBankName = $matchedCb['account_name'];
-            $receiverAccountNo = $matchedCb['account_number'];
-            $senderBankName = !empty($rawBankName) && !in_array(strtolower($rawBankName), ['0', 'n/a', 'none', 'cash']) ? $rawBankName : 'N/A';
-        } elseif (!empty($companyBankName)) {
+        // Pattern 2 (Legacy): Single bank name without valid bank_id
+        if (!empty($companyBankName)) {
             $receiverBankName = $companyBankName;
             $senderBankName = !empty($rawBankName) ? $rawBankName : 'N/A';
         } elseif (!empty($rawBankName)) {
@@ -305,7 +306,7 @@ if (!$isCashPayment) {
                 }
             }
             if ($matchedCb) {
-                $receiverBankName = $matchedCb['account_name'];
+                $receiverBankName = $matchedCb['bank_name'] . ' (' . $matchedCb['account_name'] . ')';
                 $receiverAccountNo = $matchedCb['account_number'];
                 $senderBankName = $matchedCb['bank_name'];
             } else {

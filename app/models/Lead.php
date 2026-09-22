@@ -56,10 +56,15 @@ class Lead extends Model
                     $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
                     break;
                 case 'monthly':
-                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    $sqlQuery .= " AND l.created_at >= DATE_FORMAT(CURDATE() - INTERVAL 1 MONTH, '%Y-%m-26')";
                     break;
                 case 'yearly':
                     $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    break;
+                case 'custom':
+                    $fromDate = $_GET['from_date'] ?? '1970-01-01';
+                    $toDate = $_GET['to_date'] ?? '2099-12-31';
+                    $sqlQuery .= " AND DATE(l.created_at) >= '$fromDate' AND DATE(l.created_at) <= '$toDate'";
                     break;
             }
         }
@@ -98,9 +103,9 @@ class Lead extends Model
                     break;
                 case 'monthly':
                     if ($previous) {
-                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                        $sqlQuery .= " AND l.created_at >= DATE_FORMAT(CURDATE() - INTERVAL 2 MONTH, '%Y-%m-26') AND l.created_at < DATE_FORMAT(CURDATE() - INTERVAL 1 MONTH, '%Y-%m-26')";
                     } else {
-                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                        $sqlQuery .= " AND l.created_at >= DATE_FORMAT(CURDATE() - INTERVAL 1 MONTH, '%Y-%m-26')";
                     }
                     break;
                 case 'yearly':
@@ -108,6 +113,13 @@ class Lead extends Model
                         $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 2 YEAR) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
                     } else {
                         $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    }
+                    break;
+                case 'custom':
+                    if (!$previous) {
+                        $fromDate = $_GET['from_date'] ?? '1970-01-01';
+                        $toDate = $_GET['to_date'] ?? '2099-12-31';
+                        $sqlQuery .= " AND DATE(l.created_at) >= '$fromDate' AND DATE(l.created_at) <= '$toDate'";
                     }
                     break;
             }
@@ -150,10 +162,15 @@ class Lead extends Model
                     $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
                     break;
                 case 'monthly':
-                    $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    $sqlQuery .= " AND l.created_at >= DATE_FORMAT(CURDATE() - INTERVAL 1 MONTH, '%Y-%m-26')";
                     break;
                 case 'yearly':
                     $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    break;
+                case 'custom':
+                    $fromDate = $_GET['from_date'] ?? '1970-01-01';
+                    $toDate = $_GET['to_date'] ?? '2099-12-31';
+                    $sqlQuery .= " AND DATE(l.created_at) >= '$fromDate' AND DATE(l.created_at) <= '$toDate'";
                     break;
             }
         }
@@ -190,9 +207,9 @@ class Lead extends Model
                     break;
                 case 'monthly':
                     if ($previous) {
-                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 60 DAY) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                        $sqlQuery .= " AND l.created_at >= DATE_FORMAT(CURDATE() - INTERVAL 2 MONTH, '%Y-%m-26') AND l.created_at < DATE_FORMAT(CURDATE() - INTERVAL 1 MONTH, '%Y-%m-26')";
                     } else {
-                        $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                        $sqlQuery .= " AND l.created_at >= DATE_FORMAT(CURDATE() - INTERVAL 1 MONTH, '%Y-%m-26')";
                     }
                     break;
                 case 'yearly':
@@ -200,6 +217,13 @@ class Lead extends Model
                         $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 2 YEAR) AND l.created_at < DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
                     } else {
                         $sqlQuery .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+                    }
+                    break;
+                case 'custom':
+                    if (!$previous) {
+                        $fromDate = $_GET['from_date'] ?? '1970-01-01';
+                        $toDate = $_GET['to_date'] ?? '2099-12-31';
+                        $sqlQuery .= " AND DATE(l.created_at) >= '$fromDate' AND DATE(l.created_at) <= '$toDate'";
                     }
                     break;
             }
@@ -1036,7 +1060,7 @@ class Lead extends Model
                     $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
                     break;
                 case 'monthly':
-                    $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+                    $sqlQuery .= " AND created_at >= DATE_FORMAT(CURDATE() - INTERVAL 1 MONTH, '%Y-%m-26')";
                     break;
                 case 'yearly':
                     $sqlQuery .= " AND created_at >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
@@ -2553,12 +2577,15 @@ class Lead extends Model
     }
     public function countLeadsByMonth($year, $month)
     {
+        $startDate = date('Y-m-26', strtotime("$year-$month-01 -1 month"));
+        $endDate = date('Y-m-25 23:59:59', strtotime("$year-$month-01"));
+        
         $stmt = $this->db->prepare("
         SELECT COUNT(*) AS total
         FROM leads
-        WHERE YEAR(created_at) = ? AND MONTH(created_at) = ?
+        WHERE created_at >= ? AND created_at <= ?
     ");
-        $stmt->bind_param("ii", $year, $month);
+        $stmt->bind_param("ss", $startDate, $endDate);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         return (int)($result['total'] ?? 0);
