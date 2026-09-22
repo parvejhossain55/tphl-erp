@@ -3,6 +3,27 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// =========================================================================
+// Maintenance Mode (লাইভে অন করতে true করুন, অফ করতে false করুন)
+// =========================================================================
+$maintenance_mode = false; 
+
+// আপনি নিজে লাইভে কাজ বা টেস্ট করার জন্য ?bypass=tphl দিলে মেইনটেন্যান্স বাইপাস হবে
+if (isset($_GET['bypass']) && $_GET['bypass'] === 'tphl') {
+    $_SESSION['maintenance_bypass'] = true;
+}
+
+if ($maintenance_mode && empty($_SESSION['maintenance_bypass'])) {
+    http_response_code(503);
+    $maintenancePage = __DIR__ . '/maintenance.html';
+    if (file_exists($maintenancePage)) {
+        readfile($maintenancePage);
+    } else {
+        echo "<h1 style='color:#2d4a54;text-align:center;font-family:sans-serif;margin-top:15%;'>We're Down for Maintenance</h1><p style='color:#788395;text-align:center;'>We'll be back soon!</p>";
+    }
+    exit;
+}
+
 mysqli_report(MYSQLI_REPORT_OFF);
 // Disable all error reporting for production/live
 // error_reporting(0);
