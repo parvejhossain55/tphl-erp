@@ -73,6 +73,7 @@ class MealRecord extends Model
                   `employee_id` int(10) unsigned NOT NULL,
                   `meal_date` date NOT NULL,
                   `is_consumed` tinyint(1) NOT NULL DEFAULT 1 COMMENT '1 = Meal consumed, 0 = No meal',
+                  `is_manual` tinyint(1) NOT NULL DEFAULT 0 COMMENT '1 = Manually set by Admin in Workplace, 0 = Auto sync',
                   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
                   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                   PRIMARY KEY (`id`),
@@ -81,6 +82,12 @@ class MealRecord extends Model
                   KEY `idx_emp_date` (`employee_id`, `meal_date`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
+
+            // Ensure is_manual column exists in existing meal_records table
+            $colCheck = $this->db->query("SHOW COLUMNS FROM `meal_records` LIKE 'is_manual'");
+            if ($colCheck && $colCheck->num_rows === 0) {
+                $this->db->query("ALTER TABLE `meal_records` ADD COLUMN `is_manual` tinyint(1) NOT NULL DEFAULT 0 AFTER `is_consumed`");
+            }
 
             // 4. meal_guest_records
             $this->db->query("
@@ -212,6 +219,8 @@ class MealRecord extends Model
      */
     public function bulkUpsertRecords($projectId, $branchId, array $items)
     {
+        $this->ensureTablesExist();
+
         if (empty($items)) {
             return true;
         }
@@ -220,10 +229,13 @@ class MealRecord extends Model
         $branchId = (int)$branchId;
 
         $stmt = $this->db->prepare("
-            INSERT INTO meal_records (meal_project_id, office_branch_id, employee_id, meal_date, is_consumed)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO meal_records (meal_project_id, office_branch_id, employee_id, meal_date, is_consumed, is_manual, updated_at)
+            VALUES (?, ?, ?, ?, ?, 1, NOW())
             ON DUPLICATE KEY UPDATE
-            is_consumed = VALUES(is_consumed)
+            is_consumed = VALUES(is_consumed),
+            is_manual = 1,
+            office_branch_id = VALUES(office_branch_id),
+            updated_at = NOW()
         ");
 
         if (!$stmt) {
@@ -722,11 +734,11 @@ class MealRecord extends Model
         $syncedCount = 0;
         $todayStr = date('Y-m-d');
         $upsertSql = "
-            INSERT INTO meal_records (meal_project_id, employee_id, office_branch_id, meal_date, is_consumed, updated_at)
-            VALUES (?, ?, ?, ?, ?, NOW())
+            INSERT INTO meal_records (meal_project_id, employee_id, office_branch_id, meal_date, is_consumed, is_manual, updated_at)
+            VALUES (?, ?, ?, ?, ?, 0, NOW())
             ON DUPLICATE KEY UPDATE
-                is_consumed = VALUES(is_consumed),
-                updated_at = NOW()
+                is_consumed = IF(meal_records.is_manual = 1, meal_records.is_consumed, VALUES(is_consumed)),
+                updated_at = IF(meal_records.is_manual = 1, meal_records.updated_at, NOW())
         ";
         $uStmt = $this->db->prepare($upsertSql);
         if (!$uStmt) {
@@ -833,11 +845,11 @@ class MealRecord extends Model
         }
 
         $upsertSql = "
-            INSERT INTO meal_records (meal_project_id, employee_id, office_branch_id, meal_date, is_consumed, updated_at)
-            VALUES (?, ?, ?, ?, ?, NOW())
+            INSERT INTO meal_records (meal_project_id, employee_id, office_branch_id, meal_date, is_consumed, is_manual, updated_at)
+            VALUES (?, ?, ?, ?, ?, 0, NOW())
             ON DUPLICATE KEY UPDATE
-                is_consumed = VALUES(is_consumed),
-                updated_at = NOW()
+                is_consumed = IF(meal_records.is_manual = 1, meal_records.is_consumed, VALUES(is_consumed)),
+                updated_at = IF(meal_records.is_manual = 1, meal_records.updated_at, NOW())
         ";
         $uStmt = $this->db->prepare($upsertSql);
         if ($uStmt) {

@@ -410,27 +410,25 @@ $defaultToDate = date('Y-m-25');
                                     <?php 
                                     $d = $col['date'];
                                     $isOptedOut = isset($optOuts[$empId][$d]) && $optOuts[$empId][$d] === 'opt_out';
-                                    $isChecked = !$isOptedOut && isset($records[$empId][$d]) && $records[$empId][$d] == 1;
+                                    if (isset($records[$empId][$d])) {
+                                        $isChecked = ((int)$records[$empId][$d] === 1);
+                                    } else {
+                                        $isChecked = !$isOptedOut;
+                                    }
                                     ?>
-                                    <td class="text-center <?= $col['is_weekend'] ? 'weekend-col' : '' ?> <?= $isOptedOut ? 'bg-danger bg-opacity-10' : '' ?>" style="position: relative;">
-                                        <?php if ($isOptedOut): ?>
-                                            <span class="badge bg-danger p-1" style="font-size: 9px; cursor: help;" title="Off by Employee (১২টার আগে মিল অফ করা হয়েছে)">
+                                    <td class="text-center <?= $col['is_weekend'] ? 'weekend-col' : '' ?> <?= ($isOptedOut && !$isChecked) ? 'bg-danger bg-opacity-10' : '' ?>" style="position: relative;">
+                                        <?php if ($isOptedOut && !$isChecked): ?>
+                                            <span class="badge bg-danger p-1 d-block mb-1" style="font-size: 8px; cursor: help;" title="Off by Employee (১২টার আগে মিল অফ করা হয়েছে)">
                                                 <i class="fa-solid fa-ban"></i> Off
                                             </span>
-                                            <input type="checkbox" 
-                                                   class="meal-checkbox d-none" 
-                                                   data-emp-id="<?= $empId ?>" 
-                                                   data-date="<?= $d ?>" 
-                                                   data-opt-out="1"
-                                                   disabled>
-                                        <?php else: ?>
-                                            <input type="checkbox" 
-                                                   class="meal-checkbox" 
-                                                   data-emp-id="<?= $empId ?>" 
-                                                   data-date="<?= $d ?>" 
-                                                   <?= $isChecked ? 'checked' : '' ?>
-                                                   title="<?= htmlspecialchars($emp['full_name']) ?> (<?= $col['day_num'] ?> <?= $col['month_short'] ?>)">
                                         <?php endif; ?>
+                                        <input type="checkbox" 
+                                               class="meal-checkbox" 
+                                               data-emp-id="<?= $empId ?>" 
+                                               data-date="<?= $d ?>" 
+                                               data-opt-out="<?= $isOptedOut ? '1' : '0' ?>"
+                                               <?= $isChecked ? 'checked' : '' ?>
+                                               title="<?= htmlspecialchars($emp['full_name']) ?> (<?= $col['day_num'] ?> <?= $col['month_short'] ?>)<?= $isOptedOut ? ' [Employee Opted Out]' : '' ?>">
                                     </td>
                                 <?php endforeach; ?>
                             </tr>
