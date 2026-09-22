@@ -18,6 +18,7 @@ if (!isset($paymentSummary)) {
 }
 
 $isLandShareCompleted  = $paymentSummary['is_land_share_completed'] ?? false;
+$allBangladeshBanks    = function_exists('getBangladeshBanks') ? getBangladeshBanks() : [];
 // Calculate ordinal suffix for EMI numbers
 $getOrdinal = function($num) {
     if (!is_numeric($num) || $num <= 0) return '';
@@ -361,7 +362,7 @@ if (!empty($virtualEmiSchedule)) {
                         </div>
 
                         <!-- Bank Fields (Visible only for bank/cheque) -->
-                        <div class="col-md-12 bank-fields" style="display: none;">
+                        <div class="col-md-6 bank-fields" style="display: none;">
                             <div class="from__input-box">
                                 <label class="form__input-title">Transfer To / Company Bank <span>*</span></label>
                                 <div class="input-group">
@@ -376,9 +377,21 @@ if (!empty($virtualEmiSchedule)) {
                         
                         <div class="col-md-6 bank-fields" style="display: none;">
                             <div class="from__input-box">
-                                <label class="form__input-title">Transfer From / Client Bank</label>
-                                <input type="text" name="bank_name" class="form-control"
-                                    placeholder="Client's Bank Name">
+                                <label class="form__input-title">Transfer From / Client Bank <span>*</span></label>
+                                <select name="bank_name" id="clientBankSelect" class="form-select" style="width: 100%;">
+                                    <option value="">-- Select Client Bank --</option>
+                                    <?php foreach ($allBangladeshBanks as $bName): ?>
+                                        <option value="<?= htmlspecialchars($bName) ?>"><?= htmlspecialchars($bName) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 bank-fields" id="otherBankField" style="display: none;">
+                            <div class="from__input-box">
+                                <label class="form__input-title" id="customBankLabel">Specify Foreign / Other Bank Name <span>*</span></label>
+                                <input type="text" name="custom_bank_name" id="customBankInput" class="form-control"
+                                    placeholder="e.g. Emirates NBD, Chase Bank, Al Rajhi, etc.">
                             </div>
                         </div>
 
@@ -681,29 +694,81 @@ if (!empty($virtualEmiSchedule)) {
                 chequeFields.forEach(field => field.style.display = 'none');
                 onlineFields.forEach(field => field.style.display = 'none');
 
-                bankFields.forEach(field => field.querySelector('input')?.removeAttribute('required'));
+                bankFields.forEach(field => {
+                    field.querySelectorAll('input, select').forEach(el => el.removeAttribute('required'));
+                });
                 chequeFields.forEach(field => field.querySelector('input')?.removeAttribute('required'));
                 onlineFields.forEach(field => field.querySelector('select')?.removeAttribute('required'));
 
-                if (method === 'bank') {
+                const otherBankField = document.getElementById('otherBankField');
+                if (otherBankField) otherBankField.style.display = 'none';
+                const customBankInput = document.getElementById('customBankInput');
+                if (customBankInput) {
+                    customBankInput.removeAttribute('required');
+                    customBankInput.value = '';
+                }
+
+                if (method === 'bank' || method === 'cheque') {
                     bankFields.forEach(field => {
-                        field.style.display = 'block';
-                        field.querySelector('input')?.setAttribute('required', 'required');
+                        if (field.id !== 'otherBankField') {
+                            field.style.display = 'block';
+                        }
                     });
-                } else if (method === 'cheque') {
-                    bankFields.forEach(field => {
-                        field.style.display = 'block';
-                        field.querySelector('input')?.setAttribute('required', 'required');
-                    });
-                    chequeFields.forEach(field => {
-                        field.style.display = 'block';
-                        field.querySelector('input')?.setAttribute('required', 'required');
-                    });
+                    document.getElementById('bankSelect')?.setAttribute('required', 'required');
+                    document.getElementById('clientBankSelect')?.setAttribute('required', 'required');
+
+                    if (method === 'cheque') {
+                        chequeFields.forEach(field => {
+                            field.style.display = 'block';
+                            field.querySelector('input')?.setAttribute('required', 'required');
+                        });
+                    }
+
+                    if (window.jQuery && $.fn.select2) {
+                        const $cBank = $('#clientBankSelect');
+                        if (!$cBank.hasClass('select2-hidden-accessible')) {
+                            $cBank.select2({
+                                width: '100%',
+                                placeholder: '-- Select Client Bank --',
+                                tags: true,
+                                createTag: function (params) {
+                                    var term = $.trim(params.term);
+                                    if (term === '') return null;
+                                    return {
+                                        id: term,
+                                        text: term + ' (Foreign / Custom Bank)',
+                                        newTag: true
+                                    };
+                                }
+                            });
+                        }
+                    }
                 } else if (method === 'online') {
                     onlineFields.forEach(field => {
                         field.style.display = 'block';
                         field.querySelector('select')?.setAttribute('required', 'required');
                     });
+                }
+            });
+        }
+
+        // Handle "Other Country / Foreign Bank" & "Other Bank" selection
+        if (window.jQuery) {
+            $(document).on('change', '#clientBankSelect', function() {
+                const val = this.value;
+                if (val === 'Other Bank' || val === 'Other Country / Foreign Bank') {
+                    if (val === 'Other Country / Foreign Bank') {
+                        $('#customBankLabel').html('Specify Foreign / Other Country Bank Name <span>*</span>');
+                        $('#customBankInput').attr('placeholder', 'e.g. Emirates NBD, Chase Bank, Al Rajhi, etc.');
+                    } else {
+                        $('#customBankLabel').html('Specify Client Bank Name <span>*</span>');
+                        $('#customBankInput').attr('placeholder', 'Enter bank name');
+                    }
+                    $('#otherBankField').show();
+                    $('#customBankInput').attr('required', 'required');
+                } else {
+                    $('#otherBankField').hide();
+                    $('#customBankInput').removeAttr('required').val('');
                 }
             });
         }

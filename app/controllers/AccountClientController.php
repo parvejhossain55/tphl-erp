@@ -734,19 +734,25 @@ public function addCedTransaction()
         $waiverStatus  = (!empty($_POST['apply_waiver']) && $penaltyWaived > 0) ? 'pending' : 'none';
     }
 
-    // Prepare transaction data
-    $transactionData = [
-        'booking_id'        => $bookingId,
-        'payment_type'      => $paymentType,
-        'amount'            => $_POST['amount'] ?? 0,
-        'payment_method'    => $_POST['payment_method'] ?? 'cash',
-        'payment_status'    => 'pending', // Always pending until verified
-        'payment_date'      => $_POST['payment_date'] ?? date('Y-m-d'),
-        'transaction_ref'   => $_POST['transaction_ref'] ?? null,
-        'bank_id'           => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
-        'bank_account_no'   => $_POST['bank_account_no'] ?? null,
-        'cheque_no'         => $_POST['cheque_no'] ?? null,
-        'online_type'       => $_POST['online_type'] ?? null,
+        $bankName = !empty($_POST['bank_name']) ? trim($_POST['bank_name']) : null;
+        if (in_array($bankName, ['Other Bank', 'Other Country / Foreign Bank', 'Foreign Bank', 'Other Country Bank']) && !empty($_POST['custom_bank_name'])) {
+            $bankName = trim($_POST['custom_bank_name']);
+        }
+
+        // Prepare transaction data
+        $transactionData = [
+            'booking_id'        => $bookingId,
+            'payment_type'      => $paymentType,
+            'amount'            => $_POST['amount'] ?? 0,
+            'payment_method'    => $_POST['payment_method'] ?? 'cash',
+            'payment_status'    => 'pending', // Always pending until verified
+            'payment_date'      => $_POST['payment_date'] ?? date('Y-m-d'),
+            'transaction_ref'   => $_POST['transaction_ref'] ?? null,
+            'bank_id'           => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
+            'bank_name'         => $bankName,
+            'bank_account_no'   => $_POST['bank_account_no'] ?? null,
+            'cheque_no'         => $_POST['cheque_no'] ?? null,
+            'online_type'       => $_POST['online_type'] ?? null,
         'attachment_paths'   => $uploadedPaths ?: null,
         'bulk_emi_discount' => isset($_POST['bulk_emi_discount']) ? (float)$_POST['bulk_emi_discount'] : 0,
         'due_emi_amount'     => isset($_POST['due_emi_amount']) ? (float)$_POST['due_emi_amount'] : 0,
@@ -993,6 +999,11 @@ public function addTransaction()
             }
         }
 
+        $bankName = !empty($_POST['bank_name']) ? trim($_POST['bank_name']) : null;
+        if (in_array($bankName, ['Other Bank', 'Other Country / Foreign Bank', 'Foreign Bank', 'Other Country Bank']) && !empty($_POST['custom_bank_name'])) {
+            $bankName = trim($_POST['custom_bank_name']);
+        }
+
         // Prepare transaction data
         $transactionData = [
             'booking_id'       => $bookingId,
@@ -1003,6 +1014,7 @@ public function addTransaction()
             'payment_date'     => $_POST['payment_date'] ?? date('Y-m-d'),
             'transaction_ref'  => $_POST['transaction_ref'] ?? null,
             'bank_id'          => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
+            'bank_name'        => $bankName,
             'bank_account_no'  => $_POST['bank_account_no'] ?? null,
             'cheque_no'        => $_POST['cheque_no'] ?? null,
             'online_type'      => $_POST['online_type'] ?? null,
@@ -1200,7 +1212,10 @@ public function updateTransaction()
         }
 
         $bankId = !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null;
-        $bankName = $_POST['bank_name'] ?? null;
+        $bankName = !empty($_POST['bank_name']) ? trim($_POST['bank_name']) : null;
+        if (in_array($bankName, ['Other Bank', 'Other Country / Foreign Bank', 'Foreign Bank', 'Other Country Bank']) && !empty($_POST['custom_bank_name'])) {
+            $bankName = trim($_POST['custom_bank_name']);
+        }
         if ($bankId && empty($bankName)) {
             $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', branch_name) as label FROM banks WHERE id = {$bankId}");
             if ($bRow) { $bData = $bRow->fetch_assoc(); $bankName = $bData['label'] ?? ''; }

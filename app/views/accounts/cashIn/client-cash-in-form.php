@@ -13,6 +13,7 @@ $paymentSummary   = $accountModel->getPaymentSummaryByBookingId($bookingId);
 $outstandingDues  = $accountModel->getOutstandingEmiDues($bookingId);
 
 $remainingLandShare      = $paymentSummary['remaining_land_share']       ?? 0;
+$allBangladeshBanks       = function_exists('getBangladeshBanks') ? getBangladeshBanks() : [];
 $isLandShareCompleted    = $paymentSummary['is_land_share_completed']    ?? false;
 $isDevChargeCompleted    = $paymentSummary['is_dev_charge_completed']    ?? false;
 $isBookingFullyPaid      = $paymentSummary['is_booking_fully_paid']      ?? false;
@@ -47,7 +48,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
 
                 <?php if (($paymentSummary['booking_money_paid'] ?? 0) <= 0 && ($paymentSummary['booking_money'] ?? 0) > 0): ?>
                     <div class="alert alert-warning alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
-                        <i class="fa-light fa-triangle-exclamation fs-4 me-2"></i>
+                        <i class=""></i>
                         <div>
                             <strong>Booking Money Pending!</strong>
                             Agreed booking amount of <strong>TK.<?= number_format($paymentSummary['booking_money'], 2) ?></strong>
@@ -59,7 +60,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
 
                 <?php if (!$isBookingFullyPaid && $bookingMoneyPaid > 0): ?>
                     <div class="alert alert-warning alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
-                        <i class="fa-light fa-triangle-exclamation fs-4 me-2"></i>
+                        <i class=""></i>
                         <div>
                             <strong>Booking Money Partially Paid!</strong>
                             TK.<?= number_format($bookingMoneyPaid, 2) ?> received out of agreed
@@ -88,7 +89,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                 <?php endif; ?>
                 <?php if ($hasOutstandingDues && $remainingCF > 0): ?>
                     <div class="alert alert-warning alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
-                        <i class="fa-light fa-triangle-exclamation fs-4 me-2"></i>
+                        <i class=""></i>
                         <div>
                             <strong>Outstanding EMI Due: TK.<?= number_format($totalEmiDue, 2) ?></strong>
                             — Select <em>"Settle EMI Due"</em> below to clear the balance.
@@ -297,9 +298,9 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                         </div>
 
                         <!-- Bank Fields (Visible only for bank/cheque) -->
-                        <div class="col-md-12 bank-fields" style="display: none;">
+                        <div class="col-md-6 bank-fields" style="display: none;">
                             <div class="from__input-box">
-                                <label class="form__input-title">Bank / Branch <span>*</span></label>
+                                <label class="form__input-title">Transfer To / Company Bank <span>*</span></label>
                                 <select name="bank_id" id="bankSelect" class="form-select">
                                     <option value="">-- Loading banks... --</option>
                                 </select>
@@ -309,7 +310,27 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
 
                         <div class="col-md-6 bank-fields" style="display: none;">
                             <div class="from__input-box">
-                                <label class="form__input-title">Bank Account No. <span>*</span></label>
+                                <label class="form__input-title">Transfer From / Client Bank <span>*</span></label>
+                                <select name="bank_name" id="clientBankSelect" class="form-select" style="width: 100%;">
+                                    <option value="">-- Select Client Bank --</option>
+                                    <?php foreach ($allBangladeshBanks as $bName): ?>
+                                        <option value="<?= htmlspecialchars($bName) ?>"><?= htmlspecialchars($bName) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 bank-fields" id="otherBankField" style="display: none;">
+                            <div class="from__input-box">
+                                <label class="form__input-title" id="customBankLabel">Specify Foreign / Other Bank Name <span>*</span></label>
+                                <input type="text" name="custom_bank_name" id="customBankInput" class="form-control"
+                                    placeholder="e.g. Emirates NBD, Chase Bank, Al Rajhi, etc.">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 bank-fields" style="display: none;">
+                            <div class="from__input-box">
+                                <label class="form__input-title">Client Bank A/C No. (Optional)</label>
                                 <input type="text" name="bank_account_no" class="form-control"
                                     placeholder="Account Number">
                             </div>
@@ -747,30 +768,82 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                 onlineFields.forEach(field => field.style.display = 'none');
 
                 // Remove required attributes
-                bankFields.forEach(field => field.querySelector('input')?.removeAttribute('required'));
+                bankFields.forEach(field => {
+                    field.querySelectorAll('input, select').forEach(el => el.removeAttribute('required'));
+                });
                 chequeFields.forEach(field => field.querySelector('input')?.removeAttribute('required'));
                 onlineFields.forEach(field => field.querySelector('select')?.removeAttribute('required'));
 
+                const otherBankField = document.getElementById('otherBankField');
+                if (otherBankField) otherBankField.style.display = 'none';
+                const customBankInput = document.getElementById('customBankInput');
+                if (customBankInput) {
+                    customBankInput.removeAttribute('required');
+                    customBankInput.value = '';
+                }
+
                 // Show relevant fields
-                if (method === 'bank') {
+                if (method === 'bank' || method === 'cheque') {
                     bankFields.forEach(field => {
-                        field.style.display = 'block';
-                        field.querySelector('input')?.setAttribute('required', 'required');
+                        if (field.id !== 'otherBankField') {
+                            field.style.display = 'block';
+                        }
                     });
-                } else if (method === 'cheque') {
-                    bankFields.forEach(field => {
-                        field.style.display = 'block';
-                        field.querySelector('input')?.setAttribute('required', 'required');
-                    });
-                    chequeFields.forEach(field => {
-                        field.style.display = 'block';
-                        field.querySelector('input')?.setAttribute('required', 'required');
-                    });
+                    document.getElementById('bankSelect')?.setAttribute('required', 'required');
+                    document.getElementById('clientBankSelect')?.setAttribute('required', 'required');
+
+                    if (method === 'cheque') {
+                        chequeFields.forEach(field => {
+                            field.style.display = 'block';
+                            field.querySelector('input')?.setAttribute('required', 'required');
+                        });
+                    }
+
+                    if (window.jQuery && $.fn.select2) {
+                        const $cBank = $('#clientBankSelect');
+                        if (!$cBank.hasClass('select2-hidden-accessible')) {
+                            $cBank.select2({
+                                width: '100%',
+                                placeholder: '-- Select Client Bank --',
+                                tags: true,
+                                createTag: function (params) {
+                                    var term = $.trim(params.term);
+                                    if (term === '') return null;
+                                    return {
+                                        id: term,
+                                        text: term + ' (Foreign / Custom Bank)',
+                                        newTag: true
+                                    };
+                                }
+                            });
+                        }
+                    }
                 } else if (method === 'online') {
                     onlineFields.forEach(field => {
                         field.style.display = 'block';
                         field.querySelector('select')?.setAttribute('required', 'required');
                     });
+                }
+            });
+        }
+
+        // Handle "Other Country / Foreign Bank" & "Other Bank" selection
+        if (window.jQuery) {
+            $(document).on('change', '#clientBankSelect', function() {
+                const val = this.value;
+                if (val === 'Other Bank' || val === 'Other Country / Foreign Bank') {
+                    if (val === 'Other Country / Foreign Bank') {
+                        $('#customBankLabel').html('Specify Foreign / Other Country Bank Name <span>*</span>');
+                        $('#customBankInput').attr('placeholder', 'e.g. Emirates NBD, Chase Bank, Al Rajhi, etc.');
+                    } else {
+                        $('#customBankLabel').html('Specify Client Bank Name <span>*</span>');
+                        $('#customBankInput').attr('placeholder', 'Enter bank name');
+                    }
+                    $('#otherBankField').show();
+                    $('#customBankInput').attr('required', 'required');
+                } else {
+                    $('#otherBankField').hide();
+                    $('#customBankInput').removeAttr('required').val('');
                 }
             });
         }

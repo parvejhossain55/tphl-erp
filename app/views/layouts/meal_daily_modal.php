@@ -164,6 +164,31 @@ $formattedBnDate = "{$bnDay}, {$bnDayNum} {$bnMonth} {$bnYear}";
     border-color: #ef4444 !important;
     transform: translateY(-1px);
 }
+
+/* SweetAlert container and solid card styling to always render cleanly in front */
+.swal2-container {
+    z-index: 100099 !important;
+}
+.swal2-container.swal2-backdrop-show {
+    background: rgba(15, 23, 42, 0.65) !important;
+}
+.swal2-container .swal2-popup {
+    background: #ffffff !important;
+    color: #1e293b !important;
+    border-radius: 20px !important;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35) !important;
+    padding: 24px 20px !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+.swal2-container .swal2-title {
+    color: #0f172a !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+}
+.swal2-container .swal2-html-container {
+    color: #475569 !important;
+    font-size: 14px !important;
+}
 </style>
 
 <div id="floatingMealWidget">
@@ -415,24 +440,23 @@ $formattedBnDate = "{$bnDay}, {$bnDayNum} {$bnMonth} {$bnYear}";
                         $('#floatingMealStatusText').text('Meal: ON');
                         $('#dailyMealBadge').css({ 'color': '#0f766e' });
 
+                        // Close modal immediately so the message displays cleanly in front
+                        const modalEl = document.getElementById('dailyMealNoticeModal');
+                        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                            const modalObj = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                            if (modalObj) modalObj.hide();
+                        }
+
                         if (typeof Swal !== 'undefined') {
                             Swal.fire({
                                 icon: 'success',
                                 title: 'মিল চালু আছে!',
                                 text: 'আপনার আজকের দুপুরের মিল সফলভাবে চালু রাখা হয়েছে।',
-                                timer: 2000,
-                                showConfirmButton: false
+                                timer: 2200,
+                                showConfirmButton: false,
+                                backdrop: 'rgba(15, 23, 42, 0.65)'
                             });
                         }
-
-                        // Close modal smoothly
-                        setTimeout(function() {
-                            const modalEl = document.getElementById('dailyMealNoticeModal');
-                            if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-                                const modalObj = bootstrap.Modal.getInstance(modalEl);
-                                if (modalObj) modalObj.hide();
-                            }
-                        }, 1200);
                     } else {
                         if (typeof Swal !== 'undefined') {
                             Swal.fire({ icon: 'error', title: 'Action Failed', text: res.message || 'Error occurred.' });
@@ -473,24 +497,23 @@ $formattedBnDate = "{$bnDay}, {$bnDayNum} {$bnMonth} {$bnYear}";
                         $('#floatingMealStatusText').text('Meal: OFF');
                         $('#dailyMealBadge').css({ 'color': '#dc2626' });
 
+                        // Close modal immediately so the message displays cleanly in front
+                        const modalEl = document.getElementById('dailyMealNoticeModal');
+                        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                            const modalObj = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                            if (modalObj) modalObj.hide();
+                        }
+
                         if (typeof Swal !== 'undefined') {
                             Swal.fire({
                                 icon: 'info',
                                 title: 'মিল বন্ধ করা হয়েছে',
                                 text: 'আপনার আজকের দুপুরের মিল বন্ধ করা হয়েছে।',
-                                timer: 2000,
-                                showConfirmButton: false
+                                timer: 2200,
+                                showConfirmButton: false,
+                                backdrop: 'rgba(15, 23, 42, 0.65)'
                             });
                         }
-
-                        // Close modal smoothly
-                        setTimeout(function() {
-                            const modalEl = document.getElementById('dailyMealNoticeModal');
-                            if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-                                const modalObj = bootstrap.Modal.getInstance(modalEl);
-                                if (modalObj) modalObj.hide();
-                            }
-                        }, 1200);
                     } else {
                         if (typeof Swal !== 'undefined') {
                             Swal.fire({ icon: 'error', title: 'Action Failed', text: res.message || 'Error occurred.' });

@@ -47,7 +47,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
 
                 <?php if (($paymentSummary['booking_money_paid'] ?? 0) <= 0 && ($paymentSummary['booking_money'] ?? 0) > 0): ?>
                     <div class="alert alert-warning alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
-                        <i class="fa-light fa-triangle-exclamation fs-4 me-2"></i>
+                        <i class=""></i>
                         <div>
                             <strong>Booking Money Pending!</strong>
                             Agreed booking amount of <strong>TK.<?= number_format($paymentSummary['booking_money'], 2) ?></strong>
@@ -59,7 +59,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
 
                 <?php if (!$isBookingFullyPaid && $bookingMoneyPaid > 0): ?>
                     <div class="alert alert-warning alert-dismissible fade show mb-4 d-flex align-items-center" role="alert">
-                        <i class="fa-light fa-triangle-exclamation fs-4 me-2"></i>
+                        <i class=""></i>
                         <div>
                             <strong>Booking Money Partially Paid!</strong>
                             TK.<?= number_format($bookingMoneyPaid, 2) ?> received out of agreed
