@@ -4413,4 +4413,367 @@ class PayrollController extends Controller
         }
         $updateStmt->close();
     }
+
+    private function getLiquidityData($payrollProjectId)
+    {
+        $totalRequirement = 0.0;
+        $totalBankRequirement = 0.0;
+        $totalCashRequirement = 0.0;
+        $bankEmployees = [];
+        $cashEmployees = [];
+
+        if ($payrollProjectId) {
+            $sql = "
+                SELECT p.id as payslip_id, p.net_salary, p.payment_method, p.bank_amount, p.cash_amount,
+                       e.id as emp_id_pk, e.employee_id, e.full_name, 
+                       e.bank_name, e.account_number, e.account_holder_name,
+                       COALESCE(dept.name, 'Unassigned') as department_name,
+                       COALESCE(desg.name, 'N/A') as designation_name
+                FROM payslips p
+                JOIN employees e ON p.employee_id = e.id
+                LEFT JOIN departments dept ON e.department_id = dept.id
+                LEFT JOIN designations desg ON e.designation_id = desg.id
+                WHERE p.payroll_project_id = ?
+                  AND (p.is_excluded = 0 OR p.is_excluded IS NULL)
+                ORDER BY dept.name ASC, e.employee_id ASC
+            ";
+            $stmt = $this->db->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param("i", $payrollProjectId);
+                $stmt->execute();
+                $res = $stmt->get_result();
+
+                if ($res) {
+                    while ($row = $res->fetch_assoc()) {
+                        $netSalary = (float) $row['net_salary'];
+                        $bankAmount = (float) ($row['bank_amount'] ?? 0);
+                        $cashAmount = (float) ($row['cash_amount'] ?? 0);
+                        $method = strtolower(trim($row['payment_method'] ?? ''));
+
+                        $totalRequirement += $netSalary;
+
+                        if ($bankAmount > 0 && $cashAmount > 0) {
+                            $totalBankRequirement += $bankAmount;
+                            $bankRow = $row;
+                            $bankRow['payment_type'] = 'Bank';
+                            $bankRow['disbursement_amount'] = $bankAmount;
+                            $bankEmployees[] = $bankRow;
+
+                            $totalCashRequirement += $cashAmount;
+                            $cashRow = $row;
+                            $cashRow['payment_type'] = 'Cash';
+                            $cashRow['disbursement_amount'] = $cashAmount;
+                            $cashEmployees[] = $cashRow;
+                        } elseif ($bankAmount > 0) {
+                            $totalBankRequirement += $netSalary;
+                            $bankRow = $row;
+                            $bankRow['payment_type'] = 'Bank';
+                            $bankRow['disbursement_amount'] = $netSalary;
+                            $bankEmployees[] = $bankRow;
+                        } elseif ($cashAmount > 0) {
+                            $totalCashRequirement += $netSalary;
+                            $cashRow = $row;
+                            $cashRow['payment_type'] = 'Cash';
+                            $cashRow['disbursement_amount'] = $netSalary;
+                            $cashEmployees[] = $cashRow;
+                        } else {
+                            if ($method === 'cash') {
+                                $totalCashRequirement += $netSalary;
+                                $row['payment_type'] = 'Cash';
+                                $row['disbursement_amount'] = $netSalary;
+                                $cashEmployees[] = $row;
+                            } else {
+                                $totalBankRequirement += $netSalary;
+                                $row['payment_type'] = 'Bank';
+                                $row['disbursement_amount'] = $netSalary;
+                                $bankEmployees[] = $row;
+                            }
+                        }
+                    }
+                }
+                $stmt->close();
+            }
+        }
+
+        return [
+            'totalRequirement' => $totalRequirement,
+            'totalBankRequirement' => $totalBankRequirement,
+            'totalCashRequirement' => $totalCashRequirement,
+            'bankEmployees' => $bankEmployees,
+            'cashEmployees' => $cashEmployees,
+        ];
+    }
+
+    public function liquidityReport()
+    {
+        $projectRes = $this->db->query("SELECT * FROM payroll_projects ORDER BY id DESC");
+        $payroll_projects = [];
+        if ($projectRes) {
+            while ($pRow = $projectRes->fetch_assoc()) {
+                $payroll_projects[] = $pRow;
+            }
+        }
+
+        $selectedProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== ''
+            ? (int) $_GET['payroll_project_id']
+            : (isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null);
+
+        if (!$selectedProjectId && !empty($payroll_projects)) {
+            $selectedProjectId = (int) $payroll_projects[0]['id'];
+        }
+
+        $selectedProject = null;
+        if ($selectedProjectId) {
+            foreach ($payroll_projects as $p) {
+                if ((int) $p['id'] === $selectedProjectId) {
+                    $selectedProject = $p;
+                    break;
+                }
+            }
+        }
+
+        $data = $this->getLiquidityData($selectedProjectId);
+
+        $this->view('payrolls/payslips/liquidity-report', [
+            'page_title' => 'Liquidity Management Report',
+            'current_route' => 'payroll-liquidity-report',
+            'payroll_projects' => $payroll_projects,
+            'selected_project_id' => $selectedProjectId,
+            'selectedProject' => $selectedProject,
+            'totalRequirement' => $data['totalRequirement'],
+            'totalBankRequirement' => $data['totalBankRequirement'],
+            'totalCashRequirement' => $data['totalCashRequirement'],
+            'bankEmployees' => $data['bankEmployees'],
+            'cashEmployees' => $data['cashEmployees'],
+        ]);
+    }
+
+    public function exportLiquidityReportPDF()
+    {
+        $selectedProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== ''
+            ? (int) $_GET['payroll_project_id']
+            : (isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null);
+
+        if (!$selectedProjectId) {
+            echo "Payroll Project is required for PDF export.";
+            exit;
+        }
+
+        $projName = "Payroll Project";
+        $projDate = "";
+        $projRes = $this->db->query("SELECT name, date, start_date, end_date FROM payroll_projects WHERE id = $selectedProjectId");
+        if ($projRes && $pRow = $projRes->fetch_assoc()) {
+            $projName = $pRow['name'];
+            $projDate = !empty($pRow['date']) ? $pRow['date'] : ($pRow['start_date'] ?? '');
+        }
+
+        $data = $this->getLiquidityData($selectedProjectId);
+
+        $pdf = new \TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+        $pdf->SetCreator('TPHL-ERP');
+        $pdf->SetAuthor('TPHL-ERP');
+        $pdf->SetTitle('Liquidity Management Report - ' . $projName);
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        $pdf->AddPage('L');
+        $pdf->SetFont('helvetica', '', 9);
+
+        $html = '<div style="text-align:center;">';
+        $html .= '<h2 style="margin-bottom:4px; color:#1a1a1a;">Liquidity Management Report</h2>';
+        $html .= '<h4 style="margin-top:0; color:#555555;">Project: ' . htmlspecialchars($projName) . ($projDate ? ' (' . htmlspecialchars($projDate) . ')' : '') . '</h4>';
+        $html .= '</div><br>';
+
+        // 3 Summary Cards
+        $html .= '<table cellpadding="8" cellspacing="4" style="width:100%; margin-bottom:15px;">
+            <tr>
+                <td style="background-color:#e8f5e9; border:1px solid #c8e6c9; border-radius:4px; text-align:center;">
+                    <span style="font-size:10px; color:#2e7d32; font-weight:bold;">TOTAL PAYROLL REQUIREMENT</span><br>
+                    <span style="font-size:15px; font-weight:bold; color:#1b5e20;">BDT ' . number_format($data['totalRequirement'], 2) . '</span>
+                </td>
+                <td style="background-color:#e3f2fd; border:1px solid #bbdefb; border-radius:4px; text-align:center;">
+                    <span style="font-size:10px; color:#1565c0; font-weight:bold;">BANK TRANSFER REQUIREMENT</span><br>
+                    <span style="font-size:15px; font-weight:bold; color:#0d47a1;">BDT ' . number_format($data['totalBankRequirement'], 2) . '</span><br>
+                    <span style="font-size:9px; color:#555;">(' . count($data['bankEmployees']) . ' Employees)</span>
+                </td>
+                <td style="background-color:#fff3e0; border:1px solid #ffe0b2; border-radius:4px; text-align:center;">
+                    <span style="font-size:10px; color:#e65100; font-weight:bold;">CASH IN HAND REQUIREMENT</span><br>
+                    <span style="font-size:15px; font-weight:bold; color:#bf360c;">BDT ' . number_format($data['totalCashRequirement'], 2) . '</span><br>
+                    <span style="font-size:9px; color:#555;">(' . count($data['cashEmployees']) . ' Employees)</span>
+                </td>
+            </tr>
+        </table><br>';
+
+        // Table 1: Bank Transfer List
+        $html .= '<h3 style="color:#0d47a1; margin-bottom:6px;">1. Bank Transfer Disbursement List</h3>';
+        $html .= '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse:collapse; width:100%; font-size:9px;">
+            <thead>
+                <tr style="background-color:#0d47a1; color:#ffffff; font-weight:bold;">
+                    <th width="5%" style="text-align:center;">SL</th>
+                    <th width="12%" style="text-align:center;">Employee ID</th>
+                    <th width="20%">Employee Name</th>
+                    <th width="15%">Department</th>
+                    <th width="10%" style="text-align:center;">Payment Type</th>
+                    <th width="15%">Bank Name</th>
+                    <th width="13%">Account Number</th>
+                    <th width="10%" style="text-align:right;">Amount (BDT)</th>
+                </tr>
+            </thead>
+            <tbody>';
+
+        if (empty($data['bankEmployees'])) {
+            $html .= '<tr><td colspan="8" style="text-align:center; padding:10px; color:#777;">No bank disbursement records found.</td></tr>';
+        } else {
+            $sl = 1;
+            foreach ($data['bankEmployees'] as $bEmp) {
+                $html .= '<tr>
+                    <td style="text-align:center;">' . $sl++ . '</td>
+                    <td style="text-align:center; font-weight:bold;">' . htmlspecialchars($bEmp['employee_id']) . '</td>
+                    <td>' . htmlspecialchars($bEmp['full_name']) . '</td>
+                    <td>' . htmlspecialchars($bEmp['department_name']) . '</td>
+                    <td style="text-align:center;">' . htmlspecialchars($bEmp['payment_type'] ?? 'Bank') . '</td>
+                    <td>' . htmlspecialchars($bEmp['bank_name'] ?: 'N/A') . '</td>
+                    <td>' . htmlspecialchars($bEmp['account_number'] ?: 'N/A') . '</td>
+                    <td style="text-align:right; font-weight:bold;">' . number_format($bEmp['disbursement_amount'], 2) . '</td>
+                </tr>';
+            }
+        }
+
+        $html .= '</tbody>
+            <tfoot>
+                <tr style="background-color:#e3f2fd; font-weight:bold;">
+                    <td colspan="7" style="text-align:right;">Total Bank Transfer:</td>
+                    <td style="text-align:right; color:#0d47a1;">' . number_format($data['totalBankRequirement'], 2) . '</td>
+                </tr>
+            </tfoot>
+        </table><br><br>';
+
+        // Table 2: Cash in Hand List
+        $html .= '<h3 style="color:#bf360c; margin-bottom:6px;">2. Cash in Hand Disbursement List</h3>';
+        $html .= '<table border="1" cellpadding="5" cellspacing="0" style="border-collapse:collapse; width:100%; font-size:9px;">
+            <thead>
+                <tr style="background-color:#bf360c; color:#ffffff; font-weight:bold;">
+                    <th width="6%" style="text-align:center;">SL</th>
+                    <th width="16%" style="text-align:center;">Employee ID</th>
+                    <th width="30%">Employee Name</th>
+                    <th width="24%">Department</th>
+                    <th width="12%" style="text-align:center;">Payment Type</th>
+                    <th width="12%" style="text-align:right;">Amount (BDT)</th>
+                </tr>
+            </thead>
+            <tbody>';
+
+        if (empty($data['cashEmployees'])) {
+            $html .= '<tr><td colspan="6" style="text-align:center; padding:10px; color:#777;">No cash disbursement records found.</td></tr>';
+        } else {
+            $sl = 1;
+            foreach ($data['cashEmployees'] as $cEmp) {
+                $html .= '<tr>
+                    <td style="text-align:center;">' . $sl++ . '</td>
+                    <td style="text-align:center; font-weight:bold;">' . htmlspecialchars($cEmp['employee_id']) . '</td>
+                    <td>' . htmlspecialchars($cEmp['full_name']) . '</td>
+                    <td>' . htmlspecialchars($cEmp['department_name']) . '</td>
+                    <td style="text-align:center;">' . htmlspecialchars($cEmp['payment_type'] ?? 'Cash') . '</td>
+                    <td style="text-align:right; font-weight:bold;">' . number_format($cEmp['disbursement_amount'], 2) . '</td>
+                </tr>';
+            }
+        }
+
+        $html .= '</tbody>
+            <tfoot>
+                <tr style="background-color:#fff3e0; font-weight:bold;">
+                    <td colspan="5" style="text-align:right;">Total Cash in Hand:</td>
+                    <td style="text-align:right; color:#bf360c;">' . number_format($data['totalCashRequirement'], 2) . '</td>
+                </tr>
+            </tfoot>
+        </table>';
+
+        $pdf->writeHTML($html, true, false, true, false, '');
+        $cleanProj = preg_replace('/[^a-zA-Z0-9_-]/', '_', strtolower($projName));
+        $pdf->Output("Liquidity_Management_Report_{$cleanProj}.pdf", 'I');
+        exit;
+    }
+
+    public function exportLiquidityReportCSV()
+    {
+        $selectedProjectId = isset($_GET['payroll_project_id']) && $_GET['payroll_project_id'] !== ''
+            ? (int) $_GET['payroll_project_id']
+            : (isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null);
+
+        if (!$selectedProjectId) {
+            echo "Payroll Project is required for CSV export.";
+            exit;
+        }
+
+        $projName = "Payroll Project";
+        $projRes = $this->db->query("SELECT name, date, start_date, end_date FROM payroll_projects WHERE id = $selectedProjectId");
+        if ($projRes && $pRow = $projRes->fetch_assoc()) {
+            $projName = $pRow['name'];
+        }
+
+        $data = $this->getLiquidityData($selectedProjectId);
+
+        $cleanProj = preg_replace('/[^a-zA-Z0-9_-]/', '_', strtolower($projName));
+        $filename = "Liquidity_Management_Report_{$cleanProj}_" . date('Ymd_His') . ".csv";
+
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $out = fopen('php://output', 'w');
+        // UTF-8 BOM for Excel compatibility
+        fwrite($out, "\xEF\xBB\xBF");
+
+        // Header Title
+        fputcsv($out, ['LIQUIDITY MANAGEMENT REPORT']);
+        fputcsv($out, ['Project Name', $projName]);
+        fputcsv($out, ['Generated At', date('Y-m-d H:i:s')]);
+        fputcsv($out, []);
+
+        // KPI Summary Block
+        fputcsv($out, ['--- LIQUIDITY SUMMARY ---']);
+        fputcsv($out, ['Metric', 'Amount (BDT)', 'Employee Count']);
+        fputcsv($out, ['Total Payroll Requirement', number_format($data['totalRequirement'], 2, '.', ''), count($data['bankEmployees']) + count($data['cashEmployees'])]);
+        fputcsv($out, ['Bank Transfer Requirement', number_format($data['totalBankRequirement'], 2, '.', ''), count($data['bankEmployees'])]);
+        fputcsv($out, ['Cash in Hand Requirement', number_format($data['totalCashRequirement'], 2, '.', ''), count($data['cashEmployees'])]);
+        fputcsv($out, []);
+
+        // Bank Transfer List
+        fputcsv($out, ['--- 1. BANK TRANSFER DISBURSEMENT LIST ---']);
+        fputcsv($out, ['SL', 'Employee ID', 'Employee Name', 'Department', 'Payment Type', 'Bank Name', 'Account Number', 'Amount (BDT)']);
+        $sl = 1;
+        foreach ($data['bankEmployees'] as $bEmp) {
+            fputcsv($out, [
+                $sl++,
+                $bEmp['employee_id'],
+                $bEmp['full_name'],
+                $bEmp['department_name'],
+                $bEmp['payment_type'] ?? 'Bank',
+                $bEmp['bank_name'] ?: 'N/A',
+                $bEmp['account_number'] ? "'" . $bEmp['account_number'] : 'N/A',
+                number_format($bEmp['disbursement_amount'], 2, '.', '')
+            ]);
+        }
+        fputcsv($out, ['', '', '', '', '', '', 'Total Bank Transfer', number_format($data['totalBankRequirement'], 2, '.', '')]);
+        fputcsv($out, []);
+
+        // Cash in Hand List
+        fputcsv($out, ['--- 2. CASH IN HAND DISBURSEMENT LIST ---']);
+        fputcsv($out, ['SL', 'Employee ID', 'Employee Name', 'Department', 'Payment Type', 'Amount (BDT)']);
+        $sl = 1;
+        foreach ($data['cashEmployees'] as $cEmp) {
+            fputcsv($out, [
+                $sl++,
+                $cEmp['employee_id'],
+                $cEmp['full_name'],
+                $cEmp['department_name'],
+                $cEmp['payment_type'] ?? 'Cash',
+                number_format($cEmp['disbursement_amount'], 2, '.', '')
+            ]);
+        }
+        fputcsv($out, ['', '', '', '', 'Total Cash in Hand', number_format($data['totalCashRequirement'], 2, '.', '')]);
+
+        fclose($out);
+        exit;
+    }
 }
