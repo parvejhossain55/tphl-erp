@@ -22,51 +22,77 @@
                 <form method="GET" action="<?= $base_url ?>/sales-activity-report">
                     <input type="hidden" name="tab" value="<?= htmlspecialchars($activeTab) ?>">
                     <div class="row g-2 align-items-end">
-                        <div class="col-md-2">
-                            <label class="form-label fw-semibold">Year</label>
-                            <select name="year" class="form-select form-select-sm">
-                                <?php for($y = 2024; $y <= date('Y')+1; $y++): ?>
-                                    <option value="<?= $y ?>" <?= $y == $year ? 'selected' : '' ?>><?= $y ?></option>
-                                <?php endfor; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-semibold">Month</label>
-                            <select name="month" class="form-select form-select-sm">
-                                <?php 
-                                $months = ['1'=>'Jan', '2'=>'Feb', '3'=>'Mar', '4'=>'Apr', '5'=>'May', '6'=>'Jun', '7'=>'Jul', '8'=>'Aug', '9'=>'Sep', '10'=>'Oct', '11'=>'Nov', '12'=>'Dec'];
-                                foreach($months as $m => $mName): 
-                                ?>
-                                    <option value="<?= $m ?>" <?= $m == $month ? 'selected' : '' ?>><?= $mName ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">
-                                <i class="fa-solid fa-users text-primary me-1"></i>Team
-                            </label>
-                            <select name="team_id" class="form-select form-select-sm">
-                                <option value="">All Teams (Company-Wide)</option>
-                                <?php if(!empty($teams)): foreach($teams as $t): ?>
-                                    <option value="<?= $t['id'] ?>" <?= (!empty($selectedTeamId) && (int)$selectedTeamId === (int)$t['id']) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($t['name']) ?>
-                                    </option>
-                                <?php endforeach; endif; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">Specific Date (Daily)</label>
-                            <input type="date" name="date" class="form-control form-control-sm" value="<?= htmlspecialchars($date) ?>">
-                        </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">
-                                <i class="fa-solid fa-filter me-1"></i> Filter Data
-                            </button>
-                        </div>
+                        <?php if ($activeTab === 'daily'): ?>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Specific Date (Daily)</label>
+                                <input type="date" name="date" class="form-control form-control-sm" value="<?= htmlspecialchars($date) ?>" required>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label fw-semibold">
+                                    <i class="fa-solid fa-users text-primary me-1"></i>Team
+                                </label>
+                                <select name="team_id" class="form-select form-select-sm">
+                                    <option value="">All Teams (Company-Wide)</option>
+                                    <?php if(!empty($teams)): foreach($teams as $t): ?>
+                                        <option value="<?= $t['id'] ?>" <?= (!empty($selectedTeamId) && (int)$selectedTeamId === (int)$t['id']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($t['name']) ?>
+                                        </option>
+                                    <?php endforeach; endif; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">
+                                    <i class="fa-solid fa-filter me-1"></i> Filter Daily
+                                </button>
+                            </div>
+                        <?php else: ?>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Year</label>
+                                <select name="year" class="form-select form-select-sm">
+                                    <?php for($y = 2024; $y <= date('Y')+1; $y++): ?>
+                                        <option value="<?= $y ?>" <?= $y == $year ? 'selected' : '' ?>><?= $y ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Month</label>
+                                <select name="month" class="form-select form-select-sm">
+                                    <?php 
+                                    $months = ['1'=>'Jan', '2'=>'Feb', '3'=>'Mar', '4'=>'Apr', '5'=>'May', '6'=>'Jun', '7'=>'Jul', '8'=>'Aug', '9'=>'Sep', '10'=>'Oct', '11'=>'Nov', '12'=>'Dec'];
+                                    foreach($months as $m => $mName): 
+                                    ?>
+                                        <option value="<?= $m ?>" <?= $m == $month ? 'selected' : '' ?>><?= $mName ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">
+                                    <i class="fa-solid fa-users text-primary me-1"></i>Team
+                                </label>
+                                <select name="team_id" class="form-select form-select-sm">
+                                    <option value="">All Teams (Company-Wide)</option>
+                                    <?php if(!empty($teams)): foreach($teams as $t): ?>
+                                        <option value="<?= $t['id'] ?>" <?= (!empty($selectedTeamId) && (int)$selectedTeamId === (int)$t['id']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($t['name']) ?>
+                                        </option>
+                                    <?php endforeach; endif; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">
+                                    <i class="fa-solid fa-filter me-1"></i> Filter Data
+                                </button>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </form>
                 <div class="mt-3 text-muted d-flex align-items-center justify-content-between flex-wrap gap-2 fs-12">
-                    <?php if(!empty($monthlyData['period'])): ?>
+                    <?php if($activeTab === 'daily'): ?>
+                    <div>
+                        <i class="fa-regular fa-calendar me-1 text-primary"></i>
+                        Showing Daily Report for: <strong><?= date('d M, Y', strtotime($date)) ?></strong>
+                    </div>
+                    <?php elseif(!empty($monthlyData['period'])): ?>
                     <div>
                         <i class="fa-regular fa-calendar me-1 text-primary"></i>
                         Showing data for period: <strong><?= $monthlyData['period']['start'] ?></strong> to <strong><?= $monthlyData['period']['end'] ?></strong>
@@ -83,10 +109,18 @@
                                     }
                                 }
                             }
+                            $clearTeamQuery = ['tab' => $activeTab];
+                            if ($activeTab === 'daily') {
+                                $clearTeamQuery['date'] = $date;
+                            } else {
+                                $clearTeamQuery['year'] = $year;
+                                $clearTeamQuery['month'] = $month;
+                            }
+                            $clearTeamUrl = '?' . http_build_query($clearTeamQuery);
                         ?>
                         <div class="badge bg-primary-transparent text-primary fs-12 px-3 py-2 border border-primary-subtle">
                             <i class="fa-solid fa-filter me-1"></i> Filtered Team: <strong><?= htmlspecialchars($selTeamName ?: 'Team #' . $selectedTeamId) ?></strong>
-                            <a href="?tab=<?= htmlspecialchars($activeTab) ?>&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?>" class="text-danger ms-2" title="Clear Team Filter">
+                            <a href="<?= $clearTeamUrl ?>" class="text-danger ms-2" title="Clear Team Filter">
                                 <i class="fa-solid fa-circle-xmark"></i>
                             </a>
                         </div>
@@ -102,29 +136,43 @@
         <!-- Tabs Navigation -->
         <?php
         $teamParam = !empty($selectedTeamId) ? '&team_id=' . urlencode($selectedTeamId) : '';
-        $excelExportUrl = '?' . http_build_query(array_merge($_GET, ['tab' => $activeTab, 'year' => $year, 'month' => $month, 'date' => $date, 'export' => 'excel']));
-        $pdfExportUrl = '?' . http_build_query(array_merge($_GET, ['tab' => $activeTab, 'year' => $year, 'month' => $month, 'date' => $date, 'export' => 'pdf']));
+        $monthYearParam = "&year={$year}&month={$month}";
+        $dailyParam = !empty($date) ? "&date={$date}" : '';
+
+        // Clean export parameters based on active tab
+        $exportParams = ['tab' => $activeTab];
+        if ($activeTab === 'daily') {
+            $exportParams['date'] = $date;
+        } else {
+            $exportParams['year'] = $year;
+            $exportParams['month'] = $month;
+        }
+        if (!empty($selectedTeamId)) {
+            $exportParams['team_id'] = $selectedTeamId;
+        }
+        $excelExportUrl = '?' . http_build_query(array_merge($exportParams, ['export' => 'excel']));
+        $pdfExportUrl = '?' . http_build_query(array_merge($exportParams, ['export' => 'pdf']));
         ?>
         <div class="card custom-card">
             <div class="card-body">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2 border-bottom pb-2">
                     <ul class="nav nav-tabs tab-style-1 d-sm-flex d-block border-bottom-0 mb-0" role="tablist">
                         <li class="nav-item">
-                            <a class="nav-link <?= $activeTab == 'dashboard' ? 'active' : '' ?>" href="?tab=dashboard&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?><?= $teamParam ?>">Ranking Dashboard</a>
+                            <a class="nav-link <?= $activeTab == 'dashboard' ? 'active' : '' ?>" href="?tab=dashboard<?= $monthYearParam ?><?= $teamParam ?>">Ranking Dashboard</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?= $activeTab == 'target-vs-achievement' ? 'active' : '' ?>" href="?tab=target-vs-achievement&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?><?= $teamParam ?>">
+                            <a class="nav-link <?= $activeTab == 'target-vs-achievement' ? 'active' : '' ?>" href="?tab=target-vs-achievement<?= $monthYearParam ?><?= $teamParam ?>">
                                 <i class="fa-solid fa-bullseye me-1 text-success"></i> Target Vs Achievement
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?= $activeTab == 'monthly' ? 'active' : '' ?>" href="?tab=monthly&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?><?= $teamParam ?>">Monthly Team Summary</a>
+                            <a class="nav-link <?= $activeTab == 'monthly' ? 'active' : '' ?>" href="?tab=monthly<?= $monthYearParam ?><?= $teamParam ?>">Monthly Team Summary</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?= $activeTab == 'all-team' ? 'active' : '' ?>" href="?tab=all-team&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?><?= $teamParam ?>">All Team Report</a>
+                            <a class="nav-link <?= $activeTab == 'all-team' ? 'active' : '' ?>" href="?tab=all-team<?= $monthYearParam ?><?= $teamParam ?>">All Team Report</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link <?= $activeTab == 'daily' ? 'active' : '' ?>" href="?tab=daily&year=<?= $year ?>&month=<?= $month ?>&date=<?= $date ?><?= $teamParam ?>">Daily Report</a>
+                            <a class="nav-link <?= $activeTab == 'daily' ? 'active' : '' ?>" href="?tab=daily<?= $dailyParam ?><?= $teamParam ?>">Daily Report</a>
                         </li>
                     </ul>
                     <div class="d-flex gap-2">
