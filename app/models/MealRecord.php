@@ -3,11 +3,105 @@
 class MealRecord extends Model
 {
     protected $db;
+    protected $lastError = null;
+    private static $tablesChecked = false;
 
     public function __construct($db = null)
     {
         $this->db = $db ?: db();
         parent::__construct($this->db);
+        $this->ensureTablesExist();
+    }
+
+    public function getLastError()
+    {
+        return $this->lastError;
+    }
+
+    /**
+     * Auto-create meal module tables if they do not exist
+     */
+    public function ensureTablesExist()
+    {
+        if (self::$tablesChecked) {
+            return;
+        }
+
+        try {
+            // 1. employee_meal_opt_outs
+            $this->db->query("
+                CREATE TABLE IF NOT EXISTS `employee_meal_opt_outs` (
+                  `id` INT AUTO_INCREMENT PRIMARY KEY,
+                  `employee_id` INT UNSIGNED NOT NULL,
+                  `opt_out_date` DATE NOT NULL,
+                  `status` ENUM('opt_out', 'opt_in') NOT NULL DEFAULT 'opt_out',
+                  `opt_out_time` DATETIME NOT NULL,
+                  `reason` VARCHAR(255) NULL,
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  UNIQUE KEY `uniq_emp_opt_date` (`employee_id`, `opt_out_date`),
+                  KEY `idx_opt_date` (`opt_out_date`),
+                  KEY `idx_emp_status` (`employee_id`, `status`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            // 2. meal_projects
+            $this->db->query("
+                CREATE TABLE IF NOT EXISTS `meal_projects` (
+                  `id` int(11) NOT NULL AUTO_INCREMENT,
+                  `payroll_project_id` int(11) DEFAULT NULL,
+                  `name` varchar(150) NOT NULL,
+                  `from_date` date NOT NULL,
+                  `to_date` date NOT NULL,
+                  `standard_meal_amount` decimal(10,2) NOT NULL DEFAULT 120.00,
+                  `status` enum('open','locked','settled') NOT NULL DEFAULT 'open',
+                  `created_by` int(11) DEFAULT NULL,
+                  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  KEY `idx_payroll_project` (`payroll_project_id`),
+                  KEY `idx_dates` (`from_date`, `to_date`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            // 3. meal_records
+            $this->db->query("
+                CREATE TABLE IF NOT EXISTS `meal_records` (
+                  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+                  `meal_project_id` int(11) NOT NULL,
+                  `office_branch_id` int(11) NOT NULL,
+                  `employee_id` int(10) unsigned NOT NULL,
+                  `meal_date` date NOT NULL,
+                  `is_consumed` tinyint(1) NOT NULL DEFAULT 1 COMMENT '1 = Meal consumed, 0 = No meal',
+                  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  UNIQUE KEY `unique_project_emp_date` (`meal_project_id`, `employee_id`, `meal_date`),
+                  KEY `idx_project_branch` (`meal_project_id`, `office_branch_id`),
+                  KEY `idx_emp_date` (`employee_id`, `meal_date`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            // 4. meal_guest_records
+            $this->db->query("
+                CREATE TABLE IF NOT EXISTS `meal_guest_records` (
+                  `id` int(11) NOT NULL AUTO_INCREMENT,
+                  `meal_project_id` int(11) NOT NULL,
+                  `office_branch_id` int(11) NOT NULL,
+                  `meal_date` date NOT NULL,
+                  `guest_count` int(11) NOT NULL DEFAULT 0,
+                  `remarks` varchar(255) DEFAULT NULL,
+                  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  UNIQUE KEY `unique_project_branch_date` (`meal_project_id`, `office_branch_id`, `meal_date`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+
+            self::$tablesChecked = true;
+        } catch (\Throwable $te) {
+            error_log("MealRecord ensureTablesExist error: " . $te->getMessage());
+        }
     }
 
     /**
@@ -312,6 +406,9 @@ class MealRecord extends Model
      */
     public function saveDailyOptOut($employeeId, $date, $status = 'opt_out', $reason = null)
     {
+        $this->ensureTablesExist();
+        $this->lastError = null;
+
         $employeeId = (int)$employeeId;
         $date = trim($date);
         $status = in_array($status, ['opt_out', 'opt_in']) ? $status : 'opt_out';
@@ -328,26 +425,76 @@ class MealRecord extends Model
         ";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
+            $this->lastError = "Prepare failed for employee_meal_opt_outs: " . $this->db->error;
+            error_log($this->lastError);
             return false;
         }
 
         $stmt->bind_param("isssss", $employeeId, $date, $status, $now, $reason, $now);
         $success = $stmt->execute();
+        if (!$success) {
+            $this->lastError = "Execute failed for employee_meal_opt_outs: " . $stmt->error;
+            error_log($this->lastError);
+        }
         $stmt->close();
 
         if ($success) {
-            // Also synchronize existing meal_records for this date if present
             $consumed = ($status === 'opt_out') ? 0 : 1;
-            $updateSql = "
-                UPDATE meal_records 
-                SET is_consumed = ?, updated_at = NOW() 
-                WHERE employee_id = ? AND meal_date = ?
-            ";
-            $uStmt = $this->db->prepare($updateSql);
-            if ($uStmt) {
-                $uStmt->bind_param("iis", $consumed, $employeeId, $date);
-                $uStmt->execute();
-                $uStmt->close();
+
+            // Find or provision meal project covering this date
+            $projId = null;
+            $pStmt = $this->db->prepare("SELECT id FROM meal_projects WHERE ? BETWEEN from_date AND to_date ORDER BY id DESC LIMIT 1");
+            if ($pStmt) {
+                $pStmt->bind_param("s", $date);
+                $pStmt->execute();
+                $pRes = $pStmt->get_result();
+                if ($pRes && $pRow = $pRes->fetch_assoc()) {
+                    $projId = (int)$pRow['id'];
+                }
+                $pStmt->close();
+            }
+
+            if (!$projId) {
+                // Auto-provision standard monthly meal project if none exists for this month
+                $monthName = date('F Y', strtotime($date));
+                $startDate = date('Y-m-01', strtotime($date));
+                $endDate   = date('Y-m-t', strtotime($date));
+                $projName  = $monthName . " Meal Project";
+                $stdRate   = 60.00;
+
+                $insStmt = $this->db->prepare("INSERT INTO meal_projects (name, from_date, to_date, standard_meal_amount, status, created_at) VALUES (?, ?, ?, ?, 'open', NOW())");
+                if ($insStmt) {
+                    $insStmt->bind_param("sssd", $projName, $startDate, $endDate, $stdRate);
+                    if ($insStmt->execute()) {
+                        $projId = (int)$this->db->insert_id;
+                    }
+                    $insStmt->close();
+                }
+            }
+
+            // Get employee's office branch ID
+            $branchId = 1;
+            $bRes = $this->db->query("SELECT office_branch_id FROM employees WHERE id = {$employeeId} LIMIT 1");
+            if ($bRes && $bRow = $bRes->fetch_assoc()) {
+                $branchId = (int)($bRow['office_branch_id'] ?? 1);
+            }
+
+            // UPSERT into meal_records so that a record is GUARANTEED to exist in Meal Tracker
+            if ($projId) {
+                $upsertSql = "
+                    INSERT INTO meal_records (meal_project_id, employee_id, office_branch_id, meal_date, is_consumed, updated_at)
+                    VALUES (?, ?, ?, ?, ?, NOW())
+                    ON DUPLICATE KEY UPDATE
+                        is_consumed = VALUES(is_consumed),
+                        office_branch_id = VALUES(office_branch_id),
+                        updated_at = NOW()
+                ";
+                $uStmt = $this->db->prepare($upsertSql);
+                if ($uStmt) {
+                    $uStmt->bind_param("iiisi", $projId, $employeeId, $branchId, $date, $consumed);
+                    $uStmt->execute();
+                    $uStmt->close();
+                }
             }
         }
 
@@ -360,10 +507,11 @@ class MealRecord extends Model
      */
     public function getOptOutsByDateRange($fromDate, $toDate)
     {
+        $this->ensureTablesExist();
         $sql = "
             SELECT employee_id, opt_out_date, status
             FROM employee_meal_opt_outs
-            WHERE opt_out_date BETWEEN ? AND ? AND status = 'opt_out'
+            WHERE opt_out_date BETWEEN ? AND ?
         ";
         $stmt = $this->db->prepare($sql);
         if (!$stmt) {
@@ -390,10 +538,34 @@ class MealRecord extends Model
     }
 
     /**
+     * Get a specific employee's opt status for a specific date
+     * Returns 'opt_out', 'opt_in', or null
+     */
+    public function getEmployeeOptStatus($employeeId, $date)
+    {
+        $this->ensureTablesExist();
+        $employeeId = (int)$employeeId;
+        $sql = "SELECT status FROM employee_meal_opt_outs WHERE employee_id = ? AND opt_out_date = ? LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return null;
+
+        $stmt->bind_param("is", $employeeId, $date);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $status = null;
+        if ($res && $row = $res->fetch_assoc()) {
+            $status = $row['status'];
+        }
+        $stmt->close();
+        return $status;
+    }
+
+    /**
      * Check if a specific employee is opted out on a specific date
      */
     public function isEmployeeOptedOut($employeeId, $date)
     {
+        $this->ensureTablesExist();
         $employeeId = (int)$employeeId;
         $sql = "SELECT status FROM employee_meal_opt_outs WHERE employee_id = ? AND opt_out_date = ? LIMIT 1";
         $stmt = $this->db->prepare($sql);
@@ -567,15 +739,19 @@ class MealRecord extends Model
 
             foreach ($period as $dt) {
                 $d = $dt->format('Y-m-d');
-                $isOptedOut = isset($optOutsMap[$eId][$d]);
+                $optStatus = $optOutsMap[$eId][$d] ?? null;
                 $isPresent = isset($attendanceMap[$eId][$d]);
 
                 // Future dates cannot be consumed automatically from attendance logs
                 if ($d > $todayStr) {
                     $isConsumed = 0;
+                } else if ($optStatus === 'opt_out') {
+                    $isConsumed = 0;
+                } else if ($optStatus === 'opt_in') {
+                    $isConsumed = 1;
                 } else {
                     // Attendance logic: Present AND NOT opted-out => 1; otherwise => 0
-                    $isConsumed = ($isPresent && !$isOptedOut) ? 1 : 0;
+                    $isConsumed = $isPresent ? 1 : 0;
                 }
 
                 $uStmt->bind_param("iiisi", $projectId, $eId, $bId, $d, $isConsumed);
@@ -645,11 +821,16 @@ class MealRecord extends Model
         }
 
         $projectId = (int)$project['id'];
-        $isOptedOut = $this->isEmployeeOptedOut($employeeId, $attendanceDate);
+        $optStatus = $this->getEmployeeOptStatus($employeeId, $attendanceDate);
         $isPresent = in_array($todayStatus, ['Present', 'Late', 'Half-Day']);
 
-        // Present AND NOT opted-out => 1; otherwise => 0
-        $isConsumed = ($isPresent && !$isOptedOut) ? 1 : 0;
+        if ($optStatus === 'opt_out') {
+            $isConsumed = 0;
+        } else if ($optStatus === 'opt_in') {
+            $isConsumed = 1;
+        } else {
+            $isConsumed = $isPresent ? 1 : 0;
+        }
 
         $upsertSql = "
             INSERT INTO meal_records (meal_project_id, employee_id, office_branch_id, meal_date, is_consumed, updated_at)

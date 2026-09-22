@@ -769,12 +769,14 @@ WHERE e.id = ?
         $optStmt = $this->db->prepare($optSql);
         $isOptedOut = false;
         $optOutTime = null;
+        $optStatus = null;
         if ($optStmt) {
             $optStmt->bind_param("is", $employeeId, $date);
             $optStmt->execute();
             $optRes = $optStmt->get_result();
             if ($optRes && $row = $optRes->fetch_assoc()) {
-                $isOptedOut = ($row['status'] === 'opt_out');
+                $optStatus = $row['status'];
+                $isOptedOut = ($optStatus === 'opt_out');
                 $optOutTime = $row['opt_out_time'];
             }
             $optStmt->close();
@@ -802,8 +804,13 @@ WHERE e.id = ?
         }
 
         // 4. Effective meal count for today:
-        // If enrolled + present + NOT opted out => 1; if opted out => 0
-        $mealActive = ($isEnrolled && !$isOptedOut && $isPresent);
+        if ($isOptedOut) {
+            $mealActive = false;
+        } else if ($optStatus === 'opt_in') {
+            $mealActive = true;
+        } else {
+            $mealActive = ($isEnrolled && ($isPresent || $isBefore11));
+        }
 
         // Auto-sync meal record for today if enrolled
         if ($isEnrolled) {

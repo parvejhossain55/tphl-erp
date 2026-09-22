@@ -612,7 +612,8 @@ class MealTrackerController extends Controller
                 'context' => $updatedCtx
             ]);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Failed to update meal status. Please try again.']);
+            $errMsg = $this->mealRecordModel->getLastError() ?: $this->db->error ?: 'Failed to update meal status. Please try again.';
+            echo json_encode(['success' => false, 'message' => $errMsg]);
         }
         exit;
     }
