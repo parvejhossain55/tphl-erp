@@ -31,7 +31,29 @@ class LandAcquisitionController extends Controller {
             FROM land_acquisitions
         ")->fetch_assoc();
 
-        // Fetch total bayana paid
+        // Fetch accounts paid amounts & pending pipeline from land_fund_requisitions
+        $paidLandStats = $this->db->query("
+            SELECT 
+                SUM(CASE WHEN requisition_type IN ('Bayana', 'Registration') AND accounts_status = 'Paid' THEN requested_amount ELSE 0 END) as total_paid_land,
+                SUM(CASE WHEN requisition_type IN ('Extra Cost', 'Other') AND accounts_status = 'Paid' THEN requested_amount ELSE 0 END) as total_paid_extra,
+                SUM(CASE WHEN accounts_status = 'Paid' THEN requested_amount ELSE 0 END) as total_paid_all,
+                SUM(CASE WHEN mgmt_status = 'Pending' THEN requested_amount ELSE 0 END) as pending_mgmt_amount,
+                COUNT(CASE WHEN mgmt_status = 'Pending' THEN id END) as pending_mgmt_count,
+                SUM(CASE WHEN mgmt_status = 'Approved' AND accounts_status = 'Pending' THEN requested_amount ELSE 0 END) as pending_accounts_amount,
+                COUNT(CASE WHEN mgmt_status = 'Approved' AND accounts_status = 'Pending' THEN id END) as pending_accounts_count
+            FROM land_fund_requisitions
+        ")->fetch_assoc();
+
+        $stats['total_paid_land'] = (float)($paidLandStats['total_paid_land'] ?? 0);
+        $stats['total_paid_extra'] = (float)($paidLandStats['total_paid_extra'] ?? 0);
+        $stats['total_paid_all'] = (float)($paidLandStats['total_paid_all'] ?? 0);
+        $stats['total_land_due'] = max(0, (float)($stats['total_value'] ?? 0) - $stats['total_paid_land']);
+        $stats['pending_mgmt_amount'] = (float)($paidLandStats['pending_mgmt_amount'] ?? 0);
+        $stats['pending_mgmt_count'] = (int)($paidLandStats['pending_mgmt_count'] ?? 0);
+        $stats['pending_accounts_amount'] = (float)($paidLandStats['pending_accounts_amount'] ?? 0);
+        $stats['pending_accounts_count'] = (int)($paidLandStats['pending_accounts_count'] ?? 0);
+
+        // Fetch total bayana paid (legacy manual entries)
         $bayanaPaid = $this->db->query("SELECT SUM(payment_amount) as total FROM land_bayana_payments")->fetch_assoc()['total'] ?? 0;
         
         // Fetch total registration cost paid
@@ -44,7 +66,7 @@ class LandAcquisitionController extends Controller {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $where = "1=1";
-        if (!in_array($roleId, [1, 3, 14, 15, 22, 33, 6, 30])) {
+        if (!in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33, 6, 30])) {
             $where = "(p.landman_id = $userId OR la.created_by = $userId)";
         }
 
@@ -54,17 +76,37 @@ class LandAcquisitionController extends Controller {
         }
 
         $result = $this->db->query("
-            SELECT la.*, p.name as project_name, u.full_name as creator_name
+            SELECT la.*, 
+                   COALESCE(NULLIF(TRIM(la.land_project_name), ''), p.name, 'Tentative Land Deal') as effective_project_name,
+                   p.name as project_name, 
+                   u.full_name as creator_name,
+                   COALESCE(SUM(CASE WHEN lfr.accounts_status = 'Paid' AND lfr.requisition_type IN ('Bayana', 'Registration') THEN lfr.requested_amount ELSE 0 END), 0) as paid_land_amount,
+                   COALESCE(SUM(CASE WHEN lfr.accounts_status = 'Paid' AND lfr.requisition_type IN ('Extra Cost', 'Other') THEN lfr.requested_amount ELSE 0 END), 0) as paid_extra_cost,
+                   COALESCE(SUM(CASE WHEN lfr.accounts_status = 'Paid' THEN lfr.requested_amount ELSE 0 END), 0) as total_paid_deal,
+                   COALESCE(SUM(CASE WHEN lfr.mgmt_status = 'Pending' THEN lfr.requested_amount ELSE 0 END), 0) as pending_mgmt_amount,
+                   COALESCE(SUM(CASE WHEN lfr.mgmt_status = 'Approved' AND lfr.accounts_status = 'Pending' THEN lfr.requested_amount ELSE 0 END), 0) as pending_accounts_amount,
+                   COALESCE(SUM(CASE WHEN lfr.accounts_status = 'Pending' AND lfr.mgmt_status != 'Rejected' THEN lfr.requested_amount ELSE 0 END), 0) as total_pending_deal,
+                   COUNT(DISTINCT lfr.id) as req_count,
+                   COUNT(DISTINCT CASE WHEN lfr.accounts_status = 'Paid' THEN lfr.id END) as paid_req_count,
+                   COUNT(DISTINCT CASE WHEN lfr.mgmt_status = 'Pending' THEN lfr.id END) as pending_mgmt_count,
+                   COUNT(DISTINCT CASE WHEN lfr.mgmt_status = 'Approved' AND lfr.accounts_status = 'Pending' THEN lfr.id END) as pending_accounts_count
             FROM land_acquisitions la
             LEFT JOIN projects p ON la.project_id = p.id
             LEFT JOIN users u ON la.created_by = u.id
+            LEFT JOIN land_fund_requisitions lfr ON la.id = lfr.land_acquisition_id
             WHERE $where
+            GROUP BY la.id
             ORDER BY la.id DESC
         ");
         $acquisitions = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
-        // All active projects from project lists
-        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        // All active projects from project lists, prioritizing Planning status
+        $projects = $this->db->query("
+            SELECT id, name, project_status 
+            FROM projects 
+            WHERE deleted_at IS NULL 
+            ORDER BY (CASE WHEN project_status = 'Planning' THEN 0 ELSE 1 END), name ASC
+        ")->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/land_acquisition/index', [
             'current_route' => 'con-land-acquisitions',
@@ -77,7 +119,12 @@ class LandAcquisitionController extends Controller {
     }
 
     public function create() {
-        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        $projects = $this->db->query("
+            SELECT id, name, project_status 
+            FROM projects 
+            WHERE deleted_at IS NULL 
+            ORDER BY (CASE WHEN project_status = 'Planning' THEN 0 ELSE 1 END), name ASC
+        ")->fetch_all(MYSQLI_ASSOC);
         $this->view('phase2/land_acquisition/create', [
             'current_route' => 'con-land-acquisitions',
             'page_title' => 'Add Land Acquisition',
@@ -93,24 +140,32 @@ class LandAcquisitionController extends Controller {
             exit;
         }
 
-        $project_id = (int)($_POST['project_id'] ?? 0);
-        $land_owner_name = $_POST['land_owner_name'] ?? '';
-        $land_owner_phone = $_POST['land_owner_phone'] ?? null;
+        $project_id = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
+        $land_project_name = trim($_POST['land_project_name'] ?? '');
+        if (empty($land_project_name) && !empty($project_id)) {
+            $pRow = $this->db->query("SELECT name FROM projects WHERE id = $project_id LIMIT 1")->fetch_assoc();
+            $land_project_name = $pRow['name'] ?? '';
+        }
+        $land_owner_name = trim($_POST['land_owner_name'] ?? '');
+        $land_owner_phone = !empty($_POST['land_owner_phone']) ? trim($_POST['land_owner_phone']) : null;
+        $land_receiver_name = !empty($_POST['land_receiver_name']) ? trim($_POST['land_receiver_name']) : null;
+        $media_broker_info = !empty($_POST['media_broker_info']) ? trim($_POST['media_broker_info']) : null;
+        $power_of_attorney = !empty($_POST['power_of_attorney']) ? trim($_POST['power_of_attorney']) : null;
         $total_area = (float)($_POST['total_area'] ?? 0);
         $area_unit = $_POST['area_unit'] ?? 'decimal';
         $price_per_unit = (float)($_POST['price_per_unit'] ?? 0);
         $total_amount = $total_area * $price_per_unit;
-        $location = $_POST['location'] ?? null;
-        $status = $_POST['status'] ?? 'selected';
-        $remarks = $_POST['remarks'] ?? null;
+        $location = !empty($_POST['location']) ? trim($_POST['location']) : null;
+        $status = 'selected'; // Default initial status
+        $remarks = !empty($_POST['remarks']) ? trim($_POST['remarks']) : null;
         $created_by = (int)$_SESSION['user']['id'];
 
         $stmt = $this->db->prepare("
             INSERT INTO land_acquisitions 
-            (project_id, land_owner_name, land_owner_phone, total_area, area_unit, price_per_unit, total_amount, location, status, remarks, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (project_id, land_project_name, land_owner_name, land_owner_phone, land_receiver_name, media_broker_info, power_of_attorney, total_area, area_unit, price_per_unit, total_amount, location, status, remarks, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("issdsddsssi", $project_id, $land_owner_name, $land_owner_phone, $total_area, $area_unit, $price_per_unit, $total_amount, $location, $status, $remarks, $created_by);
+        $stmt->bind_param("issssssdsddsssi", $project_id, $land_project_name, $land_owner_name, $land_owner_phone, $land_receiver_name, $media_broker_info, $power_of_attorney, $total_area, $area_unit, $price_per_unit, $total_amount, $location, $status, $remarks, $created_by);
 
         if ($stmt->execute()) {
             setSuccess("Land Acquisition recorded successfully.");
@@ -136,6 +191,43 @@ class LandAcquisitionController extends Controller {
             exit;
         }
 
+        // Fetch all requisitions for this land
+        $requisitions = $this->db->query("
+            SELECT lfr.*, 
+                   u_req.full_name as requester_name,
+                   u_mgmt.full_name as mgmt_name,
+                   u_acc.full_name as accounts_name
+            FROM land_fund_requisitions lfr
+            LEFT JOIN users u_req ON lfr.requested_by = u_req.id
+            LEFT JOIN users u_mgmt ON lfr.mgmt_by = u_mgmt.id
+            LEFT JOIN users u_acc ON lfr.accounts_by = u_acc.id
+            WHERE lfr.land_acquisition_id = $id
+            ORDER BY lfr.id ASC
+        ")->fetch_all(MYSQLI_ASSOC);
+
+        // Calculate running land valuation payments and extra costs
+        $cumLandPaid = 0;
+        $cumExtraPaid = 0;
+        $totalLandValuation = (float)$acquisition['total_amount'];
+
+        foreach ($requisitions as &$req) {
+            $isPaid = ($req['accounts_status'] === 'Paid');
+            $reqAmt = (float)$req['requested_amount'];
+            $isLandCost = in_array($req['requisition_type'], ['Bayana', 'Registration']);
+
+            if ($isPaid) {
+                if ($isLandCost) {
+                    $cumLandPaid += $reqAmt;
+                } else {
+                    $cumExtraPaid += $reqAmt;
+                }
+            }
+            $req['cum_land_paid'] = $cumLandPaid;
+            $req['remaining_land_due'] = max(0, $totalLandValuation - $cumLandPaid);
+            $req['is_land_cost'] = $isLandCost;
+        }
+        unset($req);
+
         // Fetch bayana payments
         $bayanas = $this->db->query("
             SELECT lb.*, u.full_name as creator_name
@@ -153,28 +245,25 @@ class LandAcquisitionController extends Controller {
             WHERE lr.land_acquisition_id = $id
         ")->fetch_assoc();
 
-        $projects = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        $projects = $this->db->query("
+            SELECT id, name, project_status 
+            FROM projects 
+            WHERE deleted_at IS NULL 
+            ORDER BY (CASE WHEN project_status = 'Planning' THEN 0 ELSE 1 END), name ASC
+        ")->fetch_all(MYSQLI_ASSOC);
 
-        // Calculate total bayana budget approved by accounts (Paid requisitions of type Bayana)
-        $bayanaReqResult = $this->db->query("
-            SELECT SUM(requested_amount) as total 
-            FROM land_fund_requisitions 
-            WHERE land_acquisition_id = $id 
-              AND requisition_type = 'Bayana' 
-              AND accounts_status = 'Paid'
-        ");
-        $totalBayanaBudget = (float)($bayanaReqResult ? $bayanaReqResult->fetch_assoc()['total'] ?? 0 : 0);
-
-        // Calculate total bayana manually paid by land manager
+        $totalBayanaBudget = $cumLandPaid;
         $totalBayanaManualPaid = array_sum(array_column($bayanas, 'payment_amount'));
-
-        // If fully paid (manual payments >= approved budget & budget > 0), hide the Add Payment button
         $bayanaPaidFull = $totalBayanaBudget > 0 && $totalBayanaManualPaid >= $totalBayanaBudget;
 
         $this->view('phase2/land_acquisition/edit', [
             'current_route' => 'con-land-acquisitions',
             'page_title' => 'Manage Land Acquisition',
             'acquisition' => $acquisition,
+            'requisitions' => $requisitions,
+            'cumLandPaid' => $cumLandPaid,
+            'cumExtraPaid' => $cumExtraPaid,
+            'remainingLandDue' => max(0, $totalLandValuation - $cumLandPaid),
             'bayanas' => $bayanas,
             'registration' => $registration,
             'projects' => $projects,
@@ -256,16 +345,24 @@ class LandAcquisitionController extends Controller {
             }
         } else {
             // Update basic info
-            $project_id = (int)($_POST['project_id'] ?? 0);
-            $land_owner_name = $_POST['land_owner_name'] ?? '';
-            $land_owner_phone = $_POST['land_owner_phone'] ?? null;
+            $project_id = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
+            $land_project_name = trim($_POST['land_project_name'] ?? '');
+            if (empty($land_project_name) && !empty($project_id)) {
+                $pRow = $this->db->query("SELECT name FROM projects WHERE id = $project_id LIMIT 1")->fetch_assoc();
+                $land_project_name = $pRow['name'] ?? '';
+            }
+            $land_owner_name = trim($_POST['land_owner_name'] ?? '');
+            $land_owner_phone = !empty($_POST['land_owner_phone']) ? trim($_POST['land_owner_phone']) : null;
+            $land_receiver_name = !empty($_POST['land_receiver_name']) ? trim($_POST['land_receiver_name']) : null;
+            $media_broker_info = !empty($_POST['media_broker_info']) ? trim($_POST['media_broker_info']) : null;
+            $power_of_attorney = !empty($_POST['power_of_attorney']) ? trim($_POST['power_of_attorney']) : null;
             $total_area = (float)($_POST['total_area'] ?? 0);
             $area_unit = $_POST['area_unit'] ?? 'decimal';
             $price_per_unit = (float)($_POST['price_per_unit'] ?? 0);
             $total_amount = $total_area * $price_per_unit;
-            $location = $_POST['location'] ?? null;
+            $location = !empty($_POST['location']) ? trim($_POST['location']) : null;
             $status = $_POST['status'] ?? 'selected';
-            $remarks = $_POST['remarks'] ?? null;
+            $remarks = !empty($_POST['remarks']) ? trim($_POST['remarks']) : null;
 
             $bayana_status = $_POST['bayana_status'] ?? 'pending';
             $bayana_complete_date = !empty($_POST['bayana_complete_date']) ? $_POST['bayana_complete_date'] : null;
@@ -274,10 +371,10 @@ class LandAcquisitionController extends Controller {
 
             $stmt = $this->db->prepare("
                 UPDATE land_acquisitions 
-                SET project_id = ?, land_owner_name = ?, land_owner_phone = ?, total_area = ?, area_unit = ?, price_per_unit = ?, total_amount = ?, location = ?, status = ?, remarks = ?, bayana_status = ?, bayana_complete_date = ?, registration_status = ?, registration_complete_date = ?
+                SET project_id = ?, land_project_name = ?, land_owner_name = ?, land_owner_phone = ?, land_receiver_name = ?, media_broker_info = ?, power_of_attorney = ?, total_area = ?, area_unit = ?, price_per_unit = ?, total_amount = ?, location = ?, status = ?, remarks = ?, bayana_status = ?, bayana_complete_date = ?, registration_status = ?, registration_complete_date = ?
                 WHERE id = ?
             ");
-            $stmt->bind_param("issdsddsssssssi", $project_id, $land_owner_name, $land_owner_phone, $total_area, $area_unit, $price_per_unit, $total_amount, $location, $status, $remarks, $bayana_status, $bayana_complete_date, $registration_status, $registration_complete_date, $id);
+            $stmt->bind_param("issssssdsddsssssssi", $project_id, $land_project_name, $land_owner_name, $land_owner_phone, $land_receiver_name, $media_broker_info, $power_of_attorney, $total_area, $area_unit, $price_per_unit, $total_amount, $location, $status, $remarks, $bayana_status, $bayana_complete_date, $registration_status, $registration_complete_date, $id);
 
             if ($stmt->execute()) {
                 setSuccess("Land Acquisition details updated successfully.");

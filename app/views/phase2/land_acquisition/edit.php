@@ -32,13 +32,38 @@ $canModify = in_array($roleId, [1, 3, 14]);
                     <input type="hidden" name="action" value="update_info">
 
                     <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Project</label>
-                            <select class="form-select select2" name="project_id" <?= !$canModify ? 'disabled' : '' ?> required>
+                        <div class="col-md-7">
+                            <label class="form-label fw-semibold">Land / Project Name (Tentative / Final) <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="land_project_name" value="<?= htmlspecialchars($acquisition['land_project_name'] ?? '') ?>" required <?= !$canModify ? 'readonly' : '' ?> placeholder="e.g. Project No 60 (New)">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label fw-semibold">Link to Existing Project</label>
+                            <select class="form-select select2" name="project_id" <?= !$canModify ? 'disabled' : '' ?>>
+                                <option value="">-- Not Finalized / Tentative Deal --</option>
                                 <?php foreach ($projects as $p): ?>
-                                    <option value="<?= $p['id'] ?>" <?= $acquisition['project_id'] == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
+                                    <option value="<?= $p['id'] ?>" <?= $acquisition['project_id'] == $p['id'] ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($p['name']) ?> <?= !empty($p['project_status']) ? '('.$p['project_status'].')' : '' ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Landowner Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="land_owner_name" value="<?= htmlspecialchars($acquisition['land_owner_name']) ?>" required <?= !$canModify ? 'readonly' : '' ?>>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Landowner Phone</label>
+                            <input type="text" class="form-control" name="land_owner_phone" value="<?= htmlspecialchars($acquisition['land_owner_phone'] ?? '') ?>" <?= !$canModify ? 'readonly' : '' ?>>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Land Receiver Name (কোম্পানির পক্ষে গ্রহণকারী)</label>
+                            <input type="text" class="form-control" name="land_receiver_name" value="<?= htmlspecialchars($acquisition['land_receiver_name'] ?? '') ?>" <?= !$canModify ? 'readonly' : '' ?> placeholder="Receiver full name">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Location / Address</label>
@@ -48,12 +73,12 @@ $canModify = in_array($roleId, [1, 3, 14]);
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Landowner Name</label>
-                            <input type="text" class="form-control" name="land_owner_name" value="<?= htmlspecialchars($acquisition['land_owner_name']) ?>" required <?= !$canModify ? 'readonly' : '' ?>>
+                            <label class="form-label fw-semibold">Media / Broker Info (মিডিয়া / দালাল তথ্য)</label>
+                            <input type="text" class="form-control" name="media_broker_info" value="<?= htmlspecialchars($acquisition['media_broker_info'] ?? '') ?>" <?= !$canModify ? 'readonly' : '' ?> placeholder="Broker name, phone & commission notes">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Landowner Phone</label>
-                            <input type="text" class="form-control" name="land_owner_phone" value="<?= htmlspecialchars($acquisition['land_owner_phone'] ?? '') ?>" <?= !$canModify ? 'readonly' : '' ?>>
+                            <label class="form-label fw-semibold">Power of Attorney (POA) Details (পাওয়ার অব অ্যাটর্নি তথ্য)</label>
+                            <textarea class="form-control" name="power_of_attorney" rows="1" <?= !$canModify ? 'readonly' : '' ?> placeholder="POA holder, deed number, date etc."><?= htmlspecialchars($acquisition['power_of_attorney'] ?? '') ?></textarea>
                         </div>
                     </div>
 
@@ -77,8 +102,9 @@ $canModify = in_array($roleId, [1, 3, 14]);
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Total Valuation: <span class="text-success">BDT <?= number_format($acquisition['total_amount'], 2) ?></span></label>
+                    <div class="mb-3 alert alert-success-subtle border border-success-subtle py-2 px-3 rounded-2 d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold text-success">Total Land Agreed Valuation:</span>
+                        <strong class="text-success fs-6">BDT <?= number_format($acquisition['total_amount'], 2) ?></strong>
                     </div>
 
                     <div class="row mb-3">
@@ -223,8 +249,161 @@ $canModify = in_array($roleId, [1, 3, 14]);
         </div>
     </div>
 
-    <!-- Bayana Payments Column -->
+    <!-- Bayana Payments & Requisitions Column -->
     <div class="col-xl-5 col-lg-6">
+        <!-- Requisition & Accounts Payment Ledger -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header border-0 py-3 bg-white d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0 fw-bold text-success"><i class="fa-light fa-receipt me-2"></i>Accounts Payment Ledger</h5>
+                    <small class="text-muted" style="font-size:11px;">Requisitions approved by Management & paid by Accounts</small>
+                </div>
+                <a href="<?= $base_url ?>/con-land-requisitions?land_acquisition_id=<?= $acquisition['id'] ?>" class="btn btn-sm btn-success">
+                    <i class="fa-light fa-plus me-1"></i> New Req
+                </a>
+            </div>
+            <div class="card-body p-3">
+                <!-- Financial Summary Cards -->
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="p-2 border rounded bg-light">
+                            <span class="text-muted small d-block" style="font-size:10px;">Land Agreed Price</span>
+                            <strong class="text-dark">BDT <?= number_format((float)$acquisition['total_amount'], 2) ?></strong>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 border rounded bg-light">
+                            <span class="text-muted small d-block" style="font-size:10px;">Paid to Landowner</span>
+                            <strong class="text-success">BDT <?= number_format($cumLandPaid, 2) ?></strong>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 border rounded bg-light">
+                            <span class="text-muted small d-block" style="font-size:10px;">Remaining Land Due</span>
+                            <strong class="<?= $remainingLandDue > 0 ? 'text-danger' : 'text-success' ?>">BDT <?= number_format($remainingLandDue, 2) ?></strong>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 border rounded bg-light">
+                            <span class="text-muted small d-block" style="font-size:10px;">Extra Costs Paid</span>
+                            <strong class="text-info">BDT <?= number_format($cumExtraPaid, 2) ?></strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Requisitions Timeline / List -->
+                <h6 class="fw-bold small text-secondary mb-2"><i class="fa-light fa-list-check me-1"></i>Requisitions & Payment History (<?= count($requisitions) ?>)</h6>
+                <?php if (empty($requisitions)): ?>
+                    <div class="text-center py-4 text-muted small">
+                        No requisitions requested for this land yet.
+                        <div class="mt-2">
+                            <a href="<?= $base_url ?>/con-land-requisitions?land_acquisition_id=<?= $acquisition['id'] ?>" class="btn btn-sm btn-outline-success">
+                                <i class="fa-light fa-plus me-1"></i>Create First Requisition
+                            </a>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div class="list-group list-group-flush border rounded-2" style="max-height: 400px; overflow-y: auto;">
+                        <?php foreach ($requisitions as $idx => $r): ?>
+                            <?php 
+                                $isPaid = ($r['accounts_status'] === 'Paid');
+                                $isMgmtApp = ($r['mgmt_status'] === 'Approved');
+                                $isLandCost = in_array($r['requisition_type'], ['Bayana', 'Registration']);
+                            ?>
+                            <div class="list-group-item p-3 <?= $isPaid ? 'bg-light-subtle' : '' ?>">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <div>
+                                        <span class="badge bg-secondary me-1">Req #<?= $idx + 1 ?></span>
+                                        <strong><?= htmlspecialchars($r['requisition_type']) ?></strong>
+                                        <?php if (!empty($r['cost_purpose'])): ?>
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle"><?= htmlspecialchars($r['cost_purpose']) ?></span>
+                                        <?php endif; ?>
+                                        <?php if (!$isLandCost): ?>
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size:9px;">Extra Cost</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="text-end">
+                                        <strong class="text-success fs-6">BDT <?= number_format((float)$r['requested_amount'], 2) ?></strong>
+                                    </div>
+                                </div>
+                                
+                                <div class="small text-muted mb-2" style="font-size:11px;">
+                                    <?= htmlspecialchars($r['purpose']) ?>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-1 small pt-2 border-top" style="font-size:10px;">
+                                    <div>
+                                        <?php if ($r['mgmt_status'] === 'Approved'): ?>
+                                            <span class="badge bg-success py-0 px-1"><i class="fa-light fa-check me-1"></i>Mgmt Approved</span>
+                                        <?php elseif ($r['mgmt_status'] === 'Rejected'): ?>
+                                            <span class="badge bg-danger py-0 px-1"><i class="fa-light fa-xmark me-1"></i>Mgmt Rejected</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-warning text-dark py-0 px-1"><i class="fa-light fa-clock me-1"></i>Pending Mgmt</span>
+                                        <?php endif; ?>
+
+                                        <?php if ($isPaid): ?>
+                                            <span class="badge bg-success py-0 px-1"><i class="fa-light fa-check-double me-1"></i>Paid</span>
+                                        <?php elseif ($r['mgmt_status'] === 'Approved'): ?>
+                                            <span class="badge bg-warning text-dark py-0 px-1"><i class="fa-light fa-wallet me-1"></i>Ready for Payment</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-light text-muted border py-0 px-1">Waiting Mgmt</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php if ($isPaid): ?>
+                                        <div class="text-success fw-semibold">
+                                            <i class="fa-light fa-check-double me-1"></i>Paid: <?= date('d M Y', strtotime($r['accounts_paid_at'])) ?>
+                                            <?php if (!empty($r['transaction_no'])): ?>
+                                                (Txn: <code><?= htmlspecialchars($r['transaction_no']) ?></code>)
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php elseif ($r['mgmt_status'] === 'Approved'): ?>
+                                        <div class="text-warning fw-bold">
+                                            <i class="fa-light fa-wallet me-1"></i>Pending Accounts Payment
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="text-muted">
+                                            <i class="fa-light fa-clock me-1"></i>Pending Management Approval
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+
+                                <?php if ($isPaid): ?>
+                                    <div class="bg-light p-2 rounded mt-2 border" style="font-size:11px;">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>
+                                                <strong class="text-primary"><i class="fa-light fa-arrow-turn-down-right me-1"></i>Paid For:</strong> 
+                                                <?= $isLandCost ? 'Landowner ('.htmlspecialchars($acquisition['land_owner_name']).')' : htmlspecialchars($r['cost_purpose'] ?? 'Extra Cost') ?>
+                                            </span>
+                                            <span>Method: <strong><?= htmlspecialchars($r['payment_method'] ?? 'N/A') ?></strong></span>
+                                        </div>
+                                        <?php if (!empty($r['accounts_note'])): ?>
+                                            <div class="text-muted small mt-1">
+                                                <i class="fa-light fa-comment-dots me-1 text-primary"></i><strong>Accounts Note:</strong> "<?= htmlspecialchars($r['accounts_note']) ?>"
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($r['attachment_path'])): ?>
+                                            <div class="mt-1">
+                                                <a href="<?= $base_url ?>/public/<?= htmlspecialchars($r['attachment_path']) ?>" target="_blank" class="badge bg-info-subtle text-info border border-info-subtle text-decoration-none">
+                                                    <i class="fa-light fa-paperclip me-1"></i>Payment Receipt / Voucher
+                                                </a>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($isLandCost): ?>
+                                    <div class="mt-2 text-muted small d-flex justify-content-between" style="font-size:10px;">
+                                        <span>Cumulative Land Paid: <strong>BDT <?= number_format($r['cum_land_paid'], 2) ?></strong></span>
+                                        <span>Remaining Due: <strong class="<?= $r['remaining_land_due'] > 0 ? 'text-danger' : 'text-success' ?>">BDT <?= number_format($r['remaining_land_due'], 2) ?></strong></span>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header border-0 py-3 d-flex justify-content-between align-items-center">
                 <div>
