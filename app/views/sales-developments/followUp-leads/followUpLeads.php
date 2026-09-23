@@ -126,7 +126,7 @@ $show_breadcrumb = true;
                     
                     <!-- Team Re-assign (Hidden by default) -->
                     <div class="col-lg-6" id="reassign_team_div" style="display: none;">
-                        <label class="form__input-title">Re-assigned to (Team)*</label>
+                        <label class="form__input-title">Re-assigned to (Team)</label>
                         <select name="team_id" id="reassign_team_id" class="form-select">
                             <option value="">Select Team</option>
                             <?php foreach (($teams ?? []) as $team): ?>
@@ -324,7 +324,7 @@ $show_breadcrumb = true;
         const reassignSelect = document.getElementById('reassign_team_id');
         if (this.value === 'Lead Transferred') {
             reassignDiv.style.display = 'block';
-            reassignSelect.required = true;
+            reassignSelect.required = false;
         } else {
             reassignDiv.style.display = 'none';
             reassignSelect.required = false;
