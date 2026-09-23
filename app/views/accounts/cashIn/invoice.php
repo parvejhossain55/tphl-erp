@@ -216,13 +216,16 @@ $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
 
 // Banking Information Resolution (Sender Bank vs Receiver Bank & Ref Number)
 $senderBankName = 'N/A';
-$receiverBankName = 'The Premium Homes Ltd.';
+$receiverBankName = 'Dutch-Bangla Bank PLC';
+$receiverHolderName = 'The Premium Homes Ltd.';
 $receiverAccountNo = 'N/A';
 $clientAccountNo = !empty($payment['bank_account_no']) && !in_array(strtolower(trim($payment['bank_account_no'])), ['n/a', '0', '00', 'none', 'null']) ? trim($payment['bank_account_no']) : 'N/A';
 
 $rawBankName = trim($payment['bank_name'] ?? '');
 $companyBankName = trim($payment['company_bank_name'] ?? '');
-$bankId = $payment['bank_id'] ?? null;
+$companyAccountName = trim($payment['company_account_name'] ?? '');
+$companyAccountNo = trim($payment['company_account_number'] ?? '');
+$bankId = !empty($payment['bank_id']) ? (int)$payment['bank_id'] : null;
 
 // Determine Reference Number & Label
 $refLabel = ($paymentMethod === 'CHEQUE') ? 'Cheque No:' : 'Ref Number:';
@@ -232,10 +235,30 @@ if (!empty($payment['transaction_ref']) && !empty($payment['cheque_no']) && $pay
 }
 
 if (!$isCashPayment) {
+    // 1. In case of bulk payments, check if any payment in the batch has company bank information
+    if (empty($bankId) && !empty($payments) && is_array($payments)) {
+        foreach ($payments as $p) {
+            if (!empty($p['bank_id'])) {
+                $bankId = (int)$p['bank_id'];
+                if (empty($companyBankName) && !empty($p['company_bank_name'])) {
+                    $companyBankName = trim($p['company_bank_name']);
+                }
+                if (empty($companyAccountName) && !empty($p['company_account_name'])) {
+                    $companyAccountName = trim($p['company_account_name']);
+                }
+                if (empty($companyAccountNo) && !empty($p['company_account_number'])) {
+                    $companyAccountNo = trim($p['company_account_number']);
+                }
+                break;
+            }
+        }
+    }
+
+    // 2. Fetch company bank accounts list
     $cbList = [];
     if (isset($this) && isset($this->db)) {
         try {
-            $cbQuery = $this->db->query("SELECT id, bank_name, account_name, account_number FROM company_bank_accounts ORDER BY LENGTH(account_name) DESC");
+            $cbQuery = $this->db->query("SELECT id, bank_name, account_name, account_number, is_default FROM company_bank_accounts ORDER BY is_default DESC, id ASC");
             if ($cbQuery) {
                 while ($cbRow = $cbQuery->fetch_assoc()) {
                     $cbList[] = $cbRow;
@@ -244,7 +267,7 @@ if (!$isCashPayment) {
         } catch (Exception $e) {}
     }
 
-    // Standard Pattern: Match via bank_id first
+    // 3. Resolve matched company bank account
     $matchedCb = null;
     if (!empty($bankId)) {
         foreach ($cbList as $cb) {
@@ -255,17 +278,72 @@ if (!$isCashPayment) {
         }
     }
 
-    if ($matchedCb) {
-        $receiverBankName = $matchedCb['bank_name'] . ' (' . $matchedCb['account_name'] . ')';
-        $receiverAccountNo = $matchedCb['account_number'];
-        $senderBankName = !empty($rawBankName) && !in_array(strtolower($rawBankName), ['0', 'n/a', 'none', 'cash']) ? $rawBankName : 'N/A';
-    } elseif (strpos($rawBankName, '-') !== false) {
-        // Pattern 1 (Legacy): rawBankName has hyphen like "DBBL-The Premium It Solution"
+    // If companyBankName was populated via SQL JOIN from model
+    if (!$matchedCb && !empty($companyBankName)) {
+        foreach ($cbList as $cb) {
+            if (strcasecmp(trim($cb['bank_name']), trim($companyBankName)) === 0) {
+                if (!empty($companyAccountName) && strcasecmp(trim($cb['account_name']), trim($companyAccountName)) === 0) {
+                    $matchedCb = $cb;
+                    break;
+                }
+            }
+        }
+        if (!$matchedCb) {
+            $matchedCb = [
+                'bank_name' => $companyBankName,
+                'account_name' => !empty($companyAccountName) ? $companyAccountName : 'The Premium Homes Ltd.',
+                'account_number' => !empty($companyAccountNo) ? $companyAccountNo : 'N/A'
+            ];
+        }
+    }
+
+    // If legacy hyphenated string, e.g. "DBBL-The Premium It Solution" or "BRAC-MD. Mainul Hasan Dulon"
+    if (!$matchedCb && strpos($rawBankName, '-') !== false) {
         $parts = explode('-', $rawBankName, 2);
         $bankPrefix = trim($parts[0]);
         $receiverPart = trim($parts[1]);
-
         $prefixLower = strtolower($bankPrefix);
+
+        foreach ($cbList as $cb) {
+            $cbBankLower = strtolower($cb['bank_name']);
+            $prefixMatches = false;
+            if (($prefixLower === 'dbbl' || strpos($prefixLower, 'dutch') !== false) && strpos($cbBankLower, 'dutch') !== false) {
+                $prefixMatches = true;
+            } elseif ($prefixLower === 'brac' && strpos($cbBankLower, 'brac') !== false) {
+                $prefixMatches = true;
+            } elseif (($prefixLower === 'ebl' || strpos($prefixLower, 'eastern') !== false) && strpos($cbBankLower, 'eastern') !== false) {
+                $prefixMatches = true;
+            }
+
+            if (stripos($cb['account_name'], $receiverPart) !== false || stripos($receiverPart, $cb['account_name']) !== false) {
+                if ($prefixMatches || empty($bankPrefix)) {
+                    $matchedCb = $cb;
+                    break;
+                }
+            }
+        }
+
+        if (!$matchedCb) {
+            foreach ($cbList as $cb) {
+                if (stripos($cb['account_name'], $receiverPart) !== false || stripos($receiverPart, $cb['account_name']) !== false) {
+                    $matchedCb = $cb;
+                    break;
+                }
+            }
+        }
+
+        if (!$matchedCb) {
+            $matchedBank = 'Dutch-Bangla Bank PLC';
+            if ($prefixLower === 'brac') $matchedBank = 'BRAC Bank PLC';
+            elseif ($prefixLower === 'ebl' || strpos($prefixLower, 'eastern') !== false) $matchedBank = 'Eastern Bank PLC';
+
+            $matchedCb = [
+                'bank_name' => $matchedBank,
+                'account_name' => !empty($receiverPart) ? $receiverPart : 'The Premium Homes Ltd.',
+                'account_number' => 'N/A'
+            ];
+        }
+
         if ($prefixLower === 'dbbl' || strpos($prefixLower, 'dutch') !== false) {
             $senderBankName = 'Dutch-Bangla Bank (DBBL)';
         } elseif ($prefixLower === 'brac') {
@@ -277,42 +355,53 @@ if (!$isCashPayment) {
         } else {
             $senderBankName = $bankPrefix;
         }
+    }
 
-        $receiverBankName = !empty($receiverPart) ? $receiverPart : 'The Premium Homes Ltd.';
-
-        // Look up receiver account number from company_bank_accounts
+    // If rawBankName itself matches a company bank account holder or company bank name
+    if (!$matchedCb && !empty($rawBankName)) {
         foreach ($cbList as $cb) {
-            $cbBank = strtolower($cb['bank_name']);
-            if (($prefixLower === 'dbbl' || strpos($prefixLower, 'dutch') !== false) && strpos($cbBank, 'dutch') === false) continue;
-            if ($prefixLower === 'brac' && strpos($cbBank, 'brac') === false) continue;
-            if (($prefixLower === 'ebl' || strpos($prefixLower, 'eastern') !== false) && strpos($cbBank, 'eastern') === false) continue;
-
-            if (stripos($cb['account_name'], $receiverPart) !== false || stripos($receiverPart, $cb['account_name']) !== false) {
-                $receiverAccountNo = $cb['account_number'];
+            if (stripos($rawBankName, $cb['account_name']) !== false || stripos($cb['account_name'], $rawBankName) !== false) {
+                $matchedCb = $cb;
                 break;
             }
         }
-    } else {
-        // Pattern 2 (Legacy): Single bank name without valid bank_id
-        if (!empty($companyBankName)) {
-            $receiverBankName = $companyBankName;
-            $senderBankName = !empty($rawBankName) ? $rawBankName : 'N/A';
-        } elseif (!empty($rawBankName)) {
-            // Check if rawBankName matches a company bank
-            foreach ($cbList as $cb) {
-                if (stripos($rawBankName, $cb['account_name']) !== false) {
-                    $matchedCb = $cb;
-                    break;
-                }
-            }
-            if ($matchedCb) {
-                $receiverBankName = $matchedCb['bank_name'] . ' (' . $matchedCb['account_name'] . ')';
-                $receiverAccountNo = $matchedCb['account_number'];
-                $senderBankName = $matchedCb['bank_name'];
-            } else {
+    }
+
+    if ($matchedCb) {
+        $receiverBankName = $matchedCb['bank_name'];
+        $receiverHolderName = $matchedCb['account_name'];
+        $receiverAccountNo = !empty($matchedCb['account_number']) ? $matchedCb['account_number'] : 'N/A';
+
+        if (empty($senderBankName) || $senderBankName === 'N/A') {
+            if (!empty($rawBankName) && !in_array(strtolower($rawBankName), ['0', 'n/a', 'none', 'cash']) && stripos($rawBankName, $receiverHolderName) === false) {
                 $senderBankName = $rawBankName;
-                $receiverBankName = 'The Premium Homes Ltd.';
+            } else {
+                $senderBankName = $matchedCb['bank_name'];
             }
+        }
+    } else {
+        // Fallback: rawBankName is client's sending bank (e.g. Sonali Bank PLC)
+        $senderBankName = !empty($rawBankName) && !in_array(strtolower($rawBankName), ['0', 'n/a', 'none', 'cash']) ? $rawBankName : 'N/A';
+
+        $defaultCb = null;
+        foreach ($cbList as $cb) {
+            if (!empty($cb['is_default'])) {
+                $defaultCb = $cb;
+                break;
+            }
+        }
+        if (!$defaultCb && !empty($cbList)) {
+            $defaultCb = $cbList[0];
+        }
+
+        if ($defaultCb) {
+            $receiverBankName = $defaultCb['bank_name'];
+            $receiverHolderName = $defaultCb['account_name'];
+            $receiverAccountNo = !empty($defaultCb['account_number']) ? $defaultCb['account_number'] : 'N/A';
+        } else {
+            $receiverBankName = 'Dutch-Bangla Bank PLC';
+            $receiverHolderName = 'The Premium Homes Ltd.';
+            $receiverAccountNo = '2771100365424';
         }
     }
 
@@ -1189,7 +1278,9 @@ if (!$isCashPayment) {
                 <div class="proc-box">
                     <span class="proc-label">Receiver Bank Name:</span>
                     <span class="proc-value"><?= htmlspecialchars($receiverBankName) ?></span>
-                    <?php if (!empty($receiverAccountNo) && $receiverAccountNo !== 'N/A'): ?>
+                    <?php if (!empty($receiverHolderName) && $receiverHolderName !== 'N/A'): ?>
+                        <span class="proc-sub"><?= htmlspecialchars($receiverHolderName) ?><?php if (!empty($receiverAccountNo) && $receiverAccountNo !== 'N/A'): ?> &bull; A/C: <?= htmlspecialchars($receiverAccountNo) ?><?php endif; ?></span>
+                    <?php elseif (!empty($receiverAccountNo) && $receiverAccountNo !== 'N/A'): ?>
                         <span class="proc-sub">A/C: <?= htmlspecialchars($receiverAccountNo) ?></span>
                     <?php endif; ?>
                 </div>

@@ -80,9 +80,9 @@ class Con_PurchaseOrderController extends Controller
             $qcApproved    = !empty($po['qc_approved_by_id']);
             $opApproved    = !empty($po['op_head_approved_by_id']);
 
-            $canApprovePH   = ($currentRoleId === 17) && $phNeeded && !$phApproved;
-            $canApproveQC   = ($currentRoleId === 24) && (!$phNeeded || $phApproved) && !$qcApproved;
-            $canApproveOP   = ($currentRoleId === 20) && $qcApproved && !$opApproved;
+            $canApprovePH   = (in_array($currentRoleId, [17, 1, 3])) && $phNeeded && !$phApproved;
+            $canApproveQC   = (in_array($currentRoleId, [24, 1, 3])) && (!$phNeeded || $phApproved) && !$qcApproved;
+            $canApproveOP   = (in_array($currentRoleId, [20, 1, 3])) && $qcApproved && !$opApproved;
 
             $iCanApprove = $canApprovePH || $canApproveQC || $canApproveOP;
             $iHaveApproved = ($po['purchase_head_approved_by_id'] == $currentUserId) ||
@@ -177,9 +177,9 @@ class Con_PurchaseOrderController extends Controller
         $opApproved    = !empty($po['op_head_approved_by_id']);
         $fullyApproved = ($phNeeded ? $phApproved : true) && $qcApproved && $opApproved;
 
-        $canApprovePH   = ($currentRoleId === 17) && $phNeeded && !$phApproved;
-        $canApproveQC   = ($currentRoleId === 24) && (!$phNeeded || $phApproved) && !$qcApproved;
-        $canApproveOP   = ($currentRoleId === 20) && $qcApproved && !$opApproved;
+        $canApprovePH   = (in_array($currentRoleId, [17, 1, 3])) && $phNeeded && !$phApproved;
+        $canApproveQC   = (in_array($currentRoleId, [24, 1, 3])) && (!$phNeeded || $phApproved) && !$qcApproved;
+        $canApproveOP   = (in_array($currentRoleId, [20, 1, 3])) && $qcApproved && !$opApproved;
 
         // Management checks are mapped to Operation Head parameters for compatibility
         $mgmtApproved   = $opApproved;
@@ -615,13 +615,8 @@ class Con_PurchaseOrderController extends Controller
         $creatorRole = (int)($po['creator_role_id'] ?? 0);
         $phNeeded = in_array($creatorRole, [23, 31]);
 
-        // 1. Purchase Head Approval (role 17)
-        if ($roleId === 17 && $phNeeded) {
-            if (!empty($po['purchase_head_approved_by_id'])) {
-                setError('Purchase Head has already approved this PO.');
-                header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
-                exit;
-            }
+        // 1. Purchase Head Approval (role 17 or Admin)
+        if (($roleId === 17 || in_array($roleId, [1, 3])) && $phNeeded && empty($po['purchase_head_approved_by_id'])) {
             $stmt = $this->db->prepare(
                 "UPDATE purchase_orders SET purchase_head_approved_by_id = ?, purchase_head_approved_at = NOW(), purchase_head_note = ?, status = 'Purchase Head Approved' WHERE id = ?"
             );
@@ -635,18 +630,8 @@ class Con_PurchaseOrderController extends Controller
                 setError('Failed to approve Purchase Order: ' . $stmt->error);
             }
 
-        // 2. QC & Internal Audit Approval (role 24)
-        } elseif ($roleId === 24) {
-            if ($phNeeded && empty($po['purchase_head_approved_by_id'])) {
-                setError('Purchase Head must approve this Purchase Order first.');
-                header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
-                exit;
-            }
-            if (!empty($po['qc_approved_by_id'])) {
-                setError('QC & Internal Audit has already approved this PO.');
-                header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
-                exit;
-            }
+        // 2. QC & Internal Audit Approval (role 24 or Admin)
+        } elseif (($roleId === 24 || in_array($roleId, [1, 3])) && (!$phNeeded || !empty($po['purchase_head_approved_by_id'])) && empty($po['qc_approved_by_id'])) {
             $stmt = $this->db->prepare(
                 "UPDATE purchase_orders SET qc_approved_by_id = ?, qc_approved_at = NOW(), qc_note = ?, status = 'QC Approved' WHERE id = ?"
             );
@@ -660,18 +645,8 @@ class Con_PurchaseOrderController extends Controller
                 setError('Failed to approve Purchase Order: ' . $stmt->error);
             }
 
-        // 3. Operation Head Approval (role 20)
-        } elseif ($roleId === 20) {
-            if (empty($po['qc_approved_by_id'])) {
-                setError('QC & Internal Audit must approve this Purchase Order first.');
-                header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
-                exit;
-            }
-            if (!empty($po['op_head_approved_by_id'])) {
-                setError('Operation Head has already approved this PO.');
-                header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
-                exit;
-            }
+        // 3. Operation Head Approval (role 20 or Admin)
+        } elseif (($roleId === 20 || in_array($roleId, [1, 3])) && !empty($po['qc_approved_by_id']) && empty($po['op_head_approved_by_id'])) {
             $stmt = $this->db->prepare(
                 "UPDATE purchase_orders SET op_head_approved_by_id = ?, op_head_approved_at = NOW(), op_head_note = ?, status = 'Approved' WHERE id = ?"
             );
@@ -688,7 +663,7 @@ class Con_PurchaseOrderController extends Controller
             }
 
         } else {
-            setError('You are not authorized to approve Purchase Orders.');
+            setError('You are not authorized to approve Purchase Orders at this stage.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
             exit;
         }
@@ -715,8 +690,8 @@ class Con_PurchaseOrderController extends Controller
             exit;
         }
 
-        // Role guard — Only Purchase Head (17), QC (24), or Operation Head (20) can reject
-        if (!in_array($roleId, [17, 20, 24])) {
+        // Role guard — Purchase Head (17), QC (24), Operation Head (20), or Admin (1, 3) can reject
+        if (!in_array($roleId, [17, 20, 24, 1, 3])) {
             setError('You are not authorized to reject Purchase Orders.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
             exit;

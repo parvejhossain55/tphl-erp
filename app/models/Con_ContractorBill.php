@@ -241,15 +241,15 @@ class Con_ContractorBill extends Model
         return $stmt->execute();
     }
 
-    /** Reject with approver tracking */
-    public function reject($id, $userId)
+    /** Reject with approver tracking and reason */
+    public function reject($id, $userId, $reason = null)
     {
         $stmt = $this->db->prepare(
             "UPDATE {$this->table}
-             SET status = 'rejected', approved_by = ?
+             SET status = 'rejected', approved_by = ?, rejection_reason = ?, management_note = COALESCE(?, management_note)
              WHERE id = ? AND status IN ('submitted', 'verified', 'qc_approved')"
         );
-        $stmt->bind_param('ii', $userId, $id);
+        $stmt->bind_param('issi', $userId, $reason, $reason, $id);
         return $stmt->execute();
     }
 
