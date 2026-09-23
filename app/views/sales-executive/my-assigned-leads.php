@@ -2152,7 +2152,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         
                         <!-- Team Re-assign (Hidden by default) -->
                         <div class="col-lg-6" id="createModalReassignTeamDiv" style="display: none;">
-                            <label class="form__input-title">Re-assigned to (Team)*</label>
+                            <label class="form__input-title">Re-assigned to (Team)</label>
                             <select name="team_id" id="createModalReassignTeamId" class="form-select">
                                 <option value="">Select Team</option>
                                 <?php foreach (($teams ?? []) as $team): ?>
@@ -2422,7 +2422,7 @@ document.addEventListener('DOMContentLoaded', function() {
     $('#createModalLeadStatus').on('change', function() {
         if (this.value === 'Lead Transferred') {
             $('#createModalReassignTeamDiv').show();
-            $('#createModalReassignTeamId').prop('required', true);
+            $('#createModalReassignTeamId').prop('required', false);
             $('#createModalTransferUserDiv').show();
         } else {
             $('#createModalReassignTeamDiv').hide();
@@ -2466,7 +2466,7 @@ document.addEventListener('DOMContentLoaded', function() {
         $('#createModalTransferUserDiv').hide();
         if (item.lead_status === 'Lead Transferred') {
             $('#createModalReassignTeamDiv').show();
-            $('#createModalReassignTeamId').prop('required', true).val(item.team_id || '');
+            $('#createModalReassignTeamId').prop('required', false).val(item.team_id || '');
             $('#createModalTransferUserDiv').show();
         } else {
             $('#createModalReassignTeamDiv').hide();

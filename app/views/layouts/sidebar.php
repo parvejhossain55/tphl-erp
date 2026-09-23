@@ -620,6 +620,37 @@
                             </li>
                         <?php endif; ?>
 
+                        <?php if ((hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 9, 15, 33, 34, 35]))): ?>
+                            <!-- Sales Activity Report -->
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/sales-activity-report"
+                                    class="sidebar__menu-item <?= isActive('sales-activity-report', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-chart-pie"></i></div>
+                                    <span class="sidebar__menu-label">Sales Activity Report</span>
+                                </a>
+                            </li>
+
+                            <!-- Team Performance -->
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/team-performance"
+                                    class="sidebar__menu-item <?= isActive('team-performance', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-users-viewfinder"></i></div>
+                                    <span class="sidebar__menu-label">Team Performance</span>
+                                </a>
+                            </li>
+                        <?php endif; ?>
+
+                        <?php if (hasPermission("Sales team Performance")): ?>
+                            <!-- Sales Team Performance-->
+                            <li class="slide d-none <?= isActive('sales-team-performance', $current_route) ?>">
+                                <a href="<?= $base_url ?>/sales-team-performance"
+                                    class="sidebar__menu-item <?= isActive('sales-team-performance', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
+                                    <span class="sidebar__menu-label">Sales Teams Performance</span>
+                                </a>
+                            </li>
+                        <?php endif; ?>
+
                         <?php if (!$isManagement && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
                             <!-- Location -->
                             <li class="slide ">
@@ -782,23 +813,38 @@
 
                     <?php if ((hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 9, 15, 33, 34, 35]))): ?>
 
-                        <!-- Sales Activity Report -->
-                        <li class="slide">
-                            <a href="<?= $base_url ?>/sales-activity-report"
-                                class="sidebar__menu-item <?= isActive('sales-activity-report', $current_route) ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-chart-pie"></i></div>
-                                <span class="sidebar__menu-label">Sales Activity Report</span>
+
+                        <!-- Flats Manage -->
+                        <li
+                            class="slide has-sub <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'active' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'menu-open active' : '' ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-house"></i></div>
+                                <span class="sidebar__menu-label">Flats Manage</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <?php if (!$isManagement): ?>
+                                    <li class="slide child2">
+                                        <a href="<?= $base_url ?>/create-flat"
+                                            class="sidebar__menu-item <?= isActive('create-flat', $current_route) ?>">Add Flat</a>
+                                    </li>
+                                <?php endif; ?>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/flat-lists"
+                                        class="sidebar__menu-item <?= isActive('flat-lists', $current_route) ?>">Flat List</a>
+                                </li>
+                            </ul>
+                        </li>
+                        <!-- Inventroy -->
+                        <li class="slide ">
+                            <a href="<?= $base_url ?>/inventory-lists"
+                                class="sidebar__menu-item <?= isActive('inventory-lists', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="bi bi-stack"></i> </div>
+                                <span class="sidebar__menu-label">Project Wise Flat Stock</span>
                             </a>
                         </li>
 
-                        <!-- Team Performance -->
-                        <li class="slide">
-                            <a href="<?= $base_url ?>/team-performance"
-                                class="sidebar__menu-item <?= isActive('team-performance', $current_route) ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-users-viewfinder"></i></div>
-                                <span class="sidebar__menu-label">Team Performance</span>
-                            </a>
-                        </li>
 
                         <!-- Incentives Module -->
                         <li
@@ -846,37 +892,6 @@
                                     </li>
                                 <?php endif; ?>
                             </ul>
-                        </li>
-
-                        <!-- Flats Manage -->
-                        <li
-                            class="slide has-sub <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'active' : '' ?>">
-                            <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'menu-open active' : '' ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-house"></i></div>
-                                <span class="sidebar__menu-label">Flats Manage</span>
-                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                            </a>
-                            <ul class="sidebar-menu child2" style="display:block;">
-                                <?php if (!$isManagement): ?>
-                                    <li class="slide child2">
-                                        <a href="<?= $base_url ?>/create-flat"
-                                            class="sidebar__menu-item <?= isActive('create-flat', $current_route) ?>">Add Flat</a>
-                                    </li>
-                                <?php endif; ?>
-                                <li class="slide">
-                                    <a href="<?= $base_url ?>/flat-lists"
-                                        class="sidebar__menu-item <?= isActive('flat-lists', $current_route) ?>">Flat List</a>
-                                </li>
-                            </ul>
-                        </li>
-                        <!-- Inventroy -->
-                        <li class="slide ">
-                            <a href="<?= $base_url ?>/inventory-lists"
-                                class="sidebar__menu-item <?= isActive('inventory-lists', $current_route) ?>">
-                                <div class="side-menu__icon"><i class="bi bi-stack"></i> </div>
-                                <span class="sidebar__menu-label">Project Wise Flat Stock</span>
-                            </a>
                         </li>
 
                         <?php if (!$isManagement): ?>
@@ -1032,10 +1047,12 @@
                 <!-- for sales executive  -->
                 <?php if (hasPermission("add Lead") && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
                     <ul class="sidebar-menu child2" style="display:block;">
+                        <?php if (!$isManagement): ?>
                         <li class="slide">
                             <a href="<?= $base_url ?>/my-dashboard"
                                 class="sidebar__menu-item <?= isActive('my-dashboard', $current_route) ?>">My Dashboard</a>
                         </li>
+                        <?php endif; ?>
                         <?php if (isSalesCoLeader()): ?>
                             <!-- Co-Leader: Lead List Access (team_id wise) -->
                             <li class="slide">
@@ -1619,104 +1636,7 @@
 
                 <?php endif; ?>
 
-                <?php if (hasPermission("Sales team Performance")): ?>
-                    <!-- Sales Team Performance-->
-                    <li class="slide d-none <?= isActive('sales-team-performance', $current_route) ?>">
-                        <a href="<?= $base_url ?>/sales-team-performance"
-                            class="sidebar__menu-item <?= isActive('sales-team-performance', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
-                            <span class="sidebar__menu-label">Sales Teams Performance</span>
-                        </a>
-                    </li>
-                <?php endif; ?>
 
-                <!-- Meal Tracker Menu (Accessible to Admin, Operation, HR roles and Enrolled Employees) -->
-                <?php
-                $mealUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
-                $mealUserRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
-                $canAccessMealTracker = in_array($mealUserRoleId, [1, 3, 4, 20, 32, 33, 34, 35])
-                    || (strpos($mealUserRoleName, 'admin') !== false)
-                    || (strpos($mealUserRoleName, 'operation') !== false)
-                    || (strpos($mealUserRoleName, 'hr') !== false)
-                    || hasPermission(['Hr Manage', 'HRM Management', 'Operation manage']);
-
-                // Check if logged-in user has is_meal_deduction = 1 in employees table
-                $userMealEmpId = (int)($_SESSION['user']['employee_db_id'] ?? 0);
-                $userId = (int)($_SESSION['user']['id'] ?? 0);
-                if ($userMealEmpId <= 0 && $userId > 0) {
-                    $uEmpId = (int)($_SESSION['user']['employee_id'] ?? 0);
-                    if ($uEmpId > 0) {
-                        $chkRes = $db->query("SELECT id, is_meal_deduction FROM employees WHERE id = {$uEmpId} AND deleted_at IS NULL LIMIT 1");
-                        if ($chkRes && $chkRow = $chkRes->fetch_assoc()) {
-                            $userMealEmpId = (int)$chkRow['id'];
-                            $_SESSION['user']['employee_db_id'] = $userMealEmpId;
-                            $_SESSION['user']['is_meal_deduction'] = (int)$chkRow['is_meal_deduction'];
-                        }
-                    }
-                    if ($userMealEmpId <= 0) {
-                        $chkRes = $db->query("SELECT id, is_meal_deduction FROM employees WHERE user_id = {$userId} AND deleted_at IS NULL LIMIT 1");
-                        if ($chkRes && $chkRow = $chkRes->fetch_assoc()) {
-                            $userMealEmpId = (int)$chkRow['id'];
-                            $_SESSION['user']['employee_db_id'] = $userMealEmpId;
-                            $_SESSION['user']['is_meal_deduction'] = (int)$chkRow['is_meal_deduction'];
-                        }
-                    }
-                }
-
-                $isMealEnrolled = false;
-                if ($userMealEmpId > 0) {
-                    if (!isset($_SESSION['user']['is_meal_deduction'])) {
-                        $chkMeal = $db->query("SELECT is_meal_deduction FROM employees WHERE id = {$userMealEmpId} AND deleted_at IS NULL LIMIT 1");
-                        if ($chkMeal && $rowM = $chkMeal->fetch_assoc()) {
-                            $_SESSION['user']['is_meal_deduction'] = (int)$rowM['is_meal_deduction'];
-                        } else {
-                            $_SESSION['user']['is_meal_deduction'] = 0;
-                        }
-                    }
-                    $isMealEnrolled = ((int)($_SESSION['user']['is_meal_deduction'] ?? 0) === 1);
-                }
-                ?>
-                <?php if ($canAccessMealTracker): ?>
-                    <li class="sidebar__menu-category ">
-                        <span class="category-name">Meal Management</span>
-                    </li>
-                    <li class="slide has-sub <?= isActive(['meal-tracker', 'meal-tracker-history', 'my-meal-tracker'], $current_route) ? 'active' : '' ?>">
-                        <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['meal-tracker', 'meal-tracker-history', 'my-meal-tracker'], $current_route) ? 'menu-open active' : '' ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-utensils"></i></div>
-                            <span class="sidebar__menu-label">Meal Tracker</span>
-                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                        </a>
-                        <ul class="sidebar-menu child2" style="display:block;">
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/meal-tracker"
-                                    class="sidebar__menu-item <?= isActive('meal-tracker', $current_route) ?>">Meal Workspace</a>
-                            </li>
-                            <li class="slide">
-                                <a href="<?= $base_url ?>/meal-tracker-history"
-                                    class="sidebar__menu-item <?= isActive('meal-tracker-history', $current_route) ?>">Meal History</a>
-                            </li>
-                            <?php if ($isMealEnrolled): ?>
-                                <li class="slide">
-                                    <a href="<?= $base_url ?>/my-meal-tracker"
-                                        class="sidebar__menu-item <?= isActive('my-meal-tracker', $current_route) ?>">My Meal Tracker</a>
-                                </li>
-                            <?php endif; ?>
-                        </ul>
-                    </li>
-                <?php elseif ($isMealEnrolled): ?>
-                    <!-- Dedicated menu for enrolled employee -->
-                    <li class="sidebar__menu-category ">
-                        <span class="category-name">Meal Service</span>
-                    </li>
-                    <li class="slide <?= isActive('my-meal-tracker', $current_route) ? 'active' : '' ?>">
-                        <a href="<?= $base_url ?>/my-meal-tracker"
-                            class="sidebar__menu-item <?= isActive('my-meal-tracker', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-bowl-food"></i></div>
-                            <span class="sidebar__menu-label">My Meal Tracker</span>
-                        </a>
-                    </li>
-                <?php endif; ?>
 
                 <!--Payroll CATEGORY -->
                 <?php if (hasPermission("Payroll Manage") && !in_array($_SESSION['user']['role_id'] ?? 0, [9, 33])): ?>
@@ -1815,6 +1735,94 @@
                                     Management</a>
                             </li>
                         </ul>
+                    </li>
+                <?php endif; ?>
+
+                <!-- Meal Tracker Menu (Accessible to Admin, Operation, HR roles and Enrolled Employees) -->
+                <?php
+                $mealUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+                $mealUserRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
+                $canAccessMealTracker = in_array($mealUserRoleId, [1, 3, 4, 20, 32, 33, 34, 35])
+                    || (strpos($mealUserRoleName, 'admin') !== false)
+                    || (strpos($mealUserRoleName, 'operation') !== false)
+                    || (strpos($mealUserRoleName, 'hr') !== false)
+                    || hasPermission(['Hr Manage', 'HRM Management', 'Operation manage']);
+
+                // Check if logged-in user has is_meal_deduction = 1 in employees table
+                $userMealEmpId = (int)($_SESSION['user']['employee_db_id'] ?? 0);
+                $userId = (int)($_SESSION['user']['id'] ?? 0);
+                if ($userMealEmpId <= 0 && $userId > 0) {
+                    $uEmpId = (int)($_SESSION['user']['employee_id'] ?? 0);
+                    if ($uEmpId > 0) {
+                        $chkRes = $db->query("SELECT id, is_meal_deduction FROM employees WHERE id = {$uEmpId} AND deleted_at IS NULL LIMIT 1");
+                        if ($chkRes && $chkRow = $chkRes->fetch_assoc()) {
+                            $userMealEmpId = (int)$chkRow['id'];
+                            $_SESSION['user']['employee_db_id'] = $userMealEmpId;
+                            $_SESSION['user']['is_meal_deduction'] = (int)$chkRow['is_meal_deduction'];
+                        }
+                    }
+                    if ($userMealEmpId <= 0) {
+                        $chkRes = $db->query("SELECT id, is_meal_deduction FROM employees WHERE user_id = {$userId} AND deleted_at IS NULL LIMIT 1");
+                        if ($chkRes && $chkRow = $chkRes->fetch_assoc()) {
+                            $userMealEmpId = (int)$chkRow['id'];
+                            $_SESSION['user']['employee_db_id'] = $userMealEmpId;
+                            $_SESSION['user']['is_meal_deduction'] = (int)$chkRow['is_meal_deduction'];
+                        }
+                    }
+                }
+
+                $isMealEnrolled = false;
+                if ($userMealEmpId > 0) {
+                    if (!isset($_SESSION['user']['is_meal_deduction'])) {
+                        $chkMeal = $db->query("SELECT is_meal_deduction FROM employees WHERE id = {$userMealEmpId} AND deleted_at IS NULL LIMIT 1");
+                        if ($chkMeal && $rowM = $chkMeal->fetch_assoc()) {
+                            $_SESSION['user']['is_meal_deduction'] = (int)$rowM['is_meal_deduction'];
+                        } else {
+                            $_SESSION['user']['is_meal_deduction'] = 0;
+                        }
+                    }
+                    $isMealEnrolled = ((int)($_SESSION['user']['is_meal_deduction'] ?? 0) === 1);
+                }
+                ?>
+                <?php if ($canAccessMealTracker): ?>
+                    <li class="sidebar__menu-category ">
+                        <span class="category-name">Meal Management</span>
+                    </li>
+                    <li class="slide has-sub <?= isActive(['meal-tracker', 'meal-tracker-history', 'my-meal-tracker'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['meal-tracker', 'meal-tracker-history', 'my-meal-tracker'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-utensils"></i></div>
+                            <span class="sidebar__menu-label">Meal Tracker</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/meal-tracker"
+                                    class="sidebar__menu-item <?= isActive('meal-tracker', $current_route) ?>">Meal Workspace</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/meal-tracker-history"
+                                    class="sidebar__menu-item <?= isActive('meal-tracker-history', $current_route) ?>">Meal History</a>
+                            </li>
+                            <?php if ($isMealEnrolled): ?>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/my-meal-tracker"
+                                        class="sidebar__menu-item <?= isActive('my-meal-tracker', $current_route) ?>">My Meal Tracker</a>
+                                </li>
+                            <?php endif; ?>
+                        </ul>
+                    </li>
+                <?php elseif ($isMealEnrolled): ?>
+                    <!-- Dedicated menu for enrolled employee -->
+                    <li class="sidebar__menu-category ">
+                        <span class="category-name">Meal Service</span>
+                    </li>
+                    <li class="slide <?= isActive('my-meal-tracker', $current_route) ? 'active' : '' ?>">
+                        <a href="<?= $base_url ?>/my-meal-tracker"
+                            class="sidebar__menu-item <?= isActive('my-meal-tracker', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-bowl-food"></i></div>
+                            <span class="sidebar__menu-label">My Meal Tracker</span>
+                        </a>
                     </li>
                 <?php endif; ?>
 
@@ -1924,7 +1932,7 @@
                 <?php endif; ?>
 
 
-                <?php if (hasPermission("Employee Dashboard") && ($_SESSION['user']['role_id'] ?? 0) != 9): ?>
+                <?php if (hasPermission("Employee Dashboard") && ($_SESSION['user']['role_id'] ?? 0) != 9 && !$isManagement): ?>
                     <!-- Employee Dashboard -->
                     <li class="slide <?= isActive(['employee-dashboard', 'my-attendance', 'my-leaves'], $current_route) ?>">
                         <a href="<?= $base_url ?>/employee-dashboard"
