@@ -355,14 +355,14 @@ class Con_LaborRequisition extends Model
 
     public function managementApprove($id, $userId, $approvedAmount, $note = null)
     {
-        $stmt = $this->db->prepare("UPDATE {$this->table} SET status='management_approved', management_approved_by=?, management_approved_at=NOW(), approved_amount=?, management_note=?, updated_at=NOW() WHERE id=? AND status IN ('qc_approved', 'payment_requested', 'pm_payment_approved')");
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET status='management_approved', management_approved_by=?, management_approved_at=NOW(), approved_amount=?, management_note=?, updated_at=NOW() WHERE id=? AND status IN ('qc_approved', 'pm_payment_approved')");
         $stmt->bind_param('idsi', $userId, $approvedAmount, $note, $id);
         return $stmt->execute();
     }
 
     public function managementReject($id, $userId, $reason)
     {
-        $stmt = $this->db->prepare("UPDATE {$this->table} SET status='rejected', management_approved_by=?, rejection_reason=?, updated_at=NOW() WHERE id=? AND status IN ('qc_approved', 'payment_requested', 'pm_payment_approved')");
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET status='rejected', management_approved_by=?, rejection_reason=?, updated_at=NOW() WHERE id=? AND status IN ('qc_approved', 'pm_payment_approved')");
         $stmt->bind_param('isi', $userId, $reason, $id);
         return $stmt->execute();
     }

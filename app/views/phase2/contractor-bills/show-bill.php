@@ -69,6 +69,14 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
 </div>
 
 <div class="container-fluid">
+    <?php if ($isRejected): ?>
+    <div class="alert alert-danger d-flex align-items-center mb-3">
+        <i class="bi bi-x-circle-fill fs-5 me-2"></i>
+        <div>
+            <strong>Bill Rejected:</strong> <?= htmlspecialchars($bill['rejection_reason'] ?? $bill['management_note'] ?? 'No reason provided.') ?>
+        </div>
+    </div>
+    <?php endif; ?>
     <div class="row">
         <!-- Main Content (Left) -->
         <div class="col-lg-8">
@@ -461,7 +469,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                     <h6 class="card-title mb-0"><i class="bi bi-shield-check me-2"></i>QC Approval</h6>
                 </div>
                 <div class="card-body">
-                    <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST" class="mb-3">
+                    <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST">
                         <input type="hidden" name="status" value="qc_approved">
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Approved Amount (৳)</label>
@@ -474,16 +482,19 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                             <label class="form-label fw-semibold">QC Note (Optional)</label>
                             <textarea name="approval_note" class="form-control form-control-sm" rows="2" placeholder="Add QC remarks..."></textarea>
                         </div>
-                        <button type="submit" class="btn btn-warning w-100 fw-bold"
-                                onclick="return confirm('QC Approve this bill?');">
-                            <i class="bi bi-check-circle me-1"></i> QC Approve
-                        </button>
-                    </form>
-                    <form action="<?= $base_url ?>/con-contractor-bill-reject/<?= $bill['id'] ?>" method="POST">
-                        <button type="submit" class="btn btn-outline-danger w-100 btn-sm"
-                                onclick="return confirm('Reject this bill?');">
-                            <i class="bi bi-x-circle me-1"></i> Reject
-                        </button>
+                        <div class="row gx-2">
+                            <div class="col-6">
+                                <button type="submit" class="btn btn-warning w-100 fw-bold py-2"
+                                        onclick="return confirm('QC Approve this bill?');">
+                                    <i class="bi bi-check-circle me-1"></i> QC Approve
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" class="btn btn-danger w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#rejectBillModal">
+                                    <i class="bi bi-x-circle me-1"></i> Reject
+                                </button>
+                            </div>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -496,7 +507,7 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                     <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Management Approval (Operation / PM Head / Admin)</h6>
                 </div>
                 <div class="card-body">
-                    <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST" class="mb-3">
+                    <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST">
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Approved Amount (৳)</label>
                             <input type="number" name="approved_amount" class="form-control"
@@ -508,17 +519,47 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                             <label class="form-label fw-semibold">Management Note (Optional)</label>
                             <textarea name="management_note" class="form-control form-control-sm" rows="2" placeholder="Add management remarks..."></textarea>
                         </div>
-                        <button type="submit" class="btn btn-success w-100 fw-bold"
-                                onclick="return confirm('Approve this bill?');">
-                            <i class="bi bi-check-circle me-1"></i> Approve Bill
-                        </button>
+                        <div class="row gx-2">
+                            <div class="col-6">
+                                <button type="submit" class="btn btn-success w-100 fw-bold py-2"
+                                        onclick="return confirm('Approve this bill?');">
+                                    <i class="bi bi-check-circle me-1"></i> Approve Bill
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" class="btn btn-danger w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#rejectBillModal">
+                                    <i class="bi bi-x-circle me-1"></i> Reject
+                                </button>
+                            </div>
+                        </div>
                     </form>
-                    <form action="<?= $base_url ?>/con-contractor-bill-reject/<?= $bill['id'] ?>" method="POST">
-                        <button type="submit" class="btn btn-outline-danger w-100 btn-sm"
-                                onclick="return confirm('Reject this bill?');">
-                            <i class="bi bi-x-circle me-1"></i> Reject
-                        </button>
-                    </form>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Reject Bill Modal -->
+            <?php if (($canApproveReq || $canApproveQCReq) && in_array($status, ['submitted', 'verified', 'qc_approved'])): ?>
+            <div class="modal fade" id="rejectBillModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
+                        <form action="<?= $base_url ?>/con-contractor-bill-reject/<?= $bill['id'] ?>" method="POST">
+                            <div class="modal-header border-0 pb-0">
+                                <h5 class="modal-title text-danger fw-bold"><i class="bi bi-exclamation-triangle me-2"></i>Reject Contractor Bill</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Reason for Rejection <span class="text-danger">*</span></label>
+                                    <textarea class="form-control" name="rejection_reason" rows="3" placeholder="Explain why this contractor bill is being rejected..." required></textarea>
+                                    <div class="form-text">An email notification will be sent with these remarks.</div>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-0 pt-0">
+                                <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600">Cancel</button>
+                                <button type="submit" class="btn btn-danger" style="border-radius:10px;font-weight:600"><i class="bi bi-x-circle me-1"></i> Confirm Rejection</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
             <?php endif; ?>
@@ -537,7 +578,12 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
             <?php elseif ($isRejected): ?>
                 <div class="alert alert-danger text-center">
                     <i class="bi bi-x-circle-fill fs-4 d-block mb-2"></i>
-                    This bill has been rejected.
+                    <strong>This bill has been rejected.</strong>
+                    <?php if (!empty($bill['rejection_reason']) || !empty($bill['management_note'])): ?>
+                        <div class="mt-2 text-start p-2 bg-white rounded border fst-italic">
+                            "<?= htmlspecialchars($bill['rejection_reason'] ?? $bill['management_note']) ?>"
+                        </div>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
 

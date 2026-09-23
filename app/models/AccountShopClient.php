@@ -450,6 +450,7 @@ class AccountShopClient extends AccountClient
             $paymentMethod  = $transactionData['payment_method']   ?? 'cash';
             $paymentDate    = $transactionData['payment_date']     ?? date('Y-m-d');
             $transactionRef = $transactionData['transaction_ref']  ?? '';
+            $bankId         = !empty($transactionData['bank_id']) ? (int) $transactionData['bank_id'] : null;
             $bankName       = $transactionData['bank_name']        ?? '';
             $bankAccNo      = $transactionData['bank_account_no']  ?? '';
             $chequeNo       = $transactionData['cheque_no']        ?? '';
@@ -478,9 +479,9 @@ class AccountShopClient extends AccountClient
                     INSERT INTO lead_payments (
                         booking_id, payment_type, amount, land_share_amount, service_fee,
                         payment_method, payment_status, payment_date, transaction_ref,
-                        bank_name, bank_account_no, cheque_no, online_type,
+                        bank_id, bank_name, bank_account_no, cheque_no, online_type,
                         attachment_paths, due_emi_amount, parent_payment_id, settlement_type, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if (!$settleStmt) throw new Exception("Settlement prepare failed: " . $this->db->error);
 
@@ -492,10 +493,10 @@ class AccountShopClient extends AccountClient
                 $parentId = (int) $due['id'];
 
                 $settleStmt->bind_param(
-                    "isdddsssssssssdisi",
+                    "isdddssssisssssdisi",
                     $bookingId, $stPayType, $settle, $stLandShare, $settleSvcFee,
                     $paymentMethod, $stStatus, $paymentDate, $transactionRef,
-                    $bankName, $bankAccNo, $chequeNo, $onlineType,
+                    $bankId, $bankName, $bankAccNo, $chequeNo, $onlineType,
                     $attachmentPathsJson, $stDue, $parentId, $stType, $createdBy
                 );
 
@@ -558,9 +559,9 @@ class AccountShopClient extends AccountClient
                     INSERT INTO lead_payments (
                         booking_id, payment_type, amount, land_share_amount, service_fee,
                         payment_method, payment_status, payment_date, transaction_ref,
-                        bank_name, bank_account_no, cheque_no, online_type,
+                        bank_id, bank_name, bank_account_no, cheque_no, online_type,
                         attachment_paths, due_emi_amount, bulk_emi_discount, bulk_pay_amount, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 if (!$emiStmt) throw new Exception("EMI payment prepare failed: " . $this->db->error);
 
@@ -571,10 +572,10 @@ class AccountShopClient extends AccountClient
                 $thisBulkPayAmount = (!$firstPaymentId && $newInstallments === 0) ? $totalAmount : null;
 
                 $emiStmt->bind_param(
-                    "isdddsssssssssdddi",
+                    "isdddssssisssssdddi",
                     $bookingId, $emiPayType, $thisEmi, $emiLandShare, $thisSvcFee,
                     $paymentMethod, $thisStatus, $paymentDate, $transactionRef,
-                    $bankName, $bankAccNo, $chequeNo, $onlineType,
+                    $bankId, $bankName, $bankAccNo, $chequeNo, $onlineType,
                     $attachmentPathsJson, $thisDue, $thisDiscount, $thisBulkPayAmount, $createdBy
                 );
 

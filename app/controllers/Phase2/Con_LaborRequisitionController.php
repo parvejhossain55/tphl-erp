@@ -29,20 +29,22 @@ class Con_LaborRequisitionController extends Controller
     private function isManagement()   { return in_array($this->userRole, [3, 1]);  }
     private function isAccounts()     { return in_array($this->userRole, [6, 30, 1, 3]);  }
 
-    // Checks whether current user can approve management step (Roles 1, 3 or Role 20 for amount <= 100,000)
+    // Checks whether current user can approve management step (Roles 1, 3, 20, 22 or Admin/Operation/Management/PM Head)
     private function canApproveManagement($amount = 0)
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         if (in_array($this->userRole, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             return false;
         }
-        if (in_array($this->userRole, [3, 1])) {
+        if (in_array($this->userRole, [1, 3, 20, 22])) {
             return true;
         }
-        if ($this->userRole === 20 && (float)$amount <= 100000) {
-            return true;
-        }
-        return false;
+        return (
+            str_contains($roleName, 'admin')
+            || str_contains($roleName, 'management')
+            || str_contains($roleName, 'operation')
+            || str_contains($roleName, 'pm head')
+        );
     }
 
     // =========================================================================
@@ -349,32 +351,33 @@ class Con_LaborRequisitionController extends Controller
     }
 
     // =========================================================================
-    // MANAGEMENT APPROVE / REJECT (Supports Management + Role 20 for amount <= 100,000)
+    // MANAGEMENT APPROVE / REJECT (Supports Management + Role 20)
     // =========================================================================
     public function managementApprove($id)
     {
         $req = $this->model->find((int)$id);
         if (!$req) { $_SESSION['error'] = 'Requisition not found.'; $this->back($id); }
 
+        if (!in_array($req['status'], ['qc_approved', 'pm_payment_approved'])) {
+            $_SESSION['error'] = 'Requisition must be approved by QC & Internal Audit before Management approval.';
+            $this->back($id);
+        }
+
         $baseAmount = (float)($req['qc_approved_amount'] ?? $req['pm_verified_amount'] ?? $req['total_amount']);
         if (!$this->canApproveManagement($baseAmount)) {
-            $_SESSION['error'] = ($this->userRole === 20)
-                ? 'Access denied. Role 20 cannot approve amounts above ৳100,000.'
-                : 'Access denied.';
+            $_SESSION['error'] = 'Access denied. You are not authorized to approve this requisition.';
             $this->back($id);
         }
 
         $approvedAmount = (float)($_POST['approved_amount'] ?? 0);
-        if ($this->userRole === 20 && $approvedAmount > 100000) {
-            $_SESSION['error'] = 'Access denied. Role 20 cannot approve amounts above ৳100,000.';
-            $this->back($id);
-        }
-
         $note = trim($_POST['management_note'] ?? '');
         $finalApprovedAmount = $approvedAmount > 0 ? $approvedAmount : $baseAmount;
-        $this->model->managementApprove((int)$id, $this->userId, $finalApprovedAmount, $note);
-        $this->syncToApprovalRequests((int)$id, 'approved', $finalApprovedAmount, $note);
-        $_SESSION['success'] = 'Management approved ৳' . number_format($finalApprovedAmount, 2) . '. Ready for payment by Accounts.';
+        if ($this->model->managementApprove((int)$id, $this->userId, $finalApprovedAmount, $note)) {
+            $this->syncToApprovalRequests((int)$id, 'approved', $finalApprovedAmount, $note);
+            $_SESSION['success'] = 'Labor requisition approved for ৳' . number_format($finalApprovedAmount, 2) . '. Ready for payment by Accounts.';
+        } else {
+            $_SESSION['error'] = 'Failed to approve labor requisition.';
+        }
         $this->back($id);
     }
 
@@ -383,18 +386,29 @@ class Con_LaborRequisitionController extends Controller
         $req = $this->model->find((int)$id);
         if (!$req) { $_SESSION['error'] = 'Requisition not found.'; $this->back($id); }
 
-        $baseAmount = (float)($req['qc_approved_amount'] ?? $req['pm_verified_amount'] ?? $req['total_amount']);
-        if (!$this->canApproveManagement($baseAmount)) {
-            $_SESSION['error'] = ($this->userRole === 20)
-                ? 'Access denied. Role 20 cannot reject amounts above ৳100,000.'
-                : 'Access denied.';
+        if (!in_array($req['status'], ['qc_approved', 'pm_payment_approved'])) {
+            $_SESSION['error'] = 'Requisition must be approved by QC & Internal Audit before Management rejection.';
             $this->back($id);
         }
 
-        $reason = trim($_POST['rejection_reason'] ?? 'Rejected by Management');
-        $this->model->managementReject((int)$id, $this->userId, $reason);
-        $this->syncToApprovalRequests((int)$id, 'rejected', null, $reason);
-        $_SESSION['error'] = 'Rejected by Management.';
+        $baseAmount = (float)($req['qc_approved_amount'] ?? $req['pm_verified_amount'] ?? $req['total_amount']);
+        if (!$this->canApproveManagement($baseAmount)) {
+            $_SESSION['error'] = 'Access denied. You are not authorized to reject this requisition.';
+            $this->back($id);
+        }
+
+        $reason = trim($_POST['rejection_reason'] ?? $_POST['remarks'] ?? '');
+        if (empty($reason)) {
+            $_SESSION['error'] = 'Rejection reason is required.';
+            $this->back($id);
+        }
+
+        if ($this->model->managementReject((int)$id, $this->userId, $reason)) {
+            $this->syncToApprovalRequests((int)$id, 'rejected', null, $reason);
+            $_SESSION['error'] = 'Labor requisition has been rejected.';
+        } else {
+            $_SESSION['error'] = 'Failed to reject labor requisition.';
+        }
         $this->back($id);
     }
 

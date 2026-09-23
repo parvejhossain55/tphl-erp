@@ -718,8 +718,15 @@ class Con_ContractorBillController extends Controller
             exit;
         }
 
-        if ($this->billModel->reject($id, $this->userId)) {
-            $this->syncApprovalRequest($id, 'rejected');
+        $reason = trim($_POST['rejection_reason'] ?? $_POST['remarks'] ?? '');
+        if (empty($reason)) {
+            setError('Rejection remarks/reason is required.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+            exit;
+        }
+
+        if ($this->billModel->reject($id, $this->userId, $reason)) {
+            $this->syncApprovalRequest($id, 'rejected', null, $reason);
             
             // Send email notification on rejection
             try {
@@ -727,8 +734,9 @@ class Con_ContractorBillController extends Controller
                 if ($rejectedBill) {
                     $operator = $this->operatorModel->find($rejectedBill['operator_id'] ?? 0);
                     $project  = $this->db->query("SELECT name FROM projects WHERE id = " . (int)($rejectedBill['project_id'] ?? 0))->fetch_assoc();
-                    $rejectedBill['contractor_name'] = $operator['name'] ?? '';
-                    $rejectedBill['project_name']    = $project['name'] ?? '';
+                    $rejectedBill['contractor_name']  = $operator['name'] ?? '';
+                    $rejectedBill['project_name']     = $project['name'] ?? '';
+                    $rejectedBill['rejection_reason'] = $reason;
 
                     $this->mailService->sendContractorBillOnRejection(
                         $rejectedBill,
@@ -739,7 +747,7 @@ class Con_ContractorBillController extends Controller
                 error_log("Contractor Bill email (rejection) failed: " . $e->getMessage());
             }
 
-            setSuccess('Bill has been rejected.');
+            setSuccess('Contractor bill has been rejected.');
         } else {
             setError('Failed to reject bill.');
         }
@@ -860,18 +868,18 @@ class Con_ContractorBillController extends Controller
         return $stmt->get_result()->fetch_assoc();
     }
 
-    private function syncApprovalRequest($billId, $newStatus, $approvedAmount = null)
+    private function syncApprovalRequest($billId, $newStatus, $approvedAmount = null, $note = null)
     {
         $arStatus = ($newStatus === 'approved') ? 'approved' : 'rejected';
         $approveRole = ($newStatus === 'approved') ? 'accounts' : 'rejected';
 
         $stmt = $this->db->prepare(
             "UPDATE approval_requests
-             SET status = ?, approve_role = ?, approved_by = ?, approved_amount = COALESCE(?, approved_amount, request_amount), approved_at = NOW()
+             SET status = ?, approve_role = ?, approved_by = ?, approved_amount = COALESCE(?, approved_amount, request_amount), approval_note = COALESCE(?, approval_note), approved_at = NOW()
              WHERE source_table = 'contractor_bill_requests' AND source_id = ?"
         );
         if ($stmt) {
-            $stmt->bind_param('ssidi', $arStatus, $approveRole, $this->userId, $approvedAmount, $billId);
+            $stmt->bind_param('ssidsi', $arStatus, $approveRole, $this->userId, $approvedAmount, $note, $billId);
             $stmt->execute();
             $stmt->close();
         }

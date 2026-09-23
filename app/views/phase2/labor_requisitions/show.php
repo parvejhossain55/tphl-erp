@@ -448,20 +448,20 @@ $steps = [
             </div>
             <?php endif; ?>
 
-            <!-- STEP 5: Management & Role 20 Payment Approval (Direct after QC, or direct at payment_requested) -->
+            
+            <!-- STEP 5: Management & Role 20 Payment Approval (After QC Approval) -->
             <?php 
             $mgmtBaseAmount = (float)($req['qc_approved_amount'] ?? $req['pm_verified_amount'] ?? $req['total_amount']);
             $canApproveMgmt = !empty($canApproveManagement);
-            $isRole20OverLimit = (($userRole ?? 0) === 20 && $mgmtBaseAmount > 100000);
             ?>
-            <?php if (in_array($st, ['qc_approved', 'payment_requested', 'pm_payment_approved']) && ($canApproveMgmt || $isRole20OverLimit)): ?>
+            <?php if (in_array($st, ['qc_approved', 'pm_payment_approved']) && $canApproveMgmt): ?>
             <div class="card custom-card mb-3 border border-success border-opacity-50">
                 <div class="card-header bg-success-transparent d-flex justify-content-between align-items-center">
-                    <div class="card-title fs-13 text-success mb-0"><i class="fa-solid fa-building-circle-check me-2"></i> Management / Role 20 Payment Approval</div>
+                    <div class="card-title fs-13 text-success mb-0"><i class="fa-solid fa-building-circle-check me-2"></i> Management / Role 20 Approval</div>
                     <?php if ($st === 'qc_approved'): ?>
                         <span class="badge bg-teal text-white fs-11"><i class="fa-solid fa-shield-check me-1"></i> QC Verified</span>
-                    <?php elseif ($st === 'payment_requested'): ?>
-                        <span class="badge bg-warning text-dark fs-11"><i class="fa-solid fa-bolt me-1"></i> Payment Requested (Direct Approval)</span>
+                    <?php elseif ($st === 'pm_payment_approved'): ?>
+                        <span class="badge bg-indigo text-white fs-11"><i class="fa-solid fa-user-check me-1"></i> PM Payment Verified</span>
                     <?php endif; ?>
                 </div>
                 <div class="card-body">
@@ -516,22 +516,19 @@ $steps = [
                         </div>
                     </div>
 
-                    <?php if ($isRole20OverLimit): ?>
-                        <div class="alert alert-warning py-2 mb-0 fs-13">
-                            <i class="fa-solid fa-triangle-exclamation me-1"></i>
-                            <strong>Top Management Approval Required:</strong> Amount (৳ <?= number_format($mgmtBaseAmount, 2) ?>) exceeds ৳1,00,000 threshold for Role 20. Higher Management (Managing Director / Director / Chairman) approval required.
-                        </div>
-                    <?php else: ?>
-                        <p class="fs-13 text-muted mb-3">Review and authorize payment disbursement for Accounts. You may adjust the approved amount if needed.</p>
-                        <div class="action-btn-group">
-                            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#mgmtApproveModal">
+                    <p class="fs-13 text-muted mb-3">Review and authorize payment disbursement for Accounts. You may adjust the approved amount if needed.</p>
+                    <div class="row gx-2">
+                        <div class="col-6">
+                            <button type="button" class="btn btn-success w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#mgmtApproveModal">
                                 <i class="fa-solid fa-check-double me-1"></i> Approve Payment
                             </button>
-                            <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#mgmtRejectModal">
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn btn-danger w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#mgmtRejectModal">
                                 <i class="fa-solid fa-ban me-1"></i> Reject
                             </button>
                         </div>
-                    <?php endif; ?>
+                    </div>
                 </div>
             </div>
             <?php endif; ?>
@@ -915,13 +912,13 @@ $steps = [
 </div>
 <?php endif; ?>
 
-<!-- Management Approve Modal (Direct after QC, or direct at payment_requested) -->
-<?php if (in_array($st, ['qc_approved', 'payment_requested', 'pm_payment_approved']) && (!empty($canApproveManagement) || !empty($isManagement))): ?>
+<!-- Management Approve Modal (After QC Approval) -->
+<?php if (in_array($st, ['qc_approved', 'pm_payment_approved']) && (!empty($canApproveManagement) || !empty($isManagement))): ?>
 <?php $mgmtDefaultAmount = (float)($req['qc_approved_amount'] ?? $req['pm_verified_amount'] ?? $req['total_amount']); ?>
 <div class="modal fade" id="mgmtApproveModal" tabindex="-1">
-    <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-mgmt-approve/<?php echo $req['id']; ?>" method="POST">
-        <div class="modal-content">
-            <div class="modal-header bg-success bg-opacity-10"><h5 class="modal-title text-success"><i class="fa-solid fa-building-circle-check me-2"></i>Management / Role 20 Payment Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-dialog modal-dialog-centered"><form action="<?php echo $base; ?>/con-labor-req-mgmt-approve/<?php echo $req['id']; ?>" method="POST">
+        <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
+            <div class="modal-header border-0 pb-0"><h5 class="modal-title text-success fw-bold"><i class="fa-solid fa-building-circle-check me-2"></i>Management / Role 20 Payment Approval</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <div class="row g-2 mb-3 text-center">
                     <div class="col-6 p-2 rounded bg-light border">
@@ -935,27 +932,22 @@ $steps = [
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Approved Amount (৳) <span class="text-danger">*</span></label>
-                    <input type="number" name="approved_amount" class="form-control" step="0.01" value="<?php echo $mgmtDefaultAmount; ?>" <?= (($userRole ?? 0) === 20) ? 'max="100000"' : '' ?> required>
-                    <div class="form-text">
-                        <?php if (($userRole ?? 0) === 20): ?>
-                            <span class="badge bg-success-transparent text-success border border-success border-opacity-25 mt-1"><i class="fa-solid fa-check me-1"></i>Role 20 Approval (Limit: Max ৳1,00,000)</span>
-                        <?php endif; ?>
-                    </div>
+                    <input type="number" name="approved_amount" class="form-control" step="0.01" value="<?php echo $mgmtDefaultAmount; ?>" required>
                 </div>
-                <div class="mb-3"><label class="form-label">Management Note (Optional)</label><textarea name="management_note" class="form-control" rows="2" placeholder="Approval note..."></textarea></div>
+                <div class="mb-3"><label class="form-label fw-semibold">Management Note (Optional)</label><textarea name="management_note" class="form-control" rows="2" placeholder="Add approval remarks..."></textarea></div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-success btn-sm"><i class="fa-solid fa-check-double me-1"></i> Authorize Payment</button></div>
+            <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600">Cancel</button><button type="submit" class="btn btn-success" style="border-radius:10px;font-weight:600"><i class="fa-solid fa-check-double me-1"></i> Authorize Payment</button></div>
         </div>
     </form></div>
 </div>
 <div class="modal fade" id="mgmtRejectModal" tabindex="-1">
-    <div class="modal-dialog"><form action="<?php echo $base; ?>/con-labor-req-mgmt-reject/<?php echo $req['id']; ?>" method="POST">
-        <div class="modal-content">
-            <div class="modal-header bg-danger bg-opacity-10"><h5 class="modal-title text-danger"><i class="fa-solid fa-ban me-2"></i>Management Reject</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-dialog modal-dialog-centered"><form action="<?php echo $base; ?>/con-labor-req-mgmt-reject/<?php echo $req['id']; ?>" method="POST">
+        <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
+            <div class="modal-header border-0 pb-0"><h5 class="modal-title text-danger fw-bold"><i class="fa-solid fa-ban me-2"></i>Reject Labor Requisition</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
-                <div class="mb-3"><label class="form-label">Reason <span class="text-danger">*</span></label><textarea name="rejection_reason" class="form-control" rows="3" required></textarea></div>
+                <div class="mb-3"><label class="form-label fw-bold">Reason for Rejection <span class="text-danger">*</span></label><textarea name="rejection_reason" class="form-control" rows="3" placeholder="Explain why this labor requisition is being rejected..." required></textarea></div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-danger btn-sm">Reject</button></div>
+            <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600">Cancel</button><button type="submit" class="btn btn-danger" style="border-radius:10px;font-weight:600"><i class="fa-solid fa-xmark me-1"></i> Confirm Rejection</button></div>
         </div>
     </form></div>
 </div>
