@@ -647,6 +647,17 @@ class ClientRefundController extends Controller
             exit;
         }
 
+        // Mandatory Accounts Head Approval Guard
+        if (!class_exists('ApprovalRequest')) {
+            require_once __DIR__ . '/../models/ApprovalRequest.php';
+        }
+        $ahCheck = ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'client_refund_requests', (int)$id);
+        if ($ahCheck && !empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
+            setError("Payment cannot be disbursed. Approval from Accounts Head (Md. Mamunoor Rashid [1309]) is pending.");
+            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            exit;
+        }
+
         $paymentMethod  = trim($_POST['payment_method'] ?? 'cash');
         $chequeNo       = trim($_POST['cheque_no'] ?? '');
         $paymentDate    = !empty($_POST['payment_date']) ? $_POST['payment_date'] : date('Y-m-d');

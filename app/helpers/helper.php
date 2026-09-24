@@ -279,6 +279,10 @@ function redirectByRole()
             $url = "{$GLOBALS['base_url']}/sr-executive-dashboard";
             break;
 
+        case 36: // Accounts executive
+            $url = "{$GLOBALS['base_url']}/accounts-dashboard";
+            break;
+
         default:
             $url = "{$GLOBALS['base_url']}/employee-dashboard";
     }
@@ -1215,6 +1219,19 @@ function checkTipsoiEmployeeMatch($db)
 function isAccountsHead(): bool
 {
     return isset($_SESSION['user']['role_id']) && (int) $_SESSION['user']['role_id'] === 30;
+}
+
+/**
+ * Check if the currently logged-in user is Accounts Executive (Role ID 36 or has Cash In Verify permission)
+ */
+function isAccountsExecutive(): bool
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+    $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+    return $roleId === 36 || $roleName === 'accounts executive' || hasPermission('Cash In Verify');
 }
 
 /**

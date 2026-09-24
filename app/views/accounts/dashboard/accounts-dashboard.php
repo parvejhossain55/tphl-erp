@@ -2,6 +2,7 @@
 $page_title = "Dashboard";
 $page = 'Dashboard';
 $show_breadcrumb = false;
+$isAccExecutive = function_exists('isAccountsExecutive') ? isAccountsExecutive() : ((int)($_SESSION['user']['role_id'] ?? 0) === 36);
 
 // Prepare chart data from monthlyData - FIXED: Use variables passed from controller
 $chartLabels = $chartLabels ?? [];
@@ -179,6 +180,7 @@ function getStatusBadge($status)
                         <h4 class="mb-0">Financial Dashboard</h4>
                         <p class="text-muted mb-0">Overview of your financial transactions</p>
                     </div>
+                    <?php if (!$isAccExecutive): ?>
                     <div class="d-flex align-items-center gap-2">
                         <label class="mb-0 fw-bold">View:</label>
                         <select id="viewTypeSelector" class="form-select" style="width: auto; min-width: 150px;">
@@ -186,6 +188,7 @@ function getStatusBadge($status)
                             <option value="cashout" <?= $viewType === 'cashout' ? 'selected' : '' ?>>Cash Out</option>
                         </select>
                     </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Period Filter Buttons -->
@@ -328,7 +331,7 @@ function getStatusBadge($status)
 
     <?php $ops = $operationsStats ?? []; ?>
 
-    <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
+    <div class="<?= $isAccExecutive ? 'col-xl-4 col-lg-6 col-md-6' : 'col-xl-2 col-lg-4 col-md-4' ?> col-sm-6 mb-3">
         <a href="<?= $GLOBALS['base_url'] ?>/clients-cash-in" class="text-decoration-none">
             <div class="card__wrapper h-100 dashboard-card ops-card">
                 <div class="d-flex align-items-center gap-2 h-100">
@@ -345,6 +348,7 @@ function getStatusBadge($status)
         </a>
     </div>
 
+    <?php if (!$isAccExecutive): ?>
     <div class="col-xl-2 col-lg-4 col-md-4 col-sm-6 mb-3">
         <a href="<?= $GLOBALS['base_url'] ?>/con-vendor-payment-requests" class="text-decoration-none">
             <div class="card__wrapper h-100 dashboard-card ops-card">
@@ -446,8 +450,9 @@ function getStatusBadge($status)
             </div>
         </a>
     </div>
+    <?php endif; ?>
 
-    <?php if (!empty($accountsNotifications)): ?>
+    <?php if (!empty($accountsNotifications) && !$isAccExecutive): ?>
     <!-- ══════════════ ACCOUNTS NOTIFICATION BANNER ══════════════ -->
     <div class="col-12 mb-4 mt-2">
         <div class="d-flex align-items-center gap-2 mb-3">

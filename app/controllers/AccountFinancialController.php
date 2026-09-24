@@ -22,6 +22,11 @@ class AccountFinancialController extends Controller
 
     public function index()
     {
+        if (function_exists('isAccountsExecutive') && isAccountsExecutive()) {
+            header("Location: {$GLOBALS['base_url']}/accounts-dashboard");
+            exit;
+        }
+
         $projects = $this->financialModel->getProjects();
 
         require_once __DIR__ . '/../models/GeneralJournal.php';

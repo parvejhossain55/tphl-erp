@@ -441,7 +441,7 @@ $show_breadcrumb = true;
                         <button class="btn btn-secondary" disabled>
                             <i class="fa-light fa-check-circle me-2"></i> Refunded Paid
                         </button>
-                    <?php else: ?>
+                    <?php elseif (!function_exists('isAccountsExecutive') || !isAccountsExecutive()): ?>
                         <a href="<?= $GLOBALS['base_url'] ?>/<?= $isShop ? 'shop-client-cash-in-form' : 'client-cash-in-form' ?>?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary">
                             <i class="fa-light fa-plus me-2"></i> Add Transaction
                         </a>
@@ -449,9 +449,11 @@ $show_breadcrumb = true;
                             <i class="fa-light fa-undo me-2"></i> Refund
                         </a>
                     <?php endif; ?>
+                    <?php if (!function_exists('isAccountsExecutive') || !isAccountsExecutive()): ?>
                     <a href="<?= $GLOBALS['base_url'] ?>/csv-import-form" class="btn btn-info text-white">
                         <i class="fa-light fa-file-csv me-2"></i> CSV Import
                     </a>
+                    <?php endif; ?>
                     <a href="<?= $base_url ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-success">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
                     </a>
@@ -683,8 +685,8 @@ $show_breadcrumb = true;
                                             <?php endif; ?>
                                         <?php else: /* pending */ ?>
                                             <?php
-                                                // ── ACCOUNTS-ONLY: show action buttons only to Accounts/Admin ──
-                                                $canVerify = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 30]);
+                                                // ── ACCOUNTS-ONLY: show action buttons only to Accounts/Admin/Executive ──
+                                                $canVerify = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 30, 36]) || (function_exists('isAccountsExecutive') && isAccountsExecutive()) || hasPermission('Cash In Verify');
                                             ?>
                                             <?php if ($canVerify): ?>
                                                 <?php if ($hs === 'pending'): ?>
@@ -811,9 +813,10 @@ $show_breadcrumb = true;
                                                 </a>
                                                 <?php 
                                                     $isAccountsHead = function_exists('isAccountsHead') ? isAccountsHead() : (($_SESSION['user']['role_id'] ?? 0) == 30);
-                                                    $canEdit = (!$isVerified && $transaction['payment_type'] !== 'booking_money') || $isAccountsHead;
-                                                    $canDelete = !$isVerified; // Keep delete logic standard
-                                                    $canTrash = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 30]);
+                                                    $isAccExec = function_exists('isAccountsExecutive') ? isAccountsExecutive() : ((int)($_SESSION['user']['role_id'] ?? 0) === 36);
+                                                    $canEdit = ((!$isVerified && $transaction['payment_type'] !== 'booking_money') || $isAccountsHead) && !$isAccExec;
+                                                    $canDelete = !$isVerified && !$isAccExec; // Keep delete logic standard
+                                                    $canTrash = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 30]) && !$isAccExec;
                                                 ?>
                                                 <!-- EDIT BUTTON -->
                                                 <?php if ($canEdit): ?>

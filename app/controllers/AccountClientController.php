@@ -1992,10 +1992,11 @@ public function discountStatement($bookingId = null)
         header('Content-Type: application/json');
 
         // ── ACCOUNTS-ONLY GATE ────────────────────────────────────────────────
-        // role_id 1 = Super Admin, 3 = Admin, 6 = Accounts
+        // role_id 1 = Super Admin, 3 = Admin, 6 = Accounts, 30 = Accounts Head, 36 = Accounts Executive
         $userRoleId     = (int)($_SESSION['user']['role_id'] ?? 0);
-        $allowedRoleIds = [1, 3, 6, 30];
-        if (!in_array($userRoleId, $allowedRoleIds)) {
+        $allowedRoleIds = [1, 3, 6, 30, 36];
+        $canVerifyAction = in_array($userRoleId, $allowedRoleIds) || (function_exists('isAccountsExecutive') && isAccountsExecutive()) || hasPermission('Cash In Verify');
+        if (!$canVerifyAction) {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Unauthorized: Accounts module access only']);
             exit;
@@ -2261,8 +2262,9 @@ public function discountStatement($bookingId = null)
         header('Content-Type: application/json');
 
         $userRoleId     = (int)($_SESSION['user']['role_id'] ?? 0);
-        $allowedRoleIds = [1, 3, 6, 30];
-        if (!in_array($userRoleId, $allowedRoleIds)) {
+        $allowedRoleIds = [1, 3, 6, 30, 36];
+        $canBulkVerify = in_array($userRoleId, $allowedRoleIds) || (function_exists('isAccountsExecutive') && isAccountsExecutive()) || hasPermission('Cash In Verify');
+        if (!$canBulkVerify) {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Unauthorized']);
             exit;

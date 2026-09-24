@@ -408,6 +408,20 @@ class LandRequisitionController extends Controller {
             exit;
         }
 
+        // Verify Accounts Head approval
+        if (!class_exists('ApprovalRequest')) {
+            require_once __DIR__ . '/../../models/ApprovalRequest.php';
+        }
+        $ahCheck = \ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'land_fund_requisitions', $id);
+        if (empty($ahCheck['has_request'])) {
+            $ahCheck = \ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'con_land_requisitions', $id);
+        }
+        if (!empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
+            setError('Payment locked. Mandatory approval by Accounts Head (Md. Mamunoor Rashid [1309]) is required before disbursement.');
+            header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
+            exit;
+        }
+
         // Upload Payment Attachment
         $attachment_path = null;
         if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {

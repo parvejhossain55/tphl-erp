@@ -779,6 +779,15 @@ class Con_ContractorBillController extends Controller
             exit;
         }
 
+        // STRICT GUARD: Must be approved by Accounts Head (Role 30 - Md. Mamunoor Rashid) before payment disbursement
+        require_once __DIR__ . '/../../models/ApprovalRequest.php';
+        $ahCheck = \ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'contractor_bill_requests', $id);
+        if ($ahCheck['has_request'] && !$ahCheck['is_accounts_head_approved']) {
+            setError('Payment cannot be processed! Accounts Head approval (Md. Mamunoor Rashid [1309]) is required before payment disbursement.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+            exit;
+        }
+
         // Handle file upload (mandatory)
         $proofPaths = [];
         if (!empty($_FILES['disbursement_proof']['name'][0])) {

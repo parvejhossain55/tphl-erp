@@ -7,7 +7,7 @@ $show_breadcrumb = true;
 ?>
 
 
-<div class="row lead-select align-items-stretch">
+<div class="row  align-items-stretch">
 
     <div class="desktop-only">
     <form action="" method="get">
@@ -113,8 +113,6 @@ $show_breadcrumb = true;
                 <table class="table mb-20 multiple_tables">
                     <thead>
                         <tr class="table__title table__sort">
-
-
                             <th style="min-width:60px;">S/L</th> <!-- non-sticky first column -->
                             <th class="">Booking Confirm date</th>
                             <th class="th_1">Client Name</th>
@@ -134,6 +132,7 @@ $show_breadcrumb = true;
                     </thead>
                     <tbody class="table__body">
 
+                    
                         <?php foreach ($leads as $key => $lead): ?>
                             <tr>
                                 <td><?= $key + 1 ?></td>

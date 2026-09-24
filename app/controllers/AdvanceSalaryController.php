@@ -149,6 +149,17 @@ class AdvanceSalaryController extends Controller
             session_start();
         }
 
+        $id = (int)$id;
+        if (!class_exists('ApprovalRequest')) {
+            require_once __DIR__ . '/../models/ApprovalRequest.php';
+        }
+        $ahCheck = ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'advance_salaries', $id);
+        if (!empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
+            $_SESSION['flash_error'] = "Payment locked. Mandatory approval by Accounts Head (Md. Mamunoor Rashid [1309]) is required before disbursement.";
+            header("Location: " . $GLOBALS['base_url'] . "/advance-salary");
+            exit;
+        }
+
         if ($this->model->updateStatus($id, 'paid')) {
             $_SESSION['success'] = "Advance Salary paid successfully.";
         } else {
@@ -175,6 +186,16 @@ class AdvanceSalaryController extends Controller
 
         if (!$id || $paid_amount <= 0) {
             $_SESSION['flash_error'] = "Invalid payment data.";
+            header("Location: " . $GLOBALS['base_url'] . "/advance-salary");
+            exit;
+        }
+
+        if (!class_exists('ApprovalRequest')) {
+            require_once __DIR__ . '/../models/ApprovalRequest.php';
+        }
+        $ahCheck = ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'advance_salaries', $id);
+        if (!empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
+            $_SESSION['flash_error'] = "Payment locked. Mandatory approval by Accounts Head (Md. Mamunoor Rashid [1309]) is required before disbursement.";
             header("Location: " . $GLOBALS['base_url'] . "/advance-salary");
             exit;
         }

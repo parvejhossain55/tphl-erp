@@ -17,7 +17,8 @@ class DashboardController extends Controller
     public function index()
     {
         // Get the selected view type from query parameter (default: cashin)
-        $viewType = $_GET['view'] ?? 'cashin';
+        $isAccExec = function_exists('isAccountsExecutive') ? isAccountsExecutive() : ((int)($_SESSION['user']['role_id'] ?? 0) === 36);
+        $viewType = $isAccExec ? 'cashin' : ($_GET['view'] ?? 'cashin');
 
         // Validate view type
         if (!in_array($viewType, ['cashin', 'cashout'])) {
@@ -105,7 +106,7 @@ class DashboardController extends Controller
         $operationsStats = $this->getOperationsStats();
         
         $accountsNotifications = [];
-        if (method_exists($this, 'getAccountsNotifications')) {
+        if (!$isAccExec && method_exists($this, 'getAccountsNotifications')) {
             $accountsNotifications = $this->getAccountsNotifications(true);
         }
 

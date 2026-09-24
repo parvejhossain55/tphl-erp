@@ -18,6 +18,9 @@ $effectiveApprovedAmount = (!empty($req['approved_amount']) && (float)$req['appr
 $balance = max(0, $effectiveApprovedAmount - (float)($totalSpent ?? 0));
 $dueToPay = max(0, $effectiveApprovedAmount - (float)($req['paid_amount'] ?? 0));
 
+require_once __DIR__ . '/../../../models/ApprovalRequest.php';
+$ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'fund_requisitions', (int)$req['id']);
+
 $statusColors = [
     'pending_dept' => 'bg-warning text-dark',
     'pending'      => 'bg-info text-white',
@@ -209,6 +212,15 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
             </div>
         </div>
     </div>
+
+    <!-- ACCOUNTS HEAD APPROVAL STATUS & ACTION CARD -->
+    <?php 
+    if (!empty($ahInfo['has_request'])) {
+        $sourceTable = 'fund_requisitions';
+        $sourceId = (int)$req['id'];
+        include __DIR__ . '/../../layouts/accounts_head_approval_card.php';
+    }
+    ?>
 
     <!-- MAIN CONTENT ROW -->
     <div class="row g-4 print-area">
@@ -678,9 +690,15 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
                                     <?php endif; ?>
 
                                     <?php if ($isAccounts && $dueToPay > 0): ?>
-                                    <button class="btn btn-sm btn-success mt-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#payModal">
-                                        <i class="fa-solid fa-file-invoice-dollar me-1"></i> Process Payment Now
-                                    </button>
+                                        <?php if (!empty($ahInfo['is_accounts_head_approved'])): ?>
+                                            <button class="btn btn-sm btn-success mt-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#payModal">
+                                                <i class="fa-solid fa-file-invoice-dollar me-1"></i> Process Payment Now
+                                            </button>
+                                        <?php else: ?>
+                                            <button class="btn btn-sm btn-light text-muted mt-2 border" disabled title="Payment locked pending Accounts Head (Md. Mamunoor Rashid [1309]) approval">
+                                                <i class="fa-solid fa-lock text-warning me-1"></i> Payment Locked (Awaiting Accounts Head Approval)
+                                            </button>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
                             <?php else: ?>
@@ -970,7 +988,7 @@ if ($canApprove && $dueToApprove > 0 && !in_array($req['status'], ['rejected', '
 <?php endif; ?>
 
 <?php 
-if (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid']) && $isAccounts && $dueToPay > 0): ?>
+if (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid']) && $isAccounts && $dueToPay > 0 && !empty($ahInfo['is_accounts_head_approved'])): ?>
 <div class="modal fade" id="payModal" tabindex="-1">
     <div class="modal-dialog"><form action="<?php echo $base; ?>/fund-requisitions/pay" method="POST" enctype="multipart/form-data">
         <div class="modal-content">

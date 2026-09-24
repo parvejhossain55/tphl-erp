@@ -14,6 +14,12 @@ if ($displayStatus !== 'rejected' && $displayStatus !== 'pending' && isset($requ
 // Check if already approved from homepage approval system
 $isAlreadyApproved = !empty($request['approval_status']) && in_array($request['approval_status'], ['approved', 'partial']);
 $isApprovalPending = !empty($request['approval_status']) && $request['approval_status'] === 'pending';
+
+if (!class_exists('ApprovalRequest')) {
+    require_once __DIR__ . '/../../../models/ApprovalRequest.php';
+}
+$ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'cashout_requests', (int)$request['id']);
+$isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_head_approved']);
 ?>
 <style>
     .status-badge {
@@ -78,6 +84,14 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                         <?php unset($_SESSION['error']); ?>
                     </div>
                 <?php endif; ?>
+
+                <?php 
+                if (!empty($ahInfo['has_request'])) {
+                    $sourceTable = 'cashout_requests';
+                    $sourceId = (int)$request['id'];
+                    include __DIR__ . '/../../layouts/accounts_head_approval_card.php';
+                }
+                ?>
 
                 <div class="row">
                     <!-- Request Details -->
@@ -389,7 +403,8 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                     $isPending = ($displayStatus === 'pending');
                                     $isQCApproved = ($displayStatus === 'qc_approved');
                                     
-                                    $showAddPayment = ($displayStatus == 'approved' || $displayStatus == 'partial' || $displayStatus == 'partially_paid') && $request['due_amount'] > 0;
+                                    $showAddPayment = ($displayStatus == 'approved' || $displayStatus == 'partial' || $displayStatus == 'partially_paid') && $request['due_amount'] > 0 && $isAhApproved;
+                                    $isWaitingAccountsHead = ($displayStatus == 'approved' || $displayStatus == 'partial' || $displayStatus == 'partially_paid') && $request['due_amount'] > 0 && !$isAhApproved;
                                     $showFullyPaid = $request['due_amount'] <= 0;
                                     ?>
 
@@ -473,6 +488,12 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                             <i class="fa-light fa-times me-2"></i> Reject Request
                                         </button>
 
+                                    <?php elseif ($isWaitingAccountsHead): ?>
+                                        <div class="alert alert-warning py-2 px-3 small mb-2 border-warning text-center">
+                                            <i class="fa-solid fa-lock me-1"></i>
+                                            <strong>Payment Locked</strong><br>
+                                            <span class="fs-12">Pending Accounts Head approval (<strong>Md. Mamunoor Rashid [1309]</strong>).</span>
+                                        </div>
                                     <?php elseif ($showAddPayment): ?>
                                         <!-- Show add payment button if approved and has due amount -->
                                         <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal"
@@ -679,7 +700,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
 <?php endif; ?>
 
 <!-- Add Payment Modal -->
-<?php if ($isAdmin && ($displayStatus == 'approved' || $displayStatus == 'partial' || $displayStatus == 'partially_paid') && $request['due_amount'] > 0): ?>
+<?php if ($isAdmin && ($displayStatus == 'approved' || $displayStatus == 'partial' || $displayStatus == 'partially_paid') && $request['due_amount'] > 0 && $isAhApproved): ?>
     <div class="modal fade" id="addPaymentModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">

@@ -302,6 +302,17 @@ class PayrollController extends Controller
 
         $companyBankId = $companyBankId ?: null; // nullable
 
+        // Mandatory Accounts Head Approval Guard
+        if (!class_exists('ApprovalRequest')) {
+            require_once __DIR__ . '/../models/ApprovalRequest.php';
+        }
+        $ahCheck = ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'payslips', (int)$payslipId);
+        if ($ahCheck && !empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
+            $_SESSION['error'] = "Payment cannot be disbursed. Approval from Accounts Head (Md. Mamunoor Rashid [1309]) is pending.";
+            header("Location: " . $GLOBALS['base_url'] . "/payslip-lists");
+            exit;
+        }
+
         $success = $this->paymentModel->payPayslip($payslipId, $paymentMethod, $companyBankId);
 
         if ($success) {
@@ -1119,6 +1130,23 @@ class PayrollController extends Controller
 
         if (empty($payslipIds)) {
             echo json_encode(['success' => false, 'message' => 'Invalid payslips selected.']);
+            exit;
+        }
+
+        // Mandatory Accounts Head Approval Guard
+        $idListStr = implode(',', $payslipIds);
+        $checkAh = $this->db->query("
+            SELECT ar.source_id 
+            FROM approval_requests ar 
+            WHERE ar.source_table = 'payslips' 
+              AND ar.source_id IN ($idListStr) 
+              AND ar.accounts_head_status != 'approved'
+        ");
+        if ($checkAh && $checkAh->num_rows > 0) {
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Payment cannot be disbursed. One or more selected payslips are pending approval from Accounts Head (Md. Mamunoor Rashid [1309]).'
+            ]);
             exit;
         }
 

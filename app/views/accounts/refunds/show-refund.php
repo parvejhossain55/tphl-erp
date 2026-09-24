@@ -18,6 +18,12 @@ $status     = $refund['status'] ?? 'pending';
 $statusInfo = $statusMap[$status] ?? ['label' => ucfirst($status), 'color' => 'secondary'];
 $isPending  = ($status === 'pending');
 $isApproved = in_array($status, ['approved', 'refunded']);
+
+if (!class_exists('ApprovalRequest')) {
+    require_once __DIR__ . '/../../../models/ApprovalRequest.php';
+}
+$ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'client_refund_requests', (int)$refund['id']);
+$isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_head_approved']);
 ?>
 
 <!-- Header -->
@@ -41,6 +47,13 @@ $isApproved = in_array($status, ['approved', 'refunded']);
 </div>
 
 <div class="container-fluid">
+    <?php 
+    if (!empty($ahInfo['has_request'])) {
+        $sourceTable = 'client_refund_requests';
+        $sourceId = (int)$refund['id'];
+        include __DIR__ . '/../../layouts/accounts_head_approval_card.php';
+    }
+    ?>
     <div class="row">
         <!-- Main Content (Left) -->
         <div class="col-lg-8">
@@ -362,9 +375,17 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                         <span class="fw-semibold text-dark d-block mb-1">অ্যাকাউন্টস ডিপার্টমেন্টের করণীয়:</span>
                         ম্যানেজমেন্ট ও Role 20 কর্তৃক অনুমোদিত হয়েছে। এখন ভাউচার/চেক অ্যাটাচমেন্ট সহ রিফান্ড পেমেন্ট পরিশোধ করুন।
                     </div>
+                    <?php if ($isAhApproved): ?>
                     <button type="button" class="btn btn-success w-100 fw-bold py-2 shadow-sm d-flex align-items-center justify-content-center gap-2" data-bs-toggle="modal" data-bs-target="#disburseRefundModal">
                         <i class="bi bi-cash-stack fs-6"></i> Pay Refund (with Attachment)
                     </button>
+                    <?php else: ?>
+                    <div class="alert alert-warning py-2 px-3 small mb-0 border-warning text-center">
+                        <i class="fa-solid fa-lock me-1"></i>
+                        <strong>Payment Locked</strong><br>
+                        <span class="fs-12">Pending Accounts Head approval (<strong>Md. Mamunoor Rashid [1309]</strong>).</span>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php endif; ?>
@@ -397,7 +418,7 @@ $isApproved = in_array($status, ['approved', 'refunded']);
             <?php endif; ?>
 
             <!-- Modal: Disburse Refund Payment with Attachment -->
-            <?php if ($status === 'approved' && in_array($userRole, [1, 3, 6, 10, 30])): ?>
+            <?php if ($status === 'approved' && in_array($userRole, [1, 3, 6, 10, 30]) && $isAhApproved): ?>
             <div class="modal fade" id="disburseRefundModal" tabindex="-1" aria-labelledby="disburseRefundModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">

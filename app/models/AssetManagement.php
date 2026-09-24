@@ -749,7 +749,13 @@ class AssetManagement
                        u_paid.full_name AS paid_by_name,
                        u_purchased.full_name AS purchased_by_name,
                        u_assign.full_name AS assigned_to_name,
-                       cat.name AS category_name
+                       cat.name AS category_name,
+                       ar.id AS approval_request_id,
+                       ar.accounts_head_status,
+                       ar.accounts_head_by,
+                       ar.accounts_head_at,
+                       ar.accounts_head_note,
+                       u_ah.full_name AS accounts_head_by_name
                 FROM project_extra_assets pea
                 LEFT JOIN office_branches ob ON ob.id = pea.office_branch_id
                 LEFT JOIN office_procurement_categories cat ON cat.id = pea.item_category_id
@@ -766,6 +772,8 @@ class AssetManagement
                 LEFT JOIN users u_paid ON u_paid.id = pea.paid_by
                 LEFT JOIN users u_purchased ON u_purchased.id = pea.purchase_confirmed_by
                 LEFT JOIN users u_assign ON u_assign.id = pea.assigned_to
+                LEFT JOIN approval_requests ar ON (ar.source_table = 'project_extra_assets' AND ar.source_id = pea.id)
+                LEFT JOIN users u_ah ON u_ah.id = ar.accounts_head_by
                 WHERE 1=1";
 
         $params = [];
