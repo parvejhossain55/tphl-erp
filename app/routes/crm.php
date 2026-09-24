@@ -51,6 +51,9 @@ return [
     'forms' => ['controller' => 'DigitalMarketingController', 'method' => 'forms'],
     'forms/(\d+)/responses' => ['controller' => 'DigitalMarketingController', 'method' => 'formResponses'],
     'digital-marketing-upload-report' => ['controller' => 'DigitalMarketingController', 'method' => 'uploadReport'],
+    'team-lead-report' => ['controller' => 'DigitalMarketingController', 'method' => 'teamLeadReport'],
+    'team-lead-report/export-excel' => ['controller' => 'DigitalMarketingController', 'method' => 'exportTeamLeadReportExcel'],
+    'team-lead-report/lead-details-ajax' => ['controller' => 'DigitalMarketingController', 'method' => 'getTeamLeadReportDetailsAjax'],
     'all-platform-leads' => ['controller' => 'DigitalMarketingController', 'method' => 'allPlatformLeads'],
     'all-platform-leads-export' => ['controller' => 'DigitalMarketingController', 'method' => 'exportAllPlatformLeadsExcel'],
 

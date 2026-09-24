@@ -1175,4 +1175,206 @@ public function deleteBudget($id)
         $writer->save('php://output');
         exit;
     }
+
+    /**
+     * Team Lead Report Dashboard
+     * Displays summary of leads uploaded by role 11 executives,
+     * upload sessions, active uploaders, last upload, and filters.
+     */
+    public function teamLeadReport()
+    {
+        $filters = [
+            'date_preset' => $_GET['date_preset'] ?? 'today',
+            'from_date'   => $_GET['from_date'] ?? date('Y-m-d'),
+            'to_date'     => $_GET['to_date'] ?? date('Y-m-d'),
+            'member_id'   => !empty($_GET['member_id']) ? (int)$_GET['member_id'] : null,
+            'team_id'     => !empty($_GET['team_id']) ? (int)$_GET['team_id'] : null,
+            'search'      => trim($_GET['search'] ?? ''),
+        ];
+
+        $reportData = $this->leadModel->getTeamLeadUploadReport($filters);
+        $executives = $this->leadModel->getTeamLeadReportExecutives();
+
+        // Get teams for filter
+        $teamsResult = $this->db->query("SELECT id, name FROM teams WHERE status = 1 ORDER BY name ASC");
+        $teams = [];
+        if ($teamsResult) {
+            while ($t = $teamsResult->fetch_assoc()) {
+                $teams[] = $t;
+            }
+        }
+
+        return $this->view("digital-marketing-team/team-lead-report", [
+            "current_route" => "team-lead-report",
+            "page_title"    => "Lead Upload Reporting Dashboard",
+            "filters"       => $filters,
+            "rows"          => $reportData['rows'],
+            "kpi"           => $reportData['kpi'],
+            "executives"    => $executives,
+            "teams"         => $teams,
+        ]);
+    }
+
+    /**
+     * Export Team Lead Report to Excel (.xlsx)
+     */
+    public function exportTeamLeadReportExcel()
+    {
+        $filters = [
+            'date_preset' => $_GET['date_preset'] ?? 'today',
+            'from_date'   => $_GET['from_date'] ?? date('Y-m-d'),
+            'to_date'     => $_GET['to_date'] ?? date('Y-m-d'),
+            'member_id'   => !empty($_GET['member_id']) ? (int)$_GET['member_id'] : null,
+            'team_id'     => !empty($_GET['team_id']) ? (int)$_GET['team_id'] : null,
+            'search'      => trim($_GET['search'] ?? ''),
+        ];
+
+        $reportData = $this->leadModel->getTeamLeadUploadReport($filters);
+        $rows = $reportData['rows'];
+        $kpi = $reportData['kpi'];
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Team Member Summary');
+
+        // Headers
+        $headers = [
+            'S/L',
+            'Team',
+            'Member Name',
+            'Employee ID',
+            'Date',
+            'Total Leads',
+            'Upload Sessions',
+            'First Upload',
+            'Last Upload',
+        ];
+        $sheet->fromArray($headers, null, 'A1');
+
+        $rowNum = 2;
+        $totalLeadsSum = 0;
+        $totalSessionsSum = 0;
+
+        foreach ($rows as $idx => $r) {
+            $formattedDate = !empty($r['upload_date']) ? date('d M, Y', strtotime($r['upload_date'])) : '—';
+            $sheet->setCellValue('A' . $rowNum, $idx + 1);
+            $sheet->setCellValue('B' . $rowNum, $r['team_name'] ?: 'Lead Management');
+            $sheet->setCellValue('C' . $rowNum, $r['member_name']);
+            $sheet->setCellValue('D' . $rowNum, $r['employee_id']);
+            $sheet->setCellValue('E' . $rowNum, $formattedDate);
+            $sheet->setCellValue('F' . $rowNum, (int)$r['total_leads']);
+            $sheet->setCellValue('G' . $rowNum, (int)$r['sessions']);
+            $sheet->setCellValue('H' . $rowNum, $r['first_upload']);
+            $sheet->setCellValue('I' . $rowNum, $r['last_upload']);
+
+            $totalLeadsSum += (int)$r['total_leads'];
+            $totalSessionsSum += (int)$r['sessions'];
+            $rowNum++;
+        }
+
+        // Summary Total Row
+        $sheet->setCellValue('A' . $rowNum, 'Total');
+        $sheet->mergeCells("A{$rowNum}:E{$rowNum}");
+        $sheet->setCellValue('F' . $rowNum, $totalLeadsSum);
+        $sheet->setCellValue('G' . $rowNum, $totalSessionsSum);
+        $sheet->setCellValue('H' . $rowNum, '—');
+        $sheet->setCellValue('I' . $rowNum, '—');
+
+        $sheet->getStyle("A{$rowNum}:I{$rowNum}")->getFont()->setBold(true);
+        $sheet->getStyle("A{$rowNum}:I{$rowNum}")->getFill()
+              ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+              ->getStartColor()->setARGB('FFF0F0F0');
+
+        // Column Widths
+        $columnWidths = [
+            'A' => 8,
+            'B' => 20,
+            'C' => 25,
+            'D' => 16,
+            'E' => 18,
+            'F' => 15,
+            'G' => 16,
+            'H' => 16,
+            'I' => 16,
+        ];
+        foreach ($columnWidths as $col => $w) {
+            $sheet->getColumnDimension($col)->setWidth($w);
+        }
+
+        // Header Styling
+        $headerStyle = [
+            'font' => [
+                'bold' => true,
+                'color' => ['rgb' => 'FFFFFF'],
+                'size' => 11,
+            ],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '1B3B6F'],
+            ],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+            ],
+        ];
+        $sheet->getStyle('A1:I1')->applyFromArray($headerStyle);
+        $sheet->getRowDimension(1)->setRowHeight(28);
+
+        // Center alignments
+        $sheet->getStyle("A2:A{$rowNum}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("D2:I{$rowNum}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        // Border styling
+        $borderStyle = [
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => ['argb' => 'FFE2E8F0'],
+                ],
+            ],
+        ];
+        $sheet->getStyle("A1:I{$rowNum}")->applyFromArray($borderStyle);
+
+        // Freeze Pane
+        $sheet->freezePane('A2');
+
+        // Clear output buffer
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        $datePart = ($filters['date_preset'] === 'custom' || $filters['date_preset'] === 'date_range')
+            ? ($filters['from_date'] . '_to_' . $filters['to_date'])
+            : $filters['date_preset'];
+        $fileName = 'Team_Lead_Report_' . $datePart . '.xlsx';
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $fileName . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
+    /**
+     * AJAX Endpoint: Get individual leads for a member on a date
+     */
+    public function getTeamLeadReportDetailsAjax()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        header('Content-Type: application/json');
+
+        $memberId = !empty($_GET['member_id']) ? (int)$_GET['member_id'] : 0;
+        $date     = !empty($_GET['date']) ? trim($_GET['date']) : '';
+
+        if (!$memberId || empty($date)) {
+            echo json_encode(['status' => 'error', 'message' => 'Missing member_id or date', 'leads' => []]);
+            exit;
+        }
+
+        $leads = $this->leadModel->getTeamLeadReportLeads($memberId, $date);
+        echo json_encode(['status' => 'success', 'leads' => $leads]);
+        exit;
+    }
 }

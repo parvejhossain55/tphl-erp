@@ -670,6 +670,9 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                 <th style="min-width: 160px;">Address & Phone</th>
                                 <th style="min-width: 110px;">Lead Uploaded</th>
                                 <th style="min-width: 130px;">Best Time to Contact</th>
+                                <th style="min-width: 115px;">Buying Plan</th>
+                                <th style="min-width: 95px;">Site Visit</th>
+                                <th style="min-width: 105px;">Apt Size</th>
                                 <th style="min-width: 170px;">Project Campaign</th>
                                 <th style="min-width: 120px;">Status</th>
                                 <th style="min-width: 130px;">Next Follow-Up</th>
@@ -679,7 +682,7 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                         <tbody>
                             <?php if (empty($myAllleads)): ?>
                                 <tr>
-                                    <td colspan="10" class="text-center text-muted py-5">
+                                    <td colspan="13" class="text-center text-muted py-5">
                                         <i class="bi bi-inbox fs-2 d-block mb-2 text-muted"></i>
                                         <span>No matching leads found.</span>
                                     </td>
@@ -790,6 +793,63 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                                         <div class="text-muted fs-12" style="white-space: nowrap;">
                                             <i class="bi bi-clock me-1"></i><?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you'] ?? '—') ?>
                                         </div>
+                                    </td>
+
+                                    <!-- Buying Plan -->
+                                    <td>
+                                        <?php 
+                                        $buyingPlan = trim($lead['when_are_you_planning_to_buy'] ?? '');
+                                        if (!empty($buyingPlan)):
+                                            $cleanBuyingPlan = ucwords(str_replace('_', ' ', $buyingPlan));
+                                        ?>
+                                            <span class="badge bg-light text-dark border" style="white-space: nowrap; font-size: 11px;">
+                                                <i class="bi bi-calendar3 me-1 text-primary"></i><?= htmlspecialchars($cleanBuyingPlan) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <!-- Site Visit -->
+                                    <td>
+                                        <?php 
+                                        $rawSiteVisit = trim($lead['would_you_like_to_schedule_a_site_visit'] ?? '');
+                                        $lowerSiteVisit = strtolower($rawSiteVisit);
+                                        if ($rawSiteVisit !== ''):
+                                            if (in_array($lowerSiteVisit, ['yes!', 'yes', '1', 'হ্যাঁ'])):
+                                        ?>
+                                                <span class="badge bg-success-subtle text-success border border-success px-2 py-1" style="font-size: 11px; white-space: nowrap;">
+                                                    <i class="bi bi-check-circle me-1"></i>Yes
+                                                </span>
+                                            <?php elseif (in_array($lowerSiteVisit, ['no!', 'no', '0', 'না'])): ?>
+                                                <span class="badge bg-secondary-subtle text-secondary border px-2 py-1" style="font-size: 11px; white-space: nowrap;">
+                                                    <i class="bi bi-x-circle me-1"></i>No
+                                                </span>
+                                            <?php else: 
+                                                $cleanVisit = str_replace('_', ' ', $rawSiteVisit);
+                                            ?>
+                                                <span class="badge bg-info-subtle text-info border border-info px-2 py-1" style="font-size: 11px; white-space: nowrap;" title="<?= htmlspecialchars($cleanVisit) ?>">
+                                                    <?= htmlspecialchars(truncateText($cleanVisit, 16)) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <!-- Apt Size -->
+                                    <td>
+                                        <?php 
+                                        $aptSize = trim($lead['which_apartment_size_are_you_interested_in'] ?? $lead['pref_flat_size'] ?? '');
+                                        if (!empty($aptSize)):
+                                            $cleanAptSize = str_replace('_', ' ', $aptSize);
+                                        ?>
+                                            <span class="badge bg-light text-primary border border-primary-subtle" style="white-space: nowrap; font-size: 11px; font-weight: 600;">
+                                                <i class="bi bi-aspect-ratio me-1"></i><?= htmlspecialchars($cleanAptSize) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
                                     </td>
 
                                     <!-- 8. Project Campaign -->
@@ -1118,6 +1178,24 @@ $hasActiveFilters = !empty($search) || !empty($followup_date) || !empty($filterC
                         <?php if (!empty($lead['when_is_the_best_time_to_contact_you'])): ?>
                         <div class="text-info small mt-1">
                             <i class="bi bi-clock me-1"></i>Best Contact Time: <?= htmlspecialchars($lead['when_is_the_best_time_to_contact_you']) ?>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($lead['when_are_you_planning_to_buy'])): ?>
+                        <div class="text-muted small mt-1">
+                            <i class="bi bi-calendar3 me-1 text-primary"></i>Plan: <span class="badge bg-light text-dark border"><?= htmlspecialchars(ucwords(str_replace('_', ' ', trim($lead['when_are_you_planning_to_buy'])))) ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($lead['would_you_like_to_schedule_a_site_visit'])): ?>
+                        <div class="text-muted small mt-1">
+                            <i class="bi bi-geo-alt me-1 text-success"></i>Visit: <span class="badge bg-light text-success border border-success-subtle"><?= htmlspecialchars(str_replace('_', ' ', trim($lead['would_you_like_to_schedule_a_site_visit']))) ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <?php 
+                        $mobApt = trim($lead['which_apartment_size_are_you_interested_in'] ?? $lead['pref_flat_size'] ?? '');
+                        if (!empty($mobApt)): 
+                        ?>
+                        <div class="text-muted small mt-1">
+                            <i class="bi bi-aspect-ratio me-1 text-primary"></i>Size: <span class="badge bg-light text-primary border border-primary-subtle"><?= htmlspecialchars(str_replace('_', ' ', $mobApt)) ?></span>
                         </div>
                         <?php endif; ?>
                         <div class="lead-phone text-truncate small"><?= $lead['phone'] ??  $lead['phone_number']  ?></div>
