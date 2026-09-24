@@ -51,19 +51,54 @@ public function indexTwo($bookingId = null)
         session_start();
     }
 
-    // Get booking_id from URL parameter or query string
-    if (!$bookingId) {
-        $bookingId = $_GET['booking_id'] ?? null;
+    // Get booking_id or lead_id from URL parameter or query string
+    $inputLeadId = (int)($_GET['lead_id'] ?? 0);
+    if (!$bookingId && $inputLeadId > 0) {
+        $leadStmt = $this->db->prepare("SELECT id FROM lead_bookings WHERE lead_id = ? ORDER BY id DESC LIMIT 1");
+        if ($leadStmt) {
+            $leadStmt->bind_param("i", $inputLeadId);
+            $leadStmt->execute();
+            $lRes = $leadStmt->get_result();
+            if ($lRow = $lRes->fetch_assoc()) {
+                $bookingId = (int)$lRow['id'];
+            }
+            $leadStmt->close();
+        }
+        if (!$bookingId) {
+            $bookingId = $inputLeadId;
+        }
     }
 
     if (!$bookingId) {
-        setError("No land share ID provided");
+        $bookingId = (int)($_GET['booking_id'] ?? 0);
+    }
+
+    if (!$bookingId) {
+        setError("No land share or lead ID provided");
         header("Location: {$GLOBALS['base_url']}/clients-cash-in");
         exit;
     }
 
     // Get client details
     $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+
+    // Fallback: If not found by booking_id, check if $bookingId was actually a lead_id
+    if (!$clientDetails) {
+        $leadStmt = $this->db->prepare("SELECT id FROM lead_bookings WHERE lead_id = ? ORDER BY id DESC LIMIT 1");
+        if ($leadStmt) {
+            $leadStmt->bind_param("i", $bookingId);
+            $leadStmt->execute();
+            $lRes = $leadStmt->get_result();
+            if ($lRow = $lRes->fetch_assoc()) {
+                $actualBookingId = (int)$lRow['id'];
+                $clientDetails = $this->clientModel->getClientByBookingId($actualBookingId);
+                if ($clientDetails) {
+                    $bookingId = $actualBookingId;
+                }
+            }
+            $leadStmt->close();
+        }
+    }
 
     if (!$clientDetails) {
         setError("Land share not found");
@@ -141,6 +176,24 @@ public function indexTwo($bookingId = null)
 
     $virtualEmiSchedule = $this->clientModel->getVirtualEmiSchedule($bookingId);
 
+    // Get sales agents for booking info edit modal (Sales Manager, Sales Team Head, Sales Executive, Secondary Roles & Admin) with employee_id
+    $salesUsers = [];
+    $salesRes = $this->db->query("SELECT u.id, u.full_name, r1.name as role_name, r2.name as sec_role_name, 
+                                         COALESCE(NULLIF(e1.employee_id, ''), NULLIF(e2.employee_id, ''), NULLIF(u.employee_id, '')) as employee_id 
+                                  FROM users u 
+                                  LEFT JOIN roles r1 ON u.role_id = r1.id 
+                                  LEFT JOIN roles r2 ON u.secondary_role_id = r2.id 
+                                  LEFT JOIN employees e1 ON e1.user_id = u.id
+                                  LEFT JOIN employees e2 ON u.employee_id = e2.id
+                                  WHERE (r1.name LIKE '%sales%' OR r1.name LIKE '%sale%' 
+                                     OR r2.name LIKE '%sales%' OR r2.name LIKE '%sale%'
+                                     OR u.role_id IN (1, 3, 5, 8, 9, 20, 33)
+                                     OR u.secondary_role_id IN (5, 8, 9))
+                                  ORDER BY u.full_name ASC");
+    if ($salesRes) {
+        $salesUsers = $salesRes->fetch_all(MYSQLI_ASSOC);
+    }
+
     $this->view("accounts/cashIn/clients-cash-in-history", [
         "current_route"   => "clients-cash-in-history",
         "page_title"      => "Transaction History - " . $clientDetails['client_name'],
@@ -151,9 +204,218 @@ public function indexTwo($bookingId = null)
         "outstandingDues" => $outstandingDues,
         "refundDetails"   => $refundDetails,
         "refundPaidAmount"=> $refundPaidAmount,
+        "salesUsers"      => $salesUsers,
         "accountModel"    => $this->clientModel
     ]);
 }
+
+    /**
+     * Update booking info (booking_date, sales_by_id) from clients-cash-in-history
+     * Cascades:
+     * - lead_bookings: updates booking_date and sales_by_id
+     * - lead_payments: updates payment_date for booking_money and registration
+     * - leads: updates assigned_id (and team_id if available)
+     * Permission: Accounts (6), Accounts Head (30), Accounts Executive (36), Admin (1), Super Admin (3)
+     */
+    public function updateBookingInfo()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
+                  || (isset($_POST['is_ajax']) && $_POST['is_ajax'] == '1');
+
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $canEdit = in_array($roleId, [1, 3, 6, 30, 36]) 
+                   || (function_exists('isAccountsHead') && isAccountsHead()) 
+                   || (function_exists('isAccountsExecutive') && isAccountsExecutive())
+                   || strpos($roleName, 'account') !== false 
+                   || strpos($roleName, 'admin') !== false;
+
+        if (!$canEdit) {
+            $msg = "You are not authorized to update booking info.";
+            if ($isAjax) {
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/clients-cash-in"));
+            exit;
+        }
+
+        $bookingId = (int)($_POST['booking_id'] ?? 0);
+        $leadId = (int)($_POST['lead_id'] ?? 0);
+        $bookingDate = trim($_POST['booking_date'] ?? '');
+        $salesById = (int)($_POST['sales_by_id'] ?? 0);
+
+        if ($bookingId <= 0 && $leadId > 0) {
+            $stmtLead = $this->db->prepare("SELECT id FROM lead_bookings WHERE lead_id = ? ORDER BY id DESC LIMIT 1");
+            if ($stmtLead) {
+                $stmtLead->bind_param("i", $leadId);
+                $stmtLead->execute();
+                $resLead = $stmtLead->get_result();
+                if ($rowLead = $resLead->fetch_assoc()) {
+                    $bookingId = (int)$rowLead['id'];
+                }
+                $stmtLead->close();
+            }
+        }
+
+        if ($bookingId <= 0) {
+            $msg = "Invalid booking ID.";
+            if ($isAjax) {
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/clients-cash-in"));
+            exit;
+        }
+
+        if (empty($bookingDate) || !strtotime($bookingDate)) {
+            $msg = "Please select a valid booking date.";
+            if ($isAjax) {
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/clients-cash-in-history/{$bookingId}"));
+            exit;
+        }
+
+        if ($salesById <= 0) {
+            $msg = "Please select a valid sales agent.";
+            if ($isAjax) {
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/clients-cash-in-history/{$bookingId}"));
+            exit;
+        }
+
+        $formattedBookingDate = date('Y-m-d', strtotime($bookingDate));
+
+        // Get existing booking details
+        $stmtB = $this->db->prepare("SELECT id, lead_id, booking_date, sales_by_id FROM lead_bookings WHERE id = ?");
+        $stmtB->bind_param("i", $bookingId);
+        $stmtB->execute();
+        $booking = $stmtB->get_result()->fetch_assoc();
+        $stmtB->close();
+
+        // Fallback: If not found by booking_id, check if $bookingId was a lead_id
+        if (!$booking) {
+            $stmtLeadB = $this->db->prepare("SELECT id, lead_id, booking_date, sales_by_id FROM lead_bookings WHERE lead_id = ? ORDER BY id DESC LIMIT 1");
+            if ($stmtLeadB) {
+                $stmtLeadB->bind_param("i", $bookingId);
+                $stmtLeadB->execute();
+                $booking = $stmtLeadB->get_result()->fetch_assoc();
+                $stmtLeadB->close();
+                if ($booking) {
+                    $bookingId = (int)$booking['id'];
+                }
+            }
+        }
+
+        if (!$booking) {
+            $msg = "Booking not found.";
+            if ($isAjax) {
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
+            header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/clients-cash-in"));
+            exit;
+        }
+
+        $leadId = (int)($booking['lead_id'] ?? 0);
+        $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
+
+        // Fetch user info for sales agent (team_id, name)
+        $uStmt = $this->db->prepare("SELECT id, team_id, full_name FROM users WHERE id = ?");
+        $uStmt->bind_param("i", $salesById);
+        $uStmt->execute();
+        $uRow = $uStmt->get_result()->fetch_assoc();
+        $uStmt->close();
+
+        $teamId = $uRow['team_id'] ?? null;
+        $agentName = $uRow['full_name'] ?? 'Selected Agent';
+
+        $this->db->begin_transaction();
+        try {
+            // 1. Update lead_bookings (booking_date and sales_by_id)
+            $updB = $this->db->prepare("UPDATE lead_bookings SET booking_date = ?, sales_by_id = ?, updated_at = NOW() WHERE id = ?");
+            if (!$updB) {
+                throw new Exception("Prepare lead_bookings update failed: " . $this->db->error);
+            }
+            $updB->bind_param("sii", $formattedBookingDate, $salesById, $bookingId);
+            $updB->execute();
+            $updB->close();
+
+            // 2. Update lead_payments (booking_money and registration payment_date)
+            $updP = $this->db->prepare("UPDATE lead_payments SET payment_date = ?, updated_by = ?, updated_at = NOW() WHERE booking_id = ? AND payment_type IN ('booking_money', 'registration')");
+            if (!$updP) {
+                throw new Exception("Prepare lead_payments update failed: " . $this->db->error);
+            }
+            $updP->bind_param("sii", $formattedBookingDate, $currentUserId, $bookingId);
+            $updP->execute();
+            $updP->close();
+
+            // 3. Update leads (assigned_id and team_id for this lead_id)
+            if ($leadId > 0) {
+                if (!empty($teamId)) {
+                    $updL = $this->db->prepare("UPDATE leads SET assigned_id = ?, team_id = ?, updated_at = NOW() WHERE id = ?");
+                    if (!$updL) {
+                        throw new Exception("Prepare leads update failed: " . $this->db->error);
+                    }
+                    $updL->bind_param("iii", $salesById, $teamId, $leadId);
+                } else {
+                    $updL = $this->db->prepare("UPDATE leads SET assigned_id = ?, updated_at = NOW() WHERE id = ?");
+                    if (!$updL) {
+                        throw new Exception("Prepare leads update failed: " . $this->db->error);
+                    }
+                    $updL->bind_param("ii", $salesById, $leadId);
+                }
+                $updL->execute();
+                $updL->close();
+            }
+
+            $this->db->commit();
+
+            $successMsg = "Booking info updated successfully! Booking date set to " . date('d M, Y', strtotime($formattedBookingDate)) . " and Sales Agent updated to " . htmlspecialchars($agentName) . ".";
+
+            if ($isAjax) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => $successMsg,
+                    'booking_date' => $formattedBookingDate,
+                    'formatted_booking_date' => date('d M, Y', strtotime($formattedBookingDate)),
+                    'sales_by_id' => $salesById,
+                    'sales_by_name' => $agentName
+                ]);
+                exit;
+            }
+
+            $_SESSION['flash_success'] = $successMsg;
+            $redirectUrl = $_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/clients-cash-in-history/{$bookingId}";
+            header("Location: {$redirectUrl}");
+            exit;
+
+        } catch (Exception $e) {
+            $this->db->rollback();
+            $errorMsg = "Error updating booking info: " . $e->getMessage();
+            if ($isAjax) {
+                echo json_encode(['success' => false, 'message' => $errorMsg]);
+                exit;
+            }
+            setError($errorMsg);
+            $redirectUrl = $_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/clients-cash-in-history/{$bookingId}";
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+    }
  public function getClientLands($leadId = null)
     {
         if (!$leadId) {
@@ -495,6 +757,24 @@ public function indexTwoView($bookingId = null)
 
     $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
 
+    // Fallback: If not found by booking_id, check if $bookingId was actually a lead_id
+    if (!$clientDetails) {
+        $leadStmt = $this->db->prepare("SELECT id FROM lead_bookings WHERE lead_id = ? ORDER BY id DESC LIMIT 1");
+        if ($leadStmt) {
+            $leadStmt->bind_param("i", $bookingId);
+            $leadStmt->execute();
+            $lRes = $leadStmt->get_result();
+            if ($lRow = $lRes->fetch_assoc()) {
+                $actualBookingId = (int)$lRow['id'];
+                $clientDetails = $this->clientModel->getClientByBookingId($actualBookingId);
+                if ($clientDetails) {
+                    $bookingId = $actualBookingId;
+                }
+            }
+            $leadStmt->close();
+        }
+    }
+
     if (!$clientDetails) {
         $this->view("ced/clients-cash-in-history-view", [
             "current_route" => "clients-cash-in-history-view",
@@ -567,8 +847,26 @@ public function indexTwoView($bookingId = null)
 
     $virtualEmiSchedule = $this->clientModel->getVirtualEmiSchedule($bookingId);
 
-    $bRes = $this->db->query("SELECT id, bank_name, branch_name, account_number FROM banks WHERE status = 'active' ORDER BY bank_name");
+    $bRes = $this->db->query("SELECT id, bank_name, account_name, account_number, CONCAT(account_name, IF(account_number != '', CONCAT(' (', account_number, ')'), '')) as branch_name FROM company_bank_accounts WHERE status = 'active' ORDER BY is_default DESC, bank_name ASC");
     $banks = $bRes ? $bRes->fetch_all(MYSQLI_ASSOC) : [];
+
+    // Get sales agents for booking info edit modal (Sales Manager, Sales Team Head, Sales Executive, Secondary Roles & Admin) with employee_id
+    $salesUsers = [];
+    $salesRes = $this->db->query("SELECT u.id, u.full_name, r1.name as role_name, r2.name as sec_role_name, 
+                                         COALESCE(NULLIF(e1.employee_id, ''), NULLIF(e2.employee_id, ''), NULLIF(u.employee_id, '')) as employee_id 
+                                  FROM users u 
+                                  LEFT JOIN roles r1 ON u.role_id = r1.id 
+                                  LEFT JOIN roles r2 ON u.secondary_role_id = r2.id 
+                                  LEFT JOIN employees e1 ON e1.user_id = u.id
+                                  LEFT JOIN employees e2 ON u.employee_id = e2.id
+                                  WHERE (r1.name LIKE '%sales%' OR r1.name LIKE '%sale%' 
+                                     OR r2.name LIKE '%sales%' OR r2.name LIKE '%sale%'
+                                     OR u.role_id IN (1, 3, 5, 8, 9, 20, 33)
+                                     OR u.secondary_role_id IN (5, 8, 9))
+                                  ORDER BY u.full_name ASC");
+    if ($salesRes) {
+        $salesUsers = $salesRes->fetch_all(MYSQLI_ASSOC);
+    }
 
     $this->view("ced/clients-cash-in-history-view", [
         "current_route" => "clients-cash-in-history-view",
@@ -580,6 +878,7 @@ public function indexTwoView($bookingId = null)
         "refundDetails"   => $refundDetails,
         "refundPaidAmount"=> $refundPaidAmount,
         "banks"           => $banks,
+        "salesUsers"      => $salesUsers,
         "accountModel"    => $this->clientModel
     ]);
 }
@@ -1217,7 +1516,7 @@ public function updateTransaction()
             $bankName = trim($_POST['custom_bank_name']);
         }
         if ($bankId && empty($bankName)) {
-            $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', branch_name) as label FROM banks WHERE id = {$bankId}");
+            $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', account_name) as label FROM company_bank_accounts WHERE id = {$bankId}");
             if ($bRow) { $bData = $bRow->fetch_assoc(); $bankName = $bData['label'] ?? ''; }
         }
 
@@ -2404,14 +2703,18 @@ public function discountStatement($bookingId = null)
     {
         header('Content-Type: application/json');
         $stmt = $this->db->prepare("
-            SELECT id, bank_name, branch_name, account_number, routing_number
-            FROM   banks
+            SELECT id, bank_name, account_name, account_number, is_default, status
+            FROM   company_bank_accounts
             WHERE  status = 'active'
-            ORDER BY bank_name, branch_name
+            ORDER BY is_default DESC, bank_name ASC, id ASC
         ");
         $stmt->execute();
         $result = $stmt->get_result();
         $banks  = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+        foreach ($banks as &$b) {
+            $b['branch_name'] = $b['account_name'] . (!empty($b['account_number']) ? ' (' . $b['account_number'] . ')' : '');
+            $b['routing_number'] = '';
+        }
         echo json_encode(['success' => true, 'banks' => $banks]);
         exit;
     }

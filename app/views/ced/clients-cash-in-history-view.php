@@ -31,6 +31,11 @@ $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
 $userRoleName = strtolower($_SESSION['user']['role_name'] ?? '');
 $isManagementUser = ($userRoleId === 1 || $userRoleId === 3 || strpos($userRoleName, 'management') !== false || strpos($userRoleName, 'admin') !== false);
 $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET['booking_id'] : 0);
+$canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36]) 
+                    || (function_exists('isAccountsHead') && isAccountsHead()) 
+                    || (function_exists('isAccountsExecutive') && isAccountsExecutive())
+                    || strpos($userRoleName, 'account') !== false 
+                    || strpos($userRoleName, 'admin') !== false;
 ?>
 
 <div class="row">
@@ -42,7 +47,7 @@ $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET
                     <i class="fa-light fa-user-circle me-2"></i>
                     <?= htmlspecialchars($clientDetails['client_name'] ?? 'N/A') ?>
                 </h3>
-                <div class="d-flex flex-wrap gap-3">
+                <div class="d-flex flex-wrap gap-3 align-items-center">
                     <span class="text-muted">
                         <i class="fa-light fa-building mx-2"></i>
                         <strong>Project:</strong> <?= htmlspecialchars($clientDetails['project_name'] ?? 'N/A') ?>
@@ -55,12 +60,31 @@ $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET
                         <i class="fa-light fa-phone mx-2"></i>
                         <strong>Phone:</strong> <?= htmlspecialchars($clientDetails['phone'] ?? 'N/A') ?>
                     </span>
+                    <span class="text-muted">
+                        <i class="fa-light fa-calendar-check mx-2"></i>
+                        <strong>Booking Date:</strong> <span class="fw-semibold text-dark" id="cedDisplayBookingDate"><?= !empty($clientDetails['booking_date']) ? date('d M, Y', strtotime($clientDetails['booking_date'])) : 'N/A' ?></span>
+                    </span>
+                    <span class="text-muted d-inline-flex align-items-center">
+                        <i class="fa-light fa-user-tie mx-2"></i>
+                        <strong>Sales By:</strong>&nbsp;<span class="fw-semibold text-dark" id="cedDisplaySalesAgent"><?= htmlspecialchars($clientDetails['agent_name'] ?? 'N/A') ?><?= !empty($clientDetails['agent_employee_id']) ? ' [EMP: ' . htmlspecialchars($clientDetails['agent_employee_id']) . ']' : '' ?></span>
+                        <?php if ($canEditBookingInfo): ?>
+                            <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold ms-2 py-0 px-2" data-bs-toggle="modal" data-bs-target="#editBookingInfoModal" title="Edit Booking Date & Sales Agent" style="font-size: 11px;">
+                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit Date & Sales
+                            </button>
+                        <?php endif; ?>
+                    </span>
                 </div>
                 
                 <div class="mt-3 d-flex align-items-center gap-2">
                     <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#transferNoteModal">
                         <i class="fa-light fa-exchange-alt me-1"></i> Transfer Note
                     </button>
+                    
+                    <?php if ($canEditBookingInfo): ?>
+                        <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold" data-bs-toggle="modal" data-bs-target="#editBookingInfoModal">
+                            <i class="fa-solid fa-pen-to-square me-1"></i> Edit Booking Info
+                        </button>
+                    <?php endif; ?>
                     
                     <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEmiFollowupModal(<?= $clientDetails['booking_id'] ?? 0 ?>, 0, <?= (int)($clientDetails['total_emi_count'] ?? 36) ?>, 'add')">
                         <i class="fa-light fa-comment-dots me-1"></i> Follow Up
@@ -729,6 +753,11 @@ $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET
                     <a href="<?= $GLOBALS['base_url'] ?>/discount-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn mb-3" style="background: linear-gradient(135deg, #6c5ffc, #8b5cf6); color:#fff; border:none;">
                         <i class="fa-light fa-tags me-2"></i> Discount Statement
                     </a>
+                    <?php if ($canEditBookingInfo ?? false): ?>
+                    <button type="button" class="btn btn-warning text-dark fw-bold mb-3" data-bs-toggle="modal" data-bs-target="#editBookingInfoModal">
+                        <i class="fa-solid fa-pen-to-square me-1"></i> Edit Booking Info
+                    </button>
+                    <?php endif; ?>
                     <?php
                         $canRefund = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 8]);
                         $bookingIsActive = in_array($clientDetails['booking_status'] ?? '', ['booked', 'completed']);
@@ -1554,6 +1583,92 @@ $bookingId = $clientDetails['booking_id'] ?? (isset($_GET['booking_id']) ? $_GET
 
 <?php endif; ?>
 
+<!-- Edit Booking Info Modal -->
+<div class="modal fade" id="editBookingInfoModal" tabindex="-1" aria-labelledby="editBookingInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold" id="editBookingInfoModalLabel">
+                    <i class="fa-solid fa-pen-to-square text-warning me-2"></i>Edit Booking & Sales Info
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="<?= $GLOBALS['base_url'] ?>/update-booking-info" method="POST" id="editBookingInfoFormCed">
+                <input type="hidden" name="booking_id" value="<?= $clientDetails['booking_id'] ?? '' ?>">
+                <input type="hidden" name="lead_id" value="<?= $clientDetails['lead_id'] ?? '' ?>">
+                <div class="modal-body p-4">
+                    <div class="mb-3 p-3 rounded-3" style="background: #eef6ff; border: 1px solid #bfdbfe; color: #1e40af; font-size: 13px; line-height: 1.6;">
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="fa-solid fa-circle-info text-primary mt-1" style="font-size: 15px;"></i>
+                            <div>
+                                Updating <strong>Booking Date</strong> will update <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">lead_bookings.booking_date</code> and the <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">payment_date</code> for <strong>Booking Money</strong> and <strong>Registration</strong>.<br>
+                                Updating <strong>Sales By</strong> will update <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">lead_bookings.sales_by_id</code> and <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">leads.assigned_id</code>.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="ced_booking_date_input" class="form-label fw-bold">
+                            <i class="fa-light fa-calendar-days text-primary me-1"></i> Booking Date <span class="text-danger">*</span>
+                        </label>
+                        <input type="date" 
+                               name="booking_date" 
+                               id="ced_booking_date_input" 
+                               class="form-control" 
+                               value="<?= !empty($clientDetails['booking_date']) ? date('Y-m-d', strtotime($clientDetails['booking_date'])) : '' ?>" 
+                               required>
+                        <small class="text-muted d-block mt-1">Updates booking date and payment date for booking & registration.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="ced_sales_by_id_select" class="form-label fw-bold">
+                            <i class="fa-light fa-user-tie text-primary me-1"></i> Sales By (Agent) <span class="text-danger">*</span>
+                        </label>
+                        <?php 
+                            $currentAgentId = $clientDetails['sales_by_id'] ?? $clientDetails['assigned_id'] ?? 0;
+                        ?>
+                        <?php if (!empty($clientDetails['agent_name'])): ?>
+                            <div class="p-2 mb-2 rounded-2 border d-flex align-items-center justify-content-between" style="background-color: #f8fafc; font-size: 13px;">
+                                <div>
+                                    <span class="text-muted">Current Sales Agent:</span> 
+                                    <strong class="text-dark ms-1"><?= htmlspecialchars($clientDetails['agent_name']) ?></strong>
+                                </div>
+                                <?php if (!empty($clientDetails['agent_employee_id'])): ?>
+                                    <span class="badge" style="background-color: #059669; color: #fff; font-size: 11px; padding: 4px 8px;">EMP: <?= htmlspecialchars($clientDetails['agent_employee_id']) ?></span>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+                        <select name="sales_by_id" id="ced_sales_by_id_select" class="form-select select2" data-placeholder="Select Sales Agent" required style="width: 100%;">
+                            <option value="">-- Select Sales Agent --</option>
+                            <?php if (!empty($salesUsers)): ?>
+                                <?php foreach ($salesUsers as $su): ?>
+                                    <?php 
+                                        $empIdStr = !empty($su['employee_id']) ? " [EMP: " . htmlspecialchars($su['employee_id']) . "]" : "";
+                                        $rname = $su['role_name'] ?? '';
+                                        $sname = $su['sec_role_name'] ?? '';
+                                        $displayRole = $rname ?: ($sname ?: 'Sales');
+                                        $isSelected = ((int)$su['id'] === (int)$currentAgentId);
+                                    ?>
+                                    <option value="<?= $su['id'] ?>" <?= $isSelected ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($su['full_name']) ?><?= $empIdStr ?> (<?= htmlspecialchars($displayRole) ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                        <small class="text-muted d-block mt-1">Updates sales_by_id in booking and assigned_id in lead.</small>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light px-4 py-3 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning text-dark fw-bold px-4" id="btnSaveBookingInfoCed">
+                        <i class="fa-solid fa-save me-1"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="transferNoteModal" tabindex="-1" aria-labelledby="transferNoteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <form method="POST" action="<?= $GLOBALS['base_url'] ?>/save-transfer-note">
@@ -2049,6 +2164,60 @@ document.addEventListener('DOMContentLoaded', function() {
             if (modalEl) {
                 const modal = new bootstrap.Modal(modalEl);
                 modal.show();
+            }
+        });
+    });
+
+    // Initialize Select2 in editBookingInfoModal for CED
+    $('#editBookingInfoModal').on('shown.bs.modal', function () {
+        $('#ced_sales_by_id_select').select2({
+            dropdownParent: $('#editBookingInfoModal'),
+            width: '100%'
+        });
+    });
+
+    // Handle AJAX submit for editBookingInfoFormCed
+    $('#editBookingInfoFormCed').on('submit', function (e) {
+        e.preventDefault();
+        var form = $(this);
+        var btn = $('#btnSaveBookingInfoCed');
+        var originalBtnText = btn.html();
+
+        btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-1"></i> Saving...');
+
+        $.ajax({
+            url: form.attr('action'),
+            type: 'POST',
+            data: form.serialize() + '&is_ajax=1',
+            dataType: 'json',
+            success: function (res) {
+                btn.prop('disabled', false).html(originalBtnText);
+                if (res.success) {
+                    $('#editBookingInfoModal').modal('hide');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Updated Successfully!',
+                        text: res.message,
+                        timer: 1800,
+                        showConfirmButton: false
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Update Failed',
+                        text: res.message || 'Could not update booking info.'
+                    });
+                }
+            },
+            error: function () {
+                btn.prop('disabled', false).html(originalBtnText);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Server error while updating booking info.'
+                });
             }
         });
     });

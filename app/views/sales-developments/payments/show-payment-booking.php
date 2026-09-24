@@ -252,9 +252,12 @@
             <div class="info-grid">
                 <span><strong>Client Name:</strong> <?= $invoice['full_name'] ?></span>
                 <span><strong>Project:</strong> <?= $invoice['project_name'] ?></span>
+                <?php if (!empty($invoice['company_bank_name'])): ?>
+                    <span><strong>Receiver Bank:</strong> <?= $invoice['company_bank_name'] ?><?= !empty($invoice['company_account_number']) ? ' (A/C: ' . $invoice['company_account_number'] . ')' : '' ?></span>
+                <?php endif; ?>
                 <?php if (!empty($invoice['bank_name'])): ?>
-                    <span><strong>Bank Info:</strong> <?= $invoice['bank_name'] ?></span>
-                    <span><strong>Account No:</strong> <?= $invoice['bank_account_no'] ?></span>
+                    <span><strong>Sender Bank:</strong> <?= $invoice['bank_name'] ?></span>
+                    <span><strong>Sender A/C:</strong> <?= $invoice['bank_account_no'] ?></span>
                 <?php endif; ?>
                 <?php if (!empty($invoice['cheque_no'])): ?>
                     <span><strong>Check No:</strong> <?= $invoice['cheque_no'] ?></span>

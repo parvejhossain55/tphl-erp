@@ -152,11 +152,15 @@ class PaymentLeadBooking extends Model
                     u.full_name AS created_by_name,
                     lb.agreement_value,
                     lb.discount_amount,
-                    us.full_name AS verified_by_name
+                    us.full_name AS verified_by_name,
+                    cb.bank_name AS company_bank_name,
+                    cb.account_name AS company_account_name,
+                    cb.account_number AS company_account_number
                 FROM lead_payments p
                 LEFT JOIN users u ON p.created_by = u.id
                 LEFT JOIN lead_bookings lb ON p.booking_id = lb.id
                 LEFT JOIN users us ON us.id = p.verified_by
+                LEFT JOIN company_bank_accounts cb ON cb.id = p.bank_id
                 WHERE p.booking_id = ?
                 AND p.payment_type IN('booking_money','registration')
                 ORDER BY p.id ASC
@@ -246,7 +250,10 @@ class PaymentLeadBooking extends Model
             f.sqft,
             f.price_value,
 
-            cr.full_name AS created_by_name
+            cr.full_name AS created_by_name,
+            cb.bank_name AS company_bank_name,
+            cb.account_name AS company_account_name,
+            cb.account_number AS company_account_number
 
         FROM lead_payments lp
 
@@ -264,6 +271,9 @@ class PaymentLeadBooking extends Model
 
         LEFT JOIN users cr 
             ON cr.id = lp.created_by
+
+        LEFT JOIN company_bank_accounts cb 
+            ON cb.id = lp.bank_id
 
         WHERE lp.id = ?
         LIMIT 1");

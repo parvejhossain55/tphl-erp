@@ -198,7 +198,7 @@ class Con_FinancialTransactionController extends Controller
         $remainingDue     = max(0, $netPayable - $totalPaidSoFar);
 
         // Get banks for dropdown
-        $banks = $this->db->query("SELECT id, bank_name, branch_name FROM banks WHERE status = 'active' ORDER BY bank_name")->fetch_all(MYSQLI_ASSOC);
+        $banks = $this->db->query("SELECT id, bank_name, CONCAT(account_name, IF(account_number != '', CONCAT(' (', account_number, ')'), '')) as branch_name FROM company_bank_accounts WHERE status = 'active' ORDER BY is_default DESC, bank_name ASC")->fetch_all(MYSQLI_ASSOC);
 
         $this->view('phase2/financial-transactions/process-payment', [
             'current_route'     => 'con-pending-payments',

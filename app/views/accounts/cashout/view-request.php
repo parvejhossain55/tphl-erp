@@ -762,9 +762,9 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             <div class="col-md-12 mb-3 vr-bank-fields" style="display:none;">
                                 <label class="form-label">Bank / Branch: <span class="text-danger">*</span></label>
                                 <select name="bank_id" id="vrBankSelect" class="form-control">
-                                    <option value="">-- Loading banks... --</option>
+                                    <option value="">-- Loading company banks... --</option>
                                 </select>
-                                <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/bank-registry" target="_blank">Bank Registry</a></small>
+                                <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/company-bank-accounts" target="_blank">Company Bank Manage</a></small>
                             </div>
 
                             <div class="col-md-6 mb-3 vr-bank-fields" style="display:none;">
@@ -838,17 +838,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (method) { method.addEventListener('change', toggleFields); toggleFields(); }
 
-    // Load Bank Registry options via AJAX
-    fetch('<?= $GLOBALS['base_url'] ?>/get-banks')
+    // Load company banks options via AJAX
+    fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
         .then(r => r.json())
         .then(data => {
             const sel = document.getElementById('vrBankSelect');
             if (!sel) return;
-            sel.innerHTML = '<option value="">-- Select Bank / Branch --</option>';
+            sel.innerHTML = '<option value="">-- Select Company Bank --</option>';
             (data.banks || []).forEach(b => {
                 const opt = document.createElement('option');
                 opt.value = b.id;
-                opt.textContent = b.bank_name + ' — ' + b.branch_name;
+                opt.textContent = b.bank_name + ' — ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
                 sel.appendChild(opt);
             });
         });

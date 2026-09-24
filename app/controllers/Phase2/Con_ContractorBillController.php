@@ -486,7 +486,7 @@ class Con_ContractorBillController extends Controller
         $approvalReq = $this->getApprovalRequest($id);
 
         // Get banks for payment modal
-        $banks = $this->db->query("SELECT id, bank_name, branch_name FROM banks WHERE status = 'active' ORDER BY bank_name")->fetch_all(MYSQLI_ASSOC);
+        $banks = $this->db->query("SELECT id, bank_name, CONCAT(account_name, IF(account_number != '', CONCAT(' (', account_number, ')'), '')) as branch_name FROM company_bank_accounts WHERE status = 'active' ORDER BY is_default DESC, bank_name ASC")->fetch_all(MYSQLI_ASSOC);
 
         // Fetch weekly progress items for the target if linked
         $targetItems = [];
