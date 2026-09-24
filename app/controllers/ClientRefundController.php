@@ -390,7 +390,14 @@ class ClientRefundController extends Controller
             exit;
         }
 
-        $approvedAmount = isset($_POST['approved_amount']) ? (float)$_POST['approved_amount'] : (float)$refund['refund_amount'];
+        $totalPaid = (float)($refund['total_paid'] ?? 0);
+        if (isset($_POST['retention_amount']) && $_POST['retention_amount'] !== '') {
+            $retentionAmount = max(0, min($totalPaid, (float)$_POST['retention_amount']));
+            $approvedAmount  = max(0, $totalPaid - $retentionAmount);
+        } else {
+            $approvedAmount  = isset($_POST['approved_amount']) ? (float)$_POST['approved_amount'] : (float)$refund['refund_amount'];
+            $retentionAmount = max(0, $totalPaid - $approvedAmount);
+        }
 
         // Step 1: Approve refund (cancels booking, releases flat, cancels EMIs)
         if (!$this->model->approve($id, $this->userId, $approvedAmount)) {
@@ -420,28 +427,28 @@ class ClientRefundController extends Controller
             // Auto-approve the cashout (since management already approved the refund)
             $stmt = $this->db->prepare(
                 "UPDATE cashout_requests
-                 SET status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = amount
+                 SET status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?
                  WHERE id = ?"
             );
-            $stmt->bind_param('ii', $this->userId, $cashoutId);
+            $stmt->bind_param('idi', $this->userId, $approvedAmount, $cashoutId);
             $stmt->execute();
 
             // Sync approval_requests for the refund
             $arStmt = $this->db->prepare(
                 "UPDATE approval_requests
-                 SET status = 'approved', approved_by = ?, approved_at = NOW()
-                 WHERE source_table = 'client_refund_requests' AND source_id = ? AND status = 'pending'"
+                 SET status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, request_amount = ?
+                 WHERE source_table = 'client_refund_requests' AND source_id = ?"
             );
-            $arStmt->bind_param('ii', $this->userId, $id);
+            $arStmt->bind_param('iddi', $this->userId, $approvedAmount, $approvedAmount, $id);
             $arStmt->execute();
 
             // Sync approval_requests for the cashout
             $arCashoutStmt = $this->db->prepare(
                 "UPDATE approval_requests
-                 SET status = 'approved', approved_by = ?, approved_at = NOW()
-                 WHERE source_table = 'cashout_requests' AND source_id = ? AND status = 'pending'"
+                 SET status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, request_amount = ?
+                 WHERE source_table = 'cashout_requests' AND source_id = ?"
             );
-            $arCashoutStmt->bind_param('ii', $this->userId, $cashoutId);
+            $arCashoutStmt->bind_param('iddi', $this->userId, $approvedAmount, $approvedAmount, $cashoutId);
             $arCashoutStmt->execute();
         }
 
@@ -452,15 +459,123 @@ class ClientRefundController extends Controller
                 'client_name'      => $refund['client_name'] ?? '',
                 'flat_name'        => $refund['flat_name'] ?? '',
                 'project_name'     => $refund['project_name'] ?? '',
-                'refund_amount'    => $refund['refund_amount'],
-                'retention_amount' => $refund['retention_amount'],
+                'refund_amount'    => $approvedAmount,
+                'retention_amount' => $retentionAmount,
                 'requested_by'     => $refund['requested_by'],
             ], $this->userId);
         } catch (\Exception $e) {
             error_log("Refund email (approval) failed: " . $e->getMessage());
         }
 
-        setSuccess('Refund approved! Cashout request created for ৳' . number_format($refund['refund_amount'], 2) . '. Booking cancelled, flat released.');
+        setSuccess('Refund approved! Cashout request created for ৳' . number_format($approvedAmount, 2) . ' (Retention: ৳' . number_format($retentionAmount, 2) . '). Booking cancelled, flat released.');
+        header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+        exit;
+    }
+
+    // =========================================================================
+    // ADJUST RETENTION / REFUND AMOUNT (Management & Role 20 only)
+    // Synchronously updates:
+    // 1. client_refund_requests (retention_amount, refund_amount)
+    // 2. cashout_requests (amount, approved_amount, due_amount)
+    // 3. approval_requests (both cashout and client_refund requests)
+    // =========================================================================
+    public function adjustRetention($id)
+    {
+        if (!$this->canApprove()) {
+            setError('You are not authorized to adjust refund retention.');
+            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            exit;
+        }
+
+        $refund = $this->model->find($id);
+        if (!$refund) {
+            setError('Refund request not found.');
+            header("Location: {$GLOBALS['base_url']}/client-refunds");
+            exit;
+        }
+
+        if ($refund['status'] === 'refunded') {
+            setError('This refund payment has already been disbursed and completed. Retention cannot be adjusted now.');
+            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            exit;
+        }
+
+        if ($refund['status'] === 'rejected') {
+            setError('Cannot adjust a rejected refund request.');
+            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            exit;
+        }
+
+        $totalPaid = (float)$refund['total_paid'];
+        $retentionAmount = isset($_POST['retention_amount']) ? (float)$_POST['retention_amount'] : 0.0;
+        
+        // Validation
+        if ($retentionAmount < 0 || $retentionAmount > $totalPaid) {
+            setError('Retention amount must be between 0 and total paid (৳' . number_format($totalPaid, 2) . ').');
+            header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+            exit;
+        }
+
+        $netRefundAmount = max(0, $totalPaid - $retentionAmount);
+
+        // Check if cashout exists and has existing payments
+        $totalPaidOut = 0.0;
+        $cashoutId = !empty($refund['cashout_request_id']) ? (int)$refund['cashout_request_id'] : null;
+
+        if ($cashoutId) {
+            $paidStmt = $this->db->prepare("SELECT COALESCE(SUM(amount), 0) AS paid_sum FROM cashout_payments WHERE cashout_request_id = ?");
+            if ($paidStmt) {
+                $paidStmt->bind_param('i', $cashoutId);
+                $paidStmt->execute();
+                $totalPaidOut = (float)($paidStmt->get_result()->fetch_assoc()['paid_sum'] ?? 0);
+            }
+
+            if ($netRefundAmount < $totalPaidOut) {
+                setError('Cannot reduce refund amount below already disbursed amount (৳' . number_format($totalPaidOut, 2) . ').');
+                header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+                exit;
+            }
+        }
+
+        $dueAmount = max(0, $netRefundAmount - $totalPaidOut);
+
+        $this->db->begin_transaction();
+        try {
+            // 1. Update client_refund_requests
+            $upRf = $this->db->prepare("UPDATE client_refund_requests SET retention_amount = ?, refund_amount = ? WHERE id = ?");
+            $upRf->bind_param("ddi", $retentionAmount, $netRefundAmount, $id);
+            $upRf->execute();
+
+            // 2. Update cashout_requests (if exists)
+            if ($cashoutId) {
+                $upCashout = $this->db->prepare("UPDATE cashout_requests SET amount = ?, approved_amount = ?, due_amount = ? WHERE id = ?");
+                $upCashout->bind_param("dddi", $netRefundAmount, $netRefundAmount, $dueAmount, $cashoutId);
+                $upCashout->execute();
+
+                // 3. Update approval_requests for cashout
+                $upArCashout = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, approved_amount = ? WHERE source_table = 'cashout_requests' AND source_id = ?");
+                $upArCashout->bind_param("ddi", $netRefundAmount, $netRefundAmount, $cashoutId);
+                $upArCashout->execute();
+            }
+
+            // 4. Update approval_requests for client_refund_requests
+            $upArRf = $this->db->prepare("UPDATE approval_requests SET request_amount = ?, approved_amount = ? WHERE source_table = 'client_refund_requests' AND source_id = ?");
+            $upArRf->bind_param("ddi", $netRefundAmount, $netRefundAmount, $id);
+            $upArRf->execute();
+
+            $this->db->commit();
+            setSuccess("Retention amount successfully updated to ৳" . number_format($retentionAmount, 2) . " (Net Refund: ৳" . number_format($netRefundAmount, 2) . "). Synchronized across Refund, Cashout, and Approvals!");
+        } catch (\Exception $e) {
+            $this->db->rollback();
+            error_log("Refund retention adjustment failed: " . $e->getMessage());
+            setError("Failed to adjust retention: " . $e->getMessage());
+        }
+
         header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
         exit;
     }

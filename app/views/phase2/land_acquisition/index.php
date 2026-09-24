@@ -384,7 +384,7 @@ unset($_SESSION['land_csv_import_skipped']); // clear after reading
                                     <div class="col-md-6">
                                         <div class="from__input-box">
                                             <div class="form__input-title">
-                                                <label>Media / Broker Info (মিডিয়া / দালাল তথ্য)</label>
+                                                <label>Media / Broker Info (মিডিয়া) </label>
                                             </div>
                                             <div class="form__input">
                                                 <input type="text" class="form-control" name="media_broker_info" placeholder="Broker/Media name, phone & commission notes">

@@ -261,8 +261,12 @@ $isApproved = in_array($status, ['approved', 'refunded']);
 
                     <form action="<?= $base_url ?>/client-refund-approve/<?= $refund['id'] ?>" method="POST" class="mb-2" id="approveForm">
                         <div class="mb-2">
-                            <label class="form-label fw-bold small mb-1">Approved Amount (৳)</label>
-                            <input type="number" step="0.01" name="approved_amount" class="form-control form-control-sm fw-bold text-success" value="<?= htmlspecialchars($refund['refund_amount']) ?>" required>
+                            <label class="form-label fw-bold small mb-1 text-danger">Retention Amount (কোম্পানি কর্তন ৳)</label>
+                            <input type="number" step="0.01" name="retention_amount" id="app_retention_amount" class="form-control form-control-sm fw-bold border-danger text-danger" value="<?= htmlspecialchars($refund['retention_amount']) ?>" min="0" max="<?= htmlspecialchars($refund['total_paid']) ?>" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-bold small mb-1 text-success">Approved Refund Amount (অনুমোদিত রিফান্ড ৳)</label>
+                            <input type="number" step="0.01" name="approved_amount" id="app_approved_amount" class="form-control form-control-sm fw-bold border-success text-success" value="<?= htmlspecialchars($refund['refund_amount']) ?>" min="0" max="<?= htmlspecialchars($refund['total_paid']) ?>" required>
                         </div>
                         <button type="button" class="btn btn-success w-100 fw-bold btn-sm py-2 shadow-sm" onclick="confirmApproval()">
                             <i class="bi bi-check-circle me-1"></i> Approve Refund
@@ -297,6 +301,46 @@ $isApproved = in_array($status, ['approved', 'refunded']);
                         </div>
                         এই রিফান্ড রিকোয়েস্টটি <strong>ম্যানেজমেন্ট ও Role 20</strong> এর অনুমোদনের জন্য অপেক্ষমান। অনুমোদন পাওয়ার পর অ্যাকাউন্টস ডিপার্টমেন্ট ভাউচার/চেক অ্যাটাচমেন্ট আপলোড করে ক্লায়েন্টকে রিফান্ড পেইড করতে পারবে।
                     </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Adjust Retention / Refund Amount Action (Management & Role 20, Approved status before final payout) -->
+            <?php if ($status === 'approved' && $canApproveReq): ?>
+            <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #0d6efd !important; background: #f0f7ff;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center mb-2.5">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0" style="width: 34px; height: 34px; background: rgba(13, 110, 253, 0.15); color: #0d6efd;">
+                            <i class="bi bi-sliders2-vertical fs-5"></i>
+                        </div>
+                        <div>
+                            <h6 class="card-title mb-0 fw-bold text-dark fs-14">রিটেনশন ও রিফান্ড সমন্বয়</h6>
+                            <span class="badge bg-primary text-white font-monospace" style="font-size: 10px;">Management & Role 20</span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-2.5 rounded-2 bg-white border border-light-subtle small mb-3 text-secondary" style="font-size: 12px; line-height: 1.6;">
+                        <span class="fw-semibold text-dark d-block mb-1"><i class="bi bi-shield-check text-primary me-1"></i>এক ক্লিকে ৩টি টেবিলে অটো-সিঙ্ক:</span>
+                        অনুমোদনের পরও যদি রিটেনশন ফি কর্তন/সমন্বয় করতে চান, তবে এখান থেকে আপডেট করলে সাথে সাথে <strong>Client Refund, Cashout Request (<?= !empty($refund['cashout_request_id']) ? '#' . htmlspecialchars($refund['cashout_request_id']) : '—' ?>), এবং Approval Request</strong> টেবিলে একযোগে সমন্বয় হয়ে যাবে।
+                    </div>
+
+                    <form action="<?= $base_url ?>/client-refund-adjust/<?= $refund['id'] ?>" method="POST" id="adjustRetentionForm">
+                        <div class="mb-2">
+                            <label class="form-label fw-bold small mb-1 text-muted">Total Verified Paid (মোট পরিশোধিত)</label>
+                            <input type="text" class="form-control form-control-sm bg-light fw-bold text-dark" value="৳ <?= number_format($refund['total_paid'], 2) ?>" readonly>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-bold small mb-1 text-danger">Retention Amount (কোম্পানি কর্তন ৳)</label>
+                            <input type="number" step="0.01" name="retention_amount" id="adj_retention_amount" class="form-control form-control-sm fw-bold border-danger text-danger" value="<?= htmlspecialchars($refund['retention_amount']) ?>" min="0" max="<?= htmlspecialchars($refund['total_paid']) ?>" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small mb-1 text-success">Net Refund to Client (ক্লায়েন্ট রিফান্ড পাবে ৳)</label>
+                            <input type="number" step="0.01" id="adj_net_refund_amount" class="form-control form-control-sm fw-bold border-success text-success" value="<?= htmlspecialchars($refund['refund_amount']) ?>" min="0" max="<?= htmlspecialchars($refund['total_paid']) ?>" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold btn-sm py-2 shadow-sm d-flex align-items-center justify-content-center gap-2" onclick="return confirm('আপনি কি নিশ্চিত যে রিটেনশন ও রিফান্ড অ্যামাউন্ট পরিবর্তন করে ৩টি টেবিলে (Refund, Cashout, Approval) সমন্বয় করতে চান?');">
+                            <i class="bi bi-arrow-repeat fs-6"></i> Update Across All 3 Tables
+                        </button>
+                    </form>
                 </div>
             </div>
             <?php endif; ?>
@@ -890,3 +934,46 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const totalPaid = <?= json_encode((float)($refund['total_paid'] ?? 0)) ?>;
+
+    // 1. Two-way sync for Approve Form (Pending status)
+    const appRetention = document.getElementById('app_retention_amount');
+    const appApproved  = document.getElementById('app_approved_amount');
+    if (appRetention && appApproved) {
+        appRetention.addEventListener('input', function() {
+            let ret = parseFloat(this.value);
+            if (isNaN(ret) || ret < 0) ret = 0;
+            if (ret > totalPaid) ret = totalPaid;
+            appApproved.value = (totalPaid - ret).toFixed(2);
+        });
+        appApproved.addEventListener('input', function() {
+            let app = parseFloat(this.value);
+            if (isNaN(app) || app < 0) app = 0;
+            if (app > totalPaid) app = totalPaid;
+            appRetention.value = (totalPaid - app).toFixed(2);
+        });
+    }
+
+    // 2. Two-way sync for Adjust Retention Form (Approved status)
+    const adjRetention = document.getElementById('adj_retention_amount');
+    const adjNetRefund = document.getElementById('adj_net_refund_amount');
+    if (adjRetention && adjNetRefund) {
+        adjRetention.addEventListener('input', function() {
+            let ret = parseFloat(this.value);
+            if (isNaN(ret) || ret < 0) ret = 0;
+            if (ret > totalPaid) ret = totalPaid;
+            adjNetRefund.value = (totalPaid - ret).toFixed(2);
+        });
+        adjNetRefund.addEventListener('input', function() {
+            let net = parseFloat(this.value);
+            if (isNaN(net) || net < 0) net = 0;
+            if (net > totalPaid) net = totalPaid;
+            adjRetention.value = (totalPaid - net).toFixed(2);
+        });
+    }
+});
+</script>
+

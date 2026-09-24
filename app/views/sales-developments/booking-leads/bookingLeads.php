@@ -330,6 +330,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#quickRefundModal"
                                                         data-id="<?= $or['id'] ?>"
+                                                        data-paid="<?= (float)($or['total_verified_paid'] ?? 0) ?>"
                                                         data-flat="<?= htmlspecialchars($or['flat_name'] ?? '') ?>"
                                                         data-project="<?= htmlspecialchars($or['project_name'] ?? '') ?>"
                                                         data-agreement="<?= number_format($or['agreement_value'] ?? 0, 2) ?>"
@@ -397,6 +398,23 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             <div class="col-6"><strong>Project:</strong> <span id="refund_project_name">—</span></div>
                             <div class="col-6"><strong>Flat:</strong> <span id="refund_flat_name">—</span></div>
                             <div class="col-6"><strong>Agreement:</strong> ৳<span id="refund_agreement_val">0.00</span></div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small mb-1">Total Verified Paid (মোট আদায়)</label>
+                            <input type="text" id="refund_total_paid_display" class="form-control form-control-sm bg-light fw-bold text-dark" readonly value="৳0.00">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small mb-1 text-danger">Retention Amount (কোম্পানি কর্তন ৳)</label>
+                            <input type="number" step="0.01" name="retention_amount" id="refund_retention_amount" class="form-control form-control-sm fw-bold border-danger text-danger" value="0.00" min="0">
+                        </div>
+                        <div class="col-12 mt-1">
+                            <div class="p-2 rounded bg-light border text-success fw-bold small d-flex justify-content-between align-items-center">
+                                <span>Estimated Net Refund to Client:</span>
+                                <span class="fs-14">৳<span id="refund_net_display">0.00</span></span>
+                            </div>
                         </div>
                     </div>
 
@@ -795,7 +813,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             });
         });
 
-        // Quick Refund Modal data population
+        // Quick Refund Modal data population & retention calculation
+        let currentRefundPaid = 0;
         document.querySelectorAll('.quickRefundBtn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const bookingId = this.dataset.id || '';
@@ -803,6 +822,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 const project = this.dataset.project || '—';
                 const flat = this.dataset.flat || '—';
                 const agreement = this.dataset.agreement || '0.00';
+                currentRefundPaid = parseFloat(this.dataset.paid) || 0;
 
                 const idInput = document.getElementById('refund_booking_id');
                 const clientSpan = document.getElementById('refund_client_name');
@@ -810,6 +830,9 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 const flatSpan = document.getElementById('refund_flat_name');
                 const agreementSpan = document.getElementById('refund_agreement_val');
                 const reasonInput = document.getElementById('refund_reason');
+                const paidInput = document.getElementById('refund_total_paid_display');
+                const retentionInput = document.getElementById('refund_retention_amount');
+                const netSpan = document.getElementById('refund_net_display');
 
                 if (idInput) idInput.value = bookingId;
                 if (clientSpan) clientSpan.textContent = client;
@@ -817,7 +840,25 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 if (flatSpan) flatSpan.textContent = flat;
                 if (agreementSpan) agreementSpan.textContent = agreement;
                 if (reasonInput) reasonInput.value = '';
+                if (paidInput) paidInput.value = '৳ ' + currentRefundPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                if (retentionInput) {
+                    retentionInput.value = '0.00';
+                    retentionInput.max = currentRefundPaid;
+                }
+                if (netSpan) netSpan.textContent = currentRefundPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
             });
         });
+
+        const quickRetentionInput = document.getElementById('refund_retention_amount');
+        if (quickRetentionInput) {
+            quickRetentionInput.addEventListener('input', function() {
+                let ret = parseFloat(this.value);
+                if (isNaN(ret) || ret < 0) ret = 0;
+                if (ret > currentRefundPaid) ret = currentRefundPaid;
+                const net = Math.max(0, currentRefundPaid - ret);
+                const netSpan = document.getElementById('refund_net_display');
+                if (netSpan) netSpan.textContent = net.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            });
+        }
     });
 </script>

@@ -576,7 +576,8 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                u_sales.full_name as sales_user,
                COALESCE(u_sales.full_name, o.sales_agent_old) AS sales_agent_display,
                (SELECT COUNT(*) FROM lead_payments lp WHERE lp.booking_id = o.id AND lp.verification_status = 'verified') AS verified_payment_count,
-               (SELECT COUNT(*) FROM lead_payments lp WHERE lp.booking_id = o.id) AS total_payment_count
+               (SELECT COUNT(*) FROM lead_payments lp WHERE lp.booking_id = o.id) AS total_payment_count,
+               (SELECT COALESCE(SUM(lp.amount), 0) FROM lead_payments lp WHERE lp.booking_id = o.id AND lp.verification_status = 'verified') AS total_verified_paid
         FROM lead_bookings o
         LEFT JOIN projects p ON o.project_id = p.id
         LEFT JOIN flats f ON o.flat_id = f.id

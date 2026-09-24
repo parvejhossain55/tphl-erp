@@ -530,6 +530,12 @@ class BookingController extends Controller
             $emiStmt->execute();
 
             // 5. Create/update client_refund_requests record
+            $retentionAmount = isset($_POST['retention_amount']) ? (float)$_POST['retention_amount'] : 0.0;
+            if ($retentionAmount < 0 || $retentionAmount > $totalPaid) {
+                $retentionAmount = 0.0;
+            }
+            $refundAmount = max(0, $totalPaid - $retentionAmount);
+
             // Check if active refund already exists
             $checkRefund = $this->db->prepare("SELECT id FROM client_refund_requests WHERE booking_id = ? AND status != 'rejected' LIMIT 1");
             $checkRefund->bind_param("i", $bookingId);
@@ -539,16 +545,16 @@ class BookingController extends Controller
             $refundId = null;
             if ($existingRefund) {
                 $refundId = (int)$existingRefund['id'];
-                $rfUpdate = $this->db->prepare("UPDATE client_refund_requests SET total_paid = ?, refund_amount = ?, reason = ?, requested_by = ?, status = 'pending' WHERE id = ?");
-                $rfUpdate->bind_param("ddsii", $totalPaid, $totalPaid, $reason, $userId, $refundId);
+                $rfUpdate = $this->db->prepare("UPDATE client_refund_requests SET total_paid = ?, retention_amount = ?, refund_amount = ?, reason = ?, requested_by = ?, status = 'pending' WHERE id = ?");
+                $rfUpdate->bind_param("dddsii", $totalPaid, $retentionAmount, $refundAmount, $reason, $userId, $refundId);
                 $rfUpdate->execute();
             } else {
                 $rfInsert = $this->db->prepare("INSERT INTO client_refund_requests 
                     (booking_id, lead_id, project_id, flat_id, total_paid, retention_amount, refund_amount, reason, requested_by, status) 
-                    VALUES (?, ?, ?, ?, ?, 0.00, ?, ?, ?, 'pending')");
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
                 $flatId = (int)($booking['flat_id'] ?? 0);
                 $projId = (int)($booking['project_id'] ?? 0);
-                $rfInsert->bind_param("iiiiddsi", $bookingId, $leadId, $projId, $flatId, $totalPaid, $totalPaid, $reason, $userId);
+                $rfInsert->bind_param("iiiidddsi", $bookingId, $leadId, $projId, $flatId, $totalPaid, $retentionAmount, $refundAmount, $reason, $userId);
                 $rfInsert->execute();
                 $refundId = $rfInsert->insert_id;
             }
@@ -569,7 +575,7 @@ class BookingController extends Controller
                     'requested_by'   => $userId,
                     'approve_role'   => 'management',
                     'meta_data'      => null,
-                    'request_amount' => $totalPaid,
+                    'request_amount' => $refundAmount,
                 ]);
             }
 

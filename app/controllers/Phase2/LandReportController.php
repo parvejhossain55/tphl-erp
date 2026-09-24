@@ -18,7 +18,7 @@ class LandReportController extends Controller {
     public function index() {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $projectFilter = in_array($roleId, [1, 3, 14, 15, 22, 33, 6, 30]) ? "1=1" : "p.landman_id = $userId";
+        $projectFilter = in_array($roleId, [1, 2, 3, 6, 14, 15, 20, 22, 30, 32, 33]) ? "1=1" : "p.landman_id = $userId";
         
         $from_date = $_GET['from_date'] ?? date('Y-m-01');
         $to_date = $_GET['to_date'] ?? date('Y-m-t');
@@ -121,21 +121,21 @@ class LandReportController extends Controller {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Role guard: Only Land Officer (14), Accounts (6), Management (3), Admin (1)
-        if (!in_array($roleId, [1, 3, 33, 6, 14])) {
+        // Role guard: Management (1, 3, 33), Accounts (6, 30), Operation Head (20, 32), Land Officer (14), PM (15, 22)
+        if (!in_array($roleId, [1, 2, 3, 6, 14, 15, 20, 22, 30, 32, 33])) {
             setError('Unauthorized access.');
             header("Location: " . $GLOBALS['base_url'] . "/con-dashboard");
             exit;
         }
 
-        $projectFilter = in_array($roleId, [1, 3, 14, 15, 22, 33, 6, 30]) ? "1=1" : "p.landman_id = $userId";
+        $projectFilter = in_array($roleId, [1, 2, 3, 6, 14, 15, 20, 22, 30, 32, 33]) ? "1=1" : "p.landman_id = $userId";
 
         $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
         $selectedAcqId = isset($_GET['land_acquisition_id']) && $_GET['land_acquisition_id'] !== '' ? (int)$_GET['land_acquisition_id'] : null;
         $from_date = isset($_GET['from_date']) && $_GET['from_date'] !== '' ? $_GET['from_date'] : null;
         $to_date = isset($_GET['to_date']) && $_GET['to_date'] !== '' ? $_GET['to_date'] : null;
 
-        // 1. Fetch projects for dropdown filter (only projects that have land acquisitions)
+        // 1. Fetch projects for dropdown filter
         $projects = $this->db->query("
             SELECT DISTINCT p.id, p.name 
             FROM projects p
@@ -146,9 +146,10 @@ class LandReportController extends Controller {
 
         // 2. Fetch land acquisitions portfolio for dropdown filter based on selected project
         $acquisitionsFilterQuery = "
-            SELECT la.id, la.land_owner_name, p.name as project_name
+            SELECT la.id, la.land_owner_name, 
+                   COALESCE(NULLIF(TRIM(la.land_project_name), ''), p.name, 'Tentative Land Deal') as project_name
             FROM land_acquisitions la
-            JOIN projects p ON la.project_id = p.id
+            LEFT JOIN projects p ON la.project_id = p.id
             WHERE la.status != 'cancelled' AND $projectFilter
         ";
         if ($selectedProjectId) {
@@ -180,10 +181,12 @@ class LandReportController extends Controller {
 
             // Fetch Requisitions (inflow when status = Paid)
             $requisitions = $this->db->query("
-                SELECT lfr.*, la.land_owner_name, p.name as project_name, u.full_name as requester_name
+                SELECT lfr.*, la.land_owner_name, 
+                       COALESCE(NULLIF(TRIM(la.land_project_name), ''), p.name, 'Tentative Land Deal') as project_name, 
+                       u.full_name as requester_name
                 FROM land_fund_requisitions lfr
                 JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
-                JOIN projects p ON la.project_id = p.id
+                LEFT JOIN projects p ON la.project_id = p.id
                 LEFT JOIN users u ON lfr.requested_by = u.id
                 WHERE lfr.land_acquisition_id IN ($acqIdsStr)
                 ORDER BY lfr.created_at ASC
@@ -191,10 +194,12 @@ class LandReportController extends Controller {
 
             // Fetch Bayana Payments (outflow/expense)
             $bayanas = $this->db->query("
-                SELECT lb.*, la.land_owner_name, p.name as project_name, u.full_name as creator_name
+                SELECT lb.*, la.land_owner_name, 
+                       COALESCE(NULLIF(TRIM(la.land_project_name), ''), p.name, 'Tentative Land Deal') as project_name, 
+                       u.full_name as creator_name
                 FROM land_bayana_payments lb
                 JOIN land_acquisitions la ON lb.land_acquisition_id = la.id
-                JOIN projects p ON la.project_id = p.id
+                LEFT JOIN projects p ON la.project_id = p.id
                 LEFT JOIN users u ON lb.created_by = u.id
                 WHERE lb.land_acquisition_id IN ($acqIdsStr)
                 ORDER BY lb.payment_date ASC
@@ -202,10 +207,12 @@ class LandReportController extends Controller {
 
             // Fetch Registrations (outflow/expense)
             $registrations = $this->db->query("
-                SELECT lr.*, la.land_owner_name, p.name as project_name, u.full_name as creator_name
+                SELECT lr.*, la.land_owner_name, 
+                       COALESCE(NULLIF(TRIM(la.land_project_name), ''), p.name, 'Tentative Land Deal') as project_name, 
+                       u.full_name as creator_name
                 FROM land_registrations lr
                 JOIN land_acquisitions la ON lr.land_acquisition_id = la.id
-                JOIN projects p ON la.project_id = p.id
+                LEFT JOIN projects p ON la.project_id = p.id
                 LEFT JOIN users u ON lr.created_by = u.id
                 WHERE lr.land_acquisition_id IN ($acqIdsStr)
                 ORDER BY lr.registration_date ASC
@@ -319,6 +326,11 @@ class LandReportController extends Controller {
             foreach ($requisitions as $r) {
                 $isPaid = ($r['accounts_status'] === 'Paid');
                 $date = $isPaid ? $r['accounts_paid_at'] : $r['created_at'];
+                $paidAmt = (float)$r['requested_amount'];
+
+                // Direct requisition: paid by Accounts directly to landowner/authority/broker
+                $inflow = $isPaid ? $paidAmt : 0;
+                $outflow = $isPaid ? $paidAmt : 0;
 
                 $ledgerEntries[] = [
                     'date' => $date,
@@ -329,9 +341,9 @@ class LandReportController extends Controller {
                     'project_name' => $r['project_name'],
                     'description' => "Requisition for " . htmlspecialchars($r['requisition_type']) . " - Purpose: " . htmlspecialchars($r['purpose']),
                     'status' => $r['accounts_status'] ?? ($r['mgmt_status'] ?? 'Pending'),
-                    'inflow' => $isPaid ? (float)$r['requested_amount'] : 0,
-                    'outflow' => 0,
-                    'req_amount' => (float)$r['requested_amount'],
+                    'inflow' => $inflow,
+                    'outflow' => $outflow,
+                    'req_amount' => $paidAmt,
                     'details' => [
                         'pay_method' => $r['payment_method'] ?? 'N/A',
                         'txn_no' => $r['transaction_no'] ?? 'N/A',
@@ -340,7 +352,8 @@ class LandReportController extends Controller {
                 ];
 
                 if ($isPaid) {
-                    $totalReceived += (float)$r['requested_amount'];
+                    $totalReceived += $inflow;
+                    $totalSpent += $outflow;
                 }
             }
 
