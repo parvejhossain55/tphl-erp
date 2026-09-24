@@ -3723,5 +3723,233 @@ class Lead extends Model
             'totals' => $totals,
         ];
     }
+
+    /**
+     * Get Team Lead Upload Report
+     * Summarizes leads uploaded by role 11 executives grouped by member and upload date,
+     * including sessions, first/last upload time, and KPI dashboard metrics.
+     */
+    public function getTeamLeadUploadReport($filters = [])
+    {
+        $datePreset = $filters['date_preset'] ?? 'today';
+        $fromDate   = !empty($filters['from_date']) ? trim($filters['from_date']) : '';
+        $toDate     = !empty($filters['to_date']) ? trim($filters['to_date']) : '';
+        $memberId   = !empty($filters['member_id']) ? (int)$filters['member_id'] : null;
+        $teamId     = !empty($filters['team_id']) ? (int)$filters['team_id'] : null;
+        $search     = !empty($filters['search']) ? trim($filters['search']) : '';
+
+        $where = "l.deleted_at IS NULL";
+        $params = [];
+        $types  = "";
+
+        // If specific member selected, filter by that; else filter by role 11 (primary or secondary)
+        if ($memberId) {
+            $where .= " AND l.created_by = ?";
+            $params[] = $memberId;
+            $types .= "i";
+        } else {
+            $where .= " AND (u.role_id = 11 OR u.secondary_role_id = 11)";
+        }
+
+        // Team filter
+        if ($teamId) {
+            $where .= " AND u.team_id = ?";
+            $params[] = $teamId;
+            $types .= "i";
+        }
+
+        // Search keyword
+        if ($search !== '') {
+            $where .= " AND (u.full_name LIKE ? OR e.employee_id LIKE ? OR u.employee_id LIKE ? OR t.name LIKE ?)";
+            $sParam = "%" . $search . "%";
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $params[] = $sParam;
+            $types .= "ssss";
+        }
+
+        // Date Preset Filters
+        if ($datePreset === 'today') {
+            $where .= " AND DATE(l.created_at) = CURDATE()";
+        } elseif ($datePreset === 'yesterday') {
+            $where .= " AND DATE(l.created_at) = SUBDATE(CURDATE(), 1)";
+        } elseif ($datePreset === 'last_7_days') {
+            $where .= " AND DATE(l.created_at) >= SUBDATE(CURDATE(), 6) AND DATE(l.created_at) <= CURDATE()";
+        } elseif ($datePreset === 'this_month') {
+            $where .= " AND DATE_FORMAT(l.created_at, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')";
+        } elseif ($datePreset === 'last_month') {
+            $where .= " AND DATE_FORMAT(l.created_at, '%Y-%m') = DATE_FORMAT(SUBDATE(CURDATE(), INTERVAL 1 MONTH), '%Y-%m')";
+        } elseif ($datePreset === 'custom' || $datePreset === 'date_range' || (!empty($fromDate) && !empty($toDate))) {
+            if (!empty($fromDate) && !empty($toDate)) {
+                $where .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+                $params[] = $fromDate;
+                $params[] = $toDate;
+                $types .= "ss";
+            } elseif (!empty($fromDate)) {
+                $where .= " AND DATE(l.created_at) >= ?";
+                $params[] = $fromDate;
+                $types .= "s";
+            } elseif (!empty($toDate)) {
+                $where .= " AND DATE(l.created_at) <= ?";
+                $params[] = $toDate;
+                $types .= "s";
+            }
+        } elseif ($datePreset === 'all') {
+            // all time
+        } else {
+            // Default to today
+            $where .= " AND DATE(l.created_at) = CURDATE()";
+        }
+
+        $sql = "
+            SELECT 
+                l.id as lead_id,
+                l.created_by,
+                u.full_name as member_name,
+                COALESCE(e.employee_id, u.employee_id) as emp_id,
+                COALESCE(t.name, 'Lead Management') as team_name,
+                d.name as designation,
+                DATE(l.created_at) as upload_date,
+                l.created_at
+            FROM leads l
+            JOIN users u ON l.created_by = u.id
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            LEFT JOIN designations d ON (e.designation_id = d.id OR u.designation_id = d.id)
+            LEFT JOIN teams t ON u.team_id = t.id
+            WHERE $where
+            ORDER BY upload_date DESC, member_name ASC, l.created_at ASC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return ['rows' => [], 'kpi' => ['total_leads' => 0, 'total_sessions' => 0, 'active_uploaders' => 0, 'last_upload' => '—']];
+        }
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $res = $stmt->get_result();
+
+        $rowsByMemberDate = [];
+        $totalLeads = 0;
+        $distinctUploaders = [];
+        $allTimestamps = [];
+
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $totalLeads++;
+                $distinctUploaders[$row['created_by']] = true;
+                $allTimestamps[] = strtotime($row['created_at']);
+
+                $key = $row['created_by'] . '_' . $row['upload_date'];
+                if (!isset($rowsByMemberDate[$key])) {
+                    $rowsByMemberDate[$key] = [
+                        'created_by'   => $row['created_by'],
+                        'member_name'  => $row['member_name'],
+                        'employee_id'  => $row['emp_id'] ?: '—',
+                        'team_name'    => $row['team_name'],
+                        'designation'  => $row['designation'] ?: 'Executive',
+                        'upload_date'  => $row['upload_date'],
+                        'timestamps'   => [],
+                    ];
+                }
+                $rowsByMemberDate[$key]['timestamps'][] = strtotime($row['created_at']);
+            }
+        }
+
+        $summaryRows = [];
+        $totalSessionsAll = 0;
+
+        foreach ($rowsByMemberDate as $key => $item) {
+            $timestamps = $item['timestamps'];
+            $leadsCount = count($timestamps);
+
+            // Calculate sessions (gap > 5 minutes = new session)
+            $sessions = 1;
+            $prev = $timestamps[0];
+            foreach ($timestamps as $t) {
+                if (($t - $prev) > 300) {
+                    $sessions++;
+                }
+                $prev = $t;
+            }
+            $totalSessionsAll += $sessions;
+
+            $firstUploadTime = date('h:i A', $timestamps[0]);
+            $lastUploadTime  = date('h:i A', end($timestamps));
+
+            $summaryRows[] = [
+                'created_by'   => $item['created_by'],
+                'team_name'    => $item['team_name'],
+                'member_name'  => $item['member_name'],
+                'employee_id'  => $item['employee_id'],
+                'designation'  => $item['designation'],
+                'upload_date'  => $item['upload_date'],
+                'total_leads'  => $leadsCount,
+                'sessions'     => $sessions,
+                'first_upload' => $firstUploadTime,
+                'last_upload'  => $lastUploadTime,
+            ];
+        }
+
+        $lastUploadFormatted = !empty($allTimestamps) ? date('h:i A', max($allTimestamps)) : '—';
+        $activeUploadersCount = count($distinctUploaders);
+
+        return [
+            'rows' => $summaryRows,
+            'kpi'  => [
+                'total_leads'      => $totalLeads,
+                'total_sessions'   => $totalSessionsAll,
+                'active_uploaders' => $activeUploadersCount,
+                'last_upload'      => $lastUploadFormatted,
+            ],
+        ];
+    }
+
+    /**
+     * Get list of all role 11 executives for filtering
+     */
+    public function getTeamLeadReportExecutives()
+    {
+        $sql = "
+            SELECT DISTINCT u.id, u.full_name, COALESCE(e.employee_id, u.employee_id) AS employee_id, d.name AS designation, COALESCE(t.name, 'Lead Management') AS team_name
+            FROM users u
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            LEFT JOIN designations d ON (e.designation_id = d.id OR u.designation_id = d.id)
+            LEFT JOIN teams t ON u.team_id = t.id
+            WHERE u.role_id = 11 OR u.secondary_role_id = 11
+            ORDER BY u.full_name ASC
+        ";
+        $res = $this->db->query($sql);
+        $executives = [];
+        if ($res) {
+            while ($r = $res->fetch_assoc()) {
+                $executives[] = $r;
+            }
+        }
+        return $executives;
+    }
+
+    /**
+     * Get detailed leads list uploaded by a member on a specific date
+     */
+    public function getTeamLeadReportLeads($memberId, $date)
+    {
+        $stmt = $this->db->prepare("
+            SELECT l.id, l.full_name, l.phone_number, l.campaign_name, l.platform, l.uploaded_from, l.created_at, p.name as project_name
+            FROM leads l
+            LEFT JOIN projects p ON l.project_id = p.id
+            WHERE l.created_by = ? AND DATE(l.created_at) = ? AND l.deleted_at IS NULL
+            ORDER BY l.created_at DESC
+            LIMIT 500
+        ");
+        if (!$stmt) return [];
+        $stmt->bind_param("is", $memberId, $date);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
+    }
 }
 

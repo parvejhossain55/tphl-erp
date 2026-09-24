@@ -1116,7 +1116,7 @@
                 <!-- for sales executive  -->
 
                 <!--Start Marketing Head Dashboard  -->
-                <?php if (hasPermission("Digital Marketing Panel")): ?>
+                <?php if (hasPermission("Digital Marketing Panel") || (isset($_SESSION['user']) && (($_SESSION['user']['role_id'] ?? 0) == 10 || ($_SESSION['user']['secondary_role_id'] ?? 0) == 10))): ?>
                     <!--CED CATEGORY -->
                     <li class="sidebar__menu-category">
 
@@ -1139,10 +1139,10 @@
                     </li>
 
                     <li class="slide ">
-                        <a href="<?= $base_url ?>/digital-marketing-upload-report"
-                            class="sidebar__menu-item <?= isActive('digital-marketing-upload-report', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-file-contract"></i></div>
-                            <span class="sidebar__menu-label">Lead Upload Report</span>
+                        <a href="<?= $base_url ?>/team-lead-report"
+                            class="sidebar__menu-item <?= isActive(['team-lead-report', 'digital-marketing-upload-report'], $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-file-waveform"></i></div>
+                            <span class="sidebar__menu-label">Team Lead Report</span>
                         </a>
                     </li>
 
@@ -1156,7 +1156,7 @@
                 <?php endif; ?>
                 <!--End Marketing Head Dashboard  -->
                 <!--Start Marketing Executive Dashboard  -->
-                <?php if (hasPermission("Upload CSV")): ?>
+                <?php if (hasPermission("Upload CSV") || (isset($_SESSION['user']) && (($_SESSION['user']['role_id'] ?? 0) == 11 || ($_SESSION['user']['secondary_role_id'] ?? 0) == 11))): ?>
                     <!--CED CATEGORY -->
                     <li class="sidebar__menu-category">
                         <span class="category-name">My Dashboard</span>
@@ -1186,10 +1186,10 @@
                     </li>
 
                     <li class="slide ">
-                        <a href="<?= $base_url ?>/digital-marketing-upload-report"
-                            class="sidebar__menu-item <?= isActive('digital-marketing-upload-report', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-file-contract"></i></div>
-                            <span class="sidebar__menu-label">Lead Upload Report</span>
+                        <a href="<?= $base_url ?>/team-lead-report"
+                            class="sidebar__menu-item <?= isActive(['team-lead-report', 'digital-marketing-upload-report'], $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-file-waveform"></i></div>
+                            <span class="sidebar__menu-label">Team Lead Report</span>
                         </a>
                     </li>
                     <li class="slide">
