@@ -325,6 +325,17 @@ class ProjectOtherCostController extends Controller
                 exit();
             }
 
+            // Mandatory Accounts Head Approval Guard
+            if (!class_exists('ApprovalRequest')) {
+                require_once __DIR__ . '/../models/ApprovalRequest.php';
+            }
+            $ahCheck = ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'project_other_costs', (int)$id);
+            if ($ahCheck && !empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
+                setError("Payment cannot be disbursed. Approval from Accounts Head (Md. Mamunoor Rashid [1309]) is pending.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                exit();
+            }
+
             $paymentAmount = (float)($_POST['payment_amount'] ?? 0);
             $rawPaymentAt = trim($_POST['payment_at'] ?? '');
             if (empty($rawPaymentAt)) {

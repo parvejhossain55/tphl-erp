@@ -802,6 +802,17 @@ class AssetManagementController extends Controller
                 exit;
             }
 
+            // Mandatory Accounts Head Approval Guard
+            if (!class_exists('ApprovalRequest')) {
+                require_once dirname(dirname(__DIR__)) . '/models/ApprovalRequest.php';
+            }
+            $ahCheck = \ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'project_extra_assets', (int)$id);
+            if ($ahCheck && !empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
+                setError("Payment cannot be disbursed. Approval from Accounts Head (Md. Mamunoor Rashid [1309]) is pending.");
+                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                exit;
+            }
+
             $maxAllowed = (float)($req['total_price'] ?? 0);
             if ($paidAmount <= 0) {
                 setError("Payment amount must be greater than 0.");

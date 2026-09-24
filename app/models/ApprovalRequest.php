@@ -435,6 +435,165 @@ class ApprovalRequest extends Model
     }
 
 
+    /**
+     * Approve the Accounts Head stage for an approval request (Role 30 - Md. Mamunoor Rashid)
+     */
+    public function approveAccountsHead($id, $userId = null, $note = null)
+    {
+        $id = (int)$id;
+        $userId = $userId ? (int)$userId : (int)($_SESSION['user']['id'] ?? 247);
+        $note = $note !== null ? trim($note) : 'Approved by Accounts Head';
+
+        $req = $this->find($id);
+        if (!$req) {
+            return false;
+        }
+
+        $stmt = $this->db->prepare("
+            UPDATE {$this->table}
+            SET accounts_head_status = 'approved',
+                accounts_head_by = ?,
+                accounts_head_at = NOW(),
+                accounts_head_note = ?,
+                approve_role = 'accounts'
+            WHERE id = ?
+        ");
+        if (!$stmt) {
+            return false;
+        }
+        $stmt->bind_param('isi', $userId, $note, $id);
+        $res = $stmt->execute();
+        $stmt->close();
+
+        return $res;
+    }
+
+    /**
+     * Reject the Accounts Head stage for an approval request
+     */
+    public function rejectAccountsHead($id, $userId = null, $note = null)
+    {
+        $id = (int)$id;
+        $userId = $userId ? (int)$userId : (int)($_SESSION['user']['id'] ?? 247);
+        $note = $note !== null ? trim($note) : 'Rejected by Accounts Head';
+
+        $req = $this->find($id);
+        if (!$req) {
+            return false;
+        }
+
+        $stmt = $this->db->prepare("
+            UPDATE {$this->table}
+            SET accounts_head_status = 'rejected',
+                status = 'rejected',
+                approve_role = 'rejected',
+                accounts_head_by = ?,
+                accounts_head_at = NOW(),
+                accounts_head_note = ?
+            WHERE id = ?
+        ");
+        if (!$stmt) {
+            return false;
+        }
+        $stmt->bind_param('isi', $userId, $note, $id);
+        $res = $stmt->execute();
+        $stmt->close();
+
+        // Also update source table status if applicable
+        $sourceTable = $req['source_table'];
+        $sourceId = (int)$req['source_id'];
+        if ($sourceTable && $sourceId) {
+            $this->db->query("UPDATE {$sourceTable} SET status = 'rejected' WHERE id = {$sourceId}");
+        }
+
+        return $res;
+    }
+
+    /**
+     * Get Accounts Head approval status and designated approver info for any module
+     */
+    public static function getAccountsHeadApprovalInfo($db, string $sourceTable, int $sourceId)
+    {
+        $defaultDesignated = [
+            'has_request'               => false,
+            'approval_request_id'       => null,
+            'status'                    => 'pending',
+            'approve_role'              => 'management',
+            'accounts_head_status'      => 'pending',
+            'is_pending_accounts_head'  => false,
+            'is_accounts_head_approved' => false,
+            'is_accounts_head_rejected' => false,
+            'can_disburse_payment'      => false,
+            'designated_name'           => 'Md. Mamunoor Rashid',
+            'designated_emp_id'         => '1309',
+            'designated_designation'    => 'AGM - Finance & Accounts',
+            'designated_email'          => 'mamunoor11.tphl@gmail.com',
+            'approved_by_name'          => null,
+            'approved_by_emp_id'        => null,
+            'approved_by_designation'   => null,
+            'approved_at'               => null,
+            'approval_note'             => null,
+        ];
+
+        if (!$db || empty($sourceTable) || empty($sourceId)) {
+            return $defaultDesignated;
+        }
+
+        $stmt = $db->prepare("
+            SELECT ar.id, ar.status, ar.approve_role, 
+                   ar.accounts_head_status, ar.accounts_head_by, ar.accounts_head_at, ar.accounts_head_note,
+                   u_ah.full_name AS accounts_head_name,
+                   e_ah.employee_id AS accounts_head_code,
+                   IFNULL(des_ah.name, 'AGM - Finance & Accounts') AS accounts_head_designation
+            FROM approval_requests ar
+            LEFT JOIN users u_ah ON ar.accounts_head_by = u_ah.id
+            LEFT JOIN employees e_ah ON (e_ah.user_id = u_ah.id OR e_ah.id = u_ah.employee_id)
+            LEFT JOIN designations des_ah ON des_ah.id = COALESCE(e_ah.designation_id, u_ah.designation_id)
+            WHERE ar.source_table = ? AND ar.source_id = ?
+            ORDER BY ar.id DESC LIMIT 1
+        ");
+        if (!$stmt) {
+            return $defaultDesignated;
+        }
+
+        $stmt->bind_param('si', $sourceTable, $sourceId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$row) {
+            return $defaultDesignated;
+        }
+
+        $ahStatus = $row['accounts_head_status'] ?? 'pending';
+        $reqStatus = strtolower($row['status'] ?? '');
+        $isMgmtApproved = in_array($reqStatus, ['approved', 'partially_paid', 'paid']);
+        $isPendingAh = $isMgmtApproved && ($ahStatus === 'pending' || empty($ahStatus));
+        $isAhApproved = ($ahStatus === 'approved');
+        $isAhRejected = ($ahStatus === 'rejected');
+
+        return [
+            'has_request'               => true,
+            'approval_request_id'       => (int)$row['id'],
+            'status'                    => $row['status'],
+            'approve_role'              => $row['approve_role'],
+            'accounts_head_status'      => $ahStatus,
+            'is_pending_accounts_head'  => $isPendingAh,
+            'is_accounts_head_approved' => $isAhApproved,
+            'is_accounts_head_rejected' => $isAhRejected,
+            'can_disburse_payment'      => $isAhApproved,
+            'designated_name'           => 'Md. Mamunoor Rashid',
+            'designated_emp_id'         => '1309',
+            'designated_designation'    => 'AGM - Finance & Accounts',
+            'designated_email'          => 'mamunoor11.tphl@gmail.com',
+            'approved_by_name'          => $row['accounts_head_name'] ?: 'Md. Mamunoor Rashid',
+            'approved_by_emp_id'        => $row['accounts_head_code'] ?: '1309',
+            'approved_by_designation'   => $row['accounts_head_designation'] ?: 'AGM - Finance & Accounts',
+            'approved_at'               => $row['accounts_head_at'],
+            'approval_note'             => $row['accounts_head_note'],
+        ];
+    }
+
     public function updateStatus($id, $status, $approvedAmount = null, $approved_days = null, $approvalNote = null)
     {
         $approvedBy = $_SESSION['user']['id'] ?? null;
@@ -575,15 +734,41 @@ class ApprovalRequest extends Model
                 : (float)($request['request_amount'] ?? 0);
         }
 
-        $sql = "UPDATE {$this->table}
-            SET 
-                status = ?, 
-                approved_amount = ?, 
-                approved_days = ?, 
-                approved_by = ?, 
-                approval_note = ?, 
-                approved_at = NOW()
-            WHERE id = ?";
+        if ($status === 'approved') {
+            $sql = "UPDATE {$this->table}
+                SET 
+                    status = ?, 
+                    approve_role = 'accounts_head',
+                    accounts_head_status = 'pending',
+                    approved_amount = ?, 
+                    approved_days = ?, 
+                    approved_by = ?, 
+                    approval_note = ?, 
+                    approved_at = NOW()
+                WHERE id = ?";
+        } elseif ($status === 'rejected') {
+            $sql = "UPDATE {$this->table}
+                SET 
+                    status = ?, 
+                    approve_role = 'rejected',
+                    accounts_head_status = 'rejected',
+                    approved_amount = ?, 
+                    approved_days = ?, 
+                    approved_by = ?, 
+                    approval_note = ?, 
+                    approved_at = NOW()
+                WHERE id = ?";
+        } else {
+            $sql = "UPDATE {$this->table}
+                SET 
+                    status = ?, 
+                    approved_amount = ?, 
+                    approved_days = ?, 
+                    approved_by = ?, 
+                    approval_note = ?, 
+                    approved_at = NOW()
+                WHERE id = ?";
+        }
 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
@@ -727,9 +912,9 @@ class ApprovalRequest extends Model
             }
 
             if ($status === 'approved') {
-                $this->db->query("UPDATE {$this->table} SET approve_role = 'accounts', status = 'approved', approved_by = {$approvedBy}, approved_at = NOW(), approval_note = '" . $this->db->real_escape_string($approvalNote) . "' WHERE id = {$id}");
+                $this->db->query("UPDATE {$this->table} SET approve_role = 'accounts_head', accounts_head_status = 'pending', status = 'approved', approved_by = {$approvedBy}, approved_at = NOW(), approval_note = '" . $this->db->real_escape_string($approvalNote) . "' WHERE id = {$id}");
             } else {
-                $this->db->query("UPDATE {$this->table} SET approve_role = 'rejected', status = 'rejected', approved_by = {$approvedBy}, approved_at = NOW(), approval_note = '" . $this->db->real_escape_string($approvalNote) . "' WHERE id = {$id}");
+                $this->db->query("UPDATE {$this->table} SET approve_role = 'rejected', accounts_head_status = 'rejected', status = 'rejected', approved_by = {$approvedBy}, approved_at = NOW(), approval_note = '" . $this->db->real_escape_string($approvalNote) . "' WHERE id = {$id}");
             }
             return true;
         }
@@ -753,8 +938,8 @@ class ApprovalRequest extends Model
                         $stmtEa->close();
                     }
 
-                    // Forward to accounts for payout
-                    $this->db->query("UPDATE {$this->table} SET approve_role = 'accounts', status = 'approved', approved_amount = {$eaAppAmt} WHERE id = {$id}");
+                    // Forward to accounts head for approval before payout
+                    $this->db->query("UPDATE {$this->table} SET approve_role = 'accounts_head', accounts_head_status = 'pending', status = 'approved', approved_amount = {$eaAppAmt} WHERE id = {$id}");
                 }
             }
             return true;
@@ -843,7 +1028,7 @@ class ApprovalRequest extends Model
             }
 
             if ($status === 'approved') {
-                $this->db->query("UPDATE approval_requests SET approve_role = 'accounts' WHERE id = " . (int)$id);
+                $this->db->query("UPDATE approval_requests SET approve_role = 'accounts_head', accounts_head_status = 'pending' WHERE id = " . (int)$id);
 
                 try {
                     require_once dirname(__DIR__) . '/services/JournalIntegrationService.php';
@@ -1138,7 +1323,8 @@ class ApprovalRequest extends Model
 
         $isManagement = in_array($userRoleId, [1, 3], true) || in_array($roleName, ['super admin', 'admin', 'management'], true);
         $isSiteOperator = in_array($userRoleId, [20, 32], true) || strpos($roleName, 'operation head') !== false || strpos($roleName, 'admin & operation') !== false;
-        $isAccounts = in_array($userRoleId, [6, 30], true) || strpos($roleName, 'account') !== false;
+        $isAccountsHead = ($userRoleId === 30) || strpos($roleName, 'accounts head') !== false;
+        $isAccounts = ($userRoleId === 6) || (strpos($roleName, 'account') !== false && !$isAccountsHead);
         $isQc = in_array($userRoleId, [13, 24, 25], true) || strpos($roleName, 'qc') !== false || strpos($roleName, 'audit') !== false;
         $isPurchase = in_array($userRoleId, [17, 23, 31], true) || strpos($roleName, 'purchase') !== false;
         $isHr = ($userRoleId === 4) || strpos($roleName, 'hr') !== false;
@@ -1159,9 +1345,16 @@ class ApprovalRequest extends Model
         $isReportingBoss = !empty($subordinateIds);
         $isDesignatedDeptHead = in_array($userRoleId, [5, 9, 10, 14], true) || (strpos($roleName, 'head') !== false && !in_array($userRoleId, [8, 11, 12, 16, 18, 19, 21, 23, 25]));
 
-        if ($isAccounts) {
+        if ($isAccountsHead) {
             return "(
                 LOWER({$prefix}approve_role) != 'completed' AND (
+                    ({$prefix}status = 'approved' AND ({$prefix}accounts_head_status = 'pending' OR {$prefix}accounts_head_status IS NULL OR LOWER({$prefix}approve_role) = 'accounts_head'))
+                    OR ({$prefix}accounts_head_status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets', 'expense_adjustments', 'land_fund_requisitions', 'con_land_requisitions')))
+                )
+            )";
+        } elseif ($isAccounts) {
+            return "(
+                LOWER({$prefix}approve_role) != 'completed' AND {$prefix}accounts_head_status = 'approved' AND (
                     ({$prefix}status IN ('pending', 'partially_approved', '') AND LOWER({$prefix}approve_role) = 'accounts')
                     OR ({$prefix}status = 'approved' AND (LOWER({$prefix}approve_role) = 'accounts' OR {$prefix}source_table IN ('project_incentive_claims', 'vendor_payment_requests', 'contractor_bill_requests', 'con_labor_requisitions', 'fund_requisitions', 'project_other_costs', 'project_extra_assets', 'expense_adjustments', 'land_fund_requisitions', 'con_land_requisitions')))
                 )
@@ -1674,7 +1867,9 @@ class ApprovalRequest extends Model
         } elseif ($statusParam === 'paid') {
             $where[] = "(ar.approve_role = 'completed' OR ar.status = 'paid')";
         } elseif ($statusParam === 'pending_payout' || $statusParam === 'approved_unpaid') {
-            $where[] = "(ar.status = 'approved' AND ar.approve_role = 'accounts')";
+            $where[] = "(ar.status = 'approved' AND ar.accounts_head_status = 'approved' AND (ar.approve_role = 'accounts' OR ar.approve_role = 'completed'))";
+        } elseif ($statusParam === 'pending_accounts_head') {
+            $where[] = "(ar.status = 'approved' AND (ar.accounts_head_status = 'pending' OR ar.accounts_head_status IS NULL OR ar.approve_role = 'accounts_head'))";
         } elseif ($statusParam === 'approved') {
             $where[] = "(ar.status IN ('approved', 'paid') OR ar.approve_role = 'completed')";
         } elseif ($statusParam === 'rejected') {
@@ -1724,12 +1919,19 @@ class ApprovalRequest extends Model
                     ar.created_at AS requested_at,
                     ar.approved_at,
                     ar.approval_note,
+                    ar.accounts_head_status,
+                    ar.accounts_head_by,
+                    ar.accounts_head_at,
+                    ar.accounts_head_note,
                     u_req.full_name AS requester_name,
                     e_req.employee_id AS requester_code,
                     d_req.name AS requester_dept,
                     u_app.full_name AS approver_name,
                     u_app.email AS approver_email,
-                    IFNULL(des_app.name, 'Management Executive') AS approver_designation
+                    IFNULL(des_app.name, 'Management Executive') AS approver_designation,
+                    u_ah.full_name AS accounts_head_name,
+                    e_ah.employee_id AS accounts_head_code,
+                    IFNULL(des_ah.name, 'AGM - Finance & Accounts') AS accounts_head_designation
                 FROM approval_requests ar
                 LEFT JOIN users u_req ON ar.requested_by = u_req.id
                 LEFT JOIN employees e_req ON (e_req.user_id = u_req.id OR e_req.id = u_req.employee_id)
@@ -1737,6 +1939,9 @@ class ApprovalRequest extends Model
                 LEFT JOIN users u_app ON ar.approved_by = u_app.id
                 LEFT JOIN employees e_app ON (e_app.user_id = u_app.id OR e_app.id = u_app.employee_id)
                 LEFT JOIN designations des_app ON des_app.id = COALESCE(e_app.designation_id, u_app.designation_id)
+                LEFT JOIN users u_ah ON ar.accounts_head_by = u_ah.id
+                LEFT JOIN employees e_ah ON (e_ah.user_id = u_ah.id OR e_ah.id = u_ah.employee_id)
+                LEFT JOIN designations des_ah ON des_ah.id = COALESCE(e_ah.designation_id, u_ah.designation_id)
                 WHERE {$whereClause}
                 ORDER BY ar.id DESC";
 
@@ -1775,6 +1980,7 @@ class ApprovalRequest extends Model
             $pendingForText = 'Management';
             $appRole = strtolower($row['approve_role'] ?? 'management');
             if (empty($appRole)) $appRole = 'management';
+            $rowAhStatus = strtolower($row['accounts_head_status'] ?? 'pending');
 
             if ($appRole === 'dept_head') {
                 $pendingStageLabel = 'Pending Dept Head';
@@ -1782,6 +1988,9 @@ class ApprovalRequest extends Model
             } elseif ($appRole === 'qc') {
                 $pendingStageLabel = 'Pending QC & Audit';
                 $pendingForText = 'QC & Internal Audit Head (Role 24)';
+            } elseif ($appRole === 'accounts_head' || ($row['status'] === 'approved' && $rowAhStatus !== 'approved')) {
+                $pendingStageLabel = 'Pending Accounts Head';
+                $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
             } elseif ($appRole === 'accounts') {
                 $pendingStageLabel = 'Pending Accounts Payout';
                 $pendingForText = 'Accounts & Finance';
@@ -2421,9 +2630,15 @@ class ApprovalRequest extends Model
 
                 }
             } else if ($row['status'] === 'approved' && $sourceTable !== 'lead_payments') {
-                $payoutStatus = 'Pending Accounts Payout';
-                $pendingStageLabel = 'Pending Accounts Payout';
-                $pendingForText = 'Accounts & Finance';
+                if (($row['accounts_head_status'] ?? '') === 'approved') {
+                    $payoutStatus = 'Pending Accounts Payout';
+                    $pendingStageLabel = 'Pending Accounts Payout';
+                    $pendingForText = 'Accounts & Finance';
+                } else {
+                    $payoutStatus = 'Pending Accounts Head Approval';
+                    $pendingStageLabel = 'Pending Accounts Head';
+                    $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
+                }
             } else if ($row['status'] === 'approved') {
                 $payoutStatus = 'Approved';
                 $pendingStageLabel = 'Approved from Management';
@@ -2462,8 +2677,9 @@ class ApprovalRequest extends Model
         // Site Operator / Admin & Operation Head: Role 20, Role 32
         $isRole20 = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
 
-        // Accounts: Role 6 (Accounts), Role 30 (Accounts Head)
-        $isAccounts = in_array($userRoleId, [6, 30], true) || strpos($sessionRoleName, 'account') !== false;
+        // Accounts Head: Role 30 | Accounts: Role 6
+        $isAccountsHead = ($userRoleId === 30) || strpos($sessionRoleName, 'accounts head') !== false;
+        $isAccounts = ($userRoleId === 6) || (strpos($sessionRoleName, 'account') !== false && !$isAccountsHead);
 
         // HR: Role 4
         $isHR = ($userRoleId === 4) || strpos($sessionRoleName, 'hr') !== false;
@@ -2490,7 +2706,7 @@ class ApprovalRequest extends Model
         $isReportingBoss = !empty($subordinateUserIds);
         $isDesignatedDeptHead = in_array($userRoleId, [5, 9, 10, 14], true) || (strpos($sessionRoleName, 'head') !== false && !in_array($userRoleId, [8, 11, 12, 16, 18, 19, 21, 23, 25]));
 
-        $isActionableByCurrentUser = function($item) use ($isChiefOfficer, $isFullManagement, $isRole20, $isAccounts, $isHR, $isQC, $isPurchase, $isReportingBoss, $isDesignatedDeptHead, $subordinateUserIds, $userId) {
+        $isActionableByCurrentUser = function($item) use ($isChiefOfficer, $isFullManagement, $isRole20, $isAccountsHead, $isAccounts, $isHR, $isQC, $isPurchase, $isReportingBoss, $isDesignatedDeptHead, $subordinateUserIds, $userId) {
             // Chief Officer cannot approve anything
             if ($isChiefOfficer) {
                 return false;
@@ -2504,10 +2720,30 @@ class ApprovalRequest extends Model
             }
             $payoutStatus = $item['payout_status'] ?? '';
             $amount = (float)($item['request_amount'] ?? 0);
+            $ahStatus = strtolower($item['accounts_head_status'] ?? 'pending');
 
-            // 1. Accounts: Only items approved and awaiting Accounts payout/disbursement
+            // 1. Accounts Head (Role 30): Actionable = items pending Accounts Head approval OR approved and awaiting payout
+            if ($isAccountsHead) {
+                if ($payoutStatus === 'Paid & Settled' || $status === 'paid' || $status === 'rejected') {
+                    return false;
+                }
+                // Pending Accounts Head approval
+                if ($status === 'approved' && ($ahStatus !== 'approved' || $approveRole === 'accounts_head')) {
+                    return true;
+                }
+                // Accounts Head already approved and awaiting payout
+                if ($ahStatus === 'approved' && (in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid']) || $approveRole === 'accounts')) {
+                    return true;
+                }
+                return false;
+            }
+
+            // 1b. Accounts (Role 6): Only items approved by Accounts Head and awaiting Accounts payout/disbursement
             if ($isAccounts) {
                 if ($payoutStatus === 'Paid & Settled' || $status === 'paid' || $status === 'rejected') {
+                    return false;
+                }
+                if ($ahStatus !== 'approved') {
                     return false;
                 }
                 if (in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid'])) {
@@ -2704,7 +2940,7 @@ class ApprovalRequest extends Model
                     WHEN fr.status = 'pending_dept' THEN 'dept_head'
                     WHEN fr.status = 'pending_qc' THEN 'qc'
                     WHEN fr.status = 'pending' THEN 'management'
-                    WHEN fr.status = 'approved' THEN 'accounts'
+                    WHEN fr.status = 'approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     WHEN fr.status IN ('paid', 'partially_paid') THEN 'completed'
                     WHEN fr.status = 'rejected' THEN 'management'
                     ELSE ar.approve_role 
@@ -2815,7 +3051,7 @@ class ApprovalRequest extends Model
                 END,
                 ar.approve_role = CASE
                     WHEN pea.payment_status = 'paid' OR pea.overall_status = 'purchased' THEN 'completed'
-                    WHEN pea.mgmt_status = 'approved' THEN 'accounts'
+                    WHEN pea.mgmt_status = 'approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' OR pea.dept_head_status = 'rejected' THEN 'management'
                     WHEN pea.dept_head_status = 'pending' THEN IF(pea.reporting_user_id IS NOT NULL AND pea.reporting_user_id > 0, CONCAT('dept_head_', pea.reporting_user_id), 'dept_head')
                     WHEN pea.operations_status = 'pending' THEN 'operations'
@@ -2918,7 +3154,7 @@ class ApprovalRequest extends Model
                     WHEN lr.status = 'pending' THEN 'pm'
                     WHEN lr.status = 'payment_requested' THEN 'qc'
                     WHEN lr.status IN ('qc_approved', 'pm_payment_approved') THEN 'management'
-                    WHEN lr.status = 'management_approved' THEN 'accounts'
+                    WHEN lr.status = 'management_approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     WHEN lr.status IN ('paid', 'labor_disbursed') THEN 'completed'
                     WHEN lr.status = 'partially_paid' THEN 'accounts'
                     WHEN lr.status = 'rejected' THEN 'management'
@@ -3041,7 +3277,7 @@ class ApprovalRequest extends Model
                     WHEN poc.status = 'pending' AND poc.dept_head_status = 'pending' THEN 'dept_head'
                     WHEN poc.status = 'pending' THEN 'qc'
                     WHEN poc.status = 'qc_approved' THEN 'management'
-                    WHEN poc.status = 'management_approved' THEN 'accounts'
+                    WHEN poc.status = 'management_approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     WHEN poc.status = 'paid' THEN 'completed'
                     ELSE ar.approve_role
                 END,
@@ -3168,7 +3404,7 @@ class ApprovalRequest extends Model
                     WHEN vpr.status = 'Rejected' THEN 'rejected'
                     WHEN vpr.status IN ('Submitted', 'Draft') THEN 'qc'
                     WHEN vpr.status = 'QC Approved' THEN 'management'
-                    WHEN vpr.status = 'Approved' THEN 'accounts'
+                    WHEN vpr.status = 'Approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     WHEN vpr.status IN ('Paid', 'Partially_Paid', 'Fully_Paid') THEN 'completed'
                     ELSE ar.approve_role
                 END,
@@ -3317,7 +3553,7 @@ class ApprovalRequest extends Model
                 ar.approve_role = CASE
                     WHEN cbr.status IN ('submitted', 'verified', 'pending') AND cbr.qc_approved_at IS NULL THEN 'qc'
                     WHEN cbr.status = 'qc_approved' THEN 'management'
-                    WHEN cbr.status = 'approved' THEN 'accounts'
+                    WHEN cbr.status = 'approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     WHEN cbr.status IN ('paid', 'fully_paid', 'partially_paid') THEN 'completed'
                     WHEN cbr.status = 'rejected' THEN 'rejected'
                     ELSE ar.approve_role
@@ -3378,7 +3614,7 @@ class ApprovalRequest extends Model
                     WHEN as_tbl.status = 'rejected' THEN 'rejected'
                     WHEN as_tbl.status = 'pending_hr' THEN 'hr_head'
                     WHEN as_tbl.status = 'pending' THEN 'management'
-                    WHEN as_tbl.status IN ('pending_accounts', 'approved') THEN 'accounts'
+                    WHEN as_tbl.status IN ('pending_accounts', 'approved') THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     WHEN as_tbl.status IN ('paid', 'deducted') THEN 'completed'
                     ELSE ar.approve_role
                 END,
@@ -3414,7 +3650,7 @@ class ApprovalRequest extends Model
                 ar.approve_role = CASE
                     WHEN cr.status = 'rejected' THEN 'rejected'
                     WHEN cr.status = 'pending' THEN 'management'
-                    WHEN cr.status = 'approved' THEN 'accounts'
+                    WHEN cr.status = 'approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     WHEN cr.status IN ('fully_paid', 'paid') THEN 'completed'
                     ELSE ar.approve_role
                 END,
@@ -3566,7 +3802,7 @@ class ApprovalRequest extends Model
                     WHEN ea.adjustment_type = 'return' AND ea.status = 'pending' THEN 'accounts'
                     WHEN ea.adjustment_type = 'extra' AND ea.status = 'pending' THEN 'qc'
                     WHEN ea.adjustment_type = 'extra' AND ea.status = 'qc_approved' THEN 'management'
-                    WHEN ea.adjustment_type = 'extra' AND ea.status = 'approved' THEN 'accounts'
+                    WHEN ea.adjustment_type = 'extra' AND ea.status = 'approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     ELSE ar.approve_role
                 END,
                 ar.status = CASE
@@ -3690,7 +3926,7 @@ class ApprovalRequest extends Model
             SET ar.approve_role = CASE 
                     WHEN lfr.mgmt_status = 'Rejected' OR lfr.accounts_status = 'Rejected' THEN 'rejected'
                     WHEN lfr.accounts_status = 'Paid' THEN 'completed'
-                    WHEN lfr.mgmt_status = 'Approved' THEN 'accounts'
+                    WHEN lfr.mgmt_status = 'Approved' THEN CASE WHEN ar.accounts_head_status = 'approved' THEN 'accounts' ELSE 'accounts_head' END
                     ELSE 'management'
                 END,
                 ar.status = CASE 

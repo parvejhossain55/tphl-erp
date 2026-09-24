@@ -486,7 +486,7 @@ class Con_ContractorBillController extends Controller
         $approvalReq = $this->getApprovalRequest($id);
 
         // Get banks for payment modal
-        $banks = $this->db->query("SELECT id, bank_name, branch_name FROM banks WHERE status = 'active' ORDER BY bank_name")->fetch_all(MYSQLI_ASSOC);
+        $banks = $this->db->query("SELECT id, bank_name, CONCAT(account_name, IF(account_number != '', CONCAT(' (', account_number, ')'), '')) as branch_name FROM company_bank_accounts WHERE status = 'active' ORDER BY is_default DESC, bank_name ASC")->fetch_all(MYSQLI_ASSOC);
 
         // Fetch weekly progress items for the target if linked
         $targetItems = [];
@@ -775,6 +775,15 @@ class Con_ContractorBillController extends Controller
         $bill = $this->billModel->find($id);
         if (!$bill || !in_array($bill['status'], ['approved', 'partially_paid'])) {
             setError('Bill is not in a payable status.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
+            exit;
+        }
+
+        // STRICT GUARD: Must be approved by Accounts Head (Role 30 - Md. Mamunoor Rashid) before payment disbursement
+        require_once __DIR__ . '/../../models/ApprovalRequest.php';
+        $ahCheck = \ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'contractor_bill_requests', $id);
+        if ($ahCheck['has_request'] && !$ahCheck['is_accounts_head_approved']) {
+            setError('Payment cannot be processed! Accounts Head approval (Md. Mamunoor Rashid [1309]) is required before payment disbursement.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
             exit;
         }

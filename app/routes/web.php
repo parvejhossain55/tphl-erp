@@ -220,6 +220,8 @@ return [
     // =========================================================================
     'all-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'allApprovalRequests'],
     'batch-process-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'batchProcessApprovalRequests'],
+    'approval-requests/approve-accounts-head' => ['controller' => 'ApprovalRequestController', 'method' => 'approveAccountsHead'],
+    'approval-requests/reject-accounts-head' => ['controller' => 'ApprovalRequestController', 'method' => 'rejectAccountsHead'],
     'api/actionable-approval-alerts' => ['controller' => 'ApprovalRequestController', 'method' => 'getActionableAlerts'],
 
     // =========================================================================

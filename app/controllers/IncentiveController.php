@@ -262,6 +262,18 @@ class IncentiveController extends Controller
             exit;
         }
 
+        if (!class_exists('ApprovalRequest')) {
+            require_once __DIR__ . '/../models/ApprovalRequest.php';
+        }
+        $ahCheck = \ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'project_incentive_claims', $claimId);
+        if (!empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Payment locked. Mandatory approval by Accounts Head (Md. Mamunoor Rashid [1309]) is required before disbursement.'
+            ]);
+            exit;
+        }
+
         $result = $this->incentiveModel->disbursePayment($disbursedBy, $claimId, $paymentAmount, $paymentMethod, $bankName, $transactionRef, $paymentDate, $notes);
         echo json_encode($result);
         exit;

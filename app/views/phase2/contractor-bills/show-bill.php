@@ -29,7 +29,12 @@ $isQCApproved    = ($status === 'qc_approved');
 $isApproved      = in_array($status, ['approved', 'partially_paid']);
 $isRejected      = ($status === 'rejected');
 $isFullyPaid     = in_array($status, ['fully_paid', 'paid']);
-$showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0;
+
+require_once __DIR__ . '/../../../models/ApprovalRequest.php';
+$ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? null, 'contractor_bill_requests', (int)$bill['id']);
+$isAccountsHeadApproved = !empty($ahInfo['is_accounts_head_approved']);
+
+$showPaymentForm = $canPayReq && $isApproved && $dueAmount > 0 && $isAccountsHeadApproved;
 
 // Settlement variables
 $settlements           = $settlements ?? [];
@@ -69,6 +74,15 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
 </div>
 
 <div class="container-fluid">
+    <!-- ACCOUNTS HEAD APPROVAL STATUS & ACTION CARD -->
+    <?php 
+    if (!empty($ahInfo['has_request'])) {
+        $sourceTable = 'contractor_bill_requests';
+        $sourceId = (int)$bill['id'];
+        include __DIR__ . '/../../layouts/accounts_head_approval_card.php';
+    }
+    ?>
+
     <?php if ($isRejected): ?>
     <div class="alert alert-danger d-flex align-items-center mb-3">
         <i class="bi bi-x-circle-fill fs-5 me-2"></i>

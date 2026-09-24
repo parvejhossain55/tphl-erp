@@ -14,6 +14,12 @@ if ($displayStatus !== 'rejected' && $displayStatus !== 'pending' && isset($requ
 // Check if already approved from homepage approval system
 $isAlreadyApproved = !empty($request['approval_status']) && in_array($request['approval_status'], ['approved', 'partial']);
 $isApprovalPending = !empty($request['approval_status']) && $request['approval_status'] === 'pending';
+
+if (!class_exists('ApprovalRequest')) {
+    require_once __DIR__ . '/../../../models/ApprovalRequest.php';
+}
+$ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'cashout_requests', (int)$request['id']);
+$isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_head_approved']);
 ?>
 <style>
     .status-badge {
@@ -78,6 +84,14 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                         <?php unset($_SESSION['error']); ?>
                     </div>
                 <?php endif; ?>
+
+                <?php 
+                if (!empty($ahInfo['has_request'])) {
+                    $sourceTable = 'cashout_requests';
+                    $sourceId = (int)$request['id'];
+                    include __DIR__ . '/../../layouts/accounts_head_approval_card.php';
+                }
+                ?>
 
                 <div class="row">
                     <!-- Request Details -->
@@ -389,7 +403,8 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                     $isPending = ($displayStatus === 'pending');
                                     $isQCApproved = ($displayStatus === 'qc_approved');
                                     
-                                    $showAddPayment = ($displayStatus == 'approved' || $displayStatus == 'partial' || $displayStatus == 'partially_paid') && $request['due_amount'] > 0;
+                                    $showAddPayment = ($displayStatus == 'approved' || $displayStatus == 'partial' || $displayStatus == 'partially_paid') && $request['due_amount'] > 0 && $isAhApproved;
+                                    $isWaitingAccountsHead = ($displayStatus == 'approved' || $displayStatus == 'partial' || $displayStatus == 'partially_paid') && $request['due_amount'] > 0 && !$isAhApproved;
                                     $showFullyPaid = $request['due_amount'] <= 0;
                                     ?>
 
@@ -473,6 +488,12 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                                             <i class="fa-light fa-times me-2"></i> Reject Request
                                         </button>
 
+                                    <?php elseif ($isWaitingAccountsHead): ?>
+                                        <div class="alert alert-warning py-2 px-3 small mb-2 border-warning text-center">
+                                            <i class="fa-solid fa-lock me-1"></i>
+                                            <strong>Payment Locked</strong><br>
+                                            <span class="fs-12">Pending Accounts Head approval (<strong>Md. Mamunoor Rashid [1309]</strong>).</span>
+                                        </div>
                                     <?php elseif ($showAddPayment): ?>
                                         <!-- Show add payment button if approved and has due amount -->
                                         <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal"
@@ -679,7 +700,7 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
 <?php endif; ?>
 
 <!-- Add Payment Modal -->
-<?php if ($isAdmin && ($displayStatus == 'approved' || $displayStatus == 'partial' || $displayStatus == 'partially_paid') && $request['due_amount'] > 0): ?>
+<?php if ($isAdmin && ($displayStatus == 'approved' || $displayStatus == 'partial' || $displayStatus == 'partially_paid') && $request['due_amount'] > 0 && $isAhApproved): ?>
     <div class="modal fade" id="addPaymentModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -741,9 +762,9 @@ $isApprovalPending = !empty($request['approval_status']) && $request['approval_s
                             <div class="col-md-12 mb-3 vr-bank-fields" style="display:none;">
                                 <label class="form-label">Bank / Branch: <span class="text-danger">*</span></label>
                                 <select name="bank_id" id="vrBankSelect" class="form-control">
-                                    <option value="">-- Loading banks... --</option>
+                                    <option value="">-- Loading company banks... --</option>
                                 </select>
-                                <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/bank-registry" target="_blank">Bank Registry</a></small>
+                                <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/company-bank-accounts" target="_blank">Company Bank Manage</a></small>
                             </div>
 
                             <div class="col-md-6 mb-3 vr-bank-fields" style="display:none;">
@@ -817,17 +838,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (method) { method.addEventListener('change', toggleFields); toggleFields(); }
 
-    // Load Bank Registry options via AJAX
-    fetch('<?= $GLOBALS['base_url'] ?>/get-banks')
+    // Load company banks options via AJAX
+    fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
         .then(r => r.json())
         .then(data => {
             const sel = document.getElementById('vrBankSelect');
             if (!sel) return;
-            sel.innerHTML = '<option value="">-- Select Bank / Branch --</option>';
+            sel.innerHTML = '<option value="">-- Select Company Bank --</option>';
             (data.banks || []).forEach(b => {
                 const opt = document.createElement('option');
                 opt.value = b.id;
-                opt.textContent = b.bank_name + ' — ' + b.branch_name;
+                opt.textContent = b.bank_name + ' — ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
                 sel.appendChild(opt);
             });
         });

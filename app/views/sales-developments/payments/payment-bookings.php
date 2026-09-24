@@ -447,7 +447,15 @@ if (!$is_booking_fully_paid) {
                                         <?php endif; ?>
                                     </td>
 
-                                    <td><?= ucfirst($p['payment_method']) ?></td>
+                                    <td>
+                                        <strong><?= ucfirst($p['payment_method']) ?></strong>
+                                        <?php if (!empty($p['company_bank_name'])): ?>
+                                            <br><small class="text-success"><i class="fa-solid fa-building-columns me-1"></i>To: <?= htmlspecialchars($p['company_bank_name']) ?><?= !empty($p['company_account_number']) ? ' (' . htmlspecialchars($p['company_account_number']) . ')' : '' ?></small>
+                                        <?php endif; ?>
+                                        <?php if (!empty($p['bank_name'])): ?>
+                                            <br><small class="text-muted"><i class="fa-solid fa-user me-1"></i>From: <?= htmlspecialchars($p['bank_name']) ?></small>
+                                        <?php endif; ?>
+                                    </td>
 
                                     <td><?= ucfirst($p['payment_status']) ?></td>
 
@@ -551,6 +559,7 @@ if (!$is_booking_fully_paid) {
             // Show relevant fields
             if (method === 'bank') {
                 document.querySelector('#companyBankFields').style.display = 'block';
+                document.querySelector('#bankSelect')?.setAttribute('required', 'required');
                 document.querySelector('#bankFields').style.display = 'block';
                 document.querySelector('#clientBankSelect')?.setAttribute('required', 'required');
 
@@ -558,6 +567,7 @@ if (!$is_booking_fully_paid) {
                 document.querySelector('#bankAccountFields input')?.setAttribute('required', 'required');
             } else if (method === 'cheque') {
                 document.querySelector('#companyBankFields').style.display = 'block';
+                document.querySelector('#bankSelect')?.setAttribute('required', 'required');
                 document.querySelector('#bankFields').style.display = 'block';
                 document.querySelector('#clientBankSelect')?.setAttribute('required', 'required');
                 document.querySelector('#chequeFields').style.display = 'block';
@@ -687,14 +697,25 @@ if (!$is_booking_fully_paid) {
         .then(data => {
             window.companyBanksList = data.banks || [];
             const sel = document.getElementById('bankSelect');
-            if (!sel) return;
-            sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
-            window.companyBanksList.forEach(b => {
-                const opt = document.createElement('option');
-                opt.value = b.id;
-                opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
-                sel.appendChild(opt);
-            });
+            const editSel = document.getElementById('edit_p_bank_id');
+            if (sel) {
+                sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
+                window.companyBanksList.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.id;
+                    opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
+                    sel.appendChild(opt);
+                });
+            }
+            if (editSel) {
+                editSel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
+                window.companyBanksList.forEach(b => {
+                    const opt = document.createElement('option');
+                    opt.value = b.id;
+                    opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
+                    editSel.appendChild(opt);
+                });
+            }
         })
         .catch(() => {
             const sel = document.getElementById('bankSelect');
@@ -759,19 +780,21 @@ if (!$is_booking_fully_paid) {
                     .then(data => {
                         window.companyBanksList = data.banks || [];
                         const sel = document.getElementById('bankSelect');
-                        if (sel) {
-                            sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
+                        const editSel = document.getElementById('edit_p_bank_id');
+                        [sel, editSel].forEach(s => {
+                            if (!s) return;
+                            s.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
                             window.companyBanksList.forEach(b => {
                                 const opt = document.createElement('option');
                                 opt.value = b.id;
                                 opt.textContent = b.bank_name + ' - ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
-                                sel.appendChild(opt);
+                                s.appendChild(opt);
                             });
-                            const savedId = isEdit ? formData.get('id') : (res.id || '');
-                            if (savedId) {
-                                sel.value = savedId;
-                                sel.dispatchEvent(new Event('change'));
-                            }
+                        });
+                        const savedId = isEdit ? formData.get('id') : (res.id || '');
+                        if (savedId && sel) {
+                            sel.value = savedId;
+                            sel.dispatchEvent(new Event('change'));
                         }
                     });
                 bootstrap.Modal.getInstance(document.getElementById('companyBankModal')).hide();
@@ -820,6 +843,11 @@ if (!$is_booking_fully_paid) {
             document.getElementById('edit_p_date').value = date;
             document.getElementById('edit_p_ref').value = ref || '';
             document.getElementById('edit_p_method').value = method;
+
+            const editCompanyBankSelect = document.getElementById('edit_p_bank_id');
+            if (editCompanyBankSelect) {
+                editCompanyBankSelect.value = bankId || '';
+            }
 
             const editBankSelect = document.getElementById('edit_p_bank_name');
             if (editBankSelect) {
@@ -933,6 +961,12 @@ if (!$is_booking_fully_paid) {
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Transaction Reference</label>
                             <input type="text" name="transaction_ref" id="edit_p_ref" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-3 edit-bank-fields" style="display:none;">
+                            <label class="form-label">Transfer To / Company Bank</label>
+                            <select name="bank_id" id="edit_p_bank_id" class="form-select">
+                                <option value="">-- Select Company Bank --</option>
+                            </select>
                         </div>
                         <div class="col-md-6 mb-3 edit-bank-fields" style="display:none;">
                             <label class="form-label">Transfer From / Client Bank</label>

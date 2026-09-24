@@ -1,5 +1,13 @@
 
 
+<?php
+if (!class_exists('ApprovalRequest')) {
+    require_once __DIR__ . '/../../models/ApprovalRequest.php';
+}
+$ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'project_other_costs', (int)$request['id']);
+$isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_head_approved']);
+?>
+
 <main id="main" class="main">
     <div class="pagetitle d-flex justify-content-between align-items-center">
         <div>
@@ -28,6 +36,13 @@
     </div>
 
     <section class="section">
+        <?php 
+        if (!empty($ahInfo['has_request'])) {
+            $sourceTable = 'project_other_costs';
+            $sourceId = (int)$request['id'];
+            include __DIR__ . '/../layouts/accounts_head_approval_card.php';
+        }
+        ?>
         <div class="row">
             <div class="col-lg-8">
                 <!-- Request Details Card -->
@@ -267,10 +282,11 @@
                 $canDeptHeadApprove = ($request['dept_head_status'] === 'pending' && ($userId == $creatorReportingUserId || $roleId == 1));
                 $canQCApprove = ($request['status'] == 'pending' && $request['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25, 1]));
                 $canMgmtApprove = ($request['status'] == 'qc_approved' && in_array($roleId, [3, 15, 20, 22, 32, 1]));
-                $canPay = ($request['status'] == 'management_approved' && in_array($roleId, [6, 30, 1]));
+                $canPay = ($request['status'] == 'management_approved' && in_array($roleId, [6, 30, 1]) && $isAhApproved);
+                $isWaitingAccountsHead = ($request['status'] == 'management_approved' && in_array($roleId, [6, 30, 1]) && !$isAhApproved);
                 ?>
 
-                <?php if ($canDeptHeadApprove || $canQCApprove || $canMgmtApprove || $canPay): ?>
+                <?php if ($canDeptHeadApprove || $canQCApprove || $canMgmtApprove || $canPay || $isWaitingAccountsHead): ?>
                     <div class="card shadow-sm border-0 border-top border-3 border-primary">
                         <div class="card-header bg-white pb-0 border-bottom-0">
                             <h5 class="card-title text-primary mb-0"><i class="bi bi-pencil-square me-2"></i>Process Request</h5>
@@ -347,6 +363,14 @@
                                         <i class="bi bi-cash me-1"></i> Disburse Payment
                                     </button>
                                 </form>
+                            <?php endif; ?>
+
+                            <?php if ($isWaitingAccountsHead): ?>
+                                <div class="alert alert-warning py-3 px-3 border-warning text-center mb-0">
+                                    <i class="fa-solid fa-lock me-1"></i>
+                                    <strong>Payment Locked</strong><br>
+                                    <span class="fs-12">Pending Accounts Head approval (<strong>Md. Mamunoor Rashid [1309]</strong>).</span>
+                                </div>
                             <?php endif; ?>
 
                         </div>

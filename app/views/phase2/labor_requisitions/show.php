@@ -152,6 +152,17 @@ $steps = [
         </div>
     <?php endif; ?>
 
+    <!-- ACCOUNTS HEAD APPROVAL STATUS & ACTION CARD -->
+    <?php 
+    require_once __DIR__ . '/../../../models/ApprovalRequest.php';
+    $ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? null, 'con_labor_requisitions', (int)$req['id']);
+    if (!empty($ahInfo['has_request'])) {
+        $sourceTable = 'con_labor_requisitions';
+        $sourceId = (int)$req['id'];
+        include __DIR__ . '/../../layouts/accounts_head_approval_card.php';
+    }
+    ?>
+
     <div class="row ">
 
         <!-- LEFT: Details -->
@@ -594,9 +605,15 @@ $steps = [
                             <div class="fw-bold fs-15 text-danger">৳ <?= number_format($remainingAmt, 2) ?></div>
                         </div>
                     </div>
+                    <?php if (!empty($ahInfo['is_accounts_head_approved'])): ?>
                     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#payModal">
                         <i class="fa-solid fa-credit-card me-1"></i> Disburse Payment (Due: ৳ <?= number_format($remainingAmt, 2) ?>)
                     </button>
+                    <?php else: ?>
+                    <button class="btn btn-sm btn-light text-muted border" disabled title="Awaiting Accounts Head (Md. Mamunoor Rashid [1309]) approval">
+                        <i class="fa-solid fa-lock text-warning me-1"></i> Payment Locked (Awaiting Accounts Head Approval)
+                    </button>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php endif; ?>

@@ -17,6 +17,8 @@ class AccountShopClient extends AccountClient
                 lb.id as booking_id,
                 lb.lead_id,
                 lb.booking_date,
+                lb.sales_by_id,
+                l.assigned_id,
                 lb.agreement_value,
                 -- booking_money_total: all NON-REJECTED entries (pending + verified)
                 COALESCE(
@@ -59,6 +61,7 @@ class AccountShopClient extends AccountClient
                 f.is_shop,
                 f.unit_type,
                 u.full_name as agent_name,
+                COALESCE(NULLIF(e1.employee_id, ''), NULLIF(e2.employee_id, ''), NULLIF(u.employee_id, '')) as agent_employee_id,
                 -- Payment calculations
                 COALESCE(
                     (SELECT SUM(lp.amount) 
@@ -161,7 +164,9 @@ class AccountShopClient extends AccountClient
             INNER JOIN leads l ON lb.lead_id = l.id
             INNER JOIN projects p ON lb.project_id = p.id
             INNER JOIN flats f ON lb.flat_id = f.id
-            LEFT JOIN users u ON l.assigned_id = u.id
+            LEFT JOIN users u ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = u.id
+            LEFT JOIN employees e1 ON e1.user_id = u.id
+            LEFT JOIN employees e2 ON u.employee_id = e2.id
             LEFT JOIN users transfer_u ON lb.transfer_updated_by = transfer_u.id
             WHERE lb.id = ?
         ");
@@ -755,7 +760,7 @@ class AccountShopClient extends AccountClient
 
             $bankNameLookup = '';
             if ($bankId) {
-                $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', branch_name) as label FROM banks WHERE id = {$bankId}");
+                $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', account_name) as label FROM company_bank_accounts WHERE id = {$bankId}");
                 if ($bRow) { $bData = $bRow->fetch_assoc(); $bankNameLookup = $bData['label'] ?? ''; }
             }
 

@@ -158,7 +158,7 @@ class CashoutRequestController extends Controller
 
         // Fetch active banks for bank transfer dropdown
         $banks = [];
-        $bankResult = $this->db->query("SELECT id, bank_name, branch_name FROM banks WHERE status = 'active' ORDER BY bank_name");
+        $bankResult = $this->db->query("SELECT id, bank_name, account_name, account_number, CONCAT(account_name, IF(account_number != '', CONCAT(' (', account_number, ')'), '')) as branch_name FROM company_bank_accounts WHERE status = 'active' ORDER BY is_default DESC, bank_name ASC");
         if ($bankResult) {
             while ($row = $bankResult->fetch_assoc()) {
                 $banks[] = $row;
@@ -361,6 +361,17 @@ class CashoutRequestController extends Controller
             exit;
         }
 
+        // Mandatory Accounts Head Approval Guard
+        if (!class_exists('ApprovalRequest')) {
+            require_once __DIR__ . '/../models/ApprovalRequest.php';
+        }
+        $ahCheck = ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'cashout_requests', (int)$requestId);
+        if ($ahCheck && !empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
+            setError("Payment cannot be disbursed. Approval from Accounts Head (Md. Mamunoor Rashid [1309]) is pending.");
+            header("Location: {$GLOBALS['base_url']}/view-cashout-request?id={$requestId}");
+            exit;
+        }
+
         // --- Mandatory disbursement proof upload ---
         $proofPaths = [];
         if (!empty($_FILES['disbursement_proof']['name'][0])) {
@@ -389,11 +400,11 @@ class CashoutRequestController extends Controller
             exit;
         }
 
-        // Resolve bank name from Bank Registry if bank_id is provided
+        // Resolve bank name from company_bank_accounts if bank_id is provided
         $bankId   = !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null;
         $bankName = $_POST['bank_name'] ?? null;
         if ($bankId) {
-            $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', branch_name) as label FROM banks WHERE id = {$bankId} LIMIT 1");
+            $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', account_name) as label FROM company_bank_accounts WHERE id = {$bankId} LIMIT 1");
             if ($bRow && $bData = $bRow->fetch_assoc()) {
                 $bankName = $bData['label'];
             }

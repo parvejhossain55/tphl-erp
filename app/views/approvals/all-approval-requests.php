@@ -311,8 +311,9 @@
                     <label class="form-label text-muted extra-small fw-bold text-uppercase mb-1">Approval Status</label>
                     <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="" <?= empty($filters['status']) || $filters['status'] === 'pending' || $filters['status'] === 'my_pending' ? 'selected' : '' ?>>My Actionable Pending (Default)</option>
-                        <option value="paid" <?= ($filters['status'] ?? '') === 'paid' ? 'selected' : '' ?>>Paid & Settled History (পরিশোধিত)</option>
+                        <option value="pending_accounts_head" <?= ($filters['status'] ?? '') === 'pending_accounts_head' ? 'selected' : '' ?>>Approved — Pending Accounts Head (অ্যাকাউন্টস হেড বাকি)</option>
                         <option value="pending_payout" <?= ($filters['status'] ?? '') === 'pending_payout' ? 'selected' : '' ?>>Approved — Pending Accounts Payout (পেমেন্ট বাকি)</option>
+                        <option value="paid" <?= ($filters['status'] ?? '') === 'paid' ? 'selected' : '' ?>>Paid & Settled History (পরিশোধিত)</option>
                         <option value="approved" <?= ($filters['status'] ?? '') === 'approved' ? 'selected' : '' ?>>All Approved & Paid (সকল অনুমোদিত ও পরিশোধিত)</option>
                         <option value="rejected" <?= ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' ?>>Rejected History</option>
                         <option value="all_pending" <?= ($filters['status'] ?? '') === 'all_pending' ? 'selected' : '' ?>>All Departments Pending (Audit)</option>
@@ -489,6 +490,8 @@
 
                                 $isManagementUser = (in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management'], true)) && !$isChiefOfficer;
                                 $isSiteOperator = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
+                                $isAccountsHeadUser = ($userRoleId === 30) || strpos($sessionRoleName, 'accounts head') !== false;
+                                $isAccountsStaffUser = ($userRoleId === 6) || (strpos($sessionRoleName, 'account') !== false && !$isAccountsHeadUser);
                                 $isAccountsUser = in_array($userRoleId, [6, 30], true) || strpos($sessionRoleName, 'account') !== false;
                                 $isQcUser = in_array($userRoleId, [13, 24, 25], true) || strpos($sessionRoleName, 'qc') !== false || strpos($sessionRoleName, 'audit') !== false;
                                 $isHrUser = ($userRoleId === 4) || strpos($sessionRoleName, 'hr') !== false;
@@ -499,6 +502,9 @@
                                 $isPendingStatus = in_array($statusLower, ['pending', 'partially_approved', '']);
                                 $reqAmount = (float)($req['request_amount'] ?? 0);
                                 $payoutStatus = $req['payout_status'] ?? '';
+                                $ahStatus = strtolower($req['accounts_head_status'] ?? 'pending');
+                                $isPendingAccountsHead = ($statusLower === 'approved' || $req['status'] === 'approved') && ($ahStatus !== 'approved' || $reqApproveRole === 'accounts_head');
+                                $isAccountsHeadApproved = ($ahStatus === 'approved');
 
                                 // Determine whether this request is actionable by the logged-in user right now
                                 $isActionableByMe = false;
@@ -507,8 +513,23 @@
                                     // Chief Officer has view-only access across all requests; strictly cannot approve or reject
                                     $isActionableByMe = false;
                                     $canUserApprove = false;
+                                } elseif ($isPendingAccountsHead) {
+                                    // Pending Accounts Head approval: Actionable by Accounts Head (Role 30) and Super Admin / Admin (1, 3)
+                                    if ($isAccountsHeadUser || $isManagementUser) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    } else {
+                                        $isActionableByMe = false;
+                                        $canUserApprove = false;
+                                    }
+                                } elseif ($isAccountsHeadApproved && in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid'])) {
+                                    // Approved by Accounts Head & awaiting payout: Actionable by BOTH Accounts (Role 6) and Accounts Head (Role 30)
+                                    if ($isAccountsUser) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    }
                                 } elseif ($isAccountsUser) {
-                                    if (in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid']) || ($reqApproveRole === 'accounts' && in_array($statusLower, ['pending', 'approved', 'partially_approved', 'partially_paid']))) {
+                                    if (in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid']) || ($reqApproveRole === 'accounts' && in_array($statusLower, ['pending', 'approved', 'partially_approved', 'partially_paid']) && $isAccountsHeadApproved)) {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
                                     }
@@ -554,7 +575,7 @@
                                 <tr data-source-table="<?= htmlspecialchars($req['source_table']) ?>" <?= !empty($targetUrl) ? 'data-href="' . htmlspecialchars($targetUrl) . '" class="clickable-approval-row' . ($isActionableByMe ? ' border-start border-primary border-3' : '') . '" style="cursor: pointer; ' . $rowBgStyle . '"' : '' ?>>
                                     <td class="ps-3">
                                         <input type="checkbox" class="approval-req-checkbox form-check-input"
-                                            value="<?= $req['id'] ?>" <?= (!in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) || !$canUserApprove || $isChiefOfficer) ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
+                                            value="<?= $req['id'] ?>" <?= ((!in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) && !($isPendingAccountsHead && ($isAccountsHeadUser || $isManagementUser))) || !$canUserApprove || $isChiefOfficer) ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
                                     </td>
                                     <!-- Req # & Date -->
                                     <td>
@@ -788,6 +809,33 @@
                                                     <?= date('d M, Y h:i A', strtotime($req['approved_at'])) ?>
                                                 </span>
                                             <?php endif; ?>
+
+                                            <?php if ($isPendingAccountsHead): ?>
+                                                <div class="mt-2 pt-2 border-top border-warning-subtle text-start">
+                                                    <span class="badge bg-warning text-dark rounded-pill px-2 py-1 extra-small d-inline-block mb-1 fw-bold">
+                                                        <i class="fa-solid fa-hourglass-half me-1"></i>Pending Accounts Head
+                                                    </span>
+                                                    <div class="extra-small text-dark fw-bold">
+                                                        <i class="fa-solid fa-user-clock text-warning me-1"></i>Md. Mamunoor Rashid
+                                                        <span class="badge bg-light text-secondary border extra-small">1309</span>
+                                                    </div>
+                                                    <span class="text-muted extra-small d-block">AGM - Finance & Accounts</span>
+                                                </div>
+                                            <?php elseif ($isAccountsHeadApproved): ?>
+                                                <div class="mt-2 pt-2 border-top border-primary-subtle text-start">
+                                                    <span class="badge bg-primary text-white rounded-pill px-2 py-1 extra-small d-inline-block mb-1 fw-bold">
+                                                        <i class="fa-solid fa-user-check me-1"></i>Accounts Head Approved
+                                                    </span>
+                                                    <div class="extra-small text-dark fw-bold">
+                                                        <i class="fa-solid fa-check-double text-primary me-1"></i><?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Md. Mamunoor Rashid') ?>
+                                                        <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars(!empty($req['accounts_head_employee_code']) ? $req['accounts_head_employee_code'] : '1309') ?></span>
+                                                    </div>
+                                                    <span class="text-muted extra-small d-block"><?= htmlspecialchars(!empty($req['accounts_head_designation']) ? $req['accounts_head_designation'] : 'AGM - Finance & Accounts') ?></span>
+                                                    <?php if (!empty($req['accounts_head_at'])): ?>
+                                                        <span class="text-muted extra-small d-block"><i class="fa-solid fa-calendar-check me-1"></i><?= date('d M, Y h:i A', strtotime($req['accounts_head_at'])) ?></span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
                                         <?php elseif ($req['status'] === 'rejected'): ?>
                                             <span
                                                 class="badge bg-danger text-white rounded-pill px-3 py-1 extra-small d-block mb-1">
@@ -827,6 +875,11 @@
                                                     <?= date('d M, Y', strtotime($req['payout_date'])) ?>
                                                 </div>
                                             <?php endif; ?>
+                                        <?php elseif ($isPendingAccountsHead): ?>
+                                            <span
+                                                class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 extra-small">
+                                                <i class="fa-solid fa-user-clock me-1"></i>Pending Accounts Head Approval
+                                            </span>
                                         <?php elseif ($req['payout_status'] === 'Pending Accounts Payout' || $req['status'] === 'partially_approved'): ?>
                                             <span
                                                 class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 extra-small">
@@ -860,7 +913,7 @@
                                         ?>
 
                                         <?php if ($isPartiallyPaid): ?>
-                                            <?php if ($isAccountsUser): ?>
+                                            <?php if ($isAccountsUser && $isAccountsHeadApproved): ?>
                                                 <a href="<?= $targetUrl ?>" class="btn btn-sm btn-success rounded-2 px-2 shadow-sm fw-semibold me-1" title="Disburse remaining amount">
                                                     <i class="fa-solid fa-money-check-dollar me-1"></i>Pay
                                                 </a>
@@ -881,7 +934,30 @@
                                                 <i class="fa-solid fa-eye"></i>
                                             </a>
 
-                                        <?php elseif ($isAccountsUser && in_array($payoutStatus, ['Pending Accounts Payout'])): ?>
+                                        <?php elseif ($isPendingAccountsHead): ?>
+                                            <?php if ($isAccountsHeadUser || $isManagementUser): ?>
+                                                <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold me-1" 
+                                                    onclick="openAccountsHeadApprovalModal(<?= (int)$req['id'] ?>, '<?= htmlspecialchars(addslashes($req['title'] ?? '')) ?>', '<?= number_format($req['approved_amount'] > 0 ? $req['approved_amount'] : $req['request_amount'], 2) ?>')"
+                                                    title="Approve as Accounts Head (Md. Mamunoor Rashid [1309])">
+                                                    <i class="fa-solid fa-stamp me-1"></i>Approve (Accounts Head)
+                                                </button>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Module Page">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </a>
+                                            <?php elseif ($isAccountsStaffUser): ?>
+                                                <span class="badge bg-light text-muted border rounded-2 px-2 py-1 extra-small me-1" title="Payment locked until Accounts Head (Md. Mamunoor Rashid [1309]) approves">
+                                                    <i class="fa-solid fa-lock text-warning me-1"></i>Awaiting Accounts Head
+                                                </span>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Module Page">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Module Page">
+                                                    <i class="fa-solid fa-eye me-1"></i>View Module Page
+                                                </a>
+                                            <?php endif; ?>
+
+                                        <?php elseif ($isAccountsUser && in_array($payoutStatus, ['Pending Accounts Payout']) && $isAccountsHeadApproved): ?>
                                             <a href="<?= $targetUrl ?>" class="btn btn-sm btn-success rounded-2 px-3 shadow-sm fw-semibold">
                                                 <i class="fa-solid fa-money-check-dollar me-1"></i>Pay / Disburse
                                             </a>
@@ -917,6 +993,51 @@
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+<!-- Accounts Head Quick Approval Modal -->
+<div class="modal fade" id="accountsHeadApprovalModal" tabindex="-1" aria-labelledby="accountsHeadApprovalModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow border-0">
+            <div class="modal-header bg-primary text-white">
+                <h6 class="modal-title fw-bold" id="accountsHeadApprovalModalLabel">
+                    <i class="fa-solid fa-stamp me-2"></i>Accounts Head Approval
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="p-3 bg-light rounded-3 mb-3 border">
+                    <div class="extra-small text-muted text-uppercase fw-bold mb-1">Requisition / Request Title</div>
+                    <div class="fw-bold text-dark fs-14" id="ahModalReqTitle">--</div>
+                    <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                        <span class="extra-small text-muted">Approved Amount:</span>
+                        <span class="fs-15 fw-bold text-success" id="ahModalReqAmount">৳ 0.00</span>
+                    </div>
+                </div>
+
+                <div class="alert alert-info py-2 px-3 extra-small mb-3 border-info-subtle">
+                    <i class="fa-solid fa-user-shield me-1"></i>
+                    <strong>Designated Approver:</strong> Md. Mamunoor Rashid [1309] (AGM - Finance & Accounts)
+                </div>
+
+                <input type="hidden" id="ahModalReqId" value="">
+                <div class="mb-3">
+                    <label for="ahModalNote" class="form-label extra-small fw-bold text-muted text-uppercase">Approval / Rejection Note (Optional)</label>
+                    <textarea class="form-control" id="ahModalNote" rows="2" placeholder="e.g. Verified and approved for payment disbursement."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light px-4 py-3 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-danger btn-sm px-3" onclick="submitAccountsHeadAction('reject')">
+                    <i class="fa-solid fa-times me-1"></i>Reject Request
+                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm px-4 fw-bold" id="ahModalSubmitBtn" onclick="submitAccountsHeadAction('approve')">
+                        <i class="fa-solid fa-check me-1"></i>Approve as Accounts Head
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1064,6 +1185,112 @@
             .catch(err => {
                 alert('Error processing bulk approval: ' + err);
             });
+    }
+
+    function openAccountsHeadApprovalModal(reqId, title, amount) {
+        document.getElementById('ahModalReqId').value = reqId;
+        document.getElementById('ahModalReqTitle').innerText = title;
+        document.getElementById('ahModalReqAmount').innerText = '৳ ' + amount;
+        document.getElementById('ahModalNote').value = '';
+        const modal = new bootstrap.Modal(document.getElementById('accountsHeadApprovalModal'));
+        modal.show();
+    }
+
+    function submitAccountsHeadAction(action) {
+        const reqId = document.getElementById('ahModalReqId').value;
+        const note = document.getElementById('ahModalNote').value;
+        const btn = document.getElementById('ahModalSubmitBtn');
+
+        if (action === 'reject') {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Confirm Rejection',
+                    text: 'Are you sure you want to REJECT this request as Accounts Head?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Reject Request'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        executeAhAction(reqId, note, btn, action);
+                    }
+                });
+                return;
+            } else if (!confirm('Are you sure you want to REJECT this request as Accounts Head?')) {
+                return;
+            }
+        }
+
+        executeAhAction(reqId, note, btn, action);
+    }
+
+    function executeAhAction(reqId, note, btn, action) {
+
+        const endpoint = action === 'reject' 
+            ? '<?= $base_url ?>/approval-requests/reject-accounts-head' 
+            : '<?= $base_url ?>/approval-requests/approve-accounts-head';
+
+        if (btn) btn.disabled = true;
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                approval_request_id: reqId,
+                note: note || (action === 'reject' ? 'Rejected by Accounts Head' : 'Approved by Accounts Head')
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (btn) btn.disabled = false;
+            if (data.success) {
+                const modalEl = document.getElementById('accountsHeadApprovalModal');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                }
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: (action === 'reject') ? 'Rejected!' : 'Approved!',
+                        text: data.message || 'Accounts Head action completed.',
+                        timer: 1200,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Operation Failed',
+                        text: data.message || 'Operation failed'
+                    });
+                } else if (typeof toastr !== 'undefined') {
+                    toastr.error(data.message || 'Operation failed');
+                } else {
+                    console.error('Operation failed:', data.message);
+                }
+            }
+        })
+        .catch(err => {
+            if (btn) btn.disabled = false;
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error: ' + err
+                });
+            } else if (typeof toastr !== 'undefined') {
+                toastr.error('Error: ' + err);
+            } else {
+                console.error('Error:', err);
+            }
+        });
     }
 </script>
 

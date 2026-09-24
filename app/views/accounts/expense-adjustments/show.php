@@ -67,6 +67,20 @@ if ($adj['parent_type'] == 'cashout') {
 }
 
 $effectiveDue = (float)($adj['due_amount'] > 0 ? $adj['due_amount'] : ($isReturn ? $adj['amount'] : ($adj['approved_amount'] ?: $adj['amount'])));
+
+if (!class_exists('ApprovalRequest')) {
+    require_once __DIR__ . '/../../../models/ApprovalRequest.php';
+}
+$ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'expense_adjustments', (int)$adj['id']);
+$isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_head_approved']);
+?>
+
+<?php 
+if (!empty($ahInfo['has_request'])) {
+    $sourceTable = 'expense_adjustments';
+    $sourceId = (int)$adj['id'];
+    include __DIR__ . '/../../layouts/accounts_head_approval_card.php';
+}
 ?>
 
 <div class="row">
@@ -695,9 +709,17 @@ $effectiveDue = (float)($adj['due_amount'] > 0 ? $adj['due_amount'] : ($isReturn
                                         </div>
 
                                         <?php if ($isAccounts && $effectiveDue > 0): ?>
-                                            <button type="button" class="btn btn-primary w-100 fw-bold py-2 mb-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
-                                                <i class="fa-light fa-money-bill-transfer me-1"></i> Disburse Payout (Cash-Out)
-                                            </button>
+                                            <?php if ($isAhApproved): ?>
+                                                <button type="button" class="btn btn-primary w-100 fw-bold py-2 mb-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
+                                                    <i class="fa-light fa-money-bill-transfer me-1"></i> Disburse Payout (Cash-Out)
+                                                </button>
+                                            <?php else: ?>
+                                                <div class="alert alert-warning py-2 px-3 small mb-2 border-warning text-center">
+                                                    <i class="fa-solid fa-lock me-1"></i>
+                                                    <strong>Payment Locked</strong><br>
+                                                    <span class="fs-12">Pending Accounts Head approval (<strong>Md. Mamunoor Rashid [1309]</strong>).</span>
+                                                </div>
+                                            <?php endif; ?>
                                         <?php endif; ?>
 
                                     <?php elseif ($adj['status'] == 'fully_paid'): ?>
@@ -743,7 +765,7 @@ $effectiveDue = (float)($adj['due_amount'] > 0 ? $adj['due_amount'] : ($isReturn
 <!-- Add Payment / Verification Modal -->
 <?php if ($isAccounts && (
     ($isReturn && in_array($adj['status'], ['pending', 'partially_paid', 'approved'])) ||
-    ($isExtra && in_array($adj['status'], ['approved', 'partially_paid']))
+    ($isExtra && in_array($adj['status'], ['approved', 'partially_paid']) && $isAhApproved)
 )): ?>
 <div class="modal fade" id="addPaymentModal" tabindex="-1" aria-labelledby="addPaymentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">

@@ -1153,6 +1153,15 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
+        // STRICT GUARD: Must be approved by Accounts Head (Role 30 - Md. Mamunoor Rashid) before payment disbursement
+        require_once __DIR__ . '/../../models/ApprovalRequest.php';
+        $ahCheck = \ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'fund_requisitions', $id);
+        if ($ahCheck['has_request'] && !$ahCheck['is_accounts_head_approved']) {
+            setError('Payment cannot be processed! Accounts Head approval (Md. Mamunoor Rashid [1309]) is required before payment disbursement.');
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+            exit;
+        }
+
         $cumulative_paid_amount = (float)($frData['paid_amount'] ?? 0);
         $posted_amount = 0;
 

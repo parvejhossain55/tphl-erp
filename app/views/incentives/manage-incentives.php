@@ -1,9 +1,12 @@
 <?php
-$userRole = $_SESSION['user']['role_id'] ?? 0;
+$userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+$roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
 // Management / Operations (Super Admin, Admin, Sales Heads, Managers, Coordinators)
-$isManagement = in_array($userRole, [1, 2, 5, 6, 9, 15, 33]);
-// Accounts / HR (Super Admin, Admin, Accounts, HR, Chairman)
-$isAccounts = in_array($userRole, [1, 2, 3, 4, 33]);
+$isManagement = in_array($userRole, [1, 2, 5, 9, 15, 33]) || strpos($roleName, 'admin') !== false;
+// Accounts / Accounts Head / HR
+$isAccounts = in_array($userRole, [1, 2, 3, 6, 30, 33]) || strpos($roleName, 'account') !== false;
+$isAccountsHead = ($userRole === 30) || strpos($roleName, 'accounts head') !== false;
+$canApproveAh = $isAccountsHead || in_array($userRole, [1, 3]) || strpos($roleName, 'admin') !== false;
 ?>
 <div class="container-fluid py-4">
     <!-- Page Header -->
@@ -268,6 +271,13 @@ $isAccounts = in_array($userRole, [1, 2, 3, 4, 33]);
                                     </tr>
                                 <?php else: ?>
                                     <?php foreach ($salesClaimsQueue as $claim): ?>
+                                        <?php
+                                            if (!class_exists('ApprovalRequest')) {
+                                                require_once __DIR__ . '/../../models/ApprovalRequest.php';
+                                            }
+                                            $ahInfoClaim = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'project_incentive_claims', (int)$claim['id']);
+                                            $isAhApprovedClaim = empty($ahInfoClaim['has_request']) || !empty($ahInfoClaim['is_accounts_head_approved']);
+                                        ?>
                                         <tr>
                                             <!-- Code & Date -->
                                             <td class="ps-4">
@@ -337,12 +347,23 @@ $isAccounts = in_array($userRole, [1, 2, 3, 4, 33]);
                                                     </span>
                                                 <?php elseif ($claim['claim_status'] === 'claimed'): ?>
                                                     <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small">
-                                                        <i class="fa-solid fa-clock me-1"></i>Awaiting Approval
+                                                        <i class="fa-solid fa-clock me-1"></i>Awaiting Mgmt Approval
                                                     </span>
                                                 <?php elseif ($claim['claim_status'] === 'approved'): ?>
-                                                    <span class="badge bg-info text-white rounded-pill px-3 py-1 extra-small">
-                                                        <i class="fa-solid fa-thumbs-up me-1"></i>Approved (Pending Disburse)
-                                                    </span>
+                                                    <?php if (!$isAhApprovedClaim): ?>
+                                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small">
+                                                            <i class="fa-solid fa-lock me-1"></i>Pending Accounts Head
+                                                        </span>
+                                                        <div class="extra-small text-muted mt-1">Md. Mamunoor Rashid [1309]</div>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small mb-1">
+                                                            <i class="fa-solid fa-check me-1"></i>AH Approved
+                                                        </span>
+                                                        <br>
+                                                        <span class="badge bg-info text-white rounded-pill px-3 py-1 extra-small">
+                                                            <i class="fa-solid fa-thumbs-up me-1"></i>Ready to Disburse
+                                                        </span>
+                                                    <?php endif; ?>
                                                 <?php elseif ($claim['claim_status'] === 'partially_paid'): ?>
                                                     <span class="badge bg-primary text-white rounded-pill px-3 py-1 extra-small">
                                                         <i class="fa-solid fa-pie-chart me-1"></i>Partially Paid (Due: ৳<?= number_format($claim['due_amount']) ?>)
@@ -376,21 +397,33 @@ $isAccounts = in_array($userRole, [1, 2, 3, 4, 33]);
                                                         <span class="text-muted extra-small">Waiting for Mgmt Approval</span>
                                                     <?php endif; ?>
                                                 <?php elseif (in_array($claim['claim_status'], ['approved', 'partially_paid'])): ?>
-                                                    <?php if ($isAccounts): ?>
-                                                        <button type="button" 
-                                                                class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm btn-disburse-modal"
-                                                                data-bs-toggle="modal"
-                                                                data-bs-target="#disbursePaymentModal"
-                                                                data-toggle="modal"
-                                                                data-target="#disbursePaymentModal"
-                                                                data-id="<?= $claim['id'] ?>"
-                                                                data-recipient="<?= htmlspecialchars($claim['user_name']) ?> (<?= htmlspecialchars($claim['employee_id']) ?>)"
-                                                                data-claim="<?= htmlspecialchars($claim['claim_code']) ?>"
-                                                                data-amount="<?= $claim['due_amount'] > 0 ? $claim['due_amount'] : $claim['incentive_amount'] ?>">
-                                                            <i class="fa-solid fa-money-bill-transfer me-1"></i>Disburse Payout
-                                                        </button>
+                                                    <?php if (!$isAhApprovedClaim): ?>
+                                                        <?php if ($canApproveAh && !empty($ahInfoClaim['approval_request_id'])): ?>
+                                                            <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm" onclick="triggerAhApprove(<?= (int)$ahInfoClaim['approval_request_id'] ?>)">
+                                                                <i class="fa-solid fa-stamp me-1"></i>AH Approve
+                                                            </button>
+                                                        <?php else: ?>
+                                                            <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;" title="Payment locked: Accounts Head approval required (Md. Mamunoor Rashid [1309])">
+                                                                <i class="fa-solid fa-lock me-1 text-warning"></i>Awaiting AH (1309)
+                                                            </span>
+                                                        <?php endif; ?>
                                                     <?php else: ?>
-                                                        <span class="text-info extra-small fw-bold">Approved (Pending Payout)</span>
+                                                        <?php if ($isAccounts): ?>
+                                                            <button type="button" 
+                                                                    class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm btn-disburse-modal"
+                                                                    data-bs-toggle="modal"
+                                                                    data-bs-target="#disbursePaymentModal"
+                                                                    data-toggle="modal"
+                                                                    data-target="#disbursePaymentModal"
+                                                                    data-id="<?= $claim['id'] ?>"
+                                                                    data-recipient="<?= htmlspecialchars($claim['user_name']) ?> (<?= htmlspecialchars($claim['employee_id']) ?>)"
+                                                                    data-claim="<?= htmlspecialchars($claim['claim_code']) ?>"
+                                                                    data-amount="<?= $claim['due_amount'] > 0 ? $claim['due_amount'] : $claim['incentive_amount'] ?>">
+                                                                <i class="fa-solid fa-money-bill-transfer me-1"></i>Disburse Payout
+                                                            </button>
+                                                        <?php else: ?>
+                                                            <span class="text-info extra-small fw-bold">Approved (Pending Payout)</span>
+                                                        <?php endif; ?>
                                                     <?php endif; ?>
                                                 <?php else: ?>
                                                     <span class="text-muted extra-small">Settled / Closed</span>
@@ -440,6 +473,13 @@ $isAccounts = in_array($userRole, [1, 2, 3, 4, 33]);
                                     </tr>
                                 <?php else: ?>
                                     <?php foreach ($externalClaimsList as $ext): ?>
+                                        <?php
+                                            if (!class_exists('ApprovalRequest')) {
+                                                require_once __DIR__ . '/../../models/ApprovalRequest.php';
+                                            }
+                                            $ahInfoExt = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'project_incentive_claims', (int)$ext['id']);
+                                            $isAhApprovedExt = empty($ahInfoExt['has_request']) || !empty($ahInfoExt['is_accounts_head_approved']);
+                                        ?>
                                         <tr>
                                             <td class="ps-4">
                                                 <span class="fw-bold text-dark d-block"><?= htmlspecialchars($ext['claim_code']) ?></span>
@@ -471,28 +511,51 @@ $isAccounts = in_array($userRole, [1, 2, 3, 4, 33]);
                                             </td>
                                             <td class="text-center">
                                                 <?php if ($ext['claim_status'] === 'approved'): ?>
-                                                    <span class="badge bg-info text-white rounded-pill px-3 py-1 extra-small">Approved</span>
+                                                    <?php if (!$isAhApprovedExt): ?>
+                                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small">
+                                                            <i class="fa-solid fa-lock me-1"></i>Pending Accounts Head
+                                                        </span>
+                                                        <div class="extra-small text-muted mt-1">Md. Mamunoor Rashid [1309]</div>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small mb-1">
+                                                            <i class="fa-solid fa-check me-1"></i>AH Approved
+                                                        </span>
+                                                        <br>
+                                                        <span class="badge bg-info text-white rounded-pill px-3 py-1 extra-small">Approved</span>
+                                                    <?php endif; ?>
                                                 <?php elseif ($ext['claim_status'] === 'paid'): ?>
                                                     <span class="badge bg-success text-white rounded-pill px-3 py-1 extra-small">Disbursed</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td class="pe-4 text-end">
                                                 <?php if ($ext['claim_status'] === 'approved'): ?>
-                                                    <?php if ($isAccounts): ?>
-                                                        <button type="button" 
-                                                                class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm btn-disburse-modal"
-                                                                data-bs-toggle="modal"
-                                                                data-bs-target="#disbursePaymentModal"
-                                                                data-toggle="modal"
-                                                                data-target="#disbursePaymentModal"
-                                                                data-id="<?= $ext['id'] ?>"
-                                                                data-recipient="<?= htmlspecialchars($ext['user_name']) ?> (<?= htmlspecialchars($ext['employee_id']) ?>)"
-                                                                data-claim="<?= htmlspecialchars($ext['claim_code']) ?>"
-                                                                data-amount="<?= $ext['incentive_amount'] ?>">
-                                                            <i class="fa-solid fa-money-bill-transfer me-1"></i>Pay Now
-                                                        </button>
+                                                    <?php if (!$isAhApprovedExt): ?>
+                                                        <?php if ($canApproveAh && !empty($ahInfoExt['approval_request_id'])): ?>
+                                                            <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm" onclick="triggerAhApprove(<?= (int)$ahInfoExt['approval_request_id'] ?>)">
+                                                                <i class="fa-solid fa-stamp me-1"></i>AH Approve
+                                                            </button>
+                                                        <?php else: ?>
+                                                            <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;" title="Payment locked: Accounts Head approval required (Md. Mamunoor Rashid [1309])">
+                                                                <i class="fa-solid fa-lock me-1 text-warning"></i>Awaiting AH (1309)
+                                                            </span>
+                                                        <?php endif; ?>
                                                     <?php else: ?>
-                                                        <span class="text-info extra-small fw-bold">Approved (Pending Payout)</span>
+                                                        <?php if ($isAccounts): ?>
+                                                            <button type="button" 
+                                                                    class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm btn-disburse-modal"
+                                                                    data-bs-toggle="modal"
+                                                                    data-bs-target="#disbursePaymentModal"
+                                                                    data-toggle="modal"
+                                                                    data-target="#disbursePaymentModal"
+                                                                    data-id="<?= $ext['id'] ?>"
+                                                                    data-recipient="<?= htmlspecialchars($ext['user_name']) ?> (<?= htmlspecialchars($ext['employee_id']) ?>)"
+                                                                    data-claim="<?= htmlspecialchars($ext['claim_code']) ?>"
+                                                                    data-amount="<?= $ext['incentive_amount'] ?>">
+                                                                <i class="fa-solid fa-money-bill-transfer me-1"></i>Pay Now
+                                                            </button>
+                                                        <?php else: ?>
+                                                            <span class="text-info extra-small fw-bold">Approved (Pending Payout)</span>
+                                                        <?php endif; ?>
                                                     <?php endif; ?>
                                                 <?php else: ?>
                                                     <span class="text-success extra-small fw-bold"><i class="fa-solid fa-check-circle me-1"></i>Settled</span>
@@ -821,30 +884,64 @@ document.addEventListener('DOMContentLoaded', function () {
         $('#disbursePaymentModal').modal('show');
     });
 
+    // Helper function for Swal alert
+    function showSwalMsg(icon, title, message, reload = false) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: icon,
+                title: title,
+                text: message,
+                timer: reload ? 1300 : undefined,
+                showConfirmButton: !reload
+            }).then(() => {
+                if (reload) location.reload();
+            });
+        } else {
+            if (reload) location.reload();
+        }
+    }
+
     // Approve claim buttons
     const approveButtons = document.querySelectorAll('.btn-approve-claim');
     approveButtons.forEach(btn => {
         btn.addEventListener('click', function() {
-            if(!confirm('Are you sure you want to approve this incentive claim?')) return;
             const claimId = this.getAttribute('data-id');
-            
-            fetch('<?= $base_url ?>/incentives/approve', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-Requested-With': 'XMLHttpRequest' 
-                },
-                body: 'claim_id=' + claimId
-            })
-            .then(res => res.json())
-            .then(data => {
-                if(data.success) {
-                    alert(data.message);
-                    location.reload();
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            });
+            const doApprove = () => {
+                fetch('<?= $base_url ?>/incentives/approve', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest' 
+                    },
+                    body: 'claim_id=' + claimId
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.success) {
+                        showSwalMsg('success', 'Approved!', data.message, true);
+                    } else {
+                        showSwalMsg('error', 'Approval Failed', data.message);
+                    }
+                })
+                .catch(err => {
+                    showSwalMsg('error', 'Error', 'Error: ' + err);
+                });
+            };
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Approve Claim',
+                    text: 'Are you sure you want to approve this incentive claim?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Approve',
+                    confirmButtonColor: '#198754'
+                }).then(res => {
+                    if (res.isConfirmed) doApprove();
+                });
+            } else if (confirm('Are you sure you want to approve this incentive claim?')) {
+                doApprove();
+            }
         });
     });
 
@@ -852,26 +949,43 @@ document.addEventListener('DOMContentLoaded', function () {
     const rejectButtons = document.querySelectorAll('.btn-reject-claim');
     rejectButtons.forEach(btn => {
         btn.addEventListener('click', function() {
-            if(!confirm('Are you sure you want to reject this claim?')) return;
             const claimId = this.getAttribute('data-id');
-            
-            fetch('<?= $base_url ?>/incentives/reject', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-Requested-With': 'XMLHttpRequest' 
-                },
-                body: 'claim_id=' + claimId
-            })
-            .then(res => res.json())
-            .then(data => {
-                if(data.success) {
-                    alert(data.message);
-                    location.reload();
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            });
+            const doReject = () => {
+                fetch('<?= $base_url ?>/incentives/reject', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest' 
+                    },
+                    body: 'claim_id=' + claimId
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.success) {
+                        showSwalMsg('success', 'Rejected', data.message, true);
+                    } else {
+                        showSwalMsg('error', 'Rejection Failed', data.message);
+                    }
+                })
+                .catch(err => {
+                    showSwalMsg('error', 'Error', 'Error: ' + err);
+                });
+            };
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Reject Claim',
+                    text: 'Are you sure you want to reject this claim?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Reject',
+                    confirmButtonColor: '#dc3545'
+                }).then(res => {
+                    if (res.isConfirmed) doReject();
+                });
+            } else if (confirm('Are you sure you want to reject this claim?')) {
+                doReject();
+            }
         });
     });
 
@@ -895,16 +1009,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Create Assignment Claim';
                 if(data.success) {
-                    alert(data.message);
-                    location.reload();
+                    showSwalMsg('success', 'Created!', data.message, true);
                 } else {
-                    alert('Error: ' + data.message);
+                    showSwalMsg('error', 'Error', data.message);
                 }
             })
             .catch(err => {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Create Assignment Claim';
-                alert('An error occurred submitting assignment.');
+                showSwalMsg('error', 'Error', 'An error occurred submitting assignment.');
             });
         });
     }
@@ -929,18 +1042,27 @@ document.addEventListener('DOMContentLoaded', function () {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> Confirm Disbursement';
                 if(data.success) {
-                    alert(data.message);
-                    location.reload();
+                    const modalEl = document.getElementById('disbursePaymentModal');
+                    if (modalEl && typeof bootstrap !== 'undefined') {
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+                    }
+                    showSwalMsg('success', 'Disbursed!', data.message, true);
                 } else {
-                    alert('Error: ' + data.message);
+                    showSwalMsg('error', 'Disbursement Failed', data.message);
                 }
             })
             .catch(err => {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> Confirm Disbursement';
-                alert('An error occurred recording disbursement.');
+                showSwalMsg('error', 'Error', 'An error occurred recording disbursement.');
             });
         });
     }
 });
 </script>
+
+<?php 
+$ahInfo = null;
+include __DIR__ . '/../layouts/accounts_head_approval_card.php'; 
+?>

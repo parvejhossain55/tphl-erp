@@ -22,6 +22,17 @@
                     </thead>
                     <tbody>
                         <?php foreach ($advances as $adv): ?>
+                            <?php
+                            $ahInfoRow = null;
+                            $isAhApprovedRow = true;
+                            if ($adv['status'] === 'approved') {
+                                if (!class_exists('ApprovalRequest')) {
+                                    require_once __DIR__ . '/../../../models/ApprovalRequest.php';
+                                }
+                                $ahInfoRow = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'advance_salaries', (int)$adv['id']);
+                                $isAhApprovedRow = empty($ahInfoRow['has_request']) || !empty($ahInfoRow['is_accounts_head_approved']);
+                            }
+                            ?>
                             <tr>
                                 <td>#
                                     <?= $adv['id'] ?>
@@ -53,8 +64,19 @@
                                         <span class="badge bg-info text-dark"><i
                                                 class="fa-solid fa-hourglass-half me-1"></i>Management Pending Approval</span>
                                     <?php elseif ($adv['status'] == 'approved'): ?>
-                                        <span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Account Pending
-                                            Payment</span>
+                                        <?php if (!$isAhApprovedRow): ?>
+                                            <div class="mb-1">
+                                                <span class="badge bg-warning text-dark px-2 py-1 rounded">
+                                                    <i class="fa-solid fa-lock me-1"></i>Pending Accounts Head
+                                                </span>
+                                            </div>
+                                            <span class="badge bg-light text-secondary border">
+                                                Md. Mamunoor Rashid [1309]
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Account Pending
+                                                Payment</span>
+                                        <?php endif; ?>
                                     <?php elseif ($adv['status'] == 'paid' || $adv['status'] == 'deducted'): ?>
                                         <span class="badge bg-primary"><i class="fa-solid fa-check-double me-1"></i>All
                                             Approved</span>
@@ -75,7 +97,8 @@
 
                                     $canHrApprove = ($userRole === 1 || $userRole === 4 || $userRole === 18 || $roleName === 'hr');
                                     $canMgmtApprove = (in_array($userRole, [1, 3, 20, 32]) || strpos($roleName, 'management') !== false || $roleName === 'admin' || $roleName === 'super admin');
-                                    $canAccountsApprove = (in_array($userRole, [1, 6]) || strpos($roleName, 'account') !== false);
+                                    $canAccountsDisburse = (in_array($userRole, [1, 6, 30]) || strpos($roleName, 'account') !== false);
+                                    $canAhApproveRow = ($userRole === 30 || in_array($userRole, [1, 3]) || strpos($roleName, 'accounts head') !== false || strpos($roleName, 'super admin') !== false || strpos($roleName, 'admin') !== false);
 
                                     $isHrActive = ($adv['status'] == 'pending_hr' || $adv['status'] == 'pending');
                                     $isMgmtActive = ($adv['status'] == 'pending_accounts');
@@ -125,13 +148,41 @@
                                             </a>
                                         <?php endif; ?>
 
+                                        <!-- Accounts Head Button / Status -->
+                                        <?php if ($adv['status'] == 'approved' && !$isAhApprovedRow): ?>
+                                            <?php if ($canAhApproveRow && !empty($ahInfoRow['approval_request_id'])): ?>
+                                                <button type="button" class="btn btn-sm btn-primary shadow-sm rounded"
+                                                    style="padding: 5px 12px; font-weight: 500;"
+                                                    onclick="triggerAhApprove(<?= (int)$ahInfoRow['approval_request_id'] ?>)">
+                                                    <i class="fa-solid fa-stamp me-1"></i> AH Approve
+                                                </button>
+                                            <?php else: ?>
+                                                <span class="btn btn-sm btn-light text-muted rounded-2 border shadow-sm"
+                                                    style="padding: 5px 12px; font-weight: 500;"
+                                                    title="Accounts Head Approval Required (Md. Mamunoor Rashid [1309])">
+                                                    <i class="fa-solid fa-lock me-1 text-warning"></i> Awaiting AH (1309)
+                                                </span>
+                                            <?php endif; ?>
+                                        <?php elseif (in_array($adv['status'], ['paid', 'deducted']) || ($adv['status'] == 'approved' && $isAhApprovedRow)): ?>
+                                            <span class="btn btn-sm btn-success text-white shadow-sm rounded"
+                                                style="padding: 5px 12px; font-weight: 500; cursor: default;">
+                                                <i class="fa-solid fa-check me-1"></i> AH Approved
+                                            </span>
+                                        <?php endif; ?>
+
                                         <!-- Pay Button -->
-                                        <?php if ($isPayActive && $canAccountsApprove): ?>
+                                        <?php if ($isPayActive && $isAhApprovedRow && $canAccountsDisburse): ?>
                                             <button type="button" class="btn btn-sm btn-outline-success shadow-sm rounded"
                                                 style="padding: 5px 12px; font-weight: 500;"
                                                 data-bs-toggle="modal" data-bs-target="#payModal<?= $adv['id'] ?>">
                                                 Pending Payment
                                             </button>
+                                        <?php elseif ($isPayActive && !$isAhApprovedRow): ?>
+                                            <span class="btn btn-sm btn-light text-muted rounded-2 border shadow-sm"
+                                                style="padding: 5px 12px; font-weight: 500;"
+                                                title="Payment Locked: Accounts Head approval required (Md. Mamunoor Rashid [1309])">
+                                                <i class="fa-solid fa-lock me-1 text-danger"></i> Pay Locked
+                                            </span>
                                             
                                             <!-- Pay Advance Modal for this Request -->
                                             <div class="modal fade" id="payModal<?= $adv['id'] ?>" tabindex="-1">
@@ -366,3 +417,8 @@
             });
         }
     </script>
+
+    <?php 
+    $ahInfo = null; // render modals and scripts for triggerAhApprove
+    include __DIR__ . '/../../layouts/accounts_head_approval_card.php'; 
+    ?>

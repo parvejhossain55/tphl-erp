@@ -302,9 +302,9 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                             <div class="from__input-box">
                                 <label class="form__input-title">Transfer To / Company Bank <span>*</span></label>
                                 <select name="bank_id" id="bankSelect" class="form-select">
-                                    <option value="">-- Loading banks... --</option>
+                                    <option value="">-- Loading company banks... --</option>
                                 </select>
-                                <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/bank-registry" target="_blank">Bank Registry</a></small>
+                                <small class="text-muted">Managed in <a href="<?= $GLOBALS['base_url'] ?>/company-bank-accounts" target="_blank">Company Bank Manage</a></small>
                             </div>
                         </div>
 
@@ -931,24 +931,23 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
             paymentMethod.dispatchEvent(new Event('change'));
         }
 
-        // Load banks from Bank Registry for AJAX dropdown
-        fetch('<?= $GLOBALS['base_url'] ?>/get-banks')
+        // Load company banks for AJAX dropdown
+        fetch('<?= $GLOBALS['base_url'] ?>/get-company-banks')
             .then(r => r.json())
             .then(data => {
                 const sel = document.getElementById('bankSelect');
                 if (!sel) return;
-                sel.innerHTML = '<option value="">-- Select Bank / Branch --</option>';
+                sel.innerHTML = '<option value="">-- Select Transfer To / Company Bank --</option>';
                 (data.banks || []).forEach(b => {
                     const opt = document.createElement('option');
                     opt.value = b.id;
-                    opt.textContent = b.bank_name + ' — ' + b.branch_name;
-                    opt.dataset.routing = b.routing_number || '';
+                    opt.textContent = b.bank_name + ' — ' + b.account_name + (b.account_number ? ' (' + b.account_number + ')' : '');
                     sel.appendChild(opt);
                 });
             })
             .catch(() => {
                 const sel = document.getElementById('bankSelect');
-                if (sel) sel.innerHTML = '<option value="">Bank Registry unavailable</option>';
+                if (sel) sel.innerHTML = '<option value="">Company Bank Accounts unavailable</option>';
             });
 
         // File preview thumbnails

@@ -46,7 +46,11 @@ if ($isFullyPaid) {
     $paidStatusClass = 'bg-secondary';
 }
 
-$canPayReq = $canProcessPayment && $isApproved && $dueAmount > 0;
+require_once __DIR__ . '/../../../models/ApprovalRequest.php';
+$ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? null, 'vendor_payment_requests', (int)$request['id']);
+$isAccountsHeadApproved = !empty($ahInfo['is_accounts_head_approved']);
+
+$canPayReq = $canProcessPayment && $isApproved && $dueAmount > 0 && $isAccountsHeadApproved;
 $showPaymentForm = $canPayReq;
 
 $netPayable = (float) ($request['net_payable'] ?? 0);
@@ -229,6 +233,15 @@ if ($status === 'Draft') {
     $nextActionText = 'This request has been rejected. No further action possible.';
     $nextActionRole = 'None';
     $nextActionColor = 'danger';
+}
+?>
+
+<!-- ACCOUNTS HEAD APPROVAL STATUS & ACTION CARD -->
+<?php 
+if (!empty($ahInfo['has_request'])) {
+    $sourceTable = 'vendor_payment_requests';
+    $sourceId = (int)$request['id'];
+    include __DIR__ . '/../../layouts/accounts_head_approval_card.php';
 }
 ?>
 

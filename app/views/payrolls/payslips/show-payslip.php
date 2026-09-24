@@ -556,6 +556,23 @@
 </head>
 
 <body>
+<?php
+if (!class_exists('ApprovalRequest')) {
+    require_once __DIR__ . '/../../../../models/ApprovalRequest.php';
+}
+$ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'payslips', (int)$payslip['id']);
+$isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_head_approved']);
+?>
+
+<div class="no-print" style="max-width: 900px; margin: 20px auto 10px auto;">
+    <?php 
+    if (!empty($ahInfo['has_request'])) {
+        $sourceTable = 'payslips';
+        $sourceId = (int)$payslip['id'];
+        include __DIR__ . '/../../../layouts/accounts_head_approval_card.php';
+    }
+    ?>
+</div>
 
     <div class="payslip-wrapper" id="payslip">
 
@@ -803,9 +820,15 @@
                 <?php else: ?>
                     <div class="payslip-status-wrapper">
                         <p class="fw-semibold fs-6">Payment Status</p>
-                        <span class="status-btn status-unpaid">
-                            ✖ UNPAID
-                        </span>
+                        <?php if (!$isAhApproved): ?>
+                            <span class="status-btn" style="background:#fff3cd; color:#856404; border:1px solid #ffeeba; font-size:11px; padding: 4px 8px;">
+                                <i class="fa-solid fa-lock me-1"></i> PENDING ACCOUNTS HEAD
+                            </span>
+                        <?php else: ?>
+                            <span class="status-btn status-unpaid">
+                                ✖ UNPAID
+                            </span>
+                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
             </div>

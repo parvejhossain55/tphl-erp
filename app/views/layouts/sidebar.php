@@ -405,7 +405,8 @@
             $sbIsChiefOfficer = (in_array($sidebarRoleId, [33, 34, 35], true) || strpos($sbRoleName, 'chief officer') !== false || strpos($sbRoleName, 'management viewer') !== false || strpos($sbRoleName, 'seal ceo') !== false);
             $isQcRole = !$sbIsChiefOfficer && (in_array($sidebarRoleId, [24, 25]) || strpos($sbRoleName, 'qc') !== false);
             $isMgmtRole = !$sbIsChiefOfficer && (in_array($sidebarRoleId, [1, 3, 20, 32]) || strpos($sbRoleName, 'admin') !== false || strpos($sbRoleName, 'management') !== false || strpos($sbRoleName, 'operation') !== false);
-            $isAccountsRole = !$sbIsChiefOfficer && (in_array($sidebarRoleId, [6, 30]) || strpos($sbRoleName, 'accounts') !== false);
+            $isAccExecutiveRole = ($sidebarRoleId === 36 || strpos($sbRoleName, 'executive') !== false || (function_exists('isAccountsExecutive') && isAccountsExecutive()));
+            $isAccountsRole = !$sbIsChiefOfficer && !$isAccExecutiveRole && (in_array($sidebarRoleId, [6, 30]) || strpos($sbRoleName, 'accounts') !== false);
 
             if ($isQcRole && !$isMgmtRole) {
                 // QC: Awaiting QC Verification (Submitted)
@@ -533,7 +534,7 @@
                     || stripos($sbRoleName ?? '', 'audit') !== false
                     || stripos($sbRoleName ?? '', 'account') !== false
                     || hasPermission('accounts manage');
-                $canViewExpenseAdjustments = $canViewExpenseAdjustments && !in_array($sidebarUserRoleId, [34, 35], true);
+                $canViewExpenseAdjustments = $canViewExpenseAdjustments && !in_array($sidebarUserRoleId, [34, 35, 36], true) && !(function_exists('isAccountsExecutive') && isAccountsExecutive());
                 if ($canViewExpenseAdjustments): 
                 ?>
                     <!-- Expense Adjustments Menu -->
@@ -2041,7 +2042,12 @@
 
 
                 <!--Accounts CATEGORY -->
-                <?php if (hasPermission("accounts manage") && !in_array(($_SESSION['user']['role_id'] ?? 0), [9, 34, 35])): ?>
+                <?php 
+                $sbUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+                $isSbAccExec = (function_exists('isAccountsExecutive') && isAccountsExecutive()) || $sbUserRoleId === 36;
+                $canViewAccountsCategory = (hasPermission("accounts manage") || $isSbAccExec) && !in_array($sbUserRoleId, [9, 34, 35]);
+                ?>
+                <?php if ($canViewAccountsCategory): ?>
                     <li class="sidebar__menu-category">
                         <span class="category-name">Accounts</span>
                     </li>
@@ -2049,7 +2055,7 @@
                     <!-- Accounts Dashboard -->
                     <?php
                     $accountsNotifCount = 0;
-                    if (hasPermission("accounts manage") && ($_SESSION['user']['role_id'] ?? 0) != 9) {
+                    if (!$isSbAccExec && hasPermission("accounts manage") && ($sbUserRoleId != 9)) {
                         if (!class_exists('DashboardController')) {
                             require_once __DIR__ . '/../../controllers/DashboardController.php';
                         }
@@ -2070,6 +2076,7 @@
                             <?php endif; ?>
                         </a>
                     </li>
+                    <?php if (!$isSbAccExec): ?>
                     <li class="slide ">
                         <a href="<?= $base_url ?>/company-bank-accounts"
                             class="sidebar__menu-item <?= isActive('company-bank-accounts', $current_route) ?>">
@@ -2196,8 +2203,7 @@
                                 <span class="sidebar__menu-label">Wastage Management</span>
                             </a>
                         </li>
-
-
+                    <?php endif; ?>
                     <?php endif; ?>
                     <!-- ===================== -->
                     <!-- Manage Cash In -->
@@ -2227,6 +2233,7 @@
                                     <?php endif; ?>
                                 </a>
                             </li>
+                            <?php if (!$isSbAccExec): ?>
                             <li class="slide <?= isActive('trash-client-payment-list', $current_route) ?>">
                                 <a href="<?= $base_url ?>/trash-client-payment-list"
                                     class="sidebar__menu-item <?= isActive('trash-client-payment-list', $current_route) ?>"
@@ -2239,10 +2246,11 @@
                                 <a href="<?= $base_url ?>/management-cash-in"
                                     class="sidebar__menu-item <?= isActive('management-cash-in', $current_route) ?>">Management</a>
                             </li>
+                            <?php endif; ?>
                         </ul>
                     </li>
 
-                    <?php if (!$isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33])): ?>
+                    <?php if ((!$isManagement || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33])) && !$isSbAccExec): ?>
                         <li
                             class="slide has-sub <?= isActive(['create-cashout-request', 'admin-cashout-requests', 'expense-adjustments'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
@@ -2282,6 +2290,7 @@
                         </li>
 
                     <?php endif; ?>
+                    <?php if (!$isSbAccExec): ?>
                     <!-- ===================== -->
                     <!-- Construction Finance -->
                     <!-- ===================== -->
@@ -2354,6 +2363,7 @@
                             <?php endif; ?>
                         </a>
                     </li>
+                    <?php endif; ?>
 
                     <!-- ====== Labor Payment Approvals ====== -->
                     <?php if (in_array((int) ($_SESSION['user']['role_id'] ?? 0), [1, 6, 30])): ?>

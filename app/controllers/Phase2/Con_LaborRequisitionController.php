@@ -494,6 +494,14 @@ class Con_LaborRequisitionController extends Controller
         $req = $this->model->find((int)$id);
         if (!$req) { $_SESSION['error'] = 'Requisition not found.'; $this->back($id); }
 
+        // STRICT GUARD: Must be approved by Accounts Head (Role 30 - Md. Mamunoor Rashid) before payment disbursement
+        require_once __DIR__ . '/../../models/ApprovalRequest.php';
+        $ahCheck = \ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'con_labor_requisitions', (int)$id);
+        if ($ahCheck['has_request'] && !$ahCheck['is_accounts_head_approved']) {
+            $_SESSION['error'] = 'Payment cannot be processed! Accounts Head approval (Md. Mamunoor Rashid [1309]) is required before payment disbursement.';
+            $this->back($id);
+        }
+
         $approvedAmount = (float)($req['approved_amount'] ?? $req['pm_verified_amount'] ?? $req['qc_approved_amount'] ?? $req['total_amount']);
         $totalPaid = (float)($req['total_paid'] ?? 0);
         $dueAmount = max(0, $approvedAmount - $totalPaid);

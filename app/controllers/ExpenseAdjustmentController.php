@@ -609,6 +609,18 @@ class ExpenseAdjustmentController extends Controller
                 header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
                 exit;
             }
+
+            // Mandatory Accounts Head Approval Guard
+            if (!class_exists('ApprovalRequest')) {
+                require_once __DIR__ . '/../models/ApprovalRequest.php';
+            }
+            $ahCheck = ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'expense_adjustments', (int)$id);
+            if ($ahCheck && !empty($ahCheck['has_request']) && empty($ahCheck['is_accounts_head_approved'])) {
+                setError("Payment cannot be disbursed. Approval from Accounts Head (Md. Mamunoor Rashid [1309]) is pending.");
+                header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
+                exit;
+            }
+
             $targetDue = (float)$adj['due_amount'];
         }
 

@@ -469,6 +469,8 @@ ORDER BY lb.booking_date DESC
                 lb.id as booking_id,
                 lb.lead_id,
                 lb.booking_date,
+                lb.sales_by_id,
+                l.assigned_id,
                 lb.agreement_value,
                 -- booking_money_total: all NON-REJECTED entries (pending + verified) — for remaining balance in dropdown
                 COALESCE(
@@ -514,6 +516,7 @@ ORDER BY lb.booking_date DESC
                 f.unit_type,
                 COALESCE(f.shop_service_charge, 0) as shop_service_charge,
                 u.full_name as agent_name,
+                COALESCE(NULLIF(e1.employee_id, ''), NULLIF(e2.employee_id, ''), NULLIF(u.employee_id, '')) as agent_employee_id,
                 -- Payment calculations
                 COALESCE(
                     (SELECT SUM(lp.amount) 
@@ -642,7 +645,9 @@ ORDER BY lb.booking_date DESC
             INNER JOIN leads l ON lb.lead_id = l.id
             INNER JOIN projects p ON lb.project_id = p.id
             INNER JOIN flats f ON lb.flat_id = f.id
-            LEFT JOIN users u ON l.assigned_id = u.id
+            LEFT JOIN users u ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = u.id
+            LEFT JOIN employees e1 ON e1.user_id = u.id
+            LEFT JOIN employees e2 ON u.employee_id = e2.id
             LEFT JOIN users transfer_u ON lb.transfer_updated_by = transfer_u.id
             WHERE lb.id = ?
         ");
@@ -1405,7 +1410,7 @@ ORDER BY lb.booking_date DESC
 
             $bankNameLookup = '';
             if ($bankId) {
-                $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', branch_name) as label FROM banks WHERE id = {$bankId}");
+                $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', account_name) as label FROM company_bank_accounts WHERE id = {$bankId}");
                 if ($bRow) { $bData = $bRow->fetch_assoc(); $bankNameLookup = $bData['label'] ?? ''; }
             }
 
@@ -1975,7 +1980,7 @@ ORDER BY lb.booking_date DESC
                     WHEN lp.payment_type = 'shop_service_charge' THEN 'Shop Service Charge'
                     ELSE 'Other Payment'
                 END as payment_details,
-                b.bank_name as bank_display_name
+                CONCAT(b.bank_name, ' (', b.account_name, ')') as bank_display_name
             FROM lead_payments lp
             LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
             LEFT JOIN leads l ON l.id = lb.lead_id
@@ -1986,7 +1991,7 @@ ORDER BY lb.booking_date DESC
             LEFT JOIN users uu ON uu.id = lp.updated_by
             LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
             LEFT JOIN emi_schedules parent_es ON parent_es.lead_payment_id = lp.parent_payment_id
-            LEFT JOIN banks b ON b.id = lp.bank_id
+            LEFT JOIN company_bank_accounts b ON b.id = lp.bank_id
             WHERE lp.is_trashed = 0 AND lp.booking_id = ?
         ";
 
@@ -3902,7 +3907,7 @@ ORDER BY lb.booking_date DESC
             // Bank resolution
             $bankId = null;
             if (!empty($row['bank_name'])) {
-                $bankResult = $this->db->query("SELECT id FROM banks WHERE LOWER(bank_name) LIKE '%" . $this->db->real_escape_string(strtolower($row['bank_name'])) . "%' AND is_active = 1 LIMIT 1");
+                $bankResult = $this->db->query("SELECT id FROM company_bank_accounts WHERE LOWER(bank_name) LIKE '%" . $this->db->real_escape_string(strtolower($row['bank_name'])) . "%' AND status = 'active' LIMIT 1");
                 if ($bankResult && $bankRow = $bankResult->fetch_assoc()) {
                     $bankId = (int)$bankRow['id'];
                 }
@@ -4191,7 +4196,7 @@ ORDER BY lb.booking_date DESC
             // Bank name lookup if bank_id provided
             $bankNameLookup = $bankName;
             if ($bankId) {
-                $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', branch_name) as label FROM banks WHERE id = {$bankId}");
+                $bRow = $this->db->query("SELECT CONCAT(bank_name, ' - ', account_name) as label FROM company_bank_accounts WHERE id = {$bankId}");
                 if ($bRow) {
                     $bData = $bRow->fetch_assoc();
                     $bankNameLookup = $bData['label'] ?? $bankName;

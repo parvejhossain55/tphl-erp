@@ -850,9 +850,15 @@
                             <input type="text" class="field-input numeric highlight-field" value="<?= number_format($invoice['amount'], 2) ?>">
                         </div>
 
+                        <?php if (!empty($invoice['company_bank_name'])): ?>
                         <div class="field-group">
-                            <label class="field-label">Bank Name</label>
-                            <input type="text" class="field-input" value="<?= htmlspecialchars($invoice['bank_name'] ?? '') ?>">
+                            <label class="field-label">Transfer To / Company Bank</label>
+                            <input type="text" class="field-input" value="<?= htmlspecialchars($invoice['company_bank_name'] . (!empty($invoice['company_account_name']) ? ' - ' . $invoice['company_account_name'] : '') . (!empty($invoice['company_account_number']) ? ' (' . $invoice['company_account_number'] . ')' : '')) ?>" readonly>
+                        </div>
+                        <?php endif; ?>
+                        <div class="field-group">
+                            <label class="field-label"><?= !empty($invoice['company_bank_name']) ? 'Transfer From / Client Bank' : 'Bank Name' ?></label>
+                            <input type="text" class="field-input" value="<?= htmlspecialchars($invoice['bank_name'] ?? '') ?>" readonly>
                         </div>
 
                         <div class="field-group">

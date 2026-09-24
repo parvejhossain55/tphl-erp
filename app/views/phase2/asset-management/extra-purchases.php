@@ -382,7 +382,10 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                     }
                                                 }
                                                 
-                                                $canPay = !empty($isAccounts) && $r['mgmt_status'] === 'approved' && $r['payment_status'] === 'unpaid';
+                                                $isAhApproved = (empty($r['approval_request_id']) || ($r['accounts_head_status'] ?? '') === 'approved');
+                                                $canPay = !empty($isAccounts) && $r['mgmt_status'] === 'approved' && $r['payment_status'] === 'unpaid' && $isAhApproved;
+                                                $isWaitingAccountsHead = !empty($isAccounts) && $r['mgmt_status'] === 'approved' && $r['payment_status'] === 'unpaid' && !$isAhApproved;
+                                                $canApproveAh = in_array((int)($_SESSION['user']['role_id'] ?? 0), [30, 1, 3]) && $r['mgmt_status'] === 'approved' && $r['payment_status'] === 'unpaid' && !$isAhApproved && !empty($r['approval_request_id']);
                                                 $canConfirmPurchase = !empty($isOperations) && $r['payment_status'] === 'paid' && $r['overall_status'] === 'paid';
 
                                                 // Creator or Admin can delete BEFORE any approval step has passed
@@ -391,6 +394,8 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 $r['can_approve'] = $canApprove;
                                                 $r['approval_step'] = $step;
                                                 $r['can_pay'] = $canPay;
+                                                $r['can_approve_ah'] = $canApproveAh;
+                                                $r['is_waiting_ah'] = $isWaitingAccountsHead;
                                                 $r['can_confirm_purchase'] = $canConfirmPurchase;
                                                 ?>
 
@@ -420,6 +425,15 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                         onclick="openApprovalModal(<?= $r['id'] ?>, 'rejected', '<?= $step ?>')">
                                                         <i class="fa-solid fa-xmark"></i>
                                                     </button>
+                                                <?php elseif ($canApproveAh): ?>
+                                                    <button type="button" class="btn btn-sm btn-primary" title="Approve as Accounts Head"
+                                                        onclick="triggerAhApprove(<?= (int)$r['approval_request_id'] ?>)">
+                                                        <i class="fa-solid fa-stamp me-1"></i> AH Approve
+                                                    </button>
+                                                <?php elseif ($isWaitingAccountsHead): ?>
+                                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 extra-small" title="Pending Accounts Head approval (Md. Mamunoor Rashid [1309])">
+                                                        <i class="fa-solid fa-lock me-1"></i> Pending AH
+                                                    </span>
                                                 <?php elseif ($canPay): ?>
                                                     <button type="button" class="btn btn-sm btn-outline-primary" title="Process Payment"
                                                         onclick="openPaymentModal(<?= $r['id'] ?>, <?= (float)$r['total_price'] ?>)">
@@ -940,6 +954,7 @@ function renderDetailModal(data) {
     var phClass = getStepClass(data.purchase_head_status);
     var qcClass = getStepClass(data.qc_audit_status);
     var mgClass = getStepClass(data.mgmt_status);
+    var ahClass = (data.accounts_head_status === 'approved') ? 'approved' : ((data.accounts_head_status === 'rejected') ? 'rejected' : 'pending');
     var pyClass = data.payment_status === 'paid' ? 'approved' : 'pending';
     var pcClass = data.overall_status === 'purchased' ? 'approved' : 'pending';
     
@@ -950,6 +965,7 @@ function renderDetailModal(data) {
         else if (data.purchase_head_status === 'pending') phClass = 'waiting';
         else if (data.qc_audit_status === 'pending') qcClass = 'waiting';
         else if (data.mgmt_status === 'pending') mgClass = 'waiting';
+        else if (data.mgmt_status === 'approved' && data.accounts_head_status !== 'approved') ahClass = 'waiting';
         else if (data.payment_status === 'unpaid') pyClass = 'waiting';
         else if (data.overall_status !== 'purchased' && data.payment_status === 'paid') pcClass = 'waiting';
     }
@@ -1065,6 +1081,12 @@ function renderDetailModal(data) {
                 <div class="step-label">Management</div>
                 <div class="step-person">${data.mgmt_by_name || '<span class="text-muted">Awaiting</span>'}</div>
                 <div class="step-time">${data.mgmt_at ? formatDate(data.mgmt_at) : ''}</div>
+            </div>
+            <div class="approval-step">
+                <div class="step-circle ${ahClass}">${data.accounts_head_status === 'approved' ? '<i class="fa-solid fa-check"></i>' : (data.accounts_head_status === 'rejected' ? '<i class="fa-solid fa-xmark"></i>' : '<i class="fa-solid fa-user-tie"></i>')}</div>
+                <div class="step-label">Accounts Head</div>
+                <div class="step-person">${data.accounts_head_by_name || 'Md. Mamunoor Rashid [1309]'}</div>
+                <div class="step-time">${data.accounts_head_at ? formatDate(data.accounts_head_at) : (data.mgmt_status === 'approved' && data.accounts_head_status !== 'approved' ? '<span class="badge bg-warning-subtle text-warning extra-small">Pending</span>' : '')}</div>
             </div>
             <div class="approval-step">
                 <div class="step-circle ${pyClass}">${data.payment_status === 'paid' ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-bangladeshi-taka-sign" style="font-size:14px"></i>'}</div>
@@ -1346,3 +1368,6 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 </script>
+
+<?php include __DIR__ . '/../../layouts/accounts_head_approval_card.php'; ?>
+

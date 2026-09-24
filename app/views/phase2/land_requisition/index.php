@@ -164,6 +164,15 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                                     <?php 
                                         $fin = $row['land_financial'] ?? null;
                                         $isLandCost = in_array($row['requisition_type'], ['Bayana', 'Registration']);
+                                        if (!class_exists('ApprovalRequest')) {
+                                            require_once __DIR__ . '/../../models/ApprovalRequest.php';
+                                        }
+                                        $ahInfoRow = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'land_fund_requisitions', (int)$row['id']);
+                                        if (empty($ahInfoRow['has_request'])) {
+                                            $ahInfoRow = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'con_land_requisitions', (int)$row['id']);
+                                        }
+                                        $isAhApprovedRow = empty($ahInfoRow['has_request']) || !empty($ahInfoRow['is_accounts_head_approved']);
+                                        $canAhApproveRow = ($roleId === 30 || in_array($roleId, [1, 3]));
                                     ?>
                                     <tr>
                                         <td><?= $index + 1 ?></td>
@@ -263,10 +272,23 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                                             <?php elseif ($row['accounts_status'] === 'Rejected'): ?>
                                                 <span class="badge bg-danger"><i class="fa-light fa-xmark me-1"></i>Accounts Rejected</span>
                                             <?php elseif ($row['mgmt_status'] === 'Approved'): ?>
-                                                <span class="badge bg-warning text-dark shadow-sm"><i class="fa-light fa-wallet me-1"></i>Pending Payment</span>
-                                                <div style="font-size:10px;" class="text-success fw-bold mt-1">
-                                                    <i class="fa-light fa-circle-check me-1"></i>Ready for Accounts
-                                                </div>
+                                                <?php if (!$isAhApprovedRow): ?>
+                                                    <span class="badge bg-warning text-dark shadow-sm">
+                                                        <i class="fa-solid fa-lock me-1"></i>Pending Accounts Head
+                                                    </span>
+                                                    <div style="font-size:10px;" class="text-secondary fw-semibold mt-1">
+                                                        Md. Mamunoor Rashid [1309]
+                                                    </div>
+                                                <?php else: ?>
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle mb-1">
+                                                        <i class="fa-solid fa-check me-1"></i>AH Approved
+                                                    </span>
+                                                    <br>
+                                                    <span class="badge bg-warning text-dark shadow-sm"><i class="fa-light fa-wallet me-1"></i>Pending Payment</span>
+                                                    <div style="font-size:10px;" class="text-success fw-bold mt-1">
+                                                        <i class="fa-light fa-circle-check me-1"></i>Ready for Accounts
+                                                    </div>
+                                                <?php endif; ?>
                                             <?php elseif ($row['mgmt_status'] === 'Rejected'): ?>
                                                 <span class="badge bg-light text-muted border">Cancelled</span>
                                             <?php else: ?>
@@ -359,12 +381,26 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                                                     <?php endif; ?>
                                                 <?php endif; ?>
 
-                                                <!-- Accounts Action -->
-                                                <?php if ($row['mgmt_status'] === 'Approved' && $row['accounts_status'] === 'Pending' && in_array($roleId, [1, 6, 30])): ?>
+                                                <!-- Accounts Head Direct Approval / Waiting Action -->
+                                                <?php if ($row['mgmt_status'] === 'Approved' && $row['accounts_status'] === 'Pending' && !$isAhApprovedRow): ?>
+                                                    <?php if ($canAhApproveRow && !empty($ahInfoRow['approval_request_id'])): ?>
+                                                        <button type="button" class="btn btn-sm btn-primary shadow-sm"
+                                                                onclick="triggerAhApprove(<?= (int)$ahInfoRow['approval_request_id'] ?>)">
+                                                            <i class="fa-solid fa-stamp me-1"></i>AH Approve
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;" title="Accounts Head approval required (Md. Mamunoor Rashid [1309])">
+                                                            <i class="fa-solid fa-lock me-1 text-warning"></i>Awaiting AH (1309)
+                                                        </span>
+                                                    <?php endif; ?>
+                                                <?php endif; ?>
+
+                                                <!-- Accounts Action (Allowed only after Accounts Head approved) -->
+                                                <?php if ($row['mgmt_status'] === 'Approved' && $row['accounts_status'] === 'Pending' && $isAhApprovedRow && in_array($roleId, [1, 6, 30])): ?>
                                                     <button type="button" class="btn btn-sm btn-success" 
                                                             data-bs-toggle="modal" data-bs-target="#accountsPayModal"
                                                             data-id="<?= $row['id'] ?>" data-amount="<?= $row['requested_amount'] ?>">
-                                                        Record Payment
+                                                        <i class="fa-solid fa-money-bill-wave me-1"></i>Record Payment
                                                     </button>
                                                 <?php endif; ?>
 
@@ -979,4 +1015,9 @@ $page_script = "(function() {
     }
 })();
 ";
+?>
+
+<?php 
+$ahInfo = null;
+include __DIR__ . '/../../layouts/accounts_head_approval_card.php'; 
 ?>

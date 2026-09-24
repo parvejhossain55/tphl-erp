@@ -43,6 +43,7 @@ return [
     'get-client-profile' => ['controller' => 'AccountClientController', 'method' => 'getClientProfile'],
     'clients-cash-in-history' => ['controller' => 'AccountClientController', 'method' => 'indexTwo'],
     'clients-cash-in-history/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'indexTwo'],
+    'update-booking-info' => ['controller' => 'AccountClientController', 'method' => 'updateBookingInfo'],
     'add-transaction' => ['controller' => 'AccountClientController', 'method' => 'addTransaction'],
     'edit-client-cash-in/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'showEditTransactionForm'],
     'edit-client-cash-in' => ['controller' => 'AccountClientController', 'method' => 'showEditTransactionForm'],

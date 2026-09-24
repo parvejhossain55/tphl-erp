@@ -412,13 +412,13 @@ private function getBankTransactions($type, $startDate, $endDate, $projectId = n
                     lp.payment_date,
                     lp.amount,
                     b.bank_name,
-                    b.branch_name,
-                    b.routing_number,
+                    b.account_name as branch_name,
+                    '' as routing_number,
                     b.account_number,
                     CONCAT(l.full_name, ' — ', UPPER(REPLACE(lp.payment_type, '_', ' '))) as description,
                     lp.transaction_ref
                 FROM lead_payments lp
-                LEFT JOIN banks b ON b.id = lp.bank_id
+                LEFT JOIN company_bank_accounts b ON b.id = lp.bank_id
                 LEFT JOIN lead_bookings lb ON lb.id = lp.booking_id
                 LEFT JOIN leads l ON l.id = lb.lead_id
                 WHERE lp.payment_method = 'bank'
@@ -442,13 +442,13 @@ private function getBankTransactions($type, $startDate, $endDate, $projectId = n
                     cp.payment_date,
                     cp.amount,
                     b.bank_name,
-                    b.branch_name,
-                    b.routing_number,
+                    b.account_name as branch_name,
+                    '' as routing_number,
                     b.account_number,
                     COALESCE(cr.purpose_paid_to, 'N/A') as description,
                     cp.transaction_ref
                 FROM cashout_payments cp
-                LEFT JOIN banks b ON b.id = cp.bank_id
+                LEFT JOIN company_bank_accounts b ON b.id = cp.bank_id
                 LEFT JOIN cashout_requests cr ON cr.id = cp.cashout_request_id
                 WHERE cp.payment_method = 'bank'
                 AND cp.payment_date BETWEEN ? AND ?";

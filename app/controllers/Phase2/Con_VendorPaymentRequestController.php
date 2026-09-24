@@ -512,7 +512,7 @@ class Con_VendorPaymentRequestController extends Controller
         $approvalReq = $this->getApprovalRequest($id);
 
         // Get banks for payment modal dropdown
-        $banks = $this->db->query("SELECT id, bank_name, branch_name FROM banks WHERE status = 'active' ORDER BY bank_name")->fetch_all(MYSQLI_ASSOC);
+        $banks = $this->db->query("SELECT id, bank_name, CONCAT(account_name, IF(account_number != '', CONCAT(' (', account_number, ')'), '')) as branch_name FROM company_bank_accounts WHERE status = 'active' ORDER BY is_default DESC, bank_name ASC")->fetch_all(MYSQLI_ASSOC);
 
         // Fetch extra documents/notes added post-approval
         $this->model->ensureDocumentsTable();
@@ -1082,6 +1082,15 @@ class Con_VendorPaymentRequestController extends Controller
         $request = $this->model->find($id);
         if (!$request || !in_array($request['status'], ['Approved', 'Partially_Paid'])) {
             setError('Payment request is not in a payable status.');
+            header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
+            exit;
+        }
+
+        // STRICT GUARD: Must be approved by Accounts Head (Role 30 - Md. Mamunoor Rashid) before payment disbursement
+        require_once __DIR__ . '/../../models/ApprovalRequest.php';
+        $ahCheck = \ApprovalRequest::getAccountsHeadApprovalInfo($this->db, 'vendor_payment_requests', $id);
+        if ($ahCheck['has_request'] && !$ahCheck['is_accounts_head_approved']) {
+            setError('Payment cannot be processed! Accounts Head approval (Md. Mamunoor Rashid [1309]) is required before payment disbursement.');
             header("Location: {$GLOBALS['base_url']}/con-vendor-payment-show/{$id}");
             exit;
         }

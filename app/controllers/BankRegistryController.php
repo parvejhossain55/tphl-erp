@@ -13,17 +13,11 @@ class BankRegistryController extends Controller
         if (session_status() === PHP_SESSION_NONE) session_start();
     }
 
-    /** List all banks */
+    /** List all banks — redirected to Company Bank Accounts */
     public function index()
     {
-        $result = $this->db->query("SELECT * FROM banks ORDER BY bank_name, branch_name");
-        $banks  = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
-
-        $this->view('accounts/bank-registry', [
-            'current_route' => 'bank-registry',
-            'page_title'    => 'Bank Registry Management',
-            'banks'         => $banks,
-        ]);
+        header("Location: {$GLOBALS['base_url']}/company-bank-accounts");
+        exit;
     }
 
     /** Create a new bank record (AJAX or POST) */
@@ -34,21 +28,20 @@ class BankRegistryController extends Controller
             echo json_encode(['success' => false, 'message' => 'POST required']); exit;
         }
 
-        $bankName      = trim($_POST['bank_name']     ?? '');
-        $branchName    = trim($_POST['branch_name']   ?? '');
+        $bankName      = trim($_POST['bank_name']      ?? '');
+        $accountName   = trim($_POST['branch_name']    ?? ($_POST['account_name'] ?? ''));
         $accountNumber = trim($_POST['account_number'] ?? '');
-        $routingNumber = trim($_POST['routing_number'] ?? '');
-        $createdBy     = $_SESSION['user']['id'] ?? 0;
+        $createdBy     = $_SESSION['user']['id']       ?? 0;
 
-        if (!$bankName || !$branchName) {
-            echo json_encode(['success' => false, 'message' => 'Bank Name and Branch Name are required']); exit;
+        if (!$bankName || !$accountName) {
+            echo json_encode(['success' => false, 'message' => 'Bank Name and Account/Branch Name are required']); exit;
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO banks (bank_name, branch_name, account_number, routing_number, status, created_by)
-            VALUES (?, ?, ?, ?, 'active', ?)
+            INSERT INTO company_bank_accounts (bank_name, account_name, account_number, status, created_by)
+            VALUES (?, ?, ?, 'active', ?)
         ");
-        $stmt->bind_param("ssssi", $bankName, $branchName, $accountNumber, $routingNumber, $createdBy);
+        $stmt->bind_param("sssi", $bankName, $accountName, $accountNumber, $createdBy);
 
         if ($stmt->execute()) {
             echo json_encode([
@@ -72,19 +65,18 @@ class BankRegistryController extends Controller
 
         $id            = (int)($_POST['id']            ?? 0);
         $bankName      = trim($_POST['bank_name']      ?? '');
-        $branchName    = trim($_POST['branch_name']    ?? '');
+        $accountName   = trim($_POST['branch_name']    ?? ($_POST['account_name'] ?? ''));
         $accountNumber = trim($_POST['account_number'] ?? '');
-        $routingNumber = trim($_POST['routing_number'] ?? '');
 
-        if (!$id || !$bankName || !$branchName) {
+        if (!$id || !$bankName || !$accountName) {
             echo json_encode(['success' => false, 'message' => 'Missing required fields']); exit;
         }
 
         $stmt = $this->db->prepare("
-            UPDATE banks SET bank_name = ?, branch_name = ?, account_number = ?, routing_number = ?
+            UPDATE company_bank_accounts SET bank_name = ?, account_name = ?, account_number = ?
             WHERE id = ?
         ");
-        $stmt->bind_param("ssssi", $bankName, $branchName, $accountNumber, $routingNumber, $id);
+        $stmt->bind_param("sssi", $bankName, $accountName, $accountNumber, $id);
 
         if ($stmt->execute()) {
             echo json_encode(['success' => true, 'message' => 'Bank updated successfully']);
@@ -104,7 +96,7 @@ class BankRegistryController extends Controller
             echo json_encode(['success' => false, 'message' => 'Invalid ID']); exit;
         }
 
-        $stmt = $this->db->prepare("DELETE FROM banks WHERE id = ?");
+        $stmt = $this->db->prepare("DELETE FROM company_bank_accounts WHERE id = ?");
         $stmt->bind_param("i", $id);
 
         if ($stmt->execute()) {
@@ -126,7 +118,7 @@ class BankRegistryController extends Controller
         }
 
         $stmt = $this->db->prepare("
-            UPDATE banks
+            UPDATE company_bank_accounts
             SET status = IF(status = 'active', 'inactive', 'active')
             WHERE id = ?
         ");
@@ -134,7 +126,7 @@ class BankRegistryController extends Controller
 
         if ($stmt->execute()) {
             // Fetch new status
-            $row = $this->db->query("SELECT status FROM banks WHERE id = {$id}")->fetch_assoc();
+            $row = $this->db->query("SELECT status FROM company_bank_accounts WHERE id = {$id}")->fetch_assoc();
             echo json_encode(['success' => true, 'new_status' => $row['status']]);
         } else {
             echo json_encode(['success' => false, 'message' => $stmt->error]);
