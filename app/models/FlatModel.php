@@ -241,7 +241,7 @@ class FlatModel extends Model
             return false;
         }
         $stmt->bind_param(
-            "isiiiiiiissississsisi",
+            "isdiiiiiissississsisi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -318,7 +318,7 @@ class FlatModel extends Model
             return preg_replace('/[^0-9.]/', '', $v); // keep digits + decimal point
         };
 
-        $sqft                 = isset($data['sqft'])    && trim($data['sqft'])    !== '' ? $extractInt($data['sqft'])             : null;
+        $sqft                 = isset($data['sqft'])    && trim($data['sqft'])    !== '' ? $extractDecimal($data['sqft'])         : null;
         $bhk                  = isset($data['bhk'])     && trim($data['bhk'])     !== '' ? $extractInt($data['bhk'])              : null;
         $bedroom              = isset($data['bedroom']) && trim($data['bedroom']) !== '' ? $extractInt($data['bedroom'])           : null;
         $bathroom             = isset($data['bathroom'])&& trim($data['bathroom'])!== '' ? $extractInt($data['bathroom'])          : null;
@@ -416,7 +416,7 @@ class FlatModel extends Model
         }
 
         $stmt->bind_param(
-            "isiiiiiiississisissi",
+            "isdiiiiiississisissi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],

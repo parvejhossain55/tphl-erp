@@ -47,7 +47,7 @@ $show_breadcrumb = true;
                 <!-- Sqft -->
                 <div class="col-xl-6">
                     <label>Sqft</label>
-                    <input type="number" name="sqft" class="form-control">
+                    <input type="number" step="0.01" name="sqft" class="form-control">
                 </div>
 
                 <!-- BHK (hidden for commercial) -->

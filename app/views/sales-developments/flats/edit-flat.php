@@ -56,7 +56,7 @@ $isShop            = (int)($flat['is_shop'] ?? 0);
                 <!-- Sqft -->
                 <div class="col-xl-6">
                     <label>Sqft</label>
-                    <input type="number" name="sqft" class="form-control" value="<?= $flat['sqft'] ?? '' ?>">
+                    <input type="number" step="0.01" name="sqft" class="form-control" value="<?= $flat['sqft'] ?? '' ?>">
                 </div>
 
                 <!-- BHK (hidden for commercial) -->

@@ -1235,6 +1235,25 @@ public function showAddTransactionForm($bookingId = null)
     // SIMPLE CHECK: Is registration paid?
     $registrationPaid = $this->clientModel->isRegistrationPaid($bookingId);
 
+    // Calculate pending/unverified payments for form logic
+    $pendingQuery = $this->db->prepare("
+        SELECT SUM(amount) as pending_amount 
+        FROM lead_payments 
+        WHERE booking_id = ? AND is_trashed = 0 AND payment_type IN ('registration', 'land_share')
+    ");
+    $pendingQuery->bind_param("i", $bookingId);
+    $pendingQuery->execute();
+    $pendingRes = $pendingQuery->get_result()->fetch_assoc();
+    $allRegistrationAndLandshare = (float)($pendingRes['pending_amount'] ?? 0);
+
+    $bookingMoneyTotal = (float)($clientDetails['booking_money_total'] ?? 0);
+    $totalLandShare = (float)($clientDetails['total_land_share'] ?? 0);
+    $discountAmount = (float)($clientDetails['discount_amount'] ?? 0);
+    $effectiveBookingTarget = (float)($clientDetails['effective_booking_target'] ?? 0);
+
+    $formRemainingRegistration = max(0, $totalLandShare - $discountAmount - $bookingMoneyTotal - $allRegistrationAndLandshare);
+    $formRemainingBooking = max(0, $effectiveBookingTarget - $bookingMoneyTotal);
+
     // Get management users for handover dropdown
     $managementUsers = [];
     $mgmtQuery = $this->db->query("SELECT id, full_name, email FROM users WHERE role_id IN (1, 3)");
@@ -1250,7 +1269,9 @@ public function showAddTransactionForm($bookingId = null)
         "clientDetails" => $clientDetails,
         "bookingId" => $bookingId,
         "registrationPaid" => $registrationPaid,
-        "managementUsers" => $managementUsers
+        "managementUsers" => $managementUsers,
+        "formRemainingRegistration" => $formRemainingRegistration,
+        "formRemainingBooking" => $formRemainingBooking
     ]);
 }
 
@@ -1266,6 +1287,14 @@ public function addTransaction()
         }
 
         if (session_status() === PHP_SESSION_NONE) session_start();
+
+        // Update agreement_value if total_booking_money is provided
+        if (isset($_POST['total_booking_money']) && is_numeric($_POST['total_booking_money'])) {
+            $totalBookingMoney = (float)$_POST['total_booking_money'];
+            $updateStmt = $this->db->prepare("UPDATE lead_bookings SET agreement_value = ? WHERE id = ?");
+            $updateStmt->bind_param("di", $totalBookingMoney, $bookingId);
+            $updateStmt->execute();
+        }
 
         $paymentType = $_POST['payment_type'] ?? '';
         

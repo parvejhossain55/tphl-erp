@@ -110,29 +110,25 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                 <option value="">-- Select Payment Type --</option>
 
                                 <!-- Booking Money -->
-                                <?php if (!$isBookingFullyPaid): ?>
+                                <?php if ($formRemainingBooking > 0 || !$isBookingFullyPaid): ?>
                                     <option value="booking_money">
-                                        Booking Money<?php if ($bookingBalance > 0): ?> (Remaining: TK.<?= number_format($bookingBalance, 2) ?>)<?php elseif ($effectiveBookingTarget > 0): ?> (Agreed: TK.<?= number_format($effectiveBookingTarget, 2) ?>)<?php endif; ?>
+                                        Booking Money (Remaining: TK.<?= number_format($formRemainingBooking, 2) ?>)
                                     </option>
                                 <?php else: ?>
                                     <option value="booking_money" disabled>
-                                        Booking Money (Fully Paid — TK.<?= number_format($bookingMoneyPaid, 2) ?> / Target: TK.<?= number_format($effectiveBookingTarget, 2) ?>)
+                                        Booking Money (Fully Paid — TK.<?= number_format($bookingMoneyPaid, 2) ?>)
                                     </option>
                                 <?php endif; ?>
 
-                                <!-- Land Share & Registration -->
-                                <?php if (!$isLandShareCompleted): ?>
-                                    <option value="land_share">
-                                        Land Share (Remaining: TK.<?= number_format($remainingLandShare, 2) ?>)
-                                    </option>
+                                <!-- Registration -->
+                                <?php if ($formRemainingRegistration > 0): ?>
                                     <option value="registration">
-                                        Registration
+                                        Registration (Remaining: TK.<?= number_format($formRemainingRegistration, 2) ?>)
                                     </option>
                                     <option value="mutation_cost">
                                         Mutation Cost
                                     </option>
                                 <?php else: ?>
-                                    <option value="land_share" disabled>Land Share (Completed ✓)</option>
                                     <option value="registration" disabled>Registration (Completed ✓)</option>
                                     <option value="mutation_cost" disabled>Mutation Cost (Completed ✓)</option>
                                 <?php endif; ?>
@@ -193,6 +189,16 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                     </span>
                                 <?php endif; ?>
                             </small>
+                        </div>
+
+                        <!-- Total Booking Money (shown for Booking Money or Registration) -->
+                        <div class="col-md-6" id="totalBookingMoneyContainer" style="display:none;">
+                            <div class="from__input-box">
+                                <label class="form__input-title">Total Booking Money Target <span>*</span></label>
+                                <input type="number" name="total_booking_money" id="totalBookingMoney" class="form-control" step="1"
+                                    min="0" placeholder="Enter target amount" value="<?= $effectiveBookingTarget ?>" required>
+                                <small class="text-muted">Remaining amounts will auto-calculate based on this</small>
+                            </div>
                         </div>
 
                         <!-- Amount -->
@@ -515,32 +521,49 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
         const emiPaidSoFar           = <?= json_encode((float)$emiPaidSoFar) ?>;
         const existingBulkDiscount   = <?= json_encode((float)$totalBulkDiscount) ?>;
         const effectiveCF            = Math.max(0, constructionFee - existingBulkDiscount);
+        const totalLandShare         = <?= json_encode((float)($clientDetails['total_land_share'] ?? 0)) ?>;
+        const discountAmount         = <?= json_encode((float)($clientDetails['discount_amount'] ?? 0)) ?>;
+        const allRegistrationAndLandshare = <?= json_encode((float)($allRegistrationAndLandshare ?? 0)) ?>;
+        const bookingMoneyTotalPaid  = <?= json_encode((float)($clientDetails['booking_money_total'] ?? 0)) ?>;
+        const formRemainingRegistrationPHP = <?= json_encode((float)($formRemainingRegistration ?? 0)) ?>;
+
+        const totalBookingMoneyInput = document.getElementById('totalBookingMoney');
+        const totalBookingMoneyContainer = document.getElementById('totalBookingMoneyContainer');
+
+        // Function to calculate dynamic remaining amounts
+        function getDynamicBalances() {
+            const totalBM = parseFloat(totalBookingMoneyInput.value) || 0;
+            const remainingBooking = Math.max(0, totalBM - bookingMoneyTotalPaid);
+            // Registration Target = Total Land Share - Discount - Total Booking Money Target
+            // Then subtract all registration/land_share payments (pending + verified)
+            const remainingReg = Math.max(0, totalLandShare - discountAmount - totalBM - allRegistrationAndLandshare);
+            return { remainingBooking, remainingReg };
+        }
 
         // Function to update amount field help text and EMI due calculation
         function updateAmountField() {
             const paymentTypeValue = paymentType.value;
             let helpText = '';
+            
+            const { remainingBooking, remainingReg } = getDynamicBalances();
+
+            // Show Total Booking Money input for Booking Money and Registration
+            if (paymentTypeValue === 'booking_money' || paymentTypeValue === 'registration') {
+                totalBookingMoneyContainer.style.display = 'block';
+            } else {
+                totalBookingMoneyContainer.style.display = 'none';
+            }
 
             switch (paymentTypeValue) {
                 case 'booking_money':
-                    if (bookingBalance > 0) {
-                        helpText = 'Next payable amount: TK.' + bookingBalance.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (agreement minus discount)';
-                        // amountField.setAttribute('max', bookingBalance.toFixed(2));
-                        amountField.setAttribute('placeholder', 'Next payable: TK.' + bookingBalance.toLocaleString('en-IN', {minimumFractionDigits:2}));
+                    if (remainingBooking > 0) {
+                        helpText = 'Next payable amount: TK.' + remainingBooking.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+                        amountField.setAttribute('placeholder', 'Next payable: TK.' + remainingBooking.toLocaleString('en-IN', {minimumFractionDigits:2}));
+                        amountField.removeAttribute('disabled');
                     } else {
                         helpText = 'Booking already fully paid';
                         amountField.setAttribute('disabled', 'disabled');
-                    }
-                    amountField.removeAttribute('disabled');
-                    break;
-
-                case 'land_share':
-                    if (remainingLandShare > 0) {
-                        helpText = 'Next payable: TK.' + remainingLandShare.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
-                        // amountField.setAttribute('max', remainingLandShare.toFixed(2));
-                    } else {
-                        helpText = 'Land share already completed';
-                        amountField.setAttribute('disabled', 'disabled');
+                        amountField.setAttribute('placeholder', 'Fully paid');
                     }
                     break;
 
@@ -570,14 +593,15 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     break;
 
                 case 'registration':
-                    if (remainingLandShare > 0) {
-                        helpText = 'Registration fee (Next payable: TK.' + remainingLandShare.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')';
-                        // amountField.setAttribute('max', remainingLandShare.toFixed(2));
+                    if (remainingReg > 0) {
+                        helpText = 'Registration fee (Next payable: TK.' + remainingReg.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')';
+                        amountField.removeAttribute('disabled');
+                        amountField.setAttribute('placeholder', 'Enter payment amount');
                     } else {
                         helpText = 'Land share fully paid — registration not needed.';
                         amountField.setAttribute('disabled', 'disabled');
+                        amountField.setAttribute('placeholder', 'Fully paid');
                     }
-                    amountField.removeAttribute('disabled');
                     break;
 
                 case 'development_charge':
@@ -596,6 +620,25 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     amountField.setAttribute('placeholder', 'Enter payment amount');
                     amountField.removeAttribute('max');
                     amountField.removeAttribute('disabled');
+            }
+
+            // Update dropdown text dynamically
+            const bmOption = document.querySelector('#paymentType option[value="booking_money"]');
+            if (bmOption) {
+                if (remainingBooking > 0) {
+                    bmOption.textContent = 'Booking Money (Remaining: TK.' + remainingBooking.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')';
+                } else {
+                    bmOption.textContent = 'Booking Money (Fully Paid — TK.' + bookingMoneyTotalPaid.toLocaleString('en-IN', {minimumFractionDigits:2}) + ')';
+                }
+            }
+
+            const regOption = document.querySelector('#paymentType option[value="registration"]');
+            if (regOption) {
+                if (remainingReg > 0) {
+                    regOption.textContent = 'Registration (Remaining: TK.' + remainingReg.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ')';
+                } else {
+                    regOption.textContent = 'Registration (Completed ✓)';
+                }
             }
 
             if (amountHelp) amountHelp.textContent = helpText;
@@ -895,16 +938,12 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                     return false;
                 }
 
-                // Validation for land share
-                if (paymentTypeValue === 'land_share') {
-                    if (!isBookingFullyPaid) {
+                // Validation for registration (which now includes land share remaining check)
+                if (paymentTypeValue === 'registration') {
+                    const { remainingReg } = getDynamicBalances();
+                    if (amount > remainingReg + 0.01) {
                         e.preventDefault();
-                        alert('Land Share is locked. Full booking amount must be paid first.');
-                        return false;
-                    }
-                    if (amount > remainingLandShare + 0.01) {
-                        e.preventDefault();
-                        alert('Land share amount cannot exceed remaining: TK.' + remainingLandShare.toFixed(2));
+                        alert('Registration amount cannot exceed remaining: TK.' + remainingReg.toFixed(2));
                         amountField.focus();
                         return false;
                     }
@@ -923,8 +962,14 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
         }
 
         // Initialize on page load
+        if (totalBookingMoneyInput) {
+            totalBookingMoneyInput.addEventListener('input', function() {
+                updateAmountField();
+            });
+        }
         updateAmountField();
         controlPartiallyPaidStatus();
+
 
         // Trigger payment method change to set initial state
         if (paymentMethod) {

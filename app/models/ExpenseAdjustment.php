@@ -115,6 +115,11 @@ class ExpenseAdjustment
             LEFT JOIN roles qc_r ON qc_u.role_id = qc_r.id
             WHERE ea.id = ?
         ");
+        
+        if (!$stmt) {
+            die("Database Error in getById: " . $this->db->error);
+        }
+
         $stmt->bind_param("i", $id);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc();

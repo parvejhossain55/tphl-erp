@@ -1086,29 +1086,55 @@ class PaymentBookingController extends Controller
             exit;
         }
 
-        if ($this->paymentModel->isPaymentVerified($id)) {
-            setError("Cannot edit payment because it has already been verified by Accounts!");
-            header("Location: {$GLOBALS['base_url']}/payments-booking/{$bookingId}");
-            exit;
-        }
+        $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleName, 'head') !== false) || strpos($userRoleName, 'admin') !== false || $_SESSION['user']['role_id'] == 1);
+        $isVerified = $this->paymentModel->isPaymentVerified($id);
 
-        $bankName = !empty($_POST['bank_name']) ? trim($_POST['bank_name']) : null;
-        if (in_array($bankName, ['Other Bank', 'Other Country / Foreign Bank', 'Foreign Bank', 'Other Country Bank']) && !empty($_POST['custom_bank_name'])) {
-            $bankName = trim($_POST['custom_bank_name']);
-        }
+        if ($isVerified) {
+            if (!$isSalesHead) {
+                setError("Cannot edit payment because it has already been verified by Accounts!");
+                header("Location: {$GLOBALS['base_url']}/payments-booking/{$bookingId}");
+                exit;
+            }
+            
+            // SECURITY: If verified, ONLY allow updating payment_date
+            // Fetch existing data so we don't overwrite with user input
+            $stmt = $this->db->prepare("SELECT * FROM lead_payments WHERE id = ?");
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+            $existing = $stmt->get_result()->fetch_assoc();
+            
+            $data = [
+                'id'              => $id,
+                'amount'          => floatval($existing['amount']),
+                'payment_method'  => $existing['payment_method'],
+                'payment_date'    => $_POST['payment_date'] ?? $existing['payment_date'], // The only field allowed to change
+                'transaction_ref' => $existing['transaction_ref'],
+                'bank_id'         => $existing['bank_id'],
+                'bank_name'       => $existing['bank_name'],
+                'bank_account_no' => $existing['bank_account_no'],
+                'cheque_no'       => $existing['cheque_no'],
+                'online_type'     => $existing['online_type'],
+            ];
+        } else {
+            $bankName = !empty($_POST['bank_name']) ? trim($_POST['bank_name']) : null;
+            if (in_array($bankName, ['Other Bank', 'Other Country / Foreign Bank', 'Foreign Bank', 'Other Country Bank']) && !empty($_POST['custom_bank_name'])) {
+                $bankName = trim($_POST['custom_bank_name']);
+            }
 
-        $data = [
-            'id'              => $id,
-            'amount'          => floatval($_POST['amount'] ?? 0),
-            'payment_method'  => $_POST['payment_method'] ?? 'cash',
-            'payment_date'    => $_POST['payment_date'] ?? date('Y-m-d'),
-            'transaction_ref' => $_POST['transaction_ref'] ?? null,
-            'bank_id'         => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
-            'bank_name'       => $bankName,
-            'bank_account_no' => $_POST['bank_account_no'] ?? null,
-            'cheque_no'       => $_POST['cheque_no'] ?? null,
-            'online_type'     => $_POST['online_type'] ?? null,
-        ];
+            $data = [
+                'id'              => $id,
+                'amount'          => floatval($_POST['amount'] ?? 0),
+                'payment_method'  => $_POST['payment_method'] ?? 'cash',
+                'payment_date'    => $_POST['payment_date'] ?? date('Y-m-d'),
+                'transaction_ref' => $_POST['transaction_ref'] ?? null,
+                'bank_id'         => !empty($_POST['bank_id']) ? (int)$_POST['bank_id'] : null,
+                'bank_name'       => $bankName,
+                'bank_account_no' => $_POST['bank_account_no'] ?? null,
+                'cheque_no'       => $_POST['cheque_no'] ?? null,
+                'online_type'     => $_POST['online_type'] ?? null,
+            ];
+        }
 
         // Handle attachment upload if new file provided
         if (isset($_FILES['attachment_image']) && $_FILES['attachment_image']['error'] === UPLOAD_ERR_OK) {

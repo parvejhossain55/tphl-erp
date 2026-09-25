@@ -162,7 +162,7 @@ class PaymentLeadBooking extends Model
                 LEFT JOIN users us ON us.id = p.verified_by
                 LEFT JOIN company_bank_accounts cb ON cb.id = p.bank_id
                 WHERE p.booking_id = ?
-                AND p.payment_type IN('booking_money','registration')
+                AND p.payment_type IN('booking_money','registration','land_share')
                 ORDER BY p.id ASC
         ");
         $stmt->bind_param("i", $booking_id);

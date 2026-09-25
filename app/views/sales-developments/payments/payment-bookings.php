@@ -58,6 +58,9 @@ if (!$is_booking_fully_paid) {
     $showBookingForm = true;
     $form_mode = 'registration';
 }
+
+$userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+$isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleName, 'head') !== false) || strpos($userRoleName, 'admin') !== false || $_SESSION['user']['role_id'] == 1);
 ?>
 
 
@@ -284,7 +287,7 @@ if (!$is_booking_fully_paid) {
 
                                 <label class="form__input-title">Payment Date *</label>
                             </div>
-                            <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                            <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" <?= $isSalesHead ? '' : 'readonly style="pointer-events:none; background-color:#e9ecef;" title="Only Sales Head can edit the payment date"' ?> required>
                         </div>
 
                         <!-- Transaction Reference -->
@@ -482,11 +485,11 @@ if (!$is_booking_fully_paid) {
                                                 href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $p['id'] ?>"
                                                 class="btn btn-success btn-sm"
                                                 title="Print Money Receipt / Invoice">
-                                                <i class="fa-solid fa-receipt me-1"></i> <?= $p['payment_type'] === 'registration' ? 'Registration Invoice' : 'Booking Invoice' ?>
+                                                <i class="fa-solid fa-receipt me-1"></i> <?= $p['payment_type'] === 'registration' ? 'Registration Invoice' : ($p['payment_type'] === 'land_share' ? 'Land Share Invoice' : 'Booking Invoice') ?>
                                             </a>
 
-                                            <!-- Edit & Delete only for unverified payments -->
-                                            <?php if ($p['verification_status'] != 'verified'): ?>
+                                            <!-- Edit Payment -->
+                                            <?php if ($p['verification_status'] != 'verified' || $isSalesHead): ?>
                                                 <button type="button" 
                                                     class="btn btn-outline-primary btn-sm editPaymentBtn"
                                                     data-bs-toggle="modal" 
@@ -502,10 +505,14 @@ if (!$is_booking_fully_paid) {
                                                     data-account-no="<?= htmlspecialchars($p['bank_account_no'] ?? '') ?>"
                                                     data-cheque="<?= htmlspecialchars($p['cheque_no'] ?? '') ?>"
                                                     data-online="<?= htmlspecialchars($p['online_type'] ?? '') ?>"
+                                                    data-verified="<?= $p['verification_status'] === 'verified' ? 'true' : 'false' ?>"
                                                     title="Edit Payment Record">
                                                     <i class="fa-solid fa-pen-to-square"></i>
                                                 </button>
+                                            <?php endif; ?>
 
+                                            <!-- Delete only for unverified payments -->
+                                            <?php if ($p['verification_status'] != 'verified'): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/payment-booking-delete/<?= $p['id'] ?>"
                                                     class="btn btn-outline-danger btn-sm"
                                                     onclick="return confirm('Are you sure you want to delete this payment record?');"
@@ -837,12 +844,39 @@ if (!$is_booking_fully_paid) {
             const accountNo = this.dataset.accountNo;
             const cheque = this.dataset.cheque;
             const online = this.dataset.online;
+            const isVerified = this.dataset.verified === 'true';
 
             document.getElementById('edit_p_id').value = pId;
             document.getElementById('edit_p_amount').value = amount;
             document.getElementById('edit_p_date').value = date;
             document.getElementById('edit_p_ref').value = ref || '';
             document.getElementById('edit_p_method').value = method;
+
+            const formFields = [
+                'edit_p_amount', 'edit_p_method', 'edit_p_ref',
+                'edit_p_bank_id', 'edit_p_bank_name', 'edit_p_account_no',
+                'edit_p_cheque', 'edit_p_online'
+            ];
+            
+            if (isVerified) {
+                formFields.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.style.pointerEvents = 'none';
+                        el.style.backgroundColor = '#e9ecef';
+                        if (el.tagName === 'INPUT') el.readOnly = true;
+                    }
+                });
+            } else {
+                formFields.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.style.pointerEvents = 'auto';
+                        el.style.backgroundColor = '';
+                        if (el.tagName === 'INPUT') el.readOnly = false;
+                    }
+                });
+            }
 
             const editCompanyBankSelect = document.getElementById('edit_p_bank_id');
             if (editCompanyBankSelect) {
@@ -956,7 +990,7 @@ if (!$is_booking_fully_paid) {
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Payment Date *</label>
-                            <input type="date" name="payment_date" id="edit_p_date" class="form-control" required>
+                            <input type="date" name="payment_date" id="edit_p_date" class="form-control" <?= $isSalesHead ? '' : 'readonly style="pointer-events:none; background-color:#e9ecef;" title="Only Sales Head can edit the payment date"' ?> required>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Transaction Reference</label>
