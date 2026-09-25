@@ -1251,7 +1251,7 @@ public function showAddTransactionForm($bookingId = null)
     $discountAmount = (float)($clientDetails['discount_amount'] ?? 0);
     $effectiveBookingTarget = (float)($clientDetails['effective_booking_target'] ?? 0);
 
-    $formRemainingRegistration = max(0, $totalLandShare - $discountAmount - $bookingMoneyTotal - $allRegistrationAndLandshare);
+    $formRemainingRegistration = max(0, $totalLandShare - $discountAmount - $effectiveBookingTarget - $allRegistrationAndLandshare);
     $formRemainingBooking = max(0, $effectiveBookingTarget - $bookingMoneyTotal);
 
     // Get management users for handover dropdown
@@ -1271,7 +1271,8 @@ public function showAddTransactionForm($bookingId = null)
         "registrationPaid" => $registrationPaid,
         "managementUsers" => $managementUsers,
         "formRemainingRegistration" => $formRemainingRegistration,
-        "formRemainingBooking" => $formRemainingBooking
+        "formRemainingBooking" => $formRemainingBooking,
+        "allRegistrationAndLandshare" => $allRegistrationAndLandshare
     ]);
 }
 

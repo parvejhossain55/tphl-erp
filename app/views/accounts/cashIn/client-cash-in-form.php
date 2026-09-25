@@ -172,12 +172,7 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
 
                             <!-- Help text -->
                             <small class="text-muted mt-2 d-block">
-                                <?php if (!$isLandShareCompleted): ?>
-                                    <span class="text-warning">
-                                        <i class="fa-light fa-exclamation-triangle"></i>
-                                        Remaining Land Share: TK.<?= number_format($remainingLandShare, 2) ?> — Land Share &amp; Registration lock together when done
-                                    </span>
-                                <?php elseif (!$isDevChargeCompleted && $flatDevCharges > 0): ?>
+                                <?php if (!$isDevChargeCompleted && $flatDevCharges > 0): ?>
                                     <span class="text-warning">
                                         <i class="fa-light fa-exclamation-triangle"></i>
                                         Dev Charge paid: TK.<?= number_format($devChargePaid, 2) ?> / TK.<?= number_format($flatDevCharges, 2) ?> — EMI unlocks after this is complete
