@@ -25,7 +25,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
 
 <style>
   .po-hero {
-    background: #198754;
+    background: <?= (($po['status'] ?? '') === 'Cancelled') ? 'linear-gradient(135deg, #991b1b, #dc2626)' : '#198754' ?>;
     border-radius: 18px;
     padding: 24px 28px;
     margin-bottom: 20px;
@@ -181,9 +181,11 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
           padding:7px 16px;border-radius:20px;background:<?= $sb['bg'] ?>;color:#fff">
           <i class="fal fa-circle"></i><?= $sb['label'] ?>
         </div>
-        <div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.55)">
+        <div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.75)">
           <?php
-          if ($fullyApproved) {
+          if ($po['status'] === 'Cancelled') {
+              echo '❌ PO Rejected & Cancelled';
+          } elseif ($fullyApproved) {
               echo '✅ Fully Approved';
           } elseif ($phNeeded && !$phApproved) {
               echo '⏳ Awaiting Purchase Head Approval';
@@ -203,14 +205,76 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
   <!-- Left: Items + Delivery Tracker -->
   <div class="col-xl-8">
 
+    <!-- PO Cancelled / Rejected Action Banner -->
+    <?php if ($po['status'] === 'Cancelled'): ?>
+      <div class="alert alert-danger d-flex align-items-start gap-3 p-3 mb-3 border-danger shadow-sm" style="border-radius:12px; background:linear-gradient(135deg, rgba(239,68,68,.12), rgba(220,38,38,.05)); border-left: 6px solid #dc2626 !important;">
+        <div style="width:40px; height:40px; border-radius:10px; background:#dc2626; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <i class="fal fa-times-circle fs-4"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <h6 class="fw-bold text-danger mb-0">
+              <i class="fal fa-ban me-1"></i> PURCHASE ORDER REJECTED & CANCELLED
+            </h6>
+            <span class="badge bg-danger text-white px-2 py-1">Returned for Revision</span>
+          </div>
+          <?php if (!empty($po['remarks'])): ?>
+            <div class="mt-2 p-3 rounded bg-white text-dark border border-danger-subtle small shadow-xs">
+              <div class="text-danger fw-bold mb-1 small text-uppercase"><i class="fal fa-comment-alt-exclamation me-1"></i>Approver Remarks / Correction Instructions:</div>
+              <div class="text-dark fw-bold" style="font-size:13.5px; white-space:pre-wrap; line-height:1.5;"><?= nl2br(htmlspecialchars($po['remarks'])) ?></div>
+            </div>
+          <?php endif; ?>
+          <div class="text-secondary small mt-2">
+            This Purchase Order was rejected. The source Purchase Request <strong>PR-<?= htmlspecialchars($po['request_id']) ?></strong> has been updated to <strong>PO Rejected</strong> so that quantities can be adjusted, unwanted materials removed, or quotations re-evaluated.
+          </div>
+          <div class="mt-3 d-flex flex-wrap gap-2">
+            <?php if (!empty($po['request_id'])): ?>
+              <a href="<?= $base_url ?>/con-purchase-request/<?= $po['request_id'] ?>" class="btn btn-outline-danger btn-sm fw-bold">
+                <i class="fal fa-file-alt me-1"></i> View Requisition PR #<?= htmlspecialchars($po['request_id']) ?>
+              </a>
+              <a href="<?= $base_url ?>/con-purchase-request-edit/<?= $po['request_id'] ?>" class="btn btn-danger btn-sm fw-bold">
+                <i class="fal fa-pencil-square me-1"></i> Edit & Revise PR #<?= htmlspecialchars($po['request_id']) ?>
+              </a>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
+    <?php endif; ?>
+
     <!-- PO Remarks -->
-    <?php if (!empty($po['remarks'])): ?>
+    <?php if (!empty($po['remarks']) && $po['status'] !== 'Cancelled'): ?>
       <div class="po-panel" style="border-left: 4px solid #3b82f6;">
         <div class="po-panel-title">
           <div class="po-dot" style="background:#3b82f6"></div>
           PO Remarks
         </div>
         <div style="font-size:13px; color:var(--text-color, #4b5563); line-height:1.5; white-space:pre-wrap;"><?= htmlspecialchars($po['remarks']) ?></div>
+      </div>
+    <?php endif; ?>
+
+    <!-- Urgent PO Requisition Notice -->
+    <?php if (!empty($po['pr_is_urgent'])): ?>
+      <div class="alert alert-danger d-flex align-items-start gap-3 p-3 mb-3 border-danger shadow-sm" style="border-radius:12px; background:linear-gradient(135deg, rgba(239,68,68,.12), rgba(220,38,38,.05)); border-left: 6px solid #dc2626 !important;">
+        <div style="width:38px; height:38px; border-radius:10px; background:#dc2626; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <i class="fal fa-bolt fs-5"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <h6 class="fw-bold text-danger mb-0">
+              ⚠️ URGENT PURCHASE ORDER — Initiated from Urgent PR #<?= htmlspecialchars($po['request_id']) ?>
+            </h6>
+            <span class="badge bg-danger text-white px-2 py-1">Fast-Track Procurement</span>
+          </div>
+          <div class="text-dark small mt-1">
+            <strong>Target Delivery / Required Date:</strong> <?= !empty($po['pr_required_date']) ? date('d M Y', strtotime($po['pr_required_date'])) : 'Immediate' ?>
+          </div>
+          <?php if (!empty($po['pr_urgent_reason'])): ?>
+            <div class="mt-2 p-2 rounded bg-white text-dark border border-danger-subtle small">
+              <strong class="text-danger"><i class="fal fa-exclamation-triangle me-1"></i>Urgent Requisition Justification:</strong>
+              <span class="text-dark fw-semibold"><?= nl2br(htmlspecialchars($po['pr_urgent_reason'])) ?></span>
+            </div>
+          <?php endif; ?>
+        </div>
       </div>
     <?php endif; ?>
 
@@ -228,7 +292,9 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
               <th>Material</th>
               <th>Vendor</th>
               <th>Unit</th>
-              <th class="text-end">Qty</th>
+              <th class="text-end">Site Stock</th>
+              <th class="text-end">3-Mo Req.</th>
+              <th class="text-end">Order Qty</th>
               <th class="text-end">Unit Price</th>
               <th class="text-end">Total</th>
             </tr>
@@ -246,7 +312,21 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
                 </td>
                 <td><?= htmlspecialchars($item['vendor_name']) ?></td>
                 <td><?= htmlspecialchars($item['unit']) ?></td>
-                <td class="text-end"><?= number_format($item['quantity'], 3) ?></td>
+                <td class="text-end">
+                  <span class="badge bg-light text-dark border">
+                    <?= number_format((float)($item['current_stock'] ?? 0), 3) ?>
+                  </span>
+                </td>
+                <td class="text-end">
+                  <?php if (!empty($item['next_3_months_requirement']) && (float)$item['next_3_months_requirement'] > 0): ?>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                      <?= number_format((float)$item['next_3_months_requirement'], 3) ?>
+                    </span>
+                  <?php else: ?>
+                    <span class="text-muted">—</span>
+                  <?php endif; ?>
+                </td>
+                <td class="text-end fw-bold"><?= number_format($item['quantity'], 3) ?></td>
                 <td class="text-end">৳ <?= number_format($item['unit_price'], 2) ?></td>
                 <td class="text-end fw-bold">৳ <?= number_format($lt, 2) ?></td>
               </tr>
@@ -254,7 +334,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
           </tbody>
           <tfoot class="table-light">
             <tr>
-              <th colspan="6" class="text-end py-3">TOTAL ORDER VALUE:</th>
+              <th colspan="8" class="text-end py-3">TOTAL ORDER VALUE:</th>
               <th class="text-end py-3 fs-5 text-primary">৳ <?= number_format($grandTotal, 2) ?></th>
             </tr>
           </tfoot>
@@ -1073,6 +1153,27 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
         </span>
       </div>
 
+      <!-- Cancelled / Rejected Banner -->
+      <?php if ($po['status'] === 'Cancelled'): ?>
+        <div style="padding:14px;border-radius:12px;background:rgba(239,68,68,.08);border:1.5px solid rgba(239,68,68,.3);margin-bottom:16px">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <i class="fal fa-times-circle text-danger" style="font-size:18px"></i>
+            <div style="font-size:13px;font-weight:800;color:#dc2626">PO Rejected & Cancelled</div>
+          </div>
+          <?php if (!empty($po['remarks'])): ?>
+            <div style="font-size:12px;color:#1e293b;background:#fff;padding:8px 10px;border-radius:8px;border:1px solid #fecaca;margin-bottom:10px">
+              <strong class="text-danger">Remarks:</strong> <?= htmlspecialchars($po['remarks']) ?>
+            </div>
+          <?php endif; ?>
+          <div style="font-size:11.5px;color:#64748b;margin-bottom:8px">
+            Linked Requisition <strong>PR-<?= $po['request_id'] ?></strong> was returned for revision.
+          </div>
+          <a href="<?= $base_url ?>/con-purchase-request/<?= $po['request_id'] ?>" class="btn btn-sm btn-outline-danger w-100 fw-bold" style="border-radius:8px">
+            <i class="fal fa-arrow-left me-1"></i> Go to Purchase Request #<?= $po['request_id'] ?>
+          </a>
+        </div>
+      <?php endif; ?>
+
       <!-- Fully Approved Banner -->
       <?php if ($fullyApproved): ?>
         <div style="padding:12px;border-radius:10px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);text-align:center;margin-bottom:14px">
@@ -1214,9 +1315,11 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
                 </div>
                 <div class="modal-body">
                   <div class="mb-3">
-                    <label class="form-label fw-bold">Reason for Rejection <span class="text-danger">*</span></label>
-                    <textarea class="form-control" name="remarks" rows="3" placeholder="Explain why this PO is being rejected..." required></textarea>
-                    <div class="form-text">An email notification will be sent with these remarks.</div>
+                    <label class="form-label fw-bold">Reason for Rejection & Revision Instructions <span class="text-danger">*</span></label>
+                    <textarea class="form-control" name="remarks" rows="4" placeholder="Specify why this PO is rejected and what must be revised, for example:&#10;• Rate too high — negotiate lower rate with vendor&#10;• Unit quantity too high — reduce requirement from 100 to 50&#10;• Material X not required at this stage — remove this item" required></textarea>
+                    <div class="form-text mt-2 text-muted" style="font-size:11.5px;">
+                      <i class="fal fa-info-circle me-1 text-primary"></i> These remarks will be sent via email and displayed as a <strong>PO Rejected</strong> badge on the linked Purchase Request (PR-<?= $po['request_id'] ?>), enabling the team to edit items/quantities and re-submit.
+                    </div>
                   </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
@@ -1511,9 +1614,11 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
           <table class="table table-bordered align-middle text-center" style="font-size:12px">
             <thead class="table-dark">
               <tr>
-                <th class="text-start" style="width:5%;">#</th>
-                <th class="text-start" style="width:25%;">Material</th>
-                <th style="width:10%;">PR Qty</th>
+                <th class="text-start" style="width:4%;">#</th>
+                <th class="text-start" style="width:22%;">Material</th>
+                <th style="width:8%;">PR Qty</th>
+                <th style="width:8%;">Site Stock</th>
+                <th style="width:8%;">3-Mo Forecast</th>
                 <?php foreach ($vendors as $vid => $vname): ?>
                   <th style="min-width:130px;" class="<?= ($vid == $selectedVendorId) ? 'bg-success text-white border-success' : '' ?>">
                     <?= htmlspecialchars($vname) ?>
@@ -1546,6 +1651,20 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
                       <span class="text-muted small">(<?= $mat['unit'] ?>)</span>
                   </td>
                   <td><?= number_format($mat['quantity'], 3) ?></td>
+                  <td>
+                      <span class="badge bg-light text-dark border">
+                          <?= number_format((float)($mat['current_stock'] ?? 0), 3) ?>
+                      </span>
+                  </td>
+                  <td>
+                      <?php if (!empty($mat['next_3_months_requirement']) && (float)$mat['next_3_months_requirement'] > 0): ?>
+                          <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                              <?= number_format((float)$mat['next_3_months_requirement'], 3) ?>
+                          </span>
+                      <?php else: ?>
+                          <span class="text-muted">—</span>
+                      <?php endif; ?>
+                  </td>
                   <?php foreach ($vendorIds as $vid): ?>
                       <?php
                       $cell = $matrix[$mid][$vid] ?? null;
@@ -1568,7 +1687,7 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
             </tbody>
             <tfoot class="table-light">
                 <tr class="fw-bold">
-                    <td colspan="3" class="text-end">Vendor Totals:</td>
+                    <td colspan="5" class="text-end">Vendor Totals:</td>
                     <?php foreach ($vendorIds as $vid): ?>
                         <td class="<?= ($vid == $selectedVendorId) ? 'text-success' : '' ?>">৳ <?= number_format($totals[$vid] ?? 0, 2) ?></td>
                     <?php endforeach; ?>

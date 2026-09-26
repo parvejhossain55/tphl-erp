@@ -177,9 +177,10 @@ class Con_PurchaseOrderController extends Controller
         $opApproved    = !empty($po['op_head_approved_by_id']);
         $fullyApproved = ($phNeeded ? $phApproved : true) && $qcApproved && $opApproved;
 
-        $canApprovePH   = (in_array($currentRoleId, [17, 1, 3])) && $phNeeded && !$phApproved;
-        $canApproveQC   = (in_array($currentRoleId, [24, 1, 3])) && (!$phNeeded || $phApproved) && !$qcApproved;
-        $canApproveOP   = (in_array($currentRoleId, [20, 1, 3])) && $qcApproved && !$opApproved;
+        $isCancelled    = ($po['status'] === 'Cancelled');
+        $canApprovePH   = !$isCancelled && (in_array($currentRoleId, [17, 1, 3])) && $phNeeded && !$phApproved;
+        $canApproveQC   = !$isCancelled && (in_array($currentRoleId, [24, 1, 3])) && (!$phNeeded || $phApproved) && !$qcApproved;
+        $canApproveOP   = !$isCancelled && (in_array($currentRoleId, [20, 1, 3])) && $qcApproved && !$opApproved;
 
         // Management checks are mapped to Operation Head parameters for compatibility
         $mgmtApproved   = $opApproved;
@@ -710,11 +711,30 @@ class Con_PurchaseOrderController extends Controller
             exit;
         }
 
-        // Update status to Cancelled
-        $upd = $this->db->prepare("UPDATE purchase_orders SET status = 'Cancelled' WHERE id = ?");
-        $upd->bind_param('i', $id);
+        // Update PO status to Cancelled and save remarks
+        $upd = $this->db->prepare("UPDATE purchase_orders SET status = 'Cancelled', remarks = ? WHERE id = ?");
+        $upd->bind_param('si', $remarks, $id);
         if ($upd->execute()) {
-            setSuccess('Purchase Order has been rejected.');
+            // Also update the linked Purchase Request so requester knows it needs revision
+            if (!empty($po['request_id'])) {
+                $prId = (int)$po['request_id'];
+                $prUpd = $this->db->prepare("
+                    UPDATE purchase_requests 
+                    SET status = 'PO Rejected', 
+                        po_rejected_by_id = ?, 
+                        po_rejected_at = NOW(), 
+                        po_rejection_note = ?, 
+                        last_rejected_po_id = ? 
+                    WHERE id = ?
+                ");
+                if ($prUpd) {
+                    $prUpd->bind_param('isii', $userId, $remarks, $id, $prId);
+                    $prUpd->execute();
+                    $prUpd->close();
+                }
+            }
+
+            setSuccess('Purchase Order has been rejected and Requisition returned for revision.');
 
             // Trigger rejection email
             require_once __DIR__ . '/../../core/ProjectWorkflowMailService.php';

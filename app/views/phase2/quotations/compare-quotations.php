@@ -35,6 +35,20 @@ $vendorIds = array_keys($vendors);
                 </div>
                 <div class="card__body p-4">
 
+                    <?php if (!empty($pr['is_urgent'])): ?>
+                        <div class="alert alert-danger py-2 px-3 mb-3 d-flex align-items-center justify-content-between border-danger shadow-sm" style="border-radius:10px; background:#fef2f2; color: #302d2d">
+                            <div>
+                           
+                                <strong class="text-danger">URGENT PURCHASE REQUISITION:</strong>
+                                Required by: <strong><?= !empty($pr['required_date']) ? date('d M Y', strtotime($pr['required_date'])) : 'Immediate' ?></strong>
+                                <?php if (!empty($pr['urgent_reason'])): ?>
+                                    — <em>Justification: <?= htmlspecialchars($pr['urgent_reason']) ?></em>
+                                <?php endif; ?>
+                            </div>
+                            <span class="badge bg-danger ">Urgent Fast-Track</span>
+                        </div>
+                    <?php endif; ?>
+
                     <?php if (empty($vendors) || count($vendors) < 2): ?>
                         <div class="alert alert-warning">
                             <i class="bi bi-exclamation-triangle me-2"></i>
@@ -50,15 +64,17 @@ $vendorIds = array_keys($vendors);
                             <table class="table table-bordered align-middle text-center">
                                 <thead>
                                     <tr class="table-dark">
-                                        <th class="text-start" style="width:5%;">#</th>
-                                        <th class="text-start" style="width:25%;">Material</th>
-                                        <th style="width:10%;">PR Qty</th>
+                                        <th class="text-start" style="width:4%;">#</th>
+                                        <th class="text-start" style="width:22%;">Material</th>
+                                        <th style="width:8%;">PR Qty</th>
+                                        <th style="width:9%;">Site Stock</th>
+                                        <th style="width:9%;">3-Mo Forecast</th>
                                         <?php foreach ($vendors as $vid => $vname): ?>
-                                            <th style="min-width:150px;">
+                                            <th style="min-width:140px;">
                                                 <?= htmlspecialchars($vname) ?>
                                             </th>
                                         <?php endforeach; ?>
-                                        <th style="width:15%;">Select Vendor</th>
+                                        <th style="width:14%;">Select Vendor</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -85,7 +101,21 @@ $vendorIds = array_keys($vendors);
                                             <br><small class="text-muted">[Category: <?= htmlspecialchars($mat['category_name'] ?? 'Uncategorized') ?>]</small>
                                             <input type="hidden" name="sel_material_id[]" value="<?= $mid ?>">
                                         </td>
-                                        <td><?= number_format($mat['quantity'], 3) ?></td>
+                                        <td class="fw-bold"><?= number_format($mat['quantity'], 3) ?></td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border">
+                                                <?= number_format((float)($mat['current_stock'] ?? 0), 3) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($mat['next_3_months_requirement']) && (float)$mat['next_3_months_requirement'] > 0): ?>
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                                    <?= number_format((float)$mat['next_3_months_requirement'], 3) ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="text-muted">—</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <?php foreach ($vendorIds as $vid): ?>
                                             <?php
                                             $cell = $matrix[$mid][$vid] ?? null;
@@ -125,7 +155,7 @@ $vendorIds = array_keys($vendors);
                                 </tbody>
                                 <tfoot class="table-light">
                                     <tr class="fw-bold">
-                                        <td colspan="3" class="text-end">Vendor Totals:</td>
+                                        <td colspan="5" class="text-end">Vendor Totals:</td>
                                         <?php foreach ($vendorIds as $vid): ?>
                                             <td>৳ <?= number_format($totals[$vid] ?? 0, 2) ?></td>
                                         <?php endforeach; ?>

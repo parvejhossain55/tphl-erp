@@ -134,7 +134,16 @@
                             <?php $hasPaymentReq = !empty($po['vpr_id']); ?>
                             <tr class="<?= $hasPaymentReq ? 'payment-requested-row' : '' ?>">
                                 <td class="text-center fw-bold text-muted"><?= $index + 1 ?></td>
-                                <td><span class="fw-bold text-primary">PO-<?= $po['id'] ?></span></td>
+                                <td>
+                                    <span class="fw-bold text-primary">PO-<?= $po['id'] ?></span>
+                                    <?php if (!empty($po['pr_is_urgent'])): ?>
+                                        <div class="mt-1">
+                                            <span class="badge bg-danger text-white rounded-pill px-2 py-1 shadow-sm" style="font-size:10px;" title="Urgent Requisition: <?= htmlspecialchars($po['pr_urgent_reason'] ?? 'Urgent requirement') ?>">
+                                                <i class="fa-solid fa-bolt-lightning me-1"></i>URGENT
+                                            </span>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
                                 <td class="fw-bold">
                                     <?= htmlspecialchars($po['project_name']) ?>
                                     <?php if (!empty($po['category_names'])): ?>

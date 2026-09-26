@@ -8,7 +8,7 @@ $isChiefOfficer = (in_array($roleId, [33, 34, 35], true) || in_array(strtolower(
 
 // Approval Pipeline Role Permissions (Admin=1, super Admin=3)
 $isAdminOrMgmt = in_array($roleId, [1, 3]) && !$isChiefOfficer; 
-$isOperations   = ($isAdminOrMgmt || in_array($roleId, [20, 32])) && !$isChiefOfficer; // Operations Step: Role 20, 32
+$isOperations   = ($isAdminOrMgmt || (int)$roleId === 32) && !$isChiefOfficer; // Admin & Operation Step: Role 32
 $isPurchaseHead = ($isAdminOrMgmt || in_array($roleId, [17, 31])) && !$isChiefOfficer; // Purchase Head Step: Role 17, 31
 $isQcAudit      = ($isAdminOrMgmt || in_array($roleId, [24, 25])) && !$isChiefOfficer; // QC & Internal Audit Step
 $isManagement   = $isAdminOrMgmt;                               // Management Step
@@ -17,7 +17,7 @@ $isAccounts     = ($isAdminOrMgmt || in_array($roleId, [6, 30])) && !$isChiefOff
 // Global approvers / viewers include Management, Operations, Purchase, QC/Audit, Accounts roles
 $isGlobalViewer = in_array($roleId, [1, 3, 33, 34, 35, 6, 17, 20, 24, 25, 30, 31, 32]);
 $isApprover     = $isGlobalViewer && !$isChiefOfficer;
-$activeTab      = $_GET['tab'] ?? ($isApprover ? 'all_requests' : 'my_requests');
+$activeTab      = $_GET['tab'] ?? 'all_requests';
 
 $overallBadges = [
     'pending' => 'warning', 'in_review' => 'info', 'approved' => 'success',
@@ -58,7 +58,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
     <div class="alert alert-info-transparent border fs-12 mb-4">
         <i class="fa-solid fa-circle-info me-1"></i>
         <strong>Approval Flow:</strong> 
-        Requisition → Department Head / Reporting Boss (if applicable) → Operations → Purchase Head → QC & Internal Audit → Management → Accounts (Payment) → Purchased (Asset Inventory)
+        Requisition → Department Head / Reporting Boss (if applicable) → Admin & Operation (Role 32) → Purchase Head → QC & Internal Audit → Management → Accounts (Payment) → Purchased (Asset Inventory)
     </div>
 
     <!-- Filter Card Wrapper (Matching flat-lists) -->
@@ -146,6 +146,9 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2 border-bottom">
                     <ul class="nav nav-tabs nav-tabs-bordered mb-0">
                         <li class="nav-item">
+                            <a class="nav-link <?= $activeTab === 'all_requests' ? 'active' : '' ?> fw-semibold" href="?tab=all_requests<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['office_branch_id']) ? '&office_branch_id='.$_GET['office_branch_id'] : '' ?><?= !empty($_GET['project_id']) ? '&project_id='.$_GET['project_id'] : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>"><i class="fa-solid fa-list-check me-1"></i>All Requests</a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link <?= $activeTab === 'pending_approval' ? 'active' : '' ?> fw-semibold" href="?tab=pending_approval<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['office_branch_id']) ? '&office_branch_id='.$_GET['office_branch_id'] : '' ?><?= !empty($_GET['project_id']) ? '&project_id='.$_GET['project_id'] : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>">
                                 <i class="fa-solid fa-clock-rotate-left me-1"></i>Pending My Approval
                                 <?php if (!empty($pendingCount) && $pendingCount > 0): ?>
@@ -155,9 +158,6 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                         </li>
                         <li class="nav-item">
                             <a class="nav-link <?= $activeTab === 'my_requests' ? 'active' : '' ?> fw-semibold" href="?tab=my_requests<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['office_branch_id']) ? '&office_branch_id='.$_GET['office_branch_id'] : '' ?><?= !empty($_GET['project_id']) ? '&project_id='.$_GET['project_id'] : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>"><i class="fa-solid fa-user me-1"></i>My Requests</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?= $activeTab === 'all_requests' ? 'active' : '' ?> fw-semibold" href="?tab=all_requests<?= !empty($_GET['department_id']) ? '&department_id='.$_GET['department_id'] : '' ?><?= !empty($_GET['office_branch_id']) ? '&office_branch_id='.$_GET['office_branch_id'] : '' ?><?= !empty($_GET['project_id']) ? '&project_id='.$_GET['project_id'] : '' ?><?= !empty($_GET['status']) ? '&status='.$_GET['status'] : '' ?>"><i class="fa-solid fa-list-check me-1"></i>All / Processed Requests</a>
                         </li>
                     </ul>
                 </div>
@@ -176,7 +176,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                 <th class="text-end">Total (BDT)</th>
                                 <th>Requested By</th>
                                 <th class="text-center">Dept Head</th>
-                                <th class="text-center">Operations</th>
+                                <th class="text-center" title="Admin & Operation (Role 32)">Admin & Operation</th>
                                 <th class="text-center">Purchase Head</th>
                                 <th class="text-center">QC & Audit</th>
                                 <th class="text-center">Management</th>
@@ -365,13 +365,13 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 $canApprove = false;
                                                 $step = '';
                                                 $reqTotal = (float)($r['total_price'] ?? 0);
-                                                $isRole20Eligible = (in_array($roleId, [20, 32]) && $reqTotal <= 100000);
+                                                $isRole20Eligible = ((int)$roleId === 32 && $reqTotal <= 100000);
                                                 $rowDhStatus = $r['dept_head_status'] ?? 'not_required';
                                                 
                                                 if (!$isCreator) {
                                                     if (($isReporterBoss || $isAdminOrMgmt) && $rowDhStatus === 'pending') {
                                                         $canApprove = true; $step = 'dept_head';
-                                                    } elseif (($isAdminOrMgmt || $isRole20Eligible) && in_array($rowDhStatus, ['approved', 'not_required']) && $r['operations_status'] === 'pending') {
+                                                    } elseif ($isOperations && in_array($rowDhStatus, ['approved', 'not_required']) && $r['operations_status'] === 'pending') {
                                                         $canApprove = true; $step = 'operations';
                                                     } elseif ($isPurchaseHead && $r['operations_status'] === 'approved' && $r['purchase_head_status'] === 'pending') {
                                                         $canApprove = true; $step = 'purchase_head';
@@ -919,7 +919,7 @@ function getNextStep(data) {
     if (data.overall_status === 'rejected') return { text: 'Request was rejected', color: 'danger', icon: 'fa-circle-xmark' };
     if (data.overall_status === 'purchased') return { text: 'Completed — Payment processed & assets registered', color: 'success', icon: 'fa-circle-check' };
     if (data.dept_head_status === 'pending') return { text: 'Waiting for Department Head / Reporting Boss approval', color: 'info', icon: 'fa-hourglass-half' };
-    if (data.operations_status === 'pending') return { text: 'Waiting for Operations (Role 20, 32) approval', color: 'secondary', icon: 'fa-hourglass-half' };
+    if (data.operations_status === 'pending') return { text: 'Waiting for Admin & Operation (Role 32) approval', color: 'secondary', icon: 'fa-hourglass-half' };
     if (data.purchase_head_status === 'pending') return { text: 'Waiting for Purchase Head (Role 17, 31) approval', color: 'primary', icon: 'fa-hourglass-half' };
     if (data.qc_audit_status === 'pending') return { text: 'Waiting for QC & Internal Audit review', color: 'info', icon: 'fa-hourglass-half' };
     if (data.mgmt_status === 'pending') return { text: 'Waiting for Management approval', color: 'warning', icon: 'fa-hourglass-half' };
@@ -930,7 +930,7 @@ function getNextStep(data) {
 function getStepTitle(step) {
     var titles = {
         'dept_head': 'Department Head / Reporting Boss Approval',
-        'operations': 'Operations Approval (Role 20, 32)',
+        'operations': 'Admin & Operation Approval (Role 32)',
         'purchase_head': 'Purchase Head Approval (Role 17, 31)',
         'qc_audit': 'QC & Internal Audit Review',
         'mgmt': 'Management Approval'
@@ -1060,7 +1060,7 @@ function renderDetailModal(data) {
             ` : ''}
             <div class="approval-step">
                 <div class="step-circle ${opClass}">${getStepIcon(data.operations_status)}</div>
-                <div class="step-label">Operations</div>
+                <div class="step-label">Admin & Operation</div>
                 <div class="step-person">${data.operations_by_name || '<span class="text-muted">Awaiting</span>'}</div>
                 <div class="step-time">${data.operations_at ? formatDate(data.operations_at) : ''}</div>
             </div>

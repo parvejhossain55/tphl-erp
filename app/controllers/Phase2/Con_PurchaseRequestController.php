@@ -214,21 +214,27 @@ class Con_PurchaseRequestController extends Controller
             'purpose'      => trim($_POST['purpose'] ?? ''),
             'created_by'   => (int)($_SESSION['user']['id'] ?? 0),
             'status'       => $_POST['status'] ?? 'Submitted',
+            'is_urgent'    => !empty($_POST['is_urgent']) ? 1 : 0,
+            'urgent_reason'=> trim($_POST['urgent_reason'] ?? ''),
             'notes'        => trim($_POST['notes'] ?? ''),
             'attachment'   => $attachment,
         ];
 
-        $materialIds   = $_POST['material_id']   ?? [];
-        $quantities    = $_POST['quantity']       ?? [];
-        $itemDates     = $_POST['item_req_date']  ?? []; // per-item required_date (optional)
+        $materialIds      = $_POST['material_id']   ?? [];
+        $quantities       = $_POST['quantity']       ?? [];
+        $itemDates        = $_POST['item_req_date']  ?? []; // per-item required_date (optional)
+        $currentStocks    = $_POST['current_stock']  ?? [];
+        $next3MonthsReqs  = $_POST['next_3_months_requirement'] ?? [];
 
         $items = [];
         foreach ($materialIds as $i => $mid) {
             if (!empty($mid) && ($quantities[$i] ?? 0) > 0) {
                 $items[] = [
-                    'material_id'  => (int)$mid,
-                    'quantity'     => (float)$quantities[$i],
-                    'required_date'=> !empty($itemDates[$i]) ? $itemDates[$i] : null,
+                    'material_id'               => (int)$mid,
+                    'quantity'                  => (float)$quantities[$i],
+                    'required_date'             => !empty($itemDates[$i]) ? $itemDates[$i] : null,
+                    'current_stock'             => isset($currentStocks[$i]) && $currentStocks[$i] !== '' ? (float)$currentStocks[$i] : 0.000,
+                    'next_3_months_requirement' => isset($next3MonthsReqs[$i]) && $next3MonthsReqs[$i] !== '' ? (float)$next3MonthsReqs[$i] : 0.000,
                 ];
             }
         }
@@ -333,6 +339,8 @@ class Con_PurchaseRequestController extends Controller
             } else {
                 $nextStepInfo = 'Stage 2 Approved by Operation Head. Awaiting final Stage 3 approval by Management.';
             }
+        } elseif ($pr['status'] === 'PO Rejected') {
+            $nextStepInfo = 'Purchase Order was Rejected by Approver. Requisition returned for revision. Please review approver notes, edit items/quantities, and re-run CST & PO generation.';
         } elseif ($pr['status'] === 'Rejected') {
             $nextStepInfo = 'Purchase Request was Rejected. Need to revise details or create a new PR.';
         } elseif ($pr['status'] === 'Approved') {
@@ -474,6 +482,23 @@ class Con_PurchaseRequestController extends Controller
             $stmtOh->close();
         }
 
+        // Fetch linked POs for this PR
+        $linkedPos = [];
+        $poStmt = $this->db->prepare("
+            SELECT po.*, v.name AS vendor_name, u.full_name AS created_by_name
+            FROM purchase_orders po
+            LEFT JOIN vendors v ON v.id = po.vendor_id
+            LEFT JOIN users u ON u.id = po.created_by
+            WHERE po.request_id = ?
+            ORDER BY po.id DESC
+        ");
+        if ($poStmt) {
+            $poStmt->bind_param('i', $id);
+            $poStmt->execute();
+            $linkedPos = $poStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $poStmt->close();
+        }
+
         $this->view('phase2/purchase-requests/show-purchase-request', [
             'current_route' => 'con-purchase-requests',
             'page_title'    => 'Purchase Request #' . $id,
@@ -484,6 +509,7 @@ class Con_PurchaseRequestController extends Controller
             'nextStepInfo'  => $nextStepInfo,
             'assignedPm'    => $assignedPm,
             'operationHeads'=> $operationHeads,
+            'linkedPos'     => $linkedPos,
         ]);
     }
 
@@ -902,6 +928,41 @@ class Con_PurchaseRequestController extends Controller
         exit;
     }
 
+    // =========================================================================
+    // AJAX — Get Material Stock for a Project
+    // GET: /con-ajax-material-stock?material_id=N&project_id=N
+    // Returns JSON: { success: true, current_stock: float, found: bool }
+    // =========================================================================
+    public function ajaxGetMaterialStock()
+    {
+        header('Content-Type: application/json');
+        $materialId = (int)($_GET['material_id'] ?? 0);
+        $projectId  = (int)($_GET['project_id'] ?? 0);
+
+        if (!$materialId || !$projectId) {
+            echo json_encode(['success' => true, 'current_stock' => 0.0, 'found' => false]);
+            exit;
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT COALESCE(SUM(s.current_quantity), 0) AS current_stock
+            FROM con_stocks s
+            JOIN con_warehouses w ON w.id = s.warehouse_id
+            WHERE s.material_id = ? AND w.project_id = ?
+        ");
+        $stmt->bind_param('ii', $materialId, $projectId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stock = (float)($row['current_stock'] ?? 0);
+
+        echo json_encode([
+            'success'       => true,
+            'current_stock' => $stock,
+            'found'         => $stock > 0
+        ]);
+        exit;
+    }
+
     public function delete($id)
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
@@ -979,8 +1040,9 @@ class Con_PurchaseRequestController extends Controller
         $isCreator = (int)($pr['created_by'] ?? 0) === $userId;
         $isAdmin = in_array($userRole, [1, 3, 33, 33]);
         $isPurchase = in_array($userRole, [17, 23, 31]);
+        $isPM = in_array($userRole, [12, 13, 15]);
 
-        if (!$isCreator && !$isAdmin && !$isPurchase) {
+        if (!$isCreator && !$isAdmin && !$isPurchase && !$isPM) {
             setError('You do not have permission to edit this Purchase Request.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
             exit;
@@ -1039,8 +1101,9 @@ class Con_PurchaseRequestController extends Controller
         $isCreator = (int)($pr['created_by'] ?? 0) === $userId;
         $isAdmin = in_array($userRole, [1, 3, 33, 33]);
         $isPurchase = in_array($userRole, [17, 23, 31]);
+        $isPM = in_array($userRole, [12, 13, 15]);
 
-        if (!$isCreator && !$isAdmin && !$isPurchase) {
+        if (!$isCreator && !$isAdmin && !$isPurchase && !$isPM) {
             setError('You do not have permission to edit this Purchase Request.');
             header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
             exit;
@@ -1058,32 +1121,50 @@ class Con_PurchaseRequestController extends Controller
             }
         }
 
-        $prType = $_POST['pr_type'] ?? 'boq_linked';
-        $status = $_POST['status'] ?? 'Draft';
+        $wasPoRejected = ($pr['status'] === 'PO Rejected');
+        $prType        = $_POST['pr_type'] ?? 'boq_linked';
+        $status        = $_POST['status'] ?? ($wasPoRejected ? 'Approved' : 'Draft');
+
+        // If previously PO Rejected, saving revisions puts it back to 'Approved' so CST & PO can proceed directly
+        if ($wasPoRejected && in_array($status, ['Approved', 'Submitted'])) {
+            $status = 'Approved';
+        }
+
+        $revisionCount = (int)($pr['revision_count'] ?? 0);
+        if ($wasPoRejected) {
+            $revisionCount += 1;
+        }
 
         $data = [
-            'project_id'   => (int)($_POST['project_id'] ?? 0),
-            'bom_id'       => ($prType === 'boq_linked' && !empty($_POST['bom_id'])) ? (int)$_POST['bom_id'] : null,
-            'pr_type'      => $prType,
-            'required_date'=> !empty($_POST['required_date']) ? $_POST['required_date'] : null,
-            'purpose'      => trim($_POST['purpose'] ?? ''),
-            'created_by'   => $userId,
-            'status'       => $status,
-            'notes'        => trim($_POST['notes'] ?? ''),
-            'attachment'   => $attachment,
+            'project_id'    => (int)($_POST['project_id'] ?? 0),
+            'bom_id'        => ($prType === 'boq_linked' && !empty($_POST['bom_id'])) ? (int)$_POST['bom_id'] : null,
+            'pr_type'       => $prType,
+            'required_date' => !empty($_POST['required_date']) ? $_POST['required_date'] : null,
+            'purpose'       => trim($_POST['purpose'] ?? ''),
+            'created_by'    => $pr['created_by'] ?? $userId,
+            'status'        => $status,
+            'is_urgent'     => !empty($_POST['is_urgent']) ? 1 : 0,
+            'urgent_reason' => trim($_POST['urgent_reason'] ?? ''),
+            'notes'         => trim($_POST['notes'] ?? ''),
+            'attachment'    => $attachment,
+            'revision_count'=> $revisionCount,
         ];
 
-        $materialIds = $_POST['material_id'] ?? [];
-        $quantities  = $_POST['quantity'] ?? [];
-        $itemDates   = $_POST['item_req_date'] ?? [];
+        $materialIds     = $_POST['material_id'] ?? [];
+        $quantities      = $_POST['quantity'] ?? [];
+        $itemDates       = $_POST['item_req_date'] ?? [];
+        $currentStocks   = $_POST['current_stock'] ?? [];
+        $next3MonthsReqs = $_POST['next_3_months_requirement'] ?? [];
 
         $items = [];
         foreach ($materialIds as $i => $mid) {
             if (!empty($mid) && ($quantities[$i] ?? 0) > 0) {
                 $items[] = [
-                    'material_id'  => (int)$mid,
-                    'quantity'     => (float)$quantities[$i],
-                    'required_date'=> !empty($itemDates[$i]) ? $itemDates[$i] : null,
+                    'material_id'               => (int)$mid,
+                    'quantity'                  => (float)$quantities[$i],
+                    'required_date'             => !empty($itemDates[$i]) ? $itemDates[$i] : null,
+                    'current_stock'             => isset($currentStocks[$i]) && $currentStocks[$i] !== '' ? (float)$currentStocks[$i] : 0.000,
+                    'next_3_months_requirement' => isset($next3MonthsReqs[$i]) && $next3MonthsReqs[$i] !== '' ? (float)$next3MonthsReqs[$i] : 0.000,
                 ];
             }
         }
@@ -1097,8 +1178,13 @@ class Con_PurchaseRequestController extends Controller
         $result = $this->prModel->update($id, $data, $items);
 
         if ($result['success']) {
-            setSuccess($status === 'Submitted' ? 'Purchase Request submitted for PM review.' : 'Purchase Request draft updated successfully.');
-            header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            if ($wasPoRejected) {
+                setSuccess("Purchase Request #{$id} has been revised (Revision #{$revisionCount}). You can now review CST and re-generate the Purchase Order.");
+                header("Location: {$GLOBALS['base_url']}/con-purchase-request/{$id}");
+            } else {
+                setSuccess($status === 'Submitted' ? 'Purchase Request submitted for PM review.' : 'Purchase Request draft updated successfully.');
+                header("Location: {$GLOBALS['base_url']}/con-purchase-requests");
+            }
         } else {
             $errMsg = implode(' | ', $result['errors']);
             setError("PR update failed: {$errMsg}");

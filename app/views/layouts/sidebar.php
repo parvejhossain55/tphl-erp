@@ -252,6 +252,7 @@
     $sidebarPendingPRCount = 0;
     $sidebarPendingPOCount = 0;
     $sidebarPendingPOCostsCount = 0;
+    $sidebarPendingProcurementCount = 0;
     if (isset($db) && isset($_SESSION['user']['id'])) {
         $sidebarUserId = (int) $_SESSION['user']['id'];
         $sidebarRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
@@ -287,6 +288,33 @@
             ");
             if ($dhPocRes) {
                 $sidebarPendingPOCostsCount += (int)($dhPocRes->fetch_assoc()['c'] ?? 0);
+            }
+
+            // Pending Office Procurement Requests awaiting user/role action
+            $dhProcRes = $db->query("
+                SELECT COUNT(*) AS c 
+                FROM project_extra_assets pea 
+                JOIN employees e ON (e.user_id = pea.requested_by OR e.id = pea.requested_by) AND e.deleted_at IS NULL
+                WHERE pea.dept_head_status = 'pending' AND (pea.reporting_user_id = {$sidebarUserId} OR e.reporting_user_id = {$sidebarUserId})
+            ");
+            if ($dhProcRes) {
+                $sidebarPendingProcurementCount += (int)($dhProcRes->fetch_assoc()['c'] ?? 0);
+            }
+            if ($sidebarRoleId === 32) {
+                $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE dept_head_status IN ('approved', 'not_required') AND operations_status = 'pending'");
+                if ($procRes) $sidebarPendingProcurementCount += (int)($procRes->fetch_assoc()['c'] ?? 0);
+            } elseif (in_array($sidebarRoleId, [17, 31])) {
+                $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE operations_status = 'approved' AND purchase_head_status = 'pending'");
+                if ($procRes) $sidebarPendingProcurementCount += (int)($procRes->fetch_assoc()['c'] ?? 0);
+            } elseif (in_array($sidebarRoleId, [24, 25])) {
+                $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE purchase_head_status = 'approved' AND qc_audit_status = 'pending'");
+                if ($procRes) $sidebarPendingProcurementCount += (int)($procRes->fetch_assoc()['c'] ?? 0);
+            } elseif (in_array($sidebarRoleId, [1, 3])) {
+                $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE overall_status IN ('pending', 'in_review')");
+                if ($procRes) $sidebarPendingProcurementCount += (int)($procRes->fetch_assoc()['c'] ?? 0);
+            } elseif (in_array($sidebarRoleId, [6, 30])) {
+                $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE mgmt_status = 'approved' AND payment_status = 'unpaid'");
+                if ($procRes) $sidebarPendingProcurementCount += (int)($procRes->fetch_assoc()['c'] ?? 0);
             }
             // 1. Pending Purchase Requests awaiting role-specific action
             if (in_array($sidebarRoleId, [1, 3])) {
@@ -3641,13 +3669,6 @@
                             <span class="sidebar__menu-label">Email Station</span>
                         </a>
                     </li>
-                    <li class="slide <?= isActive('asset-extra-purchases', $current_route) ?>">
-                        <a href="<?= $base_url ?>/asset-extra-purchases"
-                            class="sidebar__menu-item <?= isActive('asset-extra-purchases', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-cart-shopping"></i></div>
-                            <span class="sidebar__menu-label">Office Procurement Request</span>
-                        </a>
-                    </li>
                     <li class="slide ">
                         <a href="<?= $base_url ?>/task-sheets"
                             class="sidebar__menu-item <?= isActive('task-sheets', $current_route) ?>">
@@ -3759,6 +3780,22 @@
                                 style="font-size: 10px; padding: 2px 6px;"
                                 title="Pending Actions: <?= $pendingFundReqDeptCount ?> Dept Head, <?= $pendingFundReqMgmtCount ?> Mgmt, <?= $pendingFundReqAccountsCount ?> Accounts">
                                 <?= $pendingFundReqTotalCount ?>
+                            </span>
+                        <?php endif; ?>
+                    </a>
+                </li>
+
+                <!-- Office Procurement Requests (Global Requisition for All Departments) -->
+                <li class="slide <?= isActive('asset-extra-purchases', $current_route) ?>">
+                    <a href="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases"
+                        class="sidebar__menu-item <?= isActive('asset-extra-purchases', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-cart-shopping"></i></div>
+                        <span class="sidebar__menu-label">Office Procurement Request</span>
+                        <?php if (!empty($sidebarPendingProcurementCount) && $sidebarPendingProcurementCount > 0): ?>
+                            <span class="badge bg-danger rounded-pill ms-auto"
+                                style="font-size: 10px; padding: 2px 6px;"
+                                title="Pending Approvals">
+                                <?= $sidebarPendingProcurementCount ?>
                             </span>
                         <?php endif; ?>
                     </a>

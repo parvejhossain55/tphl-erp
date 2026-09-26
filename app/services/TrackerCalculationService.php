@@ -136,29 +136,32 @@ class TrackerCalculationService
         $roleName = strtolower($user['role_name'] ?? '');
         $userName = strtolower($user['full_name'] ?? ($user['user_name'] ?? ''));
 
-        // Check if employee record has team_id
+        // Check if employee record has team_id and department_id
         $empId = null;
+        $empDeptId = null;
         if (!empty($user['id'])) {
-            $empCheck = $this->db->query("SELECT id, team_id FROM employees WHERE user_id = " . (int)$user['id'] . " LIMIT 1");
+            $empCheck = $this->db->query("SELECT id, team_id, department_id FROM employees WHERE user_id = " . (int)$user['id'] . " LIMIT 1");
             if ($empCheck && $row = $empCheck->fetch_assoc()) {
                 $empId = (int)$row['id'];
+                $empDeptId = !empty($row['department_id']) ? (int)$row['department_id'] : null;
                 if (empty($teamId) && !empty($row['team_id'])) {
                     $teamId = (int)$row['team_id'];
                 }
             }
         }
         
-        // 1. Management, Directors, Super Admins, System Admins, HR
-        // (Roles: Super Admin (3), Admin (1), HR (4), Admin & Operation head (20), Admin Operation (32), Chief Officer (33))
-        // Or if role_name or username contains 'admin', 'chief', 'director', 'management'
+        // 1. Management, Directors, Super Admins, System Admins, HR, Accounts, Purchase, etc.
+        // Also: Any non-sales employee (department_id != 1) who has permission to view the report
+        // should view the full Company-Wide report rather than restricting to a non-existent personal sales record.
         $isGlobalAdmin = (
-            in_array($roleId, [1, 3, 4, 20, 32, 33, 34, 35])
+            in_array($roleId, [1, 3, 4, 6, 14, 15, 17, 20, 22, 23, 24, 25, 30, 31, 32, 33, 34, 35, 36])
             || str_contains($roleName, 'admin') 
             || str_contains($roleName, 'chief') 
             || str_contains($roleName, 'director')
             || str_contains($roleName, 'management')
             || str_contains($roleName, 'ceo')
             || str_contains($userName, 'admin')
+            || ($empDeptId !== null && $empDeptId !== 1)
         );
 
         // 2. Sales Head & Sales Manager
@@ -179,20 +182,20 @@ class TrackerCalculationService
             return ['type' => 'ALL', 'team_id' => null];
         }
 
-        // 4. Fallback: If user has no employee record (e.g. administrative accounts), show ALL so it doesn't return empty
-        if (empty($empId) && empty($teamId)) {
+        // 3. Fallback: If user has no employee record or is not in sales department, show ALL
+        if (empty($empId) || ($empDeptId !== null && $empDeptId !== 1)) {
             if (!empty($filterTeamId) && (int)$filterTeamId > 0) {
                 return ['type' => 'TEAM', 'team_id' => (int)$filterTeamId];
             }
             return ['type' => 'ALL', 'team_id' => null];
         }
 
-        // 5. Team-level scope: Team Leader or Member assigned to a specific team
+        // 4. Team-level scope: Team Leader or Member assigned to a specific team
         if (!empty($teamId)) {
             return ['type' => 'TEAM', 'team_id' => $teamId];
         }
 
-        // 6. Individual Sales Executive without team
+        // 5. Individual Sales Executive without team
         return ['type' => 'SELF', 'user_id' => (int)($user['id'] ?? 0)];
     }
 
@@ -658,15 +661,24 @@ class TrackerCalculationService
                 $emp['visit_ach_pct'] = ($maxVisits > 0) ? round(($emp['visited'] / $maxVisits) * 100, 2) : 0;
                 $emp['volume_ach_pct'] = ($maxVolume > 0) ? round(($emp['total_volume_achieved'] / $maxVolume) * 100, 2) : 0;
                 
-                // Adjusted Weights: Since target is missing, heavily weight their raw unit and volume output
-                $emp['performance_score'] = round(
-                    ($emp['volume_ach_pct'] * 0.45) + 
-                    ($emp['unit_ach_pct'] * 0.35) + 
-                    ($emp['visit_ach_pct'] * 0.10) + 
-                    ($emp['contacted_pct'] * 0.05) + 
-                    ($emp['follow_up_pct'] * 0.05),
-                    2
-                );
+                // Adjusted Weights: Since target is missing, if no bookings exist yet, heavily weight their active visits, contacted leads, and follow-ups
+                if ($maxVolume == 0 && $maxUnitsSold == 0) {
+                    $emp['performance_score'] = round(
+                        ($emp['visit_ach_pct'] * 0.40) + 
+                        ($emp['contacted_pct'] * 0.30) + 
+                        ($emp['follow_up_pct'] * 0.30),
+                        2
+                    );
+                } else {
+                    $emp['performance_score'] = round(
+                        ($emp['volume_ach_pct'] * 0.45) + 
+                        ($emp['unit_ach_pct'] * 0.35) + 
+                        ($emp['visit_ach_pct'] * 0.10) + 
+                        ($emp['contacted_pct'] * 0.05) + 
+                        ($emp['follow_up_pct'] * 0.05),
+                        2
+                    );
+                }
             }
 
             // -------------------------------------------------------------
@@ -797,8 +809,19 @@ class TrackerCalculationService
             if ($a['visited'] != $b['visited']) {
                 return $b['visited'] <=> $a['visited'];
             }
-            // 4. Fallback to Performance Score
-            return $b['performance_score'] <=> $a['performance_score'];
+            // 4. Performance Score
+            if (abs($a['performance_score'] - $b['performance_score']) > 0.01) {
+                return $b['performance_score'] <=> $a['performance_score'];
+            }
+            // 5. Unique leads followed
+            if ($a['unique_leads_followed'] != $b['unique_leads_followed']) {
+                return $b['unique_leads_followed'] <=> $a['unique_leads_followed'];
+            }
+            // 6. Assigned leads
+            if ($a['assigned_leads'] != $b['assigned_leads']) {
+                return $b['assigned_leads'] <=> $a['assigned_leads'];
+            }
+            return strcmp($a['member_name'], $b['member_name']);
         });
 
         $rank = 1;

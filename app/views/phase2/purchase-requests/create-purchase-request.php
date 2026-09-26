@@ -149,21 +149,58 @@ $categories   = $categories   ?? [];
 
                         <!-- ── Row 2: Required Date + Purpose (Independent only) ── -->
                         <div id="independentFields" class="row mb-3" style="display:none!important">
-                            <div class="col-md-4">
+                            <div class="col-md-5">
                                 <label class="form-label fw-bold">
                                     <i class="bi bi-calendar-event me-1 text-warning"></i>
-                                    Required By Date <span class="text-danger">*</span>
+                                    Required By Date <span class="fw-normal text-muted" style="font-size:12px">/ প্রয়োজনীয় তারিখ</span> <span class="text-danger">*</span>
                                 </label>
                                 <input type="date" name="required_date" id="prRequiredDate" class="form-control"
                                        min="<?= date('Y-m-d') ?>">
+                                
+                                <!-- 30-Day Policy Guidance Notice -->
+                                <div class="mt-2 p-2 rounded" style="background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.25); font-size:11.5px; color:#92400e; line-height:1.45">
+                                    <i class="bi bi-shield-exclamation text-warning me-1 fw-bold"></i>
+                                    <strong>Procurement Policy:</strong> Purchase Requests must normally be submitted at least <strong>30 days in advance</strong>. Requests with less than 30 days notice require an <strong>Urgent declaration & justification</strong> to proceed for approval.
+                                    <div class="mt-1 pt-1 border-top border-warning border-opacity-25" style="color:#78350f; font-size:11px">
+                                        <strong>ক্রয় নীতি নির্দেশিকা:</strong> সাধারণত মালামাল পৌঁছানোর তারিখের অন্তত <strong>৩০ দিন পূর্বে</strong> রিকুইজিশন সাবমিট করতে হবে। ৩০ দিনের কম সময়ের রিকুইজিশন অনুমোদনের জন্য <strong>জরুরি (Urgent) ঘোষণা ও যৌক্তিক কারণ</strong> উল্লেখ করা বাধ্যতামূলক।
+                                    </div>
+                                </div>
+
+                                <!-- Urgent Status Pill / Notice (Dynamic) -->
+                                <div id="urgentBadgeContainer" class="mt-2 d-none">
+                                    <div class="alert alert-danger py-2 px-3 mb-0 d-flex align-items-center justify-content-between" style="font-size:12px; border-radius:8px">
+                                        <div>
+                                            <i class="bi bi-lightning-charge-fill text-danger me-1"></i>
+                                            <strong>Urgent Requisition:</strong> Lead time is <span id="urgentDaysCount" class="fw-bold">0</span> days.
+                                            <div class="small text-danger fw-semibold" style="font-size:11px">
+                                                জরুরি রিকুইজিশন: লিড টাইম মাত্র <span id="urgentDaysCountBn" class="fw-bold">০</span> দিন।
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-link text-danger p-0 text-decoration-none fw-bold" id="btnCancelUrgent" title="Revert to standard date">
+                                            Revert / বাতিল
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="col-md-8">
+                            <div class="col-md-7">
                                 <label class="form-label fw-bold">
                                     <i class="bi bi-justify-left me-1 text-info"></i>
-                                    Purpose / Description <span class="text-danger">*</span>
+                                    Purpose / Description <span class="fw-normal text-muted" style="font-size:12px">/ ক্রয়ের উদ্দেশ্য ও বিবরণ</span> <span class="text-danger">*</span>
                                 </label>
                                 <textarea name="purpose" id="prPurpose" class="form-control" rows="2"
-                                          placeholder="Describe why these materials are needed (e.g. Foundation work for Block-A, Floor 3...)"></textarea>
+                                          placeholder="Describe why these materials are needed... / কেন এই মালামাল প্রয়োজন তার বিবরণ লিখুন (উদা: ব্লক-এ এর ফ্লোর-৩ এর কাজ...)"></textarea>
+
+                                <!-- Urgent Reason Box (Appears when marked Urgent) -->
+                                <div id="urgentReasonBox" class="mt-2 d-none p-2 rounded" style="background:#fef2f2; border:1.5px solid #fca5a5;">
+                                    <label class="form-label fw-bold text-danger mb-1" style="font-size:12px">
+                                        <i class="bi bi-exclamation-octagon-fill me-1"></i>
+                                        Urgent Justification / Reason <span class="text-danger">*</span>
+                                        <span class="d-block fw-semibold text-danger" style="font-size:11px">জরুরি ক্রয়ের সুনির্দিষ্ট কারণ ও ব্যাখ্যা (৩০ দিনের কম সময়ের জন্য বাধ্যতামূলক)</span>
+                                    </label>
+                                    <input type="text" name="urgent_reason" id="prUrgentReason" class="form-control form-control-sm"
+                                           placeholder="State why this is urgent / জরুরি ক্রয়ের কারণ উল্লেখ করুন (উদা: সাইটের কাজ বন্ধ হওয়ার ঝুঁকি, তাৎক্ষণিক জরুরি কাজ...)">
+                                    <input type="hidden" name="is_urgent" id="prIsUrgent" value="0">
+                                </div>
                             </div>
                         </div>
 
@@ -209,14 +246,20 @@ $categories   = $categories   ?? [];
                             <table class="table table-bordered align-middle" id="prItemsTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width:26%;">Material <span class="text-danger">*</span></th>
-                                        <th style="width:10%; font-size:13px;" class="text-center">BOQ Qty</th>
-                                        <th style="width:10%; font-size:13px;" class="text-center">Requested</th>
-                                        <th style="width:10%; font-size:13px;" class="text-center">PO Qty</th>
-                                        <th style="width:10%; font-size:13px;" class="text-center">Received</th>
-                                        <th style="width:10%; font-size:13px;" class="text-center">Remaining</th>
-                                        <th style="width:17%; font-size:13px;">Request Qty <span class="text-danger">*</span></th>
-                                        <th style="width:7%;" class="text-center">Del</th>
+                                        <th style="width:22%;">Material <span class="d-block fw-normal text-muted" style="font-size:10px">মালামাল</span></th>
+                                        <th style="width:8%; font-size:12px;" class="text-center">BOQ Qty <span class="d-block fw-normal text-muted" style="font-size:10px">বিওকিউ পরিমাণ</span></th>
+                                        <th style="width:8%; font-size:12px;" class="text-center">Used <span class="d-block fw-normal text-muted" style="font-size:10px">ব্যবহৃত</span></th>
+                                        <th style="width:8%; font-size:12px;" class="text-center">Remaining <span class="d-block fw-normal text-muted" style="font-size:10px">অবশিষ্ট</span></th>
+                                        <th style="width:13%; font-size:12px;" class="text-center">
+                                            Current Stock <span class="d-block fw-normal text-muted" style="font-size:10px">বর্তমান সাইট স্টক</span>
+                                            <i class="bi bi-info-circle text-muted" title="Site warehouse stock (auto-fetched, editable)"></i>
+                                        </th>
+                                        <th style="width:13%; font-size:12px;" class="text-center">
+                                            Next 3-Mo Req <span class="d-block fw-normal text-muted" style="font-size:10px">পরবর্তী ৩ মাসের চাহিদা</span>
+                                            <i class="bi bi-info-circle text-muted" title="Estimated 3-month forecast requirement"></i>
+                                        </th>
+                                        <th style="width:16%; font-size:12px;">Request Qty <span class="d-block fw-normal text-muted" style="font-size:10px">রিকোয়েস্ট পরিমাণ</span></th>
+                                        <th style="width:6%;" class="text-center">Del</th>
                                     </tr>
                                 </thead>
                                 <tbody id="prItemsBody">
@@ -230,11 +273,19 @@ $categories   = $categories   ?? [];
                             <table class="table table-bordered align-middle" id="prItemsTableInd">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width:40%;">Material <span class="text-danger">*</span></th>
-                                        <th style="width:12%; font-size:13px;" class="text-center">Unit</th>
-                                        <th style="width:20%; font-size:13px;">Quantity <span class="text-danger">*</span></th>
-                                        <th style="width:20%; font-size:13px;">Required By</th>
-                                        <th style="width:8%;" class="text-center">Del</th>
+                                        <th style="width:26%;">Material <span class="d-block fw-normal text-muted" style="font-size:10px">মালামাল</span></th>
+                                        <th style="width:8%; font-size:12px;" class="text-center">Unit <span class="d-block fw-normal text-muted" style="font-size:10px">একক</span></th>
+                                        <th style="width:16%; font-size:12px;" class="text-center">
+                                            Current Stock <span class="d-block fw-normal text-muted" style="font-size:10px">বর্তমান সাইট স্টক</span>
+                                            <i class="bi bi-info-circle text-muted" title="Auto-fetched project stock. Editable if physical count differs."></i>
+                                        </th>
+                                        <th style="width:16%; font-size:12px;">Quantity <span class="d-block fw-normal text-muted" style="font-size:10px">পরিমাণ</span></th>
+                                        <th style="width:16%; font-size:12px;">
+                                            Next 3 Months Req. <span class="d-block fw-normal text-muted" style="font-size:10px">পরবর্তী ৩ মাসের চাহিদা</span>
+                                            <i class="bi bi-info-circle text-muted" title="Estimated units required over next 3 months"></i>
+                                        </th>
+                                        <th style="width:12%; font-size:12px;">Required By <span class="d-block fw-normal text-muted" style="font-size:10px">প্রয়োজনীয় তারিখ</span></th>
+                                        <th style="width:6%;" class="text-center">Del</th>
                                     </tr>
                                 </thead>
                                 <tbody id="prItemsBodyInd">
@@ -338,6 +389,71 @@ $categories   = $categories   ?? [];
 </div>
 <!-- /ADD NEW MATERIAL MODAL -->
 
+<!-- ════════════════════════════════════════════════════════════
+     LEAD TIME POLICY CONFIRMATION MODAL (< 30 DAYS)
+═════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="leadTimeModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="leadTimeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:540px">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:18px; overflow:hidden">
+            <div class="modal-header text-white" style="background:linear-gradient(135deg,#dc2626,#ea580c); border:none; padding:18px 24px">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-shield-exclamation fs-4"></i>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="leadTimeModalLabel">
+                            Procurement Lead Time Notice (&lt; 30 Days)
+                        </h5>
+                        <div style="font-size:12px; opacity:0.95; font-weight:500;">প্রকিউরমেন্ট লিড টাইম নোটিশ (৩০ দিনের কম সময়)</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body p-4 text-start">
+                <div class="alert alert-warning d-flex align-items-start gap-3 mb-3" style="border-radius:12px; background:#fffbeb; border:1.5px solid #fde68a">
+                    <i class="bi bi-exclamation-triangle-fill fs-3 text-warning flex-shrink-0 mt-1"></i>
+                    <div>
+                        <div class="fw-bold text-dark mb-1" style="font-size:13.5px">
+                            Standard 30-Day Lead Time Policy
+                            <span class="fw-normal text-muted" style="font-size:12px">/ সাধারণ ৩০ দিনের লিড টাইম পলিসি</span>
+                        </div>
+                        <div style="font-size:12px; color:#92400e; line-height:1.45">
+                            Standard company procurement requires Purchase Requests to be placed at least <strong>30 days</strong> before the required date.
+                            Your selected required date is only <strong><span id="modalLeadDays" class="text-danger fw-bold fs-6">0</span> days</strong> away from today.
+                            <div class="mt-1 pt-1 border-top border-warning border-opacity-25" style="color:#78350f; font-size:11.5px">
+                                কোম্পানির ক্রয় নীতি অনুযায়ী প্রয়োজনীয় তারিখের অন্তত <strong>৩০ দিন পূর্বে</strong> রিকুইজিশন দেওয়া আবশ্যক। আপনার নির্বাচিত তারিখ আজ থেকে মাত্র <strong><span id="modalLeadDaysBn" class="text-danger fw-bold">০</span> দিন</strong> বাকি।
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-3 rounded mb-3" style="background:#fef2f2; border:1px solid #fee2e2; font-size:12px; color:#991b1b; line-height:1.45">
+                    <i class="bi bi-info-circle-fill me-1"></i>
+                    <strong>Important:</strong> Requisitions submitted with less than 30 days notice will <strong>not receive regular approval</strong> unless formally declared and justified as an <strong>Urgent Purchase Request</strong>.
+                    <div class="mt-1 pt-1 border-top border-danger border-opacity-25" style="color:#7f1d1d; font-size:11.5px">
+                        <strong>সতর্কতা:</strong> ৩০ দিনের কম সময়ের রিকুইজিশন সাধারণ প্রক্রিয়ায় অনুমোদন পাবে না, যদি না এটিকে আনুষ্ঠানিকভাবে <strong>জরুরি (Urgent) রিকুইজিশন</strong> হিসেবে কারণসহ সাবমিট করা হয়।
+                    </div>
+                </div>
+
+                <div class="text-secondary mb-1" style="font-size:12.5px; line-height:1.4">
+                    Would you like to declare this requisition as an <strong>Urgent Request</strong>, or adjust your required date to comply with standard company policy?
+                    <div class="text-dark fw-semibold mt-1" style="font-size:11.5px">
+                        আপনি কি এই রিকুইজিশনটিকে <strong>জরুরি (Urgent)</strong> হিসেবে ঘোষণা করতে চান, নাকি কোম্পানির পলিসি অনুযায়ী ৩০ দিন পরের তারিখ নির্ধারণ করতে চান?
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light px-4 py-3 d-flex justify-content-between gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm px-3" id="btnChangeToCompliantDate">
+                    <i class="bi bi-calendar-check me-1"></i> Change Date (30+ Days)
+                    <span class="d-block" style="font-size:10px">তারিখ পরিবর্তন (৩০+ দিন)</span>
+                </button>
+                <button type="button" class="btn btn-danger btn-sm px-3 fw-bold" id="btnConfirmUrgent">
+                    <i class="bi bi-lightning-charge-fill me-1"></i> Yes, Mark as Urgent
+                    <span class="d-block" style="font-size:10px">হ্যাঁ, জরুরি হিসেবে মার্ক করুন</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- /LEAD TIME POLICY MODAL -->
+
 <script>
 const BASE_URL        = '<?= $base_url ?>';
 const ALL_MATERIALS   = <?= json_encode($materials) ?>; // [{id, name, unit, category_name}]
@@ -439,11 +555,9 @@ function makeMaterialSelectInd(selectedId = '') {
 }
 
 // ── Build BOQ-Linked table row ────────────────────────────────────────────
-function makePrRow(matId = '', matName = '', unit = '-', boqQty = '', usedQty = '', poQty = '', recvQty = '', remainQty = '', reqQty = '', removable = true) {
+function makePrRow(matId = '', matName = '', unit = '-', boqQty = '', usedQty = '', poQty = '', recvQty = '', remainQty = '', reqQty = '', stock = '', next3Mo = '', removable = true) {
     const boqQtyFmt = boqQty    !== '' ? parseFloat(boqQty).toLocaleString(undefined,  {maximumFractionDigits:3}) : '—';
     const usedFmt   = usedQty   !== '' ? parseFloat(usedQty).toLocaleString(undefined,  {maximumFractionDigits:3}) : '—';
-    const poFmt     = poQty     !== '' ? parseFloat(poQty).toLocaleString(undefined,  {maximumFractionDigits:3}) : '—';
-    const recvFmt   = recvQty   !== '' ? parseFloat(recvQty).toLocaleString(undefined,  {maximumFractionDigits:3}) : '—';
     const remFmt    = remainQty !== '' ? parseFloat(remainQty) : null;
     let remCell     = '—';
     let remClass    = 'text-muted';
@@ -454,20 +568,33 @@ function makePrRow(matId = '', matName = '', unit = '-', boqQty = '', usedQty = 
 
     let matCell;
     if (matId && matName) {
-        matCell = `<input type="hidden" name="material_id[]" value="${matId}">
+        matCell = `<input type="hidden" name="material_id[]" value="${matId}" class="pr-row-mat-id">
                    <div class="fw-bold" style="font-size:13px">${matName}</div>
                    <small class="text-muted">${unit}</small>`;
     } else {
         matCell = makeMaterialSelect(matId, unit);
     }
 
-    return `<tr data-boq-row="${matId ? '1' : '0'}">
+    return `<tr data-boq-row="${matId ? '1' : '0'}" data-mat-id="${matId || ''}">
         <td>${matCell}</td>
         <td class="text-center fw-bold text-primary pr-boq-qty">${boqQtyFmt}</td>
         <td class="text-center text-warning pr-used-qty">${usedFmt}</td>
-        <td class="text-center text-info pr-po-qty">${poFmt}</td>
-        <td class="text-center text-success pr-recv-qty">${recvFmt}</td>
         <td class="text-center ${remClass} pr-remaining">${remCell}</td>
+        <td>
+            <div class="input-group input-group-sm">
+                <input type="number" step="0.001" min="0" name="current_stock[]" class="form-control pr-stock-input text-end"
+                       placeholder="0.00" value="${stock}">
+                <span class="input-group-text pr-unit" style="font-size:11px">${unit !== '-' ? unit : '-'}</span>
+            </div>
+            <div class="pr-stock-hint text-muted mt-1" style="font-size:10px;line-height:1.2"></div>
+        </td>
+        <td>
+            <div class="input-group input-group-sm">
+                <input type="number" step="0.001" min="0" name="next_3_months_requirement[]" class="form-control text-end"
+                       placeholder="Optional" value="${next3Mo}">
+                <span class="input-group-text pr-unit" style="font-size:11px">${unit !== '-' ? unit : '-'}</span>
+            </div>
+        </td>
         <td>
             <div class="input-group input-group-sm">
                 <input type="number" step="0.001" name="quantity[]" class="form-control pr-qty"
@@ -484,18 +611,33 @@ function makePrRow(matId = '', matName = '', unit = '-', boqQty = '', usedQty = 
 }
 
 // ── Build Independent table row ───────────────────────────────────────────
-function makeIndRow(matId = '', unit = '') {
-    return `<tr>
+function makeIndRow(matId = '', unit = '', stock = '', next3Mo = '') {
+    return `<tr data-mat-id="${matId || ''}">
         <td>${makeMaterialSelectInd(matId)}</td>
         <td class="text-center"><span class="pr-ind-unit text-muted fw-bold">${unit || '—'}</span></td>
         <td>
             <div class="input-group input-group-sm">
-                <input type="number" step="0.001" name="quantity[]" class="form-control" required min="0.001">
+                <input type="number" step="0.001" min="0" name="current_stock[]" class="form-control pr-stock-input text-end"
+                       placeholder="0.00" value="${stock}">
+                <span class="input-group-text pr-ind-unit-label" style="font-size:11px">${unit || '-'}</span>
+            </div>
+            <div class="pr-stock-hint text-muted mt-1" style="font-size:10px;line-height:1.2"></div>
+        </td>
+        <td>
+            <div class="input-group input-group-sm">
+                <input type="number" step="0.001" name="quantity[]" class="form-control text-end" required min="0.001">
                 <span class="input-group-text pr-ind-unit-label">${unit || '-'}</span>
             </div>
         </td>
         <td>
-            <input type="date" name="item_req_date[]" class="form-control form-control-sm"
+            <div class="input-group input-group-sm">
+                <input type="number" step="0.001" min="0" name="next_3_months_requirement[]" class="form-control text-end"
+                       placeholder="Optional" value="${next3Mo}">
+                <span class="input-group-text pr-ind-unit-label" style="font-size:11px">${unit || '-'}</span>
+            </div>
+        </td>
+        <td>
+            <input type="date" name="item_req_date[]" class="form-control form-control-sm pr-item-req-date"
                    min="<?= date('Y-m-d') ?>">
         </td>
         <td class="text-center">
@@ -592,6 +734,170 @@ document.getElementById('prBoqSelect').addEventListener('change', function () {
     infoCard.classList.remove('d-none');
 });
 
+// ── Stock auto-fetch for a row ──────────────────────────────────────────────
+function fetchStockForRow(matSelectEl, rowEl = null) {
+    const tr = rowEl || (matSelectEl && matSelectEl.closest ? matSelectEl.closest('tr') : null);
+    if (!tr) return;
+    const materialId = (matSelectEl && matSelectEl.value) ? matSelectEl.value : (tr.dataset.matId || '');
+    const projectId  = document.getElementById('prProjectSelect').value;
+
+    const stockInput = tr.querySelector('.pr-stock-input');
+    const stockHint  = tr.querySelector('.pr-stock-hint');
+    if (!stockInput) return;
+
+    if (!materialId) {
+        stockInput.value = '';
+        if (stockHint) stockHint.innerHTML = '';
+        return;
+    }
+
+    if (!projectId) {
+        if (stockHint) stockHint.innerHTML = '<span class="text-warning" style="font-size:10px">⚠️ Select project to detect stock / স্টক দেখতে প্রজেক্ট নির্বাচন করুন</span>';
+        return;
+    }
+
+    if (stockHint) stockHint.innerHTML = '<span class="text-muted" style="font-size:10px"><i class="bi bi-arrow-repeat spin me-1"></i>Checking stock... / স্টক খোঁজা হচ্ছে...</span>';
+
+    fetch(BASE_URL + '/con-ajax-material-stock?material_id=' + encodeURIComponent(materialId) + '&project_id=' + encodeURIComponent(projectId))
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const stockVal = parseFloat(data.current_stock) || 0;
+                stockInput.value = stockVal.toFixed(3);
+                if (stockHint) {
+                    if (data.found && stockVal > 0) {
+                        stockHint.innerHTML = `<span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:10px">✓ Site Stock / সাইট স্টক: ${stockVal}</span>`;
+                    } else {
+                        stockHint.innerHTML = `<span class="text-muted" style="font-size:10px">No stock in project warehouse / গুদামে স্টক নেই (0)</span>`;
+                    }
+                }
+            }
+        })
+        .catch(() => {
+            if (stockHint) stockHint.innerHTML = '';
+        });
+}
+
+function refreshAllRowsStock() {
+    const tbodyBoq = document.getElementById('prItemsBody');
+    const tbodyInd = document.getElementById('prItemsBodyInd');
+    tbodyBoq.querySelectorAll('tr').forEach(tr => {
+        const sel = tr.querySelector('.pr-material');
+        if (sel && sel.value) {
+            fetchStockForRow(sel, tr);
+        } else if (tr.dataset.matId) {
+            fetchStockForRow({value: tr.dataset.matId}, tr);
+        }
+    });
+    tbodyInd.querySelectorAll('tr').forEach(tr => {
+        const sel = tr.querySelector('.pr-material-ind');
+        if (sel && sel.value) {
+            fetchStockForRow(sel, tr);
+        }
+    });
+}
+
+// ── Lead Time Check & Urgent Policy Logic ──────────────────────────────────
+const prRequiredDate = document.getElementById('prRequiredDate');
+
+function checkLeadTime(dateStr) {
+    if (!dateStr) return;
+    const selectedDate = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+
+    const diffMs = selectedDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 30) {
+        const dText = diffDays < 0 ? '0 (Past date)' : diffDays;
+        document.getElementById('modalLeadDays').textContent = dText;
+        const bnModalDays = document.getElementById('modalLeadDaysBn');
+        if (bnModalDays) bnModalDays.textContent = diffDays < 0 ? '০ (পূর্বের তারিখ)' : diffDays;
+        const modalEl = document.getElementById('leadTimeModal');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    } else {
+        // Standard policy compliant date
+        document.getElementById('prIsUrgent').value = '0';
+        document.getElementById('urgentBadgeContainer').classList.add('d-none');
+        document.getElementById('urgentReasonBox').classList.add('d-none');
+        const reasonInput = document.getElementById('prUrgentReason');
+        if (reasonInput) reasonInput.removeAttribute('required');
+    }
+}
+
+if (prRequiredDate) {
+    prRequiredDate.addEventListener('change', function () {
+        checkLeadTime(this.value);
+    });
+}
+
+document.getElementById('btnConfirmUrgent')?.addEventListener('click', function () {
+    const modalEl = document.getElementById('leadTimeModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+
+    document.getElementById('prIsUrgent').value = '1';
+    document.getElementById('urgentBadgeContainer').classList.remove('d-none');
+    document.getElementById('urgentReasonBox').classList.remove('d-none');
+    const reasonInput = document.getElementById('prUrgentReason');
+    if (reasonInput) {
+        reasonInput.setAttribute('required', 'required');
+        setTimeout(() => reasonInput.focus(), 300);
+    }
+
+    const rdVal = prRequiredDate.value;
+    if (rdVal) {
+        const d = new Date(rdVal);
+        const t = new Date();
+        t.setHours(0,0,0,0);
+        d.setHours(0,0,0,0);
+        const days = Math.ceil((d - t) / (1000 * 60 * 60 * 24));
+        const finalDays = days < 0 ? 0 : days;
+        document.getElementById('urgentDaysCount').textContent = finalDays;
+        const bnCount = document.getElementById('urgentDaysCountBn');
+        if (bnCount) bnCount.textContent = finalDays;
+    }
+});
+
+document.getElementById('btnChangeToCompliantDate')?.addEventListener('click', function () {
+    const modalEl = document.getElementById('leadTimeModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+
+    // Set date to today + 30 days
+    const compliant = new Date();
+    compliant.setDate(compliant.getDate() + 30);
+    const yyyy = compliant.getFullYear();
+    const mm   = String(compliant.getMonth() + 1).padStart(2, '0');
+    const dd   = String(compliant.getDate()).padStart(2, '0');
+    prRequiredDate.value = `${yyyy}-${mm}-${dd}`;
+
+    document.getElementById('prIsUrgent').value = '0';
+    document.getElementById('urgentBadgeContainer').classList.add('d-none');
+    document.getElementById('urgentReasonBox').classList.add('d-none');
+    const reasonInput = document.getElementById('prUrgentReason');
+    if (reasonInput) reasonInput.removeAttribute('required');
+});
+
+document.getElementById('btnCancelUrgent')?.addEventListener('click', function () {
+    // Revert to 30 days compliant
+    const compliant = new Date();
+    compliant.setDate(compliant.getDate() + 30);
+    const yyyy = compliant.getFullYear();
+    const mm   = String(compliant.getMonth() + 1).padStart(2, '0');
+    const dd   = String(compliant.getDate()).padStart(2, '0');
+    prRequiredDate.value = `${yyyy}-${mm}-${dd}`;
+
+    document.getElementById('prIsUrgent').value = '0';
+    document.getElementById('urgentBadgeContainer').classList.add('d-none');
+    document.getElementById('urgentReasonBox').classList.add('d-none');
+    const reasonInput = document.getElementById('prUrgentReason');
+    if (reasonInput) reasonInput.removeAttribute('required');
+});
+
 // ── Load BOQ Items ────────────────────────────────────────────────────────
 document.getElementById('prLoadBoqItems').addEventListener('click', function () {
     if (!currentBoqData || !currentBoqData.items) return;
@@ -603,21 +909,28 @@ document.getElementById('prLoadBoqItems').addEventListener('click', function () 
         const html = makePrRow(
             item.material_id, matDisplayName, item.unit,
             item.boq_qty, item.used_qty, item.po_qty, item.received_qty,
-            item.remaining_qty, '', true
+            item.remaining_qty, '', '', '', true
         );
         tbody.insertAdjacentHTML('beforeend', html);
     });
     updateEmptyHint();
+
+    // Auto-fetch stock for loaded BOQ items
+    tbody.querySelectorAll('tr').forEach(tr => {
+        if (tr.dataset.matId) {
+            fetchStockForRow({value: tr.dataset.matId}, tr);
+        }
+    });
 });
 
 // ── Add Row (BOQ Linked) ──────────────────────────────────────────────────
 document.getElementById('prAddRow').addEventListener('click', function () {
     if (currentPrType === 'boq_linked') {
-        const html = makePrRow('', '', '-', '', '', '', '', '', '', true);
+        const html = makePrRow('', '', '-', '', '', '', '', '', '', '', '', true);
         document.getElementById('prItemsBody').insertAdjacentHTML('beforeend', html);
         bindLastManualRow();
     } else {
-        const html = makeIndRow('', '');
+        const html = makeIndRow('', '', '', '');
         document.getElementById('prItemsBodyInd').insertAdjacentHTML('beforeend', html);
         bindLastIndRow();
     }
@@ -647,14 +960,15 @@ function bindLastManualRow() {
         newRow.querySelector('.pr-unit').textContent = unit;
         const small = newRow.querySelector('.pr-mat-unit');
         if (small) small.textContent = unit;
+        newRow.dataset.matId = this.value;
+        fetchStockForRow(this, newRow);
+
         if (currentBoqData && currentBoqData.items) {
             const mid     = this.value;
             const boqItem = currentBoqData.items.find(i => i.material_id == mid);
             if (boqItem) {
                 newRow.querySelector('.pr-boq-qty').textContent  = parseFloat(boqItem.boq_qty).toFixed(3);
                 newRow.querySelector('.pr-used-qty').textContent = parseFloat(boqItem.used_qty).toFixed(3);
-                if (newRow.querySelector('.pr-po-qty'))   newRow.querySelector('.pr-po-qty').textContent   = parseFloat(boqItem.po_qty || 0).toFixed(3);
-                if (newRow.querySelector('.pr-recv-qty')) newRow.querySelector('.pr-recv-qty').textContent = parseFloat(boqItem.received_qty || 0).toFixed(3);
                 const rem = parseFloat(boqItem.remaining_qty);
                 const remCell = newRow.querySelector('.pr-remaining');
                 remCell.textContent = rem.toFixed(3);
@@ -687,7 +1001,9 @@ function bindLastIndRow() {
         if (!opt) return;
         const unit = opt.dataset.unit || '—';
         newRow.querySelector('.pr-ind-unit').textContent      = unit;
-        newRow.querySelector('.pr-ind-unit-label').textContent = unit;
+        newRow.querySelectorAll('.pr-ind-unit-label').forEach(el => el.textContent = unit);
+        newRow.dataset.matId = this.value;
+        fetchStockForRow(this, newRow);
     });
 }
 
@@ -727,12 +1043,35 @@ document.getElementById('prForm').addEventListener('submit', function (e) {
         return false;
     }
 
-    // Independent: require required_date
+    // Independent: validate required_date & urgent policy
     if (isInd) {
         const rd = document.getElementById('prRequiredDate').value;
         if (!rd) {
             e.preventDefault();
             alert('Please select a Required By Date for Independent PR.');
+            return false;
+        }
+
+        const isUrgentVal = document.getElementById('prIsUrgent').value;
+        const urgentReasonVal = document.getElementById('prUrgentReason').value.trim();
+
+        // Calculate lead time days
+        const d = new Date(rd);
+        const t = new Date();
+        t.setHours(0,0,0,0);
+        d.setHours(0,0,0,0);
+        const days = Math.ceil((d - t) / (1000 * 60 * 60 * 24));
+
+        if (days < 30 && isUrgentVal !== '1') {
+            e.preventDefault();
+            checkLeadTime(rd);
+            return false;
+        }
+
+        if (isUrgentVal === '1' && !urgentReasonVal) {
+            e.preventDefault();
+            alert('This Purchase Request is marked Urgent (< 30 days notice). Please specify the Urgent Justification / Reason.');
+            document.getElementById('prUrgentReason').focus();
             return false;
         }
     }

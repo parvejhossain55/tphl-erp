@@ -14,7 +14,7 @@ class Con_PurchaseOrder extends Model
 
     public function getAll()
     {
-        $sql = "SELECT po.*, pr.project_id, p.name AS project_name,
+        $sql = "SELECT po.*, pr.project_id, pr.is_urgent AS pr_is_urgent, pr.urgent_reason AS pr_urgent_reason, pr.required_date AS pr_required_date, p.name AS project_name,
                        u.full_name AS created_by_name,
                        u.role_id AS creator_role_id,
                        v.name AS vendor_name,
@@ -77,6 +77,9 @@ class Con_PurchaseOrder extends Model
     public function find($id)
     {
         $sql = "SELECT po.*, pr.project_id, pr.notes AS pr_notes, p.name AS project_name,
+                    pr.required_date AS pr_required_date,
+                    pr.is_urgent AS pr_is_urgent,
+                    pr.urgent_reason AS pr_urgent_reason,
                     u.full_name AS created_by_name,
                     u.role_id AS creator_role_id,
                     v.name AS vendor_name,
@@ -111,8 +114,12 @@ class Con_PurchaseOrder extends Model
     public function getItems($poId)
     {
         $stmt = $this->db->prepare(
-            "SELECT poi.*, m.name AS material_name, m.unit, v.name AS vendor_name, COALESCE(cat.name, 'Uncategorized') AS category_name
+            "SELECT poi.*, m.name AS material_name, m.unit, v.name AS vendor_name, COALESCE(cat.name, 'Uncategorized') AS category_name,
+                    COALESCE(pri.current_stock, 0) AS current_stock,
+                    COALESCE(pri.next_3_months_requirement, 0) AS next_3_months_requirement
              FROM {$this->itemTable} poi
+             JOIN purchase_orders po ON po.id = poi.purchase_order_id
+             LEFT JOIN purchase_request_items pri ON pri.request_id = po.request_id AND pri.material_id = poi.material_id
              JOIN con_materials m ON m.id = poi.material_id
              LEFT JOIN con_material_categories cat ON cat.id = m.category_id
              JOIN vendors v ON v.id = poi.selected_vendor_id
@@ -175,9 +182,9 @@ class Con_PurchaseOrder extends Model
             $groupedWinners[$w['vendor_id']][] = $w;
         }
 
-        // Check which POs already exist for this request to prevent duplication
+        // Check which active POs already exist for this request to prevent duplication (ignoring Cancelled/Rejected POs)
         $existingVendors = [];
-        $check = $this->db->prepare("SELECT vendor_id FROM {$this->table} WHERE request_id = ?");
+        $check = $this->db->prepare("SELECT vendor_id FROM {$this->table} WHERE request_id = ? AND status != 'Cancelled'");
         $check->bind_param('i', $requestId);
         $check->execute();
         $res = $check->get_result();
