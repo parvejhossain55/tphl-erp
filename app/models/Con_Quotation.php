@@ -173,6 +173,11 @@ class Con_Quotation extends Model
         $prModel = new \Con_PurchaseRequest($this->db);
         $prItems = $prModel->getItems($requestId);
 
+        $prQtyMap = [];
+        foreach ($prItems as $pri) {
+            $prQtyMap[$pri['material_id']] = (float)$pri['quantity'];
+        }
+
         $vendors = [];
         $matrix  = [];
         $totals  = [];
@@ -182,13 +187,17 @@ class Con_Quotation extends Model
             $totals[$q['vendor_id']] = 0;
             $qItems = $this->getItems($q['id']);
             foreach ($qItems as $qi) {
-                $matrix[$qi['material_id']][$q['vendor_id']] = [
-                    'unit_price'  => $qi['unit_price'],
-                    'quantity'    => $qi['quantity'],
-                    'total_price' => $qi['quantity'] * $qi['unit_price'],
-                    'quotation_id' => $q['id'],
-                ];
-                $totals[$q['vendor_id']] += ($qi['quantity'] * $qi['unit_price']);
+                // If material is still part of the PR, calculate using current PR quantity
+                if (isset($prQtyMap[$qi['material_id']])) {
+                    $effQty = $prQtyMap[$qi['material_id']];
+                    $matrix[$qi['material_id']][$q['vendor_id']] = [
+                        'unit_price'  => $qi['unit_price'],
+                        'quantity'    => $effQty,
+                        'total_price' => $effQty * $qi['unit_price'],
+                        'quotation_id' => $q['id'],
+                    ];
+                    $totals[$q['vendor_id']] += ($effQty * $qi['unit_price']);
+                }
             }
         }
 
@@ -250,12 +259,13 @@ class Con_Quotation extends Model
     /** Get the winning selections for a request (used to generate PO) */
     public function getWinningSelections($requestId)
     {
-        $sql = "SELECT ci.*, m.name AS material_name, m.unit, COALESCE(cat.name, 'Uncategorized') AS category_name, v.name AS vendor_name
+        $sql = "SELECT ci.*, m.name AS material_name, m.unit, COALESCE(cat.name, 'Uncategorized') AS category_name, v.name AS vendor_name, pri.quantity AS pr_quantity
                 FROM comparison_items ci
                 JOIN quotation_comparisons qc ON qc.id = ci.comparison_id
                 JOIN con_materials m ON m.id = ci.material_id
                 LEFT JOIN con_material_categories cat ON cat.id = m.category_id
                 JOIN vendors v ON v.id = ci.vendor_id
+                JOIN purchase_request_items pri ON pri.request_id = qc.request_id AND pri.material_id = ci.material_id
                 WHERE qc.request_id = ? AND ci.is_selected = 1
                 ORDER BY ci.id ASC";
         $stmt = $this->db->prepare($sql);

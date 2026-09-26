@@ -1360,9 +1360,17 @@ class ApprovalRequest extends Model
                 )
             )";
         } elseif ($isSiteOperator && !$isManagement) {
-            return "({$prefix}status IN ('pending', 'partially_approved', '') 
-                    AND (LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') 
-                    AND ({$prefix}request_amount <= 100000 OR {$prefix}request_amount IS NULL OR {$prefix}request_amount = 0 OR {$prefix}source_table IN ('project_other_costs', 'expense_adjustments', 'project_extra_assets')))";
+            if ($userRoleId === 32) {
+                return "({$prefix}status IN ('pending', 'partially_approved', '') 
+                        AND (
+                            (LOWER({$prefix}approve_role) = 'operations' AND {$prefix}source_table = 'project_extra_assets')
+                            OR ((LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') AND ({$prefix}request_amount <= 100000 OR {$prefix}request_amount IS NULL OR {$prefix}request_amount = 0 OR {$prefix}source_table IN ('project_other_costs', 'expense_adjustments', 'project_extra_assets')))
+                        ))";
+            } else {
+                return "({$prefix}status IN ('pending', 'partially_approved', '') 
+                        AND (LOWER({$prefix}approve_role) = 'management' OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') 
+                        AND ({$prefix}request_amount <= 100000 OR {$prefix}request_amount IS NULL OR {$prefix}request_amount = 0 OR {$prefix}source_table IN ('project_other_costs', 'expense_adjustments')))";
+            }
         } elseif ($isManagement) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND (LOWER({$prefix}approve_role) = 'management' OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = ''))";
@@ -1738,8 +1746,12 @@ class ApprovalRequest extends Model
                 } elseif ($isRole20) {
                     if (in_array($srcTbl, ['project_other_costs', 'expense_adjustments']) && in_array($appRole, ['management', ''])) {
                         $isActionable = true;
-                    } elseif ($srcTbl === 'project_extra_assets' && in_array($appRole, ['operations', 'management'])) {
-                        $isActionable = true;
+                    } elseif ($srcTbl === 'project_extra_assets') {
+                        if ($appRole === 'operations' && $userRoleId === 32) {
+                            $isActionable = true;
+                        } elseif (in_array($appRole, ['management', '']) && $amt <= 100000.01) {
+                            $isActionable = true;
+                        }
                     } elseif (in_array($appRole, ['management', '']) && $amt <= 100000.01) {
                         $isActionable = true;
                     }

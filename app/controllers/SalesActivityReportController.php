@@ -21,14 +21,39 @@ class SalesActivityReportController extends Controller
     {
         $loggedInUser = $_SESSION['user'];
 
-        // Default sales cycle: day >= 26 advances to the next month's cycle
+        // Default sales cycle: day >= 26 advances to the next month's cycle only if the new cycle has data.
+        // If the new cycle has no leads, follow-ups, or bookings recorded yet, stay on the active month with data
+        // so the user does not suddenly see a completely blank page on the 26th day of the month.
         $defaultYear = (int)date('Y');
         $defaultMonth = (int)date('m');
         if ((int)date('d') >= 26) {
-            $defaultMonth++;
-            if ($defaultMonth > 12) {
-                $defaultMonth = 1;
-                $defaultYear++;
+            $candMonth = $defaultMonth + 1;
+            $candYear = $defaultYear;
+            if ($candMonth > 12) {
+                $candMonth = 1;
+                $candYear++;
+            }
+            $candStart = sprintf('%04d-%02d-26 00:00:00', $defaultYear, $defaultMonth);
+            $hasNewData = false;
+            try {
+                $checkRes = $this->db->query("
+                    SELECT 1 FROM leads WHERE (created_at >= '$candStart' OR assigned_at >= '$candStart') AND deleted_at IS NULL
+                    UNION ALL
+                    SELECT 1 FROM lead_bookings WHERE booking_date >= DATE('$candStart')
+                    UNION ALL
+                    SELECT 1 FROM lead_follow_ups WHERE created_at >= '$candStart'
+                    LIMIT 1
+                ");
+                if ($checkRes && $checkRes->num_rows > 0) {
+                    $hasNewData = true;
+                }
+            } catch (Exception $e) {
+                $hasNewData = false;
+            }
+
+            if ($hasNewData) {
+                $defaultMonth = $candMonth;
+                $defaultYear = $candYear;
             }
         }
 
@@ -681,14 +706,39 @@ class SalesActivityReportController extends Controller
     {
         $loggedInUser = $_SESSION['user'];
 
-        // Default sales cycle: day >= 26 advances to the next month's cycle
+        // Default sales cycle: day >= 26 advances to the next month's cycle only if the new cycle has data.
+        // If the new cycle has no leads, follow-ups, or bookings recorded yet, stay on the active month with data
+        // so the user does not suddenly see a completely blank page on the 26th day of the month.
         $defaultYear = (int)date('Y');
         $defaultMonth = (int)date('m');
         if ((int)date('d') >= 26) {
-            $defaultMonth++;
-            if ($defaultMonth > 12) {
-                $defaultMonth = 1;
-                $defaultYear++;
+            $candMonth = $defaultMonth + 1;
+            $candYear = $defaultYear;
+            if ($candMonth > 12) {
+                $candMonth = 1;
+                $candYear++;
+            }
+            $candStart = sprintf('%04d-%02d-26 00:00:00', $defaultYear, $defaultMonth);
+            $hasNewData = false;
+            try {
+                $checkRes = $this->db->query("
+                    SELECT 1 FROM leads WHERE (created_at >= '$candStart' OR assigned_at >= '$candStart') AND deleted_at IS NULL
+                    UNION ALL
+                    SELECT 1 FROM lead_bookings WHERE booking_date >= DATE('$candStart')
+                    UNION ALL
+                    SELECT 1 FROM lead_follow_ups WHERE created_at >= '$candStart'
+                    LIMIT 1
+                ");
+                if ($checkRes && $checkRes->num_rows > 0) {
+                    $hasNewData = true;
+                }
+            } catch (Exception $e) {
+                $hasNewData = false;
+            }
+
+            if ($hasNewData) {
+                $defaultMonth = $candMonth;
+                $defaultYear = $candYear;
             }
         }
 

@@ -395,6 +395,7 @@ return [
     'con-boq-remaining/(\d+)' => ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'boqRemaining'],
     'con-ajax-pr-boqs' => ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'ajaxGetProjectBoqs'],
     'con-ajax-add-material' => ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'ajaxAddMaterial'],
+    'con-ajax-material-stock' => ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'ajaxGetMaterialStock'],
 
     // =========================================================================
     // Controller: Phase2\Con_QuotationController

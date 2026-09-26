@@ -121,6 +121,19 @@ if (!empty($isEdit) && !empty($quotationItems)) {
             </div>
             <?php endif; ?>
 
+            <!-- Urgent Requisition Notice (if applicable) -->
+            <?php if (!empty($pr['is_urgent'])): ?>
+            <div class="alert alert-danger d-flex align-items-center mb-4 py-2 px-3 shadow-sm border-danger" role="alert">
+                <i class="bi bi-exclamation-triangle-fill fs-4 me-3 text-danger"></i>
+                <div>
+                    <strong class="text-danger">URGENT REQUISITION:</strong> This requisition requires expedited quotation handling.
+                    <?php if (!empty($pr['urgent_reason'])): ?>
+                        <div class="small mt-1 text-dark"><strong>Reason / Justification:</strong> <?= htmlspecialchars($pr['urgent_reason']) ?></div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- Add/Edit Quotation Form -->
             <div class="card__wrapper shadow-sm">
                 <div class="card__header">
@@ -168,15 +181,17 @@ if (!empty($isEdit) && !empty($quotationItems)) {
                             <table class="table table-bordered align-middle" id="quotItemsTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width:30%;">Material</th>
-                                        <th style="width:12%;">PR Qty</th>
-                                        <th style="width:12%;">Qty <span class="text-danger">*</span></th>
-                                        <th style="width:13%;">Unit Price <span class="text-danger">*</span></th>
-                                        <th style="width:24%;" class="text-center">
+                                        <th style="width:24%;">Material</th>
+                                        <th style="width:10%;">PR Qty</th>
+                                        <th style="width:10%;">Site Stock</th>
+                                        <th style="width:10%;">3-Mo Forecast</th>
+                                        <th style="width:10%;">Qty <span class="text-danger">*</span></th>
+                                        <th style="width:12%;">Unit Price <span class="text-danger">*</span></th>
+                                        <th style="width:14%;" class="text-center">
                                             <i class="bi bi-paperclip me-1"></i>Attachment <span class="text-danger">*</span>
                                             <small class="text-muted d-block fw-normal" style="font-size:10px">(File & Optional Drive Link)</small>
                                         </th>
-                                        <th style="width:15%;" class="text-end">Total</th>
+                                        <th style="width:10%;" class="text-end">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody id="quotItemsBody">
@@ -188,7 +203,21 @@ if (!empty($isEdit) && !empty($quotationItems)) {
                                             <br><small class="text-muted">[Category: <?= htmlspecialchars($item['category_name'] ?? 'Uncategorized') ?>]</small>
                                             <input type="hidden" name="material_id[]" value="<?= $item['material_id'] ?>">
                                         </td>
-                                        <td class="text-muted"><?= number_format($item['quantity'], 3) ?></td>
+                                        <td class="text-muted fw-bold"><?= number_format($item['quantity'], 3) ?></td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border">
+                                                <?= number_format((float)($item['current_stock'] ?? 0), 3) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($item['next_3_months_requirement']) && (float)$item['next_3_months_requirement'] > 0): ?>
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                                    <?= number_format((float)$item['next_3_months_requirement'], 3) ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="text-muted">—</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td>
                                             <input type="number" step="0.001" name="quantity[]"
                                                    class="form-control quot-qty" required min="0.001"
@@ -242,7 +271,7 @@ if (!empty($isEdit) && !empty($quotationItems)) {
                                 </tbody>
                                 <tfoot>
                                     <tr>
-                                        <td colspan="5" class="text-end fw-bold py-3">Total Quotation Amount:</td>
+                                        <td colspan="7" class="text-end fw-bold py-3">Total Quotation Amount:</td>
                                         <td class="text-end fw-bold py-3 text-primary fs-6">
                                             <span id="quotGrandTotal">0.00</span>
                                         </td>

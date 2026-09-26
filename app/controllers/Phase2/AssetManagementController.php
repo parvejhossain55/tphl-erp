@@ -413,7 +413,7 @@ class AssetManagementController extends Controller
 
         $isChiefOfficer = (in_array($roleId, [33, 34, 35], true) || in_array(strtolower(trim($_SESSION['user']['role_name'] ?? '')), ['chief officer', 'management viewer', 'seal ceo'], true));
         $isSuperAdmin   = in_array($roleId, [1, 3]) && !$isChiefOfficer; // Admin (1) and super Admin (3) ONLY. Role 2 is Employee!
-        $isOperations   = ($isSuperAdmin || in_array($roleId, [20, 32])) && !$isChiefOfficer;
+        $isOperations   = ($isSuperAdmin || (int)$roleId === 32) && !$isChiefOfficer;
         $isPurchaseHead = ($isSuperAdmin || in_array($roleId, [17, 31])) && !$isChiefOfficer;
         $isQcAudit      = ($isSuperAdmin || in_array($roleId, [24, 25])) && !$isChiefOfficer;
         $isManagement   = $isSuperAdmin && !$isChiefOfficer;
@@ -421,7 +421,7 @@ class AssetManagementController extends Controller
         $isGlobalViewer = in_array($roleId, [1, 3, 33, 34, 35, 6, 17, 20, 24, 25, 30, 31, 32]);
         $isApprover     = $isGlobalViewer && !$isChiefOfficer;
 
-        $activeTab  = $_GET['tab'] ?? ($isApprover ? 'pending_approval' : 'my_requests');
+        $activeTab  = $_GET['tab'] ?? 'all_requests';
 
         $filters = [
             'department_id'    => $_GET['department_id'] ?? '',
@@ -515,7 +515,7 @@ class AssetManagementController extends Controller
                     $dhStatus = $autoOpenRequest['dept_head_status'] ?? 'not_required';
                     if (($isReporterBoss || $isSuperAdmin) && $dhStatus === 'pending') {
                         $canApprove = true; $step = 'dept_head';
-                    } elseif (($isOperations && $isSuperAdmin || $isRole20Eligible) && in_array($dhStatus, ['approved', 'not_required']) && $autoOpenRequest['operations_status'] === 'pending') {
+                    } elseif ($isOperations && in_array($dhStatus, ['approved', 'not_required']) && $autoOpenRequest['operations_status'] === 'pending') {
                         $canApprove = true; $step = 'operations';
                     } elseif ($isPurchaseHead && $autoOpenRequest['operations_status'] === 'approved' && $autoOpenRequest['purchase_head_status'] === 'pending') {
                         $canApprove = true; $step = 'purchase_head';
@@ -587,8 +587,8 @@ class AssetManagementController extends Controller
                         } else {
                             $this->mailService->sendOfficeProcurementToApprovalRoles(
                                 $request,
-                                [20, 32],
-                                'Operations'
+                                [32],
+                                'Admin & Operation'
                             );
                         }
                     }
@@ -654,7 +654,7 @@ class AssetManagementController extends Controller
             // Role permission validation for step approval
             $canApproveStep = false;
             $reqTotal = (float)($req['total_price'] ?? 0);
-            $isRole20Eligible = (in_array($roleId, [20, 32]) && $reqTotal <= 100000);
+            $isRole20Eligible = ((int)$roleId === 32 && $reqTotal <= 100000);
 
             if (in_array($roleId, [1, 3])) {
                 $canApproveStep = true;
@@ -665,7 +665,7 @@ class AssetManagementController extends Controller
                         $canApproveStep = true;
                     }
                 } elseif ($step === 'operations') {
-                    if (in_array($roleId, [20, 32])) {
+                    if ((int)$roleId === 32) {
                         $canApproveStep = true;
                     }
                 } elseif ($step === 'purchase_head') {
@@ -708,7 +708,7 @@ class AssetManagementController extends Controller
                     try {
                         $updatedRequest = $this->model->findExtraPurchase($id);
                         $nextStage = [
-                            'dept_head'     => [[20, 32], 'Operations'],
+                            'dept_head'     => [[32], 'Admin & Operation'],
                             'operations'    => [[17, 31], 'Purchase Head'],
                             'purchase_head' => [[24, 25], 'QC & Internal Audit'],
                             'qc_audit'      => [[1, 3, 33], 'Management'],

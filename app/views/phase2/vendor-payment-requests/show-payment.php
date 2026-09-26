@@ -1768,9 +1768,11 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
           <table class="table table-bordered align-middle text-center mb-0" style="font-size:12px">
             <thead class="table-dark">
               <tr>
-                <th class="text-start" style="width:5%;">#</th>
-                <th class="text-start" style="width:25%;">Material</th>
-                <th style="width:10%;">PR Qty</th>
+                <th class="text-start" style="width:4%;">#</th>
+                <th class="text-start" style="width:22%;">Material</th>
+                <th style="width:8%;">PR Qty</th>
+                <th style="width:8%;">Site Stock</th>
+                <th style="width:8%;">3-Mo Forecast</th>
                 <?php foreach ($vendors as $vid => $vname): ?>
                   <th style="min-width:130px;" class="<?= ($vid == $selectedVendorId) ? 'bg-success text-white border-success' : '' ?>">
                     <?= htmlspecialchars($vname) ?>
@@ -1803,6 +1805,20 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                       <span class="text-muted small">(<?= $mat['unit'] ?>)</span>
                   </td>
                   <td><?= number_format($mat['quantity'], 3) ?></td>
+                  <td>
+                      <span class="badge bg-light text-dark border">
+                          <?= number_format((float)($mat['current_stock'] ?? 0), 3) ?>
+                      </span>
+                  </td>
+                  <td>
+                      <?php if (!empty($mat['next_3_months_requirement']) && (float)$mat['next_3_months_requirement'] > 0): ?>
+                          <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                              <?= number_format((float)$mat['next_3_months_requirement'], 3) ?>
+                          </span>
+                      <?php else: ?>
+                          <span class="text-muted">—</span>
+                      <?php endif; ?>
+                  </td>
                   <?php foreach ($vendorIds as $vid): ?>
                       <?php
                       $cell = $matrix[$mid][$vid] ?? null;
@@ -1825,7 +1841,7 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
             </tbody>
             <tfoot class="table-light">
                 <tr class="fw-bold">
-                    <td colspan="3" class="text-end">Vendor Totals:</td>
+                    <td colspan="5" class="text-end">Vendor Totals:</td>
                     <?php foreach ($vendorIds as $vid): ?>
                         <td class="<?= ($vid == $selectedVendorId) ? 'text-success' : '' ?>">৳ <?= number_format($totals[$vid] ?? 0, 2) ?></td>
                     <?php endforeach; ?>

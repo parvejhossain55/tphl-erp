@@ -15180,11 +15180,15 @@ div:where(.swal2-container) button:where(.swal2-styled) {
   margin-bottom: 0;
 }
 .card__wrapper .alert i {
-  width: 14px;
+  width: 18px;
+    /* height: 14px; */
+    /* margin-inline-end: 4px; */
+    position: absolute;
+  /* width: 14px;
   height: 14px;
   margin-inline-end: 4px;
   position: absolute;
-  top: 13px;
+  top: 13px; */
 }
 .card__wrapper .alert i ~ p {
   padding-inline-start: 20px;

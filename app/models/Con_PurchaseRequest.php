@@ -18,17 +18,27 @@ class Con_PurchaseRequest extends Model
                        exec.full_name AS assigned_executive_name,
                        COALESCE(pr.pr_type, 'boq_linked') AS pr_type,
                        (SELECT COUNT(*) FROM {$this->itemTable} WHERE request_id = pr.id) AS item_count,
+                       (SELECT GROUP_CONCAT(DISTINCT COALESCE(cat_pr.name, 'Uncategorized') ORDER BY cat_pr.name SEPARATOR ', ')
+                        FROM {$this->itemTable} pri_c
+                        JOIN con_materials m_pr ON m_pr.id = pri_c.material_id
+                        LEFT JOIN con_material_categories cat_pr ON cat_pr.id = m_pr.category_id
+                        WHERE pri_c.request_id = pr.id) AS category_names,
+                       COALESCE(pr.required_date, (SELECT MIN(pri_d.required_date) FROM {$this->itemTable} pri_d WHERE pri_d.request_id = pr.id)) AS effective_required_date,
                        (SELECT SUM(pri.quantity * COALESCE(bi.unit_cost, 0))
                         FROM {$this->itemTable} pri
                         LEFT JOIN boq_items bi ON bi.material_id = pri.material_id
                             AND bi.boq_id = (SELECT MIN(bm.id) FROM boq_master bm WHERE bm.project_id = pr.project_id AND bm.status IN ('Approved','Submitted'))
                         WHERE pri.request_id = pr.id) AS estimated_total,
                        (SELECT u2.full_name FROM po_negotiation_notes n JOIN users u2 ON u2.id = n.user_id WHERE n.request_id = pr.id ORDER BY n.created_at DESC LIMIT 1) AS latest_note_author,
-                       (SELECT n2.note_text FROM po_negotiation_notes n2 WHERE n2.request_id = pr.id ORDER BY n2.created_at DESC LIMIT 1) AS latest_note_text
+                       (SELECT n2.note_text FROM po_negotiation_notes n2 WHERE n2.request_id = pr.id ORDER BY n2.created_at DESC LIMIT 1) AS latest_note_text,
+                       po_rej.full_name AS po_rejected_by_name,
+                       po_rej_r.name    AS po_rejected_by_role
                 FROM {$this->table} pr
                 LEFT JOIN projects p ON p.id = pr.project_id
                 LEFT JOIN users u ON u.id = pr.created_by
-                LEFT JOIN users exec ON exec.id = pr.assigned_executive_id ";
+                LEFT JOIN users exec ON exec.id = pr.assigned_executive_id
+                LEFT JOIN users po_rej ON po_rej.id = pr.po_rejected_by_id
+                LEFT JOIN roles po_rej_r ON po_rej_r.id = po_rej.role_id ";
         
         $where = [];
         if ($createdBy) {
@@ -59,7 +69,14 @@ class Con_PurchaseRequest extends Model
                     qc.full_name  AS qc_approved_by_name,
                     mgmt.full_name AS mgmt_approved_by_name,
                     exec.full_name AS assigned_executive_name,
-                    COALESCE(pr.pr_type, 'boq_linked') AS pr_type
+                    po_rej.full_name AS po_rejected_by_name,
+                    po_rej_r.name    AS po_rejected_by_role,
+                    COALESCE(pr.pr_type, 'boq_linked') AS pr_type,
+                    (SELECT GROUP_CONCAT(DISTINCT COALESCE(cat_pr.name, 'Uncategorized') ORDER BY cat_pr.name SEPARATOR ', ')
+                     FROM {$this->itemTable} pri_c
+                     JOIN con_materials m_pr ON m_pr.id = pri_c.material_id
+                     LEFT JOIN con_material_categories cat_pr ON cat_pr.id = m_pr.category_id
+                     WHERE pri_c.request_id = pr.id) AS category_names
              FROM {$this->table} pr
              LEFT JOIN projects p   ON p.id    = pr.project_id
              LEFT JOIN users u      ON u.id    = pr.created_by
@@ -68,6 +85,8 @@ class Con_PurchaseRequest extends Model
              LEFT JOIN users qc     ON qc.id   = pr.qc_approved_by_id
              LEFT JOIN users mgmt   ON mgmt.id = pr.mgmt_approved_by_id
              LEFT JOIN users exec   ON exec.id = pr.assigned_executive_id
+             LEFT JOIN users po_rej ON po_rej.id = pr.po_rejected_by_id
+             LEFT JOIN roles po_rej_r ON po_rej_r.id = po_rej.role_id
              WHERE pr.id = ?"
         );
         $stmt->bind_param('i', $id);
@@ -160,13 +179,15 @@ class Con_PurchaseRequest extends Model
             $requiredDate = !empty($data['required_date']) ? $data['required_date'] : null;
             $purpose      = !empty($data['purpose'])       ? trim($data['purpose'])  : null;
             $attachment   = !empty($data['attachment'])    ? trim($data['attachment']) : null;
+            $isUrgent     = !empty($data['is_urgent'])     ? 1 : 0;
+            $urgentReason = !empty($data['urgent_reason']) ? trim($data['urgent_reason']) : null;
 
             $stmt = $this->db->prepare(
                 "INSERT INTO {$this->table}
-                    (project_id, bom_id, pr_type, required_date, purpose, created_by, status, notes, attachment)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                    (project_id, bom_id, pr_type, required_date, purpose, created_by, status, is_urgent, urgent_reason, notes, attachment)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
-            $stmt->bind_param('iisssssss',
+            $stmt->bind_param('iisssisssss',
                 $data['project_id'],
                 $bomId,
                 $prType,
@@ -174,6 +195,8 @@ class Con_PurchaseRequest extends Model
                 $purpose,
                 $data['created_by'],
                 $data['status'],
+                $isUrgent,
+                $urgentReason,
                 $data['notes'],
                 $attachment
             );
@@ -182,15 +205,19 @@ class Con_PurchaseRequest extends Model
 
             $itemStmt = $this->db->prepare(
                 "INSERT INTO {$this->itemTable}
-                    (request_id, material_id, quantity, required_date, created_by)
-                 VALUES (?, ?, ?, ?, ?)"
+                    (request_id, material_id, quantity, current_stock, next_3_months_requirement, required_date, created_by)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)"
             );
             foreach ($items as $item) {
                 $itemReqDate = !empty($item['required_date']) ? $item['required_date'] : null;
-                $itemStmt->bind_param('iidsi',
+                $currentStock = isset($item['current_stock']) && $item['current_stock'] !== '' ? (float)$item['current_stock'] : 0.000;
+                $next3MoReq   = isset($item['next_3_months_requirement']) && $item['next_3_months_requirement'] !== '' ? (float)$item['next_3_months_requirement'] : 0.000;
+                $itemStmt->bind_param('iidddsi',
                     $prId,
                     $item['material_id'],
                     $item['quantity'],
+                    $currentStock,
+                    $next3MoReq,
                     $itemReqDate,
                     $data['created_by']
                 );
@@ -215,32 +242,35 @@ class Con_PurchaseRequest extends Model
     public function update($id, $data, $items)
     {
         $id = (int)$id;
-        $prType = $data['pr_type'] ?? 'boq_linked';
-        $bomId  = ($prType === 'boq_linked' && !empty($data['bom_id'])) ? (int)$data['bom_id'] : null;
+        $prType       = $data['pr_type'] ?? 'boq_linked';
+        $bomId        = ($prType === 'boq_linked' && !empty($data['bom_id'])) ? (int)$data['bom_id'] : null;
         $requiredDate = !empty($data['required_date']) ? $data['required_date'] : null;
-        $purpose      = !empty($data['purpose'])       ? trim($data['purpose'])  : null;
-        $attachment   = !empty($data['attachment'])    ? trim($data['attachment']) : null;
-        $status       = !empty($data['status'])        ? $data['status']         : 'Draft';
+        $purpose       = !empty($data['purpose'])       ? trim($data['purpose'])  : null;
+        $attachment    = !empty($data['attachment'])    ? trim($data['attachment']) : null;
+        $status        = !empty($data['status'])        ? $data['status']         : 'Draft';
+        $isUrgent      = !empty($data['is_urgent'])     ? 1 : 0;
+        $urgentReason  = !empty($data['urgent_reason']) ? trim($data['urgent_reason']) : null;
+        $revisionCount = isset($data['revision_count']) ? (int)$data['revision_count'] : 0;
 
         $this->db->begin_transaction();
         try {
             if ($attachment) {
                 $stmt = $this->db->prepare(
                     "UPDATE {$this->table}
-                     SET project_id = ?, bom_id = ?, pr_type = ?, required_date = ?, purpose = ?, status = ?, notes = ?, attachment = ?
+                     SET project_id = ?, bom_id = ?, pr_type = ?, required_date = ?, purpose = ?, status = ?, is_urgent = ?, urgent_reason = ?, notes = ?, attachment = ?, revision_count = ?
                      WHERE id = ?"
                 );
-                $stmt->bind_param('iissssssi',
-                    $data['project_id'], $bomId, $prType, $requiredDate, $purpose, $status, $data['notes'], $attachment, $id
+                $stmt->bind_param('iissssisssii',
+                    $data['project_id'], $bomId, $prType, $requiredDate, $purpose, $status, $isUrgent, $urgentReason, $data['notes'], $attachment, $revisionCount, $id
                 );
             } else {
                 $stmt = $this->db->prepare(
                     "UPDATE {$this->table}
-                     SET project_id = ?, bom_id = ?, pr_type = ?, required_date = ?, purpose = ?, status = ?, notes = ?
+                     SET project_id = ?, bom_id = ?, pr_type = ?, required_date = ?, purpose = ?, status = ?, is_urgent = ?, urgent_reason = ?, notes = ?, revision_count = ?
                      WHERE id = ?"
                 );
-                $stmt->bind_param('iisssssi',
-                    $data['project_id'], $bomId, $prType, $requiredDate, $purpose, $status, $data['notes'], $id
+                $stmt->bind_param('iissssissii',
+                    $data['project_id'], $bomId, $prType, $requiredDate, $purpose, $status, $isUrgent, $urgentReason, $data['notes'], $revisionCount, $id
                 );
             }
             $stmt->execute();
@@ -251,17 +281,22 @@ class Con_PurchaseRequest extends Model
 
             $itemStmt = $this->db->prepare(
                 "INSERT INTO {$this->itemTable}
-                    (request_id, material_id, quantity, required_date, created_by)
-                 VALUES (?, ?, ?, ?, ?)"
+                    (request_id, material_id, quantity, current_stock, next_3_months_requirement, required_date, created_by)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)"
             );
+            $createdBy = (int)($data['created_by'] ?? ($_SESSION['user']['id'] ?? 0));
             foreach ($items as $item) {
-                $itemReqDate = !empty($item['required_date']) ? $item['required_date'] : null;
-                $itemStmt->bind_param('iidsi',
+                $itemReqDate  = !empty($item['required_date']) ? $item['required_date'] : null;
+                $currentStock = isset($item['current_stock']) && $item['current_stock'] !== '' ? (float)$item['current_stock'] : 0.000;
+                $next3MoReq   = isset($item['next_3_months_requirement']) && $item['next_3_months_requirement'] !== '' ? (float)$item['next_3_months_requirement'] : 0.000;
+                $itemStmt->bind_param('iidddsi',
                     $id,
                     $item['material_id'],
                     $item['quantity'],
+                    $currentStock,
+                    $next3MoReq,
                     $itemReqDate,
-                    $data['created_by']
+                    $createdBy
                 );
                 $itemStmt->execute();
             }

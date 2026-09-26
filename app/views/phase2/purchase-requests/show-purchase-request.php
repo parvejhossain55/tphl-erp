@@ -94,14 +94,21 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                             <label class="small text-uppercase text-muted d-block">Status</label>
                             <?php
                             $badge = match($pr['status']) {
-                                'Approved'  => 'bg-success',
-                                'PO Issued' => 'bg-primary',
-                                'Rejected'  => 'bg-danger',
-                                'Submitted' => 'bg-info',
-                                default     => 'bg-warning text-dark',
+                                'Approved'    => 'bg-success text-white',
+                                'PO Issued'   => 'bg-primary text-white',
+                                'PO Rejected' => 'bg-danger text-white',
+                                'Rejected'    => 'bg-danger text-white',
+                                'Submitted'   => 'bg-info text-dark',
+                                default       => 'bg-warning text-dark',
                             };
                             ?>
-                            <span class="badge <?= $badge ?> px-3"><?= $pr['status'] ?></span>
+                            <span class="badge <?= $badge ?> px-3 py-1">
+                                <?php if ($pr['status'] === 'PO Rejected'): ?>
+                                    <i class="bi bi-exclamation-octagon-fill me-1"></i> PO Rejected
+                                <?php else: ?>
+                                    <?= $pr['status'] ?>
+                                <?php endif; ?>
+                            </span>
                         </div>
                         <div class="col-md-2">
                             <label class="small text-uppercase text-muted d-block">Created By</label>
@@ -112,6 +119,57 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                             <span class="fw-bold"><?= date('d M Y', strtotime($pr['created_at'])) ?></span>
                         </div>
                     </div>
+
+                    <!-- ══════════ PO REJECTION ALERT CARD ══════════ -->
+                    <?php if ($pr['status'] === 'PO Rejected'): ?>
+                    <div class="alert alert-danger border-2 border-danger p-4 mb-4 shadow-sm" style="border-radius:14px; background:#fff5f5;">
+                        <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+                            <div class="d-flex align-items-start gap-3">
+                                <div class="p-3 rounded-circle text-danger bg-white shadow-xs" style="border:2px solid #fca5a5; width:52px; height:52px; display:flex; align-items:center; justify-content:center;">
+                                    <i class="bi bi-exclamation-octagon-fill fs-3"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                                        <span class="badge bg-danger fs-6 px-3 py-1">PO Rejected — Revision Required</span>
+                                        <?php if (!empty($pr['revision_count']) && (int)$pr['revision_count'] > 0): ?>
+                                            <span class="badge bg-warning text-dark">Revision #<?= $pr['revision_count'] ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <h5 class="fw-bold text-dark mb-1">
+                                        Purchase Order was Rejected by Approver
+                                    </h5>
+                                    <p class="text-muted mb-2" style="font-size:13px;">
+                                        This requisition's Purchase Order was rejected. Please review the note below, edit quantities or delete unneeded items, and re-run CST & PO generation.
+                                    </p>
+                                    <div class="p-3 rounded bg-white border border-danger-subtle mt-2" style="max-width:720px;">
+                                        <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold" style="font-size:11px;">
+                                                <i class="bi bi-chat-quote-fill me-1"></i> Approver Note / Instructions
+                                            </span>
+                                            <span class="small text-muted" style="font-size:11px;">
+                                                <?php if (!empty($pr['po_rejected_by_name'])): ?>
+                                                    By <strong><?= htmlspecialchars($pr['po_rejected_by_name']) ?></strong>
+                                                    (<?= htmlspecialchars($pr['po_rejected_by_role'] ?? 'Management') ?>) &bull;
+                                                <?php endif; ?>
+                                                <?= !empty($pr['po_rejected_at']) ? date('d M Y, h:i A', strtotime($pr['po_rejected_at'])) : '' ?>
+                                            </span>
+                                        </div>
+                                        <div class="text-danger fw-semibold" style="font-size:14px; white-space:pre-wrap; line-height:1.5;">
+                                            <?= htmlspecialchars($pr['po_rejection_note'] ?? 'No specific remarks provided.') ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <?php if ($canEditPR): ?>
+                                    <a href="<?= $base_url ?>/con-purchase-request-edit/<?= $pr['id'] ?>" class="btn btn-danger btn-lg shadow-sm px-4 fw-bold">
+                                        <i class="bi bi-pencil-square me-2"></i> Edit & Revise Request
+                                    </a>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
 
                     <!-- Independent PR: Required Date + Purpose -->
                     <?php if (!empty($pr['required_date']) || !empty($pr['purpose']) || !empty($pr['notes'])): ?>
@@ -241,6 +299,41 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
 
 
 
+                    <!-- Urgent Requisition Notification Banner -->
+                    <?php if (!empty($pr['is_urgent'])): ?>
+                    <div class="alert alert-danger d-flex align-items-start gap-3 p-3 mb-3 border-danger shadow-sm" style="border-radius:12px; background:linear-gradient(135deg, rgba(239,68,68,.12), rgba(220,38,38,.05)); border-left: 6px solid #dc2626 !important;">
+                        <div style="">
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <h6 class="fw-bold text-danger mb-0">
+                                 URGENT PURCHASE REQUEST — 30-Day Policy Exception
+                                </h6>
+                                <span class="badge bg-danger text-white px-2 py-1" style="font-size:11px">Urgent Fast-Track</span>
+                            </div>
+                            <div class="text-dark small mt-1">
+                                <strong>Lead Time:</strong> 
+                                <?php 
+                                    $reqTs = !empty($pr['required_date']) ? strtotime($pr['required_date']) : null;
+                                    $createdTs = strtotime($pr['created_at']);
+                                    if ($reqTs) {
+                                        $leadDays = ceil(($reqTs - $createdTs) / 86400);
+                                        echo ($leadDays < 0 ? '0' : $leadDays) . ' days from creation (' . date('d M Y', $reqTs) . ')';
+                                    } else {
+                                        echo 'Under 30 days';
+                                    }
+                                ?>
+                            </div>
+                            <?php if (!empty($pr['urgent_reason'])): ?>
+                            <div class="mt-2 p-2 rounded bg-white text-dark border border-danger-subtle small">
+                                <strong class="text-danger">Urgent Justification / Reason:</strong>
+                                <span class="text-dark fw-semibold"><?= nl2br(htmlspecialchars($pr['urgent_reason'])) ?></span>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
                     <!-- Items Table -->
                     <div class="table-responsive">
                         <table class="table table-striped table-bordered align-middle">
@@ -249,8 +342,10 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                     <th>#</th>
                                     <th>Material</th>
                                     <th>Unit</th>
+                                    <th class="text-end">Current Stock (Site)</th>
                                     <th class="text-end">Requested Qty</th>
-                                    <th class="text-center">Required Date (BOQ)</th>
+                                    <th class="text-end">Next 3-Months Req.</th>
+                                    <th class="text-center">Required Date</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -262,12 +357,32 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                         <br><small class="text-muted">[Category: <?= htmlspecialchars($item['category_name'] ?? 'Uncategorized') ?>]</small>
                                     </td>
                                     <td><?= htmlspecialchars($item['unit']) ?></td>
-                                    <td class="text-end"><?= number_format($item['quantity'], 3) ?></td>
+                                    <td class="text-end">
+                                        <span class="fw-semibold text-secondary">
+                                            <?= isset($item['current_stock']) ? number_format((float)$item['current_stock'], 3) : '0.000' ?>
+                                        </span>
+                                        <small class="text-muted"><?= htmlspecialchars($item['unit']) ?></small>
+                                    </td>
+                                    <td class="text-end fw-bold text-dark">
+                                        <?= number_format($item['quantity'], 3) ?>
+                                        <small class="text-muted fw-normal"><?= htmlspecialchars($item['unit']) ?></small>
+                                    </td>
+                                    <td class="text-end">
+                                        <?php if (!empty($item['next_3_months_requirement']) && (float)$item['next_3_months_requirement'] > 0): ?>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                                                <?= number_format((float)$item['next_3_months_requirement'], 3) ?> <?= htmlspecialchars($item['unit']) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td class="text-center">
-                                        <?php if (!empty($item['boq_required_date'])): ?>
+                                        <?php 
+                                        $displayReqDate = !empty($item['item_required_date']) ? $item['item_required_date'] : (!empty($item['boq_required_date']) ? $item['boq_required_date'] : ($pr['required_date'] ?? null));
+                                        if (!empty($displayReqDate)): ?>
                                             <span class="badge bg-light text-dark border border-secondary px-2 py-1">
                                                 <i class="bi bi-calendar-event me-1 text-primary"></i>
-                                                <?= date('d M Y', strtotime($item['boq_required_date'])) ?>
+                                                <?= date('d M Y', strtotime($displayReqDate)) ?>
                                             </span>
                                         <?php else: ?>
                                             <span class="text-muted">—</span>
@@ -342,11 +457,78 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                 </div>
             </div>
 
+            <!-- Linked Purchase Orders History -->
+            <?php if (!empty($linkedPos)): ?>
+            <div class="card__wrapper shadow-sm mb-4">
+                <div class="card__header d-flex justify-content-between align-items-center">
+                    <h6 class="card__title mb-0">
+                        <i class="bi bi-file-earmark-text me-2 text-primary"></i>Purchase Orders History (<?= count($linkedPos) ?>)
+                    </h6>
+                    <?php if ($pr['status'] === 'PO Rejected'): ?>
+                        <span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>Last PO was Rejected</span>
+                    <?php endif; ?>
+                </div>
+                <div class="card__body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>PO #</th>
+                                    <th>Vendor</th>
+                                    <th>Status</th>
+                                    <th>Order Date</th>
+                                    <th>Approver Remarks / Note</th>
+                                    <th class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($linkedPos as $lpo): ?>
+                                <tr>
+                                    <td class="fw-bold">
+                                        <a href="<?= $base_url ?>/con-purchase-order/<?= $lpo['id'] ?>" class="text-primary text-decoration-none">
+                                            PO-<?= $lpo['id'] ?>
+                                        </a>
+                                    </td>
+                                    <td><?= htmlspecialchars($lpo['vendor_name'] ?? '—') ?></td>
+                                    <td>
+                                        <?php if ($lpo['status'] === 'Cancelled'): ?>
+                                            <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i> Cancelled / Rejected</span>
+                                        <?php elseif (in_array($lpo['status'], ['Approved', 'Fully Received'])): ?>
+                                            <span class="badge bg-success"><?= $lpo['status'] ?></span>
+                                        <?php else: ?>
+                                            <span class="badge bg-primary"><?= $lpo['status'] ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?= date('d M Y', strtotime($lpo['order_date'])) ?></td>
+                                    <td style="max-width:320px;">
+                                        <?php if (!empty($lpo['remarks'])): ?>
+                                            <div class="small text-danger fw-semibold" title="<?= htmlspecialchars($lpo['remarks']) ?>">
+                                                <i class="bi bi-chat-left-quote me-1"></i><?= htmlspecialchars(mb_strimwidth($lpo['remarks'], 0, 55, '...')) ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <span class="text-muted small">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="<?= $base_url ?>/con-purchase-order/<?= $lpo['id'] ?>" class="btn btn-sm btn-outline-info">
+                                            <i class="bi bi-eye me-1"></i> View PO
+                                        </a>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- Procurement Pipeline Actions -->
-            <?php if ($pr['status'] === 'Approved' || $pr['status'] === 'PO Issued'): ?>
+            <?php if (in_array($pr['status'], ['Approved', 'PO Issued', 'PO Rejected'])): ?>
             <div class="card__wrapper shadow-sm">
                 <div class="card__header">
-                    <h6 class="card__title mb-0"><i class="bi bi-diagram-3 me-2"></i>Procurement Pipeline</h6>
+                    <h6 class="card__title mb-0">
+                    <i class="bi bi-diagram-3 me-2"></i>Procurement Pipeline</h6>
                 </div>
                 <div class="card__body p-4">
                     <div class="row">
@@ -360,17 +542,13 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                 <p class="small text-muted mb-2">
                                     <?= count($quotations) ?> quotation(s) collected
                                 </p>
-                                <?php if (in_array($pr['status'], ['Approved', 'PO Issued'])): ?>
-                                    <?php if (!$isReadOnly): ?>
-                                        <a href="<?= $base_url ?>/con-quotation-create/<?= $pr['id'] ?>"
-                                           class="btn btn-outline-info btn-sm">
-                                            <i class="bi bi-plus me-1"></i> Add / View Quotations
-                                        </a>
-                                    <?php else: ?>
-                                        <span class="badge bg-secondary">Awaiting Quotations</span>
-                                    <?php endif; ?>
+                                <?php if (!$isReadOnly): ?>
+                                    <a href="<?= $base_url ?>/con-quotation-create/<?= $pr['id'] ?>"
+                                       class="btn btn-outline-info btn-sm">
+                                        <i class="bi bi-plus me-1"></i> Add / View Quotations
+                                    </a>
                                 <?php else: ?>
-                                    <span class="badge bg-success"><i class="bi bi-check"></i> Done</span>
+                                    <span class="badge bg-secondary">Awaiting Quotations</span>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -389,7 +567,7 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                     <?php if ($hasCST): ?>
                                         <a href="<?= $base_url ?>/con-quotation-compare/<?= $pr['id'] ?>"
                                            class="btn btn-outline-warning btn-sm">
-                                            <i class="bi bi-eye me-1"></i> View CST
+                                            <i class="bi bi-eye me-1"></i> View / Re-select CST
                                         </a>
                                     <?php elseif (!$isReadOnly): ?>
                                         <a href="<?= $base_url ?>/con-quotation-compare/<?= $pr['id'] ?>"
@@ -409,13 +587,34 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                         <div class="col-md-4">
                             <div class="border rounded p-3 text-center h-100">
                                 <div class="mb-2">
-                                    <i class="bi bi-file-earmark-check fs-3 text-success"></i>
+                                    <i class="bi bi-file-earmark-check fs-3 <?= ($pr['status'] === 'PO Rejected') ? 'text-danger' : 'text-success' ?>"></i>
                                 </div>
                                 <h6>Step 3: Purchase Order</h6>
                                 <p class="small text-muted mb-2">
-                                    <?= ($pr['status'] === 'PO Issued') ? 'PO Generated' : 'Auto-generate from CST' ?>
+                                    <?php if ($pr['status'] === 'PO Rejected'): ?>
+                                        <span class="text-danger fw-bold">PO Rejected (Revision Needed)</span>
+                                    <?php elseif ($pr['status'] === 'PO Issued'): ?>
+                                        PO Generated
+                                    <?php else: ?>
+                                        Auto-generate from CST
+                                    <?php endif; ?>
                                 </p>
-                                <?php if ($hasCST && $pr['status'] !== 'PO Issued'): ?>
+                                <?php if ($pr['status'] === 'PO Rejected'): ?>
+                                    <div class="d-flex flex-column gap-2 align-items-center">
+                                        <?php if ($canEditPR): ?>
+                                            <a href="<?= $base_url ?>/con-purchase-request-edit/<?= $pr['id'] ?>" class="btn btn-danger btn-sm text-white fw-bold">
+                                                <i class="bi bi-pencil-square me-1"></i> Edit Request First
+                                            </a>
+                                        <?php endif; ?>
+                                        <?php if ($hasCST && !$isReadOnly): ?>
+                                            <form action="<?= $base_url ?>/con-purchase-order-generate/<?= $pr['id'] ?>" method="POST" class="d-inline">
+                                                <button type="button" onclick="confirmAction(this, 'Re-generate Purchase Order from CST selections?')" class="btn btn-outline-success btn-sm">
+                                                    <i class="bi bi-arrow-repeat me-1"></i> Re-Generate PO
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php elseif ($hasCST && $pr['status'] !== 'PO Issued'): ?>
                                     <?php if (!$isReadOnly): ?>
                                         <form action="<?= $base_url ?>/con-purchase-order-generate/<?= $pr['id'] ?>" method="POST" class="d-inline">
                                             <button type="button" onclick="confirmAction(this, 'Generate Purchase Order from CST selections?')" class="btn btn-outline-success btn-sm">

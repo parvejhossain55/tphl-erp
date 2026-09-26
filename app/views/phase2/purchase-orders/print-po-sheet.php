@@ -23,6 +23,9 @@ $qcApproved = !empty($po['qc_approved_by_id']);
 $opApproved = !empty($po['op_head_approved_by_id']);
 $fullyApproved = ($phNeeded ? $phApproved : true) && $qcApproved && $opApproved;
 
+$isUrgent = !empty($po['pr_is_urgent']) || !empty($prDetails['is_urgent']);
+$urgentReason = !empty($po['pr_urgent_reason']) ? $po['pr_urgent_reason'] : (!empty($prDetails['urgent_reason']) ? $prDetails['urgent_reason'] : '');
+
 $poTotalValue = $poTotalValue ?? 0;
 if ($poTotalValue <= 0 && !empty($items)) {
     foreach ($items as $itm) {
@@ -308,6 +311,11 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
                 <span class="po-badge-status <?= $fullyApproved ? 'po-badge-approved' : 'po-badge-pending' ?>">
                     Status: <?= htmlspecialchars($po['status'] ?? 'Issued') ?>
                 </span>
+                <?php if ($isUrgent): ?>
+                    <span class="po-badge-status" style="background:#fee2e2 !important;color:#b91c1c !important;border:1px solid #fca5a5 !important;margin-left:4px;">
+                        <i class="fa-solid fa-bolt-lightning me-1"></i> URGENT REQUISITION
+                    </span>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -364,6 +372,18 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
                 <span class="po-meta-label">Requisition Status:</span>
                 <span class="po-meta-val"><?= htmlspecialchars($prDetails['status'] ?? '—') ?></span>
             </div>
+            <?php if ($isUrgent): ?>
+                <div class="po-meta-row" style="background:#fee2e2;padding:3px 6px;border-radius:4px;margin-top:4px;">
+                    <span class="po-meta-label" style="color:#b91c1c !important;font-weight:700">Priority:</span>
+                    <span class="po-meta-val" style="color:#991b1b !important;font-weight:800;">URGENT (Fast-Track)</span>
+                </div>
+                <?php if (!empty($urgentReason)): ?>
+                <div class="po-meta-row" style="font-size:9.5px;color:#7f1d1d;padding:2px 6px;">
+                    <span class="po-meta-label" style="color:#991b1b !important;">Urgent Reason:</span>
+                    <span class="po-meta-val" style="color:#7f1d1d !important;"><?= htmlspecialchars($urgentReason) ?></span>
+                </div>
+                <?php endif; ?>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -409,10 +429,12 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
                 <th style="width:25px;text-align:center">#</th>
                 <th>Material / Item Description</th>
                 <th>Category</th>
-                <th style="width:55px;text-align:center">Unit</th>
-                <th style="width:80px;text-align:right">Quantity</th>
-                <th style="width:95px;text-align:right">Unit Price (BDT)</th>
-                <th style="width:115px;text-align:right">Total Amount (BDT)</th>
+                <th style="width:50px;text-align:center">Unit</th>
+                <th style="width:65px;text-align:right">Site Stock</th>
+                <th style="width:70px;text-align:right">3-Mo Req</th>
+                <th style="width:75px;text-align:right">Quantity</th>
+                <th style="width:90px;text-align:right">Unit Price (BDT)</th>
+                <th style="width:110px;text-align:right">Total Amount (BDT)</th>
             </tr>
         </thead>
         <tbody>
@@ -429,7 +451,9 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
                     </td>
                     <td><?= htmlspecialchars($itm['category_name'] ?? 'Uncategorized') ?></td>
                     <td style="text-align:center"><?= htmlspecialchars($itm['unit']) ?></td>
-                    <td style="text-align:right"><?= number_format((float)$itm['quantity'], 3) ?></td>
+                    <td style="text-align:right;color:#475569"><?= number_format((float)($itm['current_stock'] ?? 0), 2) ?></td>
+                    <td style="text-align:right;color:#0369a1"><?= number_format((float)($itm['next_3_months_requirement'] ?? 0), 2) ?></td>
+                    <td style="text-align:right;font-weight:700"><?= number_format((float)$itm['quantity'], 3) ?></td>
                     <td style="text-align:right">৳ <?= number_format((float)$itm['unit_price'], 2) ?></td>
                     <td style="text-align:right;font-weight:700">৳ <?= number_format($lineTotal, 2) ?></td>
                 </tr>
@@ -437,7 +461,7 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
         </tbody>
         <tfoot>
             <tr style="background:#f1f5f9;font-weight:800">
-                <td colspan="6" style="text-align:right;padding:6px 8px">TOTAL ORDER VALUE (BDT):</td>
+                <td colspan="8" style="text-align:right;padding:6px 8px">TOTAL ORDER VALUE (BDT):</td>
                 <td style="text-align:right;padding:6px 8px;font-size:11.5px;color:#0f172a">৳ <?= number_format($calcGrandTotal, 2) ?></td>
             </tr>
         </tfoot>
@@ -536,7 +560,9 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
                 <tr>
                     <th style="width:25px;text-align:center">#</th>
                     <th>Material Description</th>
-                    <th style="width:65px;text-align:right">PR Qty</th>
+                    <th style="width:60px;text-align:right">PR Qty</th>
+                    <th style="width:60px;text-align:right">Site Stock</th>
+                    <th style="width:65px;text-align:right">3-Mo Req</th>
                     <?php foreach ($vendors as $vid => $vname): ?>
                         <th style="text-align:center;<?= ($vid == $selectedVendorId) ? 'background:#065f46;' : '' ?>">
                             <?= htmlspecialchars($vname) ?>
@@ -558,6 +584,8 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
                             <span style="color:#64748b;font-size:8.5px">(<?= htmlspecialchars($mat['unit']) ?>)</span>
                         </td>
                         <td style="text-align:right"><?= number_format((float)$mat['quantity'], 3) ?></td>
+                        <td style="text-align:right;color:#475569"><?= number_format((float)($mat['current_stock'] ?? 0), 2) ?></td>
+                        <td style="text-align:right;color:#0369a1"><?= number_format((float)($mat['next_3_months_requirement'] ?? 0), 2) ?></td>
                         <?php foreach ($vendorIds as $vid): 
                             $cell = $matrix[$mid][$vid] ?? null;
                             $isSelectedCol = ($vid == $selectedVendorId);
@@ -576,7 +604,7 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
             </tbody>
             <tfoot>
                 <tr style="background:#f1f5f9;font-weight:700">
-                    <td colspan="3" style="text-align:right">Total Evaluated Value:</td>
+                    <td colspan="5" style="text-align:right">Total Evaluated Value:</td>
                     <?php foreach ($vendorIds as $vid): ?>
                         <td style="text-align:center;<?= ($vid == $selectedVendorId) ? 'background:#ecfdf5;color:#047857;font-weight:800;' : '' ?>">
                             ৳ <?= number_format($totals[$vid] ?? 0, 2) ?>
