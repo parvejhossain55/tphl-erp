@@ -53,9 +53,9 @@ class SalesTarget extends Model
 
 
     /**
-     * Insert or update target with multiple categories and multiple projects
+     * Insert or update target with multiple categories, multiple projects and custom date range
      */
-    public function saveTarget($userId, $month, $siteVisit, $bookingTarget, $bookingValue, $categoryId = null, $projectIds = null, $salesRole = null, $categoryIds = null)
+    public function saveTarget($userId, $month, $siteVisit, $bookingTarget, $bookingValue, $categoryId = null, $projectIds = null, $salesRole = null, $categoryIds = null, $fromDate = null, $toDate = null)
     {
         if (is_array($categoryIds)) {
             if (empty($categoryId) && !empty($categoryIds)) {
@@ -66,9 +66,11 @@ class SalesTarget extends Model
 
         $sql = "
             INSERT INTO sales_targets
-            (sales_user_id, month, site_visit_target, booking_target, booking_value_target, category_id, category_ids, project_ids, sales_role)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (sales_user_id, month, from_date, to_date, site_visit_target, booking_target, booking_value_target, category_id, category_ids, project_ids, sales_role)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
+                from_date = VALUES(from_date),
+                to_date = VALUES(to_date),
                 site_visit_target = VALUES(site_visit_target),
                 booking_target = VALUES(booking_target),
                 booking_value_target = VALUES(booking_value_target),
@@ -79,9 +81,11 @@ class SalesTarget extends Model
         ";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            "isiidisss",
+            "isssiidisss",
             $userId,
             $month,
+            $fromDate,
+            $toDate,
             $siteVisit,
             $bookingTarget,
             $bookingValue,
@@ -95,9 +99,15 @@ class SalesTarget extends Model
 
     public function getTargetProgress($userId, $month, $year)
     {
-        $cycle = $this->getCycleDateRange($year, $month);
-        $start = $cycle['start'];
-        $end = $cycle['end'];
+        $target = $this->getTarget($userId, sprintf('%04d-%02d', $year, $month));
+        if (!empty($target['from_date']) && !empty($target['to_date'])) {
+            $start = $target['from_date'] . ' 00:00:00';
+            $end = $target['to_date'] . ' 23:59:59';
+        } else {
+            $cycle = $this->getCycleDateRange($year, $month);
+            $start = $cycle['start'];
+            $end = $cycle['end'];
+        }
 
         // Booking
         $sql1 = "SELECT COUNT(*) AS deals_closed, 
@@ -140,10 +150,16 @@ class SalesTarget extends Model
     // Get completed site visits for a month
     public function getMonthlyVisitCompleted($userId, $month)
     {
-        list($y, $m) = explode('-', $month);
-        $cycle = $this->getCycleDateRange($y, $m);
-        $start = $cycle['start'];
-        $end = $cycle['end'];
+        $target = $this->getTarget($userId, $month);
+        if (!empty($target['from_date']) && !empty($target['to_date'])) {
+            $start = $target['from_date'] . ' 00:00:00';
+            $end = $target['to_date'] . ' 23:59:59';
+        } else {
+            list($y, $m) = explode('-', $month);
+            $cycle = $this->getCycleDateRange($y, $m);
+            $start = $cycle['start'];
+            $end = $cycle['end'];
+        }
 
         $sql = "SELECT COUNT(*) as completed FROM lead_follow_ups
                 WHERE assigned_with=? AND follow_up_type='visit' AND status='completed'
@@ -158,10 +174,16 @@ class SalesTarget extends Model
     // Get completed bookings for a month
     public function getMonthlyBookingCompleted($userId, $month)
     {
-        list($y, $m) = explode('-', $month);
-        $cycle = $this->getCycleDateRange($y, $m);
-        $start = $cycle['start'];
-        $end = $cycle['end'];
+        $target = $this->getTarget($userId, $month);
+        if (!empty($target['from_date']) && !empty($target['to_date'])) {
+            $start = $target['from_date'] . ' 00:00:00';
+            $end = $target['to_date'] . ' 23:59:59';
+        } else {
+            list($y, $m) = explode('-', $month);
+            $cycle = $this->getCycleDateRange($y, $m);
+            $start = $cycle['start'];
+            $end = $cycle['end'];
+        }
 
         $sql = "
         SELECT COUNT(*) AS total

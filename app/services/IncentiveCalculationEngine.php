@@ -18,13 +18,19 @@ class IncentiveCalculationEngine extends Model
         $end = $cycle['end'];
 
         // 1. Get Target for this month
-        $stmt = $this->db->prepare("SELECT booking_value_target, category_id 
+        $stmt = $this->db->prepare("SELECT booking_value_target, category_id, from_date, to_date 
                                     FROM sales_targets 
                                     WHERE sales_user_id = ? AND DATE_FORMAT(month, '%Y-%m') = ? LIMIT 1");
         $stmt->bind_param("is", $userId, $yearMonth);
         $stmt->execute();
         $targetRow = $stmt->get_result()->fetch_assoc();
         $stmt->close();
+
+        // Use custom target date range if configured
+        if (!empty($targetRow['from_date']) && !empty($targetRow['to_date'])) {
+            $start = $targetRow['from_date'] . ' 00:00:00';
+            $end   = $targetRow['to_date'] . ' 23:59:59';
+        }
 
         $targetAmount = $targetRow ? (float)$targetRow['booking_value_target'] : 0.00;
         $assignedCategoryId = $targetRow ? (int)$targetRow['category_id'] : 0;
@@ -171,20 +177,25 @@ class IncentiveCalculationEngine extends Model
         $stmt->close();
         $teamTarget = $targetRow ? (float)$targetRow['total_team_target'] : 0.00;
 
-        // 3. Get the TEAM Achievement (Sum of all land_share sales in the team/global)
+        list($y, $m) = explode('-', $yearMonth);
+        $cycle = $this->getCycleDateRange($y, $m);
+        $start = $cycle['start'];
+        $end   = $cycle['end'];
+
+        // 3. Get the TEAM Achievement (Sum of all land_share sales in the team/global within the cycle)
         $achieveSql = "SELECT SUM(IFNULL(f.land_share_value, 0)) as total_team_achieved
                        FROM lead_bookings lb
                        JOIN flats f ON lb.flat_id = f.id
-                       WHERE DATE_FORMAT(lb.booking_date, '%Y-%m') = ?
+                       WHERE lb.booking_date BETWEEN ? AND ?
                        AND lb.deleted_at IS NULL
                        AND lb.booking_status != 'cancelled'";
         if ($roleType != 'sales_head' || $isFiltered) {
             $achieveSql .= " AND lb.sales_by_id IN (SELECT user_id FROM employees WHERE team_id = ?)";
             $stmt = $this->db->prepare($achieveSql);
-            $stmt->bind_param("si", $yearMonth, $targetTeamId);
+            $stmt->bind_param("ssi", $start, $end, $targetTeamId);
         } else {
             $stmt = $this->db->prepare($achieveSql);
-            $stmt->bind_param("s", $yearMonth);
+            $stmt->bind_param("ss", $start, $end);
         }
         $stmt->execute();
         $achieveRow = $stmt->get_result()->fetch_assoc();

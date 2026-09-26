@@ -21,9 +21,20 @@ class SalesActivityReportController extends Controller
     {
         $loggedInUser = $_SESSION['user'];
 
+        // Default sales cycle: day >= 26 advances to the next month's cycle
+        $defaultYear = (int)date('Y');
+        $defaultMonth = (int)date('m');
+        if ((int)date('d') >= 26) {
+            $defaultMonth++;
+            if ($defaultMonth > 12) {
+                $defaultMonth = 1;
+                $defaultYear++;
+            }
+        }
+
         // Get filter inputs
-        $year = isset($_GET['year']) ? (int)$_GET['year'] : date('Y');
-        $month = isset($_GET['month']) ? (int)$_GET['month'] : date('m');
+        $year = isset($_GET['year']) ? (int)$_GET['year'] : $defaultYear;
+        $month = isset($_GET['month']) ? (int)$_GET['month'] : $defaultMonth;
         $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
         $teamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' && $_GET['team_id'] !== 'all' ? (int)$_GET['team_id'] : null;
         
@@ -231,17 +242,18 @@ class SalesActivityReportController extends Controller
             $subTitle = 'Period: ' . $periodText;
             $filenamePrefix = "Sales_Monthly_Team_Summary_{$year}_{$month}";
             $headers = [
-                'Rank', 'Team Name', 'Member Name', 'Designation', 
+                'Rank', 'Branch', 'Team Name', 'Member Name', 'Designation', 
                 'Unit Target', 'Volume Target (Tk)', 'Visit Target', 
                 'Assigned Leads', 'Follow Up', 'Follow Up %', 'Contacted', 'Contacted %', 'Interested', 
                 'Visits Done', 'Visit Ach %', 
                 'Units Sold', 'Unit Ach %', 'Volume Assigned (Tk)', 'Volume Unassigned (Tk)', 'Total Volume Achieved (Tk)', 'Perf. Score'
             ];
             
-            $inds = $monthlyData['individuals'] ?? [];
+            $inds = $monthlyData['table_individuals'] ?? ($monthlyData['individuals'] ?? []);
             foreach ($inds as $emp) {
                 $dataRows[] = [
                     '#' . ($emp['rank'] ?? '-'),
+                    $emp['branch_name'] ?? 'Other',
                     $emp['team_name'] ?? '',
                     $emp['member_name'] ?? '',
                     $emp['level_designation'] ?? '',
@@ -269,7 +281,7 @@ class SalesActivityReportController extends Controller
             $subTitle = 'Period: ' . $periodText;
             $filenamePrefix = "Sales_All_Team_Report_{$year}_{$month}";
             $headers = [
-                'Rank', 'Team Name', 'Total Leads', 'Follow Up', 'Follow Up %', 
+                'Rank', 'Branch', 'Team Name', 'Total Leads', 'Follow Up', 'Follow Up %', 
                 'Contacted', 'Contacted %', 'Not Contacted', 'Interested', 'Not Interested', 
                 'Visits Done', 'Visit Target', 'Visit Ach %', 
                 'Units Sold', 'Volume Target (Tk)', 'Volume Achieved (Tk)', 'Volume Ach %', 'Team Score'
@@ -279,6 +291,7 @@ class SalesActivityReportController extends Controller
             foreach ($teams as $t) {
                 $dataRows[] = [
                     '#' . ($t['rank'] ?? '-'),
+                    $t['branch_name'] ?? 'Other',
                     $t['team_name'] ?? '',
                     $t['total_leads'] ?? 0,
                     $t['total_follow_up'] ?? 0,
@@ -303,7 +316,7 @@ class SalesActivityReportController extends Controller
             $subTitle = 'Specific Date: ' . $dailyDateText;
             $filenamePrefix = "Sales_Daily_Report_{$date}";
             $headers = [
-                'SL', 'Member Name', 'Designation', 'Team Name', 
+                'SL', 'Branch', 'Member Name', 'Designation', 'Team Name', 
                 'Leads Assigned Today', 'Followed Up Today', 'Contacted Today', 
                 'Interested', 'Not Interested', 'Will Visit Today', 'Visited Today', 'Units Sold Today', 'Volume Achieved Today (Tk)'
             ];
@@ -313,6 +326,7 @@ class SalesActivityReportController extends Controller
             foreach ($daily as $emp) {
                 $dataRows[] = [
                     $sl++,
+                    $emp['branch_name'] ?? 'Other',
                     $emp['member_name'] ?? '',
                     $emp['level_designation'] ?? '',
                     $emp['team_name'] ?? '',
@@ -488,17 +502,18 @@ class SalesActivityReportController extends Controller
             $subTitle = 'Period: ' . $periodText;
             $filenamePrefix = "Sales_Monthly_Team_Summary_{$year}_{$month}";
             $headers = [
-                'Rank', 'Team', 'Member Name', 'Designation', 
+                'Rank', 'Branch', 'Team', 'Member Name', 'Designation', 
                 'Unit Tgt', 'Vol Tgt', 'Visit Tgt', 
                 'Assigned', 'F.Up', 'F.Up%', 'Contact', 'Contact%', 'Interest', 
                 'Visits', 'Visit%', 
                 'Sold', 'Sold%', 'Assigned Vol', 'Unassigned Vol', 'Total Vol Achieved', 'Perf Score'
             ];
             
-            $inds = $monthlyData['individuals'] ?? [];
+            $inds = $monthlyData['table_individuals'] ?? ($monthlyData['individuals'] ?? []);
             foreach ($inds as $emp) {
                 $dataRows[] = [
                     '#' . ($emp['rank'] ?? '-'),
+                    $emp['branch_name'] ?? 'Other',
                     $emp['team_name'] ?? '',
                     $emp['member_name'] ?? '',
                     $emp['level_designation'] ?? '',
@@ -526,7 +541,7 @@ class SalesActivityReportController extends Controller
             $subTitle = 'Period: ' . $periodText;
             $filenamePrefix = "Sales_All_Team_Report_{$year}_{$month}";
             $headers = [
-                'Rank', 'Team Name', 'Total Leads', 'Follow Up', 'Follow Up %', 
+                'Rank', 'Branch', 'Team Name', 'Total Leads', 'Follow Up', 'Follow Up %', 
                 'Contacted', 'Contacted %', 'Not Contacted', 'Interested', 'Not Interested', 
                 'Visits (Ach/Tgt)', 'Sold Units', 'Volume Target (Tk)', 'Volume Achieved (Tk)', 'Vol Ach %', 'Score'
             ];
@@ -535,6 +550,7 @@ class SalesActivityReportController extends Controller
             foreach ($teams as $t) {
                 $dataRows[] = [
                     '#' . ($t['rank'] ?? '-'),
+                    $t['branch_name'] ?? 'Other',
                     $t['team_name'] ?? '',
                     $t['total_leads'] ?? 0,
                     $t['total_follow_up'] ?? 0,
@@ -557,7 +573,7 @@ class SalesActivityReportController extends Controller
             $subTitle = 'Specific Date: ' . $dailyDateText;
             $filenamePrefix = "Sales_Daily_Report_{$date}";
             $headers = [
-                'SL', 'Member Name', 'Designation', 'Team Name', 
+                'SL', 'Branch', 'Member Name', 'Designation', 'Team Name', 
                 'Assigned Today', 'Followed Up', 'Contacted', 
                 'Interested', 'Not Interested', 'Will Visit', 'Visited', 'Sold Units', 'Achieved Volume (Tk)'
             ];
@@ -567,6 +583,7 @@ class SalesActivityReportController extends Controller
             foreach ($daily as $emp) {
                 $dataRows[] = [
                     $sl++,
+                    $emp['branch_name'] ?? 'Other',
                     $emp['member_name'] ?? '',
                     $emp['level_designation'] ?? '',
                     $emp['team_name'] ?? '',
@@ -664,9 +681,20 @@ class SalesActivityReportController extends Controller
     {
         $loggedInUser = $_SESSION['user'];
 
+        // Default sales cycle: day >= 26 advances to the next month's cycle
+        $defaultYear = (int)date('Y');
+        $defaultMonth = (int)date('m');
+        if ((int)date('d') >= 26) {
+            $defaultMonth++;
+            if ($defaultMonth > 12) {
+                $defaultMonth = 1;
+                $defaultYear++;
+            }
+        }
+
         // Get filter inputs
-        $year     = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
-        $month    = isset($_GET['month']) ? (int)$_GET['month'] : (int)date('m');
+        $year     = isset($_GET['year']) ? (int)$_GET['year'] : $defaultYear;
+        $month    = isset($_GET['month']) ? (int)$_GET['month'] : $defaultMonth;
         $dateFrom = !empty($_GET['date_from']) ? trim($_GET['date_from']) : null;
         $dateTo   = !empty($_GET['date_to']) ? trim($_GET['date_to']) : null;
         $teamId   = isset($_GET['team_id']) && $_GET['team_id'] !== '' && $_GET['team_id'] !== 'all' ? (int)$_GET['team_id'] : null;
