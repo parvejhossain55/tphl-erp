@@ -21,13 +21,42 @@ $show_breadcrumb = true;
                 <div class="row g-20">
 
                     <!-- Month -->
-                    <div class="col-lg-6 mb-3">
+                    <div class="col-lg-4 mb-3">
                         <label>Month <span>*</span></label>
                         <input type="month"
                             name="month"
+                            id="create_target_month"
                             class="form-control"
                             required
                             value="<?= isset($target['month']) ? date('Y-m', strtotime($target['month'])) : date('Y-m') ?>">
+                    </div>
+
+                    <!-- Target From Date -->
+                    <div class="col-lg-4 mb-3">
+                        <label>Target From Date <span>*</span></label>
+                        <input type="date"
+                            name="from_date"
+                            id="create_target_from_date"
+                            class="form-control"
+                            required
+                            value="<?= $target['from_date'] ?? '' ?>">
+                    </div>
+
+                    <!-- Target To Date -->
+                    <div class="col-lg-4 mb-3">
+                        <label>Target To Date <span>*</span></label>
+                        <input type="date"
+                            name="to_date"
+                            id="create_target_to_date"
+                            class="form-control"
+                            required
+                            value="<?= $target['to_date'] ?? '' ?>">
+                    </div>
+
+                    <div class="col-12 mt-n2 mb-2">
+                        <small class="text-primary">
+                            <i class="fa-solid fa-circle-info me-1"></i>Dates automatically sync based on sales cycle rules (e.g. May 1-31, June 1-30, July 1-25, and 26th-to-25th for others). You can also customize dates manually.
+                        </small>
                     </div>
 
                     <!-- Sales Role -->
@@ -127,7 +156,7 @@ $show_breadcrumb = true;
                 <thead>
                     <tr class="table__title">
                         <th>S/L</th>
-                        <th>Month</th>
+                        <th>Month & Period</th>
                         <th>Category(s)</th>
                         <th>Project(s)</th>
                         <th>Site Visit Target</th>
@@ -141,7 +170,14 @@ $show_breadcrumb = true;
                         <?php foreach ($targets as $index => $row): ?>
                             <tr>
                                 <td><?= $index + 1 ?></td>
-                                <td><?= date('F Y', strtotime($row['month'])) ?></td>
+                                <td>
+                                    <strong><?= date('F Y', strtotime($row['month'])) ?></strong>
+                                    <?php if (!empty($row['from_date']) && !empty($row['to_date'])): ?>
+                                        <br><span class="badge bg-light text-primary border fs-11 mt-1">
+                                            <i class="fa-regular fa-calendar-days me-1"></i><?= date('d M, Y', strtotime($row['from_date'])) ?> &rarr; <?= date('d M, Y', strtotime($row['to_date'])) ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($row['category_names_display'] ?? ($row['category_name'] ?? 'All / None')) ?></span></td>
                                 <td>
                                     <?php 
@@ -167,6 +203,8 @@ $show_breadcrumb = true;
                                         data-bs-target="#editSalesTarget"
                                         data-id="<?= $row['id'] ?>"
                                         data-month="<?= $row['month'] ?>"
+                                        data-from-date="<?= htmlspecialchars($row['from_date'] ?? '') ?>"
+                                        data-to-date="<?= htmlspecialchars($row['to_date'] ?? '') ?>"
                                         data-category="<?= $row['category_id'] ?>"
                                         data-category-ids="<?= htmlspecialchars($row['category_ids'] ?? '') ?>"
                                         data-projects="<?= htmlspecialchars($row['project_ids']) ?>"
@@ -213,9 +251,27 @@ $show_breadcrumb = true;
                         <div class="row g-20">
 
                             <!-- Month -->
-                            <div class="col-lg-6 mb-3">
+                            <div class="col-lg-4 mb-3">
                                 <label>Month <span>*</span></label>
                                 <input type="month" name="month" id="edit_target_month" class="form-control" required>
+                            </div>
+
+                            <!-- Target From Date -->
+                            <div class="col-lg-4 mb-3">
+                                <label>Target From Date <span>*</span></label>
+                                <input type="date" name="from_date" id="edit_target_from_date" class="form-control" required>
+                            </div>
+
+                            <!-- Target To Date -->
+                            <div class="col-lg-4 mb-3">
+                                <label>Target To Date <span>*</span></label>
+                                <input type="date" name="to_date" id="edit_target_to_date" class="form-control" required>
+                            </div>
+
+                            <div class="col-12 mt-n2 mb-2">
+                                <small class="text-primary">
+                                    <i class="fa-solid fa-circle-info me-1"></i>Dates automatically sync when month changes, or can be customized.
+                                </small>
                             </div>
 
                             <!-- Sales Role -->
@@ -293,6 +349,72 @@ $show_breadcrumb = true;
 <script>
     const base_url = "<?= $GLOBALS['base_url'] ?>";
 
+    // Cycle calculation helper
+    function getCycleDateRangeForMonth(monthVal) {
+        if (!monthVal) return { start: '', end: '' };
+        const parts = monthVal.split('-');
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+
+        // 2026 Historical transition rules
+        if (year === 2026) {
+            if (month === 5) {
+                return { start: '2026-05-01', end: '2026-05-31' };
+            }
+            if (month === 6) {
+                return { start: '2026-06-01', end: '2026-06-30' };
+            }
+            if (month === 7) {
+                return { start: '2026-07-01', end: '2026-07-25' };
+            }
+        }
+
+        // Standard 26th to 25th cycle
+        let prevYear = year;
+        let prevMonth = month - 1;
+        if (prevMonth === 0) {
+            prevMonth = 12;
+            prevYear = year - 1;
+        }
+        const pad = (n) => String(n).padStart(2, '0');
+        return {
+            start: `${prevYear}-${pad(prevMonth)}-26`,
+            end: `${year}-${pad(month)}-25`
+        };
+    }
+
+    // Auto sync Create Form dates
+    const createMonthInput = document.getElementById('create_target_month');
+    const createFromInput = document.getElementById('create_target_from_date');
+    const createToInput = document.getElementById('create_target_to_date');
+
+    function syncCreateDates() {
+        if (createMonthInput && createFromInput && createToInput) {
+            const range = getCycleDateRangeForMonth(createMonthInput.value);
+            createFromInput.value = range.start;
+            createToInput.value = range.end;
+        }
+    }
+
+    if (createMonthInput) {
+        createMonthInput.addEventListener('change', syncCreateDates);
+        if (createFromInput && (!createFromInput.value || !createToInput.value)) {
+            syncCreateDates();
+        }
+    }
+
+    // Auto sync Edit Modal dates on month change
+    const editMonthInput = document.getElementById('edit_target_month');
+    if (editMonthInput) {
+        editMonthInput.addEventListener('change', function() {
+            const range = getCycleDateRangeForMonth(this.value);
+            const editFrom = document.getElementById('edit_target_from_date');
+            const editTo = document.getElementById('edit_target_to_date');
+            if (editFrom) editFrom.value = range.start;
+            if (editTo) editTo.value = range.end;
+        });
+    }
+
     const modal = document.getElementById('editSalesTarget');
 
     modal.addEventListener('show.bs.modal', function(event) {
@@ -300,6 +422,8 @@ $show_breadcrumb = true;
 
         const id = button.getAttribute('data-id');
         const month = button.getAttribute('data-month');
+        const fromDate = button.getAttribute('data-from-date');
+        const toDate = button.getAttribute('data-to-date');
         const category = button.getAttribute('data-category');
         let categoryIds = [];
         try { 
@@ -317,7 +441,23 @@ $show_breadcrumb = true;
         const salesRole = button.getAttribute('data-sales_role');
 
         document.getElementById('edit_target_id').value = id;
-        document.getElementById('edit_target_month').value = month ? month.substring(0, 7) : '';
+        const monthStr = month ? month.substring(0, 7) : '';
+        document.getElementById('edit_target_month').value = monthStr;
+
+        const editFrom = document.getElementById('edit_target_from_date');
+        const editTo = document.getElementById('edit_target_to_date');
+        if (fromDate) {
+            editFrom.value = fromDate;
+        } else if (monthStr) {
+            editFrom.value = getCycleDateRangeForMonth(monthStr).start;
+        }
+
+        if (toDate) {
+            editTo.value = toDate;
+        } else if (monthStr) {
+            editTo.value = getCycleDateRangeForMonth(monthStr).end;
+        }
+
         document.getElementById('edit_target_site_visit').value = siteVisit ?? 0;
         document.getElementById('edit_target_booking').value = booking ?? 0;
         document.getElementById('edit_target_booking_value').value = bookingValue ?? 0;

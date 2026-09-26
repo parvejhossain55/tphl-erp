@@ -26,6 +26,23 @@ class TrackerCalculationService
         $year = (int)$year;
         $month = (int)$month;
         
+        // Special historical transition rules for 2026:
+        // May 2026: 1 May - 31 May
+        // June 2026: 1 June - 30 June
+        // July 2026: 1 July - 25 July
+        // August 2026 onward: 26th of previous month to 25th of month (e.g. 26 July - 25 August)
+        if ($year === 2026) {
+            if ($month === 5) {
+                return ['start' => '2026-05-01 00:00:00', 'end' => '2026-05-31 23:59:59', 'is_custom' => false];
+            }
+            if ($month === 6) {
+                return ['start' => '2026-06-01 00:00:00', 'end' => '2026-06-30 23:59:59', 'is_custom' => false];
+            }
+            if ($month === 7) {
+                return ['start' => '2026-07-01 00:00:00', 'end' => '2026-07-25 23:59:59', 'is_custom' => false];
+            }
+        }
+
         $prevMonth = $month - 1;
         $prevYear = $year;
         
@@ -229,7 +246,9 @@ class TrackerCalculationService
                 COALESCE(st.site_visit_target, 0) as visit_target,
                 st.project_ids as assigned_project_ids,
                 st.category_id,
-                st.category_ids
+                st.category_ids,
+                st.from_date,
+                st.to_date
             FROM employees e
             INNER JOIN users u ON e.user_id = u.id
             LEFT JOIN teams t ON COALESCE(NULLIF(e.team_id, 0), NULLIF(u.team_id, 0)) = t.id
@@ -279,7 +298,9 @@ class TrackerCalculationService
                     COALESCE(st.site_visit_target, 0) as visit_target,
                     st.project_ids as assigned_project_ids,
                     st.category_id,
-                    st.category_ids
+                    st.category_ids,
+                    st.from_date,
+                    st.to_date
                 FROM employees e
                 INNER JOIN users u ON e.user_id = u.id
                 LEFT JOIN office_branches ob ON e.office_branch_id = ob.id
@@ -326,6 +347,8 @@ class TrackerCalculationService
                     'unit_target' => (int)$row['unit_target'],
                     'volume_target' => (float)$row['volume_target'],
                     'visit_target' => (int)$row['visit_target'],
+                    'target_from_date' => $row['from_date'] ?? null,
+                    'target_to_date' => $row['to_date'] ?? null,
                     'assigned_project_ids' => $assignedProjects,
                     'assigned_leads' => 0,
                     'total_follow_up_calls' => 0,
@@ -989,8 +1012,35 @@ class TrackerCalculationService
      */
     public function getDailyReport($date, $loggedInUser, $filterTeamId = null) 
     {
-        $year = date('Y', strtotime($date));
-        $month = date('m', strtotime($date));
+        $ts = strtotime($date);
+        $day = (int)date('d', $ts);
+        $month = (int)date('m', $ts);
+        $year = (int)date('Y', $ts);
+        
+        // Special historical transition rules for 2026:
+        if ($year === 2026) {
+            if ($month === 5) {
+                // 1-31 May is May 2026
+            } elseif ($month === 6) {
+                // 1-30 June is June 2026
+            } elseif ($month === 7 && $day <= 25) {
+                // 1-25 July is July 2026
+            } elseif ($month === 7 && $day >= 26) {
+                $month = 8; // starts August 2026 cycle
+            } elseif ($day >= 26) {
+                $month++;
+                if ($month > 12) {
+                    $month = 1;
+                    $year++;
+                }
+            }
+        } elseif ($day >= 26) {
+            $month++;
+            if ($month > 12) {
+                $month = 1;
+                $year++;
+            }
+        }
         
         $scope = $this->getVisibilityScope($loggedInUser, $filterTeamId);
         

@@ -61,7 +61,7 @@
                                     $months = ['1'=>'Jan', '2'=>'Feb', '3'=>'Mar', '4'=>'Apr', '5'=>'May', '6'=>'Jun', '7'=>'Jul', '8'=>'Aug', '9'=>'Sep', '10'=>'Oct', '11'=>'Nov', '12'=>'Dec'];
                                     foreach($months as $m => $mName): 
                                     ?>
-                                        <option value="<?= $m ?>" <?= $m == $month ? 'selected' : '' ?>><?= $mName ?></option>
+                                        <option value="<?= $m ?>" <?= (int)$m === (int)$month ? 'selected' : '' ?>><?= $mName ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -555,7 +555,7 @@
                                         
                                         <th colspan="2">Site Visit Ach.</th>
                                         <th colspan="2">Unit Ach.</th>
-                                        <th colspan="2">Volume (Assigned / Unassigned)</th>
+                                        <th colspan="3">Volume Achieved (Tk)</th>
                                         
                                         <th rowspan="2">Score</th>
                                         <th rowspan="2">Action</th>
@@ -577,6 +577,7 @@
                                         <th>%</th>
                                         <th>Assigned Vol</th>
                                         <th>Unassigned Vol</th>
+                                        <th>Total Achieved</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -618,16 +619,18 @@
                                                         data-name="<?= htmlspecialchars($emp['member_name'], ENT_QUOTES, 'UTF-8') ?>"
                                                         data-role="<?= htmlspecialchars($emp['level_designation'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars($emp['team_name'], ENT_QUOTES, 'UTF-8') ?>)"
                                                         data-units="<?= htmlspecialchars(json_encode($emp['sold_units_details'] ?? []), ENT_QUOTES, 'UTF-8') ?>">
-                                                    <i class="fa-solid fa-house-chimney me-1"></i><?= $emp['units_sold'] ?> (<?= $emp['unit_ach_pct'] ?>%)
+                                                    <i class="fa-solid fa-house-chimney me-1"></i><?= $emp['units_sold'] ?>
                                                 </button>
                                             <?php else: ?>
-                                                <span class="text-muted">0 (0%)</span>
+                                                <span class="text-muted">0</span>
                                             <?php endif; ?>
                                         </td>
+                                        <td><?= $emp['unit_ach_pct'] ?>%</td>
                                         <td><?= number_format($emp['volume_assigned'], 2) ?></td>
                                         <td><?= number_format($emp['volume_unassigned'], 2) ?></td>
+                                        <td class="fw-bold text-success">Tk <?= number_format($emp['total_volume_achieved'], 2) ?></td>
                                         
-                                        <td class="fw-bold text-success"><?= number_format($emp['performance_score'], 2) ?></td>
+                                        <td class="fw-bold text-primary"><?= number_format($emp['performance_score'], 2) ?></td>
                                         <td>
                                             <button type="button" class="btn btn-sm btn-outline-primary px-2 py-0 view-ranking-breakdown-btn" 
                                                     data-bs-toggle="modal"
@@ -639,6 +642,9 @@
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
+                                    <?php if(empty($tableInds)): ?>
+                                        <tr><td colspan="21" class="text-center py-4 text-muted">No member records found for the selected period.</td></tr>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>
@@ -680,10 +686,10 @@
                                 </thead>
                                 <tbody>
                                     <?php 
-                                    $teams = $monthlyData['teams'] ?? [];
+                                    $allTeamsData = $monthlyData['teams'] ?? [];
                                     $currentTeamName = null;
                                     $colorIndex = 0;
-                                    foreach($teams as $t): 
+                                    foreach($allTeamsData as $t): 
                                         if ($currentTeamName !== ($t['team_name'] ?? '')) {
                                             $currentTeamName = ($t['team_name'] ?? '');
                                             $colorIndex = ($colorIndex + 1) % 6;
@@ -755,8 +761,8 @@
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
-                                    <?php if(empty($teams)): ?>
-                                        <tr><td colspan="15" class="text-center">No team data found</td></tr>
+                                    <?php if(empty($allTeamsData)): ?>
+                                        <tr><td colspan="15" class="text-center py-4 text-muted">No team data found</td></tr>
                                     <?php endif; ?>
                                 </tbody>
                             </table>
@@ -866,7 +872,7 @@
                                     </tr>
                                     <?php endforeach; ?>
                                     <?php if(empty($daily)): ?>
-                                        <tr><td colspan="13" class="text-center">No daily activity data found</td></tr>
+                                        <tr><td colspan="14" class="text-center py-4 text-muted">No daily activity data found</td></tr>
                                     <?php endif; ?>
                                 </tbody>
                             </table>
@@ -1237,7 +1243,7 @@
                                     </tr>
                                     <?php endforeach; ?>
                                     <?php if(empty($scInds)): ?>
-                                        <tr><td colspan="20" class="text-center py-4 text-muted">No sales executives found for this period.</td></tr>
+                                        <tr><td colspan="21" class="text-center py-4 text-muted">No sales executives found for this period.</td></tr>
                                     <?php endif; ?>
                                 </tbody>
                             </table>
@@ -1800,27 +1806,34 @@
                 $('#rbTotalScore').text(Number(emp.performance_score || 0).toFixed(2) + '%');
                 $('#rbTotalVolume').text('Tk ' + Number(emp.total_volume_achieved || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
 
+                var hasTarget = (Number(emp.volume_target || 0) > 0 || Number(emp.unit_target || 0) > 0);
+                var wVol = 0.45;
+                var wUnit = hasTarget ? 0.20 : 0.35;
+                var wVisit = hasTarget ? 0.15 : 0.10;
+                var wCont = hasTarget ? 0.10 : 0.05;
+                var wFoll = hasTarget ? 0.10 : 0.05;
+
                 var volAchPct = Number(emp.volume_ach_pct || 0);
-                var volScore = Number((volAchPct * 0.45).toFixed(2));
+                var volScore = Number((volAchPct * wVol).toFixed(2));
                 
                 var unitAchPct = Number(emp.unit_ach_pct || 0);
-                var unitScore = Number((unitAchPct * 0.20).toFixed(2));
+                var unitScore = Number((unitAchPct * wUnit).toFixed(2));
                 
                 var visitAchPct = Number(emp.visit_ach_pct || 0);
-                var visitScore = Number((visitAchPct * 0.15).toFixed(2));
+                var visitScore = Number((visitAchPct * wVisit).toFixed(2));
 
                 var contactedPct = Number(emp.contacted_pct || 0);
-                var contactedScore = Number((contactedPct * 0.10).toFixed(2));
+                var contactedScore = Number((contactedPct * wCont).toFixed(2));
 
                 var followUpPct = Number(emp.follow_up_pct || 0);
-                var followUpScore = Number((followUpPct * 0.10).toFixed(2));
+                var followUpScore = Number((followUpPct * wFoll).toFixed(2));
 
                 $('#rbPillarsContainer').html(`
-                    <!-- Pillar 1: Volume 45% -->
+                    <!-- Pillar 1: Volume -->
                     <div class="col-md-6">
                         <div class="card border rounded p-3 h-100 bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-bold text-success fs-13">1. Sales Volume Achieved (45% Weight)</span>
+                                <span class="fw-bold text-success fs-13">1. Sales Volume Achieved (${Math.round(wVol * 100)}% Weight)</span>
                                 <span class="badge bg-success-transparent text-success fw-bold">${volScore.toFixed(2)} pts</span>
                             </div>
                             <div class="fs-12 text-muted mb-2">Target: Tk ${Number(emp.volume_target || 0).toLocaleString()} &bull; Achieved: Tk ${Number(emp.total_volume_achieved || 0).toLocaleString()} (${volAchPct}%)</div>
@@ -1828,16 +1841,16 @@
                                 <div class="progress-bar bg-success" style="width: ${Math.min(100, volAchPct)}%"></div>
                             </div>
                             <div class="fs-11 bg-light p-2 rounded border font-monospace">
-                                ${volAchPct}% × 45% = ${volScore.toFixed(2)} points
+                                ${volAchPct}% × ${Math.round(wVol * 100)}% = ${volScore.toFixed(2)} points
                             </div>
                         </div>
                     </div>
 
-                    <!-- Pillar 2: Unit 20% -->
+                    <!-- Pillar 2: Unit -->
                     <div class="col-md-6">
                         <div class="card border rounded p-3 h-100 bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-bold text-primary fs-13">2. Unit Sold Achievement (20% Weight)</span>
+                                <span class="fw-bold text-primary fs-13">2. Unit Sold Achievement (${Math.round(wUnit * 100)}% Weight)</span>
                                 <span class="badge bg-primary-transparent text-primary fw-bold">${unitScore.toFixed(2)} pts</span>
                             </div>
                             <div class="fs-12 text-muted mb-2">Target: ${emp.unit_target || 0} &bull; Sold: ${emp.units_sold || 0} (${unitAchPct}%)</div>
@@ -1845,49 +1858,49 @@
                                 <div class="progress-bar bg-primary" style="width: ${Math.min(100, unitAchPct)}%"></div>
                             </div>
                             <div class="fs-11 bg-light p-2 rounded border font-monospace">
-                                ${unitAchPct}% × 20% = ${unitScore.toFixed(2)} points
+                                ${unitAchPct}% × ${Math.round(wUnit * 100)}% = ${unitScore.toFixed(2)} points
                             </div>
                         </div>
                     </div>
 
-                    <!-- Pillar 3: Visits 15% -->
+                    <!-- Pillar 3: Visits -->
                     <div class="col-md-4">
                         <div class="card border rounded p-3 h-100 bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-bold text-info fs-13">3. Site Visits (15%)</span>
+                                <span class="fw-bold text-info fs-13">3. Site Visits (${Math.round(wVisit * 100)}%)</span>
                                 <span class="badge bg-info-transparent text-info fw-bold">${visitScore.toFixed(2)} pts</span>
                             </div>
                             <div class="fs-12 text-muted mb-2">Visits: ${emp.visited || 0} / Target: ${emp.visit_target || 0} (${visitAchPct}%)</div>
                             <div class="fs-11 bg-light p-2 rounded border font-monospace">
-                                ${visitAchPct}% × 15% = ${visitScore.toFixed(2)} pts
+                                ${visitAchPct}% × ${Math.round(wVisit * 100)}% = ${visitScore.toFixed(2)} pts
                             </div>
                         </div>
                     </div>
 
-                    <!-- Pillar 4: Contacted 10% -->
+                    <!-- Pillar 4: Contacted -->
                     <div class="col-md-4">
                         <div class="card border rounded p-3 h-100 bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-bold text-warning fs-13">4. Contacted Rate (10%)</span>
+                                <span class="fw-bold text-warning fs-13">4. Contacted Rate (${Math.round(wCont * 100)}%)</span>
                                 <span class="badge bg-warning-transparent text-warning fw-bold">${contactedScore.toFixed(2)} pts</span>
                             </div>
                             <div class="fs-12 text-muted mb-2">Contacted: ${emp.total_contacted || 0} / Followed: ${emp.unique_leads_followed || 0} (${contactedPct}%)</div>
                             <div class="fs-11 bg-light p-2 rounded border font-monospace">
-                                ${contactedPct}% × 10% = ${contactedScore.toFixed(2)} pts
+                                ${contactedPct}% × ${Math.round(wCont * 100)}% = ${contactedScore.toFixed(2)} pts
                             </div>
                         </div>
                     </div>
 
-                    <!-- Pillar 5: Follow Up 10% -->
+                    <!-- Pillar 5: Follow Up -->
                     <div class="col-md-4">
                         <div class="card border rounded p-3 h-100 bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-bold text-secondary fs-13">5. Lead Coverage (10%)</span>
+                                <span class="fw-bold text-secondary fs-13">5. Lead Coverage (${Math.round(wFoll * 100)}%)</span>
                                 <span class="badge bg-secondary-transparent text-secondary fw-bold">${followUpScore.toFixed(2)} pts</span>
                             </div>
                             <div class="fs-12 text-muted mb-2">Followed: ${emp.unique_leads_followed || 0} / Assigned: ${emp.assigned_leads || 0} (${followUpPct}%)</div>
                             <div class="fs-11 bg-light p-2 rounded border font-monospace">
-                                ${followUpPct}% × 10% = ${followUpScore.toFixed(2)} pts
+                                ${followUpPct}% × ${Math.round(wFoll * 100)}% = ${followUpScore.toFixed(2)} pts
                             </div>
                         </div>
                     </div>

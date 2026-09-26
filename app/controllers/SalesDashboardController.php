@@ -541,8 +541,18 @@ class SalesDashboardController extends Controller
     // Store / update target
     public function storeSalesTarget($id)
     {
-        $monthInput = $_POST['month']; // e.g. 2026-02
+        $monthInput = $_POST['month']; // e.g. 2026-05
         $month = date('Y-m-01', strtotime($monthInput));
+
+        $fromDate = !empty($_POST['from_date']) ? trim($_POST['from_date']) : null;
+        $toDate = !empty($_POST['to_date']) ? trim($_POST['to_date']) : null;
+
+        if (empty($fromDate) || empty($toDate)) {
+            list($y, $m) = explode('-', date('Y-m', strtotime($monthInput)));
+            $cycle = $this->salesTargetModel->getCycleDateRange($y, $m);
+            if (empty($fromDate)) $fromDate = date('Y-m-d', strtotime($cycle['start']));
+            if (empty($toDate)) $toDate = date('Y-m-d', strtotime($cycle['end']));
+        }
 
         $categoryIds = !empty($_POST['category_ids']) ? (array)$_POST['category_ids'] : [];
         $categoryId = !empty($categoryIds) ? (int)reset($categoryIds) : (!empty($_POST['category_id']) ? (int)$_POST['category_id'] : null);
@@ -569,7 +579,9 @@ class SalesDashboardController extends Controller
             $categoryId,
             $projectIds,
             $salesRole,
-            $categoryIdsJson
+            $categoryIdsJson,
+            $fromDate,
+            $toDate
         );
 
         if ($saved) {
@@ -587,6 +599,16 @@ class SalesDashboardController extends Controller
         $id = (int)$_POST['id']; // hidden input
         $monthInput = $_POST['month'];
         $month = date('Y-m-01', strtotime($monthInput));
+
+        $fromDate = !empty($_POST['from_date']) ? trim($_POST['from_date']) : null;
+        $toDate = !empty($_POST['to_date']) ? trim($_POST['to_date']) : null;
+
+        if (empty($fromDate) || empty($toDate)) {
+            list($y, $m) = explode('-', date('Y-m', strtotime($monthInput)));
+            $cycle = $this->salesTargetModel->getCycleDateRange($y, $m);
+            if (empty($fromDate)) $fromDate = date('Y-m-d', strtotime($cycle['start']));
+            if (empty($toDate)) $toDate = date('Y-m-d', strtotime($cycle['end']));
+        }
 
         $categoryIds = !empty($_POST['category_ids']) ? (array)$_POST['category_ids'] : [];
         $categoryId = !empty($categoryIds) ? (int)reset($categoryIds) : (!empty($_POST['category_id']) ? (int)$_POST['category_id'] : null);
@@ -610,6 +632,8 @@ class SalesDashboardController extends Controller
         $sql = "
             UPDATE sales_targets 
             SET month = ?, 
+                from_date = ?,
+                to_date = ?,
                 site_visit_target = ?, 
                 booking_target = ?, 
                 booking_value_target = ?,
@@ -620,7 +644,7 @@ class SalesDashboardController extends Controller
             WHERE id = ?
         ";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("siidisssi", $month, $siteVisit, $booking, $bookingValue, $categoryId, $categoryIdsJson, $projectIds, $salesRole, $id);
+        $stmt->bind_param("sssiidisssi", $month, $fromDate, $toDate, $siteVisit, $booking, $bookingValue, $categoryId, $categoryIdsJson, $projectIds, $salesRole, $id);
         $stmt->execute();
 
         $_SESSION['success'] = "Target updated successfully!";
