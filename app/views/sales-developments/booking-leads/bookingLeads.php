@@ -603,20 +603,14 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             const option = document.createElement('option');
                             option.value = flat.flat_id;
 
-                            // Calculate 48-hour lock
-                            const now = new Date();
-                            const bookingTime = flat.booking_time ? new Date(flat.booking_time) : null;
-                            const isLocked = flat.booking_status === 'booked' && bookingTime && (now - bookingTime < 48 * 60 * 60 * 1000);
+                            const isBooked = (flat.is_booked == 1) || (flat.booking_status === 'booked') || (flat.booking_status === 'completed');
 
-                            if (isLocked) {
-                                option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Locked for 48 hours]`;
-                                option.className = 'locked-option';
+                            if (isBooked) {
+                                const clientLabel = flat.booked_client_name ? ` [Booked - ${flat.booked_client_name}]` : ' [Booked]';
+                                option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft${clientLabel}`;
+                                option.className = 'booked-option text-danger';
                                 option.disabled = true;
-                                option.style.color = 'red';
-                            } else if (flat.is_booked == 1) {
-                                option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft [Booked]`;
-                                option.className = 'booked-option';
-                                option.disabled = true;
+                                option.style.color = '#dc3545';
                             } else {
                                 option.textContent = `${flat.flat_name} | Floor ${flat.floor_no} | ${flat.sqft} sqft`;
                             }

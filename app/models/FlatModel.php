@@ -480,8 +480,22 @@ class FlatModel extends Model
                 f.price_value,
                 f.land_share_value,
                 f.flat_name,
-                (SELECT booking_status FROM lead_bookings lb WHERE lb.flat_id = f.id AND lb.deleted_at IS NULL AND lb.booking_status IN ('booked', 'completed') ORDER BY lb.id DESC LIMIT 1) AS booking_status,
-                (SELECT created_at FROM lead_bookings lb WHERE lb.flat_id = f.id AND lb.deleted_at IS NULL AND lb.booking_status IN ('booked', 'completed') ORDER BY lb.id DESC LIMIT 1) AS booking_time
+                (SELECT lb.booking_status FROM lead_bookings lb 
+                 WHERE lb.flat_id = f.id AND lb.deleted_at IS NULL AND lb.booking_status IN ('booked', 'completed') 
+                   AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+                   AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+                 ORDER BY lb.id DESC LIMIT 1) AS booking_status,
+                (SELECT lb.created_at FROM lead_bookings lb 
+                 WHERE lb.flat_id = f.id AND lb.deleted_at IS NULL AND lb.booking_status IN ('booked', 'completed') 
+                   AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+                   AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+                 ORDER BY lb.id DESC LIMIT 1) AS booking_time,
+                (SELECT l.full_name FROM lead_bookings lb 
+                 JOIN leads l ON lb.lead_id = l.id
+                 WHERE lb.flat_id = f.id AND lb.deleted_at IS NULL AND lb.booking_status IN ('booked', 'completed') 
+                   AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+                   AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+                 ORDER BY lb.id DESC LIMIT 1) AS booked_client_name
             FROM flats f
             WHERE f.project_id = ?
             AND f.deleted_at IS NULL

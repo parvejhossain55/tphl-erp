@@ -12,8 +12,30 @@ class Con_PurchaseRequest extends Model
     // READ
     // =========================================================================
 
+    protected function hasColumn($columnName)
+    {
+        static $columnCache = [];
+        if (!isset($columnCache[$columnName])) {
+            try {
+                $check = $this->db->query("SHOW COLUMNS FROM `{$this->table}` LIKE '{$columnName}'");
+                $columnCache[$columnName] = ($check && $check->num_rows > 0);
+            } catch (\Throwable $e) {
+                $columnCache[$columnName] = false;
+            }
+        }
+        return $columnCache[$columnName];
+    }
+
     public function getAll($createdBy = null, $executiveId = null, $pmId = null)
     {
+        $hasPoRej = $this->hasColumn('po_rejected_by_id');
+        $poRejSelect = $hasPoRej
+            ? "po_rej.full_name AS po_rejected_by_name,\n                       po_rej_r.name    AS po_rejected_by_role"
+            : "NULL AS po_rejected_by_name,\n                       NULL AS po_rejected_by_role";
+        $poRejJoin   = $hasPoRej
+            ? "LEFT JOIN users po_rej ON po_rej.id = pr.po_rejected_by_id\n                LEFT JOIN roles po_rej_r ON po_rej_r.id = po_rej.role_id "
+            : "";
+
         $sql = "SELECT pr.*, p.name AS project_name, u.full_name AS created_by_name,
                        exec.full_name AS assigned_executive_name,
                        COALESCE(pr.pr_type, 'boq_linked') AS pr_type,
@@ -31,14 +53,12 @@ class Con_PurchaseRequest extends Model
                         WHERE pri.request_id = pr.id) AS estimated_total,
                        (SELECT u2.full_name FROM po_negotiation_notes n JOIN users u2 ON u2.id = n.user_id WHERE n.request_id = pr.id ORDER BY n.created_at DESC LIMIT 1) AS latest_note_author,
                        (SELECT n2.note_text FROM po_negotiation_notes n2 WHERE n2.request_id = pr.id ORDER BY n2.created_at DESC LIMIT 1) AS latest_note_text,
-                       po_rej.full_name AS po_rejected_by_name,
-                       po_rej_r.name    AS po_rejected_by_role
+                       {$poRejSelect}
                 FROM {$this->table} pr
                 LEFT JOIN projects p ON p.id = pr.project_id
                 LEFT JOIN users u ON u.id = pr.created_by
                 LEFT JOIN users exec ON exec.id = pr.assigned_executive_id
-                LEFT JOIN users po_rej ON po_rej.id = pr.po_rejected_by_id
-                LEFT JOIN roles po_rej_r ON po_rej_r.id = po_rej.role_id ";
+                {$poRejJoin}";
         
         $where = [];
         if ($createdBy) {
@@ -56,12 +76,25 @@ class Con_PurchaseRequest extends Model
         }
                 
         $sql .= " ORDER BY pr.id DESC";
-        $result = $this->db->query($sql);
-        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+        try {
+            $result = $this->db->query($sql);
+            return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+        } catch (\Throwable $e) {
+            error_log("Con_PurchaseRequest::getAll error: " . $e->getMessage());
+            return [];
+        }
     }
 
     public function find($id)
     {
+        $hasPoRej = $this->hasColumn('po_rejected_by_id');
+        $poRejSelect = $hasPoRej
+            ? "po_rej.full_name AS po_rejected_by_name,\n                    po_rej_r.name    AS po_rejected_by_role,"
+            : "NULL AS po_rejected_by_name,\n                    NULL AS po_rejected_by_role,";
+        $poRejJoin   = $hasPoRej
+            ? "LEFT JOIN users po_rej ON po_rej.id = pr.po_rejected_by_id\n             LEFT JOIN roles po_rej_r ON po_rej_r.id = po_rej.role_id"
+            : "";
+
         $stmt = $this->db->prepare(
             "SELECT pr.*, p.name AS project_name, u.full_name AS created_by_name,
                     apv.full_name AS approved_by_name,
@@ -69,8 +102,7 @@ class Con_PurchaseRequest extends Model
                     qc.full_name  AS qc_approved_by_name,
                     mgmt.full_name AS mgmt_approved_by_name,
                     exec.full_name AS assigned_executive_name,
-                    po_rej.full_name AS po_rejected_by_name,
-                    po_rej_r.name    AS po_rejected_by_role,
+                    {$poRejSelect}
                     COALESCE(pr.pr_type, 'boq_linked') AS pr_type,
                     (SELECT GROUP_CONCAT(DISTINCT COALESCE(cat_pr.name, 'Uncategorized') ORDER BY cat_pr.name SEPARATOR ', ')
                      FROM {$this->itemTable} pri_c
@@ -85,8 +117,7 @@ class Con_PurchaseRequest extends Model
              LEFT JOIN users qc     ON qc.id   = pr.qc_approved_by_id
              LEFT JOIN users mgmt   ON mgmt.id = pr.mgmt_approved_by_id
              LEFT JOIN users exec   ON exec.id = pr.assigned_executive_id
-             LEFT JOIN users po_rej ON po_rej.id = pr.po_rejected_by_id
-             LEFT JOIN roles po_rej_r ON po_rej_r.id = po_rej.role_id
+             {$poRejJoin}
              WHERE pr.id = ?"
         );
         $stmt->bind_param('i', $id);
@@ -250,28 +281,51 @@ class Con_PurchaseRequest extends Model
         $status        = !empty($data['status'])        ? $data['status']         : 'Draft';
         $isUrgent      = !empty($data['is_urgent'])     ? 1 : 0;
         $urgentReason  = !empty($data['urgent_reason']) ? trim($data['urgent_reason']) : null;
+        $hasRevCount   = $this->hasColumn('revision_count');
         $revisionCount = isset($data['revision_count']) ? (int)$data['revision_count'] : 0;
 
         $this->db->begin_transaction();
         try {
             if ($attachment) {
-                $stmt = $this->db->prepare(
-                    "UPDATE {$this->table}
-                     SET project_id = ?, bom_id = ?, pr_type = ?, required_date = ?, purpose = ?, status = ?, is_urgent = ?, urgent_reason = ?, notes = ?, attachment = ?, revision_count = ?
-                     WHERE id = ?"
-                );
-                $stmt->bind_param('iissssisssii',
-                    $data['project_id'], $bomId, $prType, $requiredDate, $purpose, $status, $isUrgent, $urgentReason, $data['notes'], $attachment, $revisionCount, $id
-                );
+                if ($hasRevCount) {
+                    $stmt = $this->db->prepare(
+                        "UPDATE {$this->table}
+                         SET project_id = ?, bom_id = ?, pr_type = ?, required_date = ?, purpose = ?, status = ?, is_urgent = ?, urgent_reason = ?, notes = ?, attachment = ?, revision_count = ?
+                         WHERE id = ?"
+                    );
+                    $stmt->bind_param('iissssisssii',
+                        $data['project_id'], $bomId, $prType, $requiredDate, $purpose, $status, $isUrgent, $urgentReason, $data['notes'], $attachment, $revisionCount, $id
+                    );
+                } else {
+                    $stmt = $this->db->prepare(
+                        "UPDATE {$this->table}
+                         SET project_id = ?, bom_id = ?, pr_type = ?, required_date = ?, purpose = ?, status = ?, is_urgent = ?, urgent_reason = ?, notes = ?, attachment = ?
+                         WHERE id = ?"
+                    );
+                    $stmt->bind_param('iissssisssi',
+                        $data['project_id'], $bomId, $prType, $requiredDate, $purpose, $status, $isUrgent, $urgentReason, $data['notes'], $attachment, $id
+                    );
+                }
             } else {
-                $stmt = $this->db->prepare(
-                    "UPDATE {$this->table}
-                     SET project_id = ?, bom_id = ?, pr_type = ?, required_date = ?, purpose = ?, status = ?, is_urgent = ?, urgent_reason = ?, notes = ?, revision_count = ?
-                     WHERE id = ?"
-                );
-                $stmt->bind_param('iissssissii',
-                    $data['project_id'], $bomId, $prType, $requiredDate, $purpose, $status, $isUrgent, $urgentReason, $data['notes'], $revisionCount, $id
-                );
+                if ($hasRevCount) {
+                    $stmt = $this->db->prepare(
+                        "UPDATE {$this->table}
+                         SET project_id = ?, bom_id = ?, pr_type = ?, required_date = ?, purpose = ?, status = ?, is_urgent = ?, urgent_reason = ?, notes = ?, revision_count = ?
+                         WHERE id = ?"
+                    );
+                    $stmt->bind_param('iissssissii',
+                        $data['project_id'], $bomId, $prType, $requiredDate, $purpose, $status, $isUrgent, $urgentReason, $data['notes'], $revisionCount, $id
+                    );
+                } else {
+                    $stmt = $this->db->prepare(
+                        "UPDATE {$this->table}
+                         SET project_id = ?, bom_id = ?, pr_type = ?, required_date = ?, purpose = ?, status = ?, is_urgent = ?, urgent_reason = ?, notes = ?
+                         WHERE id = ?"
+                    );
+                    $stmt->bind_param('iissssissi',
+                        $data['project_id'], $bomId, $prType, $requiredDate, $purpose, $status, $isUrgent, $urgentReason, $data['notes'], $id
+                    );
+                }
             }
             $stmt->execute();
 

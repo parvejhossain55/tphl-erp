@@ -41,7 +41,9 @@ class AccountClientController extends Controller
             "projectCollectionBreakdown" => $projectCollectionBreakdown,
             "projects" => $projects,
             "selectedProjectId" => $selectedProjectId,
-            "selectedVerificationStatus" => $verificationStatus
+            "selectedVerificationStatus" => $verificationStatus,
+            "conflictedUnits" => $this->clientModel->getConflictedUnits(),
+            "conflictedBookingsDetail" => $this->clientModel->getConflictedBookingsDetail()
         ]);
     }
 
@@ -668,7 +670,9 @@ public function indexTwo($bookingId = null)
             "bookedFlats" => $bookedFlats,
             "availableFlats" => $availableFlats,
             "dueStats" => $dueStats,
-            "dueClientsList" => $dueClientsList
+            "dueClientsList" => $dueClientsList,
+            "conflictedUnits" => $this->clientModel->getConflictedUnits(),
+            "conflictedBookingsDetail" => $this->clientModel->getConflictedBookingsDetail()
         ]);
     }
 
@@ -1714,8 +1718,8 @@ public function updateTransaction()
         
         $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
         
-        // Allowed roles: 1 (Admin), 3 (Super Admin), 33 (Management)
-        if (!in_array($roleId, [1, 3, 33])) {
+        // Allowed roles: Admin (1), Super Admin (3), Accounts (6), CED (7), Accounts Head (30), Chief Officer (33), SEAL CEO (35)
+        if (!in_array($roleId, [1, 3, 6, 7, 30, 33, 35])) {
             echo json_encode(['success' => false, 'message' => 'You do not have permission to delete bookings.']);
             exit;
         }
@@ -1765,11 +1769,26 @@ public function updateTransaction()
             $stmt2->execute();
             $stmt2->close();
 
-            // 3. Reset the flat status
-            $stmt3 = $this->db->prepare("UPDATE flats SET status = 'available', is_booked = 0 WHERE id = ?");
-            $stmt3->bind_param('i', $flatId);
-            $stmt3->execute();
-            $stmt3->close();
+            // 3. Reset the flat status only if NO other active bookings exist for this flat
+            $checkFlat = $this->db->prepare("
+                SELECT COUNT(*) as active_cnt 
+                FROM lead_bookings 
+                WHERE flat_id = ? 
+                  AND deleted_at IS NULL 
+                  AND booking_status NOT IN ('refunded', 'cancelled')
+                  AND (landshare_status IS NULL OR landshare_status != 'cancelled')
+            ");
+            $checkFlat->bind_param('i', $flatId);
+            $checkFlat->execute();
+            $actCnt = (int) ($checkFlat->get_result()->fetch_assoc()['active_cnt'] ?? 0);
+            $checkFlat->close();
+
+            if ($actCnt === 0) {
+                $stmt3 = $this->db->prepare("UPDATE flats SET status = 'available', is_booked = 0 WHERE id = ?");
+                $stmt3->bind_param('i', $flatId);
+                $stmt3->execute();
+                $stmt3->close();
+            }
 
             $this->db->commit();
             echo json_encode(['success' => true, 'message' => 'Booking and all associated payments deleted successfully.']);
@@ -1778,6 +1797,89 @@ public function updateTransaction()
         } catch (\Exception $e) {
             $this->db->rollback();
             echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+            exit;
+        }
+    }
+
+    /**
+     * Cancel a booking (used for resolving conflicts or client cancellations)
+     */
+    public function cancelBooking()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        
+        $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+        if (!in_array($roleId, [1, 3, 6, 7, 30, 33, 35])) {
+            echo json_encode(['success' => false, 'message' => 'You do not have permission to cancel bookings.']);
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $bookingId = isset($input['booking_id']) ? (int) $input['booking_id'] : 0;
+        $reason = trim($input['reason'] ?? 'Cancelled double booking');
+
+        if (!$bookingId) {
+            echo json_encode(['success' => false, 'message' => 'Booking ID is required.']);
+            exit;
+        }
+
+        $stmt = $this->db->prepare("SELECT flat_id FROM lead_bookings WHERE id = ?");
+        $stmt->bind_param('i', $bookingId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result->num_rows === 0) {
+            echo json_encode(['success' => false, 'message' => 'Booking not found.']);
+            exit;
+        }
+        $row = $result->fetch_assoc();
+        $flatId = $row['flat_id'];
+        $stmt->close();
+
+        $this->db->begin_transaction();
+        try {
+            $stmtUpdate = $this->db->prepare("
+                UPDATE lead_bookings 
+                SET booking_status = 'cancelled', 
+                    landshare_status = 'cancelled',
+                    remarks = CONCAT(COALESCE(remarks, ''), ' [Cancelled: ', ?, ']')
+                WHERE id = ?
+            ");
+            $stmtUpdate->bind_param('si', $reason, $bookingId);
+            $stmtUpdate->execute();
+            $stmtUpdate->close();
+
+            // Check if any other active booking exists on this flat
+            $checkFlat = $this->db->prepare("
+                SELECT COUNT(*) as active_cnt 
+                FROM lead_bookings 
+                WHERE flat_id = ? 
+                  AND deleted_at IS NULL 
+                  AND booking_status NOT IN ('refunded', 'cancelled')
+                  AND (landshare_status IS NULL OR landshare_status != 'cancelled')
+            ");
+            $checkFlat->bind_param('i', $flatId);
+            $checkFlat->execute();
+            $actCnt = (int) ($checkFlat->get_result()->fetch_assoc()['active_cnt'] ?? 0);
+            $checkFlat->close();
+
+            if ($actCnt === 0) {
+                $stmt3 = $this->db->prepare("UPDATE flats SET status = 'available', is_booked = 0 WHERE id = ?");
+                $stmt3->bind_param('i', $flatId);
+                $stmt3->execute();
+                $stmt3->close();
+            }
+
+            $this->db->commit();
+            echo json_encode(['success' => true, 'message' => 'Booking has been cancelled successfully.']);
+            exit;
+        } catch (\Exception $e) {
+            $this->db->rollback();
+            echo json_encode(['success' => false, 'message' => 'Failed to cancel booking: ' . $e->getMessage()]);
             exit;
         }
     }

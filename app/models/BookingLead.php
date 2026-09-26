@@ -470,7 +470,12 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
         // 5 Execute
         if ($stmt->execute()) {
-            return $this->db->insert_id;
+            $bookingId = $this->db->insert_id;
+            if (!empty($data['flat_id'])) {
+                $flatId = (int)$data['flat_id'];
+                $this->db->query("UPDATE flats SET is_booked = 1, status = 'booked' WHERE id = {$flatId}");
+            }
+            return $bookingId;
         }
 
         throw new Exception($stmt->error);

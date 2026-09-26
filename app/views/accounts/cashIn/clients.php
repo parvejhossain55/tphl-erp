@@ -202,7 +202,35 @@ $show_breadcrumb = true;
                     <span class="badge bg-success"><i class="fa-light fa-check-circle me-1"></i> Verified</span>
                 </div>
             </div>
-        </div>
+        <?php if (!empty($conflictedUnits)): ?>
+            <div class="card mb-3 border-0 shadow-sm" style="background: #fff5f5; border: 1px solid #fecdd3 !important; border-left: 5px solid #dc2626 !important; border-radius: 8px;">
+                <div class="card-body p-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div class="d-flex align-items-center">
+                        <span class="d-inline-flex align-items-center justify-content-center me-3 flex-shrink-0" style="width: 38px; height: 38px; border-radius: 50%; background: #fee2e2; color: #dc2626; font-size: 18px;">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </span>
+                        <div style="color: #991b1b !important; font-size: 13.5px; line-height: 1.4;">
+                            <span style="font-weight: 700; color: #7f1d1d !important;">Warning:</span>
+                            Found <strong style="color: #991b1b !important;"><?= count($conflictedUnits) ?></strong> unit(s) with multiple active client bookings (Double Booked).
+                            <div style="font-size: 12px; color: #b91c1c !important; margin-top: 2px;">
+                                Multiple clients are assigned to the exact same flat/shop. Review and cancel or delete duplicate bookings.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <button type="button" id="btnFilterConflicts" class="btn btn-sm btn-outline-danger fw-semibold" style="font-size: 12.5px; border-radius: 6px; padding: 6px 12px;">
+                            <i class="fa-solid fa-filter me-1"></i>Show Conflicted Units Only
+                        </button>
+                        <button type="button" id="btnResetConflictFilter" class="btn btn-sm btn-secondary fw-semibold d-none" style="font-size: 12.5px; border-radius: 6px; padding: 6px 12px;">
+                            <i class="fa-solid fa-rotate-left me-1"></i>Show All
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger fw-semibold" data-bs-toggle="modal" data-bs-target="#conflictResolutionModal" style="font-size: 12.5px; border-radius: 6px; padding: 6px 12px;">
+                            <i class="fa-solid fa-list-check me-1"></i>Resolve Conflicts (<?= count($conflictedUnits) ?>)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
 
         <div class="table__wrapper table-responsive">
             <table class="table mb-20 multiple_tables" id="clientsTable">
@@ -236,9 +264,29 @@ $show_breadcrumb = true;
                                 $badgeClass   = $isVerified ? 'bg-success' : ($isRejected ? 'bg-danger' : ($isPending ? 'bg-warning text-dark' : 'bg-secondary'));
                                 $badgeIcon    = $isVerified ? 'fa-check-circle' : ($isRejected ? 'fa-times-circle' : ($isPending ? 'fa-clock' : 'fa-minus'));
                                 $verText      = $isVerified ? 'Verified' : ($isRejected ? 'Rejected' : ($isPending ? 'Pending' : 'No Payment'));
+
+                                $clientHasConflict = false;
+                                if (!empty($conflictedUnits) && !empty($client['project_flats_combined'])) {
+                                    $allProps = explode(';;', $client['project_flats_combined']);
+                                    foreach ($allProps as $ap) {
+                                        $apParts = explode('||', $ap);
+                                        $chkK = strtolower(trim($apParts[0] ?? '')) . '||' . strtolower(trim($apParts[1] ?? ''));
+                                        if (isset($conflictedUnits[$chkK])) {
+                                            $clientHasConflict = true;
+                                            break;
+                                        }
+                                    }
+                                }
                             ?>
-                            <tr class="<?= $rowClass ?>">
-                                    <td><?= htmlspecialchars($client['client_name']) ?></td>
+                            <tr class="<?= $rowClass ?> <?= $clientHasConflict ? 'row-conflicted-unit' : '' ?>" data-has-conflict="<?= $clientHasConflict ? '1' : '0' ?>" <?= $clientHasConflict ? 'style="background-color: #fff9f9;"' : '' ?>>
+                                    <td>
+                                        <?= htmlspecialchars($client['client_name']) ?>
+                                        <?php if ($clientHasConflict): ?>
+                                            <span class="badge bg-danger text-white ms-1" style="font-size: 10px;" title="This client has a double-booked unit">
+                                                <i class="fa-solid fa-triangle-exclamation"></i> Conflict
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td><?= htmlspecialchars($client['company'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['phone'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['email'] ?? 'N/A') ?></td>
@@ -256,9 +304,14 @@ $show_breadcrumb = true;
                                                     $parts = explode('||', $prop);
                                                     $pName = $parts[0] ?? '';
                                                     $fName = $parts[1] ?? '';
-                                                    echo '<div class="property-chip">
+                                                    $cKey = strtolower(trim($pName)) . '||' . strtolower(trim($fName));
+                                                    $isDup = isset($conflictedUnits[$cKey]);
+                                                    $dupInfo = $isDup ? $conflictedUnits[$cKey] : null;
+
+                                                    echo '<div class="property-chip" ' . ($isDup ? 'style="border: 1px solid #dc3545; background: #fff5f5;"' : '') . '>
                                                             <span class="project-name" title="'.htmlspecialchars($pName).'"><i class="fa-solid fa-building me-1"></i>' . htmlspecialchars($pName) . '</span>
-                                                            ' . (!empty($fName) ? '<span class="flat-name" title="Flat/Unit">' . htmlspecialchars($fName) . '</span>' : '') . '
+                                                            ' . (!empty($fName) ? '<span class="flat-name ' . ($isDup ? 'text-danger fw-bold' : '') . '" title="Flat/Unit">' . htmlspecialchars($fName) . '</span>' : '') . '
+                                                            ' . ($isDup ? '<a href="javascript:void(0)" class="badge bg-danger text-white ms-1 text-decoration-none" style="font-size: 10px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#conflictResolutionModal" title="Double Booked with: ' . htmlspecialchars($dupInfo['client_names']) . ' (' . $dupInfo['booking_count'] . ' Bookings) - Click to Manage"><i class="fa-solid fa-triangle-exclamation me-1"></i>Double Booked (' . $dupInfo['booking_count'] . ')</a>' : '') . '
                                                           </div>';
                                                 }
 
@@ -270,9 +323,14 @@ $show_breadcrumb = true;
                                                         $parts = explode('||', $prop);
                                                         $pName = $parts[0] ?? '';
                                                         $fName = $parts[1] ?? '';
-                                                        echo '<div class="property-chip">
+                                                        $cKey = strtolower(trim($pName)) . '||' . strtolower(trim($fName));
+                                                        $isDup = isset($conflictedUnits[$cKey]);
+                                                        $dupInfo = $isDup ? $conflictedUnits[$cKey] : null;
+
+                                                        echo '<div class="property-chip" ' . ($isDup ? 'style="border: 1px solid #dc3545; background: #fff5f5;"' : '') . '>
                                                                 <span class="project-name" title="'.htmlspecialchars($pName).'"><i class="fa-solid fa-building me-1"></i>' . htmlspecialchars($pName) . '</span>
-                                                                ' . (!empty($fName) ? '<span class="flat-name" title="Flat/Unit">' . htmlspecialchars($fName) . '</span>' : '') . '
+                                                                ' . (!empty($fName) ? '<span class="flat-name ' . ($isDup ? 'text-danger fw-bold' : '') . '" title="Flat/Unit">' . htmlspecialchars($fName) . '</span>' : '') . '
+                                                                ' . ($isDup ? '<a href="javascript:void(0)" class="badge bg-danger text-white ms-1 text-decoration-none" style="font-size: 10px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#conflictResolutionModal" title="Double Booked with: ' . htmlspecialchars($dupInfo['client_names']) . ' (' . $dupInfo['booking_count'] . ' Bookings) - Click to Manage"><i class="fa-solid fa-triangle-exclamation me-1"></i>Double Booked (' . $dupInfo['booking_count'] . ')</a>' : '') . '
                                                               </div>';
                                                     }
                                                     echo '  </div>
@@ -402,6 +460,131 @@ $show_breadcrumb = true;
     </div>
 </div>
 
+<!-- ===== CONFLICT RESOLUTION MODAL ===== -->
+<div class="modal fade" id="conflictResolutionModal" tabindex="-1" aria-labelledby="conflictResolutionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 shadow" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header py-3 px-4" style="background: linear-gradient(135deg, #dc2626, #991b1b); color: #fff;">
+                <div class="d-flex align-items-center">
+                    <span class="d-inline-flex align-items-center justify-content-center me-3" style="width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.2); font-size: 18px;">
+                        <i class="fa-solid fa-triangle-exclamation text-white"></i>
+                    </span>
+                    <div>
+                        <h5 class="modal-title text-white mb-0" id="conflictResolutionModalLabel" style="font-weight: 700;">Conflicted / Double-Booked Units Management</h5>
+                        <p class="mb-0 text-white-50" style="font-size: 12px;">Found <?= !empty($conflictedBookingsDetail) ? count($conflictedBookingsDetail) : (!empty($conflictedUnits) ? count($conflictedUnits) : 0) ?> unit(s) with multiple active bookings. Review payments, client info, and cancel or delete unwanted bookings.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" style="background-color: #f8fafc; max-height: 75vh; overflow-y: auto;">
+                <?php if (!empty($conflictedBookingsDetail)): ?>
+                    <?php $conflictIndex = 0; ?>
+                    <?php foreach ($conflictedBookingsDetail as $unitKey => $uBookings): ?>
+                        <?php 
+                            $conflictIndex++; 
+                            $firstB = $uBookings[0] ?? [];
+                            $projName = $firstB['project_name'] ?? 'N/A';
+                            $fltName = $firstB['flat_name'] ?? 'N/A';
+                            $flrNo = $firstB['floor_no'] ?? '';
+                        ?>
+                        <div class="card mb-4 border-0 shadow-sm" style="border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0 !important;">
+                            <div class="card-header bg-white py-2 px-3 d-flex flex-wrap align-items-center justify-content-between border-bottom" style="border-left: 5px solid #dc2626 !important;">
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="badge bg-danger text-white px-2 py-1" style="font-size: 11px;">Conflict #<?= $conflictIndex ?></span>
+                                    <span class="badge bg-light text-dark border px-2 py-1 fw-bold" style="font-size: 12.5px;">
+                                        <i class="fa-solid fa-building me-1 text-primary"></i><?= htmlspecialchars($projName) ?>
+                                    </span>
+                                    <strong class="text-dark" style="font-size: 14px;">Unit: <span class="text-danger fw-bold"><?= htmlspecialchars($fltName) ?></span></strong>
+                                    <?php if (!empty($flrNo)): ?>
+                                        <span class="text-muted small">(Floor: <?= htmlspecialchars($flrNo) ?>)</span>
+                                    <?php endif; ?>
+                                </div>
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" style="font-size: 11.5px;">
+                                    <i class="fa-solid fa-users me-1"></i><?= count($uBookings) ?> Active Bookings (Conflict)
+                                </span>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0" style="font-size: 12.5px;">
+                                    <thead style="background-color: #f8fafc; color: #475569;">
+                                        <tr>
+                                            <th class="ps-3" style="width: 100px;">Booking #</th>
+                                            <th>Client Name</th>
+                                            <th>Phone</th>
+                                            <th>Booking Date</th>
+                                            <th>Agreement Value</th>
+                                            <th>Total Paid</th>
+                                            <th>Status</th>
+                                            <th class="text-center pe-3" style="width: 220px;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($uBookings as $bk): ?>
+                                            <?php 
+                                                $paidAmt = (float)($bk['total_paid'] ?? 0);
+                                                $agrVal = (float)($bk['agreement_value'] ?? 0);
+                                                $bDate = !empty($bk['booking_date']) ? date('d M, Y', strtotime($bk['booking_date'])) : 'N/A';
+                                                $historyUrl = $GLOBALS['base_url'] . '/clients-cash-in-history/' . $bk['booking_id'];
+                                            ?>
+                                            <tr id="conflict-booking-row-<?= $bk['booking_id'] ?>">
+                                                <td class="ps-3">
+                                                    <span class="fw-bold text-dark">#<?= $bk['booking_id'] ?></span>
+                                                </td>
+                                                <td>
+                                                    <div class="fw-bold text-dark"><?= htmlspecialchars($bk['client_name']) ?></div>
+                                                    <div class="text-muted" style="font-size: 11px;">Agent: <?= htmlspecialchars($bk['agent_name'] ?? 'System') ?></div>
+                                                </td>
+                                                <td><?= htmlspecialchars($bk['phone'] ?? 'N/A') ?></td>
+                                                <td><?= $bDate ?></td>
+                                                <td>TK. <?= number_format($agrVal, 2) ?></td>
+                                                <td>
+                                                    <span class="badge <?= $paidAmt > 0 ? 'bg-success text-white' : 'bg-secondary text-white' ?> px-2 py-1" style="font-size: 11.5px;">
+                                                        TK. <?= number_format($paidAmt, 2) ?>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                                                        <?= ucfirst(htmlspecialchars($bk['booking_status'] ?? 'Active')) ?>
+                                                    </span>
+                                                </td>
+                                                <td class="text-center pe-3">
+                                                    <div class="d-flex align-items-center justify-content-center gap-1">
+                                                        <a href="<?= $historyUrl ?>" target="_blank" class="btn btn-xs btn-outline-primary" style="padding: 4px 8px; font-size: 11px;" title="View Client Ledger">
+                                                            <i class="fa-regular fa-eye me-1"></i>Ledger
+                                                        </a>
+                                                        <button type="button" class="btn btn-xs btn-outline-warning" style="padding: 4px 8px; font-size: 11px;"
+                                                            onclick="cancelBookingAction(<?= $bk['booking_id'] ?>, '<?= htmlspecialchars($bk['client_name'], ENT_QUOTES) ?>', '<?= htmlspecialchars($projName . ' - ' . $fltName, ENT_QUOTES) ?>')"
+                                                            title="Cancel this booking">
+                                                            <i class="fa-solid fa-ban me-1"></i>Cancel
+                                                        </button>
+                                                        <button type="button" class="btn btn-xs btn-outline-danger" style="padding: 4px 8px; font-size: 11px;"
+                                                            onclick="deleteBookingAction(<?= $bk['booking_id'] ?>, '<?= htmlspecialchars($bk['client_name'], ENT_QUOTES) ?>', '<?= htmlspecialchars($projName . ' - ' . $fltName, ENT_QUOTES) ?>', <?= $paidAmt ?>)"
+                                                            title="Permanently delete this booking">
+                                                            <i class="fa-solid fa-trash-can me-1"></i>Delete
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="text-center py-5">
+                        <i class="fa-solid fa-circle-check text-success fs-1 mb-3"></i>
+                        <h5>No Conflicted Units Found!</h5>
+                        <p class="text-muted">All active bookings have unique units.</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+            <div class="modal-footer bg-white py-2 px-4 border-top">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     let projectsModal;
 
@@ -456,7 +639,7 @@ $show_breadcrumb = true;
                 : '<span class="badge bg-success ms-1" style="font-size:0.7em;">Current</span>';
 
             
-            const isManagement = <?= in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33]) ? 'true' : 'false' ?>;
+            const isManagement = <?= in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 7, 30, 33, 35]) ? 'true' : 'false' ?>;
             let actionHtml = `
                 <div class="d-flex align-items-center gap-1 justify-content-center">
                     <a class="table__icon download"
@@ -467,7 +650,12 @@ $show_breadcrumb = true;
                 
             if (isManagement) {
                 actionHtml += `
-                    <button type="button" class="table__icon delete" style="color: #dc3545; border: 1px solid #dc3545;"
+                    <button type="button" class="table__icon" style="color: #eab308; border: 1px solid #eab308; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;"
+                        onclick="cancelBookingFromModal(${land.booking_id}, '${escapeHtml(land.unit_name || '')}')"
+                        title="Cancel Booking">
+                        <i class="fa-solid fa-ban"></i>
+                    </button>
+                    <button type="button" class="table__icon delete" style="color: #dc3545; border: 1px solid #dc3545; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;"
                         onclick="deleteBooking(${land.booking_id})"
                         title="Delete Booking & All Payments">
                         <i class="fa-regular fa-trash-can"></i>
@@ -499,13 +687,75 @@ $show_breadcrumb = true;
         document.getElementById('projects_content').style.display = 'block';
     }
 
+    function cancelBookingFromModal(bookingId, unitName) {
+        const modalElement = document.getElementById('projectsModal');
+        Swal.fire({
+            title: 'Cancel Booking #' + bookingId + '?',
+            html: `<p>Are you sure you want to cancel the booking for unit <b>${escapeHtml(unitName)}</b>?</p>
+                   <input id="swalCancelReasonModal" class="swal2-input" placeholder="Enter reason (optional)" value="Cancelled double booking conflict">`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#eab308',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fa-solid fa-ban me-1"></i>Yes, Cancel',
+            cancelButtonText: 'Abort',
+            target: modalElement,
+            preConfirm: () => {
+                return document.getElementById('swalCancelReasonModal').value;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('<?= $GLOBALS['base_url'] ?>/cancel-booking', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ booking_id: bookingId, reason: result.value })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Cancelled!',
+                            text: data.message,
+                            timer: 2000,
+                            showConfirmButton: false,
+                            target: modalElement
+                        });
+                        if (currentLeadId) {
+                            openProjectsModal(currentLeadId, currentClientName);
+                        } else {
+                            window.location.reload();
+                        }
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'Failed to cancel booking.',
+                            target: modalElement
+                        });
+                    }
+                })
+                .catch(err => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'A network error occurred.',
+                        target: modalElement
+                    });
+                });
+            }
+        });
+    }
+
     function deleteBooking(bookingId) {
         // Find the modal element to set it as target to prevent z-index issues
         const modalElement = document.getElementById('projectsModal');
         
         Swal.fire({
             title: 'Are you sure?',
-            html: '<p class="text-danger">This will permanently delete the booking and ALL associated payments.</p><p>The flat will also be marked as available. This action cannot be undone!</p>',
+            html: '<p class="text-danger">This will permanently delete the booking and ALL associated payments.</p><p>The flat will also be marked as available if no other active booking exists. This action cannot be undone!</p>',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#dc3545',
@@ -984,6 +1234,151 @@ function filterProjectBreakdownTable() {
             } else {
                 row.style.display = 'none';
             }
+        }
+    });
+}
+
+// Double booking conflict filter logic
+let conflictFilterActive = false;
+
+// Custom DataTables filter for conflicted units
+if ($.fn.dataTable && $.fn.dataTable.ext) {
+    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+        if (!conflictFilterActive) return true;
+        if (settings.nTable && settings.nTable.id === 'clientsTable') {
+            const row = settings.aoData[dataIndex].nTr;
+            return $(row).attr('data-has-conflict') === '1';
+        }
+        return true;
+    });
+}
+
+$(document).ready(function() {
+    $('#btnFilterConflicts').on('click', function() {
+        conflictFilterActive = true;
+        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#clientsTable')) {
+            $('#clientsTable').DataTable().draw();
+        }
+        // Expand any collapsed units in the visible conflicted rows
+        $('.row-conflicted-unit .collapse').addClass('show');
+        $('.row-conflicted-unit .view-more-btn .show-more-text').addClass('d-none');
+        $('.row-conflicted-unit .view-more-btn .show-less-text').removeClass('d-none');
+        
+        $('#btnFilterConflicts').addClass('d-none');
+        $('#btnResetConflictFilter').removeClass('d-none');
+    });
+
+    $('#btnResetConflictFilter').on('click', function() {
+        conflictFilterActive = false;
+        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#clientsTable')) {
+            $('#clientsTable').DataTable().draw();
+        }
+        $('#btnFilterConflicts').removeClass('d-none');
+        $('#btnResetConflictFilter').addClass('d-none');
+    });
+});
+
+function cancelBookingAction(bookingId, clientName, unitName) {
+    Swal.fire({
+        title: 'Cancel Booking #' + bookingId + '?',
+        html: `<p>Are you sure you want to cancel the booking for <b>${escapeHtml(clientName)}</b> (${escapeHtml(unitName)})?</p>
+               <input id="swalCancelReasonAction" class="swal2-input" placeholder="Enter reason (optional)" value="Cancelled double booking conflict">`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#eab308',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fa-solid fa-ban me-1"></i>Yes, Cancel Booking',
+        cancelButtonText: 'Abort',
+        preConfirm: () => {
+            return document.getElementById('swalCancelReasonAction').value;
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Cancelling...',
+                text: 'Please wait while booking is being cancelled',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            fetch('<?= $GLOBALS['base_url'] ?>/cancel-booking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ booking_id: bookingId, reason: result.value })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Cancelled!',
+                        text: data.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.message || 'Failed to cancel booking', 'error');
+                }
+            })
+            .catch(err => {
+                Swal.fire('Error', 'Network or server error: ' + err.message, 'error');
+            });
+        }
+    });
+}
+
+function deleteBookingAction(bookingId, clientName, unitName, totalPaid) {
+    let warningHtml = `<p>Permanently delete booking #<b>${bookingId}</b> for <b>${escapeHtml(clientName)}</b> (${escapeHtml(unitName)})?</p>`;
+    if (totalPaid > 0) {
+        warningHtml += `<p class="text-danger fw-bold" style="font-size:13px;"><i class="fa-solid fa-triangle-exclamation me-1"></i>Warning: This booking has <b>TK. ${Number(totalPaid).toLocaleString('en-BD', {minimumFractionDigits: 2})}</b> in payments which will also be permanently deleted!</p>`;
+    } else {
+        warningHtml += `<p class="text-muted" style="font-size:12.5px;">This booking has TK. 0 payments. The flat will be freed if no other active booking exists.</p>`;
+    }
+
+    Swal.fire({
+        title: 'Delete Booking & Payments?',
+        html: warningHtml,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fa-solid fa-trash-can me-1"></i>Yes, Delete Permanently',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Deleting...',
+                text: 'Please wait...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            fetch('<?= $GLOBALS['base_url'] ?>/delete-booking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ booking_id: bookingId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Deleted!',
+                        text: data.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.message || 'Failed to delete booking', 'error');
+                }
+            })
+            .catch(err => {
+                Swal.fire('Error', 'Network or server error: ' + err.message, 'error');
+            });
         }
     });
 }

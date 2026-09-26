@@ -51,6 +51,7 @@ return [
     'update-transaction' => ['controller' => 'AccountClientController', 'method' => 'updateTransaction'],
     'delete-transaction' => ['controller' => 'AccountClientController', 'method' => 'deleteTransaction'],
     'delete-booking' => ['controller' => 'AccountClientController', 'method' => 'deleteBooking'],
+    'cancel-booking' => ['controller' => 'AccountClientController', 'method' => 'cancelBooking'],
     'csv-import-form' => ['controller' => 'AccountClientController', 'method' => 'showCSVImportForm'],
     'csv-import-preview' => ['controller' => 'AccountClientController', 'method' => 'previewCSVImport'],
     'csv-import-execute' => ['controller' => 'AccountClientController', 'method' => 'executeCSVImport'],
