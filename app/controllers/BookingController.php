@@ -190,12 +190,40 @@ class BookingController extends Controller
     public function store()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
-        $flatId = $_POST['flat_id'] ?? null;
+        $flatId = (int)($_POST['flat_id'] ?? 0);
+        $leadId = (int)($_POST['lead_id'] ?? 0);
         if (!$flatId) {
             setError("Please select a flat/unit!");
-            $leadId = $_POST['lead_id'] ?? 0;
             header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
             exit;
+        }
+
+        // STRICT DOUBLE-BOOKING CHECK: Ensure this flat is not already booked by another active booking
+        $checkStmt = $this->db->prepare("
+            SELECT lb.id, lb.lead_id, l.full_name as client_name, f.flat_name
+            FROM lead_bookings lb
+            JOIN leads l ON lb.lead_id = l.id
+            JOIN flats f ON lb.flat_id = f.id
+            WHERE lb.flat_id = ?
+              AND lb.booking_status IN ('booked', 'completed')
+              AND lb.deleted_at IS NULL
+              AND lb.id NOT IN (
+                  SELECT crr.booking_id FROM client_refund_requests crr 
+                  WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded')
+              )
+            LIMIT 1
+        ");
+        if ($checkStmt) {
+            $checkStmt->bind_param("i", $flatId);
+            $checkStmt->execute();
+            $existBooking = $checkStmt->get_result()->fetch_assoc();
+            $checkStmt->close();
+
+            if ($existBooking) {
+                setError("This unit (" . htmlspecialchars($existBooking['flat_name']) . ") is already booked by client: " . htmlspecialchars($existBooking['client_name']) . " (Booking #" . $existBooking['id'] . "). Double booking is not allowed!");
+                header("Location: {$GLOBALS['base_url']}/booking-leads/{$leadId}");
+                exit;
+            }
         }
 
         $discount = (float)($_POST['discount_amount'] ?? 0);

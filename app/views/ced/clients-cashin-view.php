@@ -289,8 +289,10 @@ $show_breadcrumb = true;
                 </a>
             </div>
 
+
+
             <div class="table__wrapper table-responsive">
-                <table class="table mb-20 multiple_tables">
+                <table class="table mb-20 multiple_tables" id="clientsCedTable">
                     <thead>
                         <tr class="table__title table__sort">
                             <th>Client Name</th>
@@ -311,7 +313,9 @@ $show_breadcrumb = true;
                         <?php if (!empty($clients)): ?>
                             <?php foreach ($clients as $client): ?>
                                 <tr>
-                                    <td><?= htmlspecialchars($client['client_name']) ?></td>
+                                    <td>
+                                        <?= htmlspecialchars($client['client_name']) ?>
+                                    </td>
                                     <td><?= htmlspecialchars($client['company'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['phone'] ?? 'N/A') ?></td>
                                     <td><?= htmlspecialchars($client['email'] ?? 'N/A') ?></td>
@@ -506,6 +510,8 @@ $show_breadcrumb = true;
         </div>
     </div>
 </div>
+
+
 
 <!-- ══ BOOKED FLATS MODAL (shown when project selected) ══ -->
 <?php if ($selectedProjectId && !empty($bookedFlats)): ?>
@@ -760,9 +766,14 @@ $show_breadcrumb = true;
         }
     }
 
+    let currentLeadIdCed = null;
+    let currentClientNameCed = '';
+
     function openProjectsModal(leadId, clientName) {
         console.log('Opening modal for lead ID:', leadId);
         console.log('Client name:', clientName);
+        currentLeadIdCed = leadId;
+        currentClientNameCed = clientName;
 
         // Set client name
         document.getElementById('modal_client_name').textContent = clientName;
@@ -826,6 +837,8 @@ $show_breadcrumb = true;
         const tbody = document.getElementById('projects_table_body');
         tbody.innerHTML = '';
 
+        const isManagement = <?= in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 7, 30, 33, 35]) ? 'true' : 'false' ?>;
+
         lands.forEach(land => {
             const row = document.createElement('tr');
 
@@ -838,6 +851,40 @@ $show_breadcrumb = true;
             const transferBadge = parseInt(land.transfer_status) === 1 
                 ? '<span class="badge bg-warning text-dark ms-1" style="font-size:0.7em;">Transferred</span>' 
                 : '<span class="badge bg-success ms-1" style="font-size:0.7em;">Current</span>';
+
+            let actionHtml = `
+                <div class="d-flex align-items-center gap-1 justify-content-center">
+                    <a class="table__icon download"
+                        href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history-view/${land.booking_id}"
+                        title="View Transaction History">
+                        <i class="fa-regular fa-eye"></i>
+                    </a>
+                    <button type="button"
+                        class="btn btn-sm btn-outline-primary py-1 px-2 text-nowrap"
+                        style="font-size:11px;"
+                        onclick="openClientEmiFollowupModal(${land.booking_id}, '${escapeHtml(land.client_name || '')}', ${land.total_emi_count || 36}, ${leadId})"
+                        title="Add / View Follow Up Notes">
+                        <i class="fa-light fa-comment-dots me-1"></i>Follow Up
+                        <span class="badge ${(land.total_followup_count || 0) > 0 ? 'bg-primary' : 'bg-secondary'} rounded-pill ms-1 followup-count-badge" data-booking-id="${land.booking_id}" style="font-size:10px;">
+                            ${land.total_followup_count || 0}
+                        </span>
+                    </button>`;
+                
+            if (isManagement) {
+                actionHtml += `
+                    <button type="button" class="table__icon" style="color: #eab308; border: 1px solid #eab308; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;"
+                        onclick="cancelBookingFromModal(${land.booking_id}, '${escapeHtml(land.unit_name || '')}')"
+                        title="Cancel Booking">
+                        <i class="fa-solid fa-ban"></i>
+                    </button>
+                    <button type="button" class="table__icon delete" style="color: #dc3545; border: 1px solid #dc3545; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;"
+                        onclick="deleteBookingFromModal(${land.booking_id})"
+                        title="Delete Booking & All Payments">
+                        <i class="fa-regular fa-trash-can"></i>
+                    </button>`;
+            }
+            
+            actionHtml += `</div>`;
 
             row.innerHTML = `
             <td>${escapeHtml(land.project_name)} ${transferBadge}</td>
@@ -871,24 +918,8 @@ $show_breadcrumb = true;
             <td>
                 ${getCurrentMonthBadge(land.current_month_status)}
             </td>
-            <td>
-                <div class="d-flex align-items-center gap-2">
-                    <a class="table__icon download"
-                        href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history-view/${land.booking_id}"
-                        title="View Transaction History">
-                        <i class="fa-regular fa-eye"></i>
-                    </a>
-                    <button type="button"
-                        class="btn btn-sm btn-outline-primary py-1 px-2 text-nowrap"
-                        style="font-size:11px;"
-                        onclick="openClientEmiFollowupModal(${land.booking_id}, '${escapeHtml(land.client_name || '')}', ${land.total_emi_count || 36}, ${leadId})"
-                        title="Add / View Follow Up Notes">
-                        <i class="fa-light fa-comment-dots me-1"></i>Follow Up
-                        <span class="badge ${(land.total_followup_count || 0) > 0 ? 'bg-primary' : 'bg-secondary'} rounded-pill ms-1 followup-count-badge" data-booking-id="${land.booking_id}" style="font-size:10px;">
-                            ${land.total_followup_count || 0}
-                        </span>
-                    </button>
-                </div>
+            <td style="white-space: nowrap;">
+                ${actionHtml}
             </td>
         `;
 
@@ -898,6 +929,120 @@ $show_breadcrumb = true;
         // Show content, hide loading
         document.getElementById('projects_loading').style.display = 'none';
         document.getElementById('projects_content').style.display = 'block';
+    }
+
+    function cancelBookingFromModal(bookingId, unitName) {
+        const modalElement = document.getElementById('projectsModal');
+        Swal.fire({
+            title: 'Cancel Booking #' + bookingId + '?',
+            html: `<p>Are you sure you want to cancel the booking for unit <b>${escapeHtml(unitName)}</b>?</p>
+                   <input id="swalCancelReasonModalCed" class="swal2-input" placeholder="Enter reason (optional)" value="Cancelled double booking conflict">`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#eab308',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fa-solid fa-ban me-1"></i>Yes, Cancel',
+            cancelButtonText: 'Abort',
+            target: modalElement,
+            preConfirm: () => {
+                return document.getElementById('swalCancelReasonModalCed').value;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('<?= $GLOBALS['base_url'] ?>/cancel-booking', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ booking_id: bookingId, reason: result.value })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Cancelled!',
+                            text: data.message,
+                            timer: 2000,
+                            showConfirmButton: false,
+                            target: modalElement
+                        });
+                        if (currentLeadIdCed) {
+                            openProjectsModal(currentLeadIdCed, currentClientNameCed);
+                        } else {
+                            window.location.reload();
+                        }
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'Failed to cancel booking.',
+                            target: modalElement
+                        });
+                    }
+                })
+                .catch(err => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'A network error occurred.',
+                        target: modalElement
+                    });
+                });
+            }
+        });
+    }
+
+    function deleteBookingFromModal(bookingId) {
+        const modalElement = document.getElementById('projectsModal');
+        Swal.fire({
+            title: 'Are you sure?',
+            html: '<p class="text-danger">This will permanently delete the booking and ALL associated payments.</p><p>The flat will also be marked as available if no other active booking exists. This action cannot be undone!</p>',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete it!',
+            target: modalElement
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('<?= $GLOBALS['base_url'] ?>/delete-booking', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ booking_id: bookingId })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Deleted!',
+                            text: data.message,
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                        if (currentLeadIdCed) {
+                            openProjectsModal(currentLeadIdCed, currentClientNameCed);
+                        } else {
+                            window.location.reload();
+                        }
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Failed',
+                            text: data.message || 'Could not delete booking.',
+                            target: modalElement
+                        });
+                    }
+                })
+                .catch(err => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'A network error occurred: ' + err.message,
+                        target: modalElement
+                    });
+                });
+            }
+        });
     }
 
     function showError(message) {
@@ -1914,6 +2059,155 @@ function filterDueEmisTable() {
             row.style.display = '';
         } else {
             row.style.display = 'none';
+        }
+    });
+}
+
+// Double booking conflict filter logic for CED
+let conflictFilterActiveCed = false;
+
+// Custom DataTables filter for conflicted units
+if ($.fn.dataTable && $.fn.dataTable.ext) {
+    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+        if (!conflictFilterActiveCed) return true;
+        if (settings.nTable && (settings.nTable.id === 'clientsCedTable' || $(settings.nTable).hasClass('multiple_tables'))) {
+            const row = settings.aoData[dataIndex].nTr;
+            return $(row).attr('data-has-conflict') === '1';
+        }
+        return true;
+    });
+}
+
+$(document).ready(function() {
+    $('#btnFilterConflictsCed').on('click', function() {
+        conflictFilterActiveCed = true;
+        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#clientsCedTable')) {
+            $('#clientsCedTable').DataTable().draw();
+        } else if ($.fn.DataTable) {
+            $('.multiple_tables').DataTable().draw();
+        }
+        // Expand any collapsed units in the visible conflicted rows
+        $('.row-conflicted-unit .collapse').addClass('show');
+        $('.row-conflicted-unit .view-more-btn .show-more-text').addClass('d-none');
+        $('.row-conflicted-unit .view-more-btn .show-less-text').removeClass('d-none');
+        
+        $('#btnFilterConflictsCed').addClass('d-none');
+        $('#btnResetConflictFilterCed').removeClass('d-none');
+    });
+
+    $('#btnResetConflictFilterCed').on('click', function() {
+        conflictFilterActiveCed = false;
+        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#clientsCedTable')) {
+            $('#clientsCedTable').DataTable().draw();
+        } else if ($.fn.DataTable) {
+            $('.multiple_tables').DataTable().draw();
+        }
+        $('#btnFilterConflictsCed').removeClass('d-none');
+        $('#btnResetConflictFilterCed').addClass('d-none');
+    });
+});
+
+function cancelBookingAction(bookingId, clientName, unitName) {
+    Swal.fire({
+        title: 'Cancel Booking #' + bookingId + '?',
+        html: `<p>Are you sure you want to cancel the booking for <b>${escapeHtml(clientName)}</b> (${escapeHtml(unitName)})?</p>
+               <input id="swalCancelReasonActionCed" class="swal2-input" placeholder="Enter reason (optional)" value="Cancelled double booking conflict">`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#eab308',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fa-solid fa-ban me-1"></i>Yes, Cancel Booking',
+        cancelButtonText: 'Abort',
+        preConfirm: () => {
+            return document.getElementById('swalCancelReasonActionCed').value;
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Cancelling...',
+                text: 'Please wait while booking is being cancelled',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            fetch('<?= $GLOBALS['base_url'] ?>/cancel-booking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ booking_id: bookingId, reason: result.value })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Cancelled!',
+                        text: data.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.message || 'Failed to cancel booking', 'error');
+                }
+            })
+            .catch(err => {
+                Swal.fire('Error', 'Network or server error: ' + err.message, 'error');
+            });
+        }
+    });
+}
+
+function deleteBookingAction(bookingId, clientName, unitName, totalPaid) {
+    let warningHtml = `<p>Permanently delete booking #<b>${bookingId}</b> for <b>${escapeHtml(clientName)}</b> (${escapeHtml(unitName)})?</p>`;
+    if (totalPaid > 0) {
+        warningHtml += `<p class="text-danger fw-bold" style="font-size:13px;"><i class="fa-solid fa-triangle-exclamation me-1"></i>Warning: This booking has <b>TK. ${Number(totalPaid).toLocaleString('en-BD', {minimumFractionDigits: 2})}</b> in payments which will also be permanently deleted!</p>`;
+    } else {
+        warningHtml += `<p class="text-muted" style="font-size:12.5px;">This booking has TK. 0 payments. The flat will be freed if no other active booking exists.</p>`;
+    }
+
+    Swal.fire({
+        title: 'Delete Booking & Payments?',
+        html: warningHtml,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fa-solid fa-trash-can me-1"></i>Yes, Delete Permanently',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Deleting...',
+                text: 'Please wait...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            fetch('<?= $GLOBALS['base_url'] ?>/delete-booking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ booking_id: bookingId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Deleted!',
+                        text: data.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.message || 'Failed to delete booking', 'error');
+                }
+            })
+            .catch(err => {
+                Swal.fire('Error', 'Network or server error: ' + err.message, 'error');
+            });
         }
     });
 }

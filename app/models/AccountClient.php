@@ -46,32 +46,53 @@ class AccountClient extends Model
              INNER JOIN lead_payments lp_sub ON lp_sub.booking_id = lb_sub.id AND lp_sub.payment_type = 'booking_money'
              INNER JOIN users u_agent ON u_agent.id = lp_sub.created_by
              WHERE lb_sub.lead_id = l.id
+               AND lb_sub.deleted_at IS NULL
+               AND lb_sub.booking_status NOT IN ('refunded', 'cancelled')
+               AND (lb_sub.landshare_status IS NULL OR lb_sub.landshare_status != 'cancelled')
+               AND lb_sub.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
             ) AS agent_name,
             COUNT(lb.id) AS total_bookings,
             SUM(lb.agreement_value) AS total_agreement_value,
             -- Concatenated list of all projects and flats for this client
-            (SELECT GROUP_CONCAT(CONCAT(p2.name, '||', f2.flat_name) SEPARATOR ';;')
+            (SELECT GROUP_CONCAT(CONCAT(p2.name, '||', f2.flat_name, '||', f2.id) SEPARATOR ';;')
              FROM lead_bookings lb2
              INNER JOIN projects p2 ON lb2.project_id = p2.id
              INNER JOIN flats f2 ON lb2.flat_id = f2.id
-             WHERE lb2.lead_id = l.id) AS project_flats_combined,
+             WHERE lb2.lead_id = l.id
+               AND lb2.deleted_at IS NULL
+               AND lb2.booking_status NOT IN ('refunded', 'cancelled')
+               AND (lb2.landshare_status IS NULL OR lb2.landshare_status != 'cancelled')
+               AND lb2.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+            ) AS project_flats_combined,
             -- Latest verification status across all this client's payments
             (SELECT lp.verification_status
              FROM lead_payments lp
              INNER JOIN lead_bookings lb3 ON lb3.id = lp.booking_id
              WHERE lb3.lead_id = l.id
+               AND lb3.deleted_at IS NULL
+               AND lb3.booking_status NOT IN ('refunded', 'cancelled')
+               AND (lb3.landshare_status IS NULL OR lb3.landshare_status != 'cancelled')
+               AND lb3.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
              ORDER BY lp.created_at DESC LIMIT 1) AS latest_verification_status,
             (SELECT COUNT(lp.id)
              FROM lead_payments lp
              INNER JOIN lead_bookings lb_p ON lb_p.id = lp.booking_id
              WHERE lb_p.lead_id = l.id
-             AND lp.verification_status = 'pending') AS total_pending_payments,
+               AND lb_p.deleted_at IS NULL
+               AND lb_p.booking_status NOT IN ('refunded', 'cancelled')
+               AND (lb_p.landshare_status IS NULL OR lb_p.landshare_status != 'cancelled')
+               AND lb_p.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+               AND lp.verification_status = 'pending') AS total_pending_payments,
             COALESCE(
                 (SELECT SUM(lp.amount)
                  FROM lead_payments lp
                  INNER JOIN lead_bookings lb2 ON lb2.id = lp.booking_id
                  WHERE lb2.lead_id = l.id
-                 AND lp.payment_status IN ('paid','partially_paid')),
+                   AND lb2.deleted_at IS NULL
+                   AND lb2.booking_status NOT IN ('refunded', 'cancelled')
+                   AND (lb2.landshare_status IS NULL OR lb2.landshare_status != 'cancelled')
+                   AND lb2.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+                   AND lp.payment_status IN ('paid','partially_paid')),
                 0
             ) AS total_paid,
             (
@@ -79,11 +100,19 @@ class AccountClient extends Model
                 FROM lead_payments lp
                 INNER JOIN lead_bookings lb2 ON lb2.id = lp.booking_id
                 WHERE lb2.lead_id = l.id
-                AND lp.payment_status IN ('paid','partially_paid')
+                  AND lb2.deleted_at IS NULL
+                  AND lb2.booking_status NOT IN ('refunded', 'cancelled')
+                  AND (lb2.landshare_status IS NULL OR lb2.landshare_status != 'cancelled')
+                  AND lb2.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+                  AND lp.payment_status IN ('paid','partially_paid')
             ) AS last_payment_date,
             MAX(lb.id) AS booking_id
         FROM leads l
         INNER JOIN lead_bookings lb ON lb.lead_id = l.id
+            AND lb.deleted_at IS NULL
+            AND lb.booking_status NOT IN ('refunded', 'cancelled')
+            AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+            AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
         $whereClause
         GROUP BY l.id
         $havingClause
@@ -153,6 +182,10 @@ class AccountClient extends Model
             ) AS last_payment_date
         FROM leads l
         INNER JOIN lead_bookings lb ON lb.lead_id = l.id
+            AND lb.deleted_at IS NULL
+            AND lb.booking_status NOT IN ('refunded', 'cancelled')
+            AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+            AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
         LEFT JOIN projects p ON lb.project_id = p.id
         LEFT JOIN flats f ON lb.flat_id = f.id
         $whereClause
@@ -237,9 +270,12 @@ class AccountClient extends Model
         FROM lead_bookings lb
         LEFT JOIN projects p ON lb.project_id = p.id
         LEFT JOIN flats f ON lb.flat_id = f.id
- WHERE lb.lead_id = ?
-AND lb.booking_status != 'cancelled'
-ORDER BY lb.booking_date DESC
+        WHERE lb.lead_id = ?
+          AND lb.deleted_at IS NULL
+          AND lb.booking_status NOT IN ('refunded', 'cancelled')
+          AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+          AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+        ORDER BY lb.booking_date DESC
     ");
 
         $sql->bind_param("i", $leadId);
@@ -3299,7 +3335,11 @@ ORDER BY lb.booking_date DESC
                  WHERE lp_sub.booking_id = lb.id AND lp_sub.payment_type = 'booking_money'
                 ) AS agent_name
             FROM flats f
-            INNER JOIN lead_bookings lb ON lb.flat_id = f.id AND lb.booking_status != 'cancelled'
+            INNER JOIN lead_bookings lb ON lb.flat_id = f.id 
+                AND lb.deleted_at IS NULL
+                AND lb.booking_status NOT IN ('refunded', 'cancelled')
+                AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+                AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
             INNER JOIN leads l ON l.id = lb.lead_id
             WHERE f.project_id = ?
             AND f.deleted_at IS NULL
@@ -3315,6 +3355,106 @@ ORDER BY lb.booking_date DESC
         $stmt->execute();
         $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /**
+     * Get all conflicted / double-booked units across active bookings
+     * Returns associative array keyed by lowercase project_name||flat_name
+     */
+    public function getConflictedUnits()
+    {
+        $sql = "
+            SELECT 
+                lb.project_id, 
+                p.name as project_name,
+                LOWER(TRIM(f.flat_name)) as unit_norm, 
+                f.flat_name,
+                COUNT(DISTINCT lb.id) as booking_count, 
+                GROUP_CONCAT(DISTINCT l.full_name SEPARATOR ', ') as client_names
+            FROM lead_bookings lb
+            JOIN flats f ON lb.flat_id = f.id
+            JOIN projects p ON lb.project_id = p.id
+            JOIN leads l ON lb.lead_id = l.id
+            WHERE lb.deleted_at IS NULL 
+              AND lb.booking_status NOT IN ('refunded', 'cancelled')
+              AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+              AND lb.id NOT IN (
+                  SELECT crr.booking_id FROM client_refund_requests crr 
+                  WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded')
+              )
+            GROUP BY lb.project_id, LOWER(TRIM(f.flat_name))
+            HAVING COUNT(DISTINCT lb.id) > 1
+        ";
+        $res = $this->db->query($sql);
+        $conflicts = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $key = strtolower(trim($row['project_name'])) . '||' . strtolower(trim($row['flat_name']));
+                $conflicts[$key] = $row;
+            }
+        }
+        return $conflicts;
+    }
+
+    /**
+     * Get full details of all conflicted / double-booked bookings grouped by unit
+     */
+    public function getConflictedBookingsDetail()
+    {
+        $sql = "
+            SELECT 
+                lb.id as booking_id,
+                lb.project_id, 
+                p.name as project_name,
+                f.id as flat_id,
+                f.flat_name,
+                f.floor_no,
+                l.id as lead_id,
+                l.full_name as client_name,
+                l.phone,
+                l.email,
+                lb.booking_date,
+                lb.agreement_value,
+                lb.booking_status,
+                lb.landshare_status,
+                (SELECT COALESCE(SUM(lp.amount), 0) FROM lead_payments lp WHERE lp.booking_id = lb.id) as total_paid,
+                (SELECT u.full_name FROM users u WHERE u.id = lb.sales_by_id LIMIT 1) as agent_name
+            FROM lead_bookings lb
+            JOIN flats f ON lb.flat_id = f.id
+            JOIN projects p ON lb.project_id = p.id
+            JOIN leads l ON lb.lead_id = l.id
+            WHERE lb.deleted_at IS NULL 
+              AND lb.booking_status NOT IN ('refunded', 'cancelled')
+              AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+              AND lb.id NOT IN (
+                  SELECT crr.booking_id FROM client_refund_requests crr 
+                  WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded')
+              )
+              AND (lb.project_id, LOWER(TRIM(f.flat_name))) IN (
+                  SELECT lb2.project_id, LOWER(TRIM(f2.flat_name))
+                  FROM lead_bookings lb2
+                  JOIN flats f2 ON lb2.flat_id = f2.id
+                  WHERE lb2.deleted_at IS NULL
+                    AND lb2.booking_status NOT IN ('refunded', 'cancelled')
+                    AND (lb2.landshare_status IS NULL OR lb2.landshare_status != 'cancelled')
+                    AND lb2.id NOT IN (
+                        SELECT crr2.booking_id FROM client_refund_requests crr2 
+                        WHERE crr2.booking_id IS NOT NULL AND crr2.status IN ('pending', 'approved', 'refunded')
+                    )
+                  GROUP BY lb2.project_id, LOWER(TRIM(f2.flat_name))
+                  HAVING COUNT(DISTINCT lb2.id) > 1
+              )
+            ORDER BY p.name ASC, f.flat_name ASC, lb.booking_date ASC, lb.id ASC
+        ";
+        $res = $this->db->query($sql);
+        $list = [];
+        if ($res) {
+            while ($r = $res->fetch_assoc()) {
+                $unitKey = strtolower(trim($r['project_name'])) . '||' . strtolower(trim($r['flat_name']));
+                $list[$unitKey][] = $r;
+            }
+        }
+        return $list;
     }
 
     /**
