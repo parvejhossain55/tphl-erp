@@ -554,12 +554,35 @@ class LandAcquisitionController extends Controller {
         $usersCache = [];
         $projectsCache = [];
 
+        // Helper to lookup user by email, username, full name, or ID
+        $getUserIdentifier = function($val) use (&$usersCache) {
+            if (empty($val)) return null;
+            $cleanVal = trim($val);
+            if (isset($usersCache[$cleanVal])) return $usersCache[$cleanVal];
+            
+            $stmtUser = $this->db->prepare("SELECT id FROM users WHERE email = ? OR user_name = ? OR full_name = ? OR id = ? LIMIT 1");
+            $stmtUser->bind_param("ssss", $cleanVal, $cleanVal, $cleanVal, $cleanVal);
+            $stmtUser->execute();
+            $resUser = $stmtUser->get_result()->fetch_assoc();
+            if ($resUser) {
+                $usersCache[$cleanVal] = (int)$resUser['id'];
+                return (int)$resUser['id'];
+            }
+            return null;
+        };
+
         while (($data = fgetcsv($handle)) !== FALSE) {
             $rowNum++;
             if (empty(array_filter($data))) continue;
 
             if (count($header) !== count($data)) {
-                $validationErrors[] = "Row $rowNum: Column count mismatch (expected " . count($header) . ", got " . count($data) . ").";
+                $validationErrors[] = [
+                    'row' => $rowNum,
+                    'landowner' => '—',
+                    'project' => '—',
+                    'location' => '—',
+                    'reason' => "Column count mismatch (expected " . count($header) . ", got " . count($data) . "). Please check for extra/missing commas."
+                ];
                 continue;
             }
 
@@ -567,11 +590,11 @@ class LandAcquisitionController extends Controller {
             $row = array_map('trim', $row);
             
             // Clean/normalize text fields
-            $projectName = $normalizeText($row['project_name'] ?? '');
-            $landOwnerName = trim($row['land_owner_name'] ?? '');
-            $totalArea = (float)($row['total_area'] ?? 0);
-            $pricePerUnit = (float)($row['price_per_unit'] ?? 0);
-            $landDeptEmail = trim($row['land_dept_email'] ?? '');
+            $projectName = $normalizeText($row['project_name'] ?? $row['project'] ?? '');
+            $landOwnerName = trim($row['land_owner_name'] ?? $row['landowner'] ?? '');
+            $totalArea = (float)($row['total_area'] ?? $row['area'] ?? 0);
+            $pricePerUnit = (float)($row['price_per_unit'] ?? $row['rate'] ?? 0);
+            $landDeptEmail = trim($row['land_dept_email'] ?? $row['uploaded_by'] ?? $row['created_by'] ?? '');
             $location = trim($row['location'] ?? '');
             
             $rowIssues = [];
@@ -589,79 +612,60 @@ class LandAcquisitionController extends Controller {
             if ($pricePerUnit <= 0) {
                 $rowIssues[] = "'price_per_unit' must be greater than 0";
             }
-            if (empty($landDeptEmail)) {
-                $rowIssues[] = "'land_dept_email' is required";
-            }
 
             // Verify Project Name in ERP (case-insensitive + relaxed spaces matching)
             if (!empty($projectName)) {
-                if (isset($projectsCache[$projectName])) {
-                    $row['project_id'] = $projectsCache[$projectName];
+                $projKey = strtolower(trim($projectName));
+                if (isset($projectsCache[$projKey])) {
+                    $row['project_id'] = $projectsCache[$projKey]['id'];
+                    $row['project_name'] = $projectsCache[$projKey]['name'];
                 } else {
-                    $normalizedSearch = '%' . str_replace(' ', '%', $projectName) . '%';
-                    $stmtProj = $this->db->prepare("SELECT id FROM projects WHERE (name = ? OR name LIKE ?) AND deleted_at IS NULL LIMIT 1");
-                    $stmtProj->bind_param("ss", $projectName, $normalizedSearch);
+                    $cleanProjName = trim($projectName);
+                    $normalizedSearch = '%' . str_replace(' ', '%', $cleanProjName) . '%';
+                    $stmtProj = $this->db->prepare("
+                        SELECT id, name FROM projects 
+                        WHERE (LOWER(TRIM(name)) = LOWER(?) OR LOWER(name) LIKE LOWER(?)) 
+                          AND deleted_at IS NULL 
+                        ORDER BY (CASE WHEN LOWER(TRIM(name)) = LOWER(?) THEN 0 ELSE 1 END) 
+                        LIMIT 1
+                    ");
+                    $stmtProj->bind_param("sss", $cleanProjName, $normalizedSearch, $cleanProjName);
                     $stmtProj->execute();
                     $resProj = $stmtProj->get_result()->fetch_assoc();
                     if ($resProj) {
-                        $projectsCache[$projectName] = $resProj['id'];
-                        $row['project_id'] = $resProj['id'];
+                        $projectsCache[$projKey] = $resProj;
+                        $row['project_id'] = (int)$resProj['id'];
+                        $row['project_name'] = $resProj['name'];
                     } else {
-                        $rowIssues[] = "Project '$projectName' not found in ERP";
+                        $rowIssues[] = "Project '$projectName' not found in ERP. Please ensure project name matches an active project in the system.";
                     }
                 }
             }
 
-            // Helper to lookup user by email
-            $getUserByEmail = function($email) use (&$usersCache) {
-                if (empty($email)) return null;
-                if (isset($usersCache[$email])) return $usersCache[$email];
-                
-                $stmtUser = $this->db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
-                $stmtUser->bind_param("s", $email);
-                $stmtUser->execute();
-                $resUser = $stmtUser->get_result()->fetch_assoc();
-                if ($resUser) {
-                    $usersCache[$email] = $resUser['id'];
-                    return $resUser['id'];
-                }
-                return null;
-            };
-
-            // Verify Land Dept Email
+            // Verify Land Dept / Uploaded By User (Graceful fallback to logged-in user)
             if (!empty($landDeptEmail)) {
-                $uid = $getUserByEmail($landDeptEmail);
-                if ($uid) {
-                    $row['land_dept_id'] = $uid;
-                } else {
-                    $rowIssues[] = "Land officer email '$landDeptEmail' not found in ERP";
-                }
+                $uid = $getUserIdentifier($landDeptEmail);
+                $row['land_dept_id'] = $uid ?: (int)($_SESSION['user']['id'] ?? 1);
+            } else {
+                $row['land_dept_id'] = (int)($_SESSION['user']['id'] ?? 1);
             }
 
             // Verify Mgmt Email (Optional, fallback to current user)
-            $mgmtEmail = trim($row['management_email'] ?? '');
+            $mgmtEmail = trim($row['management_email'] ?? $row['approved_by'] ?? '');
             if (!empty($mgmtEmail)) {
-                $uid = $getUserByEmail($mgmtEmail);
-                if ($uid) {
-                    $row['management_id'] = $uid;
-                } else {
-                    $rowIssues[] = "Management email '$mgmtEmail' not found in ERP";
-                }
+                $uid = $getUserIdentifier($mgmtEmail);
+                $row['management_id'] = $uid ?: (int)($_SESSION['user']['id'] ?? 1);
             } else {
-                $row['management_id'] = (int)$_SESSION['user']['id'];
+                $row['management_id'] = (int)($_SESSION['user']['id'] ?? 1);
             }
 
             // Verify Account Verify Email (Optional, fallback to current user)
-            $accEmail = trim($row['account_verify_email'] ?? '');
+            $accEmail = trim($row['account_verify_email'] ?? $row['paid_by'] ?? '');
             if (!empty($accEmail)) {
-                $uid = $getUserByEmail($accEmail);
-                if ($uid) {
-                    $row['account_id'] = $uid;
-                } else {
-                    $rowIssues[] = "Accountant email '$accEmail' not found in ERP";
-                }
+                $uid = $getUserIdentifier($accEmail);
+                $row['account_id'] = $uid ?: (int)($_SESSION['user']['id'] ?? 1);
             } else {
-                $row['account_id'] = (int)$_SESSION['user']['id'];
+                $row['account_id'] = (int)($_SESSION['user']['id'] ?? 1);
             }
 
             if (!empty($rowIssues)) {
@@ -706,18 +710,59 @@ class LandAcquisitionController extends Controller {
             return null;
         };
 
-        // Helper to format date string to MySQL-compatible format
+        // Helper to format any date string (Excel serial, DD/MM/YYYY, YYYY-MM-DD, textual months, etc.) to MySQL-compatible format
         $formatDateForDb = function($dateStr, $includeTime = false, $default = null) {
-            if (empty($dateStr)) return $default;
-            $dateStr = trim($dateStr);
+            if ($dateStr === null) return $default;
+            $dateStr = trim((string)$dateStr);
+            if ($dateStr === '' || $dateStr === '-' || strtolower($dateStr) === 'null' || strtolower($dateStr) === 'n/a') {
+                return $default;
+            }
+
+            // 1. If Excel numeric serial date (e.g. 45487 for July 15, 2024)
+            if (is_numeric($dateStr) && (float)$dateStr > 20000 && (float)$dateStr < 80000) {
+                $unixTimestamp = ((float)$dateStr - 25569) * 86400;
+                return $includeTime ? gmdate('Y-m-d H:i:s', (int)$unixTimestamp) : gmdate('Y-m-d', (int)$unixTimestamp);
+            }
+
+            // 2. Normalize dots/underscores to dashes
+            $cleanDate = str_replace(['.', '_'], '-', $dateStr);
+
+            // 3. Try standard formats (Day-first, ISO, and Month-first)
+            $formats = [
+                'd/m/Y', 'd-m-Y', 'd/m/Y H:i:s', 'd-m-Y H:i:s', 'd/m/Y H:i', 'd-m-Y H:i',
+                'j/n/Y', 'j-n-Y', 'j/n/Y H:i:s', 'j-n-Y H:i:s',
+                'Y-m-d', 'Y/m/d', 'Y-m-d H:i:s', 'Y/m/d H:i:s', 'Y-m-d H:i', 'Y/m/d H:i',
+                'd-M-Y', 'd M Y', 'd-M-Y H:i:s', 'd M Y H:i:s',
+                'd-F-Y', 'd F Y', 'd-F-Y H:i:s', 'd F Y H:i:s',
+                'M d, Y', 'F d, Y', 'M d Y', 'F d Y',
+                'm/d/Y', 'm-d-Y', 'm/d/Y H:i:s', 'm-d-Y H:i:s',
+                'd/m/y', 'd-m-y'
+            ];
+
+            foreach ($formats as $fmt) {
+                $dt = DateTime::createFromFormat('!' . $fmt, $cleanDate);
+                $err = DateTime::getLastErrors();
+                if ($dt !== false && empty($err['warning_count']) && empty($err['error_count']) && (int)$dt->format('Y') > 1990 && (int)$dt->format('Y') < 2100) {
+                    return $includeTime ? $dt->format('Y-m-d H:i:s') : $dt->format('Y-m-d');
+                }
+                $dtRaw = DateTime::createFromFormat('!' . $fmt, $dateStr);
+                $errRaw = DateTime::getLastErrors();
+                if ($dtRaw !== false && empty($errRaw['warning_count']) && empty($errRaw['error_count']) && (int)$dtRaw->format('Y') > 1990 && (int)$dtRaw->format('Y') < 2100) {
+                    return $includeTime ? $dtRaw->format('Y-m-d H:i:s') : $dtRaw->format('Y-m-d');
+                }
+            }
+
+            // 4. Fallback to standard strtotime with / to - swap
             $time = strtotime($dateStr);
             if ($time === false || $time <= 0) {
                 $normalized = str_replace('/', '-', $dateStr);
                 $time = strtotime($normalized);
             }
-            if ($time !== false && $time > 0) {
+
+            if ($time !== false && $time > 0 && (int)date('Y', $time) > 1990) {
                 return $includeTime ? date('Y-m-d H:i:s', $time) : date('Y-m-d', $time);
             }
+
             return $default;
         };
 
@@ -822,7 +867,7 @@ class LandAcquisitionController extends Controller {
                         require_once __DIR__ . '/../../services/AutoPostingService.php';
                     }
                     $autoPoster = new \AutoPostingService($this->db);
-                    $autoPoster->postLandRequisitionJournal($reqBBId ?? $reqBId);
+                    $autoPoster->postLandRequisitionJournal($reqBId);
 
                     // Insert into land_bayana_payments
                     $stmtPay = $this->db->prepare("

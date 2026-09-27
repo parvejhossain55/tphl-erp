@@ -27,22 +27,56 @@ class ProjectDrawingController extends Controller {
         // Only Draftsman (16) can create/edit/delete
         $canModify = ($roleId === 16);
 
-        // Filter by project_id if passed (e.g. from estimator dashboard)
-        $filterProjectId = (int)($_GET['project_id'] ?? 0);
+        // Filters from GET
+        $filterProjectId    = (int)($_GET['project_id'] ?? 0);
+        $filterDesignTypeId = (int)($_GET['design_type_id'] ?? 0);
+        $filterStatus       = trim($_GET['status'] ?? '');
+        $searchTerm         = trim($_GET['q'] ?? '');
 
-        if (in_array($roleId, [1, 2, 3, 33, 13, 15, 22])) {
-            // Admins / PM / QC — see all (or filtered)
-            if ($filterProjectId > 0) {
-                $stmt = $this->db->prepare("
+        $where = [];
+        $params = [];
+        $types = '';
+
+        if ($filterProjectId > 0) {
+            $where[] = "d.project_id = ?";
+            $params[] = $filterProjectId;
+            $types .= 'i';
+        }
+        if ($filterDesignTypeId > 0) {
+            $where[] = "d.design_type_id = ?";
+            $params[] = $filterDesignTypeId;
+            $types .= 'i';
+        }
+        if ($filterStatus !== '') {
+            $where[] = "d.status = ?";
+            $params[] = $filterStatus;
+            $types .= 's';
+        }
+        if ($searchTerm !== '') {
+            $where[] = "(p.name LIKE ? OR dt.name LIKE ? OR u.full_name LIKE ? OR d.designer_name LIKE ? OR d.upload_designer_name LIKE ?)";
+            $sWild = "%{$searchTerm}%";
+            $params[] = $sWild;
+            $params[] = $sWild;
+            $params[] = $sWild;
+            $params[] = $sWild;
+            $params[] = $sWild;
+            $types .= 'sssss';
+        }
+
+        if (in_array($roleId, [1, 2, 3, 33, 13, 15, 22, 16])) {
+            // Admins / PM / QC / Draftsman — see all (or filtered)
+            if (!empty($where)) {
+                $sql = "
                     SELECT d.*, p.name AS project_name, dt.name AS design_type_name, u.full_name AS internal_designer_name
                     FROM project_drawings d
                     LEFT JOIN projects p  ON d.project_id    = p.id
                     LEFT JOIN design_types dt ON d.design_type_id = dt.id
                     LEFT JOIN users u ON d.user_id = u.id
-                    WHERE d.project_id = ?
+                    WHERE " . implode(' AND ', $where) . "
                     ORDER BY d.id DESC
-                ");
-                $stmt->bind_param('i', $filterProjectId);
+                ";
+                $stmt = $this->db->prepare($sql);
+                $stmt->bind_param($types, ...$params);
                 $stmt->execute();
                 $records = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             } else {
@@ -51,87 +85,62 @@ class ProjectDrawingController extends Controller {
 
         } elseif ($roleId === 19) {
             // Estimator — read-only: only drawings of projects they are assigned to
-            if ($filterProjectId > 0) {
-                $stmt = $this->db->prepare("
-                    SELECT d.*, p.name AS project_name, dt.name AS design_type_name, u.full_name AS internal_designer_name
-                    FROM project_drawings d
-                    LEFT JOIN projects p  ON d.project_id    = p.id
-                    LEFT JOIN design_types dt ON d.design_type_id = dt.id
-                    LEFT JOIN users u ON d.user_id = u.id
-                    WHERE d.project_id = ? AND p.estimator_id = ?
-                    ORDER BY d.id DESC
-                ");
-                $stmt->bind_param('ii', $filterProjectId, $userId);
-            } else {
-                $stmt = $this->db->prepare("
-                    SELECT d.*, p.name AS project_name, dt.name AS design_type_name, u.full_name AS internal_designer_name
-                    FROM project_drawings d
-                    LEFT JOIN projects p  ON d.project_id    = p.id
-                    LEFT JOIN design_types dt ON d.design_type_id = dt.id
-                    LEFT JOIN users u ON d.user_id = u.id
-                    WHERE p.estimator_id = ?
-                    ORDER BY d.id DESC
-                ");
-                $stmt->bind_param('i', $userId);
-            }
-            $stmt->execute();
-            $records = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $estWhere = array_merge($where, ["p.estimator_id = ?"]);
+            $estParams = array_merge($params, [$userId]);
+            $estTypes  = $types . 'i';
 
-        } elseif ($roleId === 16) {
-            // Draftsman — drawings of their assigned projects
-            $stmt = $this->db->prepare("
+            $sql = "
                 SELECT d.*, p.name AS project_name, dt.name AS design_type_name, u.full_name AS internal_designer_name
                 FROM project_drawings d
-                LEFT JOIN projects p ON d.project_id = p.id
+                LEFT JOIN projects p  ON d.project_id    = p.id
                 LEFT JOIN design_types dt ON d.design_type_id = dt.id
                 LEFT JOIN users u ON d.user_id = u.id
-                WHERE p.draftsman_id = ?
+                WHERE " . implode(' AND ', $estWhere) . "
                 ORDER BY d.id DESC
-            ");
-            $stmt->bind_param('i', $userId);
+            ";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param($estTypes, ...$estParams);
             $stmt->execute();
             $records = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
         } else {
             // All other roles — see only their assigned projects
-            if ($filterProjectId > 0) {
-                $stmt = $this->db->prepare("
-                    SELECT d.*, p.name AS project_name, dt.name AS design_type_name, u.full_name AS internal_designer_name
-                    FROM project_drawings d
-                    LEFT JOIN projects p  ON d.project_id    = p.id
-                    LEFT JOIN design_types dt ON d.design_type_id = dt.id
-                    LEFT JOIN users u ON d.user_id = u.id
-                    WHERE d.project_id = ?
-                      AND (p.pm_id = ? OR p.site_engineer_id = ? OR p.landman_id = ? OR p.struct_engineer_id = ? 
+            $assignCond = "(p.pm_id = ? OR p.site_engineer_id = ? OR p.landman_id = ? OR p.struct_engineer_id = ? 
                            OR p.operation_head_id = ? OR p.draftsman_id = ? OR p.architect_id = ? 
-                           OR p.estimator_id = ? OR p.qc_id = ? OR p.operator_id = ? OR p.created_by = ?)
-                    ORDER BY d.id DESC
-                ");
-                $stmt->bind_param('iiiiiiiiiiii', $filterProjectId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId);
-            } else {
-                $stmt = $this->db->prepare("
-                    SELECT d.*, p.name AS project_name, dt.name AS design_type_name, u.full_name AS internal_designer_name
-                    FROM project_drawings d
-                    LEFT JOIN projects p  ON d.project_id    = p.id
-                    LEFT JOIN design_types dt ON d.design_type_id = dt.id
-                    LEFT JOIN users u ON d.user_id = u.id
-                    WHERE p.pm_id = ? OR p.site_engineer_id = ? OR p.landman_id = ? OR p.struct_engineer_id = ? 
-                           OR p.operation_head_id = ? OR p.draftsman_id = ? OR p.architect_id = ? 
-                           OR p.estimator_id = ? OR p.qc_id = ? OR p.operator_id = ? OR p.created_by = ?
-                    ORDER BY d.id DESC
-                ");
-                $stmt->bind_param('iiiiiiiiiii', $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId);
-            }
+                           OR p.estimator_id = ? OR p.qc_id = ? OR p.operator_id = ? OR p.created_by = ?)";
+            $otherWhere = array_merge($where, [$assignCond]);
+            $otherParams = array_merge($params, array_fill(0, 11, $userId));
+            $otherTypes = $types . str_repeat('i', 11);
+
+            $sql = "
+                SELECT d.*, p.name AS project_name, dt.name AS design_type_name, u.full_name AS internal_designer_name
+                FROM project_drawings d
+                LEFT JOIN projects p  ON d.project_id    = p.id
+                LEFT JOIN design_types dt ON d.design_type_id = dt.id
+                LEFT JOIN users u ON d.user_id = u.id
+                WHERE " . implode(' AND ', $otherWhere) . "
+                ORDER BY d.id DESC
+            ";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param($otherTypes, ...$otherParams);
             $stmt->execute();
             $records = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         }
 
+        $projects     = $this->db->query("SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+        $design_types = $this->db->query("SELECT id, name FROM design_types ORDER BY name ASC")->fetch_all(MYSQLI_ASSOC);
+
         $this->view('phase2/project_drawings/project-drawings', [
-            'current_route'   => 'con-project-drawings',
-            'records'         => $records,
-            'page_title'      => 'Project Drawings',
-            'canModify'       => $canModify,
-            'filterProjectId' => $filterProjectId,
+            'current_route'      => 'con-project-drawings',
+            'records'            => $records,
+            'projects'           => $projects,
+            'design_types'       => $design_types,
+            'page_title'         => 'Project Drawings',
+            'canModify'          => $canModify,
+            'filterProjectId'    => $filterProjectId,
+            'filterDesignTypeId' => $filterDesignTypeId,
+            'filterStatus'       => $filterStatus,
+            'searchTerm'         => $searchTerm,
         ]);
     }
 
@@ -343,7 +352,7 @@ class ProjectDrawingController extends Controller {
 
     private function getMyAssignedProjects(int $userId, int $roleId, string $roleCol): array
     {
-        if (in_array($roleId, [1, 2, 3, 33, 13, 15, 20, 22])) {
+        if (in_array($roleId, [1, 2, 3, 33, 13, 15, 20, 22, 16])) {
             return $this->db->query(
                 "SELECT id, name FROM projects WHERE deleted_at IS NULL AND under_construction = 1 ORDER BY name ASC"
             )->fetch_all(MYSQLI_ASSOC);
@@ -351,9 +360,9 @@ class ProjectDrawingController extends Controller {
         $stmt = $this->db->prepare(
             "SELECT id, name FROM projects 
              WHERE deleted_at IS NULL AND under_construction = 1
-               AND (pm_id = ? OR site_engineer_id = ? OR landman_id = ? OR struct_engineer_id = ? 
-                    OR operation_head_id = ? OR draftsman_id = ? OR architect_id = ? 
-                    OR estimator_id = ? OR qc_id = ? OR operator_id = ? OR created_by = ?)
+                AND (pm_id = ? OR site_engineer_id = ? OR landman_id = ? OR struct_engineer_id = ? 
+                     OR operation_head_id = ? OR draftsman_id = ? OR architect_id = ? 
+                     OR estimator_id = ? OR qc_id = ? OR operator_id = ? OR created_by = ?)
              ORDER BY name ASC"
         );
         $stmt->bind_param('iiiiiiiiiii', $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId);
@@ -362,56 +371,25 @@ class ProjectDrawingController extends Controller {
     }
 
     /**
-     * Returns projects assigned to this draftsman WHERE architect_engineering.status = 'fully'.
-     * Admin/QC/PM (roles 1, 2, 13, 15) see all projects that have AE='fully'.
+     * Returns all active projects for Draftsman and Admin roles.
      */
     private function getProjectsForDraftsman(int $userId, int $roleId): array
     {
-        if (in_array($roleId, [1, 2, 3, 33, 13, 15, 22])) {
-            // Admins/PM/QC see ALL projects
-            return $this->db->query("
-                SELECT id, name
-                FROM projects
-                WHERE deleted_at IS NULL
-                ORDER BY name ASC
-            ")->fetch_all(MYSQLI_ASSOC);
-        }
-
-        // Draftsman: show ALL projects assigned to them (regardless of AE status)
-        $stmt = $this->db->prepare("
+        return $this->db->query("
             SELECT id, name
             FROM projects
-            WHERE draftsman_id = ? AND deleted_at IS NULL
+            WHERE deleted_at IS NULL
             ORDER BY name ASC
-        ");
-        $stmt->bind_param('i', $userId);
-        $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        ")->fetch_all(MYSQLI_ASSOC);
     }
 
     /**
      * Returns projects assigned to this draftsman where AE is NOT yet fully done.
-     * Used to show a locked/waiting notice on the create page.
+     * Draftsman can now create drawings for all projects.
      */
     private function getBlockedProjectsForDraftsman(int $userId, int $roleId): array
     {
-        // Admins can create for any project regardless; no blocked state for them
-        if (in_array($roleId, [1, 2, 3, 33, 13, 15, 22])) {
-            return [];
-        }
-        $stmt = $this->db->prepare("
-            SELECT p.id, p.name
-            FROM projects p
-            WHERE p.draftsman_id = ?
-              AND p.deleted_at IS NULL
-              AND p.id NOT IN (
-                  SELECT project_id FROM architect_engineering WHERE status = 'fully'
-              )
-            ORDER BY p.name ASC
-        ");
-        $stmt->bind_param('i', $userId);
-        $stmt->execute();
-        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        return [];
     }
 
     // ─── CSV Import Method ───────────

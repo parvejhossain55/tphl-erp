@@ -268,16 +268,25 @@ setNavActive();
 
 /* for menu scroll to top active page */
 let customScrollTop = () => {
+  const scrollContainer = document.getElementById("sidebar-scroll");
   // Prefer the sub-menu active item (which doesn't have href="javascript:void(0);")
   let activeEle = document.querySelector(".sidebar__menu-item.active:not([href^='javascript:'])");
   if (!activeEle) {
     activeEle = document.querySelector(".sidebar__menu-item.active");
   }
   if (activeEle) {
+    const href = activeEle.getAttribute("href") || "";
+    // If on home/dashboard, always keep the sidebar at the very top (0)
+    if (href.endsWith("/home") || href.endsWith("?home") || href === "/" || href === "") {
+      if (scrollContainer) scrollContainer.scrollTop = 0;
+      return;
+    }
     let elemRect = activeEle.getBoundingClientRect();
     if (elemRect.top > 450 || elemRect.top < 0) {
       activeEle.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+  } else {
+    if (scrollContainer) scrollContainer.scrollTop = 0;
   }
 };
 setTimeout(() => {

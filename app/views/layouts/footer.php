@@ -151,7 +151,7 @@
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/jquery.barrating.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/rating-script.js"></script>
         <script src="<?= $GLOBALS['base_url'] ?>/assets/js/main.js?v=1.0.1"></script>
-        <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/sidebar.js"></script>
+        <script src="<?= $GLOBALS['base_url'] ?>/assets/js/vendor/sidebar.js?v=<?= defined('BASE_PATH') ? @filemtime(BASE_PATH . '/public/assets/js/vendor/sidebar.js') : '2.0.1' ?>"></script>
 
         <!-- ✅ Global Delete Handler & Client-Side Error Logging -->
         <script>

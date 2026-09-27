@@ -424,16 +424,20 @@ class AutoPostingService
         $narration = "Land Acquisition " . $type . " Payment for " . $landOwnerName . " (Ref: " . $txnNo . ")";
 
         // Check if journal already posted
-        $chk = $this->db->prepare("SELECT id FROM journals WHERE narration LIKE ? LIMIT 1");
+        $chk = $this->db->prepare("SELECT id FROM journals WHERE (source_module = 'land_requisition' AND source_ref_id = ?) OR narration LIKE ? LIMIT 1");
         $likeNarr = "%" . $narration . "%";
-        $chk->bind_param("s", $likeNarr);
+        $chk->bind_param("is", $requisitionId, $likeNarr);
         $chk->execute();
         if ($chk->get_result()->num_rows > 0) {
             return true;
         }
 
         $bankAccountId = $this->getBankOrCashAccountId($r['payment_method'] ?? 'Bank', '');
-        $landAccountId = $this->getAccountIdByCode('1200-001'); // 1200-001 Land & Land Development
+        // 570001 Land Purchase (Expense - enters Income Statement / P&L) or fallback to 110005
+        $landAccountId = $this->getAccountIdByCode('570001');
+        if (!$landAccountId) {
+            $landAccountId = $this->getAccountIdByCode('110005'); // Advance Against Land Purchase
+        }
 
         if (!class_exists('GeneralJournal')) {
             require_once __DIR__ . '/../models/GeneralJournal.php';
@@ -453,7 +457,10 @@ class AutoPostingService
             'total_credit' => $amount,
             'project_id' => $r['project_id'],
             'office' => $this->getUserWorkplaceOffice($userId),
-            'status' => 'approved'
+            'status' => 'approved',
+            'source_module' => 'land_requisition',
+            'source_ref_id' => (int)$r['id'],
+            'entry_type' => 'disbursement'
         ];
 
         $details = [
