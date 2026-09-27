@@ -64,7 +64,7 @@ $projects        = $projects        ?? [];
             <div class="col-xl-6">
                 <label>Project <span class="text-danger">*</span></label>
                 <select name="project_id" class="form-control select2" required>
-                    <option value="">Select Project (A&amp;E Complete)</option>
+                    <option value="">Select Project</option>
                     <?php foreach ($projects as $p): ?>
                         <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
                     <?php endforeach; ?>

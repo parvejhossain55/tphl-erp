@@ -611,7 +611,7 @@ class Con_DashboardController extends Controller
         $userId = $_SESSION['user']['id'] ?? 0;
         $roleId = $_SESSION['user']['role_id'] ?? 0;
         $baseFilter = "{$alias}.under_construction = 1";
-        if (in_array($roleId, [1, 3, 33, 20, 22, 32])) return $baseFilter;
+        if (in_array($roleId, [1, 3, 33, 20, 22, 32, 16])) return $baseFilter;
         return "{$baseFilter} AND ({$alias}.pm_id = {$userId} OR {$alias}.site_engineer_id = {$userId} OR {$alias}.landman_id = {$userId} OR {$alias}.struct_engineer_id = {$userId} OR {$alias}.operation_head_id = {$userId} OR {$alias}.draftsman_id = {$userId} OR {$alias}.architect_id = {$userId} OR {$alias}.estimator_id = {$userId} OR {$alias}.qc_id = {$userId} OR {$alias}.operator_id = {$userId} OR {$alias}.created_by = {$userId})";
     }
 
@@ -2462,7 +2462,7 @@ $project = $stmt->get_result()->fetch_assoc();
         // ── WORKFLOW GATE: Projects assigned to this draftsman but AE NOT yet 'fully' ──
         // Only relevant for actual draftsman role; admins/PM/QC skip this
         $projectsWaitingForAE = [];
-        if (!in_array($roleId, [1, 2, 3, 33, 13, 15, 22])) {
+        if (!in_array($roleId, [1, 2, 3, 33, 13, 15, 22, 16])) {
             $stmtWait = $this->db->prepare("
                 SELECT p.id, p.name,
                        COALESCE(u.full_name, 'N/A') AS architect_name,

@@ -1,8 +1,14 @@
 <?php
 $addPage = true;
 $show_breadcrumb = false;
-$canModify       = $canModify       ?? false;
-$filterProjectId = $filterProjectId ?? 0;
+$canModify          = $canModify          ?? false;
+$filterProjectId    = $filterProjectId    ?? 0;
+$filterDesignTypeId = $filterDesignTypeId ?? 0;
+$filterStatus       = $filterStatus       ?? '';
+$searchTerm         = $searchTerm         ?? '';
+$projects           = $projects           ?? [];
+$design_types       = $design_types       ?? [];
+$records            = $records            ?? [];
 ?>
 
 <h4 class="mb-2">
@@ -17,39 +23,107 @@ $filterProjectId = $filterProjectId ?? 0;
   <?php endif; ?>
 </h4>
 
-<div class="row justify-content-end mb-3">
-    <div class="col-xxl-4 col-xl-4 col-lg-4 col-md-4 col-12">
-        <div class="card__wrapper border-0 p-0 shadow-none bg-transparent">
-            <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
-                <?php if ($canModify): ?>
-                <a href="<?= $GLOBALS['base_url'] ?>/con-project-drawings/create" class="btn btn-primary text-nowrap">
-                    <i class="fa-light fa-plus me-1"></i> Add Drawing
-                </a>
-            
-                <button type="button" class="btn btn-outline-success text-nowrap" data-bs-toggle="modal" data-bs-target="#importProjectDrawingCsvModal">
-                    <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
-                </button>
-                <?php endif; ?>
+<!-- Top Filter & Action Card (like flats-list) -->
+<div class="card__wrapper mb-3">
+    <form action="" method="get">
+
+        <!-- Row 1: Filter inputs -->
+        <div class="row g-2 align-items-center mb-2">
+
+            <!-- Project Filter -->
+            <div class="col-xl-3 col-md-4 col-sm-6">
+                <select class="form-control form-control-sm select2" name="project_id">
+                    <option value="">All Projects</option>
+                    <?php foreach ($projects as $project): ?>
+                        <option value="<?= $project['id'] ?>"
+                            <?= $filterProjectId == $project['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($project['name']) ?>
+                        </option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+
+            <!-- Drawing Type Filter -->
+            <div class="col-xl-3 col-md-4 col-sm-6">
+                <select class="form-control form-control-sm select2" name="design_type_id">
+                    <option value="">All Drawing Types</option>
+                    <?php foreach ($design_types as $dt): ?>
+                        <option value="<?= $dt['id'] ?>"
+                            <?= $filterDesignTypeId == $dt['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($dt['name']) ?>
+                        </option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+
+            <!-- Status Filter -->
+            <div class="col-xl-2 col-md-3 col-sm-6">
+                <select class="form-control form-control-sm" name="status">
+                    <option value="">All Status</option>
+                    <option value="Draft"     <?= $filterStatus === 'Draft'     ? 'selected' : '' ?>>Draft</option>
+                    <option value="Submitted" <?= $filterStatus === 'Submitted' ? 'selected' : '' ?>>Submitted</option>
+                    <option value="Approved"  <?= $filterStatus === 'Approved'  ? 'selected' : '' ?>>Approved</option>
+                    <option value="Rejected"  <?= $filterStatus === 'Rejected'  ? 'selected' : '' ?>>Rejected</option>
+                </select>
+            </div>
+
+            <!-- Search -->
+            <div class="col-xl-2 col-md-3 col-sm-6">
+                <input type="text" class="form-control form-control-sm" name="q" id="drawingSearchInput"
+                    placeholder="Search Drawings..."
+                    value="<?= htmlspecialchars($searchTerm ?? '') ?>">
+            </div>
+
+            <!-- Filter + Reset -->
+            <div class="col-xl-2 col-md-4 col-sm-6">
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-secondary btn-sm flex-fill">
+                        <i class="fa-solid fa-filter me-1"></i> Filter
+                    </button>
+                    <a href="<?= $GLOBALS['base_url'] ?>/con-project-drawings" class="btn btn-success btn-sm flex-fill">
+                        <i class="fa-solid fa-rotate-right me-1"></i> Reset
+                    </a>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Row 2: Action Buttons -->
+        <?php if ($canModify): ?>
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-primary btn-sm" href="<?= $GLOBALS['base_url'] ?>/con-project-drawings/create">
+                        <i class="fa-solid fa-plus me-1"></i> Add Drawing
+                    </a>
+                    <button type="button" class="btn btn-outline-success btn-sm"
+                        data-bs-toggle="modal" data-bs-target="#importProjectDrawingCsvModal">
+                        <i class="bi bi-file-earmark-arrow-up me-1"></i> Import CSV
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
+        <?php endif; ?>
+
+    </form>
 </div>
 
+<!-- Table Card (like flats-list) -->
 <div class="row">
     <div class="col-xxl-12">
         <div class="card__wrapper">
             <div class="table__wrapper table-responsive">
-                <table class="table mb-20 hover ">
+                <table class="table mb-20 hover" id="projectDrawingsTable">
                     <thead>
                         <tr class="table__title">
-                            <th>#</th>
+                            <th style="width:50px">#</th>
                             <th>Project</th>
                             <th>Drawing Type</th>
                             <th>Designer</th>
                             <th>Source / Received From</th>
                             <th>Status</th>
                             <th>Design Link</th>
-                            <?php if ($canModify): ?><th>Actions</th><?php endif; ?>
+                            <?php if ($canModify): ?><th style="text-align:center;">Actions</th><?php endif; ?>
                         </tr>
                     </thead>
                     <tbody class="table__body">
@@ -97,7 +171,7 @@ $filterProjectId = $filterProjectId ?? 0;
                                         <?php endif; ?>
                                     </td>
                                     <?php if ($canModify): ?>
-                                    <td class="table__icon-box">
+                                    <td class="table__icon-box text-center">
                                         <div class="d-flex align-items-center justify-content-center gap-10">
                                             <?php if (($row['status'] ?? 'Draft') === 'Draft'): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/con-project-drawings/edit?id=<?= $row['id'] ?>" class="table__icon edit" title="Edit Draft">
@@ -116,10 +190,6 @@ $filterProjectId = $filterProjectId ?? 0;
                                     <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="<?= $canModify ? 8 : 7 ?>" class="text-center text-muted py-4">No drawings found.</td>
-                            </tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -283,5 +353,59 @@ function downloadProjectDrawingSampleCsv() {
 </script>
 
 <script>
-    const base_url = "<?= $GLOBALS['base_url'] ?>"
+    var base_url = "<?= $GLOBALS['base_url'] ?>";
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof jQuery !== 'undefined' && typeof jQuery.fn.DataTable !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const qParam = urlParams.get('q') || '';
+
+            const dtTable = $('#projectDrawingsTable').DataTable({
+                destroy: true,
+                responsive: true,
+                pageLength: 10,
+                lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+                order: [], // Preserve default order (id DESC)
+                columnDefs: [
+                    { orderable: false, searchable: false, targets: 0 },  // # serial column
+                    <?php if ($canModify): ?>
+                    { orderable: false, searchable: false, targets: -1 }, // Actions column
+                    <?php endif; ?>
+                ],
+                language: {
+                    search: "_INPUT_",
+                    searchPlaceholder: "Search in table...",
+                    lengthMenu: "Show _MENU_ entries",
+                    info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                    infoEmpty: "Showing 0 to 0 of 0 entries",
+                    infoFiltered: "(filtered from _MAX_ total entries)",
+                    emptyTable: "No drawings found.",
+                    paginate: {
+                        first: '<i class="fa-solid fa-angles-left"></i>',
+                        previous: '<i class="fa-solid fa-angle-left"></i>',
+                        next: '<i class="fa-solid fa-angle-right"></i>',
+                        last: '<i class="fa-solid fa-angles-right"></i>'
+                    }
+                },
+                drawCallback: function(settings) {
+                    // Continuous serial numbers across pagination
+                    var api = this.api();
+                    var startIndex = api.context[0]._iDisplayStart;
+                    api.column(0, {page: 'current'}).nodes().each(function(cell, i) {
+                        cell.innerHTML = startIndex + i + 1;
+                    });
+                }
+            });
+
+            // If initial search parameter exists in URL, filter table immediately
+            if (qParam) {
+                dtTable.search(qParam).draw();
+            }
+
+            // Real-time live auto-search when typing in top filter search input
+            $('#drawingSearchInput').on('keyup input', function () {
+                dtTable.search(this.value).draw();
+            });
+        }
+    });
 </script>

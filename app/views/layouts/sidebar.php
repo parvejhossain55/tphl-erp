@@ -521,12 +521,10 @@
                         <a href="<?= $base_url ?>/all-approval-requests"
                             class="sidebar__menu-item <?= isActive('all-approval-requests', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-list-check text-primary"></i></div>
-                            <span class="sidebar__menu-label">
-                                All Approval Requests
-                                <?php if ($pendingApprovalCount > 0): ?>
-                                    <span class="badge bg-danger rounded-pill ms-2"><?= $pendingApprovalCount ?></span>
-                                <?php endif; ?>
-                            </span>
+                            <span class="sidebar__menu-label">All Approval Requests</span>
+                            <?php if ($pendingApprovalCount > 0): ?>
+                                <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $pendingApprovalCount ?></span>
+                            <?php endif; ?>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -570,12 +568,10 @@
                         <a href="<?= $base_url ?>/expense-adjustments"
                             class="sidebar__menu-item <?= isActive('expense-adjustments', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-scale-balanced text-info"></i></div>
-                            <span class="sidebar__menu-label">
-                                Expense Adjustments
-                                <?php if (!empty($sidebarPendingAdjCount)): ?>
-                                    <span class="badge bg-danger rounded-pill ms-2"><?= $sidebarPendingAdjCount ?></span>
-                                <?php endif; ?>
-                            </span>
+                            <span class="sidebar__menu-label">Expense Adjustments</span>
+                            <?php if (!empty($sidebarPendingAdjCount)): ?>
+                                <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $sidebarPendingAdjCount ?></span>
+                            <?php endif; ?>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -740,14 +736,22 @@
                                     <li class="slide">
                                         <a href="<?= $base_url ?>/today-leads"
                                             class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">
-                                            Today Leads Assigned <?php if ($todayAssignedCount > 0): ?><span class="badge bg-primary ms-2"><?= $todayAssignedCount ?></span><?php endif; ?></a>
+                                            <span>Today Leads Assigned</span>
+                                            <?php if ($todayAssignedCount > 0): ?>
+                                                <span class="badge bg-primary ms-auto me-2"><?= $todayAssignedCount ?></span>
+                                            <?php endif; ?>
+                                        </a>
                                     </li>
                                 <?php endif; ?>
                                 <?php if (!$isManagement): ?>
                                     <li class="slide">
                                         <a href="<?= $base_url ?>/today-follow-up"
-                                            class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today
-                                            Follow Up <span class="badge bg-primary ms-2"><?= $todayCount ?></span> </a>
+                                            class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">
+                                            <span>Today Follow Up</span>
+                                            <?php if ($todayCount > 0): ?>
+                                                <span class="badge bg-primary ms-auto me-2"><?= $todayCount ?></span>
+                                            <?php endif; ?>
+                                        </a>
                                     </li>
                                     <li class="slide">
                                         <a href="<?= $base_url ?>/my-all-assigned-leads?filter=missing_followup"
@@ -760,7 +764,11 @@
                                     <li class="slide">
                                         <a href="<?= $base_url ?>/upcoming-follow-up"
                                             class="sidebar__menu-item <?= isActive('overdue-next-followup', $current_route) ?>">
-                                            Upcoming Follow Up<span class="ms-2 badge bg-warning"><?= $upcomingCount ?></span></a>
+                                            <span>Upcoming Follow Up</span>
+                                            <?php if ($upcomingCount > 0): ?>
+                                                <span class="ms-auto me-2 badge bg-warning"><?= $upcomingCount ?></span>
+                                            <?php endif; ?>
+                                        </a>
                                     </li>
                                 <?php endif; ?>
 
@@ -783,7 +791,7 @@
                                         class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">Client
                                         Refunds
                                         <?php if ($unpaidRefundsCount > 0): ?>
-                                            <span class="badge bg-danger rounded-pill ms-auto"><?= $unpaidRefundsCount ?></span>
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $unpaidRefundsCount ?></span>
                                         <?php endif; ?>
                                     </a>
                                 </li>
@@ -1099,15 +1107,19 @@
                         <li class="slide">
                             <a href="<?= $base_url ?>/today-leads"
                                 class="sidebar__menu-item <?= isActive('today-leads', $current_route) ?>">
-                                Today Leads Assigned <?php if ($todayAssignedCount > 0): ?><span class="badge bg-primary ms-2"><?= $todayAssignedCount ?></span><?php endif; ?></a>
+                                <span>Today Leads Assigned</span>
+                                <?php if ($todayAssignedCount > 0): ?>
+                                    <span class="badge bg-primary ms-auto me-2"><?= $todayAssignedCount ?></span>
+                                <?php endif; ?>
+                            </a>
                         </li>
 
                         <li class="slide d-none">
                             <a href="<?= $base_url ?>/task-dashboard"
                                 class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
-                                <span class="sidebar__menu-label">Task Dashbaord</span>
+                                <span class="sidebar__menu-label">Task Dashboard</span>
                                 <?php if ($pendingTasksCount > 0): ?>
-                                    <span class="badge bg-danger ms-2 rounded-pill"
+                                    <span class="badge bg-danger ms-auto me-2 rounded-pill"
                                         style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
                                 <?php endif; ?>
                             </a>
@@ -1120,8 +1132,12 @@
                         </li>
                         <li class="slide">
                             <a href="<?= $base_url ?>/today-follow-up"
-                                class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">Today Follow
-                                Up <span class="badge bg-primary ms-2"><?= $todayCount ?></span> </a>
+                                class="sidebar__menu-item <?= isActive('today-follow-up', $current_route) ?>">
+                                <span>Today Follow Up</span>
+                                <?php if ($todayCount > 0): ?>
+                                    <span class="badge bg-primary ms-auto me-2"><?= $todayCount ?></span>
+                                <?php endif; ?>
+                            </a>
                         </li>
                         <li class="slide">
                             <a href="<?= $base_url ?>/my-all-assigned-leads?filter=missing_followup"
@@ -1132,7 +1148,11 @@
                         <li class="slide">
                             <a href="<?= $base_url ?>/upcoming-follow-up"
                                 class="sidebar__menu-item <?= isActive('overdue-next-followup', $current_route) ?>">
-                                Upcoming Follow Up<span class="ms-2 badge bg-warning"><?= $upcomingCount ?></span></a>
+                                <span>Upcoming Follow Up</span>
+                                <?php if ($upcomingCount > 0): ?>
+                                    <span class="ms-auto me-2 badge bg-warning"><?= $upcomingCount ?></span>
+                                <?php endif; ?>
+                            </a>
                         </li>
                         <li class="slide">
                             <a href="<?= $base_url ?>/my-onboarding-projects"
@@ -1260,9 +1280,9 @@
                         <a href="<?= $base_url ?>/task-dashboard"
                             class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
-                            <span class="sidebar__menu-label">Task Dashbaord</span>
+                            <span class="sidebar__menu-label">Task Dashboard</span>
                             <?php if ($pendingTasksCount > 0): ?>
-                                <span class="badge bg-danger ms-2 rounded-pill"
+                                <span class="badge bg-danger ms-auto me-2 rounded-pill"
                                     style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
                             <?php endif; ?>
                         </a>
@@ -1311,7 +1331,7 @@
                                 <div class="side-menu__icon"><i class="fa-solid fa-arrow-rotate-left"></i></div>
                                 <span class="sidebar__menu-label">Client Refunds</span>
                                 <?php if ($unpaidRefundsCount > 0): ?>
-                                    <span class="badge bg-danger rounded-pill ms-auto"><?= $unpaidRefundsCount ?></span>
+                                    <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $unpaidRefundsCount ?></span>
                                 <?php endif; ?>
                             </a>
                         </li>
@@ -1370,9 +1390,9 @@
                         <a href="<?= $base_url ?>/task-dashboard"
                             class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
-                            <span class="sidebar__menu-label">Task Dashbaord</span>
+                            <span class="sidebar__menu-label">Task Dashboard</span>
                             <?php if ($pendingTasksCount > 0): ?>
-                                <span class="badge bg-danger ms-2 rounded-pill"
+                                <span class="badge bg-danger ms-auto me-2 rounded-pill"
                                     style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
                             <?php endif; ?>
                         </a>
@@ -1396,8 +1416,8 @@
                     </li>
 
                     <!-- Tipsoi Employee Data Group -->
-                    <li class="slide has-sub active open">
-                        <a href="javascript:void(0);" class="sidebar__menu-item menu-open active">
+                    <li class="slide has-sub open <?= isActive(['hrm-external-employees', 'hrm-create-tipsoi-employee', 'hrm-attendance-dashboard', 'hrm-leave-history', 'hrm-leave-balances', 'hrm-monthly-lwp', 'hrm-tipsoi-requests', 'tipsoi-email-logs'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['hrm-external-employees', 'hrm-create-tipsoi-employee', 'hrm-attendance-dashboard', 'hrm-leave-history', 'hrm-leave-balances', 'hrm-monthly-lwp', 'hrm-tipsoi-requests', 'tipsoi-email-logs'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-users-line"></i></div>
                             <span class="sidebar__menu-label">Tipsoi Employee Data</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -2048,7 +2068,7 @@
                                     class="sidebar__menu-item <?= isActive('client-refunds', $current_route) ?>">
                                     Refunds
                                     <?php if ($unpaidRefundsCount > 0): ?>
-                                        <span class="badge bg-danger rounded-pill ms-auto"><?= $unpaidRefundsCount ?></span>
+                                        <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $unpaidRefundsCount ?></span>
                                     <?php endif; ?>
                                 </a>
                             </li>
@@ -2099,8 +2119,8 @@
                             <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
                             <span class="sidebar__menu-label">Accounts Dashboard</span>
                             <?php if ($accountsNotifCount > 0): ?>
-                                <span class="badge bg-danger ms-2"
-                                    style="border-radius: 50%; padding: 0.35em 0.5em; font-size: 0.75em;"><?= $accountsNotifCount ?></span>
+                                <span class="badge bg-danger rounded-pill ms-auto me-2"
+                                    style="padding: 0.35em 0.6em; font-size: 0.75em;"><?= $accountsNotifCount ?></span>
                             <?php endif; ?>
                         </a>
                     </li>
@@ -2180,12 +2200,10 @@
                             <a href="<?= $base_url ?>/all-approval-requests"
                                 class="sidebar__menu-item <?= isActive('all-approval-requests', $current_route) ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-list-check text-primary"></i></div>
-                                <span class="sidebar__menu-label">
-                                    All Approval Requests
-                                    <?php if ($pendingApprovalCount > 0): ?>
-                                        <span class="badge bg-danger rounded-pill ms-2"><?= $pendingApprovalCount ?></span>
-                                    <?php endif; ?>
-                                </span>
+                                <span class="sidebar__menu-label">All Approval Requests</span>
+                                <?php if ($pendingApprovalCount > 0): ?>
+                                    <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $pendingApprovalCount ?></span>
+                                <?php endif; ?>
                             </a>
                         </li>
                         <li class="slide <?= isActive('expense-analytics', $current_route) ?>">
@@ -2207,13 +2225,10 @@
                         <a href="<?= $base_url ?>/incentive-management"
                             class="sidebar__menu-item <?= isActive('incentive-management', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-coins text-warning"></i></div>
-                            <span class="sidebar__menu-label">
-                                Sales Incentive Accounts
-                                <?php if ($pendingIncentiveClaimsCount > 0): ?>
-                                    <span
-                                        class="badge bg-warning text-dark rounded-pill ms-2"><?= $pendingIncentiveClaimsCount ?></span>
-                                <?php endif; ?>
-                            </span>
+                            <span class="sidebar__menu-label">Sales Incentive Accounts</span>
+                            <?php if ($pendingIncentiveClaimsCount > 0): ?>
+                                <span class="badge bg-warning text-dark rounded-pill ms-auto me-2"><?= $pendingIncentiveClaimsCount ?></span>
+                            <?php endif; ?>
                         </a>
                     </li>
                     <li class="slide d-none <?= isActive('projects-cashout', $current_route) ?>">
@@ -2250,10 +2265,10 @@
                             <li class="slide <?= isActive('clients-cash-in', $current_route) ?>">
                                 <a href="<?= $base_url ?>/clients-cash-in"
                                     class="sidebar__menu-item <?= isActive('clients-cash-in', $current_route) ?>"
-                                    style="display:flex; justify-content:space-between; align-items:center; padding-right:12px;">
+                                    style="display:flex; align-items:center;">
                                     <span class="text-truncate">Clients</span>
                                     <?php if (!empty($pendingVerificationsCount) && $pendingVerificationsCount > 0): ?>
-                                        <span class="badge text-dark rounded-pill ms-2 flex-shrink-0"
+                                        <span class="badge text-dark rounded-pill ms-auto me-2 flex-shrink-0"
                                             style="font-size:10px; padding: 2px 6px; background-color: #ffb300;"
                                             title="<?= $pendingVerificationsCount ?> Pending Verifications">
                                             <?= $pendingVerificationsCount ?> Pending
@@ -2310,7 +2325,7 @@
                                         class="sidebar__menu-item <?= isActive('expense-adjustments', $current_route) ?>">Expense
                                         Adjustments
                                         <?php if (!empty($sidebarPendingAdjCount)): ?>
-                                            <span class="badge bg-danger rounded-pill ms-1"><?= $sidebarPendingAdjCount ?></span>
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $sidebarPendingAdjCount ?></span>
                                         <?php endif; ?>
                                     </a>
                                 </li>
@@ -2333,10 +2348,10 @@
                         <ul class="sidebar-menu child2" style="display:block;">
                             <li class="slide <?= isActive('con-vendor-payment-requests', $current_route) ?>">
                                 <a href="<?= $base_url ?>/con-vendor-payment-requests"
-                                    class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?> d-flex align-items-center justify-content-between">
+                                    class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?>">
                                     <span><i class="bi bi-wallet2 me-1"></i> Vendor Payments</span>
                                     <?php if (!empty($sidebarPendingVprCount) && $sidebarPendingVprCount > 0): ?>
-                                        <span class="badge bg-danger rounded-pill me-1"
+                                        <span class="badge bg-danger rounded-pill ms-auto me-2"
                                             style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingVprCount ?></span>
                                     <?php endif; ?>
                                 </a>
@@ -2346,7 +2361,7 @@
                                     class="sidebar__menu-item <?= isActive('con-contractor-bills', $current_route) ?>">
                                     <i class="bi bi-receipt me-1"></i>Contractor Bills
                                     <?php if (isset($conPendingBillsCount) && $conPendingBillsCount > 0): ?>
-                                        <span class="badge bg-danger rounded-pill ms-2"><?= $conPendingBillsCount ?></span>
+                                        <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $conPendingBillsCount ?></span>
                                     <?php endif; ?>
                                 </a>
                             </li>
@@ -2367,7 +2382,7 @@
                                     class="sidebar__menu-item <?= isActive('fund-requisitions', $current_route) ?>">
                                     <i class="fa-solid fa-file-invoice-dollar me-1"></i> Fund Requisitions
                                     <?php if (!empty($pendingFundReqTotalCount)): ?>
-                                        <span class="badge bg-warning text-dark rounded-pill ms-2"
+                                        <span class="badge bg-warning text-dark rounded-pill ms-auto me-2"
                                             style="font-size: 10px; padding: 2px 6px;"
                                             title="Pending Actions: <?= $pendingFundReqDeptCount ?> Dept Head, <?= $pendingFundReqMgmtCount ?> Mgmt, <?= $pendingFundReqAccountsCount ?> Accounts">
                                             <?= $pendingFundReqTotalCount ?>
@@ -2387,7 +2402,7 @@
                             <div class="side-menu__icon"><i class="fa-solid fa-arrow-rotate-left"></i></div>
                             <span class="sidebar__menu-label">Client Refunds</span>
                             <?php if ($unpaidRefundsCount > 0): ?>
-                                <span class="badge bg-danger rounded-pill ms-auto"><?= $unpaidRefundsCount ?></span>
+                                <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $unpaidRefundsCount ?></span>
                             <?php endif; ?>
                         </a>
                     </li>
@@ -2399,14 +2414,11 @@
                             class="slide has-sub <?= isActive(['con-labor-requisitions', 'con-labor-requisition'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
                                 class="sidebar__menu-item <?= isActive(['con-labor-requisitions', 'con-labor-requisition'], $current_route) ? 'menu-open active' : '' ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i
-                                ></div>
-                                <span class="sidebar__menu-label">
-                                    Labor Pay Approval
-                                    <?php if (isset($pendingLaborAccountsCount) && $pendingLaborAccountsCount > 0): ?>
-                                        <span class="badge bg-danger rounded-pill ms-2"><?= $pendingLaborAccountsCount ?></span>
-                                    <?php endif; ?>
-                                </span>
+                                <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
+                                <span class="sidebar__menu-label">Labor Pay Approval</span>
+                                <?php if (isset($pendingLaborAccountsCount) && $pendingLaborAccountsCount > 0): ?>
+                                    <span class="badge bg-danger rounded-pill ms-auto me-4"><?= $pendingLaborAccountsCount ?></span>
+                                <?php endif; ?>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             </a>
                             <ul class="sidebar-menu child2" style="display:block;">
@@ -2415,7 +2427,7 @@
                                         class="sidebar__menu-item <?= (isActive('con-labor-requisitions', $current_route) && ($_GET['status'] ?? '') === 'management_approved') ? 'active' : '' ?>">
                                         <i class="bi bi-clock-history me-1"></i> Pending Payments
                                         <?php if (isset($pendingLaborAccountsCount) && $pendingLaborAccountsCount > 0): ?>
-                                            <span class="badge bg-danger rounded-pill ms-2"><?= $pendingLaborAccountsCount ?></span>
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $pendingLaborAccountsCount ?></span>
                                         <?php endif; ?>
                                     </a>
                                 </li>
@@ -2755,10 +2767,10 @@
                         </li>
                         <li class="slide">
                             <a href="<?= $base_url ?>/con-purchase-requests"
-                                class="sidebar__menu-item <?= isActive('con-purchase-requests', $current_route) ?> d-flex align-items-center justify-content-between">
+                                class="sidebar__menu-item <?= isActive('con-purchase-requests', $current_route) ?>">
                                 <span>Purchase Requests</span>
                                 <?php if (!empty($sidebarPendingPRCount) && $sidebarPendingPRCount > 0): ?>
-                                    <span class="badge bg-danger rounded-pill me-1"
+                                    <span class="badge bg-danger rounded-pill ms-auto me-2"
                                         style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPRCount ?></span>
                                 <?php endif; ?>
                             </a>
@@ -3116,7 +3128,7 @@
                                 <div class="side-menu__icon"><i class="fa-solid fa-cart-shopping"></i></div>
                                 <span class="sidebar__menu-label">Procurement</span>
                                 <?php if (($sidebarPendingPRCount + $sidebarPendingPOCount) > 0): ?>
-                                    <span class="badge bg-danger rounded-pill ms-2 me-1"
+                                    <span class="badge bg-danger rounded-pill ms-auto me-4"
                                         style="font-size:9.5px; padding: 2px 6px;"><?= ($sidebarPendingPRCount + $sidebarPendingPOCount) ?></span>
                                 <?php endif; ?>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -3124,10 +3136,10 @@
                             <ul class="sidebar-menu child2" style="display:block;">
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/con-purchase-requests"
-                                        class="sidebar__menu-item <?= isActive('con-purchase-requests', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        class="sidebar__menu-item <?= isActive('con-purchase-requests', $current_route) ?>">
                                         <span>Purchase Requests</span>
                                         <?php if (!empty($sidebarPendingPRCount) && $sidebarPendingPRCount > 0): ?>
-                                            <span class="badge bg-danger rounded-pill me-1"
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"
                                                 style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPRCount ?></span>
                                         <?php endif; ?>
                                     </a>
@@ -3139,10 +3151,10 @@
                                 </li>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/con-purchase-orders"
-                                        class="sidebar__menu-item <?= isActive('con-purchase-orders', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        class="sidebar__menu-item <?= isActive('con-purchase-orders', $current_route) ?>">
                                         <span>Purchase Orders</span>
                                         <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
-                                            <span class="badge bg-danger rounded-pill me-1"
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"
                                                 style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
                                         <?php endif; ?>
                                     </a>
@@ -3190,10 +3202,10 @@
                                 <li
                                     class="slide <?= isActive('con-vendor-payment-requests', $current_route) ? 'active' : '' ?>">
                                     <a href="<?= $base_url ?>/con-vendor-payment-requests"
-                                        class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?>">
                                         <span><i class="bi bi-wallet2 me-1"></i> Payment Requests</span>
                                         <?php if (!empty($sidebarPendingVprCount) && $sidebarPendingVprCount > 0): ?>
-                                            <span class="badge bg-danger rounded-pill me-1"
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"
                                                 style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingVprCount ?></span>
                                         <?php endif; ?>
                                     </a>
@@ -3285,7 +3297,7 @@
                                 class="sidebar__menu-item <?= isActive('con-contractor-bills', $current_route) ?>">
                                 <i class="bi bi-receipt me-1"></i>Contractor Bills
                                 <?php if (isset($conPendingBillsCount) && $conPendingBillsCount > 0): ?>
-                                    <span class="badge bg-danger rounded-pill ms-2"><?= $conPendingBillsCount ?></span>
+                                    <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $conPendingBillsCount ?></span>
                                 <?php endif; ?>
                             </a>
                         </li>
@@ -3348,7 +3360,7 @@
                                         class="sidebar__menu-item <?= isActive('con-contractor-bills', $current_route) ?>">
                                         <i class="bi bi-receipt me-1"></i> Contractor Bills
                                         <?php if (isset($conPendingBillsCount) && $conPendingBillsCount > 0): ?>
-                                            <span class="badge bg-danger rounded-pill ms-2"><?= $conPendingBillsCount ?></span>
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $conPendingBillsCount ?></span>
                                         <?php endif; ?>
                                     </a>
                                 </li>
@@ -3366,7 +3378,7 @@
                                             class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
                                             <i class="fa-solid fa-hard-hat me-1"></i> Labor Requisitions
                                             <?php if (isset($pendingLaborReqCount) && $pendingLaborReqCount > 0): ?>
-                                                <span class="badge bg-danger rounded-pill ms-2"><?= $pendingLaborReqCount ?></span>
+                                                <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $pendingLaborReqCount ?></span>
                                             <?php endif; ?>
                                         </a>
                                     </li>
@@ -3393,12 +3405,10 @@
                             <a href="javascript:void(0);"
                                 class="sidebar__menu-item <?= isActive(['con-labor-requisitions', 'con-labor-requisition', 'con-labor-requisition-create'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
-                                <span class="sidebar__menu-label">
-                                    Labor Requisition
-                                    <?php if (isset($pendingLaborReqCount) && $pendingLaborReqCount > 0): ?>
-                                        <span class="badge bg-danger rounded-pill ms-2"><?= $pendingLaborReqCount ?></span>
-                                    <?php endif; ?>
-                                </span>
+                                <span class="sidebar__menu-label">Labor Requisition</span>
+                                <?php if (isset($pendingLaborReqCount) && $pendingLaborReqCount > 0): ?>
+                                    <span class="badge bg-danger rounded-pill ms-auto me-4"><?= $pendingLaborReqCount ?></span>
+                                <?php endif; ?>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             </a>
                             <ul class="sidebar-menu child2" style="display:block;">
@@ -3407,7 +3417,7 @@
                                         class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
                                         <i class="bi bi-list-ul me-1"></i> All Requisitions
                                         <?php if (isset($pendingLaborReqCount) && $pendingLaborReqCount > 0): ?>
-                                            <span class="badge bg-danger rounded-pill ms-2"><?= $pendingLaborReqCount ?></span>
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"><?= $pendingLaborReqCount ?></span>
                                         <?php endif; ?>
                                     </a>
                                 </li>
@@ -3530,7 +3540,7 @@
                                 <div class="side-menu__icon"><i class="bi bi-shield-check"></i></div>
                                 <span class="sidebar__menu-label">Internal Audit</span>
                                 <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
-                                    <span class="badge bg-danger rounded-pill ms-2 me-1"
+                                    <span class="badge bg-danger rounded-pill ms-auto me-4"
                                         style="font-size:9.5px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
                                 <?php endif; ?>
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -3538,10 +3548,10 @@
                             <ul class="sidebar-menu child2" style="display:block;">
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/qc-audit-dashboard"
-                                        class="sidebar__menu-item <?= isActive('qc-audit-dashboard', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        class="sidebar__menu-item <?= isActive('qc-audit-dashboard', $current_route) ?>">
                                         <span><i class="bi bi-speedometer2 me-1"></i> Dashboard</span>
                                         <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
-                                            <span class="badge bg-danger rounded-pill me-1"
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"
                                                 style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
                                         <?php endif; ?>
                                     </a>
@@ -3560,30 +3570,30 @@
                                 </li>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/con-purchase-orders"
-                                        class="sidebar__menu-item <?= isActive('con-purchase-orders', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        class="sidebar__menu-item <?= isActive('con-purchase-orders', $current_route) ?>">
                                         <span><i class="bi bi-cart me-1"></i> Purchase Orders</span>
                                         <?php if (!empty($sidebarPendingPOCount) && $sidebarPendingPOCount > 0): ?>
-                                            <span class="badge bg-danger rounded-pill me-1"
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"
                                                 style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPOCount ?></span>
                                         <?php endif; ?>
                                     </a>
                                 </li>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/con-vendor-payment-requests"
-                                        class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        class="sidebar__menu-item <?= isActive('con-vendor-payment-requests', $current_route) ?>">
                                         <span><i class="bi bi-cash-stack me-1"></i> Vendor Payments</span>
                                         <?php if (!empty($sidebarPendingVprCount) && $sidebarPendingVprCount > 0): ?>
-                                            <span class="badge bg-danger rounded-pill me-1"
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"
                                                 style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingVprCount ?></span>
                                         <?php endif; ?>
                                     </a>
                                 </li>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/con-contractor-bills"
-                                        class="sidebar__menu-item <?= isActive('con-contractor-bills', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        class="sidebar__menu-item <?= isActive('con-contractor-bills', $current_route) ?>">
                                         <span><i class="bi bi-receipt me-1"></i> Contractor Bills</span>
                                         <?php if (isset($conPendingBillsCount) && $conPendingBillsCount > 0): ?>
-                                            <span class="badge bg-danger rounded-pill me-1"
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"
                                                 style="font-size:10px; padding: 2px 6px;"><?= $conPendingBillsCount ?></span>
                                         <?php endif; ?>
                                     </a>
@@ -3591,10 +3601,10 @@
                                 <?php if (in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 24])): ?>
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/con-labor-requisitions?status=payment_requested"
-                                        class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?> d-flex align-items-center justify-content-between">
+                                        class="sidebar__menu-item <?= isActive('con-labor-requisitions', $current_route) ?>">
                                         <span><i class="fa-solid fa-hard-hat me-1"></i> Labor Bills Review</span>
                                         <?php if (isset($pendingLaborReqCount) && $pendingLaborReqCount > 0): ?>
-                                            <span class="badge bg-danger rounded-pill me-1"
+                                            <span class="badge bg-danger rounded-pill ms-auto me-2"
                                                 style="font-size:10px; padding: 2px 6px;"><?= $pendingLaborReqCount ?></span>
                                         <?php endif; ?>
                                     </a>
@@ -3691,21 +3701,21 @@
                             class="slide has-sub <?= isActive(['create-task', 'task-lists'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
                                 class="sidebar__menu-item <?= isActive(['create-task', 'task-lists'], $current_route) ? 'menu-open active' : '' ?>">
-                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
                                 <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
                                 <span class="sidebar__menu-label">Task Manage</span>
                                 <?php if ($pendingTasksCount > 0): ?>
-                                    <span class="badge bg-danger ms-2 rounded-pill"
+                                    <span class="badge bg-danger ms-auto me-4 rounded-pill"
                                         style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
                                 <?php endif; ?>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
                             </a>
                             <ul class="sidebar-menu child2" style="display:block;">
                                 <li class="slide">
                                     <a href="<?= $base_url ?>/task-dashboard"
                                         class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
-                                        <span class="sidebar__menu-label">Task Dashbaord</span>
+                                        <span class="sidebar__menu-label">Task Dashboard</span>
                                         <?php if ($pendingTasksCount > 0): ?>
-                                            <span class="badge bg-danger ms-2 rounded-pill"
+                                            <span class="badge bg-danger ms-auto me-2 rounded-pill"
                                                 style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
                                         <?php endif; ?>
                                     </a>
@@ -3764,7 +3774,7 @@
                         <div class="side-menu__icon"><i class="fa-solid fa-money-bill-wave"></i></div>
                         <span class="sidebar__menu-label">Project Other Costs</span>
                         <?php if ($sidebarPendingPOCostsCount > 0): ?>
-                            <span class="badge bg-danger rounded-pill ms-2 me-1" style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPOCostsCount ?></span>
+                            <span class="badge bg-danger rounded-pill ms-auto me-2" style="font-size:10px; padding: 2px 6px;"><?= $sidebarPendingPOCostsCount ?></span>
                         <?php endif; ?>
                     </a>
                 </li>
@@ -3776,7 +3786,7 @@
                         <div class="side-menu__icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
                         <span class="sidebar__menu-label">Fund Requisitions</span>
                         <?php if (!empty($pendingFundReqTotalCount)): ?>
-                            <span class="badge bg-warning text-dark rounded-pill ms-auto"
+                            <span class="badge bg-warning text-dark rounded-pill ms-auto me-2"
                                 style="font-size: 10px; padding: 2px 6px;"
                                 title="Pending Actions: <?= $pendingFundReqDeptCount ?> Dept Head, <?= $pendingFundReqMgmtCount ?> Mgmt, <?= $pendingFundReqAccountsCount ?> Accounts">
                                 <?= $pendingFundReqTotalCount ?>
@@ -3792,7 +3802,7 @@
                         <div class="side-menu__icon"><i class="fa-solid fa-cart-shopping"></i></div>
                         <span class="sidebar__menu-label">Office Procurement Request</span>
                         <?php if (!empty($sidebarPendingProcurementCount) && $sidebarPendingProcurementCount > 0): ?>
-                            <span class="badge bg-danger rounded-pill ms-auto"
+                            <span class="badge bg-danger rounded-pill ms-auto me-2"
                                 style="font-size: 10px; padding: 2px 6px;"
                                 title="Pending Approvals">
                                 <?= $sidebarPendingProcurementCount ?>
