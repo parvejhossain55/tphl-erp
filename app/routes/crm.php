@@ -24,6 +24,7 @@ return [
     'leads-import-csv' => ['controller' => 'LeadController', 'method' => 'importCsv'],
     'leads-import-csv-confirm' => ['controller' => 'LeadController', 'method' => 'confirmImportCsv'],
     'leads-import-csv-cancel' => ['controller' => 'LeadController', 'method' => 'cancelImportCsv'],
+    'dm-leads-csv-template' => ['controller' => 'LeadController', 'method' => 'downloadDmLeadsCsvTemplate'],
     'bulk-leads-import-csv' => ['controller' => 'LeadController', 'method' => 'importCsvBulkLeads'],
     'bulk-leads-import-execute' => ['controller' => 'LeadController', 'method' => 'executeCsvBulkLeads'],
     'delete-lead-ajax' => ['controller' => 'LeadController', 'method' => 'deleteLeadAjax'],

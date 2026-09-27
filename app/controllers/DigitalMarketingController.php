@@ -294,9 +294,10 @@ public function deleteBudget($id)
     {
         $stats = $this->leadModel->getDigitalMarketingStats();
         $teams = $this->teamsModel->getAll();
-        $teamId = $_GET['team_id'] ?? null;
+        $teamId            = $_GET['team_id'] ?? null;
         $projectCategoryId = !empty($_GET['project_category_id']) ? (int)$_GET['project_category_id'] : null;
-        $projectId = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : null;
+        $projectId         = !empty($_GET['project_id'])          ? (int)$_GET['project_id']          : null;
+        $sourceTypeId      = !empty($_GET['source_type_id'])      ? (int)$_GET['source_type_id']      : null;
 
         // Filters (passed to view for filter form state only)
         $dateAge             = $_GET['date_age']      ?? 'all';
@@ -308,7 +309,7 @@ public function deleteBudget($id)
         $platformFilter      = $_GET['platform']      ?? '';
 
         // Only load summary counts (not full lead list) — AJAX will fetch leads per page
-        $totalLeads    = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate, false, $projectCategoryId, $projectId, $platformFilter);
+        $totalLeads    = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, null, $fromDate, $toDate, false, $projectCategoryId, $projectId, $platformFilter, $sourceTypeId);
         $contactedCount    = 0;
         $notContactedCount = 0;
 
@@ -341,6 +342,12 @@ public function deleteBudget($id)
         if ($teamId) {
             $cSql .= " AND l.team_id = ?";
             $cParams[] = $teamId;
+            $cTypes   .= "i";
+        }
+
+        if ($sourceTypeId) {
+            $cSql .= " AND l.source_type_id = ?";
+            $cParams[] = $sourceTypeId;
             $cTypes   .= "i";
         }
 
@@ -405,15 +412,19 @@ public function deleteBudget($id)
         $notContactedCount = (int)($counts['not_contacted'] ?? 0);
 
         // Duplicate count — same phone_number OR same email = duplicate
+        // Duplicate count — same phone_number OR same email = duplicate
+        $dupSourceClause = $sourceTypeId ? " AND source_type_id = " . (int)$sourceTypeId : "";
         $dupStmt = $this->db->query("
             SELECT COUNT(DISTINCT id) AS total FROM leads
             WHERE deleted_at IS NULL
               AND uploaded_from = 'From Campaign'
+              {$dupSourceClause}
               AND (
                   (phone_number IS NOT NULL AND phone_number != '' AND phone_number IN (
                       SELECT phone_number FROM leads
                       WHERE deleted_at IS NULL AND phone_number IS NOT NULL AND phone_number != ''
                         AND uploaded_from = 'From Campaign'
+                        {$dupSourceClause}
                       GROUP BY phone_number HAVING COUNT(*) > 1
                   ))
                   OR
@@ -421,6 +432,7 @@ public function deleteBudget($id)
                       SELECT email FROM leads
                       WHERE deleted_at IS NULL AND email IS NOT NULL AND email != ''
                         AND uploaded_from = 'From Campaign'
+                        {$dupSourceClause}
                       GROUP BY email HAVING COUNT(*) > 1
                   ))
               )
@@ -429,6 +441,7 @@ public function deleteBudget($id)
         $categories = (new ProjectCategory($this->db))->getAll();
         $projects   = (new Project($this->db))->getAll();
         $uploadedPlatforms = $this->leadModel->getDistinctMarketingPlatforms();
+        $sources = $this->leadSourceModel->getActiveSources();
 
         return $this->view("digital-marketing-team/digital-marketing-executive", [
             "current_route"        => "digital-marketing-executive-dashboard",
@@ -436,11 +449,13 @@ public function deleteBudget($id)
             "teams"                => $teams,
             "categories"           => $categories,
             "projects"             => $projects,
+            "sources"              => $sources,
             "stats"                => $stats,
             "leads"                => [], // AJAX loads leads now
             "selected_team_id"     => $teamId,
             "selected_project_category_id" => $projectCategoryId,
             "selected_project_id"  => $projectId,
+            "selected_source_type_id" => $sourceTypeId,
             "phoneFreq"            => [],
             "duplicateLeadsCount"  => $duplicateLeadsCount,
             "date_age"             => $dateAge,
@@ -480,6 +495,7 @@ public function deleteBudget($id)
         $teamId         = !empty($_GET['team_id'])        ? (int)$_GET['team_id'] : null;
         $projectCategoryId = !empty($_GET['project_category_id']) ? (int)$_GET['project_category_id'] : null;
         $projectId      = !empty($_GET['project_id'])     ? (int)$_GET['project_id'] : null;
+        $sourceTypeId   = !empty($_GET['source_type_id']) ? (int)$_GET['source_type_id'] : null;
         $dateAge        = $_GET['date_age']               ?? 'all';
         $sortOrder      = ($_GET['sort'] ?? 'newest') === 'oldest' ? 'ASC' : 'DESC';
         $contactStatus  = $_GET['contact_status']         ?? '';
@@ -490,12 +506,12 @@ public function deleteBudget($id)
         $toDate         = $_GET['to_date']                ?? '';
         $platformFilter = $_GET['platform']               ?? '';
 
-        // Total count — include duplicatesOnly for correct pagination total
-        $total = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, $search, $fromDate, $toDate, $duplicatesOnly, $projectCategoryId, $projectId, $platformFilter);
+        // Total count — include duplicatesOnly and sourceTypeId for correct pagination total
+        $total = $this->leadModel->countMarketingLeadsFlexible($teamId, $dateAge, $search, $fromDate, $toDate, $duplicatesOnly, $projectCategoryId, $projectId, $platformFilter, $sourceTypeId);
 
         // Fetch paginated leads — duplicate filter applied at DB level
         $leads = $this->leadModel->getMarketingLeadsPaginated(
-            $teamId, $dateAge, $sortOrder, $perPage, $offset, $search, $fromDate, $toDate, $duplicatesOnly, $projectCategoryId, $projectId, $platformFilter
+            $teamId, $dateAge, $sortOrder, $perPage, $offset, $search, $fromDate, $toDate, $duplicatesOnly, $projectCategoryId, $projectId, $platformFilter, $sourceTypeId
         );
 
         // ── Duplicate detection: phone_number OR email appears > 1 time in leads table ──
@@ -558,6 +574,129 @@ public function deleteBudget($id)
         }
 
         // Note: duplicates_only is now handled at DB level (above), no post-filter needed
+
+        // Compute contacted and not_contacted counts matching active filters for card updates
+        $cSql = "
+            SELECT
+                SUM(CASE
+                    WHEN EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
+                      OR (l.lead_type IS NOT NULL AND l.lead_type != '')
+                      OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
+                      OR (l.call_status IN ('called', 'received'))
+                    THEN 1 ELSE 0
+                END) AS contacted,
+                SUM(CASE
+                    WHEN NOT (
+                        EXISTS (SELECT 1 FROM lead_follow_ups lfe WHERE lfe.lead_id = l.id AND lfe.deleted_at IS NULL)
+                        OR (l.lead_type IS NOT NULL AND l.lead_type != '')
+                        OR (l.call_note IS NOT NULL AND TRIM(l.call_note) != '')
+                        OR (l.call_status IN ('called', 'received'))
+                    ) THEN 1 ELSE 0
+                END) AS not_contacted
+            FROM leads l
+            WHERE l.deleted_at IS NULL
+              AND l.uploaded_from = 'From Campaign'
+        ";
+        $cParams = [];
+        $cTypes  = "";
+
+        if ($sourceTypeId) {
+            $cSql .= " AND l.source_type_id = ?";
+            $cParams[] = $sourceTypeId;
+            $cTypes   .= "i";
+        }
+        if ($teamId) {
+            $cSql .= " AND l.team_id = ?";
+            $cParams[] = $teamId;
+            $cTypes   .= "i";
+        }
+        if ($projectCategoryId) {
+            $cSql .= " AND l.project_category_id = ?";
+            $cParams[] = $projectCategoryId;
+            $cTypes   .= "i";
+        }
+        if ($projectId) {
+            $projClause = $this->leadModel->buildProjectFilterClause((int)$projectId, 'l.');
+            $cSql .= $projClause['sql'];
+            foreach ($projClause['params'] as $pVal) {
+                $cParams[] = $pVal;
+            }
+            $cTypes   .= $projClause['types'];
+        }
+        if (!empty($platformFilter)) {
+            $pAliases = Lead::getPlatformAliases($platformFilter);
+            if (!empty($pAliases)) {
+                $cPlaceholders = implode(',', array_fill(0, count($pAliases), '?'));
+                $cSql .= " AND LOWER(TRIM(l.platform)) IN ($cPlaceholders)";
+                foreach ($pAliases as $pa) {
+                    $cParams[] = strtolower(trim($pa));
+                    $cTypes   .= "s";
+                }
+            } else {
+                $cSql .= " AND l.platform = ?";
+                $cParams[] = $platformFilter;
+                $cTypes   .= "s";
+            }
+        }
+        if (!empty($fromDate) && !empty($toDate)) {
+            $cSql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+            $cParams[] = $fromDate;
+            $cParams[] = $toDate;
+            $cTypes   .= "ss";
+        } elseif (!empty($fromDate)) {
+            $cSql .= " AND DATE(l.created_at) >= ?";
+            $cParams[] = $fromDate;
+            $cTypes   .= "s";
+        } elseif (!empty($toDate)) {
+            $cSql .= " AND DATE(l.created_at) <= ?";
+            $cParams[] = $toDate;
+            $cTypes   .= "s";
+        } elseif ($dateAge === 'today') {
+            $cSql .= " AND DATE(l.created_at) = CURDATE()";
+        } elseif ($dateAge === 'old') {
+            $cSql .= " AND DATE(l.created_at) < CURDATE()";
+        } elseif ($dateAge === '7days') {
+            $cSql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+        } elseif ($dateAge === '15days') {
+            $cSql .= " AND l.created_at >= DATE_SUB(CURDATE(), INTERVAL 15 DAY)";
+        }
+        if ($duplicatesOnly) {
+            $cSql .= "
+              AND (
+                (l.phone_number IS NOT NULL AND l.phone_number != '' AND l.phone_number IN (
+                    SELECT phone_number FROM leads
+                    WHERE deleted_at IS NULL AND phone_number IS NOT NULL AND phone_number != ''
+                      AND uploaded_from = 'From Campaign'
+                    GROUP BY phone_number HAVING COUNT(*) > 1
+                ))
+                OR
+                (l.email IS NOT NULL AND l.email != '' AND l.email IN (
+                    SELECT email FROM leads
+                    WHERE deleted_at IS NULL AND email IS NOT NULL AND email != ''
+                      AND uploaded_from = 'From Campaign'
+                    GROUP BY email HAVING COUNT(*) > 1
+                ))
+              )";
+        }
+        if (!empty($search)) {
+            $cSql .= " AND (l.full_name LIKE ? OR l.phone_number LIKE ? OR l.email LIKE ? OR l.campaign_name LIKE ?)";
+            $like = "%$search%";
+            $cParams[] = $like; $cParams[] = $like; $cParams[] = $like; $cParams[] = $like;
+            $cTypes   .= "ssss";
+        }
+
+        $ajaxContacted = 0;
+        $ajaxNotContacted = 0;
+        $cStmt = $this->db->prepare($cSql);
+        if ($cStmt) {
+            if (!empty($cParams)) {
+                $cStmt->bind_param($cTypes, ...$cParams);
+            }
+            $cStmt->execute();
+            $cRow = $cStmt->get_result()->fetch_assoc();
+            $ajaxContacted = (int)($cRow['contacted'] ?? 0);
+            $ajaxNotContacted = (int)($cRow['not_contacted'] ?? 0);
+        }
 
         // Build HTML rows
         $rows = [];
@@ -671,6 +810,8 @@ public function deleteBudget($id)
 
             $rows[] = [
                 'id'            => $lead['id'],
+                'source_type_id'=> $lead['source_type_id'] ?? null,
+                'source_name'   => $lead['source_name'] ?? '',
                 'checkbox'      => '<input type="checkbox" class="rowCheckbox" value="' . $lead['id'] . '">',
                 'name'          => '<div class="fw-bold text-dark">' . htmlspecialchars($lead['full_name'] ?? 'N/A') . '</div>' . $jobCompanyStr,
                 'best_time_to_contact' => '<span class="text-muted small">' . $bestTimeFormatted . '</span>',
@@ -680,12 +821,27 @@ public function deleteBudget($id)
                 'contact_status'=> $csBadge,
                 'lead_type'     => $ltBadge,
                 'platform'      => (function() use ($lead, $campProj) {
-                    $canonical = Lead::resolveCanonicalPlatform($lead['platform'] ?? '');
+                    $canonical  = Lead::resolveCanonicalPlatform($lead['platform'] ?? '');
+                    $sourceName = !empty($lead['source_name']) ? trim($lead['source_name']) : '';
+                    $sourceId   = !empty($lead['source_type_id']) ? (int)$lead['source_type_id'] : '';
+
+                    // Lead Source Badge with data-source-id
+                    $sourceBadge = '';
+                    if (!empty($sourceName)) {
+                        $sourceBadge = '<div class="mb-1"><span class="badge bg-primary-soft text-primary fw-semibold d-inline-flex align-items-center gap-1 lead-source-tag" data-source-id="' . $sourceId . '" style="font-size:0.75rem;"><i class="bi bi-tag-fill" style="font-size:0.65rem;"></i>' . htmlspecialchars($sourceName) . '</span></div>';
+                    } else {
+                        $sourceBadge = '<div class="mb-1"><span class="badge bg-light text-muted fw-normal d-inline-flex align-items-center gap-1 lead-source-tag" data-source-id="" style="font-size:0.72rem; border:1px dashed #ced4da;"><i class="bi bi-tag" style="font-size:0.65rem;"></i>No Source</span></div>';
+                    }
+
+                    // Platform Badge
                     $raw = trim($lead['platform'] ?? '');
-                    $rawTag = ($raw !== '' && strtolower($raw) !== strtolower($canonical)) 
+                    $platText = !empty($canonical) ? $canonical : ($raw !== '' ? $raw : 'Unknown Platform');
+                    $rawTag = ($raw !== '' && strtolower($raw) !== strtolower($platText)) 
                         ? ' <small class="text-muted d-block" style="font-size:10px;">(' . htmlspecialchars($raw) . ')</small>' 
                         : '';
-                    return '<span class="badge bg-info-soft text-info mb-1 d-inline-block fw-semibold">' . htmlspecialchars($canonical) . '</span>' . $rawTag . '<div class="small text-muted">' . htmlspecialchars($campProj) . '</div>';
+                    $platBadge = '<span class="badge bg-info-soft text-info mb-1 d-inline-flex align-items-center gap-1 fw-semibold" style="font-size:0.72rem;"><i class="bi bi-globe2" style="font-size:0.65rem;"></i>' . htmlspecialchars($platText) . '</span>' . $rawTag;
+
+                    return $sourceBadge . $platBadge . '<div class="small text-muted mt-1">' . htmlspecialchars($campProj) . '</div>';
                 })(),
                 'team'          => htmlspecialchars($lead['team_name'] ?? 'N/A'),
                 'sales_lead'    => '<div class="fw-bold text-primary">' . htmlspecialchars($lead['sales_team_lead_name'] ?? 'Not Assigned') . '</div>',
@@ -697,12 +853,14 @@ public function deleteBudget($id)
         }
 
         echo json_encode([
-            'total'       => $total,
-            'page'        => $page,
-            'per_page'    => $perPage,
-            'total_pages' => (int)ceil($total / $perPage),
-            'count'       => count($rows),
-            'rows'        => $rows,
+            'total'         => $total,
+            'contacted'     => $ajaxContacted,
+            'not_contacted' => $ajaxNotContacted,
+            'page'          => $page,
+            'per_page'      => $perPage,
+            'total_pages'   => (int)ceil($total / $perPage),
+            'count'         => count($rows),
+            'rows'          => $rows,
         ]);
         exit;
     }

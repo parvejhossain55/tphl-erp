@@ -527,7 +527,7 @@
   <!-- Contact Status Summary -->
   <div class="row mb-4">
     <div class="col-xl-3 col-sm-6 col-6 mb-2">
-      <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-executive-dashboard?contact_status=contacted&date_age=<?= $date_age ?? 'all' ?>" class="text-decoration-none">
+      <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-executive-dashboard?contact_status=contacted&date_age=<?= $date_age ?? 'all' ?><?= !empty($selected_source_type_id) ? '&source_type_id=' . (int)$selected_source_type_id : '' ?>" class="text-decoration-none">
         <div class="card border-0 shadow-sm" style="border-radius:12px; border-left:4px solid #28a745 !important; border-left-width:4px;">
           <div class="card-body py-3 px-4 d-flex align-items-center gap-3">
             <div style="width:44px;height:44px;background:linear-gradient(135deg,#d4edda,#b8dfc5);border-radius:50%;display:flex;align-items:center;justify-content:center;">
@@ -535,7 +535,7 @@
             </div>
             <div>
               <div class="text-muted" style="font-size:.72rem;font-weight:600;letter-spacing:.05em;">CONTACTED</div>
-              <div style="font-size:1.6rem;font-weight:800;color:#155724;line-height:1.1;"><?= number_format($totalContacted ?? 0) ?></div>
+              <div id="dmContactedCardVal" style="font-size:1.6rem;font-weight:800;color:#155724;line-height:1.1;"><?= number_format($totalContacted ?? 0) ?></div>
               <div style="font-size:.68rem;color:#28a745;">Touch leads</div>
             </div>
           </div>
@@ -543,7 +543,7 @@
       </a>
     </div>
     <div class="col-xl-3 col-sm-6 col-6 mb-2">
-      <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-executive-dashboard?contact_status=not_contacted&date_age=<?= $date_age ?? 'all' ?>" class="text-decoration-none">
+      <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-executive-dashboard?contact_status=not_contacted&date_age=<?= $date_age ?? 'all' ?><?= !empty($selected_source_type_id) ? '&source_type_id=' . (int)$selected_source_type_id : '' ?>" class="text-decoration-none">
         <div class="card border-0 shadow-sm" style="border-radius:12px; border-left:4px solid #dc3545 !important; border-left-width:4px;">
           <div class="card-body py-3 px-4 d-flex align-items-center gap-3">
             <div style="width:44px;height:44px;background:linear-gradient(135deg,#fdecea,#fbc7c0);border-radius:50%;display:flex;align-items:center;justify-content:center;">
@@ -551,7 +551,7 @@
             </div>
             <div>
               <div class="text-muted" style="font-size:.72rem;font-weight:600;letter-spacing:.05em;">NOT CONTACTED</div>
-              <div style="font-size:1.6rem;font-weight:800;color:#721c24;line-height:1.1;"><?= number_format($totalNotContacted ?? 0) ?></div>
+              <div id="dmNotContactedCardVal" style="font-size:1.6rem;font-weight:800;color:#721c24;line-height:1.1;"><?= number_format($totalNotContacted ?? 0) ?></div>
               <div style="font-size:.68rem;color:#dc3545;">Not contacted yet</div>
             </div>
           </div>
@@ -567,14 +567,14 @@
         <div class="card-body py-3 px-4">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <span style="font-size:.78rem;font-weight:700;color:#1a2744;">Contact Progress</span>
-            <span style="font-size:.78rem;color:#6c757d;"><?= $contactedPct ?>% Contacted</span>
+            <span id="dmContactedPctText" style="font-size:.78rem;color:#6c757d;"><?= $contactedPct ?>% Contacted</span>
           </div>
           <div class="progress" style="height:12px;border-radius:8px;background:#f0f4f8;">
-            <div class="progress-bar bg-success" role="progressbar" style="width:<?= $contactedPct ?>%; border-radius:8px;" aria-valuenow="<?= $contactedPct ?>" aria-valuemin="0" aria-valuemax="100"></div>
+            <div id="dmProgressBar" class="progress-bar bg-success" role="progressbar" style="width:<?= $contactedPct ?>%; border-radius:8px;" aria-valuenow="<?= $contactedPct ?>" aria-valuemin="0" aria-valuemax="100"></div>
           </div>
           <div class="d-flex justify-content-between mt-2">
-            <small class="text-success fw-semibold"><i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i><?= number_format($totalContacted ?? 0) ?> Contacted</small>
-            <small class="text-danger fw-semibold"><i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i><?= number_format($totalNotContacted ?? 0) ?> Pending</small>
+            <small id="dmContactedSubText" class="text-success fw-semibold"><i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i><?= number_format($totalContacted ?? 0) ?> Contacted</small>
+            <small id="dmNotContactedSubText" class="text-danger fw-semibold"><i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i><?= number_format($totalNotContacted ?? 0) ?> Pending</small>
           </div>
         </div>
       </div>
@@ -589,7 +589,7 @@
       <div class="template-strip mb-3">
         <i class="bi bi-file-earmark-arrow-down-fill"></i>
         <p>Download the official CSV template before uploading to ensure correct column mapping.</p>
-        <a href="#" class="btn btn-sm btn-outline-success ms-auto" style="white-space:nowrap;font-size:.75rem;font-weight:600;">
+        <a href="<?= $GLOBALS['base_url'] ?>/dm-leads-csv-template" class="btn btn-sm btn-outline-success ms-auto" style="white-space:nowrap;font-size:.75rem;font-weight:600;">
           <i class="bi bi-download me-1"></i> CSV Template
         </a>
       </div>
@@ -654,6 +654,7 @@
             <li><i class="bi bi-dot"></i><strong>job_title</strong></li>
             <li><i class="bi bi-dot"></i><strong>company_name</strong></li>
             <li><i class="bi bi-dot"></i><strong>phone_number</strong></li>
+            <li><i class="bi bi-dot"></i><strong>email</strong> <span class="badge bg-secondary-subtle text-secondary" style="font-size: .68rem;">(Optional)</span></li>
             <li><i class="bi bi-dot"></i><strong>city</strong></li>
             <li><i class="bi bi-dot"></i><strong>country</strong></li>
           </ul>
@@ -669,13 +670,26 @@
         <div class="row align-items-end g-2">
 
           <!-- Team Filter -->
-          <div class="col-md-3 col-6">
+          <div class="col-md-2 col-6">
             <label class="form-label small text-muted fw-semibold">Team</label>
             <select name="team_id" class="form-select form-select-sm select2">
               <option value="">All Teams</option>
               <?php foreach ($teams as $team): ?>
                 <option value="<?= $team['id'] ?>" <?= ($selected_team_id ?? '') == $team['id'] ? 'selected' : '' ?>>
                   <?= htmlspecialchars($team['name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
+          <!-- Lead Source Filter -->
+          <div class="col-md-2 col-6">
+            <label class="form-label small text-muted fw-semibold">Lead Source</label>
+            <select name="source_type_id" class="form-select form-select-sm select2">
+              <option value="">All Sources</option>
+              <?php foreach (($sources ?? []) as $src): ?>
+                <option value="<?= $src['id'] ?>" <?= ((string)($selected_source_type_id ?? '') === (string)$src['id']) ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($src['name']) ?>
                 </option>
               <?php endforeach; ?>
             </select>
@@ -708,7 +722,7 @@
           </div>
 
           <!-- Platform Filter -->
-          <div class="col-md-3 col-6">
+          <div class="col-md-2 col-6">
             <label class="form-label small text-muted fw-semibold">Platform</label>
             <select name="platform" class="form-select form-select-sm select2">
               <option value="">All Platforms</option>
@@ -773,7 +787,7 @@
 
           <!--  Small Duplicate Count UI -->
           <div class="col-md-2 col-6 d-flex align-items-end">
-            <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-executive-dashboard?duplicates_only=1&date_age=all"
+            <a href="<?= $GLOBALS['base_url'] ?>/digital-marketing-executive-dashboard?duplicates_only=1&date_age=all<?= !empty($selected_source_type_id) ? '&source_type_id=' . (int)$selected_source_type_id : '' ?>"
               class="text-decoration-none w-100">
 
               <div class="d-flex align-items-center justify-content-between px-2 py-2 rounded"
@@ -862,7 +876,7 @@
                   <th class="text-center" style="width:80px;">Follow Up</th>
                   <th style="min-width:140px;">Contact Status</th>
                   <th style="min-width:90px;">Lead Type</th>
-                  <th style="min-width:170px;">Platform &amp; Campaign Project</th>
+                  <th style="min-width:180px;">Source, Platform &amp; Campaign Project</th>
                   <th style="min-width:110px;">Team Name</th>
                   <th style="min-width:120px;">Sales Team Lead</th>
                   <th style="min-width:120px;">Assigned To</th>
@@ -914,6 +928,29 @@
             </select>
           </div>
           <div class="mb-3">
+            <label class="form-label">Select Lead Source <span class="text-danger">*</span></label>
+            <select name="source_type_id" class="form-select" required>
+              <option value="">-- Select Lead Source --</option>
+              <?php 
+                $prioritySources = ['Lead Form', 'Whatsapp', 'Meta Inbox', 'Google Form'];
+                $allSources = $sources ?? [];
+                usort($allSources, function($a, $b) use ($prioritySources) {
+                    $posA = array_search($a['name'], $prioritySources);
+                    $posB = array_search($b['name'], $prioritySources);
+                    if ($posA !== false && $posB !== false) return $posA <=> $posB;
+                    if ($posA !== false) return -1;
+                    if ($posB !== false) return 1;
+                    return strcasecmp($a['name'], $b['name']);
+                });
+                foreach ($allSources as $source): 
+              ?>
+                <option value="<?= $source['id'] ?>">
+                  <?= htmlspecialchars($source['name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="mb-3">
             <label class="form-label">Select Project Category</label>
             <select name="project_category_id" class="form-select select2-no-scroll" data-placeholder="-- Select Category (Optional) --">
               <option value="">-- Select Category (Optional) --</option>
@@ -953,6 +990,7 @@
   const base_url   = "<?= $GLOBALS['base_url'] ?>";
   const dmFilters  = {
     team_id        : "<?= htmlspecialchars($_GET['team_id']        ?? '') ?>",
+    source_type_id : "<?= htmlspecialchars($_GET['source_type_id'] ?? '') ?>",
     date_age       : "<?= htmlspecialchars($_GET['date_age']       ?? 'all') ?>",
     sort           : "<?= htmlspecialchars($_GET['sort']           ?? 'newest') ?>",
     contact_status : "<?= htmlspecialchars($_GET['contact_status'] ?? '') ?>",
@@ -997,6 +1035,35 @@
         const totalCardVal = document.getElementById('dmTotalLeadsCardVal');
         if (totalCardVal) totalCardVal.textContent = data.total.toLocaleString();
 
+        // Update contacted / not contacted summary cards & progress dynamically
+        if (data.contacted !== undefined) {
+          const contacted = Number(data.contacted) || 0;
+          const notContacted = Number(data.not_contacted) || 0;
+          const totalShown = contacted + notContacted;
+          const pct = totalShown > 0 ? Math.round((contacted / totalShown) * 100) : 0;
+
+          const contactedEl = document.getElementById('dmContactedCardVal');
+          if (contactedEl) contactedEl.textContent = contacted.toLocaleString();
+
+          const notContactedEl = document.getElementById('dmNotContactedCardVal');
+          if (notContactedEl) notContactedEl.textContent = notContacted.toLocaleString();
+
+          const pctTextEl = document.getElementById('dmContactedPctText');
+          if (pctTextEl) pctTextEl.textContent = `${pct}% Contacted`;
+
+          const progressBarEl = document.getElementById('dmProgressBar');
+          if (progressBarEl) {
+            progressBarEl.style.width = `${pct}%`;
+            progressBarEl.setAttribute('aria-valuenow', pct);
+          }
+
+          const contactedSubEl = document.getElementById('dmContactedSubText');
+          if (contactedSubEl) contactedSubEl.innerHTML = `<i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i>${contacted.toLocaleString()} Contacted`;
+
+          const notContactedSubEl = document.getElementById('dmNotContactedSubText');
+          if (notContactedSubEl) notContactedSubEl.innerHTML = `<i class="bi bi-circle-fill me-1" style="font-size:.5rem;"></i>${notContacted.toLocaleString()} Pending`;
+        }
+
         // Render rows
         if (!data.rows || data.rows.length === 0) {
           tbody.innerHTML = '<tr><td colspan="15" class="text-center py-5"><i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i><div class="text-muted">No leads found.</div></td></tr>';
@@ -1007,7 +1074,7 @@
 
         const startIndex = (page - 1) * dmPerPage;
         tbody.innerHTML = data.rows.map((row, i) => `
-          <tr>
+          <tr data-source-id="${row.source_type_id || ''}">
             <td class="text-center">${row.checkbox}</td>
             <td class="text-center text-muted" style="font-size:.8rem;font-weight:600">${startIndex + i + 1}</td>
             <td>${row.name}</td>
@@ -1017,7 +1084,7 @@
             <td class="text-center">${row.follow_up}</td>
             <td>${row.contact_status}</td>
             <td>${row.lead_type}</td>
-            <td>${row.platform}</td>
+            <td data-source-id="${row.source_type_id || ''}">${row.platform}</td>
             <td>${row.team}</td>
             <td>${row.sales_lead}</td>
             <td>${row.assigned_to}</td>

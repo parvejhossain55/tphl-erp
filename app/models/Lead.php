@@ -2820,7 +2820,7 @@ class Lead extends Model
     /**
      * Count marketing leads for AJAX pagination (mirrors getMarketingLeadsFlexible filters)
      */
-    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null, $projectId = null, $platform = null)
+    public function countMarketingLeadsFlexible($teamId = null, $dateFilter = 'all', $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null, $projectId = null, $platform = null, $sourceTypeId = null)
     {
         $sql = "SELECT COUNT(*) AS total FROM leads l WHERE l.deleted_at IS NULL AND l.uploaded_from = 'From Campaign'";
 
@@ -2846,6 +2846,12 @@ class Lead extends Model
 
         $params = [];
         $types  = "";
+
+        if ($sourceTypeId) {
+            $sql .= " AND l.source_type_id = ?";
+            $params[] = (int)$sourceTypeId;
+            $types   .= "i";
+        }
 
         if ($teamId) {
             $sql .= " AND l.team_id = ?";
@@ -2924,7 +2930,7 @@ class Lead extends Model
     /**
      * Paginated marketing leads for AJAX (same contact_status logic, adds LIMIT/OFFSET + search)
      */
-    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null, $projectId = null, $platform = null)
+    public function getMarketingLeadsPaginated($teamId = null, $dateFilter = 'all', $sortOrder = 'DESC', $limit = 10, $offset = 0, $search = null, $fromDate = '', $toDate = '', $duplicatesOnly = false, $projectCategoryId = null, $projectId = null, $platform = null, $sourceTypeId = null)
     {
         $sql = "
         SELECT
@@ -2932,6 +2938,7 @@ class Lead extends Model
             l.company, l.company_name, l.when_is_the_best_time_to_contact_you,
             l.platform, l.campaign_name, l.lead_type, l.call_note,
             l.created_at, l.assigned_id, l.country, l.address, l.city,
+            l.source_type_id,
             ls.name  AS source_name,
             p.name   AS project_name,
             lpc.name AS project_category_name,
@@ -3001,6 +3008,12 @@ class Lead extends Model
                     GROUP BY email HAVING COUNT(*) > 1
                 ))
               )";
+        }
+
+        if ($sourceTypeId) {
+            $sql .= " AND l.source_type_id = ?";
+            $params[] = (int)$sourceTypeId;
+            $types   .= "i";
         }
 
         if ($teamId) {

@@ -11,17 +11,23 @@ class LeadSource extends Model
 
     public function getAll()
     {
-        $sql = $this->db->prepare("
-        SELECT 
-            *
-        FROM  lead_sources 
-    ");
-        $sql->execute();
-        if (!$sql->execute()) {
-            return [];
-        }
+        $stmt = $this->db->prepare("
+            SELECT * FROM lead_sources ORDER BY id ASC
+        ");
+        if (!$stmt) return [];
+        $stmt->execute();
+        $result = $stmt->get_result();
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
 
-        $result = $sql->get_result();
+    public function getActiveSources()
+    {
+        $stmt = $this->db->prepare("
+            SELECT * FROM lead_sources WHERE is_active = 1 ORDER BY name ASC
+        ");
+        if (!$stmt) return [];
+        $stmt->execute();
+        $result = $stmt->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
