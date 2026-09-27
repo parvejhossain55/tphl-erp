@@ -2023,7 +2023,7 @@ class ApprovalRequest extends Model
                 $pendingForText = 'Department Head / Reporting Boss';
             } elseif ($appRole === 'qc') {
                 $pendingStageLabel = 'Pending QC & Audit';
-                $pendingForText = 'QC & Internal Audit Head (Role 24)';
+                $pendingForText = 'QC & Internal Audit Head';
             } elseif ($appRole === 'accounts_head' || ($row['status'] === 'approved' && $rowAhStatus !== 'approved')) {
                 $pendingStageLabel = 'Pending Accounts Head';
                 $pendingForText = 'Md. Mamunoor Rashid [1309] (Accounts Head)';
@@ -2094,7 +2094,7 @@ class ApprovalRequest extends Model
                             $row['approve_role'] = 'qc';
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending QC & Audit';
-                            $pendingForText = 'QC & Internal Audit Head (Role 24)';
+                            $pendingForText = 'QC & Internal Audit Head';
                         } elseif (in_array($lrStatus, ['qc_approved', 'pm_payment_approved'])) {
                             $row['approve_role'] = 'management';
                             $row['status'] = 'pending';
@@ -2161,7 +2161,7 @@ class ApprovalRequest extends Model
                             $row['approve_role'] = 'qc';
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending QC & Audit';
-                            $pendingForText = 'QC & Internal Audit Head (Role 24)';
+                            $pendingForText = 'QC & Internal Audit Head';
                         } elseif (in_array($vStatus, ['qc approved', 'qc_approved'])) {
                             $row['approve_role'] = 'management';
                             $row['status'] = 'pending';
@@ -2251,7 +2251,7 @@ class ApprovalRequest extends Model
                             $row['approve_role'] = 'qc';
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending QC & Audit';
-                            $pendingForText = 'QC & Internal Audit Head (Role 24)';
+                            $pendingForText = 'QC & Internal Audit Head';
                         } elseif ($pocStatus === 'qc_approved') {
                             $row['approve_role'] = 'management';
                             $row['status'] = 'pending';
@@ -2307,7 +2307,7 @@ class ApprovalRequest extends Model
                             $row['approve_role'] = 'qc';
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending QC & Audit';
-                            $pendingForText = 'QC & Internal Audit Head (Role 24)';
+                            $pendingForText = 'QC & Internal Audit Head';
                         } elseif ($frStatus === 'pending') {
                             $row['approve_role'] = 'management';
                             $row['status'] = 'pending';
@@ -2440,17 +2440,17 @@ class ApprovalRequest extends Model
                             $row['approve_role'] = 'operations';
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending Operations';
-                            $pendingForText = 'Operations (Role 20, 32)';
+                            $pendingForText = 'Operations Head';
                         } elseif ($phStatus === 'pending') {
                             $row['approve_role'] = 'purchase_head';
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending Purchase Head';
-                            $pendingForText = 'Purchase Head (Role 17, 31)';
+                            $pendingForText = 'Purchase Head';
                         } elseif ($qcStatus === 'pending') {
                             $row['approve_role'] = 'qc';
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending QC & Audit';
-                            $pendingForText = 'QC & Internal Audit Head (Role 24)';
+                            $pendingForText = 'QC & Internal Audit Head';
                         } else {
                             $row['approve_role'] = 'management';
                             $row['status'] = 'pending';
@@ -2468,7 +2468,19 @@ class ApprovalRequest extends Model
                     }
                 }
             } else if ($sourceTable === 'contractor_bill_requests') {
-                $cbSql = "SELECT status, IFNULL(approved_amount, bill_amount) AS app_amt, updated_at FROM contractor_bill_requests WHERE id = ? LIMIT 1";
+                $cbSql = "SELECT cbr.status, IFNULL(cbr.approved_amount, cbr.bill_amount) AS app_amt, cbr.updated_at,
+                                 cbr.verified_by, cbr.verified_at, cbr.qc_approved_by_id, cbr.qc_approved_at, cbr.approved_by,
+                                 u_v.full_name AS verified_by_name,
+                                 u_qc.full_name AS qc_approved_by_name,
+                                 u_mgmt.full_name AS mgmt_approver_name,
+                                 des_mgmt.name AS mgmt_approver_des
+                          FROM contractor_bill_requests cbr 
+                          LEFT JOIN users u_v ON u_v.id = cbr.verified_by
+                          LEFT JOIN users u_qc ON u_qc.id = cbr.qc_approved_by_id
+                          LEFT JOIN users u_mgmt ON u_mgmt.id = cbr.approved_by
+                          LEFT JOIN employees e_mgmt ON (e_mgmt.user_id = u_mgmt.id OR e_mgmt.id = u_mgmt.employee_id)
+                          LEFT JOIN designations des_mgmt ON des_mgmt.id = COALESCE(e_mgmt.designation_id, u_mgmt.designation_id)
+                          WHERE cbr.id = ? LIMIT 1";
                 $cbStmt = $this->db->prepare($cbSql);
                 if ($cbStmt) {
                     $cbStmt->bind_param("i", $sourceId);
@@ -2476,28 +2488,46 @@ class ApprovalRequest extends Model
                     $cbRow = $cbStmt->get_result()->fetch_assoc();
                     $cbStmt->close();
                     if ($cbRow) {
+                        if (!empty($cbRow['mgmt_approver_name'])) {
+                            $row['approver_name'] = $cbRow['mgmt_approver_name'];
+                            $row['approver_designation'] = $cbRow['mgmt_approver_des'] ?? 'Admin & Operation head';
+                        }
                         $cbStatus = strtolower($cbRow['status'] ?? '');
-                        if (in_array($cbStatus, ['pending', 'submitted', 'verified'])) {
+                        if (in_array($cbStatus, ['pending', 'submitted'])) {
+                            $row['approve_role'] = 'pm';
+                            $row['status'] = 'pending';
+                            $pendingStageLabel = 'Pending PM Approval';
+                            $pendingForText = 'Project Manager Head';
+                        } elseif ($cbStatus === 'verified') {
                             $row['approve_role'] = 'qc';
                             $row['status'] = 'pending';
-                            $pendingStageLabel = 'Pending QC \u0026 Audit';
-                            $pendingForText = 'QC \u0026 Internal Audit Head (Role 24)';
+                            $pendingStageLabel = 'Pending QC & Audit';
+                            $pendingForText = 'QC & Internal Audit Head';
                         } elseif ($cbStatus === 'qc_approved') {
                             $row['approve_role'] = 'management';
                             $row['status'] = 'pending';
                             $pendingStageLabel = 'Pending Management';
-                            $pendingForText = 'Management / Operation Head';
+                            $pendingForText = 'Admin & Operation Head';
                         } elseif ($cbStatus === 'approved') {
-                            $row['approve_role'] = 'accounts';
-                            $row['status'] = 'approved';
-                            $pendingStageLabel = 'Pending Accounts Payout';
-                            $pendingForText = 'Accounts & Finance';
+                            if (($row['accounts_head_status'] ?? '') === 'approved') {
+                                $row['approve_role'] = 'accounts';
+                                $payoutStatus = 'Pending Accounts Payout';
+                                $pendingStageLabel = 'Pending Accounts Payout';
+                                $pendingForText = 'Accounts & Finance';
+                            } else {
+                                $row['approve_role'] = 'accounts_head';
+                                $payoutStatus = 'Pending Accounts Head Approval';
+                                $pendingStageLabel = 'Pending Accounts Head';
+                                $pendingForText = 'Accounts Head (Md. Mamunoor Rashid)';
+                            }
                         } elseif (in_array($cbStatus, ['paid', 'fully_paid'])) {
                             $row['status'] = 'approved';
+                            $row['approve_role'] = 'completed';
                             $pendingStageLabel = 'Paid & Settled';
                             $pendingForText = 'Settled';
                         } elseif ($cbStatus === 'partially_paid') {
                             $row['status'] = 'partially_paid';
+                            $row['approve_role'] = 'accounts';
                             $pendingStageLabel = 'Partially Paid';
                             $pendingForText = 'Accounts & Finance';
                         } elseif ($cbStatus === 'rejected') {
@@ -2506,17 +2536,21 @@ class ApprovalRequest extends Model
                             $pendingForText = 'Rejected';
                         }
 
-                        if (in_array(strtolower($cbRow['status']), ['paid', 'fully_paid'])) {
+                        if (in_array($cbStatus, ['paid', 'fully_paid'])) {
                             $payoutStatus = 'Paid & Settled';
                             $payoutAmount = (float)$cbRow['app_amt'];
                             $payoutDate = $cbRow['updated_at'];
-                        } else if (strtolower($cbRow['status']) === 'partially_paid') {
+                        } else if ($cbStatus === 'partially_paid') {
                             $payoutStatus = 'Partially Paid';
                             $payoutAmount = (float)$cbRow['app_amt'];
                             $payoutDate = $cbRow['updated_at'];
-                        } else if (in_array(strtolower($cbRow['status']), ['approved']) || $row['status'] === 'approved') {
-                            $payoutStatus = 'Pending Accounts Payout';
+                        } else if ($cbStatus === 'approved') {
                             $payoutAmount = (float)$cbRow['app_amt'];
+                            if (($row['accounts_head_status'] ?? '') !== 'approved') {
+                                $payoutStatus = 'Pending Accounts Head Approval';
+                            } else {
+                                $payoutStatus = 'Pending Accounts Payout';
+                            }
                         }
                     }
                 }
@@ -2726,6 +2760,9 @@ class ApprovalRequest extends Model
         // Purchase Lead: Role 17, 23, 31
         $isPurchase = in_array($userRoleId, [17, 23, 31], true) || strpos($sessionRoleName, 'purchase') !== false;
 
+        // PM / PM Head: Role 15, 22
+        $isPM = in_array($userRoleId, [15, 22], true) || strpos($sessionRoleName, 'project manager') !== false;
+
         // Fetch subordinates reporting directly to this user
         $subordinateUserIds = [];
         $subRes = $this->db->query("
@@ -2742,7 +2779,7 @@ class ApprovalRequest extends Model
         $isReportingBoss = !empty($subordinateUserIds);
         $isDesignatedDeptHead = in_array($userRoleId, [5, 9, 10, 14], true) || (strpos($sessionRoleName, 'head') !== false && !in_array($userRoleId, [8, 11, 12, 16, 18, 19, 21, 23, 25]));
 
-        $isActionableByCurrentUser = function($item) use ($isChiefOfficer, $isFullManagement, $isRole20, $isAccountsHead, $isAccounts, $isHR, $isQC, $isPurchase, $isReportingBoss, $isDesignatedDeptHead, $subordinateUserIds, $userId) {
+        $isActionableByCurrentUser = function($item) use ($isChiefOfficer, $isFullManagement, $isRole20, $isAccountsHead, $isAccounts, $isHR, $isQC, $isPurchase, $isPM, $isReportingBoss, $isDesignatedDeptHead, $subordinateUserIds, $userId) {
             // Chief Officer cannot approve anything
             if ($isChiefOfficer) {
                 return false;
@@ -2793,7 +2830,7 @@ class ApprovalRequest extends Model
 
             // 2. Role 20 (DGM / Operation Head):
             if ($isRole20) {
-                if (in_array(($item['source_table'] ?? ''), ['project_other_costs', 'expense_adjustments']) && $isPending && in_array($approveRole, ['management', ''])) {
+                if (in_array(($item['source_table'] ?? ''), ['project_other_costs', 'expense_adjustments', 'contractor_bill_requests']) && $isPending && in_array($approveRole, ['management', ''])) {
                     return true;
                 }
                 if (($item['source_table'] ?? '') === 'project_extra_assets' && $isPending && in_array($approveRole, ['operations', 'management'])) {
@@ -2813,6 +2850,11 @@ class ApprovalRequest extends Model
             // 4. QC & Internal Audit Head (Role 24, 13, 25):
             if ($isQC) {
                 return ($isPending && in_array($approveRole, ['qc', 'qc_head']));
+            }
+
+            // 4b. PM / PM Head (Role 15, 22):
+            if ($isPM) {
+                return ($isPending && in_array($approveRole, ['pm', 'pm_head']));
             }
 
             // 5. Purchase Lead (Role 17, 23, 31):

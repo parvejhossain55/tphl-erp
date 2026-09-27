@@ -18,7 +18,9 @@ class Con_ContractorBill extends Model
                        p.name   AS project_name,
                        u.full_name  AS created_by_name,
                        v.full_name  AS verified_by_name,
+                       v_r.name     AS verified_by_role,
                        qc_u.full_name AS qc_approved_by_name,
+                       qc_r.name    AS qc_approved_by_role,
                        ab.full_name AS approved_by_name,
                        ab_r.name    AS approved_by_role,
                        pb.full_name AS payment_by_name,
@@ -34,7 +36,9 @@ class Con_ContractorBill extends Model
                 LEFT JOIN projects p  ON p.id  = cbr.project_id
                 LEFT JOIN users u     ON u.id  = cbr.created_by
                 LEFT JOIN users v     ON v.id  = cbr.verified_by
+                LEFT JOIN roles v_r   ON v_r.id = v.role_id
                 LEFT JOIN users qc_u  ON qc_u.id = cbr.qc_approved_by_id
+                LEFT JOIN roles qc_r  ON qc_r.id = qc_u.role_id
                 LEFT JOIN users ab    ON ab.id = cbr.approved_by
                 LEFT JOIN roles ab_r  ON ab_r.id = ab.role_id
                 LEFT JOIN (
@@ -90,7 +94,9 @@ class Con_ContractorBill extends Model
                        p.name   AS project_name,
                        u.full_name  AS created_by_name,
                        v.full_name  AS verified_by_name,
+                       v_r.name     AS verified_by_role,
                        qc_u.full_name AS qc_approved_by_name,
+                       qc_r.name    AS qc_approved_by_role,
                        ab.full_name AS approved_by_name,
                        ab_r.name    AS approved_by_role,
                        pwp.week_number AS target_week_number,
@@ -105,7 +111,9 @@ class Con_ContractorBill extends Model
                 LEFT JOIN projects p  ON p.id  = cbr.project_id
                 LEFT JOIN users u     ON u.id  = cbr.created_by
                 LEFT JOIN users v     ON v.id  = cbr.verified_by
+                LEFT JOIN roles v_r   ON v_r.id = v.role_id
                 LEFT JOIN users qc_u  ON qc_u.id = cbr.qc_approved_by_id
+                LEFT JOIN roles qc_r  ON qc_r.id = qc_u.role_id
                 LEFT JOIN users ab    ON ab.id = cbr.approved_by
                 LEFT JOIN roles ab_r  ON ab_r.id = ab.role_id
                 LEFT JOIN phase_weekly_progress pwp ON pwp.id = cbr.target_id

@@ -757,8 +757,11 @@
                                     <td class="text-center">
                                         <?php if ($req['status'] === 'pending'): ?>
                                             <?php
+                                            $stageLabel = str_replace(['\u0026', '&amp;'], ['&', '&'], $req['pending_stage_label'] ?? 'Pending Review');
+                                            $pendingFor = str_replace(['\u0026', '&amp;'], ['&', '&'], $req['pending_for_text'] ?? 'Management');
+                                            $pendingFor = trim(preg_replace('/\s*\(Role\s*[0-9,\s]+\)/i', '', $pendingFor));
+
                                             $badgeClass = 'bg-warning text-dark';
-                                            $stageLabel = $req['pending_stage_label'] ?? 'Pending Review';
                                             if (stripos($stageLabel, 'QC') !== false || stripos($stageLabel, 'Audit') !== false) {
                                                 $badgeClass = 'bg-info text-dark';
                                             } elseif (stripos($stageLabel, 'Dept') !== false) {
@@ -780,7 +783,7 @@
                                             </span>
                                             <div class="extra-small text-dark mt-1">
                                                 <i class="fa-solid fa-hourglass-half text-warning me-1"></i><strong>Pending at:</strong>
-                                                <span class="text-primary fw-semibold d-block"><?= htmlspecialchars($req['pending_for_text'] ?? 'Management') ?></span>
+                                                <span class="text-primary fw-semibold d-block"><?= htmlspecialchars($pendingFor) ?></span>
                                             </div>
                                         <?php elseif (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'])): ?>
                                             <span

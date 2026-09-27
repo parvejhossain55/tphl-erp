@@ -123,14 +123,68 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
                                     <td><span class="badge bg-<?= $badge ?>"><?= $statusLabel ?></span></td>
                                     <td><?= htmlspecialchars($b['created_by_name'] ?? '-') ?></td>
                                     <td>
-                                        <?php if (!empty($b['approved_by_name'])): ?>
-                                            <span class="text-success fw-semibold"><?= htmlspecialchars($b['approved_by_name']) ?></span>
-                                            <?php if (!empty($b['approved_by_role'])): ?>
-                                                <br><small class="text-muted fst-italic"><?= htmlspecialchars($b['approved_by_role']) ?></small>
+                                        <?php
+                                        $hasApprover = false;
+                                        ?>
+                                        <div class="d-flex flex-column gap-1" style="font-size: 11px; min-width: 140px;">
+                                            <?php if (!empty($b['verified_by_name'])): 
+                                                $hasApprover = true;
+                                                $pmDate = !empty($b['verified_at']) ? date('d M Y', strtotime($b['verified_at'])) : '';
+                                            ?>
+                                                <div class="p-1 rounded bg-light border border-info-subtle mb-1">
+                                                    <div class="d-flex align-items-center justify-content-between gap-1">
+                                                        <span class="badge bg-info text-white px-1" style="font-size: 8.5px; font-weight: 600;">PM</span>
+                                                        <span class="fw-semibold text-dark text-truncate" title="<?= htmlspecialchars($b['verified_by_name']) ?>"><?= htmlspecialchars($b['verified_by_name']) ?></span>
+                                                    </div>
+                                                    <div class="d-flex align-items-center justify-content-between text-muted mt-1" style="font-size: 9.5px;">
+                                                        <span class="text-truncate"><?= htmlspecialchars($b['verified_by_role'] ?? 'PM Head') ?></span>
+                                                        <?php if ($pmDate): ?>
+                                                            <span class="text-nowrap ms-1 text-primary fw-medium"><?= $pmDate ?></span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
                                             <?php endif; ?>
-                                        <?php else: ?>
-                                            <span class="text-muted">—</span>
-                                        <?php endif; ?>
+
+                                            <?php if (!empty($b['qc_approved_by_name'])): 
+                                                $hasApprover = true;
+                                                $qcDate = !empty($b['qc_approved_at']) ? date('d M Y', strtotime($b['qc_approved_at'])) : '';
+                                            ?>
+                                                <div class="p-1 rounded bg-light border border-primary-subtle mb-1">
+                                                    <div class="d-flex align-items-center justify-content-between gap-1">
+                                                        <span class="badge bg-primary text-white px-1" style="font-size: 8.5px; font-weight: 600;">QC</span>
+                                                        <span class="fw-semibold text-dark text-truncate" title="<?= htmlspecialchars($b['qc_approved_by_name']) ?>"><?= htmlspecialchars($b['qc_approved_by_name']) ?></span>
+                                                    </div>
+                                                    <div class="d-flex align-items-center justify-content-between text-muted mt-1" style="font-size: 9.5px;">
+                                                        <span class="text-truncate"><?= htmlspecialchars($b['qc_approved_by_role'] ?? 'QC & Audit') ?></span>
+                                                        <?php if ($qcDate): ?>
+                                                            <span class="text-nowrap ms-1 text-primary fw-medium"><?= $qcDate ?></span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
+
+                                            <?php if (!empty($b['approved_by_name'])): 
+                                                $hasApprover = true;
+                                                $mgmtDate = !empty($b['approved_at']) ? date('d M Y', strtotime($b['approved_at'])) : (!empty($b['updated_at']) && in_array($b['status'], ['approved', 'paid', 'partially_paid', 'fully_paid']) ? date('d M Y', strtotime($b['updated_at'])) : '');
+                                            ?>
+                                                <div class="p-1 rounded bg-light border border-success-subtle">
+                                                    <div class="d-flex align-items-center justify-content-between gap-1">
+                                                        <span class="badge bg-success text-white px-1" style="font-size: 8.5px; font-weight: 600;">Mgmt</span>
+                                                        <span class="fw-semibold text-success text-truncate" title="<?= htmlspecialchars($b['approved_by_name']) ?>"><?= htmlspecialchars($b['approved_by_name']) ?></span>
+                                                    </div>
+                                                    <div class="d-flex align-items-center justify-content-between text-muted mt-1" style="font-size: 9.5px;">
+                                                        <span class="text-truncate"><?= htmlspecialchars($b['approved_by_role'] ?? 'Management') ?></span>
+                                                        <?php if ($mgmtDate): ?>
+                                                            <span class="text-nowrap ms-1 text-success fw-medium"><?= $mgmtDate ?></span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
+
+                                            <?php if (!$hasApprover): ?>
+                                                <span class="text-muted">—</span>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                     <td>
                                         <?php if (!empty($b['payment_by_name'])): ?>
