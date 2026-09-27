@@ -397,9 +397,13 @@ class AssetManagement
         $assetStatus = $data['asset_status'] ?? (!empty($assignedTo) ? 'in_use' : 'in_store');
         $remarks = $data['remarks'] ?? '';
         $createdBy = (int)($data['created_by'] ?? 1);
+        $purchaseDate = !empty($data['purchase_date']) ? $data['purchase_date'] : date('Y-m-d');
+        $purchasePrice = isset($data['purchase_price']) ? (float)$data['purchase_price'] : 0.00;
+        $warrantyExpiry = !empty($data['warranty_expiry']) ? $data['warranty_expiry'] : null;
+        $serialNo = !empty($data['serial_no']) ? $data['serial_no'] : null;
 
         $stmt->bind_param(
-            'sisiiiisdssssssi',
+            'sisiiiissdsssssi',
             $assetCode,
             $productId,
             $itemName,
@@ -408,10 +412,10 @@ class AssetManagement
             $deptId,
             $assignedTo,
             $location,
-            $data['purchase_date'],
-            $data['purchase_price'],
-            $data['warranty_expiry'],
-            $data['serial_no'],
+            $purchaseDate,
+            $purchasePrice,
+            $warrantyExpiry,
+            $serialNo,
             $conditionStatus,
             $assetStatus,
             $remarks,
@@ -610,6 +614,101 @@ class AssetManagement
             $stmt->execute();
             $res = $stmt->get_result()->fetch_assoc();
             if ($res) return (int)$res['id'];
+        }
+        return null;
+    }
+
+    /**
+     * Capitalize an existing or newly registered office asset into the Balance Sheet under Non-Current Assets (Property, Plant & Equipment)
+     */
+    public function syncAssetToBalanceSheet($assetId, $userId = 1)
+    {
+        $asset = $this->findAsset($assetId);
+        if (!$asset) return false;
+
+        $price = (float)($asset['purchase_price'] ?? 0);
+        if ($price <= 0) return false;
+
+        $fixedAssetAccId = $this->getFixedAssetAccountId($asset['category_id'] ?? null, $asset['item_name'] ?? '');
+        if (!$fixedAssetAccId) {
+            $fixedAssetAccId = $this->getAccountIdByCode('100002') ?: $this->getAccountIdByCode('100');
+        }
+        if (!$fixedAssetAccId) return false;
+
+        // Equity account: Retained Earnings (352000) or Paid Up Capital (29) or Equity (3000)
+        $equityAccId = $this->getAccountIdByCode('352000') ?: ($this->getAccountIdByCode('29') ?: $this->getAccountIdByCode('3000'));
+        if (!$equityAccId) return false;
+
+        $purchaseDate = (!empty($asset['purchase_date']) && $asset['purchase_date'] !== '0000-00-00') ? $asset['purchase_date'] : date('Y-m-d');
+        $assetCode = $asset['asset_code'] ?? ('AST-' . $assetId);
+        $itemName = $asset['item_name'] ?? 'Office Asset';
+        $location = !empty($asset['branch_name']) ? $asset['branch_name'] : (!empty($asset['location']) ? $asset['location'] : 'Head Office');
+        $narration = "Company Asset Register (Fixed Asset) [{$assetCode}]: {$itemName}";
+
+        // Check if journal entry already exists for this asset
+        $stmtJ = $this->db->prepare("SELECT id FROM journals WHERE source_module = 'office_assets' AND source_ref_id = ? AND entry_type = 'accrual' LIMIT 1");
+        $stmtJ->bind_param('i', $assetId);
+        $stmtJ->execute();
+        $jRow = $stmtJ->get_result()->fetch_assoc();
+
+        if ($jRow) {
+            $journalId = (int)$jRow['id'];
+            // Update journal header date, amount, narration
+            $updJ = $this->db->prepare("UPDATE journals SET date = ?, total_debit = ?, total_credit = ?, narration = ?, project_id = ?, office = ? WHERE id = ?");
+            $updJ->bind_param('sddsisi', $purchaseDate, $price, $price, $narration, $asset['project_id'], $location, $journalId);
+            $updJ->execute();
+
+            // Update debit line to point to fixed asset account with exact price
+            $updDr = $this->db->prepare("UPDATE journal_details SET account_id = ?, debit = ?, credit = 0.00, narration = ?, project_id = ? WHERE journal_id = ? AND debit > 0 LIMIT 1");
+            $updDr->bind_param('idsii', $fixedAssetAccId, $price, $narration, $asset['project_id'], $journalId);
+            $updDr->execute();
+
+            // Update credit line to point to equity account with exact price
+            $updCr = $this->db->prepare("UPDATE journal_details SET account_id = ?, debit = 0.00, credit = ?, narration = ?, project_id = ? WHERE journal_id = ? AND credit > 0 LIMIT 1");
+            $updCr->bind_param('idsii', $equityAccId, $price, $narration, $asset['project_id'], $journalId);
+            $updCr->execute();
+
+            return $journalId;
+        } else {
+            try {
+                require_once dirname(__DIR__) . '/services/AutoPostingService.php';
+                $autoPosting = new \AutoPostingService($this->db);
+                return $autoPosting->postAccrualEntry(
+                    'office_assets',
+                    $assetId,
+                    $fixedAssetAccId,
+                    $equityAccId,
+                    $price,
+                    $narration,
+                    !empty($asset['project_id']) ? (int)$asset['project_id'] : null,
+                    'employee',
+                    !empty($asset['assigned_to']) ? (int)$asset['assigned_to'] : null,
+                    $userId,
+                    $location,
+                    $purchaseDate
+                );
+            } catch (\Exception $e) {
+                error_log("Failed to sync asset {$assetId} to balance sheet: " . $e->getMessage());
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Auto sync any existing assets in office_assets that have purchase_price > 0 but no journal entry yet
+     */
+    public function syncAllUnpostedAssetsToBalanceSheet($userId = 1)
+    {
+        $res = $this->db->query("
+            SELECT oa.id 
+            FROM office_assets oa 
+            LEFT JOIN journals j ON (j.source_module = 'office_assets' AND j.source_ref_id = oa.id AND j.entry_type = 'accrual')
+            WHERE oa.purchase_price > 0 AND j.id IS NULL
+        ");
+        if ($res && $res->num_rows > 0) {
+            while ($row = $res->fetch_assoc()) {
+                $this->syncAssetToBalanceSheet((int)$row['id'], $userId);
+            }
         }
     }
 
@@ -1020,7 +1119,7 @@ class AssetManagement
         }
 
         $stmt->bind_param(
-            'iiisissiddsssiis',
+            'iiisiissiddssiis',
             $projectId,
             $departmentId,
             $officeBranchId,
@@ -1169,9 +1268,20 @@ class AssetManagement
             }
 
             // 1. Auto-register to Product Master (office_asset_products) if it doesn't exist
+            $cleanItemName = (!empty($req['item_name']) && trim((string)$req['item_name']) !== '0')
+                ? trim($req['item_name'])
+                : (!empty($req['justification']) ? trim(mb_substr($req['justification'], 0, 80)) : 'Office Asset');
+
+            // If item_name was stored as 0, update it in project_extra_assets now
+            if (empty($req['item_name']) || trim((string)$req['item_name']) === '0') {
+                $updName = $this->db->prepare("UPDATE project_extra_assets SET item_name = ? WHERE id = ?");
+                $updName->bind_param('si', $cleanItemName, $id);
+                $updName->execute();
+            }
+
             $productId = 0;
             $stmtCheck = $this->db->prepare("SELECT id FROM office_asset_products WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1");
-            $stmtCheck->bind_param('s', $req['item_name']);
+            $stmtCheck->bind_param('s', $cleanItemName);
             $stmtCheck->execute();
             $resCheck = $stmtCheck->get_result();
 
@@ -1183,7 +1293,7 @@ class AssetManagement
                 $unitPrice = (float)($req['unit_price'] ?? 0);
                 
                 $stmtProd = $this->db->prepare("INSERT INTO office_asset_products (product_code, name, category_id, unit_price, status, created_by) VALUES (?, ?, ?, ?, 'active', ?)");
-                $stmtProd->bind_param('ssidi', $productCode, $req['item_name'], $itemCatId, $unitPrice, $userId);
+                $stmtProd->bind_param('ssidi', $productCode, $cleanItemName, $itemCatId, $unitPrice, $userId);
                 if ($stmtProd->execute()) {
                     $productId = (int)$this->db->insert_id;
                 }
@@ -1220,7 +1330,7 @@ class AssetManagement
                         'sisiiiissdsssi',
                         $code,
                         $productId,
-                        $req['item_name'],
+                        $cleanItemName,
                         $projectId,
                         $finalBranchId,
                         $deptId,

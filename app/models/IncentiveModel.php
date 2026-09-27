@@ -449,19 +449,20 @@ class IncentiveModel extends Model
     /**
      * Get Real-Time Sales Incentive Stats for the Month (Target vs Achievement)
      */
-    public function getRealTimeIncentivesByMonth($month)
+    public function getRealTimeIncentivesByMonth($month, $fromDate = null, $toDate = null)
     {
         $stats = [];
         
         // Find all users who have a target this month OR who are team leaders/coordinators
         $sql = "SELECT DISTINCT u.id, u.full_name, e.employee_id, d.name AS department, des.name AS designation, e.team_id 
                 FROM users u
-                LEFT JOIN employees e ON u.id = e.user_id
+                JOIN employees e ON u.id = e.user_id
                 LEFT JOIN departments d ON e.department_id = d.id
                 LEFT JOIN designations des ON e.designation_id = des.id
-                WHERE u.id IN (
+                WHERE (u.id IN (
                     SELECT sales_user_id FROM sales_targets WHERE DATE_FORMAT(month, '%Y-%m') = ?
-                ) OR u.role_id IN (5,6,7,9) OR e.is_sales_co_leader = 1";
+                ) OR u.role_id IN (5,6,7,9) OR e.is_sales_co_leader = 1)
+                AND e.employee_id IS NOT NULL AND e.employee_id != ''";
                 
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param("s", $month);
@@ -471,8 +472,8 @@ class IncentiveModel extends Model
         
         foreach ($users as $u) {
             $userId = (int)$u['id'];
-            $ind = $this->engine->getExecutiveMonthlyStats($userId, $month);
-            $team = $this->engine->getTeamMonthlyStats($userId, $month);
+            $ind = $this->engine->getExecutiveMonthlyStats($userId, $month, $fromDate, $toDate);
+            $team = $this->engine->getTeamMonthlyStats($userId, $month, null, $fromDate, $toDate);
             
             // Only add to list if they have some target or achievement
             if ($ind['target_amount'] > 0 || $ind['assigned_achieved'] > 0 || $ind['unassigned_achieved'] > 0 || ($team['eligible'] && $team['team_target'] > 0)) {

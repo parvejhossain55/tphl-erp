@@ -675,6 +675,30 @@ class ApprovalRequest extends Model
             return $stmtForward->execute();
         }
 
+        if ($sourceTable === 'contractor_bill_requests' && strtolower($request['approve_role'] ?? '') === 'pm' && $status === 'approved') {
+            $stmtCb = $this->db->prepare("UPDATE contractor_bill_requests SET status = 'verified', verified_by = ?, verified_at = NOW(), verification_note = ? WHERE id = ?");
+            if ($stmtCb) {
+                $stmtCb->bind_param('isi', $approvedBy, $approvalNote, $sourceId);
+                $stmtCb->execute();
+                $stmtCb->close();
+            }
+
+            // Forward to QC
+            $sqlForward = "UPDATE {$this->table}
+                SET 
+                    approve_role = 'qc',
+                    status = 'pending',
+                    approved_amount = NULL,
+                    approved_by = NULL,
+                    approval_note = ?,
+                    approved_at = NULL
+                WHERE id = ?";
+            $stmtForward = $this->db->prepare($sqlForward);
+            $pmNote = "PM Approved. Note: " . ($approvalNote ?? '');
+            $stmtForward->bind_param('si', $pmNote, $id);
+            return $stmtForward->execute();
+        }
+
         if ($sourceTable === 'contractor_bill_requests' && strtolower($request['approve_role'] ?? '') === 'qc' && $status === 'approved') {
             // Update source table to QC Approved
             $qcApprovedAmt = ($approvedAmount !== null && $approvedAmount > 0) ? (float)$approvedAmount : (float)($request['request_amount'] ?? 0);
@@ -1028,7 +1052,7 @@ class ApprovalRequest extends Model
             }
 
             if ($status === 'approved') {
-                $this->db->query("UPDATE approval_requests SET approve_role = 'accounts_head', accounts_head_status = 'pending' WHERE id = " . (int)$id);
+                $this->db->query("UPDATE approval_requests SET approve_role = 'accounts_head', status = 'pending' WHERE id = " . (int)$id);
 
                 try {
                     require_once dirname(__DIR__) . '/services/JournalIntegrationService.php';

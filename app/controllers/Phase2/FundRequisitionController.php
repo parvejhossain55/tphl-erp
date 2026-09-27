@@ -516,17 +516,46 @@ class FundRequisitionController extends Controller {
     }
 
     public function store() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $requested_by = (int)($_SESSION['user']['id'] ?? 0);
+        if (!$requested_by) {
+            setError('Your session has expired. Please log in again.');
+            header("Location: " . $GLOBALS['base_url'] . "/login");
+            exit;
+        }
+
         $department_id = (int)($_POST['department_id'] ?? 0);
         $project_id = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
-        $requisition_type = $_POST['requisition_type'] ?? 'general';
-        $category = $_POST['category'] ?? 'Other Expense';
-        $amount = (float)($_POST['amount'] ?? 0);
-        $purpose = $_POST['purpose'] ?? '';
-        $requested_by = (int)$_SESSION['user']['id'];
+        $requisition_type = trim($_POST['requisition_type'] ?? 'general');
+        $category = trim($_POST['category'] ?? 'Other Expense');
 
-        if (!$department_id || $amount <= 0 || empty($purpose)) {
-            setError('Please select department, provide a valid amount and specify the purpose.');
-            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+        $rawAmount = trim(str_replace([',', ' '], '', $_POST['amount'] ?? ''));
+        $amount = is_numeric($rawAmount) ? (float)$rawAmount : 0;
+        $purpose = trim($_POST['purpose'] ?? '');
+
+        // Exact field-by-field validation with specific error messages
+        $errors = [];
+        if ($department_id <= 0) {
+            $errors[] = 'Please select a valid Department.';
+        }
+        if ($amount <= 0) {
+            $errors[] = 'Please enter a valid requested Amount greater than 0.';
+        }
+        if ($purpose === '') {
+            $errors[] = 'Please describe the Purpose / Description of this requisition.';
+        }
+
+        if (!empty($errors)) {
+            setError(count($errors) === 1 ? $errors[0] : implode(' • ', $errors));
+            $_SESSION['old_fund_requisition'] = [
+                'department_id'    => $department_id,
+                'project_id'       => $project_id,
+                'requisition_type' => $requisition_type,
+                'category'         => $category,
+                'amount'           => $rawAmount,
+                'purpose'          => $purpose,
+            ];
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions?open_modal=1");
             exit;
         }
 
@@ -538,12 +567,14 @@ class FundRequisitionController extends Controller {
             $canPettyCash = in_array($roleId, [1, 3, 12, 20, 32], true) || $designationId === 38;
             if (!$canPettyCash) {
                 setError('Petty Cash requisitions can only be requested by Site Engineers, Admin Operation, and Operation Heads.');
-                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+                $_SESSION['old_fund_requisition'] = $_POST;
+                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions?open_modal=1");
                 exit;
             }
             if ($amount > 10000) {
                 setError('Maximum Petty Cash request limit is BDT 10,000.');
-                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions");
+                $_SESSION['old_fund_requisition'] = $_POST;
+                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions?open_modal=1");
                 exit;
             }
             $category = 'Petty Cash';

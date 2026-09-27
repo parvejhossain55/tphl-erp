@@ -265,15 +265,21 @@ $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], tru
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <?php 
+                    $oldFundReq = $_SESSION['old_fund_requisition'] ?? [];
+                    unset($_SESSION['old_fund_requisition']);
+                    $userDeptId = !empty($oldFundReq['department_id']) ? (int)$oldFundReq['department_id'] : ($_SESSION['user']['department_id'] ?? 0);
+                    $oldReqType = $oldFundReq['requisition_type'] ?? 'general';
+                    $oldCategory = $oldFundReq['category'] ?? 'Other Expense';
+                    $oldAmount = $oldFundReq['amount'] ?? '';
+                    $oldPurpose = $oldFundReq['purpose'] ?? '';
+                    ?>
                     
                     <div class="mb-3">
                         <label for="department_id" class="form-label">Department <span class="text-danger">*</span></label>
                         <select name="department_id" id="department_id" class="form-select" required>
                             <option value="">-- Select Department --</option>
-                            <?php 
-                            $userDeptId = $_SESSION['user']['department_id'] ?? 0;
-                            foreach ($departments as $dept): 
-                            ?>
+                            <?php foreach ($departments as $dept): ?>
                                 <option value="<?= $dept['id'] ?>" <?= ($dept['id'] == $userDeptId) ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($dept['name']) ?>
                                 </option>
@@ -284,8 +290,8 @@ $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], tru
                     <div class="mb-3">
                         <label for="requisition_type" class="form-label">Requisition Type <span class="text-danger">*</span></label>
                         <select name="requisition_type" id="requisition_type" class="form-select" onchange="toggleRequisitionType()" required>
-                            <option value="general">General / Other Expenses</option>
-                            <option value="petty_cash" <?= !$canRequestPettyCash ? 'disabled' : '' ?>>
+                            <option value="general" <?= ($oldReqType === 'general') ? 'selected' : '' ?>>General / Other Expenses</option>
+                            <option value="petty_cash" <?= ($oldReqType === 'petty_cash') ? 'selected' : '' ?> <?= !$canRequestPettyCash ? 'disabled' : '' ?>>
                                 Petty Cash <?= !$canRequestPettyCash ? '(Restricted)' : '' ?>
                             </option>
                         </select>
@@ -296,19 +302,19 @@ $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], tru
                         <?php endif; ?>
                     </div>
 
-                    <div class="mb-3" id="categoryGroup">
+                    <div class="mb-3" id="categoryGroup" style="<?= ($oldReqType === 'petty_cash') ? 'display: none;' : '' ?>">
                         <label for="category" class="form-label">Expense Category <span class="text-danger">*</span></label>
                         <select name="category" id="category" class="form-select">
-                            <option value="Transport">Transport / Conveyance</option>
-                            <option value="Food">Food / Entertainment</option>
-                            <option value="Office Supplies">Office Supplies</option>
-                            <option value="Other Expense" selected>Other Expense</option>
+                            <option value="Transport" <?= ($oldCategory === 'Transport') ? 'selected' : '' ?>>Transport / Conveyance</option>
+                            <option value="Food" <?= ($oldCategory === 'Food') ? 'selected' : '' ?>>Food / Entertainment</option>
+                            <option value="Office Supplies" <?= ($oldCategory === 'Office Supplies') ? 'selected' : '' ?>>Office Supplies</option>
+                            <option value="Other Expense" <?= ($oldCategory === 'Other Expense') ? 'selected' : '' ?>>Other Expense</option>
                         </select>
                     </div>
 
                     <div class="mb-3">
                         <label for="amount" class="form-label">Requested Amount (BDT) <span class="text-danger">*</span></label>
-                        <input type="number" name="amount" id="amount" class="form-control" placeholder="0.00" step="0.01" min="0.01" required>
+                        <input type="number" name="amount" id="amount" class="form-control" placeholder="0.00" step="0.01" min="0.01" value="<?= htmlspecialchars($oldAmount) ?>" required>
                         <small class="text-danger d-none" id="amountLimitWarning">
                             <i class="fa-solid fa-circle-exclamation me-1"></i> Petty Cash requests cannot exceed BDT 10,000.
                         </small>
@@ -316,7 +322,7 @@ $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], tru
 
                     <div class="mb-3">
                         <label for="purpose" class="form-label">Purpose / Description <span class="text-danger">*</span></label>
-                        <textarea name="purpose" id="purpose" class="form-control" rows="3" placeholder="Describe the purpose of this request..." required></textarea>
+                        <textarea name="purpose" id="purpose" class="form-control" rows="3" placeholder="Describe the purpose of this request..." required><?= htmlspecialchars($oldPurpose) ?></textarea>
                     </div>
 
                     <div class="mb-3" id="receiptsUploadSection">
@@ -922,13 +928,96 @@ document.getElementById('amount').addEventListener('input', function() {
 });
 
 document.getElementById('requisitionForm').addEventListener('submit', function(e) {
-    var type = document.getElementById('requisition_type').value;
-    var amount = parseFloat(document.getElementById('amount').value);
+    var deptEl = document.getElementById('department_id');
+    var dept = deptEl ? deptEl.value : '';
+    var typeEl = document.getElementById('requisition_type');
+    var type = typeEl ? typeEl.value : 'general';
+    var amountEl = document.getElementById('amount');
+    var amount = parseFloat(amountEl ? amountEl.value : 0);
+    var purposeEl = document.getElementById('purpose');
+    var purpose = purposeEl ? purposeEl.value.trim() : '';
     
+    if (!dept) {
+        e.preventDefault();
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: 'Please select a Department.',
+                showConfirmButton: false,
+                timer: 3500
+            });
+        } else {
+            alert('Please select a Department.');
+        }
+        if (deptEl) deptEl.focus();
+        return false;
+    }
+
+    if (isNaN(amount) || amount <= 0) {
+        e.preventDefault();
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: 'Please enter a valid requested Amount greater than 0.',
+                showConfirmButton: false,
+                timer: 3500
+            });
+        } else {
+            alert('Please enter a valid requested Amount greater than 0.');
+        }
+        if (amountEl) amountEl.focus();
+        return false;
+    }
+
     if (type === 'petty_cash' && amount > 10000) {
         e.preventDefault();
-        alert('Petty Cash requests cannot exceed BDT 10,000.');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: 'Petty Cash requests cannot exceed BDT 10,000.',
+                showConfirmButton: false,
+                timer: 3500
+            });
+        } else {
+            alert('Petty Cash requests cannot exceed BDT 10,000.');
+        }
+        if (amountEl) amountEl.focus();
         return false;
+    }
+
+    if (!purpose) {
+        e.preventDefault();
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: 'Please provide the Purpose / Description.',
+                showConfirmButton: false,
+                timer: 3500
+            });
+        } else {
+            alert('Please provide the Purpose / Description.');
+        }
+        if (purposeEl) purposeEl.focus();
+        return false;
+    }
+});
+
+// Auto-open modal if redirected back with errors (?open_modal=1)
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.location.search.includes('open_modal=1')) {
+        var modalEl = document.getElementById('createRequisitionModal');
+        if (modalEl && typeof bootstrap !== 'undefined') {
+            var myModal = new bootstrap.Modal(modalEl);
+            myModal.show();
+        }
     }
 });
 
