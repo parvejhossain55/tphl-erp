@@ -1540,13 +1540,20 @@ class LeadController extends Controller
             exit;
         }
 
-        // FORM থেকে team_id, project_category_id & project_id
+        // FORM থেকে team_id, project_category_id, project_id & source_type_id
         $team_id = $_POST['team_id'] ?? null;
         $project_category_id = !empty($_POST['project_category_id']) ? (int)$_POST['project_category_id'] : null;
         $project_id = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
+        $source_type_id = !empty($_POST['source_type_id']) ? (int)$_POST['source_type_id'] : null;
 
         if (!$team_id) {
             setError("Please select a team");
+            header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+            exit;
+        }
+
+        if (!$source_type_id) {
+            setError("Please select a lead source");
             header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
             exit;
         }
@@ -1622,6 +1629,9 @@ class LeadController extends Controller
                 if (isset($data['phone_number']) && mb_strlen((string)$data['phone_number'], 'UTF-8') > 20) {
                     $issues[] = "Row {$rowIndex}: Phone Number is too long (" . mb_strlen((string)$data['phone_number'], 'UTF-8') . " chars, limit 20).";
                 }
+                if (isset($data['email']) && mb_strlen((string)$data['email'], 'UTF-8') > 191) {
+                    $issues[] = "Row {$rowIndex}: Email is too long (" . mb_strlen((string)$data['email'], 'UTF-8') . " chars, limit 191).";
+                }
             }
             fclose($handle);
         }
@@ -1632,7 +1642,8 @@ class LeadController extends Controller
             $_SESSION['dm_csv_metadata'] = [
                 'team_id' => $team_id,
                 'project_category_id' => $project_category_id,
-                'project_id' => $project_id
+                'project_id' => $project_id,
+                'source_type_id' => $source_type_id,
             ];
             $_SESSION['dm_csv_issues'] = $issues;
             header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
@@ -1640,7 +1651,7 @@ class LeadController extends Controller
         }
 
         // Otherwise, import directly
-        $this->executeImport($tempPath, $team_id, $project_category_id, $project_id);
+        $this->executeImport($tempPath, $team_id, $project_category_id, $project_id, $source_type_id);
         unlink($tempPath);
 
         setSuccess("CSV imported successfully");
@@ -1648,7 +1659,7 @@ class LeadController extends Controller
         exit;
     }
 
-    private function executeImport($filePath, $team_id, $project_category_id, $project_id = null)
+    private function executeImport($filePath, $team_id, $project_category_id, $project_id = null, $source_type_id = null)
     {
         if (($handle = fopen($filePath, "r")) !== false) {
             $header = fgetcsv($handle);
@@ -1665,7 +1676,8 @@ class LeadController extends Controller
                 if (count($header) !== count($row)) continue;
 
                 $data = array_combine($header, $row);
-                $data['source_type_id'] = (int)($data['source_type_id'] ?? 0);
+                $rowSourceTypeId = $source_type_id ? (int)$source_type_id : (!empty($data['source_type_id']) ? (int)$data['source_type_id'] : null);
+                $data['source_type_id'] = $rowSourceTypeId;
                 $data['status'] = 'active';
                 $data['visibility'] = $data['visibility'] ?? 'public';
                 $data['team_id'] = (int)$team_id;
@@ -1688,6 +1700,7 @@ class LeadController extends Controller
                 $data['project_id'] = $rowProjectId;
                 $data['created_by'] = $_SESSION['user']['id'] ?? null;
                 $data['country'] = $data['country'] ?? null;
+                $data['email'] = !empty($data['email']) ? trim((string)$data['email']) : null;
 
                 try {
                     $this->leadModel->create($data);
@@ -1812,7 +1825,7 @@ class LeadController extends Controller
             exit;
         }
 
-        $this->executeImport($tempFile, $meta['team_id'], $meta['project_category_id'], $meta['project_id'] ?? null);
+        $this->executeImport($tempFile, $meta['team_id'], $meta['project_category_id'], $meta['project_id'] ?? null, $meta['source_type_id'] ?? null);
 
         // Cleanup
         unlink($tempFile);
@@ -1840,6 +1853,60 @@ class LeadController extends Controller
 
         setError("CSV Import cancelled by user.");
         header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+        exit;
+    }
+
+    /**
+     * Download CSV template for Digital Marketing Executive Leads Import
+     */
+    public function downloadDmLeadsCsvTemplate()
+    {
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="leads_import_template.csv"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $output = fopen('php://output', 'w');
+
+        // Output UTF-8 BOM so Excel opens it with proper UTF-8 encoding
+        fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+        fputcsv($output, [
+            'campaign_name',
+            'platform',
+            'which_apartment_size_are_you_interested_in',
+            'which_floor_are_you_for_shop',
+            'when_are_you_planning_to_buy',
+            'would_you_like_to_schedule_a_site_visit',
+            'when_is_the_best_time_to_contact_you',
+            'full_name',
+            'job_title',
+            'company_name',
+            'phone_number',
+            'email',
+            'city',
+            'country'
+        ]);
+
+        // Sample row
+        fputcsv($output, [
+            'The Maple Heights Campaign',
+            'Lead Form',
+            '1850 sft',
+            'N/A',
+            'Within 3 Months',
+            'Yes',
+            'evening',
+            'Farhan Ahmed',
+            'Software Engineer',
+            'Tech Corp',
+            '01700000000',
+            'farhan@example.com',
+            'Dhaka',
+            'Bangladesh'
+        ]);
+
+        fclose($output);
         exit;
     }
 // form lead list
