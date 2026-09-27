@@ -19,8 +19,15 @@ $canApproveAh = $isAccountsHead || in_array($userRole, [1, 3]) || strpos($roleNa
         </div>
         <div class="d-flex align-items-center gap-3">
             <form action="" method="GET" class="d-flex align-items-center gap-2">
-                <label for="monthFilter" class="fw-bold text-muted small mb-0 text-nowrap">Filter Month:</label>
-                <input type="month" id="monthFilter" name="month" class="form-control form-control-sm" value="<?= $selected_month ?>" onchange="this.form.submit()">
+                <label for="monthFilter" class="fw-bold text-muted small mb-0 text-nowrap">Month:</label>
+                <input type="month" id="monthFilter" name="month" class="form-control form-control-sm" value="<?= $selected_month ?>">
+                
+                <label class="fw-bold text-muted small mb-0 ms-2 text-nowrap">Or Custom Range:</label>
+                <input type="date" name="from_date" class="form-control form-control-sm" value="<?= $selected_from_date ?? '' ?>">
+                <span class="text-muted small">to</span>
+                <input type="date" name="to_date" class="form-control form-control-sm" value="<?= $selected_to_date ?? '' ?>">
+                
+                <button type="submit" class="btn btn-sm btn-primary ms-1"><i class="fa-solid fa-search"></i></button>
             </form>
             <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fs-7 fw-semibold">
                 <i class="fa-solid fa-building-columns me-1"></i> Management View

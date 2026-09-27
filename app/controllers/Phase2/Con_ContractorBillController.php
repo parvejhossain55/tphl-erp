@@ -49,22 +49,39 @@ class Con_ContractorBillController extends Controller
     // ROLE HELPERS
     // =========================================================================
 
-    /** Roles 1 (Admin), 3 (Super Admin), 22 (PM Head), 20 (Operation Head), 32 (Admin Operation) can approve */
-    private function canApprove()
+    /** PM / PM Head (Role 15: PM, Role 22: PM Head, Roles 1, 3: Admin) can PM Approve / Verify */
+    private function canApprovePM()
     {
         $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
         if (in_array($this->userRole, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
             return false;
         }
         return (
-            in_array($this->userRole, [1, 3, 22, 20, 32])
-            || str_contains($roleName, 'admin')
-            || str_contains($roleName, 'management')
-            || str_contains($roleName, 'operation')
-            || str_contains($roleName, 'operator')
-            || str_contains($roleName, 'pm head')
+            in_array($this->userRole, [1, 3, 15, 22])
             || str_contains($roleName, 'project manager')
+            || str_contains($roleName, 'pm head')
+            || str_contains($roleName, 'admin')
         );
+    }
+
+    /** Final Management Approval: Roles 20 (Admin & Operation Head), 32 (Admin Operation), 1 (Admin), 3 (Super Admin) */
+    private function canApproveManagement()
+    {
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        if (in_array($this->userRole, [15, 22, 33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
+            return false;
+        }
+        return (
+            in_array($this->userRole, [1, 3, 20, 32])
+            || str_contains($roleName, 'operation head')
+            || str_contains($roleName, 'admin & operation head')
+            || (str_contains($roleName, 'admin') && !str_contains($roleName, 'project'))
+        );
+    }
+
+    private function canApprove()
+    {
+        return $this->canApproveManagement();
     }
 
     /** QC & Internal Audit role or specific permission check */
@@ -296,7 +313,7 @@ class Con_ContractorBillController extends Controller
                 'source_id'     => $billId,
                 'requested_days'=> 0,
                 'requested_by'  => $this->userId,
-                'approve_role'  => 'qc',
+                'approve_role'  => 'pm',
                 'meta_data'     => null,
                 'request_amount'=> $data['bill_amount'],
             ]);
@@ -544,8 +561,10 @@ class Con_ContractorBillController extends Controller
             'due_amount'              => $dueAmount,
             'payable_amount'          => $payableAmt,
             'approval_request'        => $approvalReq,
-            'canApprove'              => $this->canApprove(),
+            'canApprovePM'            => $this->canApprovePM(),
             'canApproveQC'            => $this->canApproveQC(),
+            'canApproveManagement'    => $this->canApproveManagement(),
+            'canApprove'              => $this->canApproveManagement(),
             'canProcessPayment'       => $this->canProcessPayment(),
             'userRole'                => $this->userRole,
             'banks'                   => $banks,
@@ -559,20 +578,41 @@ class Con_ContractorBillController extends Controller
     }
 
     // =========================================================================
-    // VERIFY (Site Engineer / Operation Head)
+    // VERIFY / PM APPROVE (Project Manager / PM Head)
     // =========================================================================
 
     public function verify($id)
     {
+        if (!$this->canApprovePM()) {
+            setError('You are not authorized for Project Manager approval.');
+            header("Location: {$GLOBALS['base_url']}/con-contractor-bill/$id");
+            exit;
+        }
+
+        $note = trim($_POST['verification_note'] ?? '');
         $data = [
             'status'            => 'verified',
             'verified_by'       => $this->userId,
             'verified_at'       => date('Y-m-d H:i:s'),
-            'verification_note' => trim($_POST['verification_note'] ?? ''),
+            'verification_note' => $note,
         ];
 
         if ($this->billModel->updateStatus($id, $data)) {
-            setSuccess('Bill verified successfully!');
+            // Forward approval request to QC
+            $stmtAr = $this->db->prepare("
+                UPDATE approval_requests 
+                SET approve_role = 'qc', 
+                    status = 'pending', 
+                    approval_note = ?
+                WHERE source_table = 'contractor_bill_requests' AND source_id = ?
+            ");
+            if ($stmtAr) {
+                $pmNote = "PM Approved" . (!empty($note) ? ": {$note}" : "");
+                $stmtAr->bind_param('si', $pmNote, $id);
+                $stmtAr->execute();
+                $stmtAr->close();
+            }
+            setSuccess('Bill approved by Project Manager & forwarded to QC!');
         } else {
             setError('Verification failed.');
         }
@@ -620,7 +660,7 @@ class Con_ContractorBillController extends Controller
             if ($approvedAmount <= 0) $approvedAmount = (float)$bill['bill_amount'];
 
             if ($this->billModel->updateQCStatus($id, $this->userId, $qcNote, $approvedAmount)) {
-                // Forward approval request to Management
+                // Forward approval request to Management (Role 20)
                 $stmtAr = $this->db->prepare("
                     UPDATE approval_requests 
                     SET approve_role = 'management', 
@@ -635,25 +675,25 @@ class Con_ContractorBillController extends Controller
                     $stmtAr->execute();
                     $stmtAr->close();
                 }
-                setSuccess('Bill QC Approved successfully.');
+                setSuccess('Bill QC Approved successfully & forwarded to Management (Role 20).');
             } else {
                 setError('Failed to QC approve bill.');
             }
         } else {
-            // -- MANAGEMENT APPROVAL PATH --
-            if (!$this->canApprove()) {
-                setError('You are not authorized to approve bills.');
+            // -- MANAGEMENT APPROVAL PATH (Role 20: Admin & Operation Head / Admin) --
+            if (!$this->canApproveManagement()) {
+                setError('You are not authorized for final management approval.');
                 header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
                 exit;
             }
 
-            if (!in_array($bill['status'], ['submitted', 'verified', 'qc_approved'])) {
+            if (!in_array($bill['status'], ['qc_approved', 'verified', 'submitted'])) {
                 setError('Bill is not in an approvable status.');
                 header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
                 exit;
             }
 
-            $approvedAmount = (float)($_POST['approved_amount'] ?? $bill['bill_amount']);
+            $approvedAmount = (float)($_POST['approved_amount'] ?? $bill['approved_amount'] ?? $bill['bill_amount']);
             if ($approvedAmount <= 0) {
                 $approvedAmount = (float)$bill['bill_amount'];
             }
@@ -661,6 +701,7 @@ class Con_ContractorBillController extends Controller
 
             if ($this->billModel->approve($id, $this->userId, $approvedAmount, $managementNote)) {
                 $this->syncApprovalRequest($id, 'approved', $approvedAmount);
+                $this->db->query("UPDATE approval_requests SET approve_role = 'accounts_head', status = 'pending' WHERE source_table = 'contractor_bill_requests' AND source_id = " . (int)$id);
 
                 // AUTO-GENERATE ACCRUAL JOURNAL
                 try {
@@ -707,7 +748,7 @@ class Con_ContractorBillController extends Controller
 
     public function reject($id)
     {
-        if (!$this->canApprove() && !$this->canApproveQC()) {
+        if (!$this->canApprovePM() && !$this->canApproveQC() && !$this->canApproveManagement()) {
             setError('You are not authorized to reject bills.');
             header("Location: {$GLOBALS['base_url']}/con-contractor-bill/{$id}");
             exit;

@@ -77,7 +77,7 @@ class IncentiveController extends Controller
             }
         }
 
-        $month = $_GET['month'] ?? date('Y-m');
+        $month = $_GET['month'] ?? $this->incentiveModel->getCycleForDate(date('Y-m-d'));
         $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' && $_GET['team_id'] !== 'all' ? (int)$_GET['team_id'] : null;
 
         $teamMetrics = $this->engine->getTeamMonthlyStats($userId, $month, $filterTeamId);
@@ -103,7 +103,9 @@ class IncentiveController extends Controller
      */
     public function manageIncentives()
     {
-        $month = $_GET['month'] ?? date('Y-m');
+        $month = $_GET['month'] ?? $this->incentiveModel->getCycleForDate(date('Y-m-d'));
+        $fromDate = $_GET['from_date'] ?? null;
+        $toDate = $_GET['to_date'] ?? null;
 
         $companyMetrics         = $this->incentiveModel->getCompanyMetrics($month);
         $salesClaimsQueue       = $this->incentiveModel->getSalesClaimsQueue($month);
@@ -114,12 +116,14 @@ class IncentiveController extends Controller
         $disbursementLogs       = $this->incentiveModel->getDisbursementLogs();
 
         // Calculate dynamic real-time team stats and individual stats to show on the dashboard for this month
-        $realTimeStats = $this->incentiveModel->getRealTimeIncentivesByMonth($month);
+        $realTimeStats = $this->incentiveModel->getRealTimeIncentivesByMonth($month, $fromDate, $toDate);
 
         $this->view("incentives/manage-incentives", [
             "current_route"          => "incentive-management",
             "page_title"             => "Sales Incentive Accounts",
             "selected_month"         => $month,
+            "selected_from_date"     => $fromDate,
+            "selected_to_date"       => $toDate,
             "companyMetrics"         => $companyMetrics,
             "salesClaimsQueue"       => $salesClaimsQueue,
             "realTimeStats"          => $realTimeStats,

@@ -71,7 +71,7 @@ class AutoPostingService
      * Debit: Expense / WIP Asset Account
      * Credit: Accounts Payable Account (Vendor / Contractor / Payroll Payable)
      */
-    public function postAccrualEntry($sourceModule, $sourceRefId, $expenseAccountId, $payableAccountId, $amount, $narration, $projectId = null, $partyType = null, $partyId = null, $createdBy = 1, $overrideOffice = null)
+    public function postAccrualEntry($sourceModule, $sourceRefId, $expenseAccountId, $payableAccountId, $amount, $narration, $projectId = null, $partyType = null, $partyId = null, $createdBy = 1, $overrideOffice = null, $overrideDate = null)
     {
         $amount = (float)$amount;
         if ($amount <= 0 || !$expenseAccountId || !$payableAccountId) {
@@ -90,7 +90,7 @@ class AutoPostingService
         }
 
         $voucherNo = $this->generateVoucherNumber('JV');
-        $date = date('Y-m-d');
+        $date = !empty($overrideDate) ? trim($overrideDate) : date('Y-m-d');
         $voucherType = 'Journal Voucher';
         $entryType = 'accrual';
         $status = 'approved';

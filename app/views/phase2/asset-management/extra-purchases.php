@@ -200,7 +200,12 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <span class="fs-12 fw-semibold"><?= htmlspecialchars($r['item_name']) ?></span>
+                                            <?php 
+                                            $displayName = (!empty($r['item_name']) && trim((string)$r['item_name']) !== '0')
+                                                ? $r['item_name']
+                                                : (!empty($r['justification']) ? mb_substr($r['justification'], 0, 50) . '...' : 'Office Asset');
+                                            ?>
+                                            <span class="fs-12 fw-semibold"><?= htmlspecialchars($displayName) ?></span>
                                             <?php if (!empty($r['category_name'])): ?>
                                                 <br><small class="text-muted fs-10"><?= htmlspecialchars($r['category_name']) ?></small>
                                             <?php endif; ?>
@@ -483,8 +488,13 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                             <label class="form-label">Department</label>
                             <select name="department_id" class="form-select">
                                 <option value="">-- Select Department --</option>
-                                <?php foreach ($departments ?? [] as $dept): ?>
-                                    <option value="<?= $dept['id'] ?>"><?= htmlspecialchars($dept['name']) ?></option>
+                                <?php 
+                                $userDeptId = (int)($_SESSION['user']['department_id'] ?? 0);
+                                foreach ($departments ?? [] as $dept): 
+                                ?>
+                                    <option value="<?= $dept['id'] ?>" <?= ($dept['id'] == $userDeptId) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($dept['name']) ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -1225,10 +1235,14 @@ function closeDetailModalAndConfirm(id) {
 
 function openConfirmPurchaseModal(btn) {
     var data = null;
-    if (typeof btn === 'object' && btn.getAttribute) {
-        data = JSON.parse(btn.getAttribute('data-info'));
-    } else if (typeof btn === 'object') {
-        data = btn;
+    try {
+        if (typeof btn === 'object' && btn.getAttribute) {
+            data = JSON.parse(btn.getAttribute('data-info'));
+        } else if (typeof btn === 'object') {
+            data = btn;
+        }
+    } catch(e) {
+        console.error("Error parsing purchase data:", e);
     }
     if (!data) return;
 
@@ -1249,9 +1263,10 @@ function openConfirmPurchaseModal(btn) {
     if (summaryEl) {
         var assignedText = data.assigned_to_name ? data.assigned_to_name : (data.requested_by_name ? data.requested_by_name : 'Unassigned');
         var branchText = data.asset_location ? data.asset_location : 'Default Office';
+        var itemNameText = (data.item_name && data.item_name !== '0') ? data.item_name : (data.justification ? data.justification.substring(0, 50) : (data.category_name || 'Procurement Item'));
         summaryEl.innerHTML = `
             <div class="row g-2">
-                <div class="col-6"><strong>Item:</strong> ${data.item_name} (${data.quantity} pcs)</div>
+                <div class="col-6"><strong>Item:</strong> ${itemNameText} (${data.quantity} pcs)</div>
                 <div class="col-6"><strong>Total Price:</strong> ৳ ${parseFloat(data.total_price || 0).toLocaleString(undefined, {minimumFractionDigits:2})}</div>
                 <div class="col-6"><strong>Assign To:</strong> <span class="badge bg-primary-subtle text-primary">${assignedText}</span></div>
                 <div class="col-6"><strong>Office Branch:</strong> <span class="badge bg-info-subtle text-info">${branchText}</span></div>

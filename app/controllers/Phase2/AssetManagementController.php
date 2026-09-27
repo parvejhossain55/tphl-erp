@@ -51,6 +51,9 @@ class AssetManagementController extends Controller
             'assigned_user_id' => $_GET['assigned_user_id'] ?? '',
         ];
 
+        // Ensure all registered assets with purchase price are synchronized to the Balance Sheet under Non-Current Assets
+        $this->model->syncAllUnpostedAssetsToBalanceSheet((int)($_SESSION['user']['id'] ?? 1));
+
         $assets = $this->model->getAllAssets($filters);
         $products = $this->model->getAllProducts(['status' => 'active']);
         $categories = $this->model->getProcurementCategories();
@@ -100,37 +103,9 @@ class AssetManagementController extends Controller
             $data = $_POST;
             $data['created_by'] = $_SESSION['user']['id'] ?? 1;
             if ($assetId = $this->model->createAsset($data)) {
-                // Auto-post to double-entry accounting ledger so purchase value reflects in Balance Sheet (Total Assets)
-                if (!empty($data['purchase_price']) && (float)$data['purchase_price'] > 0) {
-                    try {
-                        require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
-                        $autoPosting = new \AutoPostingService($this->db);
-                        $assetAccId = $autoPosting->getAccountIdByCode('1000') ?: $autoPosting->getAccountIdByCode('1610'); // Office Assets / Fixed Assets
-                        $retainedAccId = $autoPosting->getAccountIdByCode('352000') ?: $autoPosting->getAccountIdByCode('29'); // Retained Earnings / Equity
-
-                        $assetObj = $this->model->findAsset($assetId);
-                        $assetCode = $assetObj['asset_code'] ?? ('AST-' . $assetId);
-                        $itemName = $assetObj['item_name'] ?? 'Office Asset';
-                        $branchName = $assetObj['branch_name'] ?? null;
-
-                        $autoPosting->postAccrualEntry(
-                            'office_assets',
-                            $assetId,
-                            $assetAccId,
-                            $retainedAccId,
-                            (float)$data['purchase_price'],
-                            "Existing Company Asset Register (Opening Balance) ({$assetCode}): " . $itemName,
-                            !empty($data['project_id']) ? (int)$data['project_id'] : null,
-                            'employee',
-                            !empty($data['assigned_to']) ? (int)$data['assigned_to'] : null,
-                            $_SESSION['user']['id'] ?? 1,
-                            $branchName
-                        );
-                    } catch (\Exception $e) {
-                        error_log("AutoPosting Exception (Asset Direct Store): " . $e->getMessage());
-                    }
-                }
-                setSuccess("Asset added successfully.");
+                // Auto-post to double-entry accounting ledger so purchase value reflects in Balance Sheet (Non-Current Assets)
+                $this->model->syncAssetToBalanceSheet($assetId, (int)($_SESSION['user']['id'] ?? 1));
+                setSuccess("Asset added successfully & synchronized to Balance Sheet.");
             } else {
                 setError("Failed to add asset.");
             }
@@ -228,7 +203,8 @@ class AssetManagementController extends Controller
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($this->model->updateAsset($id, $_POST)) {
-                setSuccess("Asset updated successfully.");
+                $this->model->syncAssetToBalanceSheet($id, (int)($_SESSION['user']['id'] ?? 1));
+                setSuccess("Asset updated successfully & synchronized to Balance Sheet.");
             } else {
                 setError("Failed to update asset.");
             }

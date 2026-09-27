@@ -10,7 +10,7 @@ class IncentiveCalculationEngine extends Model
     /**
      * Calculates the incentive percentage for a specific user and month (Tier 1 - Individual)
      */
-    public function getExecutiveMonthlyStats($userId, $yearMonth)
+    public function getExecutiveMonthlyStats($userId, $yearMonth, $fromDate = null, $toDate = null)
     {
         list($y, $m) = explode('-', $yearMonth);
         $cycle = $this->getCycleDateRange($y, $m);
@@ -30,6 +30,12 @@ class IncentiveCalculationEngine extends Model
         if (!empty($targetRow['from_date']) && !empty($targetRow['to_date'])) {
             $start = $targetRow['from_date'] . ' 00:00:00';
             $end   = $targetRow['to_date'] . ' 23:59:59';
+        }
+        
+        // Override with UI filters if provided
+        if (!empty($fromDate) && !empty($toDate)) {
+            $start = $fromDate . ' 00:00:00';
+            $end   = $toDate . ' 23:59:59';
         }
 
         $targetAmount = $targetRow ? (float)$targetRow['booking_value_target'] : 0.00;
@@ -119,7 +125,7 @@ class IncentiveCalculationEngine extends Model
     /**
      * Calculates the Team Leader / Manager / Sales Head incentive for a month (Tier 2 - Team)
      */
-    public function getTeamMonthlyStats($userId, $yearMonth, $filterTeamId = null)
+    public function getTeamMonthlyStats($userId, $yearMonth, $filterTeamId = null, $fromDate = null, $toDate = null)
     {
         // 1. Identify User Role and Team scope
         $empStmt = $this->db->prepare("
@@ -181,6 +187,12 @@ class IncentiveCalculationEngine extends Model
         $cycle = $this->getCycleDateRange($y, $m);
         $start = $cycle['start'];
         $end   = $cycle['end'];
+        
+        // Override with UI filters if provided
+        if (!empty($fromDate) && !empty($toDate)) {
+            $start = $fromDate . ' 00:00:00';
+            $end   = $toDate . ' 23:59:59';
+        }
 
         // 3. Get the TEAM Achievement (Sum of all land_share sales in the team/global within the cycle)
         $achieveSql = "SELECT SUM(IFNULL(f.land_share_value, 0)) as total_team_achieved

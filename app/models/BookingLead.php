@@ -741,7 +741,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                         $requestedBy = (int)($_SESSION['user']['id'] ?? 1);
                         $stmtIns = $this->db->prepare("INSERT INTO approval_requests (department, request_type, title, source_table, source_id, request_amount, status, requested_by, approve_role, attachment, created_at) VALUES ('Sales', 'discount', 'Lead Booking Discount Approval', 'lead_bookings', ?, ?, 'pending', ?, 'Management', ?, NOW())");
                         if ($stmtIns) {
-                            $stmtIns->bind_param("idiss", $id, $discount, $requestedBy, $pastApprovalAttachment);
+                            $stmtIns->bind_param("idis", $id, $discount, $requestedBy, $pastApprovalAttachment);
                             $stmtIns->execute();
                             $stmtIns->close();
                         }
@@ -773,7 +773,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $salesById = isset($data['sales_by_id']) ? (int)$data['sales_by_id'] : $existing['sales_by_id'];
 
             $stmt->bind_param(
-                "iidssdsisi",
+                "iidsddssii",
                 $projectId,
                 $newFlatId,
                 $agreementVal,
