@@ -548,25 +548,28 @@ if (!empty($virtualEmiSchedule)) {
                         amountField.setAttribute('disabled', 'disabled');
                     } else if (perEmi > 0 && cedRemainingCF < perEmi) {
                         helpText = 'Remaining CF: TK.' + cedRemainingCF.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (less than per EMI).' + dueNote;
-                        amountField.setAttribute('placeholder', 'Max: TK.' + cedRemainingCF.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}));
-                        amountField.setAttribute('max', cedRemainingCF.toFixed(2));
+                        amountField.setAttribute('placeholder', 'Remaining CF: TK.' + cedRemainingCF.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}));
+                        amountField.removeAttribute('max');
                         amountField.removeAttribute('disabled');
                     } else {
                         helpText = perEmi > 0 ? 'Suggested: TK.' + perEmi.toLocaleString('en-IN', {minimumFractionDigits:2}) + '.' + dueNote + ' Enter any amount — system allocates automatically.' : 'Enter EMI amount';
-                        amountField.setAttribute('max', cedRemainingCF.toFixed(2));
+                        amountField.removeAttribute('max');
                         amountField.removeAttribute('disabled');
                     }
                     break;
                 case 'development_charge':
-                    helpText = 'Development charge payment';
+                case 'shop_service_charge':
+                    var cedRemainingDev = <?= json_encode(max(0, (float)$flatDevCharges - (float)$devChargePaid)) ?>;
+                    helpText = '<?= addslashes($devChargeLabel) ?> payment. Remaining: TK.' + cedRemainingDev.toLocaleString('en-IN', {minimumFractionDigits:2}) + '. Any surplus amount will automatically cascade to EMI.';
+                    amountField.setAttribute('placeholder', 'Enter amount (Surplus cascades to EMI)');
                     amountField.removeAttribute('max');
                     amountField.removeAttribute('disabled');
                     break;
                 case 'land_share':
                     var cedRemainingLS = <?= json_encode((float)($paymentSummary['remaining_land_share'] ?? 0)) ?>;
-                    helpText = 'Land share payment. Remaining: TK.' + cedRemainingLS.toLocaleString('en-IN', {minimumFractionDigits:2});
-                    amountField.setAttribute('placeholder', 'Max: TK.' + cedRemainingLS.toLocaleString('en-IN', {minimumFractionDigits:2}));
-                    amountField.setAttribute('max', cedRemainingLS.toFixed(2));
+                    helpText = 'Land share payment. Remaining: TK.' + cedRemainingLS.toLocaleString('en-IN', {minimumFractionDigits:2}) + '. Any surplus amount will automatically cascade to Development Charge & EMI.';
+                    amountField.setAttribute('placeholder', 'Enter amount (Surplus cascades to Dev Charge & EMI)');
+                    amountField.removeAttribute('max');
                     amountField.removeAttribute('disabled');
                     break;
                 case 'emi_due_settlement':
