@@ -438,10 +438,10 @@ class OnboardClientController extends Controller
 
                     if ($match && !empty($su['savedProperties'][0])) {
                         $sp = $su['savedProperties'][0];
-                        $links['cameraLink1']         = !empty($sp['videoLink']) ? $sp['videoLink'] : null;
-                        $links['cameraLink2']         = !empty($sp['videoLink2']) ? $sp['videoLink2'] : null;
-                        $links['moneyReceiptLink']    = !empty($sp['moneyReceiptLink']) ? $sp['moneyReceiptLink'] : null;
-                        $links['purchaseDetailsLink'] = !empty($sp['purchaseDetailsLink']) ? $sp['purchaseDetailsLink'] : null;
+                        if(empty($links['cameraLink1'])) $links['cameraLink1'] = !empty($sp['videoLink']) ? $sp['videoLink'] : null;
+                        if(empty($links['cameraLink2'])) $links['cameraLink2'] = !empty($sp['videoLink2']) ? $sp['videoLink2'] : null;
+                        if(empty($links['moneyReceiptLink'])) $links['moneyReceiptLink'] = !empty($sp['moneyReceiptLink']) ? $sp['moneyReceiptLink'] : null;
+                        if(empty($links['purchaseDetailsLink'])) $links['purchaseDetailsLink'] = !empty($sp['purchaseDetailsLink']) ? $sp['purchaseDetailsLink'] : null;
                         break;
                     }
                 }

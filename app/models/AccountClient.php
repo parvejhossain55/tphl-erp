@@ -41,71 +41,14 @@ class AccountClient extends Model
             l.email,
             l.designation,
             l.company,
-            (SELECT GROUP_CONCAT(DISTINCT u_agent.full_name SEPARATOR ', ')
-             FROM lead_bookings lb_sub
-             INNER JOIN lead_payments lp_sub ON lp_sub.booking_id = lb_sub.id AND lp_sub.payment_type = 'booking_money'
-             INNER JOIN users u_agent ON u_agent.id = lp_sub.created_by
-             WHERE lb_sub.lead_id = l.id
-               AND lb_sub.deleted_at IS NULL
-               AND lb_sub.booking_status NOT IN ('refunded', 'cancelled')
-               AND (lb_sub.landshare_status IS NULL OR lb_sub.landshare_status != 'cancelled')
-               AND lb_sub.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
-            ) AS agent_name,
-            COUNT(lb.id) AS total_bookings,
+            agents.agent_name,
+            COUNT(DISTINCT lb.id) AS total_bookings,
             SUM(lb.agreement_value) AS total_agreement_value,
-            -- Concatenated list of all projects and flats for this client
-            (SELECT GROUP_CONCAT(CONCAT(p2.name, '||', f2.flat_name, '||', f2.id) SEPARATOR ';;')
-             FROM lead_bookings lb2
-             INNER JOIN projects p2 ON lb2.project_id = p2.id
-             INNER JOIN flats f2 ON lb2.flat_id = f2.id
-             WHERE lb2.lead_id = l.id
-               AND lb2.deleted_at IS NULL
-               AND lb2.booking_status NOT IN ('refunded', 'cancelled')
-               AND (lb2.landshare_status IS NULL OR lb2.landshare_status != 'cancelled')
-               AND lb2.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
-            ) AS project_flats_combined,
-            -- Latest verification status across all this client's payments
-            (SELECT lp.verification_status
-             FROM lead_payments lp
-             INNER JOIN lead_bookings lb3 ON lb3.id = lp.booking_id
-             WHERE lb3.lead_id = l.id
-               AND lb3.deleted_at IS NULL
-               AND lb3.booking_status NOT IN ('refunded', 'cancelled')
-               AND (lb3.landshare_status IS NULL OR lb3.landshare_status != 'cancelled')
-               AND lb3.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
-             ORDER BY lp.created_at DESC LIMIT 1) AS latest_verification_status,
-            (SELECT COUNT(lp.id)
-             FROM lead_payments lp
-             INNER JOIN lead_bookings lb_p ON lb_p.id = lp.booking_id
-             WHERE lb_p.lead_id = l.id
-               AND lb_p.deleted_at IS NULL
-               AND lb_p.booking_status NOT IN ('refunded', 'cancelled')
-               AND (lb_p.landshare_status IS NULL OR lb_p.landshare_status != 'cancelled')
-               AND lb_p.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
-               AND lp.verification_status = 'pending') AS total_pending_payments,
-            COALESCE(
-                (SELECT SUM(lp.amount)
-                 FROM lead_payments lp
-                 INNER JOIN lead_bookings lb2 ON lb2.id = lp.booking_id
-                 WHERE lb2.lead_id = l.id
-                   AND lb2.deleted_at IS NULL
-                   AND lb2.booking_status NOT IN ('refunded', 'cancelled')
-                   AND (lb2.landshare_status IS NULL OR lb2.landshare_status != 'cancelled')
-                   AND lb2.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
-                   AND lp.payment_status IN ('paid','partially_paid')),
-                0
-            ) AS total_paid,
-            (
-                SELECT MAX(lp.payment_date)
-                FROM lead_payments lp
-                INNER JOIN lead_bookings lb2 ON lb2.id = lp.booking_id
-                WHERE lb2.lead_id = l.id
-                  AND lb2.deleted_at IS NULL
-                  AND lb2.booking_status NOT IN ('refunded', 'cancelled')
-                  AND (lb2.landshare_status IS NULL OR lb2.landshare_status != 'cancelled')
-                  AND lb2.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
-                  AND lp.payment_status IN ('paid','partially_paid')
-            ) AS last_payment_date,
+            GROUP_CONCAT(DISTINCT CONCAT(p.name, '||', f.flat_name, '||', f.id) SEPARATOR ';;') AS project_flats_combined,
+            p_stats.latest_verification_status,
+            COALESCE(p_stats.total_pending_payments, 0) AS total_pending_payments,
+            COALESCE(p_stats.total_paid, 0) AS total_paid,
+            p_stats.last_payment_date,
             MAX(lb.id) AS booking_id
         FROM leads l
         INNER JOIN lead_bookings lb ON lb.lead_id = l.id
@@ -113,6 +56,34 @@ class AccountClient extends Model
             AND lb.booking_status NOT IN ('refunded', 'cancelled')
             AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
             AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+        LEFT JOIN projects p ON lb.project_id = p.id
+        LEFT JOIN flats f ON lb.flat_id = f.id
+        LEFT JOIN (
+            SELECT 
+                lb_sub.lead_id,
+                SUM(CASE WHEN lp.payment_status IN ('paid','partially_paid') THEN lp.amount ELSE 0 END) AS total_paid,
+                MAX(CASE WHEN lp.payment_status IN ('paid','partially_paid') THEN lp.payment_date ELSE NULL END) AS last_payment_date,
+                SUM(CASE WHEN lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS total_pending_payments,
+                SUBSTRING_INDEX(GROUP_CONCAT(lp.verification_status ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS latest_verification_status
+            FROM lead_bookings lb_sub
+            INNER JOIN lead_payments lp ON lp.booking_id = lb_sub.id
+            WHERE lb_sub.deleted_at IS NULL
+               AND lb_sub.booking_status NOT IN ('refunded', 'cancelled')
+               AND (lb_sub.landshare_status IS NULL OR lb_sub.landshare_status != 'cancelled')
+               AND lb_sub.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+            GROUP BY lb_sub.lead_id
+        ) AS p_stats ON p_stats.lead_id = l.id
+        LEFT JOIN (
+            SELECT lb_sub.lead_id, GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') AS agent_name
+            FROM lead_bookings lb_sub
+            INNER JOIN lead_payments lp ON lp.booking_id = lb_sub.id AND lp.payment_type = 'booking_money'
+            INNER JOIN users u ON u.id = lp.created_by
+            WHERE lb_sub.deleted_at IS NULL
+               AND lb_sub.booking_status NOT IN ('refunded', 'cancelled')
+               AND (lb_sub.landshare_status IS NULL OR lb_sub.landshare_status != 'cancelled')
+               AND lb_sub.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+            GROUP BY lb_sub.lead_id
+        ) AS agents ON agents.lead_id = l.id
         $whereClause
         GROUP BY l.id
         $havingClause
