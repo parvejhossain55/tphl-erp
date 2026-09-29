@@ -459,12 +459,12 @@ $_selectedMonth = $selectedMonth   ?? date('m');
 
                                 $empIdFk = (int)($p['real_emp_id_fk'] ?? $p['id'] ?? 0);
                                 $isMealDeductible = isset($p['is_meal_deduction']) ? (int)$p['is_meal_deduction'] : 1;
-                                $mealPct = isset($p['per_meal_percentage']) ? (float)$p['per_meal_percentage'] : 100.00;
+                                $mealPct = isset($p['per_meal_percentage']) ? (float)$p['per_meal_percentage'] : 0.00;
                                 $standardMealRate = isset($activeMealProject['standard_meal_amount']) && $activeMealProject['standard_meal_amount'] > 0 
                                     ? (float)$activeMealProject['standard_meal_amount'] 
                                     : 120.00;
                                 $effectiveMealRate = ($isMealDeductible == 1) 
-                                    ? (!empty($p['per_meal_amount']) && $p['per_meal_amount'] > 0 ? (float)$p['per_meal_amount'] : round($standardMealRate * ($mealPct / 100), 2))
+                                    ? max(0, round($standardMealRate * (1 - ($mealPct / 100)), 2))
                                     : 0.00;
 
                                 $mealCount = 0;
