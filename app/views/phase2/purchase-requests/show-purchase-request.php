@@ -181,10 +181,15 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                     <i class="bi bi-calendar-event me-1 text-warning"></i> Required By
                                 </label>
                                 <span class="fw-bold text-warning"><?= date('d M Y', strtotime($pr['required_date'])) ?></span>
+                                <?php if (isset($maxLeadTime) && $maxLeadTime > 0): ?>
+                                    <div class="mt-1">
+                                        <span class="badge bg-secondary" style="font-size:10px;"><i class="bi bi-clock-history me-1"></i> Standard Lead Time: <?= $maxLeadTime ?> Days</span>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                             <?php endif; ?>
                             <?php if (!empty($pr['purpose']) || !empty($pr['notes'])): ?>
-                            <div class="col-md-9">
+                            <div class="<?= isset($leadTimeBreakdown) && is_array($leadTimeBreakdown) ? 'col-md-5' : 'col-md-9' ?>">
                                 <label class="small text-uppercase text-muted d-block">
                                     <i class="bi bi-justify-left me-1 text-info"></i> Purpose / Notes
                                 </label>
@@ -197,6 +202,23 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                         <?= nl2br(htmlspecialchars($pr['notes'])) ?>
                                     </div>
                                 <?php endif; ?>
+                            </div>
+                            <?php endif; ?>
+                            
+                            <?php if (isset($leadTimeBreakdown) && is_array($leadTimeBreakdown)): ?>
+                            <div class="col-md-4">
+                                <label class="small text-uppercase text-muted d-block mb-1">
+                                    <i class="bi bi-diagram-3 me-1 text-primary"></i> Lead Time Breakdown
+                                </label>
+                                <div style="font-size:11px; line-height:1.4; border-left: 2px solid #0d6efd; padding-left: 8px;" class="text-muted">
+                                    <strong class="text-dark">Category:</strong> <?= htmlspecialchars($leadTimeBreakdown['category']) ?><br>
+                                    PR to Qtn: <strong><?= $leadTimeBreakdown['pr_to_qtn'] ?>d</strong> &bull;
+                                    CS Analys: <strong><?= $leadTimeBreakdown['cs_analysis'] ?>d</strong> &bull;
+                                    Approval: <strong><?= $leadTimeBreakdown['approval'] ?>d</strong><br>
+                                    WO/PO: <strong><?= $leadTimeBreakdown['wo_po'] ?>d</strong> &bull;
+                                    Adv Pay: <strong><?= $leadTimeBreakdown['adv_payment'] ?>d</strong> &bull;
+                                    Transp: <strong><?= $leadTimeBreakdown['transport'] ?>d</strong>
+                                </div>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -344,7 +366,15 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                     <th>Unit</th>
                                     <th class="text-end">Current Stock (Site)</th>
                                     <th class="text-end">Requested Qty</th>
-                                    <th class="text-end">Next 3-Months Req.</th>
+                                    <?php 
+                                    $baseDate = !empty($pr['required_date']) ? $pr['required_date'] : date('Y-m-d');
+                                    $m1Name = date('M', strtotime("+1 month", strtotime($baseDate))) . ' Forecast';
+                                    $m2Name = date('M', strtotime("+2 months", strtotime($baseDate))) . ' Forecast';
+                                    $m3Name = date('M', strtotime("+3 months", strtotime($baseDate))) . ' Forecast';
+                                    ?>
+                                    <th class="text-end"><?= $m1Name ?></th>
+                                    <th class="text-end"><?= $m2Name ?></th>
+                                    <th class="text-end"><?= $m3Name ?></th>
                                     <th class="text-center">Required Date</th>
                                 </tr>
                             </thead>
@@ -368,9 +398,27 @@ $isReadOnly = !in_array($sessionRole, [17, 23, 31]);
                                         <small class="text-muted fw-normal"><?= htmlspecialchars($item['unit']) ?></small>
                                     </td>
                                     <td class="text-end">
-                                        <?php if (!empty($item['next_3_months_requirement']) && (float)$item['next_3_months_requirement'] > 0): ?>
+                                        <?php if (!empty($item['month_1_forecast']) && (float)$item['month_1_forecast'] > 0): ?>
                                             <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
-                                                <?= number_format((float)$item['next_3_months_requirement'], 3) ?> <?= htmlspecialchars($item['unit']) ?>
+                                                <?= number_format((float)$item['month_1_forecast'], 3) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-end">
+                                        <?php if (!empty($item['month_2_forecast']) && (float)$item['month_2_forecast'] > 0): ?>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                                                <?= number_format((float)$item['month_2_forecast'], 3) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-muted">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-end">
+                                        <?php if (!empty($item['month_3_forecast']) && (float)$item['month_3_forecast'] > 0): ?>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                                                <?= number_format((float)$item['month_3_forecast'], 3) ?>
                                             </span>
                                         <?php else: ?>
                                             <span class="text-muted">—</span>

@@ -133,6 +133,50 @@
   @keyframes blink {
     50% { border-color:transparent; }
   }
+
+  /* Global mobile responsive table fix */
+  @media (max-width: 768px) {
+    .table-responsive .table th, 
+    .table-responsive .table td {
+        white-space: nowrap !important;
+    }
+  }
+
+  /* Sidebar horizontal scroll and badge fix */
+  .app-sidebar {
+      overflow-x: hidden !important;
+  }
+  .main-sidebar, .main-menu-container, .main-menu {
+      overflow-x: hidden !important;
+      max-width: 100%;
+  }
+  .app-sidebar .slide {
+      max-width: 100%;
+      box-sizing: border-box;
+  }
+  .app-sidebar .sidebar__menu-item {
+      display: flex !important;
+      align-items: center;
+      padding-right: 15px !important;
+      width: 100%;
+      box-sizing: border-box;
+  }
+  .app-sidebar .sidebar__menu-label {
+      flex: 1;
+      white-space: normal !important;
+      word-break: break-word;
+      padding-right: 5px;
+  }
+  .app-sidebar .badge {
+      flex-shrink: 0;
+      position: static !important;
+      margin-left: auto;
+  }
+  .app-sidebar .slide-right {
+      flex-shrink: 0;
+      position: static !important;
+      margin-left: 5px;
+  }
 </style>
 
 <div class="preloader" id="preloader">

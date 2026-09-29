@@ -3078,7 +3078,7 @@
                     <?php endif; ?>
                     <!-- ====== END Site Operations ====== -->
 
-                    <?php if (hasPermission('Material Manage') || hasPermission('Estimator dashboard')): ?>
+                    <?php if (hasPermission('Material Manage') || hasPermission('Estimator dashboard') || in_array((int) ($_SESSION['user']['role_id'] ?? 0), [17, 31])): ?>
                         <!-- Module 3: Materials & Inventory -->
                         <li
                             class="slide has-sub <?= isActive(['con-materials', 'con-material-create', 'con-warehouses', 'con-warehouse-create', 'con-stocks'], $current_route) ? 'active' : '' ?>">

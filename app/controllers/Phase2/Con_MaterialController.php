@@ -275,6 +275,36 @@ class Con_MaterialController extends Controller
         exit;
     }
 
+    /** POST /con-material-category-lead-times/{id} */
+    public function updateCategoryLeadTimes($id)
+    {
+        header('Content-Type: application/json');
+        
+        $itemType = $_POST['item_type'] ?? 'Local';
+        $prToQtn = (int)($_POST['pr_to_qtn_days'] ?? 0);
+        $csAnalysis = (int)($_POST['cs_analysis_days'] ?? 0);
+        $approval = (int)($_POST['approval_days'] ?? 0);
+        $woPo = (int)($_POST['wo_po_days'] ?? 0);
+        $advPayment = (int)($_POST['adv_payment_days'] ?? 0);
+        $transport = (int)($_POST['transport_days'] ?? 0);
+        
+        $total = $prToQtn + $csAnalysis + $approval + $woPo + $advPayment + $transport;
+
+        $ok = $this->categoryModel->updateLeadTimes((int)$id, [
+            'item_type'        => $itemType,
+            'pr_to_qtn_days'   => $prToQtn,
+            'cs_analysis_days' => $csAnalysis,
+            'approval_days'    => $approval,
+            'wo_po_days'       => $woPo,
+            'adv_payment_days' => $advPayment,
+            'transport_days'   => $transport,
+            'total_lead_days'  => $total,
+        ]);
+
+        echo json_encode(['success' => (bool)$ok, 'total_lead_days' => $total]);
+        exit;
+    }
+
     /** POST /con-material-category-delete/{id} */
     public function deleteCategory($id)
     {

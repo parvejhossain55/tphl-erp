@@ -355,6 +355,7 @@ return [
     'con-material-delete/(\d+)' => ['controller' => 'Phase2\Con_MaterialController', 'method' => 'delete'],
     'con-material-category-store' => ['controller' => 'Phase2\Con_MaterialController', 'method' => 'storeCategory'],
     'con-material-category-update/(\d+)' => ['controller' => 'Phase2\Con_MaterialController', 'method' => 'updateCategory'],
+    'con-material-category-lead-times/(\d+)' => ['controller' => 'Phase2\Con_MaterialController', 'method' => 'updateCategoryLeadTimes'],
     'con-material-category-delete/(\d+)' => ['controller' => 'Phase2\Con_MaterialController', 'method' => 'deleteCategory'],
     'con-stocks' => ['controller' => 'Phase2\Con_MaterialController', 'method' => 'stocks'],
 

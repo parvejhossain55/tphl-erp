@@ -142,7 +142,7 @@ $show_breadcrumb = true;
                                         <a class="table__icon download" href="<?= $GLOBALS['base_url'] ?>/view-lead/<?= $client['lead_id'] ?>" title="View Lead">
                                             <i class="fa-regular fa-eye"></i>
                                         </a>
-                                        <a class="table__icon edit" href="<?= $GLOBALS['base_url'] ?>/edit-onboard-client/<?= $client['lead_id'] ?>" title="Edit Lead">
+                                        <a class="table__icon edit" href="<?= $GLOBALS['base_url'] ?>/edit-onboard-client/<?= $client['id'] ?>" title="Edit Lead">
                                             <i class="fa-sharp fa-light fa-pen"></i>
                                         </a>
 

@@ -11,7 +11,7 @@ class OnboardClient extends Model
 
     public function getAll($period = null)
     {
-        $sql = "SELECT oc.lead_id,
+        $sql = "SELECT oc.id, oc.lead_id,
                    l.full_name AS client_name,
                    l.phone AS client_phone,
                    oc.email,

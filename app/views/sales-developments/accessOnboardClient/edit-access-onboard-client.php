@@ -31,7 +31,7 @@ $show_breadcrumb = true;
                     <div class="col-lg-6 mb-3">
                         <label for="password">Password <span>Before Update Retype*</span></label>
                         <div class="input-group">
-                            <input type="password" class="form-control" name="password" id="password" placeholder="Enter new password if you want" value="<?= $onboardClient['password'] ?>">
+                            <input type="password" class="form-control" name="password" id="password" placeholder="Enter new password if you want" value="">
                             <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
                                 <i class="fa-regular fa-eye" id="togglePasswordIcon"></i>
                             </button>
