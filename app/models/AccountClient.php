@@ -1573,6 +1573,7 @@ class AccountClient extends Model
             INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
             WHERE es.lead_booking_id = ?
             AND lp.verification_status != 'rejected'
+            AND lp.is_trashed = 0
             ORDER BY es.emi_no ASC
         ");
         $stmt->bind_param("i", $bookingId);

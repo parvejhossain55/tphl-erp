@@ -130,6 +130,13 @@ class Con_PurchaseRequest extends Model
         $stmt = $this->db->prepare(
             "SELECT pri.*, m.name AS material_name, m.unit,
                     COALESCE(cat.name, 'Uncategorized') AS category_name,
+                    COALESCE(cat.total_lead_days, 0) AS total_lead_days,
+                    cat.pr_to_qtn_days,
+                    cat.cs_analysis_days,
+                    cat.approval_days,
+                    cat.wo_po_days,
+                    cat.adv_payment_days,
+                    cat.transport_days,
                     bi.required_date AS boq_required_date,
                     pri.required_date AS item_required_date
              FROM {$this->itemTable} pri
@@ -236,20 +243,22 @@ class Con_PurchaseRequest extends Model
 
             $itemStmt = $this->db->prepare(
                 "INSERT INTO {$this->itemTable}
-                    (request_id, material_id, quantity, current_stock, next_3_months_requirement, required_date, created_by)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)"
+                    (request_id, material_id, quantity, current_stock, month_1_forecast, month_2_forecast, month_3_forecast, created_by)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
             );
             foreach ($items as $item) {
-                $itemReqDate = !empty($item['required_date']) ? $item['required_date'] : null;
                 $currentStock = isset($item['current_stock']) && $item['current_stock'] !== '' ? (float)$item['current_stock'] : 0.000;
-                $next3MoReq   = isset($item['next_3_months_requirement']) && $item['next_3_months_requirement'] !== '' ? (float)$item['next_3_months_requirement'] : 0.000;
-                $itemStmt->bind_param('iidddsi',
+                $m1   = isset($item['month_1_forecast']) && $item['month_1_forecast'] !== '' ? (float)$item['month_1_forecast'] : 0.000;
+                $m2   = isset($item['month_2_forecast']) && $item['month_2_forecast'] !== '' ? (float)$item['month_2_forecast'] : 0.000;
+                $m3   = isset($item['month_3_forecast']) && $item['month_3_forecast'] !== '' ? (float)$item['month_3_forecast'] : 0.000;
+                $itemStmt->bind_param('iidddddi',
                     $prId,
                     $item['material_id'],
                     $item['quantity'],
                     $currentStock,
-                    $next3MoReq,
-                    $itemReqDate,
+                    $m1,
+                    $m2,
+                    $m3,
                     $data['created_by']
                 );
                 $itemStmt->execute();
@@ -335,21 +344,23 @@ class Con_PurchaseRequest extends Model
 
             $itemStmt = $this->db->prepare(
                 "INSERT INTO {$this->itemTable}
-                    (request_id, material_id, quantity, current_stock, next_3_months_requirement, required_date, created_by)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)"
+                    (request_id, material_id, quantity, current_stock, month_1_forecast, month_2_forecast, month_3_forecast, created_by)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
             );
             $createdBy = (int)($data['created_by'] ?? ($_SESSION['user']['id'] ?? 0));
             foreach ($items as $item) {
-                $itemReqDate  = !empty($item['required_date']) ? $item['required_date'] : null;
                 $currentStock = isset($item['current_stock']) && $item['current_stock'] !== '' ? (float)$item['current_stock'] : 0.000;
-                $next3MoReq   = isset($item['next_3_months_requirement']) && $item['next_3_months_requirement'] !== '' ? (float)$item['next_3_months_requirement'] : 0.000;
-                $itemStmt->bind_param('iidddsi',
+                $m1   = isset($item['month_1_forecast']) && $item['month_1_forecast'] !== '' ? (float)$item['month_1_forecast'] : 0.000;
+                $m2   = isset($item['month_2_forecast']) && $item['month_2_forecast'] !== '' ? (float)$item['month_2_forecast'] : 0.000;
+                $m3   = isset($item['month_3_forecast']) && $item['month_3_forecast'] !== '' ? (float)$item['month_3_forecast'] : 0.000;
+                $itemStmt->bind_param('iidddddi',
                     $id,
                     $item['material_id'],
                     $item['quantity'],
                     $currentStock,
-                    $next3MoReq,
-                    $itemReqDate,
+                    $m1,
+                    $m2,
+                    $m3,
                     $createdBy
                 );
                 $itemStmt->execute();

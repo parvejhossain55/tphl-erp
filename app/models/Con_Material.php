@@ -8,7 +8,14 @@ class Con_Material extends Model
     {
         $sql = "SELECT m.*,
                        u.full_name    AS created_by_name,
-                       COALESCE(c.name, 'Uncategorized') AS category_name
+                       COALESCE(c.name, 'Uncategorized') AS category_name,
+                       COALESCE(c.total_lead_days, 0) AS total_lead_days,
+                       c.pr_to_qtn_days,
+                       c.cs_analysis_days,
+                       c.approval_days,
+                       c.wo_po_days,
+                       c.adv_payment_days,
+                       c.transport_days
                 FROM {$this->table} m
                 LEFT JOIN users u ON u.id = m.created_by
                 LEFT JOIN con_material_categories c ON c.id = m.category_id

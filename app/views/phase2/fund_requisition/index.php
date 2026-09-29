@@ -236,15 +236,10 @@ $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], tru
                                 </tr>
                             </thead>
                             <tbody class="table__body">
-                                <?php if (empty($requests)): ?>
-                                    <tr>
-                                        <td colspan="11" class="text-center py-4 text-muted">No requisitions found.</td>
-                                    </tr>
-                                <?php else: ?>
+                             
                                     <?php foreach ($requests as $index => $req): ?>
                                         <?php renderRow($req, $userId, $roleId, $isSiteEngineer, $index + 1); ?>
                                     <?php endforeach; ?>
-                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>

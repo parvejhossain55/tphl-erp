@@ -243,7 +243,7 @@ $categories   = $categories   ?? [];
 
                         <!-- ── PR Items Table — BOQ Linked (full columns) ── -->
                         <div id="tableBoqLinked" class="table-responsive">
-                            <table class="table table-bordered align-middle" id="prItemsTable">
+                            <table class="table table-bordered align-middle" id="prItemsTable" style="min-width: 1100px;">
                                 <thead class="table-light">
                                     <tr>
                                         <th style="width:22%;">Material <span class="d-block fw-normal text-muted" style="font-size:10px">মালামাল</span></th>
@@ -254,11 +254,16 @@ $categories   = $categories   ?? [];
                                             Current Stock <span class="d-block fw-normal text-muted" style="font-size:10px">বর্তমান সাইট স্টক</span>
                                             <i class="bi bi-info-circle text-muted" title="Site warehouse stock (auto-fetched, editable)"></i>
                                         </th>
-                                        <th style="width:13%; font-size:12px;" class="text-center">
-                                            Next 3-Mo Req <span class="d-block fw-normal text-muted" style="font-size:10px">পরবর্তী ৩ মাসের চাহিদা</span>
-                                            <i class="bi bi-info-circle text-muted" title="Estimated 3-month forecast requirement"></i>
+                                        <th style="width:9%; font-size:11px;" class="text-center fc-m1-header">
+                                            Forecast M1 <span class="d-block fw-normal text-muted" style="font-size:9px">চাহিদা ১</span>
                                         </th>
-                                        <th style="width:16%; font-size:12px;">Request Qty <span class="d-block fw-normal text-muted" style="font-size:10px">রিকোয়েস্ট পরিমাণ</span></th>
+                                        <th style="width:9%; font-size:11px;" class="text-center fc-m2-header">
+                                            Forecast M2 <span class="d-block fw-normal text-muted" style="font-size:9px">চাহিদা ২</span>
+                                        </th>
+                                        <th style="width:9%; font-size:11px;" class="text-center fc-m3-header">
+                                            Forecast M3 <span class="d-block fw-normal text-muted" style="font-size:9px">চাহিদা ৩</span>
+                                        </th>
+                                        <th style="width:13%; font-size:12px;">Request Qty <span class="d-block fw-normal text-muted" style="font-size:10px">রিকোয়েস্ট পরিমাণ</span></th>
                                         <th style="width:6%;" class="text-center">Del</th>
                                     </tr>
                                 </thead>
@@ -270,7 +275,7 @@ $categories   = $categories   ?? [];
 
                         <!-- ── PR Items Table — Independent (simplified) ── -->
                         <div id="tableIndependent" class="table-responsive" style="display:none">
-                            <table class="table table-bordered align-middle" id="prItemsTableInd">
+                            <table class="table table-bordered align-middle" id="prItemsTableInd" style="min-width: 900px;">
                                 <thead class="table-light">
                                     <tr>
                                         <th style="width:26%;">Material <span class="d-block fw-normal text-muted" style="font-size:10px">মালামাল</span></th>
@@ -279,12 +284,16 @@ $categories   = $categories   ?? [];
                                             Current Stock <span class="d-block fw-normal text-muted" style="font-size:10px">বর্তমান সাইট স্টক</span>
                                             <i class="bi bi-info-circle text-muted" title="Auto-fetched project stock. Editable if physical count differs."></i>
                                         </th>
-                                        <th style="width:16%; font-size:12px;">Quantity <span class="d-block fw-normal text-muted" style="font-size:10px">পরিমাণ</span></th>
-                                        <th style="width:16%; font-size:12px;">
-                                            Next 3 Months Req. <span class="d-block fw-normal text-muted" style="font-size:10px">পরবর্তী ৩ মাসের চাহিদা</span>
-                                            <i class="bi bi-info-circle text-muted" title="Estimated units required over next 3 months"></i>
+                                        <th style="width:13%; font-size:12px;">Quantity <span class="d-block fw-normal text-muted" style="font-size:10px">পরিমাণ</span></th>
+                                        <th style="width:11%; font-size:11px;" class="text-center fc-m1-header">
+                                            Forecast M1
                                         </th>
-                                        <th style="width:12%; font-size:12px;">Required By <span class="d-block fw-normal text-muted" style="font-size:10px">প্রয়োজনীয় তারিখ</span></th>
+                                        <th style="width:11%; font-size:11px;" class="text-center fc-m2-header">
+                                            Forecast M2
+                                        </th>
+                                        <th style="width:11%; font-size:11px;" class="text-center fc-m3-header">
+                                            Forecast M3
+                                        </th>
                                         <th style="width:6%;" class="text-center">Del</th>
                                     </tr>
                                 </thead>
@@ -411,14 +420,14 @@ $categories   = $categories   ?? [];
                     <i class="bi bi-exclamation-triangle-fill fs-3 text-warning flex-shrink-0 mt-1"></i>
                     <div>
                         <div class="fw-bold text-dark mb-1" style="font-size:13.5px">
-                            Standard 30-Day Lead Time Policy
-                            <span class="fw-normal text-muted" style="font-size:12px">/ সাধারণ ৩০ দিনের লিড টাইম পলিসি</span>
+                            Standard <span id="modalPolicyDaysTitle">30</span>-Day Lead Time Policy
+                            <span class="fw-normal text-muted" style="font-size:12px">/ সাধারণ <span id="modalPolicyDaysTitleBn">৩০</span> দিনের লিড টাইম পলিসি</span>
                         </div>
                         <div style="font-size:12px; color:#92400e; line-height:1.45">
-                            Standard company procurement requires Purchase Requests to be placed at least <strong>30 days</strong> before the required date.
+                            Standard company procurement requires Purchase Requests for selected materials to be placed at least <strong><span id="modalPolicyDaysText">30</span> days</strong> before the required date.
                             Your selected required date is only <strong><span id="modalLeadDays" class="text-danger fw-bold fs-6">0</span> days</strong> away from today.
                             <div class="mt-1 pt-1 border-top border-warning border-opacity-25" style="color:#78350f; font-size:11.5px">
-                                কোম্পানির ক্রয় নীতি অনুযায়ী প্রয়োজনীয় তারিখের অন্তত <strong>৩০ দিন পূর্বে</strong> রিকুইজিশন দেওয়া আবশ্যক। আপনার নির্বাচিত তারিখ আজ থেকে মাত্র <strong><span id="modalLeadDaysBn" class="text-danger fw-bold">০</span> দিন</strong> বাকি।
+                                কোম্পানির ক্রয় নীতি অনুযায়ী নির্বাচিত মালামালের জন্য প্রয়োজনীয় তারিখের অন্তত <strong><span id="modalPolicyDaysTextBn">৩০</span> দিন পূর্বে</strong> রিকুইজিশন দেওয়া আবশ্যক। আপনার নির্বাচিত তারিখ আজ থেকে মাত্র <strong><span id="modalLeadDaysBn" class="text-danger fw-bold">০</span> দিন</strong> বাকি।
                             </div>
                         </div>
                     </div>
@@ -441,8 +450,8 @@ $categories   = $categories   ?? [];
             </div>
             <div class="modal-footer bg-light px-4 py-3 d-flex justify-content-between gap-2">
                 <button type="button" class="btn btn-outline-secondary btn-sm px-3" id="btnChangeToCompliantDate">
-                    <i class="bi bi-calendar-check me-1"></i> Change Date (30+ Days)
-                    <span class="d-block" style="font-size:10px">তারিখ পরিবর্তন (৩০+ দিন)</span>
+                    <i class="bi bi-calendar-check me-1"></i> Change Date (<span id="btnPolicyDays">30</span>+ Days)
+                    <span class="d-block" style="font-size:10px">তারিখ পরিবর্তন (<span id="btnPolicyDaysBn">৩০</span>+ দিন)</span>
                 </button>
                 <button type="button" class="btn btn-danger btn-sm px-3 fw-bold" id="btnConfirmUrgent">
                     <i class="bi bi-lightning-charge-fill me-1"></i> Yes, Mark as Urgent
@@ -534,10 +543,14 @@ function makeMaterialSelect(selectedId = '', unit = '-') {
     ALL_MATERIALS.forEach(m => {
         const sel = (m.id == selectedId) ? 'selected' : '';
         const cat = m.category_name || 'Uncategorized';
-        html += `<option value="${m.id}" data-unit="${m.unit}" ${sel}>${m.name} (${cat})</option>`;
+        const lead = m.total_lead_days || 30;
+        html += `<option value="${m.id}" data-unit="${m.unit}" data-lead="${lead}" ${sel}>${m.name} (${cat})</option>`;
     });
     html += `</select></div>
-        <small class="pr-mat-unit text-muted">${unit !== '-' ? unit : ''}</small>`;
+        <div class="d-flex justify-content-between">
+            <small class="pr-mat-unit text-muted">${unit !== '-' ? unit : ''}</small>
+            <small class="pr-mat-lead text-primary fw-semibold" style="font-size:10px"></small>
+        </div>`;
     return html;
 }
 
@@ -548,14 +561,16 @@ function makeMaterialSelectInd(selectedId = '') {
     ALL_MATERIALS.forEach(m => {
         const sel = (m.id == selectedId) ? 'selected' : '';
         const cat = m.category_name || 'Uncategorized';
-        html += `<option value="${m.id}" data-unit="${m.unit}" ${sel}>${m.name} (${cat})</option>`;
+        const lead = m.total_lead_days || 30;
+        html += `<option value="${m.id}" data-unit="${m.unit}" data-lead="${lead}" ${sel}>${m.name} (${cat})</option>`;
     });
-    html += `</select>`;
+    html += `</select>
+    <div class="mt-1 text-end"><small class="pr-mat-lead text-primary fw-semibold" style="font-size:10px"></small></div>`;
     return html;
 }
 
 // ── Build BOQ-Linked table row ────────────────────────────────────────────
-function makePrRow(matId = '', matName = '', unit = '-', boqQty = '', usedQty = '', poQty = '', recvQty = '', remainQty = '', reqQty = '', stock = '', next3Mo = '', removable = true) {
+function makePrRow(matId = '', matName = '', unit = '-', boqQty = '', usedQty = '', poQty = '', recvQty = '', remainQty = '', reqQty = '', stock = '', m1 = '', m2 = '', m3 = '', removable = true) {
     const boqQtyFmt = boqQty    !== '' ? parseFloat(boqQty).toLocaleString(undefined,  {maximumFractionDigits:3}) : '—';
     const usedFmt   = usedQty   !== '' ? parseFloat(usedQty).toLocaleString(undefined,  {maximumFractionDigits:3}) : '—';
     const remFmt    = remainQty !== '' ? parseFloat(remainQty) : null;
@@ -568,9 +583,17 @@ function makePrRow(matId = '', matName = '', unit = '-', boqQty = '', usedQty = 
 
     let matCell;
     if (matId && matName) {
+        const boqMat = ALL_MATERIALS.find(m => m.id == matId);
+        const leadDays = boqMat && boqMat.total_lead_days ? boqMat.total_lead_days : 30;
+        let breakdownTitle = boqMat ? `PR to Qtn: ${boqMat.pr_to_qtn_days||0}d | CS Analysis: ${boqMat.cs_analysis_days||0}d | Approval: ${boqMat.approval_days||0}d | WO/PO: ${boqMat.wo_po_days||0}d | Adv Pay: ${boqMat.adv_payment_days||0}d | Transport: ${boqMat.transport_days||0}d` : 'No breakdown available';
         matCell = `<input type="hidden" name="material_id[]" value="${matId}" class="pr-row-mat-id">
                    <div class="fw-bold" style="font-size:13px">${matName}</div>
-                   <small class="text-muted">${unit}</small>`;
+                   <div class="d-flex justify-content-between mt-1">
+                       <small class="text-muted">${unit}</small>
+                       <small class="text-primary fw-semibold" style="font-size:10px; cursor:help;" title="${breakdownTitle}" onclick="alert('${breakdownTitle}')">
+                           <i class="bi bi-clock me-1"></i>${leadDays}d Lead Time
+                       </small>
+                   </div>`;
     } else {
         matCell = makeMaterialSelect(matId, unit);
     }
@@ -590,9 +613,17 @@ function makePrRow(matId = '', matName = '', unit = '-', boqQty = '', usedQty = 
         </td>
         <td>
             <div class="input-group input-group-sm">
-                <input type="number" step="0.001" min="0" name="next_3_months_requirement[]" class="form-control text-end"
-                       placeholder="Optional" value="${next3Mo}">
-                <span class="input-group-text pr-unit" style="font-size:11px">${unit !== '-' ? unit : '-'}</span>
+                <input type="number" step="0.001" min="0" name="month_1_forecast[]" class="form-control text-end p-1 fc-m1-input" value="${m1}">
+            </div>
+        </td>
+        <td>
+            <div class="input-group input-group-sm">
+                <input type="number" step="0.001" min="0" name="month_2_forecast[]" class="form-control text-end p-1 fc-m2-input" value="${m2}">
+            </div>
+        </td>
+        <td>
+            <div class="input-group input-group-sm">
+                <input type="number" step="0.001" min="0" name="month_3_forecast[]" class="form-control text-end p-1 fc-m3-input" value="${m3}">
             </div>
         </td>
         <td>
@@ -611,7 +642,7 @@ function makePrRow(matId = '', matName = '', unit = '-', boqQty = '', usedQty = 
 }
 
 // ── Build Independent table row ───────────────────────────────────────────
-function makeIndRow(matId = '', unit = '', stock = '', next3Mo = '') {
+function makeIndRow(matId = '', unit = '', stock = '', m1 = '', m2 = '', m3 = '') {
     return `<tr data-mat-id="${matId || ''}">
         <td>${makeMaterialSelectInd(matId)}</td>
         <td class="text-center"><span class="pr-ind-unit text-muted fw-bold">${unit || '—'}</span></td>
@@ -631,14 +662,18 @@ function makeIndRow(matId = '', unit = '', stock = '', next3Mo = '') {
         </td>
         <td>
             <div class="input-group input-group-sm">
-                <input type="number" step="0.001" min="0" name="next_3_months_requirement[]" class="form-control text-end"
-                       placeholder="Optional" value="${next3Mo}">
-                <span class="input-group-text pr-ind-unit-label" style="font-size:11px">${unit || '-'}</span>
+                <input type="number" step="0.001" min="0" name="month_1_forecast[]" class="form-control text-end p-1 fc-m1-input" value="${m1}">
             </div>
         </td>
         <td>
-            <input type="date" name="item_req_date[]" class="form-control form-control-sm pr-item-req-date"
-                   min="<?= date('Y-m-d') ?>">
+            <div class="input-group input-group-sm">
+                <input type="number" step="0.001" min="0" name="month_2_forecast[]" class="form-control text-end p-1 fc-m2-input" value="${m2}">
+            </div>
+        </td>
+        <td>
+            <div class="input-group input-group-sm">
+                <input type="number" step="0.001" min="0" name="month_3_forecast[]" class="form-control text-end p-1 fc-m3-input" value="${m3}">
+            </div>
         </td>
         <td class="text-center">
             <button type="button" class="btn btn-sm btn-outline-danger pr-remove-row-ind" title="Remove">
@@ -800,8 +835,33 @@ function refreshAllRowsStock() {
 // ── Lead Time Check & Urgent Policy Logic ──────────────────────────────────
 const prRequiredDate = document.getElementById('prRequiredDate');
 
+// Store the dynamic threshold globally for Revert/Change Date button
+let currentRequiredLeadTime = 30;
+
+function convertToBnNum(numStr) {
+    const bnNums = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'];
+    return numStr.toString().replace(/\d/g, d => bnNums[d]);
+}
+
 function checkLeadTime(dateStr) {
     if (!dateStr) return;
+
+    // Calculate dynamic lead time based on selected items
+    let maxLeadTime = 0;
+    const selects = document.querySelectorAll('.pr-material, .pr-material-ind');
+    selects.forEach(sel => {
+        if (sel.value) {
+            const mat = ALL_MATERIALS.find(m => m.id == sel.value);
+            if (mat && mat.total_lead_days) {
+                const ltd = parseInt(mat.total_lead_days);
+                if (ltd > maxLeadTime) maxLeadTime = ltd;
+            }
+        }
+    });
+
+    if (maxLeadTime === 0) maxLeadTime = 30; // fallback to 30 if no items have lead times configured
+    currentRequiredLeadTime = maxLeadTime;
+
     const selectedDate = new Date(dateStr);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -810,11 +870,21 @@ function checkLeadTime(dateStr) {
     const diffMs = selectedDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 30) {
+    if (diffDays < maxLeadTime) {
         const dText = diffDays < 0 ? '0 (Past date)' : diffDays;
         document.getElementById('modalLeadDays').textContent = dText;
         const bnModalDays = document.getElementById('modalLeadDaysBn');
-        if (bnModalDays) bnModalDays.textContent = diffDays < 0 ? '০ (পূর্বের তারিখ)' : diffDays;
+        if (bnModalDays) bnModalDays.textContent = diffDays < 0 ? '০ (পূর্বের তারিখ)' : convertToBnNum(diffDays);
+
+        // Update modal texts
+        const bnLeadTime = convertToBnNum(maxLeadTime);
+        document.getElementById('modalPolicyDaysTitle').textContent = maxLeadTime;
+        document.getElementById('modalPolicyDaysTitleBn').textContent = bnLeadTime;
+        document.getElementById('modalPolicyDaysText').textContent = maxLeadTime;
+        document.getElementById('modalPolicyDaysTextBn').textContent = bnLeadTime;
+        document.getElementById('btnPolicyDays').textContent = maxLeadTime;
+        document.getElementById('btnPolicyDaysBn').textContent = bnLeadTime;
+
         const modalEl = document.getElementById('leadTimeModal');
         const modal = new bootstrap.Modal(modalEl);
         modal.show();
@@ -831,7 +901,39 @@ function checkLeadTime(dateStr) {
 if (prRequiredDate) {
     prRequiredDate.addEventListener('change', function () {
         checkLeadTime(this.value);
+        updateForecastHeaders(this.value);
     });
+}
+
+function updateForecastHeaders(dateStr) {
+    if (!dateStr) return;
+    const d = new Date(dateStr);
+    const mNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const bnNames = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
+    
+    // M1 = Next month
+    d.setMonth(d.getMonth() + 1);
+    const m1 = mNames[d.getMonth()];
+    const bn1 = bnNames[d.getMonth()];
+    
+    // M2 = Next + 1
+    d.setMonth(d.getMonth() + 1);
+    const m2 = mNames[d.getMonth()];
+    const bn2 = bnNames[d.getMonth()];
+    
+    // M3 = Next + 2
+    d.setMonth(d.getMonth() + 1);
+    const m3 = mNames[d.getMonth()];
+    const bn3 = bnNames[d.getMonth()];
+
+    document.querySelectorAll('.fc-m1-header').forEach(el => el.innerHTML = `${m1} Forecast <span class="d-block fw-normal text-muted" style="font-size:9px">${bn1}</span>`);
+    document.querySelectorAll('.fc-m2-header').forEach(el => el.innerHTML = `${m2} Forecast <span class="d-block fw-normal text-muted" style="font-size:9px">${bn2}</span>`);
+    document.querySelectorAll('.fc-m3-header').forEach(el => el.innerHTML = `${m3} Forecast <span class="d-block fw-normal text-muted" style="font-size:9px">${bn3}</span>`);
+}
+
+// Initial call
+if (prRequiredDate && prRequiredDate.value) {
+    updateForecastHeaders(prRequiredDate.value);
 }
 
 document.getElementById('btnConfirmUrgent')?.addEventListener('click', function () {
@@ -867,9 +969,9 @@ document.getElementById('btnChangeToCompliantDate')?.addEventListener('click', f
     const modal = bootstrap.Modal.getInstance(modalEl);
     if (modal) modal.hide();
 
-    // Set date to today + 30 days
+    // Set date to today + required days
     const compliant = new Date();
-    compliant.setDate(compliant.getDate() + 30);
+    compliant.setDate(compliant.getDate() + currentRequiredLeadTime);
     const yyyy = compliant.getFullYear();
     const mm   = String(compliant.getMonth() + 1).padStart(2, '0');
     const dd   = String(compliant.getDate()).padStart(2, '0');
@@ -883,9 +985,9 @@ document.getElementById('btnChangeToCompliantDate')?.addEventListener('click', f
 });
 
 document.getElementById('btnCancelUrgent')?.addEventListener('click', function () {
-    // Revert to 30 days compliant
+    // Revert to required days compliant
     const compliant = new Date();
-    compliant.setDate(compliant.getDate() + 30);
+    compliant.setDate(compliant.getDate() + currentRequiredLeadTime);
     const yyyy = compliant.getFullYear();
     const mm   = String(compliant.getMonth() + 1).padStart(2, '0');
     const dd   = String(compliant.getDate()).padStart(2, '0');
@@ -909,7 +1011,7 @@ document.getElementById('prLoadBoqItems').addEventListener('click', function () 
         const html = makePrRow(
             item.material_id, matDisplayName, item.unit,
             item.boq_qty, item.used_qty, item.po_qty, item.received_qty,
-            item.remaining_qty, '', '', '', true
+            item.remaining_qty, '', '', '', '', '', true
         );
         tbody.insertAdjacentHTML('beforeend', html);
     });
@@ -926,11 +1028,11 @@ document.getElementById('prLoadBoqItems').addEventListener('click', function () 
 // ── Add Row (BOQ Linked) ──────────────────────────────────────────────────
 document.getElementById('prAddRow').addEventListener('click', function () {
     if (currentPrType === 'boq_linked') {
-        const html = makePrRow('', '', '-', '', '', '', '', '', '', '', '', true);
+        const html = makePrRow('', '', '-', '', '', '', '', '', '', '', '', '', '', true);
         document.getElementById('prItemsBody').insertAdjacentHTML('beforeend', html);
         bindLastManualRow();
     } else {
-        const html = makeIndRow('', '', '', '');
+        const html = makeIndRow('', '', '', '', '', '');
         document.getElementById('prItemsBodyInd').insertAdjacentHTML('beforeend', html);
         bindLastIndRow();
     }
@@ -960,6 +1062,19 @@ function bindLastManualRow() {
         newRow.querySelector('.pr-unit').textContent = unit;
         const small = newRow.querySelector('.pr-mat-unit');
         if (small) small.textContent = unit;
+        
+        const boqMat = ALL_MATERIALS.find(m => m.id == this.value);
+        const lead = boqMat ? (boqMat.total_lead_days || 30) : 30;
+        let breakdownTitle = boqMat ? `PR to Qtn: ${boqMat.pr_to_qtn_days||0}d | CS Analysis: ${boqMat.cs_analysis_days||0}d | Approval: ${boqMat.approval_days||0}d | WO/PO: ${boqMat.wo_po_days||0}d | Adv Pay: ${boqMat.adv_payment_days||0}d | Transport: ${boqMat.transport_days||0}d` : 'No breakdown available';
+        
+        const leadEl = newRow.querySelector('.pr-mat-lead');
+        if (leadEl) {
+            leadEl.innerHTML = `<i class="bi bi-clock me-1"></i>${lead}d Lead Time`;
+            leadEl.setAttribute('title', breakdownTitle);
+            leadEl.setAttribute('onclick', `alert('${breakdownTitle}')`);
+            leadEl.style.cursor = 'help';
+        }
+
         newRow.dataset.matId = this.value;
         fetchStockForRow(this, newRow);
 
@@ -1002,6 +1117,19 @@ function bindLastIndRow() {
         const unit = opt.dataset.unit || '—';
         newRow.querySelector('.pr-ind-unit').textContent      = unit;
         newRow.querySelectorAll('.pr-ind-unit-label').forEach(el => el.textContent = unit);
+        
+        const boqMat = ALL_MATERIALS.find(m => m.id == this.value);
+        const lead = boqMat ? (boqMat.total_lead_days || 30) : 30;
+        let breakdownTitle = boqMat ? `PR to Qtn: ${boqMat.pr_to_qtn_days||0}d | CS Analysis: ${boqMat.cs_analysis_days||0}d | Approval: ${boqMat.approval_days||0}d | WO/PO: ${boqMat.wo_po_days||0}d | Adv Pay: ${boqMat.adv_payment_days||0}d | Transport: ${boqMat.transport_days||0}d` : 'No breakdown available';
+
+        const leadEl = newRow.querySelector('.pr-mat-lead');
+        if (leadEl) {
+            leadEl.innerHTML = `<i class="bi bi-clock me-1"></i>${lead}d Lead Time`;
+            leadEl.setAttribute('title', breakdownTitle);
+            leadEl.setAttribute('onclick', `alert('${breakdownTitle}')`);
+            leadEl.style.cursor = 'help';
+        }
+
         newRow.dataset.matId = this.value;
         fetchStockForRow(this, newRow);
     });
@@ -1162,7 +1290,7 @@ document.getElementById('saveMaterialBtn').addEventListener('click', function ()
                 }
             }
         } else {
-            const html = makeIndRow(newMat.id, newMat.unit);
+            const html = makeIndRow(newMat.id, newMat.unit, '', '', '', '');
             document.getElementById('prItemsBodyInd').insertAdjacentHTML('beforeend', html);
             bindLastIndRow();
             // Trigger change to set unit display

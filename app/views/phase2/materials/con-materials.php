@@ -226,10 +226,11 @@ $show_breadcrumb = false;
                         <thead class="table-light">
                             <tr>
                                 <th style="width: 5%;">#</th>
-                                <th style="width: 35%;">Category Name</th>
-                                <th style="width: 35%;">Description</th>
+                                <th style="width: 25%;">Category Name</th>
+                                <th style="width: 25%;">Description</th>
+                                <th style="width: 15%;" class="text-center">Total Lead Time</th>
                                 <th style="width: 10%;" class="text-center">Materials</th>
-                                <th style="width: 15%;" class="text-center">Actions</th>
+                                <th style="width: 20%;" class="text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="categoryTableBody">
@@ -245,10 +246,25 @@ $show_breadcrumb = false;
                                         <input type="text" class="form-control form-control-sm cat-desc-input d-none" value="<?= htmlspecialchars($cat['description'] ?? '') ?>">
                                     </td>
                                     <td class="text-center">
+                                        <span class="badge bg-info cat-lead-badge"><?= $cat['total_lead_days'] ?? 0 ?> Days</span>
+                                    </td>
+                                    <td class="text-center">
                                         <span class="badge bg-secondary rounded-pill cat-count-badge"><?= $cat['material_count'] ?? 0 ?></span>
                                     </td>
                                     <td class="text-center">
                                         <div class="cat-action-view">
+                                            <button type="button" class="btn btn-sm btn-warning edit-lead-btn fw-bold" title="Configure Lead Time" data-bs-toggle="modal" data-bs-target="#leadTimeModal"
+                                                data-id="<?= $cat['id'] ?>"
+                                                data-name="<?= htmlspecialchars($cat['name']) ?>"
+                                                data-type="<?= htmlspecialchars($cat['item_type'] ?? 'Local') ?>"
+                                                data-qtn="<?= $cat['pr_to_qtn_days'] ?? 0 ?>"
+                                                data-cs="<?= $cat['cs_analysis_days'] ?? 0 ?>"
+                                                data-app="<?= $cat['approval_days'] ?? 0 ?>"
+                                                data-wo="<?= $cat['wo_po_days'] ?? 0 ?>"
+                                                data-adv="<?= $cat['adv_payment_days'] ?? 0 ?>"
+                                                data-trans="<?= $cat['transport_days'] ?? 0 ?>">
+                                                <i class="fa-light fa-clock me-1"></i> Set Lead Time
+                                            </button>
                                             <button type="button" class="btn btn-sm btn-outline-info p-1 py-0 edit-cat-btn" title="Edit">
                                                 <i class="fa-light fa-pen"></i>
                                             </button>
@@ -275,6 +291,78 @@ $show_breadcrumb = false;
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Configure Lead Time Modal -->
+<div class="modal fade" id="leadTimeModal" tabindex="-1" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h6 class="modal-title mb-0">
+                    <i class="fa-light fa-clock text-primary me-2"></i>Configure Lead Time: <span id="ltCategoryName" class="fw-bold"></span>
+                </h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="leadTimeForm">
+                <div class="modal-body">
+                    <input type="hidden" id="ltCategoryId" name="category_id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Item Type</label>
+                        <select class="form-select form-select-sm" id="ltItemType" name="item_type">
+                            <option value="Local">Local</option>
+                            <option value="Imported">Imported</option>
+                        </select>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle text-center mb-0" style="font-size: 13px;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-start">Stage</th>
+                                    <th style="width: 100px;">Days</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="text-start">PR to Qtn Collection</td>
+                                    <td><input type="number" class="form-control form-control-sm text-center lt-input" id="ltQtn" name="pr_to_qtn_days" min="0" value="0"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-start">CS Analysis & Negotiation</td>
+                                    <td><input type="number" class="form-control form-control-sm text-center lt-input" id="ltCs" name="cs_analysis_days" min="0" value="0"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-start">Audit/HO/Approval</td>
+                                    <td><input type="number" class="form-control form-control-sm text-center lt-input" id="ltApp" name="approval_days" min="0" value="0"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-start">WO/PO</td>
+                                    <td><input type="number" class="form-control form-control-sm text-center lt-input" id="ltWo" name="wo_po_days" min="0" value="0"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-start">Advance Payment (if required)</td>
+                                    <td><input type="number" class="form-control form-control-sm text-center lt-input" id="ltAdv" name="adv_payment_days" min="0" value="0"></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-start">Transport to Site</td>
+                                    <td><input type="number" class="form-control form-control-sm text-center lt-input" id="ltTrans" name="transport_days" min="0" value="0"></td>
+                                </tr>
+                                <tr class="table-primary fw-bold">
+                                    <td class="text-end">Total Delivery Lead Time</td>
+                                    <td id="ltTotal">0</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer p-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Save Lead Time</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -592,5 +680,86 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // -------------------------------------------------------------
+    // Lead Time Configuration Logic
+    // -------------------------------------------------------------
+    let currentLtRow = null;
+
+    document.querySelectorAll('.edit-lead-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentLtRow = this.closest('tr');
+            document.getElementById('ltCategoryId').value = this.getAttribute('data-id');
+            document.getElementById('ltCategoryName').textContent = this.getAttribute('data-name');
+            document.getElementById('ltItemType').value = this.getAttribute('data-type');
+            document.getElementById('ltQtn').value = this.getAttribute('data-qtn');
+            document.getElementById('ltCs').value = this.getAttribute('data-cs');
+            document.getElementById('ltApp').value = this.getAttribute('data-app');
+            document.getElementById('ltWo').value = this.getAttribute('data-wo');
+            document.getElementById('ltAdv').value = this.getAttribute('data-adv');
+            document.getElementById('ltTrans').value = this.getAttribute('data-trans');
+            calcTotalLeadTime();
+        });
+    });
+
+    const ltInputs = document.querySelectorAll('.lt-input');
+    ltInputs.forEach(inp => {
+        inp.addEventListener('input', calcTotalLeadTime);
+    });
+
+    function calcTotalLeadTime() {
+        let total = 0;
+        ltInputs.forEach(inp => {
+            total += (parseInt(inp.value) || 0);
+        });
+        document.getElementById('ltTotal').textContent = total + ' Days';
+    }
+
+    const leadTimeForm = document.getElementById('leadTimeForm');
+    if (leadTimeForm) {
+        leadTimeForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const catId = formData.get('category_id');
+
+            fetch(`${base_url}/con-material-category-lead-times/${catId}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showModalAlert('Lead times saved successfully!', true);
+                    
+                    // Update data attributes on button
+                    if (currentLtRow) {
+                        const btn = currentLtRow.querySelector('.edit-lead-btn');
+                        btn.setAttribute('data-type', formData.get('item_type'));
+                        btn.setAttribute('data-qtn', formData.get('pr_to_qtn_days'));
+                        btn.setAttribute('data-cs', formData.get('cs_analysis_days'));
+                        btn.setAttribute('data-app', formData.get('approval_days'));
+                        btn.setAttribute('data-wo', formData.get('wo_po_days'));
+                        btn.setAttribute('data-adv', formData.get('adv_payment_days'));
+                        btn.setAttribute('data-trans', formData.get('transport_days'));
+                        
+                        // Update badge UI
+                        const badge = currentLtRow.querySelector('.cat-lead-badge');
+                        if (badge) badge.textContent = data.total_lead_days + ' Days';
+                    }
+
+                    const modalEl = document.getElementById('leadTimeModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInstance) modalInstance.hide();
+                } else {
+                    alert('Failed to save lead times.');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('An error occurred while saving lead times.');
+            });
+        });
+    }
+
 });
 </script>

@@ -222,9 +222,10 @@ class Con_PurchaseRequestController extends Controller
 
         $materialIds      = $_POST['material_id']   ?? [];
         $quantities       = $_POST['quantity']       ?? [];
-        $itemDates        = $_POST['item_req_date']  ?? []; // per-item required_date (optional)
         $currentStocks    = $_POST['current_stock']  ?? [];
-        $next3MonthsReqs  = $_POST['next_3_months_requirement'] ?? [];
+        $month1Forecasts  = $_POST['month_1_forecast'] ?? [];
+        $month2Forecasts  = $_POST['month_2_forecast'] ?? [];
+        $month3Forecasts  = $_POST['month_3_forecast'] ?? [];
 
         $items = [];
         foreach ($materialIds as $i => $mid) {
@@ -232,9 +233,10 @@ class Con_PurchaseRequestController extends Controller
                 $items[] = [
                     'material_id'               => (int)$mid,
                     'quantity'                  => (float)$quantities[$i],
-                    'required_date'             => !empty($itemDates[$i]) ? $itemDates[$i] : null,
                     'current_stock'             => isset($currentStocks[$i]) && $currentStocks[$i] !== '' ? (float)$currentStocks[$i] : 0.000,
-                    'next_3_months_requirement' => isset($next3MonthsReqs[$i]) && $next3MonthsReqs[$i] !== '' ? (float)$next3MonthsReqs[$i] : 0.000,
+                    'month_1_forecast'          => isset($month1Forecasts[$i]) && $month1Forecasts[$i] !== '' ? (float)$month1Forecasts[$i] : 0.000,
+                    'month_2_forecast'          => isset($month2Forecasts[$i]) && $month2Forecasts[$i] !== '' ? (float)$month2Forecasts[$i] : 0.000,
+                    'month_3_forecast'          => isset($month3Forecasts[$i]) && $month3Forecasts[$i] !== '' ? (float)$month3Forecasts[$i] : 0.000,
                 ];
             }
         }
@@ -322,6 +324,23 @@ class Con_PurchaseRequestController extends Controller
         }
 
         $items = $this->prModel->getItems($id);
+
+        $maxLeadTime = 0;
+        $leadTimeBreakdown = null;
+        foreach ($items as $itm) {
+            if (isset($itm['total_lead_days']) && (int)$itm['total_lead_days'] >= $maxLeadTime) {
+                $maxLeadTime = (int)$itm['total_lead_days'];
+                $leadTimeBreakdown = [
+                    'category' => $itm['category_name'] ?? 'Unknown',
+                    'pr_to_qtn' => $itm['pr_to_qtn_days'] ?? 0,
+                    'cs_analysis' => $itm['cs_analysis_days'] ?? 0,
+                    'approval' => $itm['approval_days'] ?? 0,
+                    'wo_po' => $itm['wo_po_days'] ?? 0,
+                    'adv_payment' => $itm['adv_payment_days'] ?? 0,
+                    'transport' => $itm['transport_days'] ?? 0,
+                ];
+            }
+        }
 
         // Check if quotations / comparison exist
         $quotModel  = new Con_Quotation($this->db);
@@ -510,6 +529,8 @@ class Con_PurchaseRequestController extends Controller
             'assignedPm'    => $assignedPm,
             'operationHeads'=> $operationHeads,
             'linkedPos'     => $linkedPos,
+            'maxLeadTime'   => $maxLeadTime,
+            'leadTimeBreakdown' => $leadTimeBreakdown,
         ]);
     }
 

@@ -50,6 +50,28 @@ class Con_MaterialCategory extends Model
         return $stmt->execute();
     }
 
+    public function updateLeadTimes($id, $data)
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table} 
+             SET item_type = ?, pr_to_qtn_days = ?, cs_analysis_days = ?, approval_days = ?, 
+                 wo_po_days = ?, adv_payment_days = ?, transport_days = ?, total_lead_days = ?
+             WHERE id = ?"
+        );
+        $stmt->bind_param('siiiiiiii',
+            $data['item_type'],
+            $data['pr_to_qtn_days'],
+            $data['cs_analysis_days'],
+            $data['approval_days'],
+            $data['wo_po_days'],
+            $data['adv_payment_days'],
+            $data['transport_days'],
+            $data['total_lead_days'],
+            $id
+        );
+        return $stmt->execute();
+    }
+
     /** Delete only if no materials are linked */
     public function delete($id)
     {
