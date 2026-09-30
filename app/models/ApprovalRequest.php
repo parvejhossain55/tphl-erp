@@ -31,6 +31,33 @@ class ApprovalRequest extends Model
         'land_fund_requisitions',
         'con_land_requisitions'
     ];
+
+    public function __construct($db = null)
+    {
+        parent::__construct($db);
+        $this->ensureSchema();
+    }
+
+    private function ensureSchema()
+    {
+        static $checked = false;
+        if ($checked) return;
+        $checked = true;
+
+        try {
+            $colRes = $this->db->query("SHOW COLUMNS FROM `approval_requests` LIKE 'accounts_head_status'");
+            if ($colRes && $colRes->num_rows === 0) {
+                @$this->db->query("ALTER TABLE `approval_requests` 
+                    ADD COLUMN `accounts_head_status` ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending' AFTER `status`,
+                    ADD COLUMN `accounts_head_by` INT UNSIGNED NULL DEFAULT NULL AFTER `accounts_head_status`,
+                    ADD COLUMN `accounts_head_at` TIMESTAMP NULL DEFAULT NULL AFTER `accounts_head_by`,
+                    ADD COLUMN `accounts_head_note` TEXT NULL AFTER `accounts_head_at`");
+            }
+        } catch (\Throwable $e) {
+            // Silently ignore if restricted
+        }
+    }
+
     public function create($data)
     {
         $department = $data['department'] ?? 'General';
@@ -1982,6 +2009,10 @@ class ApprovalRequest extends Model
                 ORDER BY ar.id DESC";
 
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            error_log("ApprovalRequest::getAllApprovalHistory prepare error: " . $this->db->error);
+            return [];
+        }
         if (!empty($params)) {
             $stmt->bind_param($types, ...$params);
         }
@@ -3799,7 +3830,7 @@ class ApprovalRequest extends Model
                 $approvedAmount = !empty($row['approved_amount']) ? (float)$row['approved_amount'] : null;
                 $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
                 $approvedAt = !empty($row['approved_at']) ? $row['approved_at'] : null;
-                $approvalNote = !empty($row['mgmt_note']) ? $row['mgmt_note'] : (!empty($row['qc_note']) ? $row['qc_note'] : (!empty($row['rejection_note']) ? $row['rejection_note'] : null));
+                $approvalNote = !empty($row['note']) ? $row['note'] : null;
 
                 $eaStatus = $row['status'];
                 if ($isReturn) {
@@ -3827,8 +3858,8 @@ class ApprovalRequest extends Model
                     } elseif ($eaStatus === 'qc_approved') {
                         $status = 'pending';
                         $approveRole = 'management';
-                        $approvedBy = !empty($row['qc_approved_by']) ? (int)$row['qc_approved_by'] : null;
-                        $approvedAt = !empty($row['qc_approved_at']) ? $row['qc_approved_at'] : null;
+                        $approvedBy = !empty($row['approved_by']) ? (int)$row['approved_by'] : null;
+                        $approvedAt = !empty($row['approved_at']) ? $row['approved_at'] : null;
                     } elseif ($eaStatus === 'approved') {
                         $status = 'approved';
                         $approveRole = 'accounts';
@@ -3896,18 +3927,14 @@ class ApprovalRequest extends Model
                 END,
                 ar.approved_by = CASE
                     WHEN ea.approved_by IS NOT NULL THEN ea.approved_by
-                    WHEN ea.status = 'qc_approved' AND ea.qc_approved_by IS NOT NULL THEN ea.qc_approved_by
                     ELSE ar.approved_by
                 END,
                 ar.approved_at = CASE
                     WHEN ea.approved_at IS NOT NULL THEN ea.approved_at
-                    WHEN ea.status = 'qc_approved' AND ea.qc_approved_at IS NOT NULL THEN ea.qc_approved_at
                     ELSE ar.approved_at
                 END,
                 ar.approval_note = CASE
-                    WHEN ea.mgmt_note IS NOT NULL AND ea.mgmt_note != '' THEN ea.mgmt_note
-                    WHEN ea.qc_note IS NOT NULL AND ea.qc_note != '' THEN ea.qc_note
-                    WHEN ea.rejection_note IS NOT NULL AND ea.rejection_note != '' THEN ea.rejection_note
+                    WHEN ea.note IS NOT NULL AND ea.note != '' THEN ea.note
                     ELSE ar.approval_note
                 END
             WHERE 
@@ -3919,7 +3946,11 @@ class ApprovalRequest extends Model
                 OR (ea.adjustment_type = 'extra' AND ea.status = 'approved' AND (ar.approve_role != 'accounts' OR ar.status != 'approved'))
                 OR (ar.status = '' OR ar.status IS NULL)
         ";
-        @$this->db->query($syncSql);
+        try {
+            $this->db->query($syncSql);
+        } catch (\Throwable $e) {
+            error_log("syncMissingExpenseAdjustments status sync error: " . $e->getMessage());
+        }
     }
 
     public function syncMissingLandFundRequisitions()
@@ -4023,6 +4054,10 @@ class ApprovalRequest extends Model
                OR (lfr.mgmt_status = 'Approved' AND lfr.accounts_status != 'Paid' AND (ar.approve_role != 'accounts' OR ar.status != 'approved'))
                OR (lfr.mgmt_status = 'Rejected' AND ar.status != 'rejected')
         ";
-        @$this->db->query($syncSql);
+        try {
+            $this->db->query($syncSql);
+        } catch (\Throwable $e) {
+            error_log("syncMissingLandFundRequisitions sync error: " . $e->getMessage());
+        }
     }
 }

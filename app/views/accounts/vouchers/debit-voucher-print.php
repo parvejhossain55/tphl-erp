@@ -347,8 +347,8 @@
                 page-break-inside: avoid !important;
             }
             .voucher-container .audit-card {
-                padding: 5px 7px !important;
-                font-size: 10.5px !important;
+                padding: 4px 6px !important;
+                font-size: 10px !important;
             }
 
             .no-print {
@@ -499,7 +499,7 @@
                 </div>
 
                 <!-- 2. Approved By -->
-                <div class="audit-card" style="flex: 1.4;">
+                <div class="audit-card" style="flex: 1.15;">
                     <div class="audit-card-header">
                         <span class="step-num">2</span>
                         <span>Approved By (Hierarchy)</span>
@@ -513,6 +513,11 @@
                                     <?php if (!empty($appr['date'])): ?>
                                         <div class="audit-date"><i class="fa-regular fa-clock"></i> <?= htmlspecialchars($appr['date']) ?></div>
                                     <?php endif; ?>
+                                    <?php if (!empty($appr['note']) && strpos(strtolower($appr['note']), 'auto-') === false): ?>
+                                        <div style="font-size: 9px; color: #334155; background: #f8fafc; border-left: 2px solid #94a3b8; padding: 2px 4px; margin-top: 2px; border-radius: 2px; line-height: 1.3; word-break: break-word;">
+                                            <strong>Note:</strong> <?= nl2br(htmlspecialchars($appr['note'])) ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             <?php endforeach; ?>
                         <?php else: ?>
@@ -522,10 +527,39 @@
                     </div>
                 </div>
 
-                <!-- 3. Paid & Disbursed By -->
-                <div class="audit-card">
+                <!-- 3. Accounts Head Approval (Md. Mamunoor Rashid) -->
+                <div class="audit-card" style="flex: 1.45;">
                     <div class="audit-card-header">
                         <span class="step-num">3</span>
+                        <span>Accounts Head Approval</span>
+                    </div>
+                    <div class="audit-card-body">
+                        <span class="audit-stage-badge" style="background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; font-size: 8.5px;">
+                            <?= htmlspecialchars($voucher['audit_trail']['accounts_head']['designation'] ?? 'AGM - Finance & Accounts') ?>
+                        </span>
+                        <div class="audit-user-name" style="color: #0f172a; margin-top: 2px;">
+                            <?= htmlspecialchars($voucher['audit_trail']['accounts_head']['name'] ?? 'Md. Mamunoor Rashid [1309]') ?>
+                        </div>
+                        <?php if (!empty($voucher['audit_trail']['accounts_head']['date'])): ?>
+                            <div class="audit-date">
+                                <i class="fa-regular fa-clock"></i> <?= htmlspecialchars($voucher['audit_trail']['accounts_head']['date']) ?>
+                            </div>
+                        <?php endif; ?>
+                        <?php if (!empty($voucher['audit_trail']['accounts_head']['note'])): ?>
+                            <div style="font-size: 9.5px; color: #0f172a; background: #f0fdf4; border-left: 2.5px solid #16a34a; padding: 2.5px 5px; margin-top: 3px; border-radius: 2px; line-height: 1.35; word-break: break-word;">
+                                <strong style="color: #15803d;">Note:</strong> <?= nl2br(htmlspecialchars($voucher['audit_trail']['accounts_head']['note'])) ?>
+                            </div>
+                        <?php endif; ?>
+                        <div style="font-size: 10px; color: <?= !empty($voucher['audit_trail']['accounts_head']['is_approved']) ? '#16a34a' : '#d97706' ?>; font-weight: bold; margin-top: 3px;">
+                            ✓ <?= htmlspecialchars($voucher['audit_trail']['accounts_head']['status_label'] ?? 'Approved & Authorized') ?>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Paid & Disbursed By -->
+                <div class="audit-card">
+                    <div class="audit-card-header">
+                        <span class="step-num">4</span>
                         <span>Paid & Disbursed By</span>
                     </div>
                     <div class="audit-card-body">
