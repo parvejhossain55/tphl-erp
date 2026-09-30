@@ -347,6 +347,10 @@ class OnboardClientController extends Controller
                 'project_name'  => $projectName,
                 'flat_name'     => $flatName,
                 'lead_id'       => $leadId,
+                  'cameraLink1'   => $rowData['cameralink1'] ?? $rowData['cameralink'] ?? null,
+                  'cameraLink2'   => $rowData['cameralink2'] ?? null,
+                  'moneyReceiptLink' => $rowData['moneyreceiptlink'] ?? null,
+                  'purchaseDetailsLink' => $rowData['purchasedetailslink'] ?? null,
                 'lead_name'     => $leadName,
                 'lead_phone'    => $leadPhone,
                 'booking_id'    => $bookingId,
@@ -414,10 +418,10 @@ class OnboardClientController extends Controller
 
             // Auto-populate links from user.json if matched, otherwise null
             $links = [
-                'cameraLink1'        => null,
-                'cameraLink2'        => null,
-                'moneyReceiptLink'   => null,
-                'purchaseDetailsLink'=> null,
+                'cameraLink1'        => $row['cameraLink1'] ?? null,
+                  'cameraLink2'        => $row['cameraLink2'] ?? null,
+                  'moneyReceiptLink'   => $row['moneyReceiptLink'] ?? null,
+                  'purchaseDetailsLink'=> $row['purchaseDetailsLink'] ?? null,
             ];
 
             if (!empty($staticUsers)) {

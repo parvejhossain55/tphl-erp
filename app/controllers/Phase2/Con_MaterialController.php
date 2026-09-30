@@ -467,4 +467,37 @@ class Con_MaterialController extends Controller
         header('Location: ' . $GLOBALS['base_url'] . '/con-materials');
         exit;
     }
+
+    public function updateBulkLeadTimes()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        if (!in_array($userRole, [3, 17, 20, 31])) {
+            setError("Unauthorized access.");
+            header('Location: ' . $GLOBALS['base_url'] . '/con-purchase-requests');
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['leadtimes'])) {
+            $stmt = $this->db->prepare("UPDATE con_material_categories SET pr_to_qtn_days=?, cs_analysis_days=?, approval_days=?, wo_po_days=?, adv_payment_days=?, transport_days=?, total_lead_days=? WHERE id=?");
+            
+            foreach ($_POST['leadtimes'] as $id => $times) {
+                $pr = (int)($times['pr_to_qtn_days'] ?? 0);
+                $cs = (int)($times['cs_analysis_days'] ?? 0);
+                $ap = (int)($times['approval_days'] ?? 0);
+                $wo = (int)($times['wo_po_days'] ?? 0);
+                $adv = (int)($times['adv_payment_days'] ?? 0);
+                $tr = (int)($times['transport_days'] ?? 0);
+                $total = $pr + $cs + $ap + $wo + $adv + $tr;
+                $catId = (int)$id;
+
+                $stmt->bind_param("iiiiiiii", $pr, $cs, $ap, $wo, $adv, $tr, $total, $catId);
+                $stmt->execute();
+            }
+            setSuccess("Lead times updated successfully.");
+        }
+        
+        header('Location: ' . $GLOBALS['base_url'] . '/con-purchase-requests');
+        exit;
+    }
 }

@@ -30,11 +30,16 @@ foreach (($requests ?? []) as $reqItem) {
             </ol>
         </nav>
     </div>
-    <?php if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])): ?>
-        <a href="<?= $base_url ?>/con-purchase-request-create" class="btn btn-primary btn-sm">
-            <i class="bi bi-plus-circle me-1"></i> New Purchase Request
-        </a>
-    <?php endif; ?>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-info btn-sm fw-bold shadow-sm text-nowrap" data-bs-toggle="modal" data-bs-target="#leadTimeReportModal">
+            <i class="bi bi-table me-1"></i> Lead Time Report
+        </button>
+        <?php if (!in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 20, 22])): ?>
+            <a href="<?= $base_url ?>/con-purchase-request-create" class="btn btn-primary btn-sm shadow-sm text-nowrap">
+                <i class="bi bi-plus-circle me-1"></i> New Purchase Request
+            </a>
+        <?php endif; ?>
+    </div>
 </div>
 
 <section class="section">
@@ -314,7 +319,150 @@ foreach (($requests ?? []) as $reqItem) {
     </div>
 </section>
 
+<!-- =========================================================
+     LEAD TIME REPORT MODAL (EXCEL-LIKE TABLE)
+     ========================================================= -->
+<div class="modal fade" id="leadTimeReportModal" tabindex="-1" aria-labelledby="leadTimeReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:12px; overflow:hidden;">
+            <div class="modal-header" style="background-color: #16a34a !important; border:none; padding:18px 24px;">
+                <h5 class="modal-title fw-bold text-white mb-0" id="leadTimeReportModalLabel">
+                    <i class="bi bi-file-earmark-spreadsheet-fill me-2"></i> Materials Procurement Lead Time
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" style="background-color: #f8fafc;">
+                <div class="text-center py-3 border-bottom" style="background-color: #fff;">
+                    <h6 class="fw-bold mb-1" style="color:#0f172a; font-size:16px;">Materials Procurement Lead Time</h6>
+                    <div class="text-muted fw-semibold" style="font-size:14px;">The Premium Homes Ltd</div>
+                </div>
+                
+                <div class="table-responsive" style="max-height: 60vh;">
+                    <form id="leadTimeUpdateForm" action="<?= $base_url ?>/con-materials-update-leadtimes-bulk" method="POST">
+                        <table class="table table-bordered table-hover align-middle mb-0" style="font-size: 13px;" id="leadTimeReportTable">
+                            <thead style="position: sticky; top: 0; z-index: 1;">
+                            <tr class="text-center align-middle text-white" style="background-color: #16a34a !important;">
+                                    <th style="width:5%; font-weight:600; padding:12px;">SL No.</th>
+                                    <th style="width:15%; font-weight:600; padding:12px;">Item Name</th>
+                                    <th style="width:10%; font-weight:600; padding:12px;">Item Type</th>
+                                    <th style="width:10%; font-weight:600; padding:12px;">PR to Qtn Collection</th>
+                                    <th style="width:10%; font-weight:600; padding:12px;">CS Analysis & Negotiation</th>
+                                    <th style="width:12%; font-weight:600; padding:12px;">Audit/HO Operation/DCEO/Approval</th>
+                                    <th style="width:8%; font-weight:600; padding:12px;">WO/PO</th>
+                                    <th style="width:10%; font-weight:600; padding:12px;">Advance Payment if Required</th>
+                                    <th style="width:10%; font-weight:600; padding:12px;">Transport to Site</th>
+                                    <th style="width:10%; font-weight:600; padding:12px;">Total Delivery Lead Time</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white text-center">
+                                <?php 
+                                $canEditLeadTime = in_array($_SESSION['user']['role_id'] ?? 0, [3, 17, 20, 31]);
+                                $sl = 1;
+                                $prevType = null;
+                                foreach ($categoriesWithLeadTime ?? [] as $cat): 
+                                    $isNewType = ($cat['item_type'] !== $prevType);
+                                    $prevType = $cat['item_type'];
+                                ?>
+                                    <tr <?= $isNewType ? 'style="border-top: 2px solid #94a3b8;"' : '' ?>>
+                                        <td class="fw-semibold text-muted"><?= $sl++ ?></td>
+                                        <td class="text-start fw-bold text-dark px-3"><?= htmlspecialchars($cat['name']) ?></td>
+                                        <td><span class="badge" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;"><?= htmlspecialchars($cat['item_type']) ?></span></td>
+                                        
+                                        <?php if ($canEditLeadTime): ?>
+                                            <td class="p-1"><input type="number" name="leadtimes[<?= $cat['id'] ?>][pr_to_qtn_days]" value="<?= $cat['pr_to_qtn_days'] ?>" class="editable-input lead-time-input" min="0"></td>
+                                            <td class="p-1"><input type="number" name="leadtimes[<?= $cat['id'] ?>][cs_analysis_days]" value="<?= $cat['cs_analysis_days'] ?>" class="editable-input lead-time-input" min="0"></td>
+                                            <td class="p-1"><input type="number" name="leadtimes[<?= $cat['id'] ?>][approval_days]" value="<?= $cat['approval_days'] ?>" class="editable-input lead-time-input" min="0"></td>
+                                            <td class="p-1"><input type="number" name="leadtimes[<?= $cat['id'] ?>][wo_po_days]" value="<?= $cat['wo_po_days'] ?>" class="editable-input lead-time-input" min="0"></td>
+                                            <td class="p-1"><input type="number" name="leadtimes[<?= $cat['id'] ?>][adv_payment_days]" value="<?= $cat['adv_payment_days'] ?>" class="editable-input lead-time-input" min="0"></td>
+                                            <td class="p-1"><input type="number" name="leadtimes[<?= $cat['id'] ?>][transport_days]" value="<?= $cat['transport_days'] ?>" class="editable-input lead-time-input" min="0"></td>
+                                        <?php else: ?>
+                                            <td><?= $cat['pr_to_qtn_days'] ?></td>
+                                            <td><?= $cat['cs_analysis_days'] ?></td>
+                                            <td><?= $cat['approval_days'] ?></td>
+                                            <td><?= $cat['wo_po_days'] ?></td>
+                                            <td><?= $cat['adv_payment_days'] ?></td>
+                                            <td><?= $cat['transport_days'] ?></td>
+                                        <?php endif; ?>
+
+                                        <td class="fw-bold fs-6 lead-time-total" style="background:#eff6ff; color:#1d4ed8;"><?= $cat['total_lead_days'] ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </form>
+                </div>
+
+                <div class="p-3 bg-white border-top">
+                    <strong class="text-dark d-block mb-2" style="font-size:13px;">Note:</strong>
+                    <ol class="text-muted mb-0 ps-3" style="font-size:12px; line-height: 1.6;">
+                        <li>For Structural Items, PR must be submitted once a month.</li>
+                        <li>PRs for the remaining items must be submitted every Wednesday and Thursday of each week.</li>
+                        <li>For any emergency items, we may accept emergency PRs up to a maximum of 2% of the total monthly PR volume, provided that proper justification is submitted along with each emergency PR.</li>
+                    </ol>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top-0 py-2">
+                <button type="button" class="btn btn-secondary btn-sm px-4 fw-bold" data-bs-dismiss="modal">Close</button>
+                <?php if (isset($canEditLeadTime) && $canEditLeadTime): ?>
+                    <button type="button" class="btn btn-success btn-sm px-4 fw-bold" style="background-color: #16a34a !important; border-color: #16a34a !important;" onclick="document.getElementById('leadTimeUpdateForm').submit();">Save Changes</button>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Modern styling for the table inside modal */
+#leadTimeReportTable th {
+    border-bottom: none;
+    white-space: pre-wrap;
+    line-height: 1.3;
+}
+#leadTimeReportTable td {
+    vertical-align: middle;
+    padding: 10px 8px;
+    border-color: #e2e8f0;
+}
+#leadTimeReportTable tbody tr:hover td {
+    background-color: #f8fafc;
+}
+.editable-input {
+    border: 1px solid transparent;
+    background: transparent;
+    width: 100%;
+    text-align: center;
+    color: inherit;
+    font-weight: inherit;
+    font-size: 13px;
+    padding: 4px;
+}
+.editable-input:focus {
+    outline: none;
+    background: #fff;
+    border: 1px solid #0d6efd;
+    border-radius: 4px;
+}
+/* Chrome, Safari, Edge, Opera hide input arrows */
+.editable-input::-webkit-outer-spin-button,
+.editable-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+</style>
+
 <script>
+document.addEventListener('input', function(e) {
+    if (e.target.classList.contains('lead-time-input')) {
+        let row = e.target.closest('tr');
+        let inputs = row.querySelectorAll('.lead-time-input');
+        let total = 0;
+        inputs.forEach(function(input) {
+            total += parseInt(input.value) || 0;
+        });
+        row.querySelector('.lead-time-total').innerText = total;
+    }
+});
+
 window.filterPRTable = function (status, btnElement) {
     document.querySelectorAll('.pr-filter-pill').forEach(function (pill) {
         pill.classList.remove('active');
