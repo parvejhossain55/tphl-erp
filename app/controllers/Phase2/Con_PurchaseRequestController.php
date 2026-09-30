@@ -53,12 +53,15 @@ class Con_PurchaseRequestController extends Controller
             $executives = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         }
 
+        $categoriesWithLeadTime = $this->db->query("SELECT * FROM con_material_categories ORDER BY FIELD(item_type, 'Structural', 'Construction', 'EME', 'Finishing'), name ASC")->fetch_all(MYSQLI_ASSOC);
+
         $this->view('phase2/purchase-requests/purchase-request-lists', [
             'current_route' => 'con-purchase-requests',
             'page_title'    => 'Purchase Requests',
             'requests'      => $requests,
             'executives'    => $executives,
             'userRole'      => $userRole,
+            'categoriesWithLeadTime' => $categoriesWithLeadTime,
         ]);
     }
 
