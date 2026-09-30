@@ -61,7 +61,7 @@ foreach (($requests ?? []) as $reqItem) {
             </button>
 
             <button type="button" class="btn btn-sm btn-outline-primary pr-filter-pill" data-status="PO Issued" onclick="filterPRTable('PO Issued', this)">
-                <i class="bi bi-file-earmark-check-fill text-primary me-1"></i> PO Issued 
+                <i class="bi bi-file-earmark-check-fill  me-1"></i> PO Issued 
                 <span class="badge bg-primary text-white ms-1 rounded-pill"><?= $countPoIssued ?></span>
             </button>
 
@@ -85,11 +85,11 @@ foreach (($requests ?? []) as $reqItem) {
 
         <div class="d-flex align-items-center gap-2">
             <label for="prStatusFilterSelect" class="small text-muted fw-bold mb-0 text-nowrap">
-                <i class="bi bi-funnel-fill text-primary me-1"></i>Status Filter:
+                <i class="bi bi-funnel-fill  me-1"></i>Status Filter:
             </label>
             <select id="prStatusFilterSelect" class="form-select form-select-sm shadow-xs" style="min-width: 175px; font-weight: 600;" onchange="onStatusSelectChange(this.value)">
                 <option value="All">All Statuses (<?= $countAll ?>)</option>
-                <option value="PO Rejected">⚠️ PO Rejected (<?= $countPoRejected ?>)</option>
+                <option value="PO Rejected"> PO Rejected (<?= $countPoRejected ?>)</option>
                 <option value="Approved">✓ Approved (<?= $countApproved ?>)</option>
                 <option value="PO Issued">PO Issued (<?= $countPoIssued ?>)</option>
                 <option value="Submitted">Pending PM (<?= $countSubmitted ?>)</option>
@@ -131,7 +131,7 @@ foreach (($requests ?? []) as $reqItem) {
                                             </span>
                                         <?php endif; ?>
                                         <?php if (!empty($r['revision_count']) && (int)$r['revision_count'] > 0): ?>
-                                            <br><span class="badge bg-light text-secondary border mt-1" style="font-size:9.5px;">Rev #<?= $r['revision_count'] ?></span>
+                                            <br><span class="badge bg-light  border mt-1" style="font-size:9.5px;">Rev #<?= $r['revision_count'] ?></span>
                                         <?php endif; ?>
                                     </td>
                                     <td class="fw-bold">
@@ -149,7 +149,7 @@ foreach (($requests ?? []) as $reqItem) {
                                                 $cats = array_filter(array_map('trim', explode(',', $r['category_names'])));
                                                 foreach ($cats as $catName): ?>
                                                     <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle py-1 px-2" style="font-size:10.5px; font-weight:600; white-space:normal; text-align:left;">
-                                                        <i class="bi bi-tag-fill me-1 text-primary"></i><?= htmlspecialchars($catName) ?>
+                                                        <i class="bi bi-tag-fill me-1 "></i><?= htmlspecialchars($catName) ?>
                                                     </span>
                                                 <?php endforeach; ?>
                                             </div>
@@ -161,11 +161,11 @@ foreach (($requests ?? []) as $reqItem) {
                                         <?php $prType = $r['pr_type'] ?? 'boq_linked'; ?>
                                         <?php if ($prType === 'independent'): ?>
                                             <span class="badge" style="background:rgba(245,158,11,.15);color:#b45309;border:1px solid rgba(245,158,11,.3);font-size:10px;font-weight:700;">
-                                                ✏️ Not link with monthly target
+                                                 Not link with monthly target
                                             </span>
                                         <?php else: ?>
                                             <span class="badge" style="background:rgba(37,99,235,.1);color:#1d4ed8;border:1px solid rgba(37,99,235,.2);font-size:10px;font-weight:700;">
-                                                📋 Link with monthly target
+                                                 Link with monthly target
                                             </span>
                                         <?php endif; ?>
                                     </td>
@@ -241,7 +241,7 @@ foreach (($requests ?? []) as $reqItem) {
                                         $reqDate = !empty($r['effective_required_date']) ? $r['effective_required_date'] : (!empty($r['required_date']) ? $r['required_date'] : null);
                                         ?>
                                         <?php if (!empty($reqDate)): ?>
-                                            <div class="fw-bold <?= !empty($r['is_urgent']) ? 'text-danger' : 'text-primary' ?>" style="font-size:12px;">
+                                            <div class="fw-bold <?= !empty($r['is_urgent']) ? 'text-danger' : '' ?>" style="font-size:12px;">
                                                 <i class="bi <?= !empty($r['is_urgent']) ? 'bi-lightning-charge-fill' : 'bi-calendar-event' ?> me-1"></i><?= date('d M Y', strtotime($reqDate)) ?>
                                             </div>
                                             <div class="text-muted" style="font-size:10.5px;">
@@ -324,16 +324,16 @@ foreach (($requests ?? []) as $reqItem) {
      ========================================================= -->
 <div class="modal fade" id="leadTimeReportModal" tabindex="-1" aria-labelledby="leadTimeReportModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow-lg" style="border-radius:12px; overflow:hidden;">
+        <div class="modal-content border-0 shadow-lg card__wrapper" style="border-radius:12px; overflow:hidden;">
             <div class="modal-header" style="background-color: #16a34a !important; border:none; padding:18px 24px;">
                 <h5 class="modal-title fw-bold text-white mb-0" id="leadTimeReportModalLabel">
                     <i class="bi bi-file-earmark-spreadsheet-fill me-2"></i> Materials Procurement Lead Time
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-0" style="background-color: #f8fafc;">
-                <div class="text-center py-3 border-bottom" style="background-color: #fff;">
-                    <h6 class="fw-bold mb-1" style="color:#0f172a; font-size:16px;">Materials Procurement Lead Time</h6>
+            <div class="modal-body p-0">
+                <div class="text-center py-3 border-bottom">
+                    <h6 class="fw-bold mb-1" style="font-size:16px;">Materials Procurement Lead Time</h6>
                     <div class="text-muted fw-semibold" style="font-size:14px;">The Premium Homes Ltd</div>
                 </div>
                 
@@ -354,7 +354,7 @@ foreach (($requests ?? []) as $reqItem) {
                                     <th style="width:10%; font-weight:600; padding:12px;">Total Delivery Lead Time</th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white text-center">
+                            <tbody class="text-center">
                                 <?php 
                                 $canEditLeadTime = in_array($_SESSION['user']['role_id'] ?? 0, [3, 17, 20, 31]);
                                 $sl = 1;
@@ -363,10 +363,10 @@ foreach (($requests ?? []) as $reqItem) {
                                     $isNewType = ($cat['item_type'] !== $prevType);
                                     $prevType = $cat['item_type'];
                                 ?>
-                                    <tr <?= $isNewType ? 'style="border-top: 2px solid #94a3b8;"' : '' ?>>
+                                    <tr <?= $isNewType ? 'style="border-top: 2px solid var(--primary-green, #94a3b8);"' : '' ?>>
                                         <td class="fw-semibold text-muted"><?= $sl++ ?></td>
-                                        <td class="text-start fw-bold text-dark px-3"><?= htmlspecialchars($cat['name']) ?></td>
-                                        <td><span class="badge" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;"><?= htmlspecialchars($cat['item_type']) ?></span></td>
+                                        <td class="text-start fw-bold px-3"><?= htmlspecialchars($cat['name']) ?></td>
+                                        <td><span class="badge bg-secondary bg-opacity-25 "><?= htmlspecialchars($cat['item_type']) ?></span></td>
                                         
                                         <?php if ($canEditLeadTime): ?>
                                             <td class="p-1"><input type="number" name="leadtimes[<?= $cat['id'] ?>][pr_to_qtn_days]" value="<?= $cat['pr_to_qtn_days'] ?>" class="editable-input lead-time-input" min="0"></td>
@@ -384,7 +384,7 @@ foreach (($requests ?? []) as $reqItem) {
                                             <td><?= $cat['transport_days'] ?></td>
                                         <?php endif; ?>
 
-                                        <td class="fw-bold fs-6 lead-time-total" style="background:#eff6ff; color:#1d4ed8;"><?= $cat['total_lead_days'] ?></td>
+                                        <td class="fw-bold fs-6 lead-time-total text-success"><?= $cat['total_lead_days'] ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -392,8 +392,8 @@ foreach (($requests ?? []) as $reqItem) {
                     </form>
                 </div>
 
-                <div class="p-3 bg-white border-top">
-                    <strong class="text-dark d-block mb-2" style="font-size:13px;">Note:</strong>
+                <div class="p-3 border-top">
+                    <strong class="d-block mb-2" style="font-size:13px;">Note:</strong>
                     <ol class="text-muted mb-0 ps-3" style="font-size:12px; line-height: 1.6;">
                         <li>For Structural Items, PR must be submitted once a month.</li>
                         <li>PRs for the remaining items must be submitted every Wednesday and Thursday of each week.</li>
@@ -401,7 +401,7 @@ foreach (($requests ?? []) as $reqItem) {
                     </ol>
                 </div>
             </div>
-            <div class="modal-footer bg-light border-top-0 py-2">
+            <div class="modal-footer border-top-0 py-2">
                 <button type="button" class="btn btn-secondary btn-sm px-4 fw-bold" data-bs-dismiss="modal">Close</button>
                 <?php if (isset($canEditLeadTime) && $canEditLeadTime): ?>
                     <button type="button" class="btn btn-success btn-sm px-4 fw-bold" style="background-color: #16a34a !important; border-color: #16a34a !important;" onclick="document.getElementById('leadTimeUpdateForm').submit();">Save Changes</button>
@@ -421,10 +421,7 @@ foreach (($requests ?? []) as $reqItem) {
 #leadTimeReportTable td {
     vertical-align: middle;
     padding: 10px 8px;
-    border-color: #e2e8f0;
-}
-#leadTimeReportTable tbody tr:hover td {
-    background-color: #f8fafc;
+    border-color: inherit;
 }
 .editable-input {
     border: 1px solid transparent;
