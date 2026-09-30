@@ -444,8 +444,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     // Calculations
                     let finalLate = late;
                     let approvedLates = 0;
-                    let deduction = 0;
-                    let lateUnpaidAbsentDays = absent;
+                    let deduction = Math.floor(finalLate / 3);
+                    let lateUnpaidAbsentDays = absent + deduction;
                     let idCheck = emp ? "OK" : "Tipsoi Missing";
                     let nameCheck = emp ? "OK" : "Tipsoi Missing";
 
@@ -633,16 +633,47 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // Synchronize Late/Unpaid/Absent days to raw Absent automatically to assist user flow
+    // Interactive Manual Helper for Attendance calculations
     document.addEventListener('input', function(e) {
-        if (e.target.classList.contains('in-absent')) {
-            const tr = e.target.closest('tr');
-            if (tr) {
-                const absentVal = parseFloat(e.target.value) || 0;
-                const lateUnpaidInput = tr.querySelector('.in-lateunpaidabsent');
-                if (lateUnpaidInput) {
-                    lateUnpaidInput.value = absentVal.toFixed(2);
-                }
+        const tr = e.target.closest('tr');
+        if (!tr) return;
+
+        const lateVal = parseFloat(tr.querySelector('.in-late')?.value) || 0;
+        const appLateInp = tr.querySelector('.in-approvedlates');
+        const finalLateInp = tr.querySelector('.in-finallate');
+        const deductInp = tr.querySelector('.in-deduction');
+        const absentInp = tr.querySelector('.in-absent');
+        const lateUnpaidInp = tr.querySelector('.in-lateunpaidabsent');
+
+        if (e.target.classList.contains('in-approvedlates') || e.target.classList.contains('in-late')) {
+            const appLateVal = parseFloat(appLateInp?.value) || 0;
+            const finalLate = Math.max(0, lateVal - appLateVal);
+            if (finalLateInp) {
+                finalLateInp.value = finalLate;
+            }
+            const deduction = Math.floor(finalLate / 3);
+            if (deductInp) {
+                deductInp.value = deduction;
+            }
+            const absentVal = parseFloat(absentInp?.value) || 0;
+            if (lateUnpaidInp) {
+                lateUnpaidInp.value = (absentVal + deduction).toFixed(2);
+            }
+        } else if (e.target.classList.contains('in-finallate')) {
+            const finalLate = parseFloat(finalLateInp?.value) || 0;
+            const deduction = Math.floor(finalLate / 3);
+            if (deductInp) {
+                deductInp.value = deduction;
+            }
+            const absentVal = parseFloat(absentInp?.value) || 0;
+            if (lateUnpaidInp) {
+                lateUnpaidInp.value = (absentVal + deduction).toFixed(2);
+            }
+        } else if (e.target.classList.contains('in-deduction') || e.target.classList.contains('in-absent')) {
+            const absentVal = parseFloat(absentInp?.value) || 0;
+            const deductVal = parseFloat(deductInp?.value) || 0;
+            if (lateUnpaidInp) {
+                lateUnpaidInp.value = (absentVal + deductVal).toFixed(2);
             }
         }
     });
