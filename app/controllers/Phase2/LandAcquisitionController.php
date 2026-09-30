@@ -795,9 +795,11 @@ class LandAcquisitionController extends Controller {
                 return $includeTime ? gmdate('Y-m-d H:i:s', (int)$unixTimestamp) : gmdate('Y-m-d', (int)$unixTimestamp);
             }
 
-            // 2. Pre-extract first date if cell contains multiple dates or multi-line (e.g. "28.09.2025/29.09.2025" or multiple deeds)
-            $candidate = $dateStr;
-            if (preg_match('/(\d{1,2})[\.\/-](\d{1,2}|[a-zA-Z]{3,9})[\.\/-](\d{2,4})/', $dateStr, $m)) {
+            // 2. Pre-clean typos like missing slash before year "22/102025" -> "22/10/2025"
+            $candidate = preg_replace('/(\d{1,2})[\.\/-](\d{1,2})(20\d{2})/', '$1/$2/$3', $dateStr);
+
+            // Pre-extract first date if cell contains multiple dates or multi-line (e.g. "28.09.2025/29.09.2025" or multiple deeds)
+            if (preg_match('/(\d{1,2})[\.\/-](\d{1,2}|[a-zA-Z]{3,9})[\.\/-](\d{2,4})/', $candidate, $m)) {
                 $yr = (int)$m[3];
                 if ($yr < 100) {
                     $yr += 2000;
@@ -971,6 +973,7 @@ class LandAcquisitionController extends Controller {
                     $deedAttachment = $saveAttachment($row['deed_document_filename'] ?? '');
 
                     // Create Requisition of type Registration (Approved & Paid)
+                    $regPaidAt = !empty($regTimestamp) ? $regTimestamp : (!empty($regDate) ? ($regDate . ' 00:00:00') : date('Y-m-d H:i:s'));
                     $stmtReqR = $this->db->prepare("
                         INSERT INTO land_fund_requisitions 
                         (land_acquisition_id, requisition_type, requested_amount, purpose, requested_by, mgmt_status, mgmt_by, mgmt_note, mgmt_approved_at, accounts_status, accounts_by, accounts_note, accounts_paid_at, payment_method, transaction_no, attachment_path)
@@ -979,7 +982,7 @@ class LandAcquisitionController extends Controller {
                     $purposeR = "Historic Registration Cost for " . $landOwnerName;
                     $stmtReqR->bind_param(
                         "idsiisisss",
-                        $landAcqId, $regCost, $purposeR, $landDeptId, $mgmtId, $regTimestamp, $accId, $regTimestamp, $regNo, $deedAttachment
+                        $landAcqId, $regCost, $purposeR, $landDeptId, $mgmtId, $regPaidAt, $accId, $regPaidAt, $regNo, $deedAttachment
                     );
                     if (!$stmtReqR->execute()) {
                         throw new Exception("Failed to insert Registration Requisition: " . $stmtReqR->error);
