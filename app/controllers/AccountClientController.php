@@ -251,6 +251,7 @@ public function indexTwo($bookingId = null)
         $leadId = (int)($_POST['lead_id'] ?? 0);
         $bookingDate = trim($_POST['booking_date'] ?? '');
         $salesById = (int)($_POST['sales_by_id'] ?? 0);
+        $newTotalEmi = isset($_POST['total_emi_no']) && trim($_POST['total_emi_no']) !== '' ? (int)$_POST['total_emi_no'] : null;
 
         if ($bookingId <= 0 && $leadId > 0) {
             $stmtLead = $this->db->prepare("SELECT id FROM lead_bookings WHERE lead_id = ? ORDER BY id DESC LIMIT 1");
@@ -298,10 +299,40 @@ public function indexTwo($bookingId = null)
             exit;
         }
 
+        if ($newTotalEmi !== null) {
+            // Check completed EMIs for this booking so user cannot set total_emi_no less than already paid EMIs
+            $checkPaidStmt = $this->db->prepare("
+                SELECT COUNT(DISTINCT es.emi_no) as completed_cnt 
+                FROM emi_schedules es
+                INNER JOIN lead_payments lp ON lp.id = es.lead_payment_id
+                WHERE lp.is_trashed = 0 AND lp.booking_id = ? 
+                  AND lp.payment_status IN ('paid','partially_paid') 
+                  AND lp.verification_status = 'verified'
+            ");
+            $completedCnt = 0;
+            if ($checkPaidStmt) {
+                $checkPaidStmt->bind_param("i", $bookingId);
+                $checkPaidStmt->execute();
+                $completedCnt = (int)($checkPaidStmt->get_result()->fetch_assoc()['completed_cnt'] ?? 0);
+                $checkPaidStmt->close();
+            }
+
+            if ($newTotalEmi < $completedCnt) {
+                $msg = "Total EMI ({$newTotalEmi}) cannot be less than already completed EMIs ({$completedCnt}).";
+                if ($isAjax) {
+                    echo json_encode(['success' => false, 'message' => $msg]);
+                    exit;
+                }
+                setError($msg);
+                header("Location: " . ($_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/clients-cash-in-history/{$bookingId}"));
+                exit;
+            }
+        }
+
         $formattedBookingDate = date('Y-m-d', strtotime($bookingDate));
 
         // Get existing booking details
-        $stmtB = $this->db->prepare("SELECT id, lead_id, booking_date, sales_by_id FROM lead_bookings WHERE id = ?");
+        $stmtB = $this->db->prepare("SELECT id, lead_id, booking_date, sales_by_id, total_emi_no, emi_updated_by FROM lead_bookings WHERE id = ?");
         $stmtB->bind_param("i", $bookingId);
         $stmtB->execute();
         $booking = $stmtB->get_result()->fetch_assoc();
@@ -309,7 +340,7 @@ public function indexTwo($bookingId = null)
 
         // Fallback: If not found by booking_id, check if $bookingId was a lead_id
         if (!$booking) {
-            $stmtLeadB = $this->db->prepare("SELECT id, lead_id, booking_date, sales_by_id FROM lead_bookings WHERE lead_id = ? ORDER BY id DESC LIMIT 1");
+            $stmtLeadB = $this->db->prepare("SELECT id, lead_id, booking_date, sales_by_id, total_emi_no, emi_updated_by FROM lead_bookings WHERE lead_id = ? ORDER BY id DESC LIMIT 1");
             if ($stmtLeadB) {
                 $stmtLeadB->bind_param("i", $bookingId);
                 $stmtLeadB->execute();
@@ -347,14 +378,45 @@ public function indexTwo($bookingId = null)
 
         $this->db->begin_transaction();
         try {
-            // 1. Update lead_bookings (booking_date and sales_by_id)
-            $updB = $this->db->prepare("UPDATE lead_bookings SET booking_date = ?, sales_by_id = ?, updated_at = NOW() WHERE id = ?");
-            if (!$updB) {
-                throw new Exception("Prepare lead_bookings update failed: " . $this->db->error);
+            // 1. Update lead_bookings (booking_date, sales_by_id, and optionally total_emi_no + audit)
+            if ($newTotalEmi !== null) {
+                $oldTotalEmi = isset($booking['total_emi_no']) && $booking['total_emi_no'] !== null ? (int)$booking['total_emi_no'] : null;
+                $emiActuallyChanged = ($oldTotalEmi === null || $oldTotalEmi !== $newTotalEmi || empty($booking['emi_updated_by']));
+
+                if ($emiActuallyChanged) {
+                    $updB = $this->db->prepare("UPDATE lead_bookings SET booking_date = ?, sales_by_id = ?, total_emi_no = ?, emi_updated_by = ?, emi_updated_at = NOW(), updated_at = NOW() WHERE id = ?");
+                    if (!$updB) {
+                        throw new Exception("Prepare lead_bookings update failed: " . $this->db->error);
+                    }
+                    $updB->bind_param("siiii", $formattedBookingDate, $salesById, $newTotalEmi, $currentUserId, $bookingId);
+                    $updB->execute();
+                    $updB->close();
+                } else {
+                    $updB = $this->db->prepare("UPDATE lead_bookings SET booking_date = ?, sales_by_id = ?, total_emi_no = ?, updated_at = NOW() WHERE id = ?");
+                    if (!$updB) {
+                        throw new Exception("Prepare lead_bookings update failed: " . $this->db->error);
+                    }
+                    $updB->bind_param("siii", $formattedBookingDate, $salesById, $newTotalEmi, $bookingId);
+                    $updB->execute();
+                    $updB->close();
+                }
+
+                // Also sync total_emi_no in lead_payments for this booking
+                $updEmiP = $this->db->prepare("UPDATE lead_payments SET total_emi_no = ?, updated_by = ? WHERE booking_id = ?");
+                if ($updEmiP) {
+                    $updEmiP->bind_param("iii", $newTotalEmi, $currentUserId, $bookingId);
+                    $updEmiP->execute();
+                    $updEmiP->close();
+                }
+            } else {
+                $updB = $this->db->prepare("UPDATE lead_bookings SET booking_date = ?, sales_by_id = ?, updated_at = NOW() WHERE id = ?");
+                if (!$updB) {
+                    throw new Exception("Prepare lead_bookings update failed: " . $this->db->error);
+                }
+                $updB->bind_param("sii", $formattedBookingDate, $salesById, $bookingId);
+                $updB->execute();
+                $updB->close();
             }
-            $updB->bind_param("sii", $formattedBookingDate, $salesById, $bookingId);
-            $updB->execute();
-            $updB->close();
 
             // 2. Update lead_payments (booking_money and registration payment_date)
             $updP = $this->db->prepare("UPDATE lead_payments SET payment_date = ?, updated_by = ?, updated_at = NOW() WHERE booking_id = ? AND payment_type IN ('booking_money', 'registration')");
@@ -386,7 +448,7 @@ public function indexTwo($bookingId = null)
 
             $this->db->commit();
 
-            $successMsg = "Booking info updated successfully! Booking date set to " . date('d M, Y', strtotime($formattedBookingDate)) . " and Sales Agent updated to " . htmlspecialchars($agentName) . ".";
+            $successMsg = "Booking info updated successfully! Booking date set to " . date('d M, Y', strtotime($formattedBookingDate)) . ", Sales Agent updated to " . htmlspecialchars($agentName) . ($newTotalEmi !== null ? ", Total EMI set to {$newTotalEmi}." : ".");
 
             if ($isAjax) {
                 echo json_encode([

@@ -541,6 +541,13 @@ class AccountClient extends Model
                      AND lp.verification_status = 'verified'), 
                     0
                 ) as additional_land_share_paid,
+                COALESCE(
+                    (SELECT SUM(lp.land_share_amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     AND lp.verification_status != 'rejected'), 
+                    0
+                ) as additional_land_share_paid_total,
                 -- Service fee: sum from verified EMI/settlement payments only
                 COALESCE(
                     (SELECT SUM(lp.service_fee) 
@@ -563,11 +570,27 @@ class AccountClient extends Model
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     AND lp.verification_status != 'rejected'
+                     AND lp.payment_type = 'registration'), 
+                    0
+                ) as registration_paid_total,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'
                      AND lp.payment_type = 'mutation_cost'), 
                     0
                 ) as mutation_cost_paid,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     AND lp.verification_status != 'rejected'
+                     AND lp.payment_type = 'mutation_cost'), 
+                    0
+                ) as mutation_cost_paid_total,
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
@@ -589,7 +612,6 @@ class AccountClient extends Model
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
-                     AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status != 'rejected'
                      AND lp.payment_type IN ('emi', 'emi_due_settlement')), 
                     0
@@ -607,7 +629,6 @@ class AccountClient extends Model
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
-                     AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status != 'rejected'
                      AND lp.payment_type = 'development_charge'), 
                     0
@@ -647,7 +668,11 @@ class AccountClient extends Model
                 lb.transfer_date,
                 lb.transfer_note,
                 lb.transfer_status,
-                transfer_u.full_name as transfer_updated_by_name
+                transfer_u.full_name as transfer_updated_by_name,
+                lb.total_emi_no as booking_total_emi_no,
+                lb.emi_updated_by,
+                lb.emi_updated_at,
+                emi_u.full_name as emi_updated_by_name
             FROM lead_bookings lb
             INNER JOIN leads l ON lb.lead_id = l.id
             INNER JOIN projects p ON lb.project_id = p.id
@@ -656,6 +681,7 @@ class AccountClient extends Model
             LEFT JOIN employees e1 ON e1.user_id = u.id
             LEFT JOIN employees e2 ON u.employee_id = e2.id
             LEFT JOIN users transfer_u ON lb.transfer_updated_by = transfer_u.id
+            LEFT JOIN users emi_u ON lb.emi_updated_by = emi_u.id
             WHERE lb.id = ?
         ");
 
@@ -686,19 +712,25 @@ class AccountClient extends Model
             // Paid amounts
             $totalPaid             = (float) $clientDetails['total_paid'];
             $bookingMoneyPaid      = (float) $clientDetails['booking_money_paid'];
-            $additionalLandSharePaid = (float) $clientDetails['additional_land_share_paid'];
-            $registrationPaid      = (float) $clientDetails['registration_paid'];
-            $developmentChargePaid = (float) $clientDetails['development_charge_paid'];
-            $emiPaid               = (float) $clientDetails['emi_paid'];
-            $totalServiceFee       = (float) $clientDetails['total_service_fee'];
-            $mutationCostPaid      = (float) ($clientDetails['mutation_cost_paid'] ?? 0);
+            $additionalLandSharePaid      = (float) $clientDetails['additional_land_share_paid'];
+            $additionalLandSharePaidTotal = (float) ($clientDetails['additional_land_share_paid_total'] ?? $additionalLandSharePaid);
+            $registrationPaid             = (float) $clientDetails['registration_paid'];
+            $registrationPaidTotal        = (float) ($clientDetails['registration_paid_total'] ?? $registrationPaid);
+            $developmentChargePaid        = (float) $clientDetails['development_charge_paid'];
+            $developmentChargePaidTotal   = (float) ($clientDetails['development_charge_paid_total'] ?? $developmentChargePaid);
+            $emiPaid                      = (float) $clientDetails['emi_paid'];
+            $emiPaidTotal                 = (float) ($clientDetails['emi_paid_total'] ?? $emiPaid);
+            $totalServiceFee              = (float) $clientDetails['total_service_fee'];
+            $mutationCostPaid             = (float) ($clientDetails['mutation_cost_paid'] ?? 0);
+            $mutationCostPaidTotal        = (float) ($clientDetails['mutation_cost_paid_total'] ?? $mutationCostPaid);
 
             // booking_money_total: all recorded entries (used for remaining in dropdown)
             $bookingMoneyTotal = (float) ($clientDetails['booking_money_total'] ?? 0);
 
             // NEW: Landshare Paid = booking money + land share payments + registration payments + mutation cost
             // (registration and mutation cost are treated as part of the landshare component)
-            $totalLandSharePaid = $bookingMoney + $additionalLandSharePaid + $registrationPaid + $mutationCostPaid;
+            $totalLandSharePaid      = $bookingMoney + $additionalLandSharePaid + $registrationPaid + $mutationCostPaid;
+            $totalLandSharePaidTotal = $bookingMoneyTotal + $additionalLandSharePaidTotal + $registrationPaidTotal + $mutationCostPaidTotal;
 
             // Remaining land share = effective target - all land share group payments
             // Land share group = booking money + additional land share payments + registration + mutation cost
@@ -706,19 +738,15 @@ class AccountClient extends Model
             $landSharePaymentsOnly    = round($bookingMoney + $additionalLandSharePaid + $registrationPaid + $mutationCostPaid);
             $effectiveLandShareTarget = max(0, round($totalLandShare - $discountAmount));
             $remainingLandShare       = max(0, round($effectiveLandShareTarget - $landSharePaymentsOnly));
-            $isLandShareCompleted     = ($remainingLandShare <= 0);
+            $remainingLandShareTotal  = max(0, round($effectiveLandShareTarget - $totalLandSharePaidTotal));
+            $isLandShareCompleted     = ($remainingLandShareTotal <= 0 || $remainingLandShare <= 0);
 
             // Total Construction Fee = Total Price - (Land Share + Dev Charges)
             // Discount only affects land share remaining, NOT the construction fee
             $constructionFee = max(0, round($totalPrice - ($totalLandShare + $flatDevCharges)));
 
-            // Fixed Per-EMI Amount = Construction Fee / Total EMI count
-            $emiStats = $this->getEMIStatistics($bookingId);
-            $totalEmiCount = $emiStats['total_emi'];
-            $perEmiAmount  = ($totalEmiCount > 0) ? round($constructionFee / $totalEmiCount) : 0;
-
-            // Dev charge: completed when paid amount >= flat fixed development_charges
-            $isDevChargeCompleted = ($flatDevCharges > 0 && $developmentChargePaid >= $flatDevCharges);
+            // Dev charge: completed when paid amount (or unrejected total) >= flat fixed development_charges
+            $isDevChargeCompleted = ($flatDevCharges > 0 && ($developmentChargePaidTotal >= $flatDevCharges || $developmentChargePaid >= $flatDevCharges));
             // If there's no dev charge defined on the flat, treat it as complete (not blocking EMI)
             if ($flatDevCharges <= 0) {
                 $isDevChargeCompleted = true;
@@ -729,9 +757,6 @@ class AccountClient extends Model
             $constructionFeePaid         = $emiPaid;
             $totalBulkEmiDiscount        = (float) ($clientDetails['total_bulk_emi_discount'] ?? 0);
             $remainingConstructionFee    = max(0, round($constructionFee - $constructionFeePaid - $totalBulkEmiDiscount));
-
-            // Registration paid status
-            $isRegistrationPaid = ($registrationPaid > 0);
 
             // Total due and net received
             // Booking discount + Bulk EMI discount both reduce the client's total obligation
@@ -745,13 +770,35 @@ class AccountClient extends Model
                 $totalEmiDue = 0;
             }
 
+            // Fetch EMI statistics
+            $emiStats = $this->getEMIStatistics($bookingId);
+            $totalEmiCount = $emiStats['total_emi'];
+            $completedEmiCount = $emiStats['completed_emi'];
+            $remainingEmiCount = max(0, $totalEmiCount - $completedEmiCount);
+
+            // OPTION 1: Dynamic Remaining Per-EMI Calculation
+            // Past paid installments stay untouched at their paid amount.
+            // Distribute remaining unscheduled construction fee among remaining future EMIs.
+            if ($completedEmiCount > 0) {
+                $unscheduledCF = max(0, $remainingConstructionFee - $totalEmiDue);
+                $perEmiAmount  = ($remainingEmiCount > 0) ? round($unscheduledCF / $remainingEmiCount) : 0;
+            } else {
+                $perEmiAmount  = ($totalEmiCount > 0) ? round($constructionFee / $totalEmiCount) : 0;
+            }
+
+            // Registration paid status
+            $isRegistrationPaid = ($registrationPaid > 0);
+
             // Add calculated fields to response
             $clientDetails['total_land_share_paid']                = $totalLandSharePaid;
             $clientDetails['landshare_paid']                       = $totalLandSharePaid;
+            $clientDetails['total_land_share_paid_total']          = $totalLandSharePaidTotal;
             $clientDetails['mutation_cost_paid']                   = $mutationCostPaid;
             $clientDetails['flat_development_charges']             = $flatDevCharges;
             $clientDetails['development_charge_paid']              = $developmentChargePaid;
+            $clientDetails['development_charge_paid_total']        = $developmentChargePaidTotal;
             $clientDetails['remaining_land_share']                 = $remainingLandShare;
+            $clientDetails['remaining_land_share_total']           = $remainingLandShareTotal;
             $clientDetails['is_land_share_completed']              = $isLandShareCompleted;
             $clientDetails['is_dev_charge_completed']              = $isDevChargeCompleted;
             $clientDetails['is_registration_paid']                 = $isRegistrationPaid;
@@ -759,22 +806,26 @@ class AccountClient extends Model
             $clientDetails['per_emi_amount']                       = $perEmiAmount;
             $clientDetails['service_charge_per_emi']               = $serviceChargePerEmi;
             $clientDetails['construction_fee_paid']                = $constructionFeePaid;
+            $clientDetails['emi_paid_total']                       = $emiPaidTotal;
             $clientDetails['construction_fee_paid_after_service']  = $constructionFeePaid;
             $clientDetails['remaining_construction_fee']           = $remainingConstructionFee;
             $clientDetails['total_due']                            = $totalDue;
             $clientDetails['net_received']                         = $netReceived;
             $clientDetails['total_emi_due']                        = $totalEmiDue;
-            $clientDetails['total_bulk_emi_discount']               = $totalBulkEmiDiscount;
+            $clientDetails['total_bulk_emi_discount']              = $totalBulkEmiDiscount;
 
-            // Add EMI statistics
+            // Add EMI statistics & audit metadata
             $clientDetails['total_emi']              = $emiStats['total_emi'];
             $clientDetails['completed_emi']          = $emiStats['completed_emi'];
             $clientDetails['unverified_emi_count']   = $emiStats['unverified_emi_count'];
             $clientDetails['unverified_emi_amount']  = $emiStats['unverified_emi_amount'];
             $clientDetails['pending_emi']            = $emiStats['pending_emi'];
             $clientDetails['paid_emi_numbers']       = $emiStats['paid_emi_numbers'];
-            $clientDetails['unverified_emi_numbers']  = $emiStats['unverified_emi_numbers'];
+            $clientDetails['unverified_emi_numbers'] = $emiStats['unverified_emi_numbers'];
             $clientDetails['pending_emi_numbers']    = $emiStats['pending_emi_numbers'];
+            $clientDetails['emi_updated_by']         = $emiStats['emi_updated_by'];
+            $clientDetails['emi_updated_at']         = $emiStats['emi_updated_at'];
+            $clientDetails['emi_updated_by_name']    = $emiStats['emi_updated_by_name'];
         }
 
         return $clientDetails;
@@ -786,17 +837,30 @@ class AccountClient extends Model
     private function getEMIStatistics($bookingId)
     {
         $totalEmiStmt = $this->db->prepare("
-            SELECT total_emi_no 
-            FROM lead_payments 
-            WHERE booking_id = ? 
-            AND total_emi_no IS NOT NULL
+            SELECT 
+                COALESCE(NULLIF(lb.total_emi_no, 0), lp.total_emi_no, 0) AS total_emi_no,
+                lb.emi_updated_by,
+                lb.emi_updated_at,
+                u.full_name AS emi_updated_by_name
+            FROM lead_bookings lb
+            LEFT JOIN (
+                SELECT booking_id, MAX(total_emi_no) as total_emi_no
+                FROM lead_payments
+                WHERE booking_id = ? AND total_emi_no IS NOT NULL
+                GROUP BY booking_id
+            ) lp ON lp.booking_id = lb.id
+            LEFT JOIN users u ON u.id = lb.emi_updated_by
+            WHERE lb.id = ?
             LIMIT 1
         ");
-        $totalEmiStmt->bind_param("i", $bookingId);
+        $totalEmiStmt->bind_param("ii", $bookingId, $bookingId);
         $totalEmiStmt->execute();
         $totalEmiResult = $totalEmiStmt->get_result();
         $totalEmiRow = $totalEmiResult ? $totalEmiResult->fetch_assoc() : null;
         $totalEmi = $totalEmiRow && $totalEmiRow['total_emi_no'] ? (int) $totalEmiRow['total_emi_no'] : 0;
+        if ($totalEmi > 120) {
+            $totalEmi = 42; // Safety cap against abnormal corrupted numbers
+        }
 
         $stats = [
             'total_emi' => $totalEmi,
@@ -806,7 +870,10 @@ class AccountClient extends Model
             'pending_emi' => 0,
             'paid_emi_numbers' => [],
             'unverified_emi_numbers' => [],
-            'pending_emi_numbers' => []
+            'pending_emi_numbers' => [],
+            'emi_updated_by' => $totalEmiRow['emi_updated_by'] ?? null,
+            'emi_updated_at' => $totalEmiRow['emi_updated_at'] ?? null,
+            'emi_updated_by_name' => $totalEmiRow['emi_updated_by_name'] ?? null,
         ];
 
         // Get paid EMI numbers
@@ -903,6 +970,9 @@ class AccountClient extends Model
         if (!$clientDetails) return [];
 
         $totalEmi = $clientDetails['total_emi'] ?? 0;
+        if ($totalEmi > 120) {
+            $totalEmi = 42;
+        }
         if ($totalEmi <= 0) return [];
 
         // Fetch all verified paid/partially paid EMIs
@@ -1007,20 +1077,24 @@ class AccountClient extends Model
                     }
                 }
                 
-                $penaltyCalc = $this->calculateCompoundedPenalty($clientDetails['per_emi_amount'], $record['due_date']);
+                $paidAmt = (float)($record['emi_amount'] ?? 0);
+                $dueAmt  = (float)($record['due_emi_amount'] ?? 0);
+                $scheduledAmt = ($paidAmt + $dueAmt > 0) ? ($paidAmt + $dueAmt) : (float)($clientDetails['per_emi_amount'] ?? 0);
+
+                $penaltyCalc = $this->calculateCompoundedPenalty($scheduledAmt, $record['due_date']);
                 $schedule[] = [
                     'emi_no' => $i,
                     'due_date' => $record['due_date'],
-                    'amount' => $clientDetails['per_emi_amount'],
-                    'paid_amount' => $record['emi_amount'],
-                    'due_amount' => $record['due_emi_amount'],
+                    'amount' => $scheduledAmt,
+                    'paid_amount' => $paidAmt,
+                    'due_amount' => $dueAmt,
                     'status' => $record['payment_status'],
                     'maturity_status' => $maturityStatus,
                     'is_virtual' => false,
                     'followup_count' => $followupCounts[$i] ?? 0,
                     'months_overdue' => ($maturityStatus === 'due') ? $penaltyCalc['months_overdue'] : 0,
                     'penalty_amount' => ($maturityStatus === 'due') ? $penaltyCalc['penalty_amount'] : 0,
-                    'total_payable'  => ($maturityStatus === 'due') ? $penaltyCalc['total_payable'] : $record['due_emi_amount']
+                    'total_payable'  => ($maturityStatus === 'due') ? $penaltyCalc['total_payable'] : $dueAmt
                 ];
                 
                 $runnerDate = clone $dueDateObj;
@@ -1218,14 +1292,19 @@ class AccountClient extends Model
             'effective_booking_target'             => $effectiveBookingTarget,               // agreement - discount
             'is_booking_fully_paid'                => $isBookingFullyPaid,
             'additional_land_share_paid'           => $clientDetails['additional_land_share_paid'],
-            'total_land_share_paid'                => $clientDetails['total_land_share_paid'],  // booking+landshare+registration
+            'additional_land_share_paid_total'     => $clientDetails['additional_land_share_paid_total'] ?? $clientDetails['additional_land_share_paid'],
+            'total_land_share_paid'                => $clientDetails['total_land_share_paid'],  // booking+landshare+registration (verified)
+            'total_land_share_paid_total'          => $clientDetails['total_land_share_paid_total'] ?? $clientDetails['total_land_share_paid'], // unrejected total
             'landshare_paid'                       => $clientDetails['landshare_paid'],          // alias
-            'remaining_land_share'                 => $clientDetails['remaining_land_share'],
+            'remaining_land_share'                 => $clientDetails['remaining_land_share_total'] ?? $clientDetails['remaining_land_share'],
+            'remaining_land_share_total'           => $clientDetails['remaining_land_share_total'] ?? $clientDetails['remaining_land_share'],
             'discount_amount'                      => $clientDetails['discount_amount'],
             'registration_paid'                    => $clientDetails['registration_paid'],
+            'registration_paid_total'              => $clientDetails['registration_paid_total'] ?? $clientDetails['registration_paid'],
             'registration_money'                   => $clientDetails['registration_paid'],
             'is_registration_paid'                 => $clientDetails['is_registration_paid'] ?? false,
             'mutation_cost_paid'                   => $clientDetails['mutation_cost_paid'] ?? 0,
+            'mutation_cost_paid_total'             => $clientDetails['mutation_cost_paid_total'] ?? 0,
             'is_land_share_completed'              => $clientDetails['is_land_share_completed'],
             'is_dev_charge_completed'              => $clientDetails['is_dev_charge_completed'] ?? false,
             'development_charge_paid'              => $clientDetails['development_charge_paid'] ?? 0,
@@ -1245,6 +1324,9 @@ class AccountClient extends Model
             'unverified_emi_count'                 => $clientDetails['unverified_emi_count'] ?? 0,
             'unverified_emi_amount'                => $clientDetails['unverified_emi_amount'] ?? 0,
             'pending_emi'                          => $clientDetails['pending_emi'],
+            'emi_updated_by'                       => $clientDetails['emi_updated_by'] ?? null,
+            'emi_updated_at'                       => $clientDetails['emi_updated_at'] ?? null,
+            'emi_updated_by_name'                  => $clientDetails['emi_updated_by_name'] ?? null,
             'last_payment_date'                    => $clientDetails['last_payment_date'],
             'total_service_fee'                    => $clientDetails['total_service_fee'],
             'net_received'                         => $clientDetails['net_received'],

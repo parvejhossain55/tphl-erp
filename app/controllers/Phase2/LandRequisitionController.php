@@ -62,7 +62,7 @@ class LandRequisitionController extends Controller {
             LEFT JOIN users u_mgmt ON lfr.mgmt_by = u_mgmt.id
             LEFT JOIN users u_acc ON lfr.accounts_by = u_acc.id
             WHERE $where
-            ORDER BY lfr.id DESC
+            ORDER BY lfr.is_bulk_import ASC, lfr.id DESC
         ";
         
         $reqResult = $this->db->query($sql);

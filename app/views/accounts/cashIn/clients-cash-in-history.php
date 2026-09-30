@@ -51,8 +51,8 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                         <i class="fa-light fa-user-tie mx-2"></i>
                         <strong>Sales By:</strong>&nbsp;<span class="fw-semibold text-dark" id="displaySalesAgent"><?= htmlspecialchars($clientDetails['agent_name'] ?? 'N/A') ?><?= !empty($clientDetails['agent_employee_id']) ? ' [EMP: ' . htmlspecialchars($clientDetails['agent_employee_id']) . ']' : '' ?></span>
                         <?php if ($canEditBookingInfo): ?>
-                            <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold ms-2 py-0 px-2" data-bs-toggle="modal" data-bs-target="#editBookingInfoModal" title="Edit Booking Date & Sales Agent" style="font-size: 11px;">
-                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit Date & Sales
+                            <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold ms-2 py-0 px-2" data-bs-toggle="modal" data-bs-target="#editBookingInfoModal" title="Edit Booking Date, Sales Agent & Total EMI" style="font-size: 11px;">
+                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit Date, Sales & EMI
                             </button>
                         <?php endif; ?>
                     </span>
@@ -330,10 +330,29 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
                     <div class="card__icon"><span><i class="fa-light fa-check-circle"></i></span></div>
-                    <div class="card__title-wrap">
+                    <div class="card__title-wrap" style="width: 100%;">
                         <h6 class="card__sub-title mb-10">Completed EMI</h6>
                         <div class="d-flex flex-column align-items-start">
-                            <h4 class="card__title"><?= $paymentSummary['completed_emi'] ?? 0 ?> / <?= $paymentSummary['total_emi'] ?? 0 ?></h4>
+                            <div class="d-flex align-items-center gap-2">
+                                <h4 class="card__title mb-0"><?= $paymentSummary['completed_emi'] ?? 0 ?> / <?= $paymentSummary['total_emi'] ?? 0 ?></h4>
+                                <?php if ($canEditBookingInfo): ?>
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-primary py-0 px-2 edit-emi-btn" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editBookingInfoModal" 
+                                            data-focus="emi" 
+                                            title="Edit Total EMI" 
+                                            style="font-size: 11px; height: 23px; display: inline-flex; align-items: center; border-radius: 4px; font-weight: 600;">
+                                        <i class="fa-solid fa-pen-to-square me-1"></i>Edit
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!empty($paymentSummary['emi_updated_at'])): ?>
+                                <div class="mt-1" style="font-size: 11px; color: #64748b; line-height: 1.3;" title="Last updated by <?= htmlspecialchars($paymentSummary['emi_updated_by_name'] ?? 'User') ?> on <?= date('d M, Y h:i A', strtotime($paymentSummary['emi_updated_at'])) ?>">
+                                    <i class="fa-regular fa-clock me-1 text-primary"></i>
+                                    <span>Updated <?= !empty($paymentSummary['emi_updated_by_name']) ? 'by <strong class="text-dark">' . htmlspecialchars($paymentSummary['emi_updated_by_name']) . '</strong>' : '' ?> on <?= date('d M, Y', strtotime($paymentSummary['emi_updated_at'])) ?></span>
+                                </div>
+                            <?php endif; ?>
                             <?php if (!empty($paymentSummary['unverified_emi_count']) && $paymentSummary['unverified_emi_count'] > 0): ?>
                                 <div style="margin-top: 4px;">
                                     <span class="badge bg-warning text-dark" style="font-size:11px; font-weight:600; padding:4px 8px;" title="EMI payments awaiting verification">
@@ -1139,7 +1158,7 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
         <div class="modal-content">
             <div class="modal-header bg-light">
                 <h5 class="modal-title fw-bold" id="editBookingInfoModalLabel">
-                    <i class="fa-solid fa-pen-to-square text-warning me-2"></i>Edit Booking & Sales Info
+                    <i class="fa-solid fa-pen-to-square text-warning me-2"></i>Edit Booking, Sales & EMI Info
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -1151,8 +1170,9 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                         <div class="d-flex align-items-start gap-2">
                             <i class="fa-solid fa-circle-info text-primary mt-1" style="font-size: 15px;"></i>
                             <div>
-                                Updating <strong>Booking Date</strong> will update <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">lead_bookings.booking_date</code> and the <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">payment_date</code> for <strong>Booking Money</strong> and <strong>Registration</strong>.<br>
-                                Updating <strong>Sales By</strong> will update <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">lead_bookings.sales_by_id</code> and <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">leads.assigned_id</code>.
+                                Updating <strong>Booking Date</strong> will update <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">lead_bookings.booking_date</code> and payment date for <strong>Booking Money</strong> and <strong>Registration</strong>.<br>
+                                Updating <strong>Sales By</strong> will update <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">lead_bookings.sales_by_id</code> and <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">leads.assigned_id</code>.<br>
+                                Updating <strong>Total EMI</strong> will divide remaining construction fee among remaining future EMIs (completed/paid EMIs remain unchanged).
                             </div>
                         </div>
                     </div>
@@ -1206,6 +1226,38 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                             <?php endif; ?>
                         </select>
                         <small class="text-muted d-block mt-1">Updates sales_by_id in booking and assigned_id in lead.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="total_emi_no_input" class="form-label fw-bold d-flex justify-content-between align-items-center">
+                            <span><i class="fa-light fa-list-ol text-primary me-1"></i> Total EMI (Installments) <span class="text-danger">*</span></span>
+                            <?php if (!empty($paymentSummary['completed_emi']) && $paymentSummary['completed_emi'] > 0): ?>
+                                <span class="badge bg-primary-subtle text-primary border border-primary" style="font-size: 11px; font-weight: 600;">
+                                    Completed: <?= (int)$paymentSummary['completed_emi'] ?>
+                                </span>
+                            <?php endif; ?>
+                        </label>
+                        <div class="input-group">
+                            <input type="number" 
+                                   name="total_emi_no" 
+                                   id="total_emi_no_input" 
+                                   class="form-control" 
+                                   value="<?= htmlspecialchars($paymentSummary['total_emi'] ?? $clientDetails['booking_total_emi_no'] ?? 0) ?>" 
+                                   min="<?= max(1, (int)($paymentSummary['completed_emi'] ?? 0)) ?>" 
+                                   max="360"
+                                   required>
+                            <span class="input-group-text bg-light text-muted">Installments</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <small class="text-muted">
+                                Minimum: <?= max(1, (int)($paymentSummary['completed_emi'] ?? 0)) ?> (cannot be less than completed EMIs).
+                            </small>
+                            <?php if (!empty($paymentSummary['emi_updated_at'])): ?>
+                                <small class="text-muted" style="font-size: 11px;">
+                                    <i class="fa-regular fa-clock me-1"></i>Last updated: <?= date('d M, Y', strtotime($paymentSummary['emi_updated_at'])) ?>
+                                </small>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer bg-light px-4 py-3 d-flex justify-content-end gap-2">
@@ -2081,12 +2133,25 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
         });
     }
 
+    // Focus on EMI input when opened via edit-emi-btn
+    $(document).on('click', '.edit-emi-btn', function () {
+        $('#editBookingInfoModal').data('focus-target', 'emi');
+    });
+
     // Initialize Select2 in editBookingInfoModal
     $('#editBookingInfoModal').on('shown.bs.modal', function () {
         $('#sales_by_id_select').select2({
             dropdownParent: $('#editBookingInfoModal'),
             width: '100%'
         });
+
+        if ($(this).data('focus-target') === 'emi') {
+            var emiInput = $('#total_emi_no_input');
+            if (emiInput.length) {
+                emiInput.focus().select();
+            }
+            $(this).removeData('focus-target');
+        }
     });
 
     // Handle AJAX submit for editBookingInfoForm
