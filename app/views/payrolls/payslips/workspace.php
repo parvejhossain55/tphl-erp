@@ -459,12 +459,12 @@ $_selectedMonth = $selectedMonth   ?? date('m');
 
                                 $empIdFk = (int)($p['real_emp_id_fk'] ?? $p['id'] ?? 0);
                                 $isMealDeductible = isset($p['is_meal_deduction']) ? (int)$p['is_meal_deduction'] : 1;
-                                $mealPct = isset($p['per_meal_percentage']) ? (float)$p['per_meal_percentage'] : 100.00;
+                                $mealPct = isset($p['per_meal_percentage']) ? (float)$p['per_meal_percentage'] : 0.00;
                                 $standardMealRate = isset($activeMealProject['standard_meal_amount']) && $activeMealProject['standard_meal_amount'] > 0 
                                     ? (float)$activeMealProject['standard_meal_amount'] 
                                     : 120.00;
                                 $effectiveMealRate = ($isMealDeductible == 1) 
-                                    ? (!empty($p['per_meal_amount']) && $p['per_meal_amount'] > 0 ? (float)$p['per_meal_amount'] : round($standardMealRate * ($mealPct / 100), 2))
+                                    ? max(0, round($standardMealRate * (1 - ($mealPct / 100)), 2))
                                     : 0.00;
 
                                 $mealCount = 0;
@@ -486,7 +486,9 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                 }
 
                                 $unpaidAbsentsDays = isset($p['late_unpaid_absent_days']) ? (float)$p['late_unpaid_absent_days'] : (isset($p['tipsoi_absent']) ? (float) $p['tipsoi_absent'] : 0);
-                                $unpaidAbsentsAmount = $isExisting ? (float)($p['unpaid_absent_amount'] ?? 0) : 0;
+                                $unpaidAbsentsAmount = ($isExisting && isset($p['unpaid_absent_amount']) && (float)$p['unpaid_absent_amount'] > 0)
+                                    ? (float)$p['unpaid_absent_amount']
+                                    : round($unpaidAbsentsDays * $daily, 2);
                                 $punctBonus = $isExisting ? (float)($p['punctuality_bonus'] ?? 0) : 0;
                                 $overtime = $isExisting ? (float)($p['overtime'] ?? 0) : 0;
                                 $arrearsEarning = $isExisting ? (float)($p['arrears_earning'] ?? 0) : 0;
@@ -648,78 +650,83 @@ $_selectedMonth = $selectedMonth   ?? date('m');
             document.querySelectorAll('.calc-row').forEach(row => {
                 const inputs = row.querySelectorAll('input');
 
-                inputs.forEach(input => {
-                    input.addEventListener('input', function (e) {
-                        const basic = parseFloat(row.querySelector('.cell-basic').dataset.val) || 0;
-                        const daily = parseFloat(row.querySelector('.cell-daily').dataset.val) || 0;
-                        const perMeal = parseFloat(row.querySelector('.in-mealcount').dataset.permeal) || 0;
+                function recalcRow(e) {
+                    const basic = parseFloat(row.querySelector('.cell-basic').dataset.val) || 0;
+                    const daily = parseFloat(row.querySelector('.cell-daily').dataset.val) || 0;
+                    const perMeal = parseFloat(row.querySelector('.in-mealcount').dataset.permeal) || 0;
 
-                        if (e.target.classList.contains('in-mealcount')) {
-                            const mealCount = parseFloat(row.querySelector('.in-mealcount').value) || 0;
-                            row.querySelector('.in-sublunch').value = (mealCount * perMeal).toFixed(2);
-                        } else if (e.target.classList.contains('in-sublunch')) {
-                            if (perMeal > 0) {
-                                const subLunch = parseFloat(row.querySelector('.in-sublunch').value) || 0;
-                                row.querySelector('.in-mealcount').value = (subLunch / perMeal).toFixed(2);
-                            }
+                    if (e && e.target.classList.contains('in-mealcount')) {
+                        const mealCount = parseFloat(row.querySelector('.in-mealcount').value) || 0;
+                        row.querySelector('.in-sublunch').value = (mealCount * perMeal).toFixed(2);
+                    } else if (e && e.target.classList.contains('in-sublunch')) {
+                        if (perMeal > 0) {
+                            const subLunch = parseFloat(row.querySelector('.in-sublunch').value) || 0;
+                            row.querySelector('.in-mealcount').value = (subLunch / perMeal).toFixed(2);
                         }
+                    }
 
-                        if (e.target.classList.contains('in-absent-days')) {
-                            const absentDays = parseFloat(row.querySelector('.in-absent-days').value) || 0;
-                            row.querySelector('.in-unpaid').value = (absentDays * daily).toFixed(2);
+                    const absentDays = parseFloat(row.querySelector('.in-absent-days').value) || 0;
+                    const unpaidInp = row.querySelector('.in-unpaid');
+                    if (e && e.target.classList.contains('in-absent-days')) {
+                        unpaidInp.value = (absentDays * daily).toFixed(2);
+                    } else if (!e) {
+                        if (absentDays > 0 && (!unpaidInp.value || parseFloat(unpaidInp.value) === 0)) {
+                            unpaidInp.value = (absentDays * daily).toFixed(2);
                         }
+                    }
 
-                        // Use existing gross salary from database
-                        let gross = parseFloat(row.querySelector('.cell-gross').dataset.val) || 0;
-                        
-                        let totalEarning = gross;
-                        row.querySelectorAll('.in-earning').forEach(inp => {
-                            if (!inp.classList.contains('in-basic-allowance')) {
-                                totalEarning += (parseFloat(inp.value) || 0);
-                            }
-                        });
-                        let totalDeduction = 0;
-                        row.querySelectorAll('.in-deduct').forEach(inp => {
-                            totalDeduction += (parseFloat(inp.value) || 0);
-                        });
-
-                        // Net Salary
-                        let netSalary = totalEarning - totalDeduction;
-                        row.querySelector('.cell-net').textContent = netSalary.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-                        // Tax (already an input, but subtracts from net payable?)
-                        // Wait, typically Net Payable is Net Salary - Tax in some systems, or Net Salary IS Net Payable. 
-                        // In original PHP: Net Payable = Net Salary. Tax was separated. We'll set Net Payable = Net Salary - Tax. IF it was identical before, we just use Net Salary.
-                        const tax = parseFloat(row.querySelector('.in-tax').value) || 0;
-                        let netPayable = netSalary - tax; // In PHP it was identical to Net Salary, but tax wasn't subtracted. Assuming netPayable = netSalary here based on old code!
-                        // Setting Net Payable = Net Salary 
-                        netPayable = netSalary;
-
-                        row.querySelector('.cell-netpayable').textContent = netPayable.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-                        const payMethod = row.querySelector('.cell-net').dataset.paymentMethod || '';
-                        let bankInput = row.querySelector('.in-bank');
-                        let cashInput = row.querySelector('.in-cash');
-
-                        if (e.target.classList.contains('in-bank')) {
-                            cashInput.value = (netPayable - (parseFloat(bankInput.value) || 0)).toFixed(2);
-                        } else if (e.target.classList.contains('in-cash')) {
-                            bankInput.value = (netPayable - (parseFloat(cashInput.value) || 0)).toFixed(2);
-                        } else {
-                            if (payMethod.toLowerCase().includes('bank')) {
-                                let cashVal = parseFloat(cashInput.value) || 0;
-                                bankInput.value = (netPayable - cashVal).toFixed(2);
-                            } else {
-                                let bankVal = parseFloat(bankInput.value) || 0;
-                                cashInput.value = (netPayable - bankVal).toFixed(2);
-                            }
+                    // Use existing gross salary from database
+                    let gross = parseFloat(row.querySelector('.cell-gross').dataset.val) || 0;
+                    
+                    let totalEarning = gross;
+                    row.querySelectorAll('.in-earning').forEach(inp => {
+                        if (!inp.classList.contains('in-basic-allowance')) {
+                            totalEarning += (parseFloat(inp.value) || 0);
                         }
-
-                        let dispBank = parseFloat(bankInput.value) || 0;
-                        row.querySelector('.cell-amount').textContent = dispBank.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                        calculateFooterTotals();
                     });
+                    let totalDeduction = 0;
+                    row.querySelectorAll('.in-deduct').forEach(inp => {
+                        totalDeduction += (parseFloat(inp.value) || 0);
+                    });
+
+                    // Net Salary
+                    let netSalary = totalEarning - totalDeduction;
+                    row.querySelector('.cell-net').textContent = netSalary.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                    const tax = parseFloat(row.querySelector('.in-tax').value) || 0;
+                    let netPayable = netSalary;
+
+                    row.querySelector('.cell-netpayable').textContent = netPayable.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                    const payMethod = row.querySelector('.cell-net').dataset.paymentMethod || '';
+                    let bankInput = row.querySelector('.in-bank');
+                    let cashInput = row.querySelector('.in-cash');
+
+                    if (e && e.target.classList.contains('in-bank')) {
+                        cashInput.value = (netPayable - (parseFloat(bankInput.value) || 0)).toFixed(2);
+                    } else if (e && e.target.classList.contains('in-cash')) {
+                        bankInput.value = (netPayable - (parseFloat(cashInput.value) || 0)).toFixed(2);
+                    } else {
+                        if (payMethod.toLowerCase().includes('bank')) {
+                            let cashVal = parseFloat(cashInput.value) || 0;
+                            bankInput.value = (netPayable - cashVal).toFixed(2);
+                        } else {
+                            let bankVal = parseFloat(bankInput.value) || 0;
+                            cashInput.value = (netPayable - bankVal).toFixed(2);
+                        }
+                    }
+
+                    let dispBank = parseFloat(bankInput.value) || 0;
+                    row.querySelector('.cell-amount').textContent = dispBank.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    calculateFooterTotals();
+                }
+
+                inputs.forEach(input => {
+                    input.addEventListener('input', recalcRow);
                 });
+
+                // Initial calculation check on row
+                recalcRow(null);
             });
         }
 
@@ -874,7 +881,8 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                                  // Tipsoi updates absent days; meal count is strictly managed by Meal Tracker!
                                  matchedRow.querySelector('.in-absent-days').value  = absent;
                                  
-                                 matchedRow.querySelector('input').dispatchEvent(new Event('input'));
+                                 const absentInput = matchedRow.querySelector('.in-absent-days');
+                                  if (absentInput) absentInput.dispatchEvent(new Event('input', { bubbles: true }));
                              }
                          }
                     });

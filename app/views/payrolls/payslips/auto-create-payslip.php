@@ -405,7 +405,7 @@
                 const unpaidAbsentsDays = parseFloat(emp.late_unpaid_absent_days !== undefined && emp.late_unpaid_absent_days !== null ? emp.late_unpaid_absent_days : (emp.absent_days || 0));
                 const advanceSalary = parseFloat(emp.advance_salary || 0);
                 const subsidizedLunch = parseFloat(emp.subsidized_lunch || 0);
-                const unpaidAbsentAmount = parseFloat(emp.unpaid_absent_amount || 0);
+                const unpaidAbsentAmount = (emp.unpaid_absent_amount !== undefined && emp.unpaid_absent_amount !== null && parseFloat(emp.unpaid_absent_amount) > 0) ? parseFloat(emp.unpaid_absent_amount) : (unpaidAbsentsDays * daily);
 
                 const isHold = String(emp.salary_hold || '').toLowerCase().trim() === 'hold';
                 const arrearsDeduction = parseFloat(emp.arrears_deduction || 0);
