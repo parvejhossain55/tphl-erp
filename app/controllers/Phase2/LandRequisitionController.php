@@ -65,15 +65,17 @@ class LandRequisitionController extends Controller {
             ORDER BY lfr.id DESC
         ";
         
-        $requisitions = $this->db->query($sql)->fetch_all(MYSQLI_ASSOC);
+        $reqResult = $this->db->query($sql);
+        $requisitions = $reqResult ? $reqResult->fetch_all(MYSQLI_ASSOC) : [];
 
         // Fetch all active projects from project lists, prioritizing Planning
-        $projects = $this->db->query("
+        $projResult = $this->db->query("
             SELECT id, name, project_status 
             FROM projects 
             WHERE deleted_at IS NULL 
             ORDER BY (CASE WHEN project_status = 'Planning' THEN 0 ELSE 1 END), name ASC
-        ")->fetch_all(MYSQLI_ASSOC);
+        ");
+        $projects = $projResult ? $projResult->fetch_all(MYSQLI_ASSOC) : [];
 
         // Fetch land acquisitions with detailed financial breakdown for dropdown & modal widgets
         $projectFilter = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33, 6, 30]) ? "1=1" : "(p.landman_id = $userId OR la.created_by = $userId)";
@@ -139,7 +141,7 @@ class LandRequisitionController extends Controller {
             $statWhere .= " AND lfr.land_acquisition_id = $selectedAcqId";
         }
 
-        $workflowStats = $this->db->query("
+        $statRes = $this->db->query("
             SELECT 
                 COUNT(*) as total_count,
                 COALESCE(SUM(lfr.requested_amount), 0) as total_amount,
@@ -154,7 +156,8 @@ class LandRequisitionController extends Controller {
             LEFT JOIN land_acquisitions la ON lfr.land_acquisition_id = la.id
             LEFT JOIN projects p ON la.project_id = p.id
             WHERE $statWhere
-        ")->fetch_assoc();
+        ");
+        $workflowStats = $statRes ? $statRes->fetch_assoc() : [];
 
         // Attach financial stats to requisitions list
         foreach ($requisitions as &$r) {
@@ -182,15 +185,16 @@ class LandRequisitionController extends Controller {
     public function create() {
         $userId = (int)($_SESSION['user']['id'] ?? 0);
         $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
-        $projects = $this->db->query("
+        $resProj = $this->db->query("
             SELECT id, name, project_status 
             FROM projects 
             WHERE deleted_at IS NULL 
             ORDER BY (CASE WHEN project_status = 'Planning' THEN 0 ELSE 1 END), name ASC
-        ")->fetch_all(MYSQLI_ASSOC);
+        ");
+        $projects = $resProj ? $resProj->fetch_all(MYSQLI_ASSOC) : [];
 
-        $projectFilter = in_array($roleId, [1, 3, 14, 15, 22, 33, 6, 30]) ? "1=1" : "(p.landman_id = $userId OR la.created_by = $userId)";
-        $acquisitions = $this->db->query("
+        $projectFilter = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33, 6, 30]) ? "1=1" : "(p.landman_id = $userId OR la.created_by = $userId)";
+        $resAcq = $this->db->query("
             SELECT la.id, la.project_id, la.land_project_name, la.land_owner_name, la.land_receiver_name, la.total_amount,
                    COALESCE(NULLIF(TRIM(la.land_project_name), ''), p.name, 'Tentative Land Deal') as effective_project_name,
                    p.name as project_name
@@ -198,7 +202,8 @@ class LandRequisitionController extends Controller {
             LEFT JOIN projects p ON la.project_id = p.id
             WHERE la.status != 'cancelled' AND $projectFilter
             ORDER BY effective_project_name ASC, la.id DESC
-        ")->fetch_all(MYSQLI_ASSOC);
+        ");
+        $acquisitions = $resAcq ? $resAcq->fetch_all(MYSQLI_ASSOC) : [];
 
         $this->view('phase2/land_requisition/create', [
             'current_route' => 'con-land-requisitions',

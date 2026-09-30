@@ -424,8 +424,12 @@ class LandAcquisitionController extends Controller {
         // CSV Headers
         fputcsv($output, [
             'project_name',
+            'land_project_name',
             'land_owner_name',
             'land_owner_phone',
+            'land_receiver_name',
+            'media_broker_info',
+            'power_of_attorney',
             'total_area',
             'area_unit',
             'price_per_unit',
@@ -454,8 +458,12 @@ class LandAcquisitionController extends Controller {
         // Sample Data Row
         fputcsv($output, [
             'The Premium Green Valley',
+            'Project No 60 (New)',
             'Mr. Farzana Bhuiyan',
             '01910703190',
+            'Alfesani Shuvo',
+            'Broker Jamal (01700000000), 2% Commission',
+            'Power of Attorney registered deed #1234, dated 10/05/2026',
             '15.5',
             'decimal',
             '1000000',
@@ -521,14 +529,26 @@ class LandAcquisitionController extends Controller {
             exit;
         }
 
-        $header = array_map('trim', $header);
-        $header[0] = ltrim($header[0], "\xEF\xBB\xBF"); // Strip UTF-8 BOM
+        $header = array_map(function($h) {
+            $h = trim($h);
+            $h = ltrim($h, "\xEF\xBB\xBF");
+            return strtolower(str_replace(' ', '_', $h));
+        }, $header);
 
         $normalizeText = function($str) {
             if ($str === null) return '';
             $str = str_replace(array("\xC2\xA0", "\xA0"), ' ', $str);
             $str = preg_replace('/\s+/', ' ', $str);
             return trim($str);
+        };
+
+        // Helper to parse numbers safely even if formatted with commas or currency symbols (e.g. "1,200,000")
+        $parseNumber = function($val) {
+            if ($val === null) return 0.0;
+            $str = trim((string)$val);
+            if ($str === '' || $str === '-' || strtolower($str) === 'n/a' || strtolower($str) === 'null') return 0.0;
+            $cleaned = preg_replace('/[^\d.]/', '', $str);
+            return is_numeric($cleaned) ? (float)$cleaned : 0.0;
         };
 
         // Reconstruct multiple uploaded files array to a clean lookup map
@@ -591,17 +611,26 @@ class LandAcquisitionController extends Controller {
             
             // Clean/normalize text fields
             $projectName = $normalizeText($row['project_name'] ?? $row['project'] ?? '');
+            $landProjectName = trim($row['land_project_name'] ?? $row['tentative_project_name'] ?? '');
             $landOwnerName = trim($row['land_owner_name'] ?? $row['landowner'] ?? '');
-            $totalArea = (float)($row['total_area'] ?? $row['area'] ?? 0);
-            $pricePerUnit = (float)($row['price_per_unit'] ?? $row['rate'] ?? 0);
+            $landReceiverName = trim($row['land_receiver_name'] ?? $row['receiver_name'] ?? '');
+            $mediaBrokerInfo = trim($row['media_broker_info'] ?? $row['broker_info'] ?? $row['media'] ?? '');
+            $powerOfAttorney = trim($row['power_of_attorney'] ?? $row['poa'] ?? '');
+            $totalArea = $parseNumber($row['total_area'] ?? $row['area'] ?? 0);
+            $pricePerUnit = $parseNumber($row['price_per_unit'] ?? $row['rate'] ?? 0);
             $landDeptEmail = trim($row['land_dept_email'] ?? $row['uploaded_by'] ?? $row['created_by'] ?? '');
             $location = trim($row['location'] ?? '');
             
+            // Skip trailing blank row if all key identifiers are empty
+            if (empty($projectName) && empty($landOwnerName) && empty($landProjectName)) {
+                continue;
+            }
+
             $rowIssues = [];
 
             // Validate Required Fields
-            if (empty($projectName)) {
-                $rowIssues[] = "'project_name' is required";
+            if (empty($projectName) && empty($landProjectName)) {
+                $rowIssues[] = "Either 'project_name' or 'land_project_name' is required";
             }
             if (empty($landOwnerName)) {
                 $rowIssues[] = "'land_owner_name' is required";
@@ -609,35 +638,77 @@ class LandAcquisitionController extends Controller {
             if ($totalArea <= 0) {
                 $rowIssues[] = "'total_area' must be greater than 0";
             }
+            
+            // If price_per_unit is empty, derive from bayana payment or allow 0 instead of failing
             if ($pricePerUnit <= 0) {
-                $rowIssues[] = "'price_per_unit' must be greater than 0";
+                $bayanaAmt = $parseNumber($row['bayana_payment_amount'] ?? 0);
+                if ($bayanaAmt > 0 && $totalArea > 0) {
+                    $pricePerUnit = round($bayanaAmt / $totalArea, 2);
+                    $row['price_per_unit'] = $pricePerUnit;
+                }
             }
 
-            // Verify Project Name in ERP (case-insensitive + relaxed spaces matching)
+            // Verify Project Name in ERP (if matched, link project_id; if tentative, keep land_project_name)
+            $row['project_id'] = null;
+            $row['land_project_name'] = !empty($landProjectName) ? $landProjectName : $projectName;
+            $row['land_receiver_name'] = !empty($landReceiverName) ? $landReceiverName : null;
+            $row['media_broker_info'] = !empty($mediaBrokerInfo) ? $mediaBrokerInfo : null;
+            $row['power_of_attorney'] = !empty($powerOfAttorney) ? $powerOfAttorney : null;
+
             if (!empty($projectName)) {
                 $projKey = strtolower(trim($projectName));
                 if (isset($projectsCache[$projKey])) {
                     $row['project_id'] = $projectsCache[$projKey]['id'];
                     $row['project_name'] = $projectsCache[$projKey]['name'];
+                    if (empty($landProjectName)) {
+                        $row['land_project_name'] = $projectsCache[$projKey]['name'];
+                    }
                 } else {
                     $cleanProjName = trim($projectName);
+
+                    // Expand common acronyms used in Bangladesh real estate spreadsheets:
+                    // TP -> The Premium, TPSS -> The Premium Studio Suite, Vall -> Valley, Lakeview -> Lake View, South Point -> Southpoint
+                    $expandedProjName = preg_replace('/\bTPSS\b/i', 'The Premium Studio Suite', $cleanProjName);
+                    $expandedProjName = preg_replace('/\bTP\b/i', 'The Premium', $expandedProjName);
+                    $expandedProjName = preg_replace('/\bVall\b/i', 'Valley', $expandedProjName);
+                    $expandedProjName = preg_replace('/\bLakeview\b/i', 'Lake View', $expandedProjName);
+                    $expandedProjName = preg_replace('/\bSouth Point\b/i', 'Southpoint', $expandedProjName);
+                    $expandedProjName = preg_replace('/\bSuits\b/i', 'Suite', $expandedProjName);
+                    $expandedProjName = preg_replace('/[-\s]+/', ' ', $expandedProjName);
+                    $expandedProjName = trim($expandedProjName);
+
                     $normalizedSearch = '%' . str_replace(' ', '%', $cleanProjName) . '%';
+                    $normalizedSearchExp = '%' . str_replace(' ', '%', $expandedProjName) . '%';
+
                     $stmtProj = $this->db->prepare("
                         SELECT id, name FROM projects 
-                        WHERE (LOWER(TRIM(name)) = LOWER(?) OR LOWER(name) LIKE LOWER(?)) 
+                        WHERE (LOWER(TRIM(name)) = LOWER(?) 
+                            OR LOWER(TRIM(name)) = LOWER(?) 
+                            OR LOWER(name) LIKE LOWER(?)
+                            OR LOWER(name) LIKE LOWER(?)) 
                           AND deleted_at IS NULL 
-                        ORDER BY (CASE WHEN LOWER(TRIM(name)) = LOWER(?) THEN 0 ELSE 1 END) 
+                        ORDER BY (CASE 
+                            WHEN LOWER(TRIM(name)) = LOWER(?) THEN 0 
+                            WHEN LOWER(TRIM(name)) = LOWER(?) THEN 1 
+                            ELSE 2 END) 
                         LIMIT 1
                     ");
-                    $stmtProj->bind_param("sss", $cleanProjName, $normalizedSearch, $cleanProjName);
+                    $stmtProj->bind_param("ssssss", $cleanProjName, $expandedProjName, $normalizedSearch, $normalizedSearchExp, $cleanProjName, $expandedProjName);
                     $stmtProj->execute();
                     $resProj = $stmtProj->get_result()->fetch_assoc();
                     if ($resProj) {
                         $projectsCache[$projKey] = $resProj;
                         $row['project_id'] = (int)$resProj['id'];
                         $row['project_name'] = $resProj['name'];
+                        if (empty($landProjectName)) {
+                            $row['land_project_name'] = $resProj['name'];
+                        }
                     } else {
-                        $rowIssues[] = "Project '$projectName' not found in ERP. Please ensure project name matches an active project in the system.";
+                        // Project not in ERP projects table: since project is tentative/planning, set project_id = null and keep land_project_name
+                        $row['project_id'] = null;
+                        if (empty($landProjectName)) {
+                            $row['land_project_name'] = $projectName;
+                        }
                     }
                 }
             }
@@ -710,11 +781,11 @@ class LandAcquisitionController extends Controller {
             return null;
         };
 
-        // Helper to format any date string (Excel serial, DD/MM/YYYY, YYYY-MM-DD, textual months, etc.) to MySQL-compatible format
+        // Helper to format any date string (Excel serial, DD/MM/YYYY, YYYY-MM-DD, textual months, multi-line deeds, etc.) to MySQL-compatible format
         $formatDateForDb = function($dateStr, $includeTime = false, $default = null) {
             if ($dateStr === null) return $default;
             $dateStr = trim((string)$dateStr);
-            if ($dateStr === '' || $dateStr === '-' || strtolower($dateStr) === 'null' || strtolower($dateStr) === 'n/a') {
+            if ($dateStr === '' || $dateStr === '-' || strtolower($dateStr) === 'null' || strtolower($dateStr) === 'n/a' || strtolower($dateStr) === 'not found') {
                 return $default;
             }
 
@@ -724,10 +795,19 @@ class LandAcquisitionController extends Controller {
                 return $includeTime ? gmdate('Y-m-d H:i:s', (int)$unixTimestamp) : gmdate('Y-m-d', (int)$unixTimestamp);
             }
 
-            // 2. Normalize dots/underscores to dashes
-            $cleanDate = str_replace(['.', '_'], '-', $dateStr);
+            // 2. Pre-extract first date if cell contains multiple dates or multi-line (e.g. "28.09.2025/29.09.2025" or multiple deeds)
+            $candidate = $dateStr;
+            if (preg_match('/(\d{1,2})[\.\/-](\d{1,2}|[a-zA-Z]{3,9})[\.\/-](\d{2,4})/', $dateStr, $m)) {
+                $yr = (int)$m[3];
+                if ($yr < 100) {
+                    $yr += 2000;
+                }
+                $candidate = $m[1] . '-' . $m[2] . '-' . $yr;
+            }
 
-            // 3. Try standard formats (Day-first, ISO, and Month-first)
+            // 3. Normalize dots/underscores to dashes
+            $cleanDate = str_replace(['.', '_'], '-', $candidate);
+
             $formats = [
                 'd/m/Y', 'd-m-Y', 'd/m/Y H:i:s', 'd-m-Y H:i:s', 'd/m/Y H:i', 'd-m-Y H:i',
                 'j/n/Y', 'j-n-Y', 'j/n/Y H:i:s', 'j-n-Y H:i:s',
@@ -736,24 +816,25 @@ class LandAcquisitionController extends Controller {
                 'd-F-Y', 'd F Y', 'd-F-Y H:i:s', 'd F Y H:i:s',
                 'M d, Y', 'F d, Y', 'M d Y', 'F d Y',
                 'm/d/Y', 'm-d-Y', 'm/d/Y H:i:s', 'm-d-Y H:i:s',
-                'd/m/y', 'd-m-y'
+                'd/m/y', 'd-m-y', 'j/n/y', 'j-n-y',
+                'd-M-y', 'd M y', 'd-F-y', 'd F y'
             ];
 
             foreach ($formats as $fmt) {
                 $dt = DateTime::createFromFormat('!' . $fmt, $cleanDate);
                 $err = DateTime::getLastErrors();
-                if ($dt !== false && empty($err['warning_count']) && empty($err['error_count']) && (int)$dt->format('Y') > 1990 && (int)$dt->format('Y') < 2100) {
-                    return $includeTime ? $dt->format('Y-m-d H:i:s') : $dt->format('Y-m-d');
-                }
-                $dtRaw = DateTime::createFromFormat('!' . $fmt, $dateStr);
-                $errRaw = DateTime::getLastErrors();
-                if ($dtRaw !== false && empty($errRaw['warning_count']) && empty($errRaw['error_count']) && (int)$dtRaw->format('Y') > 1990 && (int)$dtRaw->format('Y') < 2100) {
-                    return $includeTime ? $dtRaw->format('Y-m-d H:i:s') : $dtRaw->format('Y-m-d');
+                if ($dt !== false && empty($err['warning_count']) && empty($err['error_count'])) {
+                    if ((int)$dt->format('Y') < 100) {
+                        $dt->modify('+2000 years');
+                    }
+                    if ((int)$dt->format('Y') > 1990 && (int)$dt->format('Y') < 2100) {
+                        return $includeTime ? $dt->format('Y-m-d H:i:s') : $dt->format('Y-m-d');
+                    }
                 }
             }
 
             // 4. Fallback to standard strtotime with / to - swap
-            $time = strtotime($dateStr);
+            $time = strtotime($cleanDate);
             if ($time === false || $time <= 0) {
                 $normalized = str_replace('/', '-', $dateStr);
                 $time = strtotime($normalized);
@@ -772,12 +853,16 @@ class LandAcquisitionController extends Controller {
 
         try {
             foreach ($rowsData as $row) {
-                $projectId = (int)$row['project_id'];
+                $projectId = !empty($row['project_id']) ? (int)$row['project_id'] : null;
+                $landProjectName = !empty($row['land_project_name']) ? trim($row['land_project_name']) : null;
                 $landOwnerName = trim($row['land_owner_name']);
                 $landOwnerPhone = !empty($row['land_owner_phone']) ? trim($row['land_owner_phone']) : null;
-                $totalArea = (float)$row['total_area'];
+                $landReceiverName = !empty($row['land_receiver_name']) ? trim($row['land_receiver_name']) : null;
+                $mediaBrokerInfo = !empty($row['media_broker_info']) ? trim($row['media_broker_info']) : null;
+                $powerOfAttorney = !empty($row['power_of_attorney']) ? trim($row['power_of_attorney']) : null;
+                $totalArea = $parseNumber($row['total_area']);
                 $areaUnit = !empty($row['area_unit']) ? trim($row['area_unit']) : 'decimal';
-                $pricePerUnit = (float)$row['price_per_unit'];
+                $pricePerUnit = $parseNumber($row['price_per_unit']);
                 $totalAmount = $totalArea * $pricePerUnit;
                 $location = !empty($row['location']) ? trim($row['location']) : null;
                 $remarks = !empty($row['remarks']) ? trim($row['remarks']) : null;
@@ -785,7 +870,7 @@ class LandAcquisitionController extends Controller {
                 $mgmtId = (int)$row['management_id'];
                 $accId = (int)$row['account_id'];
 
-                $bayanaAmount = (float)($row['bayana_payment_amount'] ?? 0);
+                $bayanaAmount = $parseNumber($row['bayana_payment_amount'] ?? 0);
                 
                 $bayanaDateRaw = !empty($row['bayana_payment_date']) ? trim($row['bayana_payment_date']) : '';
                 $bayanaDate = $formatDateForDb($bayanaDateRaw, false, date('Y-m-d'));
@@ -803,7 +888,7 @@ class LandAcquisitionController extends Controller {
                 $regTimestamp = $formatDateForDb($regDateRaw, true, null);
                 
                 $regOffice = !empty($row['sub_registry_office']) ? trim($row['sub_registry_office']) : null;
-                $regCost = (float)($row['registration_cost'] ?? 0);
+                $regCost = $parseNumber($row['registration_cost'] ?? 0);
                 $deedDocLink = !empty($row['deed_document_link']) ? trim($row['deed_document_link']) : null;
                 $regRemarks = !empty($row['registration_remarks']) ? trim($row['registration_remarks']) : null;
                 $mutationStatus = !empty($row['mutation_status']) ? trim($row['mutation_status']) : 'Pending';
@@ -829,12 +914,12 @@ class LandAcquisitionController extends Controller {
                 // 1. Insert into land_acquisitions
                 $stmtAcq = $this->db->prepare("
                     INSERT INTO land_acquisitions 
-                    (project_id, land_owner_name, land_owner_phone, total_area, area_unit, price_per_unit, total_amount, location, status, remarks, created_by, bayana_status, bayana_complete_date, registration_status, registration_complete_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (project_id, land_project_name, land_owner_name, land_owner_phone, land_receiver_name, media_broker_info, power_of_attorney, total_area, area_unit, price_per_unit, total_amount, location, status, remarks, created_by, bayana_status, bayana_complete_date, registration_status, registration_complete_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
                 $stmtAcq->bind_param(
-                    "issdsddssssssss",
-                    $projectId, $landOwnerName, $landOwnerPhone, $totalArea, $areaUnit, $pricePerUnit, $totalAmount, $location, $status, $remarks, $landDeptId, $bayanaStatus, $bayanaDate, $registrationStatus, $regDate
+                    "issssssdsddssssssss",
+                    $projectId, $landProjectName, $landOwnerName, $landOwnerPhone, $landReceiverName, $mediaBrokerInfo, $powerOfAttorney, $totalArea, $areaUnit, $pricePerUnit, $totalAmount, $location, $status, $remarks, $landDeptId, $bayanaStatus, $bayanaDate, $registrationStatus, $regDate
                 );
                 if (!$stmtAcq->execute()) {
                     throw new Exception("Failed to insert land acquisition: " . $stmtAcq->error);
