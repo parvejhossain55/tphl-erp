@@ -191,8 +191,13 @@ $pdfUrl = $base_url . '/con-land-ledger?' . http_build_query($queryString);
               ?>
               <tr class="<?= $rowClass ?>">
                 <td>
-                  <span class="fw-semibold"><?= date('d M Y', strtotime($entry['date'])) ?></span>
-                  <br><small class="text-muted"><?= date('h:i A', strtotime($entry['date'])) ?></small>
+                  <?php 
+                    $ts = !empty($entry['date']) ? strtotime($entry['date']) : false; 
+                    $dispDate = ($ts && $ts > 86400) ? date('d M Y', $ts) : '—';
+                    $dispTime = ($ts && $ts > 86400) ? date('h:i A', $ts) : '';
+                  ?>
+                  <span class="fw-semibold"><?= $dispDate ?></span>
+                  <?php if ($dispTime): ?><br><small class="text-muted"><?= $dispTime ?></small><?php endif; ?>
                 </td>
                 <td>
                   <div class="fw-bold text-dark"><?= $entry['description'] ?></div>

@@ -225,8 +225,13 @@
                     ?>
                     <tr>
                         <td>
-                            <?= date('d M Y', strtotime($entry['date'])) ?><br>
-                            <span class="text-muted" style="font-size: 8px;"><?= date('h:i A', strtotime($entry['date'])) ?></span>
+                            <?php 
+                                $ts = !empty($entry['date']) ? strtotime($entry['date']) : false; 
+                                $dispDate = ($ts && $ts > 86400) ? date('d M Y', $ts) : '—';
+                                $dispTime = ($ts && $ts > 86400) ? date('h:i A', $ts) : '';
+                            ?>
+                            <?= $dispDate ?><br>
+                            <?php if ($dispTime): ?><span class="text-muted" style="font-size: 8px;"><?= $dispTime ?></span><?php endif; ?>
                         </td>
                         <td>
                             <div class="fw-bold"><?= $entry['description'] ?></div>

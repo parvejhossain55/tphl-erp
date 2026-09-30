@@ -325,7 +325,8 @@ class LandReportController extends Controller {
 
             foreach ($requisitions as $r) {
                 $isPaid = ($r['accounts_status'] === 'Paid');
-                $date = $isPaid ? $r['accounts_paid_at'] : $r['created_at'];
+                $rawDate = $isPaid ? (!empty($r['accounts_paid_at']) ? $r['accounts_paid_at'] : $r['created_at']) : $r['created_at'];
+                $date = (!empty($rawDate) && $rawDate !== '0000-00-00 00:00:00') ? $rawDate : date('Y-m-d H:i:s');
                 $paidAmt = (float)$r['requested_amount'];
 
                 // Direct requisition: paid by Accounts directly to landowner/authority/broker
