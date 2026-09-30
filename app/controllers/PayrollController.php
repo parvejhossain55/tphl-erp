@@ -2717,8 +2717,8 @@ class PayrollController extends Controller
 
             $approvedLates = 0;
             $finalLate = $late;
-            $deduction = 0.00;
-            $lateUnpaidAbsentDays = $absent;
+            $deduction = floor($finalLate / 3);
+            $lateUnpaidAbsentDays = $absent + $deduction;
 
             // Apply DB Overrides from attendance_monthly_update if present
             $empPk = (int) $localMatch['id'];
