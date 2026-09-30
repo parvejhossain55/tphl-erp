@@ -674,9 +674,9 @@ class AccountClient extends Model
                 lb.emi_updated_at,
                 emi_u.full_name as emi_updated_by_name
             FROM lead_bookings lb
-            INNER JOIN leads l ON lb.lead_id = l.id
-            INNER JOIN projects p ON lb.project_id = p.id
-            INNER JOIN flats f ON lb.flat_id = f.id
+            LEFT JOIN leads l ON lb.lead_id = l.id
+            LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN flats f ON lb.flat_id = f.id
             LEFT JOIN users u ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = u.id
             LEFT JOIN employees e1 ON e1.user_id = u.id
             LEFT JOIN employees e2 ON u.employee_id = e2.id
