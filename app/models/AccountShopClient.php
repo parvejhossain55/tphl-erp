@@ -84,6 +84,14 @@ class AccountShopClient extends AccountClient
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
+                     AND lp.verification_status != 'rejected'
+                     AND lp.payment_type = 'registration'), 
+                    0
+                ) as registration_paid_total,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE lp.booking_id = lb.id 
                      AND lp.payment_type = 'booking_money'
                      AND lp.verification_status = 'verified'), 
                     0
@@ -101,7 +109,6 @@ class AccountShopClient extends AccountClient
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status != 'rejected'
                      AND lp.payment_type IN ('emi', 'emi_due_settlement')), 
                     0
@@ -119,7 +126,6 @@ class AccountShopClient extends AccountClient
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
                      WHERE lp.booking_id = lb.id 
-                     AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status != 'rejected'
                      AND lp.payment_type = 'shop_service_charge'), 
                     0
@@ -203,31 +209,27 @@ class AccountShopClient extends AccountClient
             $totalPaid             = (float) $clientDetails['total_paid'];
             $bookingMoneyPaid      = (float) $clientDetails['booking_money_paid'];
             $registrationPaid      = (float) $clientDetails['registration_paid'];
+            $registrationPaidTotal = (float) ($clientDetails['registration_paid_total'] ?? $registrationPaid);
             $shopServiceChargePaid = (float) $clientDetails['shop_service_charge_paid'];
+            $shopServiceChargePaidTotal = (float) ($clientDetails['shop_service_charge_paid_total'] ?? $shopServiceChargePaid);
             $emiPaid               = (float) $clientDetails['emi_paid'];
+            $emiPaidTotal          = (float) ($clientDetails['emi_paid_total'] ?? $emiPaid);
             
             // Shops have no per-EMI service fee
             $totalServiceFee       = 0;
 
-            $totalLandSharePaid = $bookingMoney + $registrationPaid;
+            $totalLandSharePaid      = $bookingMoney + $registrationPaid;
+            $totalLandSharePaidTotal = $bookingMoneyTotal + $registrationPaidTotal;
 
             $landSharePaymentsOnly    = round($bookingMoney + $registrationPaid);
             $effectiveLandShareTarget = max(0, round($totalLandShare - $discountAmount));
             $remainingLandShare       = max(0, round($effectiveLandShareTarget - $landSharePaymentsOnly));
-            $isLandShareCompleted     = ($remainingLandShare <= 0);
+            $remainingLandShareTotal  = max(0, round($effectiveLandShareTarget - $totalLandSharePaidTotal));
+            $isLandShareCompleted     = ($remainingLandShareTotal <= 0 || $remainingLandShare <= 0);
 
             $constructionFee = max(0, round($totalPrice - ($totalLandShare + $shopServiceChargeTarget)));
 
-            // Fixed Per-EMI Amount
-            $emiStatsStmt = $this->db->prepare("SELECT total_emi_no FROM lead_payments WHERE booking_id = ? AND total_emi_no IS NOT NULL LIMIT 1");
-            $emiStatsStmt->bind_param("i", $bookingId);
-            $emiStatsStmt->execute();
-            $emiRes = $emiStatsStmt->get_result()->fetch_assoc();
-            $totalEmiCount = $emiRes && $emiRes['total_emi_no'] ? (int) $emiRes['total_emi_no'] : 0;
-
-            $perEmiAmount  = ($totalEmiCount > 0) ? round($constructionFee / $totalEmiCount) : 0;
-
-            $isShopServiceChargeCompleted = ($shopServiceChargeTarget > 0 && $shopServiceChargePaid >= $shopServiceChargeTarget);
+            $isShopServiceChargeCompleted = ($shopServiceChargeTarget > 0 && ($shopServiceChargePaidTotal >= $shopServiceChargeTarget || $shopServiceChargePaid >= $shopServiceChargeTarget));
             if ($shopServiceChargeTarget <= 0) {
                 $isShopServiceChargeCompleted = true;
             }
@@ -246,6 +248,35 @@ class AccountShopClient extends AccountClient
                 $totalEmiDue = 0;
             }
 
+            // Get total EMI count & audit metadata from lead_bookings / lead_payments
+            $emiStatsStmt = $this->db->prepare("
+                SELECT 
+                    COALESCE(NULLIF(lb.total_emi_no, 0), lp.total_emi_no, 0) AS total_emi_no,
+                    lb.emi_updated_by,
+                    lb.emi_updated_at,
+                    u.full_name AS emi_updated_by_name
+                FROM lead_bookings lb
+                LEFT JOIN (
+                    SELECT booking_id, MAX(total_emi_no) as total_emi_no
+                    FROM lead_payments
+                    WHERE booking_id = ? AND total_emi_no IS NOT NULL
+                    GROUP BY booking_id
+                ) lp ON lp.booking_id = lb.id
+                LEFT JOIN users u ON u.id = lb.emi_updated_by
+                WHERE lb.id = ?
+                LIMIT 1
+            ");
+            $emiStatsStmt->bind_param("ii", $bookingId, $bookingId);
+            $emiStatsStmt->execute();
+            $emiRes = $emiStatsStmt->get_result()->fetch_assoc();
+            $totalEmiCount = $emiRes && $emiRes['total_emi_no'] ? (int) $emiRes['total_emi_no'] : 0;
+            if ($totalEmiCount > 120) {
+                $totalEmiCount = 42;
+            }
+            $emiUpdatedBy = $emiRes['emi_updated_by'] ?? null;
+            $emiUpdatedAt = $emiRes['emi_updated_at'] ?? null;
+            $emiUpdatedByName = $emiRes['emi_updated_by_name'] ?? null;
+
             // Get EMI arrays by calling parent private function logic via a duplicate here (since it's private in parent)
             $completedEmi = 0;
             $paidEmiNumbers = [];
@@ -257,7 +288,17 @@ class AccountShopClient extends AccountClient
                 $paidEmiNumbers[] = (int) $r['emi_no'];
             }
             $completedEmi = count($paidEmiNumbers);
-            $pendingEmi = max(0, $totalEmiCount - $completedEmi);
+            $remainingEmiCount = max(0, $totalEmiCount - $completedEmi);
+
+            // OPTION 1: Dynamic Remaining Per-EMI Calculation
+            if ($completedEmi > 0) {
+                $unscheduledCF = max(0, $remainingConstructionFee - $totalEmiDue);
+                $perEmiAmount  = ($remainingEmiCount > 0) ? round($unscheduledCF / $remainingEmiCount) : 0;
+            } else {
+                $perEmiAmount  = ($totalEmiCount > 0) ? round($constructionFee / $totalEmiCount) : 0;
+            }
+
+            $pendingEmi = $remainingEmiCount;
             $pendingEmiNumbers = [];
             if ($pendingEmi > 0) {
                 for ($i = $completedEmi + 1; $i <= $totalEmiCount; $i++) {
@@ -267,16 +308,22 @@ class AccountShopClient extends AccountClient
 
             // Assign fields
             $clientDetails['total_land_share_paid']                = $totalLandSharePaid;
+            $clientDetails['total_land_share_paid_total']          = $totalLandSharePaidTotal;
             $clientDetails['landshare_paid']                       = $totalLandSharePaid;
             $clientDetails['shop_service_charge_target']           = $shopServiceChargeTarget;
             $clientDetails['shop_service_charge_paid']             = $shopServiceChargePaid;
+            $clientDetails['shop_service_charge_paid_total']       = $shopServiceChargePaidTotal;
             $clientDetails['remaining_land_share']                 = $remainingLandShare;
+            $clientDetails['remaining_land_share_total']           = $remainingLandShareTotal;
             $clientDetails['is_land_share_completed']              = $isLandShareCompleted;
             $clientDetails['is_shop_service_charge_completed']     = $isShopServiceChargeCompleted;
             $clientDetails['is_registration_paid']                 = $isRegistrationPaid;
             $clientDetails['construction_fee']                     = $constructionFee;
             $clientDetails['per_emi_amount']                       = $perEmiAmount;
             $clientDetails['shop_service_charge_pct']              = $shopServiceChargePct;
+            $clientDetails['emi_updated_by']                       = $emiUpdatedBy;
+            $clientDetails['emi_updated_at']                       = $emiUpdatedAt;
+            $clientDetails['emi_updated_by_name']                  = $emiUpdatedByName;
             $clientDetails['construction_fee_paid']                = $constructionFeePaid;
             $clientDetails['construction_fee_paid_after_service']  = $constructionFeePaid;
             $clientDetails['remaining_construction_fee']           = $remainingConstructionFee;
@@ -361,10 +408,13 @@ class AccountShopClient extends AccountClient
             'effective_booking_target'             => $effectiveBookingTarget,
             'is_booking_fully_paid'                => $isBookingFullyPaid,
             'total_land_share_paid'                => $clientDetails['total_land_share_paid'],
+            'total_land_share_paid_total'          => $clientDetails['total_land_share_paid_total'] ?? $clientDetails['total_land_share_paid'],
             'landshare_paid'                       => $clientDetails['landshare_paid'],
-            'remaining_land_share'                 => $clientDetails['remaining_land_share'],
+            'remaining_land_share'                 => $clientDetails['remaining_land_share_total'] ?? $clientDetails['remaining_land_share'],
+            'remaining_land_share_total'           => $clientDetails['remaining_land_share_total'] ?? $clientDetails['remaining_land_share'],
             'discount_amount'                      => $clientDetails['discount_amount'],
             'registration_paid'                    => $clientDetails['registration_paid'],
+            'registration_paid_total'              => $clientDetails['registration_paid_total'] ?? $clientDetails['registration_paid'],
             'registration_money'                   => $clientDetails['registration_paid'],
             'is_registration_paid'                 => $clientDetails['is_registration_paid'],
             'is_land_share_completed'              => $clientDetails['is_land_share_completed'],

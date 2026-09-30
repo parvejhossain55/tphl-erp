@@ -177,7 +177,18 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                                     <tr>
                                         <td><?= $index + 1 ?></td>
                                         <td>
-                                            <div class="fw-bold text-primary fs-6"><?= htmlspecialchars($row['effective_project_name'] ?? 'Tentative Deal') ?></div>
+                                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-1">
+                                                <div class="fw-bold text-primary fs-6"><?= htmlspecialchars($row['effective_project_name'] ?? 'Tentative Deal') ?></div>
+                                                <?php if (!empty($row['is_bulk_import'])): ?>
+                                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size:9px;" title="Uploaded via Bulk CSV Import">
+                                                        <i class="fa-light fa-file-csv me-1 text-primary"></i>Bulk CSV Uploaded
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size:9px;" title="Created manually in ERP">
+                                                        <i class="fa-light fa-keyboard me-1"></i>ERP Manual
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
                                             <div class="small fw-semibold text-dark">
                                                 <i class="fa-light fa-user me-1 text-muted"></i>Owner: <?= htmlspecialchars($row['land_owner_name'] ?? 'N/A') ?>
                                             </div>

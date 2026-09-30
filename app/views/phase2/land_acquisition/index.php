@@ -257,6 +257,17 @@ unset($_SESSION['land_csv_import_skipped']); // clear after reading
                                             };
                                             ?>
                                             <span class="badge bg-<?= $badge ?> text-capitalize"><?= $row['status'] ?></span>
+                                            <div class="mt-1">
+                                                <?php if (!empty($row['is_bulk_import'])): ?>
+                                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size: 10px;" title="Uploaded via Bulk CSV Import">
+                                                        <i class="fa-light fa-file-csv me-1 text-primary"></i>Bulk CSV Uploaded
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 10px;" title="Created manually in ERP">
+                                                        <i class="fa-light fa-keyboard me-1"></i>ERP Manual
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
                                         </td>
                                         <td class="text-end">
                                             <div class="d-flex justify-content-end gap-1">

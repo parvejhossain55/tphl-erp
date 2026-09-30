@@ -2,6 +2,8 @@
 namespace Phase2;
 
 use Controller;
+use DateTime;
+use Exception;
 
 class LandAcquisitionController extends Controller {
     protected $db;
@@ -96,7 +98,7 @@ class LandAcquisitionController extends Controller {
             LEFT JOIN land_fund_requisitions lfr ON la.id = lfr.land_acquisition_id
             WHERE $where
             GROUP BY la.id
-            ORDER BY la.id DESC
+            ORDER BY la.is_bulk_import ASC, la.id DESC
         ");
         $acquisitions = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
@@ -823,8 +825,8 @@ class LandAcquisitionController extends Controller {
             ];
 
             foreach ($formats as $fmt) {
-                $dt = DateTime::createFromFormat('!' . $fmt, $cleanDate);
-                $err = DateTime::getLastErrors();
+                $dt = \DateTime::createFromFormat('!' . $fmt, $cleanDate);
+                $err = \DateTime::getLastErrors();
                 if ($dt !== false && empty($err['warning_count']) && empty($err['error_count'])) {
                     if ((int)$dt->format('Y') < 100) {
                         $dt->modify('+2000 years');
@@ -916,8 +918,8 @@ class LandAcquisitionController extends Controller {
                 // 1. Insert into land_acquisitions
                 $stmtAcq = $this->db->prepare("
                     INSERT INTO land_acquisitions 
-                    (project_id, land_project_name, land_owner_name, land_owner_phone, land_receiver_name, media_broker_info, power_of_attorney, total_area, area_unit, price_per_unit, total_amount, location, status, remarks, created_by, bayana_status, bayana_complete_date, registration_status, registration_complete_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (project_id, land_project_name, land_owner_name, land_owner_phone, land_receiver_name, media_broker_info, power_of_attorney, total_area, area_unit, price_per_unit, total_amount, location, status, remarks, created_by, bayana_status, bayana_complete_date, registration_status, registration_complete_date, is_bulk_import)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
                 ");
                 $stmtAcq->bind_param(
                     "issssssdsddssssssss",
@@ -936,8 +938,8 @@ class LandAcquisitionController extends Controller {
                     // Create Requisition of type Bayana (Approved & Paid)
                     $stmtReqB = $this->db->prepare("
                         INSERT INTO land_fund_requisitions 
-                        (land_acquisition_id, requisition_type, requested_amount, purpose, req_attachment_path, requested_by, mgmt_status, mgmt_by, mgmt_note, mgmt_approved_at, accounts_status, accounts_by, accounts_note, accounts_paid_at, payment_method, transaction_no, attachment_path)
-                        VALUES (?, 'Bayana', ?, ?, ?, ?, 'Approved', ?, 'Auto-approved during bulk import', ?, 'Paid', ?, 'Auto-paid during bulk import', ?, ?, ?, ?)
+                        (land_acquisition_id, requisition_type, requested_amount, purpose, req_attachment_path, requested_by, mgmt_status, mgmt_by, mgmt_note, mgmt_approved_at, accounts_status, accounts_by, accounts_note, accounts_paid_at, payment_method, transaction_no, attachment_path, is_bulk_import)
+                        VALUES (?, 'Bayana', ?, ?, ?, ?, 'Approved', ?, 'Auto-approved during bulk import', ?, 'Paid', ?, 'Auto-paid during bulk import', ?, ?, ?, ?, 1)
                     ");
                     $purposeB = "Historic Bayana Payment for " . $landOwnerName;
                     $stmtReqB->bind_param(
@@ -976,8 +978,8 @@ class LandAcquisitionController extends Controller {
                     $regPaidAt = !empty($regTimestamp) ? $regTimestamp : (!empty($regDate) ? ($regDate . ' 00:00:00') : date('Y-m-d H:i:s'));
                     $stmtReqR = $this->db->prepare("
                         INSERT INTO land_fund_requisitions 
-                        (land_acquisition_id, requisition_type, requested_amount, purpose, requested_by, mgmt_status, mgmt_by, mgmt_note, mgmt_approved_at, accounts_status, accounts_by, accounts_note, accounts_paid_at, payment_method, transaction_no, attachment_path)
-                        VALUES (?, 'Registration', ?, ?, ?, 'Approved', ?, 'Auto-approved during bulk import', ?, 'Paid', ?, 'Auto-paid during bulk import', ?, 'Bank', ?, ?)
+                        (land_acquisition_id, requisition_type, requested_amount, purpose, requested_by, mgmt_status, mgmt_by, mgmt_note, mgmt_approved_at, accounts_status, accounts_by, accounts_note, accounts_paid_at, payment_method, transaction_no, attachment_path, is_bulk_import)
+                        VALUES (?, 'Registration', ?, ?, ?, 'Approved', ?, 'Auto-approved during bulk import', ?, 'Paid', ?, 'Auto-paid during bulk import', ?, 'Bank', ?, ?, 1)
                     ");
                     $purposeR = "Historic Registration Cost for " . $landOwnerName;
                     $stmtReqR->bind_param(

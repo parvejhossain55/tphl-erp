@@ -19,3 +19,39 @@ ALTER TABLE `land_registrations`
     MODIFY COLUMN `registration_no` VARCHAR(255) NOT NULL,
     MODIFY COLUMN `mutation_status` VARCHAR(100) DEFAULT 'Pending';
 
+-- 4. is_bulk_import flag for distinguishing CSV vs manual entries
+ALTER TABLE `land_acquisitions`
+    ADD COLUMN `is_bulk_import` TINYINT(1) NOT NULL DEFAULT 0 AFTER `remarks`;
+
+ALTER TABLE `land_fund_requisitions`
+    ADD COLUMN `is_bulk_import` TINYINT(1) NOT NULL DEFAULT 0 AFTER `purpose`;
+
+-- Backfill already imported CSV records
+UPDATE `land_fund_requisitions` 
+SET `is_bulk_import` = 1 
+WHERE `mgmt_note` LIKE '%bulk import%' OR `accounts_note` LIKE '%bulk import%';
+
+UPDATE `land_acquisitions` 
+SET `is_bulk_import` = 1 
+WHERE `id` IN (SELECT DISTINCT `land_acquisition_id` FROM `land_fund_requisitions` WHERE `is_bulk_import` = 1);
+
+-- 5. Fix Begum Lutfunnahar registration date (from 1970 to 22 Oct 2025)
+UPDATE `land_fund_requisitions` 
+SET `mgmt_approved_at` = '2025-10-22 00:00:00', `accounts_paid_at` = '2025-10-22 00:00:00' 
+WHERE `purpose` LIKE '%Begum Lutfunnahar%' AND `requisition_type` = 'Registration';
+
+UPDATE `land_registrations` lr
+INNER JOIN `land_acquisitions` la ON lr.land_acquisition_id = la.id
+SET lr.registration_date = '2025-10-22'
+WHERE la.land_owner_name LIKE '%Begum Lutfunnahar%';
+
+UPDATE `land_acquisitions` 
+SET `registration_complete_date` = '2025-10-22' 
+WHERE `land_owner_name` LIKE '%Begum Lutfunnahar%';
+
+UPDATE `journals` 
+SET `date` = '2025-10-22' 
+WHERE `narration` LIKE '%Begum Lutfunnahar%' AND `narration` LIKE '%Registration%';
+
+
+
