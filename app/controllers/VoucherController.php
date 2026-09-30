@@ -674,47 +674,83 @@ class VoucherController extends Controller
     {
         $tableMapping = [
             'cashout' => 'cashout_requests',
+            'cashout_requests' => 'cashout_requests',
             'fund_requisition' => 'fund_requisitions',
+            'fund_requisitions' => 'fund_requisitions',
             'contractor_bill' => 'contractor_bill_requests',
+            'contractor_bills' => 'contractor_bill_requests',
+            'contractor_bill_requests' => 'contractor_bill_requests',
             'vendor_payment' => 'vendor_payment_requests',
+            'vendor_payments' => 'vendor_payment_requests',
+            'vendor_payment_requests' => 'vendor_payment_requests',
             'operational_fund' => 'operational_fund_requests',
+            'operational_fund_requests' => 'operational_fund_requests',
             'advance_salary' => 'advance_salaries',
+            'advance_salaries' => 'advance_salaries',
             'project_other_cost' => 'project_other_costs',
+            'project_other_costs' => 'project_other_costs',
             'con_labor_requisition' => 'con_labor_requisitions',
+            'con_labor_requisitions' => 'con_labor_requisitions',
             'payslip' => 'payslips',
+            'payslips' => 'payslips',
             'salary' => 'payslips',
             'purchase_requests' => 'project_extra_assets',
             'office_procurement' => 'project_extra_assets',
+            'project_extra_assets' => 'project_extra_assets',
             'client_refund' => 'client_refund_requests',
+            'client_refund_requests' => 'client_refund_requests',
             'incentive_claim' => 'project_incentive_claims',
+            'project_incentive_claims' => 'project_incentive_claims',
             'expense_adjustment' => 'expense_adjustments',
-            'land_requisition' => 'con_land_requisitions'
+            'expense_adjustments' => 'expense_adjustments',
+            'land_requisition' => 'con_land_requisitions',
+            'land_fund_requisition' => 'land_fund_requisitions',
+            'land_fund_requisitions' => 'land_fund_requisitions',
+            'con_land_requisitions' => 'con_land_requisitions'
         ];
         $sourceTable = $tableMapping[$module] ?? $module;
+
+        $possibleTables = [$sourceTable, $module];
+        if (in_array($sourceTable, ['con_land_requisitions', 'land_fund_requisitions']) || in_array($module, ['land_requisition', 'con_land_requisitions', 'land_fund_requisitions'])) {
+            $possibleTables[] = 'land_fund_requisitions';
+            $possibleTables[] = 'con_land_requisitions';
+        }
+        $possibleTables = array_values(array_unique(array_filter($possibleTables)));
+        $inPlaceholders = implode(',', array_fill(0, count($possibleTables), '?'));
 
         $audit = [
             'creator' => null,
             'approvers' => [],
+            'accounts_head' => null,
             'disburser' => null
         ];
 
         // 1. Fetch matching approval_requests record
         $appReq = null;
-        $arStmt = $this->db->prepare("
+        $arSql = "
             SELECT ar.*, 
                    u_req.full_name as req_name, 
                    u_app.full_name as app_name,
-                   des_app.name as app_des
+                   des_app.name as app_des,
+                   u_ah.full_name as ah_name,
+                   e_ah.employee_id as ah_code,
+                   IFNULL(des_ah.name, 'AGM - Finance & Accounts') as ah_des
             FROM approval_requests ar
             LEFT JOIN users u_req ON ar.requested_by = u_req.id
             LEFT JOIN users u_app ON ar.approved_by = u_app.id
             LEFT JOIN employees e_app ON (e_app.user_id = u_app.id OR e_app.id = u_app.employee_id)
             LEFT JOIN designations des_app ON des_app.id = e_app.designation_id
-            WHERE (ar.source_table = ? OR ar.source_table = ?) AND ar.source_id = ?
+            LEFT JOIN users u_ah ON ar.accounts_head_by = u_ah.id
+            LEFT JOIN employees e_ah ON (e_ah.user_id = u_ah.id OR e_ah.id = u_ah.employee_id)
+            LEFT JOIN designations des_ah ON des_ah.id = COALESCE(e_ah.designation_id, u_ah.designation_id)
+            WHERE ar.source_table IN ({$inPlaceholders}) AND ar.source_id = ?
             ORDER BY ar.id DESC LIMIT 1
-        ");
+        ";
+        $arStmt = $this->db->prepare($arSql);
         if ($arStmt) {
-            $arStmt->bind_param("ssi", $sourceTable, $module, $id);
+            $types = str_repeat('s', count($possibleTables)) . 'i';
+            $params = array_merge($possibleTables, [$id]);
+            $arStmt->bind_param($types, ...$params);
             $arStmt->execute();
             $appReq = $arStmt->get_result()->fetch_assoc();
             $arStmt->close();
@@ -768,7 +804,7 @@ class VoucherController extends Controller
         };
 
         // Helper to add approver without duplicates
-        $addApprover = function($stage, $uid, $dateTime) use (&$audit, $getUser) {
+        $addApprover = function($stage, $uid, $dateTime, $note = null) use (&$audit, $getUser) {
             if (empty($uid) && empty($dateTime)) return;
             $name = !empty($uid) ? $getUser($uid) : 'Authorized Official';
             if (empty($name)) return;
@@ -782,7 +818,8 @@ class VoucherController extends Controller
             $audit['approvers'][] = [
                 'stage' => $stage,
                 'name'  => $name,
-                'date'  => !empty($dateTime) ? date('d M, Y h:i A', strtotime($dateTime)) : null
+                'date'  => !empty($dateTime) ? date('d M, Y h:i A', strtotime($dateTime)) : null,
+                'note'  => $note
             ];
         };
 
@@ -806,11 +843,11 @@ class VoucherController extends Controller
         // --- 2. MULTI-TIER APPROVERS ---
         // Department Head
         if (!empty($row['dept_head_approved_by'])) {
-            $addApprover('Department Head', $row['dept_head_approved_by'], $row['dept_head_approved_at'] ?? null);
+            $addApprover('Department Head', $row['dept_head_approved_by'], $row['dept_head_approved_at'] ?? null, $row['dept_head_note'] ?? null);
         }
         // Project Manager
         if (!empty($row['pm_approved_by'])) {
-            $addApprover('Project Manager', $row['pm_approved_by'], $row['pm_approved_at'] ?? null);
+            $addApprover('Project Manager', $row['pm_approved_by'], $row['pm_approved_at'] ?? null, $row['pm_note'] ?? null);
         }
         // Site Engineer Verification (Contractor bills)
         if (!empty($row['verified_by'])) {
@@ -832,26 +869,28 @@ class VoucherController extends Controller
         $qcId = $row['qc_approved_by'] ?? $row['qc_audit_approved_id'] ?? $row['qc_approved_by_id'] ?? $row['qc_audit_by'] ?? null;
         $qcDate = $row['qc_approved_at'] ?? $row['qc_audit_approved_at'] ?? $row['qc_audit_at'] ?? null;
         if (!empty($qcId)) {
-            $addApprover('QC & Internal Audit', $qcId, $qcDate);
+            $addApprover('QC & Internal Audit', $qcId, $qcDate, $row['qc_note'] ?? null);
         }
         // Land Requisition Management
         if (!empty($row['mgmt_by'])) {
-            $addApprover('Management Approval', $row['mgmt_by'], $row['mgmt_approved_at'] ?? null);
+            $addApprover('Management Approval', $row['mgmt_by'], $row['mgmt_approved_at'] ?? null, $row['mgmt_note'] ?? null);
         }
         // General / Final Management Approval
         $mgmtId = $row['management_apporved_by_id'] ?? $row['management_approved_by'] ?? $row['approved_by'] ?? ($appReq['approved_by'] ?? null);
         $mgmtDate = $row['management_apporved_at'] ?? $row['management_approved_at'] ?? $row['approved_at'] ?? ($appReq['approved_at'] ?? ($row['approved_date'] ?? null));
-        $mgmtStage = !empty($appReq['approve_role']) ? ucwords(str_replace('_', ' ', $appReq['approve_role'])) : 'Management Approval';
+        $mgmtStage = 'Management / Authority';
+        $mgmtNote = !empty($appReq['approval_note']) ? trim($appReq['approval_note']) : (!empty($row['mgmt_note']) ? trim($row['mgmt_note']) : null);
         if (!empty($mgmtId) || !empty($appReq['app_name'])) {
             if (!empty($appReq['app_name'])) {
                 $mgmtName = $appReq['app_name'] . (!empty($appReq['app_des']) ? ' (' . $appReq['app_des'] . ')' : '');
                 $audit['approvers'][] = [
                     'stage' => $mgmtStage,
                     'name'  => $mgmtName,
-                    'date'  => !empty($mgmtDate) ? date('d M, Y h:i A', strtotime($mgmtDate)) : null
+                    'date'  => !empty($mgmtDate) ? date('d M, Y h:i A', strtotime($mgmtDate)) : null,
+                    'note'  => $mgmtNote
                 ];
             } else {
-                $addApprover($mgmtStage, $mgmtId, $mgmtDate);
+                $addApprover($mgmtStage, $mgmtId, $mgmtDate, $mgmtNote);
             }
         }
         // Check con_approval_logs if available
@@ -866,11 +905,94 @@ class VoucherController extends Controller
             $audit['approvers'][] = [
                 'stage' => 'Management / Authority',
                 'name'  => 'Approved & Authorized',
-                'date'  => !empty($creatorDate) ? date('d M, Y', strtotime($creatorDate)) : date('d M, Y')
+                'date'  => !empty($creatorDate) ? date('d M, Y', strtotime($creatorDate)) : date('d M, Y'),
+                'note'  => null
             ];
         }
 
-        // --- 3. DISBURSED / PAID BY ---
+        // --- 3. ACCOUNTS HEAD APPROVAL (Md. Mamunoor Rashid - AGM, Finance & Accounts) ---
+        $ahName = 'Md. Mamunoor Rashid';
+        $ahDes = 'AGM - Finance & Accounts';
+        $ahEmpId = '1309';
+        $ahDate = null;
+        $ahNote = null;
+        $isAhApproved = false;
+
+        if (!empty($appReq)) {
+            if (!empty($appReq['ah_name'])) {
+                $ahName = $appReq['ah_name'];
+                if (!empty($appReq['ah_code'])) $ahEmpId = $appReq['ah_code'];
+                if (!empty($appReq['ah_des'])) $ahDes = $appReq['ah_des'];
+            }
+            if (!empty($appReq['accounts_head_at'])) {
+                $ahDate = date('d M, Y h:i A', strtotime($appReq['accounts_head_at']));
+            }
+            if (!empty($appReq['accounts_head_note'])) {
+                $ahNote = trim($appReq['accounts_head_note']);
+            }
+            if (($appReq['accounts_head_status'] ?? '') === 'approved') {
+                $isAhApproved = true;
+            }
+        }
+
+        // If not explicit in approval_requests, check via model helper
+        if (!$isAhApproved) {
+            if (!class_exists('Model')) {
+                require_once __DIR__ . '/../core/Model.php';
+            }
+            if (!class_exists('ApprovalRequest')) {
+                require_once __DIR__ . '/../models/ApprovalRequest.php';
+            }
+            foreach ($possibleTables as $pt) {
+                $ahInfo = \ApprovalRequest::getAccountsHeadApprovalInfo($this->db, $pt, $id);
+                if (!empty($ahInfo['has_request'])) {
+                    if (!empty($ahInfo['is_accounts_head_approved'])) {
+                        $isAhApproved = true;
+                        if (!empty($ahInfo['approved_by_name'])) $ahName = $ahInfo['approved_by_name'];
+                        if (!empty($ahInfo['approved_by_emp_id'])) $ahEmpId = $ahInfo['approved_by_emp_id'];
+                        if (!empty($ahInfo['approved_by_designation'])) $ahDes = $ahInfo['approved_by_designation'];
+                        if (!empty($ahInfo['approved_at'])) $ahDate = date('d M, Y h:i A', strtotime($ahInfo['approved_at']));
+                        if (!empty($ahInfo['approval_note'])) $ahNote = trim($ahInfo['approval_note']);
+                    }
+                    break;
+                }
+            }
+        }
+
+        // Check if payment is already disbursed / settled
+        $isDisbursed = !empty($row['accounts_status']) && in_array(strtolower($row['accounts_status']), ['paid', 'approved'])
+            || !empty($row['status']) && in_array(strtolower($row['status']), ['paid', 'fully_paid', 'disbursed', 'completed'])
+            || !empty($appReq['status']) && in_array(strtolower($appReq['status']), ['approved', 'paid']) && in_array($appReq['approve_role'] ?? '', ['completed', 'accounts']);
+
+        if (!$isAhApproved && $isDisbursed) {
+            $isAhApproved = true;
+        }
+
+        if (empty($ahDate) && $isAhApproved) {
+            $fallbackDt = $appReq['accounts_head_at'] ?? ($appReq['approved_at'] ?? ($row['accounts_paid_at'] ?? ($row['mgmt_approved_at'] ?? ($row['updated_at'] ?? null))));
+            if (!empty($fallbackDt)) {
+                $ahDate = date('d M, Y h:i A', strtotime($fallbackDt));
+            }
+        }
+
+        if (empty($ahNote)) {
+            if (!empty($appReq['accounts_head_note'])) {
+                $ahNote = trim($appReq['accounts_head_note']);
+            } elseif (!empty($row['accounts_note']) && strpos(strtolower($row['accounts_note']), 'auto-') === false) {
+                $ahNote = trim($row['accounts_note']);
+            }
+        }
+
+        $audit['accounts_head'] = [
+            'name'         => $ahName . (!empty($ahEmpId) ? ' [' . $ahEmpId . ']' : ''),
+            'designation'  => $ahDes,
+            'date'         => $ahDate,
+            'note'         => $ahNote,
+            'is_approved'  => $isAhApproved,
+            'status_label' => $isAhApproved ? 'Approved & Authorized' : 'Pending Verification'
+        ];
+
+        // --- 4. DISBURSED / PAID BY ---
         $disbId = $row['paid_by'] ?? $row['payment_by_id'] ?? $row['disbursed_by'] ?? $row['labor_disbursed_by'] ?? $row['accounts_by'] ?? null;
         $disbDate = $row['paid_at'] ?? $row['payment_at'] ?? $row['disbursed_at'] ?? $row['labor_disbursed_at'] ?? $row['accounts_paid_at'] ?? $row['payment_date'] ?? null;
         
@@ -908,7 +1030,10 @@ class VoucherController extends Controller
             }
         }
 
-        $disbName = !empty($disbId) ? $getUser($disbId) : 'Accounts & Finance Department';
+        $disbName = (!empty($disbId) ? $getUser($disbId) : null);
+        if (empty($disbName)) {
+            $disbName = 'Accounts & Finance Department';
+        }
         $audit['disburser'] = [
             'name' => $disbName,
             'date' => !empty($disbDate) ? date('d M, Y h:i A', strtotime($disbDate)) : date('d M, Y')

@@ -3,10 +3,24 @@
 class AccountClient extends Model
 {
     protected $db;
+    protected static $columnCache = [];
 
     public function __construct($db = null)
     {
         return parent::__construct($db);
+    }
+
+    /**
+     * Check if a column exists in a table (cached)
+     */
+    protected function hasColumn($table, $column)
+    {
+        $key = "{$table}.{$column}";
+        if (!isset(self::$columnCache[$key])) {
+            $check = $this->db->query("SHOW COLUMNS FROM `{$table}` LIKE '{$column}'");
+            self::$columnCache[$key] = ($check && $check->num_rows > 0);
+        }
+        return self::$columnCache[$key];
     }
 
     /**
@@ -471,6 +485,31 @@ class AccountClient extends Model
      */
     public function getClientByBookingId($bookingId)
     {
+        $hasTrashed = $this->hasColumn('lead_payments', 'is_trashed');
+        $lpTrash = $hasTrashed ? "lp.is_trashed = 0 AND " : "";
+
+        $hasTransfer = $this->hasColumn('lead_bookings', 'transfer_status');
+        $hasTotalEmi = $this->hasColumn('lead_bookings', 'total_emi_no');
+        $hasEmiAudit = $this->hasColumn('lead_bookings', 'emi_updated_by');
+        $hasApproval = $this->hasColumn('lead_bookings', 'approval_status');
+        $hasApprovedAmt = $this->hasColumn('lead_bookings', 'approved_amount');
+        $hasPastApp  = $this->hasColumn('lead_bookings', 'past_approval_attachment');
+        $hasLandshareStatus = $this->hasColumn('lead_bookings', 'landshare_status');
+        $hasServiceFeeBal   = $this->hasColumn('lead_bookings', 'service_fee_balance');
+
+        $approvalCol    = $hasApproval ? "lb.approval_status," : "NULL as approval_status,";
+        $approvedAmtCol = $hasApprovedAmt ? "lb.approved_amount," : "NULL as approved_amount,";
+        $pastAppCol     = $hasPastApp ? "lb.past_approval_attachment," : "NULL as past_approval_attachment,";
+        $lsStatusCol    = $hasLandshareStatus ? "lb.landshare_status," : "NULL as landshare_status,";
+        $sfBalCol       = $hasServiceFeeBal ? "lb.service_fee_balance," : "NULL as service_fee_balance,";
+
+        $transferCols   = $hasTransfer ? "lb.transfer_date, lb.transfer_note, lb.transfer_status, transfer_u.full_name as transfer_updated_by_name," : "NULL as transfer_date, NULL as transfer_note, 0 as transfer_status, NULL as transfer_updated_by_name,";
+        $transferJoin   = $hasTransfer ? "LEFT JOIN users transfer_u ON lb.transfer_updated_by = transfer_u.id" : "";
+
+        $totalEmiCol    = $hasTotalEmi ? "lb.total_emi_no as booking_total_emi_no," : "NULL as booking_total_emi_no,";
+        $emiAuditCols   = $hasEmiAudit ? "lb.emi_updated_by, lb.emi_updated_at, emi_u.full_name as emi_updated_by_name" : "NULL as emi_updated_by, NULL as emi_updated_at, NULL as emi_updated_by_name";
+        $emiAuditJoin   = $hasEmiAudit ? "LEFT JOIN users emi_u ON lb.emi_updated_by = emi_u.id" : "";
+
         $stmt = $this->db->prepare("
             SELECT 
                 lb.id as booking_id,
@@ -483,7 +522,7 @@ class AccountClient extends Model
                 COALESCE(
                  (SELECT SUM(lp.amount) 
                  FROM lead_payments lp 
-                WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                WHERE {$lpTrash}lp.booking_id = lb.id 
                  AND lp.payment_type = 'booking_money'
                  AND lp.verification_status != 'rejected'), 
                  0) AS booking_money_total,
@@ -491,17 +530,17 @@ class AccountClient extends Model
                 COALESCE(
                  (SELECT SUM(lp.amount) 
                  FROM lead_payments lp 
-                WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                WHERE {$lpTrash}lp.booking_id = lb.id 
                  AND lp.payment_type = 'booking_money'
                  AND lp.verification_status = 'verified'), 
                  0) AS booking_money,
                 lb.discount_amount,
-                lb.approved_amount,
-                lb.approval_status,
+                {$approvedAmtCol}
+                {$approvalCol}
                 lb.booking_status,
-                lb.landshare_status,
-                lb.service_fee_balance,
-                lb.past_approval_attachment,
+                {$lsStatusCol}
+                {$sfBalCol}
+                {$pastAppCol}
                 l.id as lead_id,
                 l.full_name as client_name,
                 COALESCE(NULLIF(TRIM(l.phone), ''), TRIM(l.phone_number)) AS phone,
@@ -528,7 +567,7 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'), 
                     0
@@ -536,7 +575,7 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT SUM(lp.land_share_amount) 
                      FROM lead_payments lp 
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'), 
                     0
@@ -544,7 +583,7 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT SUM(lp.land_share_amount) 
                      FROM lead_payments lp 
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.verification_status != 'rejected'), 
                     0
                 ) as additional_land_share_paid_total,
@@ -552,7 +591,7 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT SUM(lp.service_fee) 
                      FROM lead_payments lp 
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.payment_type IN ('emi', 'emi_due_settlement')
                      AND lp.verification_status = 'verified'), 
                     0
@@ -560,7 +599,7 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'
                      AND lp.payment_type = 'registration'), 
@@ -569,7 +608,7 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.verification_status != 'rejected'
                      AND lp.payment_type = 'registration'), 
                     0
@@ -577,7 +616,7 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'
                      AND lp.payment_type = 'mutation_cost'), 
@@ -586,7 +625,7 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.verification_status != 'rejected'
                      AND lp.payment_type = 'mutation_cost'), 
                     0
@@ -594,7 +633,7 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.payment_type = 'booking_money'
                      AND lp.verification_status = 'verified'), 
                     0
@@ -602,7 +641,7 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'
                      AND lp.payment_type IN ('emi', 'emi_due_settlement')), 
@@ -611,7 +650,7 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.verification_status != 'rejected'
                      AND lp.payment_type IN ('emi', 'emi_due_settlement')), 
                     0
@@ -619,7 +658,7 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'
                      AND lp.payment_type = 'development_charge'), 
@@ -628,7 +667,7 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT SUM(lp.amount) 
                      FROM lead_payments lp 
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.verification_status != 'rejected'
                      AND lp.payment_type = 'development_charge'), 
                     0
@@ -636,7 +675,7 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT SUM(lp.due_emi_amount)
                      FROM lead_payments lp
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id
+                     WHERE {$lpTrash}lp.booking_id = lb.id
                      AND lp.payment_type = 'emi'
                      AND lp.due_emi_amount > 0
                      AND lp.verification_status = 'verified'
@@ -652,7 +691,7 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT SUM(lp.bulk_emi_discount)
                      FROM lead_payments lp
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id
+                     WHERE {$lpTrash}lp.booking_id = lb.id
                      AND lp.verification_status = 'verified'
                      AND lp.bulk_emi_discount > 0),
                     0
@@ -660,19 +699,14 @@ class AccountClient extends Model
                 COALESCE(
                     (SELECT MAX(lp.payment_date) 
                      FROM lead_payments lp 
-                     WHERE lp.is_trashed = 0 AND lp.booking_id = lb.id 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
                      AND lp.payment_status IN ('paid','partially_paid')
                      AND lp.verification_status = 'verified'), 
                     NULL
                 ) as last_payment_date,
-                lb.transfer_date,
-                lb.transfer_note,
-                lb.transfer_status,
-                transfer_u.full_name as transfer_updated_by_name,
-                lb.total_emi_no as booking_total_emi_no,
-                lb.emi_updated_by,
-                lb.emi_updated_at,
-                emi_u.full_name as emi_updated_by_name
+                {$transferCols}
+                {$totalEmiCol}
+                {$emiAuditCols}
             FROM lead_bookings lb
             LEFT JOIN leads l ON lb.lead_id = l.id
             LEFT JOIN projects p ON lb.project_id = p.id
@@ -680,8 +714,8 @@ class AccountClient extends Model
             LEFT JOIN users u ON COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0)) = u.id
             LEFT JOIN employees e1 ON e1.user_id = u.id
             LEFT JOIN employees e2 ON u.employee_id = e2.id
-            LEFT JOIN users transfer_u ON lb.transfer_updated_by = transfer_u.id
-            LEFT JOIN users emi_u ON lb.emi_updated_by = emi_u.id
+            {$transferJoin}
+            {$emiAuditJoin}
             WHERE lb.id = ?
         ");
 
@@ -836,24 +870,41 @@ class AccountClient extends Model
      */
     private function getEMIStatistics($bookingId)
     {
-        $totalEmiStmt = $this->db->prepare("
-            SELECT 
-                COALESCE(NULLIF(lb.total_emi_no, 0), lp.total_emi_no, 0) AS total_emi_no,
-                lb.emi_updated_by,
-                lb.emi_updated_at,
-                u.full_name AS emi_updated_by_name
-            FROM lead_bookings lb
-            LEFT JOIN (
-                SELECT booking_id, MAX(total_emi_no) as total_emi_no
+        $hasTotalEmiLb = $this->hasColumn('lead_bookings', 'total_emi_no');
+        $hasEmiAuditLb = $this->hasColumn('lead_bookings', 'emi_updated_by');
+
+        if ($hasTotalEmiLb && $hasEmiAuditLb) {
+            $totalEmiStmt = $this->db->prepare("
+                SELECT 
+                    COALESCE(NULLIF(lb.total_emi_no, 0), lp.total_emi_no, 0) AS total_emi_no,
+                    lb.emi_updated_by,
+                    lb.emi_updated_at,
+                    u.full_name AS emi_updated_by_name
+                FROM lead_bookings lb
+                LEFT JOIN (
+                    SELECT booking_id, MAX(total_emi_no) as total_emi_no
+                    FROM lead_payments
+                    WHERE booking_id = ? AND total_emi_no IS NOT NULL
+                    GROUP BY booking_id
+                ) lp ON lp.booking_id = lb.id
+                LEFT JOIN users u ON u.id = lb.emi_updated_by
+                WHERE lb.id = ?
+                LIMIT 1
+            ");
+            $totalEmiStmt->bind_param("ii", $bookingId, $bookingId);
+        } else {
+            $totalEmiStmt = $this->db->prepare("
+                SELECT 
+                    COALESCE(MAX(total_emi_no), 0) AS total_emi_no,
+                    NULL AS emi_updated_by,
+                    NULL AS emi_updated_at,
+                    NULL AS emi_updated_by_name
                 FROM lead_payments
                 WHERE booking_id = ? AND total_emi_no IS NOT NULL
-                GROUP BY booking_id
-            ) lp ON lp.booking_id = lb.id
-            LEFT JOIN users u ON u.id = lb.emi_updated_by
-            WHERE lb.id = ?
-            LIMIT 1
-        ");
-        $totalEmiStmt->bind_param("ii", $bookingId, $bookingId);
+                LIMIT 1
+            ");
+            $totalEmiStmt->bind_param("i", $bookingId);
+        }
         $totalEmiStmt->execute();
         $totalEmiResult = $totalEmiStmt->get_result();
         $totalEmiRow = $totalEmiResult ? $totalEmiResult->fetch_assoc() : null;
