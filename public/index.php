@@ -107,6 +107,44 @@ if ($route === 'log-client-debug') {
     exit;
 }
 
+// ── Migration: add account_id column to all expense tables ──────────────────
+if ($route === 'run-migration-account-id') {
+    $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+    if (!in_array($userRoleId, [1, 3])) { die('Unauthorized.'); }
+    $tables = [
+        'fund_requisitions', 'con_labor_requisitions', 'vendor_payment_requests',
+        'contractor_bill_requests', 'operational_fund_requests', 'project_other_costs',
+        'project_extra_assets', 'payslips', 'advance_salaries', 'cashout_requests',
+        'client_refund_requests', 'project_incentive_claims', 'land_fund_requisitions'
+    ];
+    header('Content-Type: text/plain; charset=utf-8');
+    foreach ($tables as $t) {
+        $db->query("ALTER TABLE `$t` ADD COLUMN account_id INT NULL");
+        if ($db->error && strpos($db->error, 'Duplicate') === false) {
+            echo "Error on $t: " . $db->error . "\n";
+        } else {
+            echo "OK: $t - account_id column ready.\n";
+        }
+    }
+    echo "\nMigration complete!";
+    exit;
+}
+
+// ── Resync journals with new COA mappings ────────────────────────────────────
+if ($route === 'run-resync-journals') {
+    $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+    if (!in_array($userRoleId, [1, 3])) { die('Unauthorized.'); }
+    header('Content-Type: text/plain; charset=utf-8');
+    require_once $root . '/app/services/AutoPostingService.php';
+    $svc = new AutoPostingService($db);
+    $db->query("DELETE jd FROM journal_details jd INNER JOIN journals j ON jd.journal_id = j.id WHERE j.is_auto_posted = 1");
+    $db->query("DELETE FROM journals WHERE is_auto_posted = 1");
+    echo "Deleted auto-synced journals. Resyncing...\n";
+    $svc->syncUnpostedExpenses(9999);
+    echo "Resync complete!";
+    exit;
+}
+
 $public_routes = [
     '',
     'admin-login',

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 class AccountClientController extends Controller
 {
     protected $db;
@@ -1370,20 +1370,6 @@ public function indexTwo($bookingId = null)
 
         // For initial load, do not load clients. Let AJAX load them.
         $clients = [];
-
-        $this->view("ced/ced-dashboard", [
-            "current_route" => "ced-dashboard",
-            "page_title" => "CED Dashboard",
-            "clients" => $clients,
-            "paymentStats" => $paymentStats,
-            "collectionData" => $collectionData
-        ]);
-    }
-
-
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
 
         $this->view("ced/ced-dashboard", [
             "current_route" => "ced-dashboard",
