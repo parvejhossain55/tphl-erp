@@ -16,7 +16,7 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Total Clients</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentStats['total_clients'] ?? 0 ?></h4>
+                        <h4 class="card__title" id="cedTopTotalClients"><?= number_format($totalClients ?? ($paymentStats['total_clients'] ?? 0)) ?></h4>
                     </div>
                 </div>
             </div>
@@ -185,6 +185,9 @@ $show_breadcrumb = true;
                         <div>
                             <h6 class="card__sub-title mb-0">Filter Data</h6>
                         </div>
+                        <span class="badge bg-primary text-white rounded-pill px-2 py-1 ms-1" id="cedFilterBadge" style="font-size: 11.5px;">
+                            <span id="cedFilterFoundCount"><?= number_format($totalClients ?? 0) ?></span> Clients
+                        </span>
                     </div>
 
                     <!-- Search Box -->
@@ -339,7 +342,7 @@ $show_breadcrumb = true;
                 <h4>
                     Clients Information
                     <small class="text-muted" style="font-size: 14px; font-weight: 400;">
-                        — <?= $selectedProjectName ? htmlspecialchars($selectedProjectName) . ' ' : '' ?>(<span id="cedTotalRecordsCount"><?= $totalClients ?? count($clients) ?></span> records)
+                        — <?= $selectedProjectName ? htmlspecialchars($selectedProjectName) . ' ' : '' ?>(<span id="cedTotalRecordsCount"><?= number_format($totalClients ?? count($clients)) ?></span> records)
                     </small>
                 </h4>
                 <a href="<?= $GLOBALS['base_url'] ?>/csv-import-form" class="btn btn-sm btn-success rounded-2 shadow-sm px-3">
@@ -2034,9 +2037,15 @@ function loadCedClientsPage(page) {
             if (pagContainer && data.pagination_html) {
                 pagContainer.innerHTML = data.pagination_html;
             }
-            const countEl = document.getElementById('cedTotalRecordsCount');
-            if (countEl && data.total_clients !== undefined) {
-                countEl.textContent = data.total_clients;
+            const totalCount = (data.total_clients !== undefined) ? data.total_clients : data.totalRecords;
+            if (totalCount !== undefined) {
+                const formattedCount = Number(totalCount).toLocaleString();
+                const countEl = document.getElementById('cedTotalRecordsCount');
+                if (countEl) countEl.textContent = formattedCount;
+                const topCountEl = document.getElementById('cedTopTotalClients');
+                if (topCountEl) topCountEl.textContent = formattedCount;
+                const filterBadgeCount = document.getElementById('cedFilterFoundCount');
+                if (filterBadgeCount) filterBadgeCount.textContent = formattedCount;
             }
         }
     })

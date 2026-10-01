@@ -55,6 +55,8 @@ class AccountClientController extends Controller
             $endEntry = min($totalClients, $page * $limit);
             $infoText = "Showing {$startEntry} to {$endEntry} of {$totalClients} entries";
 
+            $paymentStats = $this->clientModel->getPaymentStatistics($selectedProjectId);
+
             header('Content-Type: application/json');
             echo json_encode([
                 'success' => true,
@@ -62,6 +64,8 @@ class AccountClientController extends Controller
                 'totalPages' => $totalPages,
                 'totalRecords' => $totalClients,
                 'total_clients' => $totalClients,
+                'full_payment_completed' => (int)($paymentStats['full_payment_completed'] ?? 0),
+                'approved_bookings' => (int)($paymentStats['approved_bookings'] ?? 0),
                 'limit' => $limit,
                 'table_html' => $tableHtml,
                 'pagination_html' => $paginationHtml,
@@ -768,12 +772,17 @@ public function indexTwo($bookingId = null)
             $endEntry = min($totalClients, $page * $limit);
             $infoText = "Showing {$startEntry} to {$endEntry} of {$totalClients} entries";
 
+            $paymentStats = $this->clientModel->getPaymentStatistics($selectedProjectId);
+
             header('Content-Type: application/json');
             echo json_encode([
                 'success' => true,
                 'page' => $page,
                 'totalPages' => $totalPages,
                 'totalRecords' => $totalClients,
+                'total_clients' => $totalClients,
+                'full_payment_completed' => (int)($paymentStats['full_payment_completed'] ?? 0),
+                'approved_bookings' => (int)($paymentStats['approved_bookings'] ?? 0),
                 'limit' => $limit,
                 'table_html' => $tableHtml,
                 'pagination_html' => $paginationHtml,
