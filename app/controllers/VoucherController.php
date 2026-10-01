@@ -193,7 +193,7 @@ class VoucherController extends Controller
                 }
                 $tStmt->close();
                 if (empty($voucherData['transactions'])) {
-                    $voucherData['amount'] = (float)(!empty($req['approved_amount']) ? $req['approved_amount'] : $req['requested_amount']);
+                    $voucherData['amount'] = (float)(!empty($req['approved_amount']) ? $req['approved_amount'] : ($req['requested_amount'] ?? $req['request_amount'] ?? $req['net_payable'] ?? $req['invoice_amount'] ?? $req['amount'] ?? 0));
                     $voucherData['payment_method'] = 'Bank / Cash';
                     $voucherData['transactions'][] = [
                         'amount_paid' => $voucherData['amount'],
@@ -235,7 +235,7 @@ class VoucherController extends Controller
                 }
                 $tStmt->close();
                 if (empty($voucherData['transactions'])) {
-                    $voucherData['amount'] = (float)(!empty($req['approved_amount']) ? $req['approved_amount'] : $req['requested_amount']);
+                    $voucherData['amount'] = (float)(!empty($req['approved_amount']) ? $req['approved_amount'] : ($req['requested_amount'] ?? $req['request_amount'] ?? $req['amount'] ?? 0));
                     $voucherData['payment_method'] = 'Cash';
                     $voucherData['transactions'][] = [
                         'amount_paid' => $voucherData['amount'],
@@ -497,11 +497,11 @@ class VoucherController extends Controller
                 $expenseDetails = !empty($descParts) ? implode(' — ', $descParts) : 'Land Fund Requisition';
                 $voucherData['expense_details'] = $expenseDetails;
 
-                $voucherData['amount'] = (float)$req['requested_amount'];
+                $voucherData['amount'] = (float)($req['requested_amount'] ?? $req['request_amount'] ?? $req['amount'] ?? 0);
                 $voucherData['payment_method'] = $req['payment_method'] ?? 'Cash';
                 
                 $voucherData['transactions'][] = [
-                    'amount_paid' => $req['requested_amount'],
+                    'amount_paid' => $voucherData['amount'],
                     'payment_method' => $req['payment_method'] ?? 'Cash',
                     'transaction_date' => $req['accounts_paid_at'] ?? $req['updated_at'] ?? date('Y-m-d'),
                     'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '', 
@@ -647,9 +647,35 @@ class VoucherController extends Controller
                 break;
 
             default:
-                die("Unknown module");
-        }
+                // Fallback for any unknown module using approval_requests table
+                $stmt = $this->db->prepare("SELECT ar.*, u.full_name FROM approval_requests ar LEFT JOIN users u ON ar.requested_by = u.id WHERE ar.source_table = ? AND ar.source_id = ? ORDER BY ar.id DESC LIMIT 1");
+                $stmt->bind_param("si", $module, $id);
+                $stmt->execute();
+                $req = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
 
+                if (!$req) die("Voucher details not found for this module.");
+
+                $voucherData['paid_to'] = $req['full_name'] ?? 'N/A';
+                $voucherData['project'] = $req['department'] ?? 'General / Operations';
+                $voucherData['purpose'] = $req['title'] ?? (ucfirst(str_replace('_', ' ', $module)) . ' Request');
+                
+                $voucherData['expense_details'] = $req['title'] ?? 'System Request';
+
+                $amt = (float)(!empty($req['approved_amount']) && $req['approved_amount'] > 0 ? $req['approved_amount'] : $req['request_amount']);
+                $voucherData['amount'] = $amt;
+                $voucherData['payment_method'] = 'System Entry';
+
+                $voucherData['transactions'][] = [
+                    'amount_paid' => $amt,
+                    'payment_method' => 'System Entry',
+                    'transaction_date' => $req['updated_at'] ?? date('Y-m-d'),
+                    'bank_name' => '', 'bank_account_no' => '', 'cheque_no' => '', 'online_type' => '',
+                    'reference_number' => strtoupper(substr($module, 0, 3)) . '-' . str_pad($id, 4, '0', STR_PAD_LEFT),
+                    'description' => $voucherData['expense_details']
+                ];
+                break;
+        }
         // Ensure every transaction item has description populated if not already present
         if (!empty($voucherData['transactions'])) {
             foreach ($voucherData['transactions'] as &$tItem) {
@@ -665,6 +691,8 @@ class VoucherController extends Controller
 
         // Convert number to words helper
         $voucherData['amount_words'] = $this->numberToWords($voucherData['amount']) . " Taka Only";
+        
+        $voucherData['is_approval_voucher'] = isset($_GET['is_approval']) && $_GET['is_approval'] == 1;
 
         // Load view
         $this->view('accounts/vouchers/debit-voucher-print', ['voucher' => $voucherData]);
@@ -876,12 +904,20 @@ class VoucherController extends Controller
             $addApprover('Management Approval', $row['mgmt_by'], $row['mgmt_approved_at'] ?? null, $row['mgmt_note'] ?? null);
         }
         // General / Final Management Approval
-        $mgmtId = $row['management_apporved_by_id'] ?? $row['management_approved_by'] ?? $row['approved_by'] ?? ($appReq['approved_by'] ?? null);
-        $mgmtDate = $row['management_apporved_at'] ?? $row['management_approved_at'] ?? $row['approved_at'] ?? ($appReq['approved_at'] ?? ($row['approved_date'] ?? null));
+        $isRowOrReqApproved = in_array(strtolower($row['status'] ?? $appReq['status'] ?? ''), ['approved', 'paid', 'fully_paid', 'partially_paid', 'settled', 'completed']);
+        $mgmtId = $row['management_apporved_by_id'] ?? $row['management_approved_by'] ?? null;
+        if (empty($mgmtId) && $isRowOrReqApproved) {
+            $mgmtId = $row['approved_by'] ?? ($appReq['approved_by'] ?? null);
+        }
+        $mgmtDate = $row['management_apporved_at'] ?? $row['management_approved_at'] ?? null;
+        if (empty($mgmtDate) && $isRowOrReqApproved) {
+            $mgmtDate = $row['approved_at'] ?? ($appReq['approved_at'] ?? ($row['approved_date'] ?? null));
+        }
         $mgmtStage = 'Management / Authority';
         $mgmtNote = !empty($appReq['approval_note']) ? trim($appReq['approval_note']) : (!empty($row['mgmt_note']) ? trim($row['mgmt_note']) : null);
-        if (!empty($mgmtId) || !empty($appReq['app_name'])) {
-            if (!empty($appReq['app_name'])) {
+        
+        if (!empty($mgmtId) || (!empty($appReq['app_name']) && $isRowOrReqApproved)) {
+            if (!empty($appReq['app_name']) && empty($mgmtId)) {
                 $mgmtName = $appReq['app_name'] . (!empty($appReq['app_des']) ? ' (' . $appReq['app_des'] . ')' : '');
                 $audit['approvers'][] = [
                     'stage' => $mgmtStage,
@@ -892,6 +928,13 @@ class VoucherController extends Controller
             } else {
                 $addApprover($mgmtStage, $mgmtId, $mgmtDate, $mgmtNote);
             }
+        } elseif (!$isRowOrReqApproved) {
+             $audit['approvers'][] = [
+                 'stage' => $mgmtStage,
+                 'name'  => '⏳ Pending Approval',
+                 'date'  => 'Awaiting decision',
+                 'note'  => null
+             ];
         }
         // Check con_approval_logs if available
         $cal = $this->db->query("SELECT step_name, actioned_by, actioned_at FROM con_approval_logs WHERE ref_table = '{$sourceTable}' AND ref_id = {$id} AND status = 'approved' ORDER BY id ASC");
@@ -1036,7 +1079,8 @@ class VoucherController extends Controller
         }
         $audit['disburser'] = [
             'name' => $disbName,
-            'date' => !empty($disbDate) ? date('d M, Y h:i A', strtotime($disbDate)) : date('d M, Y')
+            'date' => !empty($disbDate) ? date('d M, Y h:i A', strtotime($disbDate)) : null,
+            'is_disbursed' => !empty($disbDate)
         ];
 
         return $audit;

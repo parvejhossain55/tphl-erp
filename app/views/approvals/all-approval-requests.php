@@ -479,6 +479,11 @@
                                 } elseif ($sourceTable === 'expense_adjustments') {
                                     $targetUrl = $base_url . '/expense-adjustments/show?id=' . $req['source_id'];
                                 }
+                                
+                                if ($targetUrl !== 'javascript:void(0)') {
+                                    $targetUrl .= (strpos($targetUrl, '?') !== false ? '&' : '?') . 'ref=all_approvals';
+                                }
+
                                 $reqApproveRole = strtolower($req['approve_role'] ?? 'management');
                                 if (empty($reqApproveRole)) {
                                     $reqApproveRole = 'management';
@@ -901,19 +906,17 @@
                                     <!-- Action Button (Directly routes to specific module page or Debit Voucher!) -->
                                     <td class="pe-4 text-end text-nowrap">
                                         <?php
-                                        $voucherSupportedModules = [
-                                            'advance_salaries', 'contractor_bill_requests', 'vendor_payment_requests',
-                                            'fund_requisitions', 'project_other_costs', 'cashout_requests',
-                                            'payslips', 'project_extra_assets', 'purchase_requests',
-                                            'con_labor_requisitions', 'con_land_requisitions', 'land_fund_requisitions',
-                                            'client_refund_requests', 'project_incentive_claims', 'operational_fund_requests',
-                                            'expense_adjustments'
-                                        ];
-                                        $isVoucherSupported = in_array($sourceTable, $voucherSupportedModules);
+                                        $isVoucherSupported = true;
                                         $voucherUrl = $base_url . '/print-debit-voucher?module=' . urlencode($sourceTable) . '&id=' . (int)$req['source_id'];
                                         $isPaidOrSettled = in_array($payoutStatus, ['Paid & Settled', 'Settled']) || in_array(strtolower($req['status']), ['paid', 'fully_paid', 'labor_disbursed', 'deducted']);
                                         $isPartiallyPaid = ($payoutStatus === 'Partially Paid') || strtolower($req['status']) === 'partially_paid';
                                         ?>
+
+                                        <?php if ($isVoucherSupported && !$isPaidOrSettled): ?>
+                                            <a href="<?= $voucherUrl ?>&is_approval=1" target="_blank" class="btn btn-sm btn-outline-info rounded-2 px-2 shadow-sm fw-semibold mb-1" title="View & Print Approval Voucher">
+                                                <i class="fa-solid fa-file-signature me-1"></i>Approval Voucher
+                                            </a>
+                                        <?php endif; ?>
 
                                         <?php if ($isPartiallyPaid): ?>
                                             <?php if ($isAccountsUser && $isAccountsHeadApproved): ?>
@@ -1026,6 +1029,29 @@
                 </div>
 
                 <input type="hidden" id="ahModalReqId" value="">
+                
+                <div class="mb-3" id="ahModalCoaContainer">
+                    <label for="ahModalCoaId" class="form-label extra-small fw-bold text-muted text-uppercase">Chart of Accounts Category (Required for Posting)</label>
+                    <select class="form-select form-select-sm ah-coa-select2" id="ahModalCoaId" name="coa_id">
+                        <option value="">-- Select Expense / Asset Ledger --</option>
+                        <?php if(!empty($coaList)): ?>
+                            <?php 
+                            $currentGroup = '';
+                            foreach($coaList as $coa): 
+                                $group = $coa['account_type'];
+                                if($group !== $currentGroup):
+                                    if($currentGroup !== '') echo '</optgroup>';
+                                    echo '<optgroup label="'.htmlspecialchars($group).'">';
+                                    $currentGroup = $group;
+                                endif;
+                            ?>
+                                <option value="<?= $coa['id'] ?>"><?= htmlspecialchars($coa['account_code'] . ' - ' . $coa['account_name']) ?></option>
+                            <?php endforeach; ?>
+                            <?php if($currentGroup !== '') echo '</optgroup>'; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+
                 <div class="mb-3">
                     <label for="ahModalNote" class="form-label extra-small fw-bold text-muted text-uppercase">Approval / Rejection Note (Optional)</label>
                     <textarea class="form-control" id="ahModalNote" rows="2" placeholder="e.g. Verified and approved for payment disbursement."></textarea>
@@ -1234,6 +1260,13 @@
             ? '<?= $base_url ?>/approval-requests/reject-accounts-head' 
             : '<?= $base_url ?>/approval-requests/approve-accounts-head';
 
+        const coaId = document.getElementById('ahModalCoaId') ? document.getElementById('ahModalCoaId').value : null;
+
+        if (action === 'approve' && !coaId) {
+            alert('Please select a Chart of Accounts category before approving.');
+            return;
+        }
+
         if (btn) btn.disabled = true;
 
         fetch(endpoint, {
@@ -1241,7 +1274,8 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 approval_request_id: reqId,
-                note: note || (action === 'reject' ? 'Rejected by Accounts Head' : 'Approved by Accounts Head')
+                note: note || (action === 'reject' ? 'Rejected by Accounts Head' : 'Approved by Accounts Head'),
+                coa_id: coaId
             })
         })
         .then(res => res.json())

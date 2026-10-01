@@ -30,7 +30,7 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                 <i class="fa-light fa-building-columns text-primary me-2"></i> Balance Sheet (উদ্বৃত্তপত্র)
             </h2>
             <p class="text-muted mb-0 fs-13">
-                Statement of Financial Position as of <?= date('d M Y', strtotime($filters['as_of_date'])) ?>
+                Statement of Financial Position for period <?= date('d M Y', strtotime($filters['date_from'])) ?> to <?= date('d M Y', strtotime($filters['date_to'])) ?>
             </p>
         </div>
         <div class="col-md-6 text-end">
@@ -54,11 +54,15 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                         <option value="horizontal" <?= $layoutMode === 'horizontal' ? 'selected' : '' ?>>⚖️ Horizontal T-Account Format (Two Column)</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label fs-11 fw-semibold mb-1">As of Date</label>
-                    <input type="date" name="as_of_date" class="form-control form-control-sm" value="<?= htmlspecialchars($filters['as_of_date']) ?>">
+                <div class="col-md-2">
+                    <label class="form-label fs-11 fw-semibold mb-1">Date From</label>
+                    <input type="date" name="date_from" class="form-control form-control-sm" value="<?= htmlspecialchars($filters['date_from']) ?>">
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-2">
+                    <label class="form-label fs-11 fw-semibold mb-1">Date To</label>
+                    <input type="date" name="date_to" class="form-control form-control-sm" value="<?= htmlspecialchars($filters['date_to']) ?>">
+                </div>
+                <div class="col-md-3">
                     <label class="form-label fs-11 fw-semibold mb-1">Project</label>
                     <select name="project_id" class="form-select form-select-sm">
                         <option value="">All Projects</option>
@@ -136,7 +140,7 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                     <div class="text-center">
                         <h4 class="mb-1 fw-bold text-uppercase text-white">THE PREMIUM HOMES LTD</h4>
                         <h5 class="mb-0 text-primary fw-bold">BALANCE SHEET (T-ACCOUNT FORMAT)</h5>
-                        <small class="text-white-50">As of <?= date('d M Y', strtotime($filters['as_of_date'])) ?></small>
+                        <small class="text-white-50">Period: <?= date('d M Y', strtotime($filters['date_from'])) ?> to <?= date('d M Y', strtotime($filters['date_to'])) ?></small>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -248,7 +252,7 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                         <h4 class="mb-1 fw-bold text-uppercase text-dark">THE PREMIUM HOMES LTD</h4>
                         <h5 class="mb-1 text-primary fw-bold">BALANCE SHEET (FINANCIAL POSITION STATEMENT)</h5>
                         <p class="text-muted mb-0 fs-13">
-                            As of <strong><?= date('d M Y', strtotime($filters['as_of_date'])) ?></strong> (GAAP Classification)
+                            For the period: <strong><?= date('d M Y', strtotime($filters['date_from'])) ?></strong> to <strong><?= date('d M Y', strtotime($filters['date_to'])) ?></strong> (GAAP Classification)
                         </p>
                     </div>
                 </div>

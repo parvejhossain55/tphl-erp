@@ -345,6 +345,23 @@ class AutoPostingService
                 $stmtDet->bind_param("iiddsisi", $journalId, $serviceChargeAccId, $debitZero, $creditVal, $narration, $projectId, $partyType, $clientId);
                 $stmtDet->execute();
 
+            } elseif (in_array($typeLower, ['emi', 'emi_payment'])) {
+                // 10% Service Revenue, 90% Deposit
+                $serviceChargeAccId = $this->getAccountIdByCode('400002');
+                $bookingFundAccId = $this->getAccountIdByCode('400000');
+                
+                $serviceAmount = round($amount * 0.10, 2);
+                $depositAmount = $amount - $serviceAmount;
+                
+                $debitZero = 0.00;
+                
+                // 10% to service charge
+                $stmtDet->bind_param("iiddsisi", $journalId, $serviceChargeAccId, $debitZero, $serviceAmount, $narration, $projectId, $partyType, $clientId);
+                $stmtDet->execute();
+                
+                // 90% to deposit
+                $stmtDet->bind_param("iiddsisi", $journalId, $bookingFundAccId, $debitZero, $depositAmount, $narration, $projectId, $partyType, $clientId);
+                $stmtDet->execute();
             } else {
                 // Booking, EMI or Land Share Deposit -> 100% Land Share Revenue (400000)
                 $bookingFundAccId = $this->getAccountIdByCode('400000');
@@ -616,6 +633,147 @@ class AutoPostingService
                 $p['created_by'] ?: 1
             )) {
                 $count++;
+            }
+        }
+        return $count;
+    }
+
+    /**
+     * Dynamically fetch or create a COA for a specific expense module.
+     * Searches by EXACT name. If not found, creates a new 6-digit code under 5000 (Expenses).
+     */
+    private function getModuleAccountId($coaName)
+    {
+        // 1. Check if it already exists exactly
+        $stmt = $this->db->prepare("SELECT id FROM chart_of_accounts WHERE LOWER(account_name) = LOWER(?) AND (account_type = 'Expense' OR account_type = 'Asset') LIMIT 1");
+        $stmt->bind_param('s', $coaName);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if ($res && $res->num_rows > 0) {
+            return $res->fetch_assoc()['id'];
+        }
+
+        // 2. If not, auto-create it under '5000' (Expenses)
+        $res = $this->db->query("SELECT id FROM chart_of_accounts WHERE account_code = '5000' LIMIT 1");
+        $row = $res->fetch_assoc();
+        $parentId = $row ? $row['id'] : null;
+        if (!$parentId) {
+            return $this->getAccountIdByCode('520000'); // Fallback
+        }
+
+        // Find max code starting with 599
+        $res = $this->db->query("SELECT MAX(account_code) as max_code FROM chart_of_accounts WHERE account_code LIKE '599%' AND LENGTH(account_code) = 6");
+        $maxCode = $res->fetch_assoc()['max_code'];
+        if (!$maxCode) {
+            $newCode = '599001';
+        } else {
+            $newCode = strval((int)$maxCode + 1);
+        }
+
+        // Insert new COA
+        $stmt = $this->db->prepare("INSERT INTO chart_of_accounts (parent_id, account_code, account_name, account_type, level, root_type, status, is_system_account) VALUES (?, ?, ?, 'Expense', 3, 'Expense', 'active', 1)");
+        $stmt->bind_param('iss', $parentId, $newCode, $coaName);
+        if ($stmt->execute()) {
+            return $stmt->insert_id;
+        }
+
+        return $this->getAccountIdByCode('520000'); // Fallback
+    }
+
+    /**
+     * Auto-sync any verified expenses that do not yet have a journal entry
+     */
+    public function syncUnpostedExpenses($limit = 50)
+    {
+        $expenseModules = [
+            ['table' => 'fund_requisitions', 'module' => 'fund_requisition', 'coa_name' => 'Fund Requisition', 'status_col' => 'status', 'paid_vals' => ['paid', 'completed'], 'amt_col' => 'm.amount', 'date_col' => 'm.updated_at', 'purpose_col' => 'm.purpose', 'method_col' => 'm.payment_method', 'project_col' => 'm.project_id', 'created_by' => 'm.requested_by'],
+            ['table' => 'con_labor_requisitions', 'module' => 'labor_bill', 'coa_name' => 'Labour Requisition', 'status_col' => 'status', 'paid_vals' => ['paid', 'completed'], 'amt_col' => 'COALESCE(m.paid_amount, m.approved_amount, m.total_amount)', 'date_col' => 'm.updated_at', 'purpose_col' => 'm.purpose', 'method_col' => 'm.payment_method', 'project_col' => 'm.project_id', 'created_by' => 'm.created_by'],
+            ['table' => 'vendor_payment_requests', 'module' => 'vendor_payment', 'coa_name' => 'Vendor Payment', 'status_col' => 'status', 'paid_vals' => ['paid', 'Paid', 'completed'], 'amt_col' => 'COALESCE(m.approved_amount, m.net_payable_amount, m.invoice_amount)', 'date_col' => 'm.updated_at', 'purpose_col' => 'm.invoice_number', 'method_col' => 'm.payment_type', 'project_col' => 'm.project_id', 'created_by' => 'm.created_by'],
+            ['table' => 'contractor_bill_requests', 'module' => 'contractor_bill', 'coa_name' => 'Contractor Bills', 'status_col' => 'status', 'paid_vals' => ['paid', 'Paid', 'completed'], 'amt_col' => 'COALESCE(m.approved_amount, m.bill_amount)', 'date_col' => 'm.updated_at', 'purpose_col' => 'm.work_description', 'method_col' => 'm.bill_type', 'project_col' => 'm.project_id', 'created_by' => 'm.created_by'],
+            ['table' => 'operational_fund_requests', 'module' => 'operational_fund', 'coa_name' => 'Operational Fund', 'status_col' => 'status', 'paid_vals' => ['paid', 'completed'], 'amt_col' => 'COALESCE(m.approved_amount, m.amount)', 'date_col' => 'm.updated_at', 'purpose_col' => 'm.purpose', 'method_col' => 'NULL', 'project_col' => 'm.project_id', 'created_by' => 'm.created_by'],
+            ['table' => 'project_other_costs', 'module' => 'project_other_cost', 'coa_name' => 'Project Wise Other', 'status_col' => 'status', 'paid_vals' => ['paid', 'completed'], 'amt_col' => 'COALESCE(m.payment_amount, m.approved_amount, m.request_amount)', 'date_col' => 'COALESCE(m.payment_at, m.updated_at)', 'purpose_col' => 'm.purpose', 'method_col' => 'NULL', 'project_col' => 'm.project_id', 'created_by' => 'm.created_by_id'],
+            ['table' => 'project_extra_assets', 'module' => 'office_procurement', 'coa_name' => 'Office Procurement', 'status_col' => 'payment_status', 'paid_vals' => ['paid', 'completed'], 'amt_col' => 'COALESCE(m.paid_amount, m.total_price)', 'date_col' => 'COALESCE(m.paid_at, m.updated_at)', 'purpose_col' => 'm.item_name', 'method_col' => 'm.payment_method', 'project_col' => 'm.project_id', 'created_by' => 'm.requested_by'],
+            ['table' => 'payslips', 'module' => 'salary', 'coa_name' => 'Salaries & Wages', 'status_col' => 'payment_status', 'paid_vals' => ['paid', 'completed'], 'amt_col' => 'm.net_salary', 'date_col' => 'COALESCE(m.disbursed_at, m.updated_at)', 'purpose_col' => 'm.payslip_month', 'method_col' => 'm.payment_method', 'project_col' => 'm.payroll_project_id', 'created_by' => 'm.created_by'],
+            ['table' => 'advance_salaries', 'module' => 'advance_salary', 'coa_name' => 'Advance to Employees against salary', 'status_col' => 'status', 'paid_vals' => ['paid', 'disbursed', 'completed', 'paid_accounts'], 'amt_col' => 'm.amount', 'date_col' => 'm.updated_at', 'purpose_col' => 'm.reason', 'method_col' => 'NULL', 'project_col' => 'NULL', 'created_by' => 'm.created_by'],
+            ['table' => 'cashout_requests', 'module' => 'cashout_request', 'coa_name' => 'Cash Out', 'status_col' => 'status', 'paid_vals' => ['paid', 'completed'], 'amt_col' => 'COALESCE(m.approved_amount, m.amount)', 'date_col' => 'm.updated_at', 'purpose_col' => 'm.description', 'method_col' => 'm.payment_method', 'project_col' => 'm.project_id', 'created_by' => 'm.requested_by'],
+            ['table' => 'client_refund_requests', 'module' => 'client_refund', 'coa_name' => 'Client Refund', 'status_col' => 'status', 'paid_vals' => ['paid', 'refunded', 'completed'], 'amt_col' => 'm.refund_amount', 'date_col' => 'COALESCE(m.refunded_at, m.updated_at)', 'purpose_col' => 'm.reason', 'method_col' => 'NULL', 'project_col' => 'm.project_id', 'created_by' => 'm.requested_by'],
+            ['table' => 'project_incentive_claims', 'module' => 'sales_incentive', 'coa_name' => 'Sales Incentive', 'status_col' => 'claim_status', 'paid_vals' => ['paid', 'completed'], 'amt_col' => 'm.incentive_amount', 'date_col' => 'COALESCE(m.claimed_at, m.updated_at)', 'purpose_col' => 'm.remarks', 'method_col' => 'NULL', 'project_col' => 'm.project_id', 'created_by' => 'm.user_id'],
+            ['table' => 'land_fund_requisitions', 'module' => 'land_purchase', 'coa_name' => 'Land Purchase', 'status_col' => 'accounts_status', 'paid_vals' => ['Paid', 'paid', 'completed'], 'amt_col' => 'm.requested_amount', 'date_col' => 'm.updated_at', 'purpose_col' => 'm.requisition_type', 'method_col' => 'm.payment_method', 'project_col' => 'NULL', 'created_by' => 'm.requested_by']
+        ];
+
+        $count = 0;
+        
+        foreach ($expenseModules as $mod) {
+            $table = $mod['table'];
+            $moduleName = $mod['module'];
+            $statusCol = $mod['status_col'];
+            $paidVals = implode("','", array_map([$this->db, 'real_escape_string'], $mod['paid_vals']));
+            $amtCol = $mod['amt_col'];
+            $dateCol = $mod['date_col'];
+            $purposeCol = $mod['purpose_col'];
+            $methodCol = $mod['method_col'] !== 'NULL' ? $mod['method_col'] : "'cash'";
+            $projectCol = $mod['project_col'] !== 'NULL' ? $mod['project_col'] : 'NULL';
+            $createdByCol = $mod['created_by'];
+
+            $query = "
+                SELECT m.id, 
+                       {$amtCol} as amount, 
+                       {$dateCol} as date, 
+                       {$purposeCol} as purpose, 
+                       {$methodCol} as payment_method, 
+                       {$projectCol} as project_id,
+                       {$createdByCol} as created_by,
+                       m.account_id
+                FROM {$table} m
+                LEFT JOIN journals j ON (j.source_module = '{$moduleName}' AND j.source_ref_id = m.id)
+                WHERE m.{$statusCol} IN ('{$paidVals}') 
+                AND j.id IS NULL
+                LIMIT " . (int)$limit;
+
+            try {
+                $res = $this->db->query($query);
+                if (!$res) {
+                    echo "Query failed for $moduleName: " . $this->db->error . "\n";
+                    continue;
+                }
+            } catch (\Exception $e) {
+                echo "Exception for $moduleName: " . $e->getMessage() . "\n";
+                continue;
+            }
+            if ($res && $res->num_rows > 0) {
+                while ($r = $res->fetch_assoc()) {
+                    $amount = (float)$r['amount'];
+                    if ($amount <= 0) continue;
+
+                    $method = $r['payment_method'] ?? 'cash';
+                    $bankAccId = $this->getBankOrCashAccountId($method, '');
+                    $expAccId = !empty($r['account_id']) ? (int)$r['account_id'] : $this->getModuleAccountId($mod['coa_name']);
+                    
+                    $voucherNo = $this->generateVoucherNumber('PV');
+                    $this->db->begin_transaction();
+                    
+                    try {
+                        $stmt = $this->db->prepare("INSERT INTO journals (journal_number, date, voucher_type, narration, total_debit, total_credit, created_by, project_id, office, source_module, source_ref_id, entry_type, approval_status) VALUES (?, ?, 'Payment Voucher', ?, ?, ?, ?, ?, ?, ?, ?, 'disbursement', 'approved')");
+                        $date = date('Y-m-d', strtotime($r['date'] ?: date('Y-m-d')));
+                        $narr = ucwords(str_replace('_', ' ', $moduleName)) . " Paid: " . ($r['purpose'] ?? 'N/A');
+                        $office = $this->getUserWorkplaceOffice($r['created_by']);
+                        $stmt->bind_param("sssddiissi", $voucherNo, $date, $narr, $amount, $amount, $r['created_by'], $r['project_id'], $office, $moduleName, $r['id']);
+                        $stmt->execute();
+                        $journalId = $stmt->insert_id;
+                        
+                        $stmtDet = $this->db->prepare("INSERT INTO journal_details (journal_id, account_id, debit, credit, narration, project_id) VALUES (?, ?, ?, ?, ?, ?)");
+                        $zero = 0;
+                        $stmtDet->bind_param("iiddsi", $journalId, $expAccId, $amount, $zero, $narr, $r['project_id']);
+                        $stmtDet->execute();
+                        $stmtDet->bind_param("iiddsi", $journalId, $bankAccId, $zero, $amount, $narr, $r['project_id']);
+                        $stmtDet->execute();
+                        
+                        $this->db->commit();
+                        $count++;
+                    } catch (Exception $e) {
+                        $this->db->rollback();
+                    }
+                }
             }
         }
         return $count;

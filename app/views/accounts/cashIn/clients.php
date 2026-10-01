@@ -17,7 +17,7 @@ $show_breadcrumb = true;
                 <div class="card__title-wrap">
                     <h6 class="card__sub-title mb-10">Total Clients</h6>
                     <div class="d-flex flex-wrap align-items-end gap-10">
-                        <h4 class="card__title"><?= $paymentStats['total_clients'] ?? 0 ?></h4>
+                        <h4 class="card__title" id="cashInTopTotalClients"><?= number_format($totalClients ?? ($paymentStats['total_clients'] ?? 0)) ?></h4>
                     </div>
                 </div>
             </div>
@@ -183,11 +183,14 @@ $show_breadcrumb = true;
         <!-- Header: Title and Legend Badges -->
         <div class="d-flex justify-content-between align-items-center mb-15 flex-wrap gap-2">
             <div>
-                <h4 class="mb-1">
-                    Clients Information
-                    <small class="text-muted fs-13 font-semibold ms-2">
+                <h4 class="mb-1 d-flex align-items-center flex-wrap gap-2">
+                    <span>Clients Information</span>
+                    <small class="text-muted fs-13 font-semibold">
                         (<span id="cashInTotalCount"><?= number_format($totalClients ?? 0) ?></span> Records)
                     </small>
+                    <span class="badge bg-primary text-white rounded-pill px-2 py-1 ms-1" id="cashInFilterBadge" style="font-size: 11px;">
+                        <span id="cashInFilterFoundCount"><?= number_format($totalClients ?? 0) ?></span> Found
+                    </span>
                 </h4>
                 <div class="text-muted fs-12">Manage all booked clients and installment collections</div>
             </div>
@@ -1256,9 +1259,15 @@ function loadCashInPage(page) {
             if (pagContainer && data.pagination_html) {
                 pagContainer.innerHTML = data.pagination_html;
             }
-            const totalCountEl = document.getElementById('cashInTotalCount');
-            if (totalCountEl && (data.total_clients !== undefined || data.totalRecords !== undefined)) {
-                totalCountEl.textContent = Number(data.total_clients !== undefined ? data.total_clients : data.totalRecords).toLocaleString();
+            const totalCount = (data.total_clients !== undefined) ? data.total_clients : data.totalRecords;
+            if (totalCount !== undefined) {
+                const formattedCount = Number(totalCount).toLocaleString();
+                const totalCountEl = document.getElementById('cashInTotalCount');
+                if (totalCountEl) totalCountEl.textContent = formattedCount;
+                const topCountEl = document.getElementById('cashInTopTotalClients');
+                if (topCountEl) topCountEl.textContent = formattedCount;
+                const filterBadgeCount = document.getElementById('cashInFilterFoundCount');
+                if (filterBadgeCount) filterBadgeCount.textContent = formattedCount;
             }
         }
     })

@@ -144,11 +144,26 @@
 
   /* Sidebar horizontal scroll and badge fix */
   .app-sidebar {
-      overflow-x: hidden !important;
+      overflow: hidden !important;
+      height: 100vh !important;
   }
-  .main-sidebar, .main-menu-container, .main-menu {
+  .main-sidebar, #sidebar-scroll {
+      height: 100% !important;
+      max-height: 100vh !important;
+      position: relative !important;
       overflow-x: hidden !important;
       max-width: 100%;
+      margin-top: 0 !important;
+      margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
+  }
+  #sidebar-scroll .simplebar-content, .main-menu-container, ul.main-menu {
+      margin-bottom: 0 !important;
+      padding-bottom: 0 !important;
+      min-height: auto !important;
+  }
+  .sidebar-right {
+      display: none !important;
   }
   .app-sidebar .slide {
       max-width: 100%;

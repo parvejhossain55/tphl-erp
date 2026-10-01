@@ -55,6 +55,8 @@ class AccountClientController extends Controller
             $endEntry = min($totalClients, $page * $limit);
             $infoText = "Showing {$startEntry} to {$endEntry} of {$totalClients} entries";
 
+            $paymentStats = $this->clientModel->getPaymentStatistics($selectedProjectId);
+
             header('Content-Type: application/json');
             echo json_encode([
                 'success' => true,
@@ -62,6 +64,8 @@ class AccountClientController extends Controller
                 'totalPages' => $totalPages,
                 'totalRecords' => $totalClients,
                 'total_clients' => $totalClients,
+                'full_payment_completed' => (int)($paymentStats['full_payment_completed'] ?? 0),
+                'approved_bookings' => (int)($paymentStats['approved_bookings'] ?? 0),
                 'limit' => $limit,
                 'table_html' => $tableHtml,
                 'pagination_html' => $paginationHtml,
@@ -768,12 +772,17 @@ public function indexTwo($bookingId = null)
             $endEntry = min($totalClients, $page * $limit);
             $infoText = "Showing {$startEntry} to {$endEntry} of {$totalClients} entries";
 
+            $paymentStats = $this->clientModel->getPaymentStatistics($selectedProjectId);
+
             header('Content-Type: application/json');
             echo json_encode([
                 'success' => true,
                 'page' => $page,
                 'totalPages' => $totalPages,
                 'totalRecords' => $totalClients,
+                'total_clients' => $totalClients,
+                'full_payment_completed' => (int)($paymentStats['full_payment_completed'] ?? 0),
+                'approved_bookings' => (int)($paymentStats['approved_bookings'] ?? 0),
                 'limit' => $limit,
                 'table_html' => $tableHtml,
                 'pagination_html' => $paginationHtml,
@@ -1258,18 +1267,119 @@ public function indexTwo($bookingId = null)
 
         return $html;
     }
+    public function renderCedDashboardRowsHtml($clients)
+    {
+        if (empty($clients)) {
+            return '<tr><td colspan="10" class="text-center py-4 text-muted"><i class="fa-solid fa-inbox me-2"></i>No clients found.</td></tr>';
+        }
+        
+        $html = '';
+        foreach ($clients as $client) {
+            $html .= '<tr>';
+            $html .= '<td class="fw-semibold">' . htmlspecialchars($client['client_name'] ?? 'N/A') . '</td>';
+            $html .= '<td>' . htmlspecialchars($client['phone'] ?? 'N/A') . '</td>';
+            $html .= '<td>' . htmlspecialchars($client['project_name'] ?? 'N/A') . '</td>';
+            
+            $unitFloor = 'N/A';
+            if (!empty($client['unit_name']) || !empty($client['flat_floor_no'])) {
+                $unitFloor = 'UNIT ' . htmlspecialchars($client['unit_name'] ?? '') . ' - FL ' . htmlspecialchars($client['flat_floor_no'] ?? 'N/A');
+            }
+            $html .= '<td>' . $unitFloor . '</td>';
+            
+            $html .= '<td>' . htmlspecialchars($client['agent_name'] ?? 'N/A') . '</td>';
+            $html .= '<td>TK.' . number_format($client['total_price'] ?? 0, 2) . '</td>';
+            $html .= '<td>TK.' . number_format($client['total_paid'] ?? 0, 2) . '</td>';
+            
+            $lastPayment = '<span class="text-muted">No Payment</span>';
+            if (!empty($client['last_payment_date'])) {
+                $lastPayment = date('d M, Y', strtotime($client['last_payment_date']));
+            }
+            $html .= '<td>' . $lastPayment . '</td>';
+            
+            $cms = $client['current_month_status'] ?? 'N/A';
+            $cmsHtml = '<span class="text-muted">-</span>';
+            if ($cms === 'paid') $cmsHtml = '<span class="badge bg-success">Paid</span>';
+            elseif ($cms === 'matured') $cmsHtml = '<span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;">Matured</span>';
+            elseif ($cms === 'pending') $cmsHtml = '<span class="badge bg-warning text-dark">Pending</span>';
+            elseif ($cms === 'due') $cmsHtml = '<span class="badge bg-danger">Due</span>';
+            elseif ($cms === 'future') $cmsHtml = '<span class="badge bg-secondary">Future</span>';
+            $html .= '<td>' . $cmsHtml . '</td>';
+            
+            $base_url = $GLOBALS['base_url'] ?? '';
+            $html .= '<td>';
+            $html .= '<a class="table__icon" href="' . $base_url . '/clients-cash-in-history-view/' . $client['booking_id'] . '" title="View History"><i class="fa-regular fa-eye"></i></a>';
+            $html .= '</td>';
+            $html .= '</tr>';
+        }
+        return $html;
+    }
 
     public function CedView()
     {
-        // Get all bookings for the CED dashboard
-        $clients = $this->clientModel->getAllBookings();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
+                  || (isset($_GET['ajax']) && $_GET['ajax'] == '1');
+
+        $search = trim($_GET['search'] ?? '');
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = min(100, max(5, (int)($_GET['limit'] ?? 10)));
+        $offset = ($page - 1) * $limit;
+
+        if ($isAjax) {
+            $totalClients = $this->clientModel->getTotalBookingsCount(null, $search);
+            $totalPages = $totalClients > 0 ? (int)ceil($totalClients / $limit) : 1;
+            
+            if ($page > $totalPages && $totalPages > 0) {
+                $page = $totalPages;
+                $offset = ($page - 1) * $limit;
+            }
+
+            $clients = $this->clientModel->getAllBookings(null, $search, $limit, $offset);
+
+            foreach ($clients as &$client) {
+                $schedule = $this->clientModel->getVirtualEmiSchedule($client['booking_id']);
+                $client['current_month_status'] = $this->calculateCurrentMonthStatus($schedule, $client['last_payment_date'] ?? null);
+            }
+            unset($client);
+
+            $tableHtml = $this->renderCedDashboardRowsHtml($clients);
+            $paginationHtml = $this->generateAjaxPagination($page, $totalPages, $totalClients, $limit, 'loadCedDashboardPage');
+            $startEntry = $totalClients > 0 ? (($page - 1) * $limit) + 1 : 0;
+            $endEntry = min($totalClients, $page * $limit);
+            $infoText = "Showing {$startEntry} to {$endEntry} of {$totalClients} entries";
+
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'page' => $page,
+                'totalPages' => $totalPages,
+                'totalRecords' => $totalClients,
+                'limit' => $limit,
+                'table_html' => $tableHtml,
+                'pagination_html' => $paginationHtml,
+                'info_text' => $infoText
+            ]);
+            exit;
+        }
+
         $paymentStats = $this->clientModel->getPaymentStatistics();
         $collectionData = $this->clientModel->getDashboardCollectionStats();
 
-        foreach ($clients as &$client) {
-            $schedule = $this->clientModel->getVirtualEmiSchedule($client['booking_id']);
-            $client['current_month_status'] = $this->calculateCurrentMonthStatus($schedule, $client['last_payment_date'] ?? null);
-        }
+        // For initial load, do not load clients. Let AJAX load them.
+        $clients = [];
+
+        $this->view("ced/ced-dashboard", [
+            "current_route" => "ced-dashboard",
+            "page_title" => "CED Dashboard",
+            "clients" => $clients,
+            "paymentStats" => $paymentStats,
+            "collectionData" => $collectionData
+        ]);
+    }
+
 
         if (session_status() === PHP_SESSION_NONE) {
             session_start();

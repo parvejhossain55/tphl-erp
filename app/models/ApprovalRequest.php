@@ -465,7 +465,7 @@ class ApprovalRequest extends Model
     /**
      * Approve the Accounts Head stage for an approval request (Role 30 - Md. Mamunoor Rashid)
      */
-    public function approveAccountsHead($id, $userId = null, $note = null)
+    public function approveAccountsHead($id, $userId = null, $note = null, $coaId = null)
     {
         $id = (int)$id;
         $userId = $userId ? (int)$userId : (int)($_SESSION['user']['id'] ?? 247);
@@ -474,6 +474,18 @@ class ApprovalRequest extends Model
         $req = $this->find($id);
         if (!$req) {
             return false;
+        }
+
+        // Save coa_id directly to the source table
+        if ($coaId && !empty($req['source_table']) && !empty($req['source_id'])) {
+            $srcTable = preg_replace('/[^a-zA-Z0-9_]/', '', $req['source_table']);
+            $srcId = (int)$req['source_id'];
+            $cId = (int)$coaId;
+            // Check if column exists to avoid errors on tables that don't have it
+            $colCheck = $this->db->query("SHOW COLUMNS FROM `{$srcTable}` LIKE 'account_id'");
+            if ($colCheck && $colCheck->num_rows > 0) {
+                $this->db->query("UPDATE `{$srcTable}` SET account_id = {$cId} WHERE id = {$srcId}");
+            }
         }
 
         $stmt = $this->db->prepare("

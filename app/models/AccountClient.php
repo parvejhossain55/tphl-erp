@@ -524,7 +524,7 @@ class AccountClient extends Model
     /**
      * Get all bookings with client and location info, optionally filtered by project
      */
-    public function getAllBookings($projectId = null)
+    public function getAllBookings($projectId = null, $search = null, $limit = null, $offset = 0)
     {
         $whereClause = "WHERE 1=1";
         $params = [];
@@ -534,6 +534,24 @@ class AccountClient extends Model
             $whereClause .= " AND lb.project_id = ?";
             $params[] = (int) $projectId;
             $types .= 'i';
+        }
+
+        if (!empty($search)) {
+            $search = '%' . $search . '%';
+            $whereClause .= " AND (l.full_name LIKE ? OR l.phone LIKE ? OR l.email LIKE ? OR p.name LIKE ?)";
+            $params[] = $search;
+            $params[] = $search;
+            $params[] = $search;
+            $params[] = $search;
+            $types .= 'ssss';
+        }
+
+        $limitClause = "";
+        if ($limit !== null) {
+            $limitClause = "LIMIT ? OFFSET ?";
+            $params[] = (int)$limit;
+            $params[] = (int)$offset;
+            $types .= 'ii';
         }
 
         $sql = $this->db->prepare("
@@ -578,6 +596,7 @@ class AccountClient extends Model
         LEFT JOIN flats f ON lb.flat_id = f.id
         $whereClause
         ORDER BY l.full_name
+        $limitClause
         ");
 
         if (!$sql) {
@@ -592,6 +611,58 @@ class AccountClient extends Model
         $sql->execute();
         $result = $sql->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /**
+     * Get total bookings count for CED dashboard pagination
+     */
+    public function getTotalBookingsCount($projectId = null, $search = null)
+    {
+        $whereClause = "WHERE 1=1";
+        $params = [];
+        $types = '';
+
+        if ($projectId) {
+            $whereClause .= " AND lb.project_id = ?";
+            $params[] = (int) $projectId;
+            $types .= 'i';
+        }
+
+        if (!empty($search)) {
+            $search = '%' . $search . '%';
+            $whereClause .= " AND (l.full_name LIKE ? OR l.phone LIKE ? OR l.email LIKE ? OR p.name LIKE ?)";
+            $params[] = $search;
+            $params[] = $search;
+            $params[] = $search;
+            $params[] = $search;
+            $types .= 'ssss';
+        }
+
+        $sql = $this->db->prepare("
+        SELECT COUNT(l.id) AS total
+        FROM leads l
+        INNER JOIN lead_bookings lb ON lb.lead_id = l.id
+            AND lb.deleted_at IS NULL
+            AND lb.booking_status NOT IN ('refunded', 'cancelled')
+            AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+            AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+        LEFT JOIN projects p ON lb.project_id = p.id
+        $whereClause
+        ");
+
+        if (!$sql) {
+            error_log("getTotalBookingsCount prepare failed: " . $this->db->error);
+            return 0;
+        }
+
+        if (!empty($params)) {
+            $sql->bind_param($types, ...$params);
+        }
+
+        $sql->execute();
+        $result = $sql->get_result();
+        $row = $result ? $result->fetch_assoc() : null;
+        return $row ? (int)$row['total'] : 0;
     }
 
     /**

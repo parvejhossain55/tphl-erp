@@ -145,6 +145,36 @@ foreach ($routes as $pattern => $routeInfo) {
 
 if (!$matched) {
     if (strpos($route, 'public/uploads/') === 0 || strpos($route, 'uploads/') === 0) {
+        // Fallback: Check if file physically exists and serve it via PHP
+        // This helps when Live Server (Nginx or Apache) DocumentRoot is misconfigured
+        $cleanPath = str_replace('public/uploads/', 'uploads/', $route);
+        $absolutePath = __DIR__ . '/' . $cleanPath;
+        
+        // URL decode the path in case the file on disk has spaces
+        $absolutePath = urldecode($absolutePath);
+
+        if (file_exists($absolutePath) && is_file($absolutePath)) {
+            $mime = 'application/octet-stream';
+            if (function_exists('mime_content_type')) {
+                $mime = mime_content_type($absolutePath);
+            } elseif (function_exists('finfo_open')) {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_file($finfo, $absolutePath);
+                finfo_close($finfo);
+            } else {
+                // simple extension fallback
+                $ext = strtolower(pathinfo($absolutePath, PATHINFO_EXTENSION));
+                $mimes = ['pdf'=>'application/pdf','jpg'=>'image/jpeg','jpeg'=>'image/jpeg','png'=>'image/png','gif'=>'image/gif'];
+                if (isset($mimes[$ext])) $mime = $mimes[$ext];
+            }
+            if (!$mime) $mime = 'application/octet-stream';
+            
+            header("Content-Type: $mime");
+            header("Content-Length: " . filesize($absolutePath));
+            readfile($absolutePath);
+            exit;
+        }
+
         http_response_code(404);
         header('Content-Type: text/html; charset=utf-8');
         echo "<!DOCTYPE html><html><head><title>File Not Found</title><link rel='stylesheet' href='{$GLOBALS['base_url']}/assets/css/vendor/bootstrap.min.css'></head><body class='bg-light d-flex align-items-center justify-content-center' style='min-height:80vh;'>";

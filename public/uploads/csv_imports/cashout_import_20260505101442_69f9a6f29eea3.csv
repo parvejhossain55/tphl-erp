@@ -1,7 +1,0 @@
-"Payment Type","Project Name",Amount,Date,Status,"Purpose / Description","Vendor Name","Vendor Phone","PO Number","Invoice Number","Operator Name","File Attachment","Payment Method","Paid Amount"
-General,"The Premium Signature Heights",8000,2026-05-05,Approved,"Monthly Office Rent",,,,,,,,BankTransfer,0
-Vendor,"The Premium Signature Heights",25000,2026-05-05,Approved,"Cement & Steel Supply","Global Tech Supplies",,,,INV-002,,,Cheque,0
-Contractor,"The Premium Signature Heights",35000,2026-05-05,Approved,"Plumbing Installation",,,,,,,"Alpha Builders",,Cash,0
-General,"The Premium Signature Heights",12000,2026-05-04,"Fully Paid","Furniture Purchase",,,,,,,,BankTransfer,12000
-Vendor,"The Premium Signature Heights",50000,2026-05-04,"Fully Paid","Electrical Materials","Global Tech Supplies",,,,INV-003,,,BankTransfer,50000
-Contractor,"The Premium Signature Heights",45000,2026-05-04,"Fully Paid","Foundation Concrete Work",,,,,,,"Alpha Builders",,Cash,45000

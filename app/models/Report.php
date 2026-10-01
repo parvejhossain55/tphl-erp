@@ -36,6 +36,15 @@ class Report extends Model
      */
     public function getAccountBalances($dateFrom = null, $dateTo = null, $projectId = null, $office = null)
     {
+        // Auto-sync any verified expenses/payments that do not yet have a journal entry
+        $autoFile = __DIR__ . '/../services/AutoPostingService.php';
+        if (file_exists($autoFile)) {
+            require_once $autoFile;
+            $auto = new AutoPostingService($this->db);
+            $auto->syncUnpostedExpenses(100);
+            $auto->syncUnpostedSalesPayments(100);
+        }
+
         $where = "WHERE (LOWER(j.approval_status) IN ('approved', 'posted') OR LOWER(j.status) IN ('approved', 'posted'))";
         $params = [];
         $types = '';
@@ -72,6 +81,7 @@ class Report extends Model
                 p.account_code as parent_code,
                 gp.account_name as sub_name,
                 gp.account_code as sub_code,
+                COALESCE(j.source_module, 'General/Manual') as source_module,
                 COALESCE(SUM(jd.debit), 0) as total_debit,
                 COALESCE(SUM(jd.credit), 0) as total_credit
             FROM journal_details jd
@@ -80,7 +90,7 @@ class Report extends Model
             LEFT JOIN chart_of_accounts p ON c.parent_id = p.id
             LEFT JOIN chart_of_accounts gp ON p.parent_id = gp.id
             $where
-            GROUP BY c.id, c.account_code, c.account_name, c.account_type, c.parent_id, p.account_name, p.account_code, gp.account_name, gp.account_code
+            GROUP BY c.id, c.account_code, c.account_name, c.account_type, c.parent_id, p.account_name, p.account_code, gp.account_name, gp.account_code, source_module
             HAVING total_debit != 0 OR total_credit != 0
             ORDER BY c.account_code ASC
         ";
@@ -94,30 +104,73 @@ class Report extends Model
             $result = $this->db->query($query);
         }
 
-        $accounts = [];
+        $accountsMap = [];
         if ($result) {
             while ($row = $result->fetch_assoc()) {
                 $type = $row['account_type'];
-                if (!isset($accounts[$type])) {
-                    $accounts[$type] = [];
-                }
+                $accId = $row['account_id'];
+                
+                $modDebit = (float)$row['total_debit'];
+                $modCredit = (float)$row['total_credit'];
+                $modBal = 0;
                 
                 switch ($type) {
                     case 'Asset':
                     case 'Expense':
-                        $row['balance'] = $row['total_debit'] - $row['total_credit'];
+                        $modBal = $modDebit - $modCredit;
                         break;
                     case 'Liability':
                     case 'Equity':
                     case 'Revenue':
-                        $row['balance'] = $row['total_credit'] - $row['total_debit'];
+                        $modBal = $modCredit - $modDebit;
                         break;
                     default:
-                        $row['balance'] = $row['total_debit'] - $row['total_credit'];
+                        $modBal = $modDebit - $modCredit;
                 }
                 
-                $accounts[$type][] = $row;
+                if (!isset($accountsMap[$type])) {
+                    $accountsMap[$type] = [];
+                }
+                
+                if (!isset($accountsMap[$type][$accId])) {
+                    $accountsMap[$type][$accId] = [
+                        'account_id' => $row['account_id'],
+                        'account_code' => $row['account_code'],
+                        'account_name' => $row['account_name'],
+                        'account_type' => $row['account_type'],
+                        'parent_id' => $row['parent_id'],
+                        'parent_name' => $row['parent_name'],
+                        'parent_code' => $row['parent_code'],
+                        'sub_name' => $row['sub_name'],
+                        'sub_code' => $row['sub_code'],
+                        'total_debit' => 0,
+                        'total_credit' => 0,
+                        'balance' => 0,
+                        'modules' => []
+                    ];
+                }
+                
+                $accountsMap[$type][$accId]['total_debit'] += $modDebit;
+                $accountsMap[$type][$accId]['total_credit'] += $modCredit;
+                $accountsMap[$type][$accId]['balance'] += $modBal;
+                
+                $moduleName = trim($row['source_module']);
+                if (empty($moduleName) || $moduleName == 'General/Manual') {
+                    $moduleName = 'General Journal';
+                } else {
+                    $moduleName = ucwords(str_replace('_', ' ', $moduleName));
+                }
+                
+                if (!isset($accountsMap[$type][$accId]['modules'][$moduleName])) {
+                    $accountsMap[$type][$accId]['modules'][$moduleName] = 0;
+                }
+                $accountsMap[$type][$accId]['modules'][$moduleName] += $modBal;
             }
+        }
+        
+        $accounts = [];
+        foreach ($accountsMap as $type => $accs) {
+            $accounts[$type] = array_values($accs);
         }
 
         return $accounts;
@@ -202,11 +255,11 @@ class Report extends Model
     /**
      * Calculate Balance Sheet with GAAP Category Breakdown
      */
-    public function getBalanceSheet($asOfDate = null, $projectId = null, $office = null)
+    public function getBalanceSheet($dateFrom = null, $dateTo = null, $projectId = null, $office = null)
     {
-        $balances = $this->getCumulativeBalances($asOfDate, $projectId, $office);
+        $balances = $this->getAccountBalances($dateFrom, $dateTo, $projectId, $office);
         
-        $plData = $this->getProfitLoss(null, $asOfDate, $projectId, $office);
+        $plData = $this->getProfitLoss($dateFrom, $dateTo, $projectId, $office);
         $netIncome = $plData['net_income'];
 
         $rawAssets = $balances['Asset'] ?? [];
@@ -281,6 +334,7 @@ class Report extends Model
             require_once $autoFile;
             $auto = new AutoPostingService($this->db);
             $auto->syncUnpostedSalesPayments(50);
+            $auto->syncUnpostedExpenses(50);
         }
 
         $where = "WHERE (LOWER(j.approval_status) IN ('approved', 'posted') OR LOWER(j.status) IN ('approved', 'posted'))";
