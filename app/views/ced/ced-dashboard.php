@@ -297,18 +297,49 @@ $statusBadgeMap = [
     <!-- ══ CLIENTS TABLE ══ -->
     <div class="col-xxl-12">
         <div class="card__wrapper">
-            <div class="card__header d-flex justify-content-between align-items-center mb-3">
+                        <div class="card__header d-flex justify-content-between align-items-center mb-3">
                 <div>
                     <h5 class="card__title mb-0">Clients Information</h5>
-                    <small class="text-muted">All active clients</small>
+                    <small class="text-muted">All active clients (<span id="cedTotalRecordsCount">0</span> records)</small>
                 </div>
                 <a href="<?= $GLOBALS['base_url'] ?>/clients-cashin-view" class="btn btn-sm btn-primary">
                     View All <i class="fa-light fa-arrow-right ms-2"></i>
                 </a>
             </div>
 
-            <div class="table__wrapper table-responsive">
-                <table class="table mb-20 multiple_tables">
+            <!-- Filters & Search -->
+            <div class="row mb-3 align-items-center justify-content-between">
+                <div class="col-auto">
+                    <div class="d-flex align-items-center">
+                        <span class="me-2 text-muted">Show</span>
+                        <select id="cedLimitSelect" class="form-select form-select-sm w-auto d-inline-block" onchange="loadCedDashboardPage(1)">
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <span class="ms-2 text-muted">entries</span>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <div class="input-group input-group-sm" style="max-width: 250px;">
+                        <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                        <input type="text" id="cedSearchInput" class="form-control" placeholder="Search clients..." onkeyup="if(event.key==='Enter') loadCedDashboardPage(1)">
+                        <button class="btn btn-primary btn-sm" onclick="loadCedDashboardPage(1)">Search</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table__wrapper table-responsive position-relative">
+                <!-- Loading Overlay -->
+                <div id="cedTableLoadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none justify-content-center align-items-center" style="background: rgba(255,255,255,0.75); z-index: 10; min-height: 150px; border-radius: 8px;">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <div class="small text-muted mt-2 fw-semibold">Loading clients data...</div>
+                    </div>
+                </div>
+
+                <table class="table mb-0" id="clientsCedTable">
                     <thead>
                         <tr class="table__title table__sort">
                             <th>Client Name</th>
@@ -323,59 +354,84 @@ $statusBadgeMap = [
                             <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody class="table__body">
-                        <?php if (!empty($clients)): ?>
-                            <?php foreach ($clients as $client): ?>
-                                <tr>
-                                    <td class="fw-semibold"><?= htmlspecialchars($client['client_name'] ?? 'N/A') ?></td>
-                                    <td><?= htmlspecialchars($client['phone'] ?? 'N/A') ?></td>
-                                    <td><?= htmlspecialchars($client['project_name'] ?? 'N/A') ?></td>
-                                    <td>
-                                        <?php if (!empty($client['unit_name']) || !empty($client['flat_floor_no'])): ?>
-                                            UNIT <?= htmlspecialchars($client['unit_name'] ?? '') ?> - FL <?= htmlspecialchars($client['flat_floor_no'] ?? 'N/A') ?>
-                                        <?php else: ?>
-                                            N/A
-                                        <?php endif; ?>
-                                    </td>
-                                    <td><?= htmlspecialchars($client['agent_name'] ?? 'N/A') ?></td>
-                                    <td>TK.<?= number_format($client['total_price'] ?? 0, 2) ?></td>
-                                    <td>TK.<?= number_format($client['total_paid'] ?? 0, 2) ?></td>
-                                    <td>
-                                        <?php if (!empty($client['last_payment_date'])): ?>
-                                            <?= date('d M, Y', strtotime($client['last_payment_date'])) ?>
-                                        <?php else: ?>
-                                            <span class="text-muted">No Payment</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <?php 
-                                            $cms = $client['current_month_status'] ?? 'N/A';
-                                            if ($cms === 'paid') echo '<span class="badge bg-success">Paid</span>';
-                                            elseif ($cms === 'matured') echo '<span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;">Matured</span>';
-                                            elseif ($cms === 'pending') echo '<span class="badge bg-warning text-dark">Pending</span>';
-                                            elseif ($cms === 'due') echo '<span class="badge bg-danger">Due</span>';
-                                            elseif ($cms === 'future') echo '<span class="badge bg-secondary">Future</span>';
-                                            else echo '<span class="text-muted">-</span>';
-                                        ?>
-                                    </td>
-                                    <td>
-                                        <a class="table__icon"
-                                            href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history-view/<?= $client['booking_id'] ?>"
-                                            title="View History">
-                                            <i class="fa-regular fa-eye"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                        <?php endif; ?>
+                    <tbody class="table__body" id="clientsCedTableBody">
+                        <!-- Loaded via AJAX -->
                     </tbody>
                 </table>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
+                <div class="text-muted small" id="clientsCedInfoText">
+                    Showing 0 to 0 of 0 entries
+                </div>
+                <div id="clientsCedPaginationContainer">
+                    <!-- Pagination injected via AJAX -->
+                </div>
             </div>
         </div>
     </div>
 
 </div>
+
+<script>
+    function loadCedDashboardPage(page) {
+        page = parseInt(page) || 1;
+        if (page < 1) page = 1;
+
+        const overlay = document.getElementById('cedTableLoadingOverlay');
+        const tbody = document.getElementById('clientsCedTableBody');
+        const pagContainer = document.getElementById('clientsCedPaginationContainer');
+        const searchVal = document.getElementById('cedSearchInput') ? document.getElementById('cedSearchInput').value.trim() : '';
+        const limit = document.getElementById('cedLimitSelect') ? document.getElementById('cedLimitSelect').value : '10';
+
+        if (overlay) {
+            overlay.classList.remove('d-none');
+            overlay.classList.add('d-flex');
+        }
+        if (tbody) tbody.style.opacity = '0.4';
+
+        const params = new URLSearchParams({
+            ajax: '1',
+            page: page,
+            limit: limit,
+            search: searchVal
+        });
+
+        fetch(`${base_url}/ced-dashboard?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (tbody) tbody.innerHTML = data.table_html;
+                    if (pagContainer) pagContainer.innerHTML = data.pagination_html;
+                    
+                    const infoText = document.getElementById('clientsCedInfoText');
+                    if (infoText) {
+                        infoText.innerHTML = data.info_text;
+                    }
+
+                    const countBadge = document.getElementById('cedTotalRecordsCount');
+                    if (countBadge) countBadge.innerText = new Intl.NumberFormat().format(data.totalRecords);
+                } else {
+                    console.error("Error loading CED Dashboard clients:", data.error);
+                }
+            })
+            .catch(error => {
+                console.error("Fetch error:", error);
+                if (tbody) tbody.innerHTML = '<tr><td colspan="10" class="text-center text-danger py-4"><i class="fa-solid fa-triangle-exclamation me-2"></i>Failed to load data.</td></tr>';
+            })
+            .finally(() => {
+                if (overlay) {
+                    overlay.classList.remove('d-flex');
+                    overlay.classList.add('d-none');
+                }
+                if (tbody) tbody.style.opacity = '1';
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadCedDashboardPage(1);
+    });
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>

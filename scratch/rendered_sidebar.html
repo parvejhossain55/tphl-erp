@@ -1,0 +1,2399 @@
+<!doctype html>
+<html class="no-js" lang="zxx">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Test</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-style-mode" content="1">
+    <!-- Place favicon.ico in the root directory -->
+    <link rel="shortcut icon" type="image/x-icon" href="http://localhost:3333/assets/images/logo/tphl_logo.png">
+
+    <!-- CSS here -->
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/vendor/bootstrap.min.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/vendor/animate.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/apexcharts.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/jquery-jvectormap-2.0.5.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/swiper-bundle.min.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/vendor/magnific-popup.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/vendor/icomoon.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/vendor/fontawesome-pro.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/vendor/rating.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/vendor/dropzone.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/dropify.min.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/vendor/spacing.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/datatables.min.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/buttons.bootstrap5.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/select2.min.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/jquery.timepicker.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/tagify.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/flatpickr.min.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/jquery-ui.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/fullcalendar.min.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/ion.rangeSlider.min.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/simplebar.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/waves.min.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/plugins/nano.min.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/main.css?v=1.0.2">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/style.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/employee-dashboard.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/holiday-calender.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/hr-report.css">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/requisition.css?v=1.0.1">
+    <link rel="stylesheet" href="http://localhost:3333/assets/css/responsive-custom.css?v=1.0.1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet"/>
+
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.14.0-beta3/css/bootstrap-select.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body class="body-area">
+
+<style>
+  .wrap {
+    display:flex; flex-direction:column; align-items:center;
+    justify-content:center; min-height:280px; gap:2.5rem;
+  }
+  .scene {
+    position:relative; width:120px; height:120px;
+  }
+
+  /* Orbit dots */
+  .orbit {
+    position:absolute; inset:0;
+    animation: spin 4s linear infinite;
+  }
+  .orbit-1 { animation: spin 3s linear infinite; }
+  .orbit-2 { animation: spin 5s linear infinite reverse; }
+  .dot {
+    position:absolute; top:0; left:50%;
+    width:8px; height:8px; border-radius:50%;
+    transform: translateX(-50%);
+    background:#006837;
+  }
+  .orbit-2 .dot { width:5px; height:5px; background:#006837; opacity:0.4; }
+  .orbit-2 .dot:nth-child(2) { top:auto; bottom:0; }
+  .orbit-1 .dot:nth-child(2) { top:auto; bottom:0; }
+  .orbit-1 .dot:nth-child(3) { top:50%; left:0; transform:translateY(-50%); }
+  .orbit-1 .dot:nth-child(4) { top:50%; left:auto; right:0; transform:translateY(-50%); }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* House in center */
+  .house-wrap {
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    animation: floatY 3s ease-in-out infinite;
+  }
+  @keyframes floatY {
+    0%,100% { transform: translateY(0px); }
+    50%      { transform: translateY(-7px); }
+  }
+
+  .house-svg path {
+    fill:none; stroke:#006837; stroke-width:3.5;
+    stroke-linejoin:miter; stroke-linecap:butt;
+  }
+
+  /* Shadow beneath house */
+  #preloader .shadow {
+    width:52px; height:8px; border-radius:50%;
+    background:#006837; opacity:0.15;
+    margin:0 auto;
+    animation: shadowScale 3s ease-in-out infinite;
+  }
+  @keyframes shadowScale {
+    0%,100% { transform:scaleX(1); opacity:0.18; }
+    50%      { transform:scaleX(0.55); opacity:0.07; }
+  }
+
+  /* Typewriter text */
+  .txt-wrap {
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+  }
+  .typewriter {
+    font-size:14px; color:var(--color-text-secondary);
+    letter-spacing:0.05em; overflow:hidden;
+    border-right:2px solid #006837;
+    white-space:nowrap; width:0;
+    animation: type 2s steps(14,end) 0.3s infinite alternate,
+               blink 0.7s step-end infinite;
+  }
+  @keyframes type {
+    from { width:0; }
+    to   { width:7.5em; }
+  }
+  @keyframes blink {
+    50% { border-color:transparent; }
+  }
+
+  /* Global mobile responsive table fix */
+  @media (max-width: 768px) {
+    .table-responsive .table th, 
+    .table-responsive .table td {
+        white-space: nowrap !important;
+    }
+  }
+
+  /* Sidebar horizontal scroll and badge fix */
+  .app-sidebar {
+      overflow-x: hidden !important;
+  }
+  .main-sidebar, .main-menu-container, .main-menu {
+      overflow-x: hidden !important;
+      max-width: 100%;
+  }
+  .app-sidebar .slide {
+      max-width: 100%;
+      box-sizing: border-box;
+  }
+  .app-sidebar .sidebar__menu-item {
+      display: flex !important;
+      align-items: center;
+      padding-right: 15px !important;
+      width: 100%;
+      box-sizing: border-box;
+  }
+  .app-sidebar .sidebar__menu-label {
+      flex: 1;
+      white-space: normal !important;
+      word-break: break-word;
+      padding-right: 5px;
+  }
+  .app-sidebar .badge {
+      flex-shrink: 0;
+      position: static !important;
+      margin-left: auto;
+  }
+  .app-sidebar .slide-right {
+      flex-shrink: 0;
+      position: static !important;
+      margin-left: 5px;
+  }
+</style>
+
+<div class="preloader" id="preloader">
+<div class="wrap">
+
+  <div class="scene">
+    <!-- outer ring of 4 dots -->
+    <div class="orbit orbit-1">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+    <!-- inner ring of 2 dots -->
+    <div class="orbit orbit-2">
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+
+    <!-- floating house -->
+    <div class="house-wrap">
+      <svg class="house-svg" width="62" height="56" viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10,85 L10,50 L50,15 L90,50 L90,85 L10,85 Z"/>
+        <path d="M50,15 L50,85"/>
+        <path d="M31,32 L31,85 M69,32 L69,85"/>
+        <path d="M31,32 L50,51 L69,32"/>
+        <path d="M10,50 L31,31 L50,50 L69,31 L90,50"/>
+        <path d="M10,70 L31,51 L50,70 L69,51 L90,70"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="shadow"></div>
+
+  <div class="txt-wrap">
+    <div class="typewriter">Loading...</div>
+  </div>
+
+</div>
+</div>
+
+    <!-- Preloader start -->
+    <!-- Dashboard area start -->
+    <div class="page__full-wrapper">
+
+        <!-- app-sidebar-start -->
+<!--<pre>
+<php print_r($_SESSION['user']['permissions']); ?>
+</pre> -->
+
+<div class="app-sidebar" id="sidebar">
+    <div class="main-sidebar-header">
+        <a href="?home" class="header-logo">
+            <img class="main-logo" src="/TPHL-ERP/public/uploads/settings/6948f14a9fb8c_1766388042.png" alt="logo">
+            <img class="dark-logo" src="/TPHL-ERP/public/uploads/settings/settings_699c0cd0c3306.png" alt="logo">
+        </a>
+    </div>
+
+    
+
+    <div class="main-sidebar" id="sidebar-scroll">
+        <nav class="main-menu-container nav nav-pills flex-column sub-open">
+            <div class="sidebar-left" id="sidebar-left"></div>
+            <ul class="main-menu">
+                
+                                    <!-- All Approval Requests for Management, Accounts & Audit/Purchase Heads -->
+                    <li class="slide ">
+                        <a href="/TPHL-ERP/all-approval-requests"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-list-check text-primary"></i></div>
+                            <span class="sidebar__menu-label">All Approval Requests</span>
+                                                            <span class="badge bg-danger rounded-pill ms-auto me-2">107</span>
+                                                    </a>
+                    </li>
+                
+                                    <!-- Expense Analytics Dashboard -->
+                    <li class="slide ">
+                        <a href="/TPHL-ERP/expense-analytics"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-pie text-warning"></i></div>
+                            <span class="sidebar__menu-label">Expense Analytics</span>
+                        </a>
+                    </li>
+                
+                                    <!-- Expense Adjustments Menu -->
+                    <li class="slide ">
+                        <a href="/TPHL-ERP/expense-adjustments"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-scale-balanced text-info"></i></div>
+                            <span class="sidebar__menu-label">Expense Adjustments</span>
+                                                    </a>
+                    </li>
+                
+                
+                                    <!-- ERP Tracker -->
+                    <li class="slide d-none ">
+                        <a href="/TPHL-ERP/erp-tracker"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fas fa-tasks"></i></div>
+                            <span class="sidebar__menu-label">ERP Tracker</span>
+                        </a>
+                    </li>
+                
+                <!-- Sales Manager CATEGORY -->
+                                
+                    <!--Sales CATEGORY -->
+                    <li class="sidebar__menu-category">
+                        <span class="category-name">Sales & Business</span>
+                    </li>
+
+                                                                        <!-- sales Dashboard -->
+                            <li class="slide ">
+                                <a href="/TPHL-ERP/sales-dashboard"
+                                    class="sidebar__menu-item ">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                                    <span class="sidebar__menu-label">Sales Dashboard</span>
+                                </a>
+                            </li>
+                                                
+                                                    <!-- Sales Activity Report -->
+                            <li class="slide">
+                                <a href="/TPHL-ERP/sales-activity-report"
+                                    class="sidebar__menu-item ">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-chart-pie"></i></div>
+                                    <span class="sidebar__menu-label">Sales Activity Report</span>
+                                </a>
+                            </li>
+
+                            <!-- Team Performance -->
+                            <li class="slide">
+                                <a href="/TPHL-ERP/team-performance"
+                                    class="sidebar__menu-item ">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-users-viewfinder"></i></div>
+                                    <span class="sidebar__menu-label">Team Performance</span>
+                                </a>
+                            </li>
+                        
+                        
+                                                <!-- Lead & Booking -->
+                        <li
+                            class="slide has-sub ">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                                <span class="sidebar__menu-label">Lead & Booking</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                                                <li class="slide">
+                                    <a href="/TPHL-ERP/lead-lists"
+                                        class="sidebar__menu-item ">Lead List</a>
+                                </li>
+                                                                                                                                
+                                                                                                <li class="slide">
+                                    <a href="/TPHL-ERP/client-refunds"
+                                        class="sidebar__menu-item ">Client
+                                        Refunds
+                                                                                    <span class="badge bg-danger rounded-pill ms-auto me-2">1</span>
+                                                                            </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- Incentive Module Menu Links -->
+                        <li class="slide d-none">
+                            <a href="/TPHL-ERP/my-incentives"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                                <span class="sidebar__menu-label">My Incentives</span>
+                            </a>
+                        </li>
+                        <li class="slide d-none">
+                            <a href="/TPHL-ERP/incentive-management"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="fa-solid fa-coins"></i></div>
+                                <span class="sidebar__menu-label">Sales Incentive Accounts</span>
+                            </a>
+                        </li>
+                    
+                    <!-- Project Manage -->
+                    <li
+                        class="slide has-sub ">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-building"></i></div>
+                            <span class="sidebar__menu-label">Project Manage</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                                                        <li class="slide">
+                                <a href="/TPHL-ERP/project-lists"
+                                    class="sidebar__menu-item ">Project
+                                    List</a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    
+
+                        <!-- Flats Manage -->
+                        <li
+                            class="slide has-sub ">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="fa-solid fa-house"></i></div>
+                                <span class="sidebar__menu-label">Flats Manage</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                                                <li class="slide">
+                                    <a href="/TPHL-ERP/flat-lists"
+                                        class="sidebar__menu-item ">Flat List</a>
+                                </li>
+                            </ul>
+                        </li>
+                        <!-- Inventroy -->
+                        <li class="slide ">
+                            <a href="/TPHL-ERP/inventory-lists"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="bi bi-stack"></i> </div>
+                                <span class="sidebar__menu-label">Project Wise Flat Stock</span>
+                            </a>
+                        </li>
+
+
+                        <!-- Incentives Module -->
+                        <li
+                            class="slide has-sub ">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                                <span class="sidebar__menu-label">Incentives</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <li class="slide child2">
+                                    <a href="/TPHL-ERP/my-incentives"
+                                        class="sidebar__menu-item ">My
+                                        Incentives</a>
+                                </li>
+                                <!-- Visible to Management, Accounts, HR, Chairman, and Sales Heads/Managers -->
+                                                                    <li class="slide child2">
+                                        <a href="/TPHL-ERP/incentive-management"
+                                            class="sidebar__menu-item ">Company
+                                            Incentives & Accounts</a>
+                                    </li>
+                                
+                                <!-- Visible to Sales Managers, Heads, Co-ordinators (5,6,9,15) and Management -->
+                                                                    <li class="slide child2">
+                                        <a href="/TPHL-ERP/my-team-incentives"
+                                            class="sidebar__menu-item ">My
+                                            Team Incentives</a>
+                                    </li>
+                                    <li class="slide child2">
+                                        <a href="/TPHL-ERP/sales-executive-teams"
+                                            class="sidebar__menu-item ">My Team
+                                            Targets</a>
+                                    </li>
+                                
+                                <!-- Settings for Management, Sales Manager and Sales Head -->
+                                                                    <li class="slide child2">
+                                        <a href="/TPHL-ERP/incentive-config"
+                                            class="sidebar__menu-item ">Settings</a>
+                                    </li>
+                                                            </ul>
+                        </li>
+
+                                            
+                                <!--End Sales Manager CATEGORY -->
+                
+                <!-- Camera Manage -->
+                
+
+
+
+
+                <!-- For Sales head -->
+                                <!--END For Sales Head -->
+
+                                <!-- for sales executive  -->
+                                <!-- for sales executive  -->
+
+                <!--Start Marketing Head Dashboard  -->
+                                <!--End Marketing Head Dashboard  -->
+                <!--Start Marketing Executive Dashboard  -->
+                
+
+                <!--End Marketing Executive Dashboard  -->
+                <!-- For Sales Team Head  sales-head -->
+                                <!--End For Sales Team Head  -->
+
+                <!--HRM CATEGORY -->
+                
+
+
+                <!--Payroll CATEGORY -->
+                
+                <!-- Meal Tracker Menu (Accessible to Admin, Operation, HR roles and Enrolled Employees) -->
+                                                    <li class="sidebar__menu-category ">
+                        <span class="category-name">Meal Management</span>
+                    </li>
+                    <li class="slide has-sub ">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-utensils"></i></div>
+                            <span class="sidebar__menu-label">Meal Tracker</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="/TPHL-ERP/meal-tracker"
+                                    class="sidebar__menu-item ">Meal Workspace</a>
+                            </li>
+                            <li class="slide">
+                                <a href="/TPHL-ERP/meal-tracker-history"
+                                    class="sidebar__menu-item ">Meal History</a>
+                            </li>
+                                                    </ul>
+                    </li>
+                
+                
+                <!--End HRM CATEGORY -->
+
+
+
+                <!-- My Profile (Accessible by all logged-in users) -->
+                <li class="slide d-none">
+                    <a href="/TPHL-ERP/my-profile"
+                        class="sidebar__menu-item ">
+                        <div class="side-menu__icon"><i class="fas fa-user"></i></div>
+                        <span class="sidebar__menu-label">My Profile</span>
+                    </a>
+                </li>
+
+                
+
+                
+
+
+                <!--Start CED  -->
+                                    <!--CED CATEGORY -->
+                    <li class="sidebar__menu-category">
+
+                        <span class="category-name">CED</span>
+                    </li>
+                    <li class="slide ">
+                        <a href="/TPHL-ERP/ced-dashboard"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                            <span class="sidebar__menu-label">CED Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="/TPHL-ERP/ced-report"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-file-earmark-bar-graph"></i></div>
+                            <span class="sidebar__menu-label">CED Team Report</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="/TPHL-ERP/ced-central-report"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-table-list"></i></div>
+                            <span class="sidebar__menu-label">CED Central Report</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="/TPHL-ERP/ced-project-notices"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-bullhorn"></i></div>
+                            <span class="sidebar__menu-label">Project Notices</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="/TPHL-ERP/company-bank-accounts"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-landmark"></i></div>
+                            <span class="sidebar__menu-label">Company Bank Manage</span>
+                        </a>
+                    </li>
+
+
+                    <!-- Cash In Manage -->
+                    <li
+                        class="slide has-sub ">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                            <span class="sidebar__menu-label">Cash In View</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2"
+                            style="display:none;">
+                            <li class="slide ">
+                                <a href="/TPHL-ERP/clients-cashin-view"
+                                    class="sidebar__menu-item ">Clients</a>
+                            </li>
+                            <li class="slide ">
+                                <a href="/TPHL-ERP/client-refunds"
+                                    class="sidebar__menu-item ">
+                                    Refunds
+                                                                            <span class="badge bg-danger rounded-pill ms-auto me-2">1</span>
+                                                                    </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <!-- Clients For Login  -->
+                    <li class="slide ">
+                        <a href="/TPHL-ERP/onboard-access-client-lists"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                            <span class="sidebar__menu-label">Access Onboard Clients</span>
+                        </a>
+                    </li>
+
+
+
+                                <!--End CED CATEGORY -->
+
+
+                <!--Accounts CATEGORY -->
+                                                <!--END Accounts CATEGORY -->
+
+
+                <!--ROle & Permission -->
+                                <!--ROle & Permission -->
+
+                
+
+                <li class="slide d-none ">
+                    <a href="/TPHL-ERP/mobile-punch"
+                        class="sidebar__menu-item ">
+                        <div class="side-menu__icon"><i class="fa-solid fa-book"></i></div>
+                        <span class="sidebar__menu-label">Mobile Punch</span>
+                    </a>
+                </li>
+
+
+
+                <!-- Others-->
+                
+
+                <!-- ==================== PHASE 2: CONSTRUCTION MANAGEMENT ==================== -->
+                                                                                <li class="sidebar__menu-category">
+                            <span class="category-name">Construction </span>
+                        </li>
+                                                                <li class="slide ">
+                            <a href="/TPHL-ERP/con-dashboard"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="fa-solid fa-chart-line"></i></div>
+                                <span class="sidebar__menu-label">Constrution Dashboard</span>
+                            </a>
+                        </li>
+                    
+                    
+                                            <li class="slide">
+                            <a href="/TPHL-ERP/con-progress-report"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="fa-solid fa-file-invoice"></i></div>
+                                <span class="sidebar__menu-label">Site Progress Report</span>
+                            </a>
+                        </li>
+                    
+                                            <li class="slide">
+                            <a href="/TPHL-ERP/con-projects"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="fa-solid fa-building-circle-check"></i></div>
+                                <span class="sidebar__menu-label"> Projects & Phase Plan</span>
+                            </a>
+                        </li>
+                    
+                                        
+
+                    <!-- ══ Operations Dashboard ════════════════════════════════════════
+                     Site Operator -->
+                    
+                    <!-- ══ Purchase Team Leader Dashboard ════════════════════════════
+                     PTL has: Purchase order + Vendor Manage + Material Manage
+                     Unique: Material Manage (Site Eng lacks it, QC lacks it)
+                     Exclude: Construction Management -->
+                    
+                    
+                    <!-- ══ Purchase Executive Dashboard ════════════════════════════
+                     Role ID 23: Purchase Executive -->
+                    
+                    <!-- ══ Draftsman Dashboard ════════════════════════════════════════
+                     Draftsman has ONLY: Project Draft Design
+                     Unique: Project Draft Design + NO Architect Design + NO Material Issue
+                     Exclude: Construction Management, Site Engineer (has Material Issue) -->
+                    
+                    <!-- ══ Land Manager Dashboard ═════════════════════════════════════
+                     Land Manager has ONLY: Land Study
+                     Unique: Land Study + NO Soil tests (Site Eng has both)
+                     Exclude: Construction Management -->
+                                        <!-- ══ Project Architecture Dashboard ════════════════════════════
+                     Project Architecture has: Project Draft Design + Architect Design
+                     Unique: Architect Design + Project Draft Design + NO Material Issue
+                     Exclude: Construction Management, Site Engineer (has Material Issue) -->
+                    
+                    <!-- ══ Estimator Dashboard ════════════════════════════════════════
+                     Estimator has: Project Drawing + Estimate Budget
+                     Unique: Project Drawing (QC & PTL don't have it)
+                     Exclude: Construction Management -->
+                    
+                    <!-- ══ Project Structure Design Dashboard ════════════════════════════
+                     and NOT 'Construction Management' (PM/Admin see main dashboard) -->
+                                        <!-- ====== QC MODULE ====== -->
+                    
+
+                    <!-- Pre-Construction — only show if user has at least one permission -->
+                                            <li
+                            class="slide has-sub ">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item ">
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                                <div class="side-menu__icon">
+                                    <i class="bi bi-building"></i>
+                                </div>
+                                <span class="sidebar__menu-label">Engineering Department</span>
+                            </a>
+
+                            <ul class="sidebar-menu child1" style="display:block;">
+                                                                                                    <li
+                                        class="slide ">
+                                        <a class="sidebar__menu-item "
+                                            href="/TPHL-ERP/con-land-acquisitions">Land Acquisitions</a>
+                                    </li>
+                                    <li
+                                        class="slide ">
+                                        <a class="sidebar__menu-item "
+                                            href="/TPHL-ERP/con-land-requisitions">Land Requisitions</a>
+                                    </li>
+                                    <li class="slide ">
+                                        <a class="sidebar__menu-item "
+                                            href="/TPHL-ERP/con-land-ledger">Land Ledger</a>
+                                    </li>
+                                    <li class="d-none slide ">
+                                        <a class="sidebar__menu-item "
+                                            href="/TPHL-ERP/con-land-monthly-reports">Land Monthly Report</a>
+                                    </li>
+                                                                                                                                                                                                
+                                
+                                                            </ul>
+                        </li>
+                    
+                    
+                    <!-- Module 2.0: Initial Estimate Budgets -->
+                    
+                    <!-- ====== Work Orders ====== -->
+                                        <!-- Module 2.1: Working Plans — REMOVED (legacy system) -->
+                    <!-- Module 2.2: Target Fixed / Site Operations — REMOVED (legacy system) -->
+
+                    <!-- Module 2.2: Budget Extension Requests -->
+                                        <!-- ====== END Site Operations ====== -->
+
+                    
+                                            <!-- Module 5: Procurement -->
+                        <li
+                            class="slide has-sub ">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="fa-solid fa-cart-shopping"></i></div>
+                                <span class="sidebar__menu-label">Procurement</span>
+                                                                    <span class="badge bg-danger rounded-pill ms-auto me-4"
+                                        style="font-size:9.5px; padding: 2px 6px;">54</span>
+                                                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <li class="slide">
+                                    <a href="/TPHL-ERP/con-purchase-requests"
+                                        class="sidebar__menu-item ">
+                                        <span>Purchase Requests</span>
+                                                                                    <span class="badge bg-danger rounded-pill ms-auto me-2"
+                                                style="font-size:10px; padding: 2px 6px;">54</span>
+                                                                            </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="/TPHL-ERP/con-purchase-request-create"
+                                        class="sidebar__menu-item ">New
+                                        PR</a>
+                                </li>
+                                <li class="slide">
+                                    <a href="/TPHL-ERP/con-purchase-orders"
+                                        class="sidebar__menu-item ">
+                                        <span>Purchase Orders</span>
+                                                                            </a>
+                                </li>
+                                <li class="slide ">
+                                    <a href="/TPHL-ERP/con-wastage"
+                                        class="sidebar__menu-item ">
+                                        <i class="fal fa-recycle me-1"></i> Wastage Management
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    
+                    
+                    <!-- Module 7:Operation And  Receiving & QC -->
+                                        
+                    <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
+                                            <!-- Module 2: Operators / Contractors -->
+                        <li
+                            class="slide has-sub ">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="fa-solid fa-person-digging"></i></div>
+                                <span class="sidebar__menu-label">Contractors</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <li class="slide">
+                                    <a href="/TPHL-ERP/con-contractors"
+                                        class="sidebar__menu-item ">Contractor
+                                        List</a>
+                                </li>
+                                <li class="slide">
+                                    <a href="/TPHL-ERP/con-contractor-create"
+                                        class="sidebar__menu-item ">Add
+                                        contractor</a>
+                                </li>
+                            </ul>
+                        </li>
+
+
+                    
+
+
+                    <!-- ====== Operators & Bills (Batch 2 NEW) ====== -->
+                                            <li
+                            class="slide has-sub ">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                                <span class="sidebar__menu-label">Bills & Funds</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <li class="slide">
+                                    <a href="/TPHL-ERP/con-contractor-bills"
+                                        class="sidebar__menu-item ">
+                                        <i class="bi bi-receipt me-1"></i> Contractor Bills
+                                                                                    <span class="badge bg-danger rounded-pill ms-auto me-2">8</span>
+                                                                            </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="/TPHL-ERP/con-contractor-bill-create"
+                                        class="sidebar__menu-item ">
+                                        + New Bill
+                                    </a>
+                                </li>
+
+                                <!-- Labor Requisition shortcut inside Bills menu -->
+                                                                    <li class="slide">
+                                        <a href="/TPHL-ERP/con-labor-requisitions"
+                                            class="sidebar__menu-item ">
+                                            <i class="fa-solid fa-hard-hat me-1"></i> Labor Requisitions
+                                                                                            <span class="badge bg-danger rounded-pill ms-auto me-2">4</span>
+                                                                                    </a>
+                                    </li>
+                                
+                                <!-- <li class="slide">
+                            <a href="<= $base_url ?>/con-fund-requests" class="sidebar__menu-item ">
+                                <i class="bi bi-cash-coin me-1"></i> Fund Requests
+                            </a>
+                        </li>
+                        <li class="slide">
+                            <a href="<= $base_url ?>/con-fund-request-create" class="sidebar__menu-item ">
+                                + New Fund Request
+                            </a>
+                        </li> -->
+                            </ul>
+                        </li>
+                    
+                    <!-- ====== Labor Requisitions ====== -->
+                                            <li
+                            class="slide has-sub ">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="fa-solid fa-hard-hat"></i></div>
+                                <span class="sidebar__menu-label">Labor Requisition</span>
+                                                                    <span class="badge bg-danger rounded-pill ms-auto me-4">4</span>
+                                                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <li class="slide">
+                                    <a href="/TPHL-ERP/con-labor-requisitions"
+                                        class="sidebar__menu-item ">
+                                        <i class="bi bi-list-ul me-1"></i> All Requisitions
+                                                                                    <span class="badge bg-danger rounded-pill ms-auto me-2">4</span>
+                                                                            </a>
+                                </li>
+                                                                    <li class="slide">
+                                        <a href="/TPHL-ERP/con-labor-requisition-create"
+                                            class="sidebar__menu-item ">
+                                            <i class="bi bi-plus-circle me-1"></i> + New Requisition
+                                        </a>
+                                    </li>
+                                                            </ul>
+                        </li>
+                    
+                    <!-- ══ Weekly Progress Reports (Phase-Based) ════════════════════ -->
+                                            <li class="d-none slide ">
+                            <a href="/TPHL-ERP/con-weekly-reports"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="bi bi-calendar-week"></i></div>
+                                <span class="sidebar__menu-label">Weekly Reports</span>
+                            </a>
+                        </li>
+                                        <!-- ====== END Operators & Bills ====== -->
+
+                                        <!-- ====== END Finance & Accounts ====== -->
+                    
+                    <!-- ====== Land Department (NEW) ====== -->
+                    
+                                            <li class="slide ">
+                            <a href="/TPHL-ERP/approval-requests"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="fa-solid fa-check-double"></i></div>
+                                <span class="sidebar__menu-label">Approval Requests</span>
+                            </a>
+                        </li>
+                    
+                                            <!-- ====== Internal Audit Section ====== -->
+                        <li class="sidebar__menu-category">
+                            <span class="category-name">Internal Audit</span>
+                        </li>
+                        <li
+                            class="slide has-sub ">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="bi bi-shield-check"></i></div>
+                                <span class="sidebar__menu-label">Internal Audit</span>
+                                                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <li class="slide">
+                                    <a href="/TPHL-ERP/qc-audit-dashboard"
+                                        class="sidebar__menu-item ">
+                                        <span><i class="bi bi-speedometer2 me-1"></i> Dashboard</span>
+                                                                            </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="/TPHL-ERP/qc-advanced-audit"
+                                        class="sidebar__menu-item ">
+                                        <i class="bi bi-filter-square me-1"></i> Advanced Audit
+                                    </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="/TPHL-ERP/qc-requests"
+                                        class="sidebar__menu-item ">
+                                        <i class="bi bi-check2-square me-1"></i> QC Approvals
+                                    </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="/TPHL-ERP/con-purchase-orders"
+                                        class="sidebar__menu-item ">
+                                        <span><i class="bi bi-cart me-1"></i> Purchase Orders</span>
+                                                                            </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="/TPHL-ERP/con-vendor-payment-requests"
+                                        class="sidebar__menu-item ">
+                                        <span><i class="bi bi-cash-stack me-1"></i> Vendor Payments</span>
+                                                                                    <span class="badge bg-danger rounded-pill ms-auto me-2"
+                                                style="font-size:10px; padding: 2px 6px;">36</span>
+                                                                            </a>
+                                </li>
+                                <li class="slide">
+                                    <a href="/TPHL-ERP/con-contractor-bills"
+                                        class="sidebar__menu-item ">
+                                        <span><i class="bi bi-receipt me-1"></i> Contractor Bills</span>
+                                                                                    <span class="badge bg-danger rounded-pill ms-auto me-2"
+                                                style="font-size:10px; padding: 2px 6px;">8</span>
+                                                                            </a>
+                                </li>
+                                                                <li class="slide">
+                                    <a href="/TPHL-ERP/con-labor-requisitions?status=payment_requested"
+                                        class="sidebar__menu-item ">
+                                        <span><i class="fa-solid fa-hard-hat me-1"></i> Labor Bills Review</span>
+                                                                                    <span class="badge bg-danger rounded-pill ms-auto me-2"
+                                                style="font-size:10px; padding: 2px 6px;">4</span>
+                                                                            </a>
+                                </li>
+                                                            </ul>
+                        </li>
+                    
+                    
+
+                                        <!-- FOR Task Manage  -->
+                    <li class="slide d-none ">
+                        <a href="/TPHL-ERP/email-station"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-envelope"></i></div>
+                            <span class="sidebar__menu-label">Email Station</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="/TPHL-ERP/task-sheets"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
+                            <span class="sidebar__menu-label">My Task Sheets</span>
+                        </a>
+                    </li>
+                                        <li class="slide ">
+                        <a href="/TPHL-ERP/all-employee-tasks"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-users-viewfinder"></i></div>
+                            <span class="sidebar__menu-label">All Employees Task</span>
+                        </a>
+                    </li>
+                                                            <!-- FOR Task Manage  -->
+                    <!-- ====== BATCH IMPORTS ====== -->
+                                            <li class="slide d-none">
+                            <a href="/TPHL-ERP/con-batch2-import"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="bi bi-file-earmark-spreadsheet"></i></div>
+                                <span class="sidebar__menu-label">Batch CSV Import</span>
+                            </a>
+                        </li>
+                    
+                    <!-- ====== ASSET MANAGEMENT ====== -->
+                                            <li class="slide ">
+                            <a href="/TPHL-ERP/office-assets"
+                                class="sidebar__menu-item ">
+                                <div class="side-menu__icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+                                <span class="sidebar__menu-label">Asset Register</span>
+                            </a>
+                        </li>
+                                        
+                                <!-- ==================== END PHASE 2 ==================== -->
+
+                <!-- Project Other Costs -->
+                <li class="slide ">
+                    <a href="/TPHL-ERP/project-other-costs"
+                        class="sidebar__menu-item ">
+                        <div class="side-menu__icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+                        <span class="sidebar__menu-label">Project Other Costs</span>
+                                                    <span class="badge bg-danger rounded-pill ms-auto me-2" style="font-size:10px; padding: 2px 6px;">2</span>
+                                            </a>
+                </li>
+
+                <!-- Fund Requisitions -->
+                <li class="slide ">
+                    <a href="/TPHL-ERP/fund-requisitions"
+                        class="sidebar__menu-item ">
+                        <div class="side-menu__icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                        <span class="sidebar__menu-label">Fund Requisitions</span>
+                                                    <span class="badge bg-warning text-dark rounded-pill ms-auto me-2"
+                                style="font-size: 10px; padding: 2px 6px;"
+                                title="Pending Actions: 
+Warning: Undefined variable $pendingFundReqDeptCount in C:\xampp\htdocs\TPHL-ERP\app\views\layouts\sidebar.php on line 3791
+ Dept Head, 
+Warning: Undefined variable $pendingFundReqMgmtCount in C:\xampp\htdocs\TPHL-ERP\app\views\layouts\sidebar.php on line 3791
+ Mgmt, 
+Warning: Undefined variable $pendingFundReqAccountsCount in C:\xampp\htdocs\TPHL-ERP\app\views\layouts\sidebar.php on line 3791
+ Accounts">
+                                39                            </span>
+                                            </a>
+                </li>
+
+                <!-- Office Procurement Requests (Global Requisition for All Departments) -->
+                <li class="slide ">
+                    <a href="/TPHL-ERP/asset-extra-purchases"
+                        class="sidebar__menu-item ">
+                        <div class="side-menu__icon"><i class="fa-solid fa-cart-shopping"></i></div>
+                        <span class="sidebar__menu-label">Office Procurement Request</span>
+                                                    <span class="badge bg-danger rounded-pill ms-auto me-2"
+                                style="font-size: 10px; padding: 2px 6px;"
+                                title="Pending Approvals">
+                                7                            </span>
+                                            </a>
+                </li>
+
+                                    <li class="slide ">
+                        <a href="/TPHL-ERP/tutorial-video" target="_blank" rel="noopener noreferrer"
+                            class="sidebar__menu-item ">
+                            <div class="side-menu__icon"><i class="fa-solid fa-circle-play"></i></div>
+                            <span class="sidebar__menu-label">Tutorial Video</span>
+                        </a>
+                    </li>
+                
+                <li class="slide ">
+                    <a class="sidebar__menu-item " href="/TPHL-ERP/logout"><svg width="18" height="18"
+                            viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <g clip-path="url(#clip0_643_343)">
+                                <path
+                                    d="M17.4368 8.43771H10.312C10.0015 8.43771 9.74951 8.18572 9.74951 7.87523C9.74951 7.56474 10.0015 7.31274 10.312 7.31274H17.4368C17.7473 7.31274 17.9993 7.56474 17.9993 7.87523C17.9993 8.18572 17.7473 8.43771 17.4368 8.43771Z"
+                                    fill="#7A7A7A" />
+                                <path
+                                    d="M14.6244 11.2502C14.4803 11.2502 14.3364 11.1954 14.2268 11.0852C14.0071 10.8654 14.0071 10.5091 14.2268 10.2894L16.6418 7.87457L14.2268 5.45958C14.0071 5.23986 14.0071 4.88364 14.2268 4.66392C14.4467 4.44406 14.8029 4.44406 15.0226 4.66392L17.835 7.47633C18.0547 7.69605 18.0547 8.05227 17.835 8.27199L15.0226 11.0844C14.9123 11.1954 14.7684 11.2502 14.6244 11.2502Z"
+                                    fill="#7A7A7A" />
+                                <path
+                                    d="M5.99986 18.0002C5.83932 18.0002 5.68703 17.9776 5.53488 17.9304L1.02142 16.4267C0.407305 16.2122 0 15.64 0 15.0003V1.50073C0 0.673487 0.672754 0.000732422 1.5 0.000732422C1.66039 0.000732422 1.81269 0.0232537 1.96498 0.0704934L6.4783 1.5742C7.09255 1.7887 7.49972 2.36093 7.49972 3.00059V16.5002C7.49972 17.3274 6.8271 18.0002 5.99986 18.0002ZM1.5 1.1257C1.29374 1.1257 1.12496 1.29447 1.12496 1.50073V15.0003C1.12496 15.16 1.23222 15.3085 1.3852 15.3617L5.8775 16.8587C5.90977 16.8692 5.95179 16.8752 5.99986 16.8752C6.20612 16.8752 6.37475 16.7064 6.37475 16.5002V3.00059C6.37475 2.84088 6.2675 2.69244 6.11452 2.63915L1.62222 1.14218C1.58995 1.13174 1.54793 1.1257 1.5 1.1257Z"
+                                    fill="#7A7A7A" />
+                                <path
+                                    d="M11.4371 6.00035C11.1266 6.00035 10.8746 5.74836 10.8746 5.43786V2.06297C10.8746 1.54622 10.454 1.12545 9.93722 1.12545H1.49998C1.18949 1.12545 0.9375 0.873462 0.9375 0.562971C0.9375 0.252479 1.18949 0.000488281 1.49998 0.000488281H9.93722C11.075 0.000488281 11.9996 0.925234 11.9996 2.06297V5.43786C11.9996 5.74836 11.7476 6.00035 11.4371 6.00035Z"
+                                    fill="#7A7A7A" />
+                                <path
+                                    d="M9.93699 15.7501H6.93699C6.6265 15.7501 6.37451 15.4981 6.37451 15.1876C6.37451 14.8771 6.6265 14.6251 6.93699 14.6251H9.93699C10.4537 14.6251 10.8744 14.2044 10.8744 13.6876V10.3127C10.8744 10.0022 11.1264 9.75024 11.4369 9.75024C11.7473 9.75024 11.9993 10.0022 11.9993 10.3127V13.6876C11.9993 14.8254 11.0747 15.7501 9.93699 15.7501Z"
+                                    fill="#7A7A7A" />
+                            </g>
+                            <defs>
+                                <clipPath id="clip0_643_343">
+                                    <rect width="18" height="18" fill="white" />
+                                </clipPath>
+                            </defs>
+                        </svg>
+                        <span class="sidebar__menu-label ms-2">Log Out</span> </a>
+                </li>
+
+            </ul>
+            <div class="sidebar-right" id="sidebar-right"></div>
+
+        </nav>
+
+    </div>
+</div>
+<!-- <div class="app__offcanvas-overlay"></div> -->
+<!--app-sidebar-end -->        <!-- App header area start -->
+        <div class="page__body-wrapper">
+            <div class="app__header__area">
+                <div class="app__header-inner">
+                    <div class="app__header-left">
+                        <div class="">
+                            <a id="sidebar__active" class="app__header-toggle" href="javascript:void(0)">
+                                <div class="bar-icon-2">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </div>
+                            </a>
+                        </div>
+
+                        <h2 class="header__title">
+                            Hello Management                            <span><img src="http://localhost:3333/assets/images/shape/hand.png" alt="image"></span>
+                        </h2>
+
+                    </div>
+
+                    <div class="app__header-right">
+
+                        <div class="app__header-action">
+                            <ul>
+                                <li>
+                                    <div class="nav-item p-relative">
+                                      
+                                        <div class="lang__dropdown">
+                                            <ul>
+                                                <li>
+                                                    <a class="lang__item" href="#">
+                                                        <div class="lang__icon">
+                                                            <svg width="20" height="15" viewBox="0 0 20 15" fill="none"
+                                                                xmlns="http://www.w3.org/2000/svg">
+                                                                <g clip-path="url(#clip0_647_364)">
+                                                                    <path fill-rule="evenodd" clip-rule="evenodd"
+                                                                        d="M0 0H28.5003V1.15386H0V0ZM0 2.30771H28.5003V3.46157H0V2.30771ZM0 4.61543H28.5003V5.76929H0V4.61543ZM0 6.92314H28.5003V8.077H0V6.92314ZM0 9.23086H28.5003V10.3847H0V9.23086ZM0 11.5386H28.5003V12.6924H0V11.5386ZM0 13.8463H28.5003V15.0001H0V13.8463Z"
+                                                                        fill="#BD3D44" />
+                                                                    <path fill-rule="evenodd" clip-rule="evenodd"
+                                                                        d="M0 1.15381H28.5003V2.30767H0V1.15381ZM0 3.46152H28.5003V4.61538H0V3.46152ZM0 5.76924H28.5003V6.9231H0V5.76924ZM0 8.07695H28.5003V9.23081H0V8.07695ZM0 10.3847H28.5003V11.5385H0V10.3847ZM0 12.6924H28.5003V13.8462H0V12.6924Z"
+                                                                        fill="white" />
+                                                                    <path fill-rule="evenodd" clip-rule="evenodd"
+                                                                        d="M0 0H11.4V8.07686H0V0Z" fill="#192F5D" />
+                                                                    <path fill-rule="evenodd" clip-rule="evenodd"
+                                                                        d="M0.950137 0.345703L1.05385 0.664922H1.38953L1.11795 0.862236L1.22169 1.18146L0.950107 0.98417L0.678584 1.18146L0.782295 0.862236L0.510742 0.664922H0.846396L0.950137 0.345703ZM2.85013 0.345703L2.95387 0.664922H3.28955L3.01797 0.862236L3.12171 1.18146L2.85013 0.98417L2.5786 1.18146L2.68231 0.862236L2.41076 0.664922H2.74642L2.85013 0.345703ZM4.75021 0.345703L4.85392 0.664922H5.1896L4.91802 0.862236L5.02176 1.18146L4.75021 0.98417L4.47865 1.18146L4.58236 0.862236L4.31081 0.664922H4.64649L4.75021 0.345703ZM6.65017 0.345703L6.75388 0.664922H7.08953L6.81798 0.862236L6.92169 1.18146L6.65017 0.98417L6.37858 1.18146L6.48232 0.862236L6.21074 0.664922H6.54643L6.65017 0.345703ZM8.55021 0.345703L8.65393 0.664922H8.98961L8.71803 0.862236L8.82177 1.18146L8.55019 0.98417L8.27866 1.18146L8.38237 0.862236L8.11082 0.664922H8.44647L8.55021 0.345703ZM10.4503 0.345703L10.554 0.664922H10.8897L10.6181 0.862236L10.7218 1.18146L10.4503 0.98417L10.1787 1.18146L10.2825 0.862236L10.0109 0.664922H10.3466L10.4503 0.345703ZM1.90018 1.15342L2.00389 1.47264H2.33957L2.06799 1.66992L2.17176 1.98917L1.90018 1.79188L1.62862 1.98917L1.73233 1.66992L1.46078 1.47264H1.79646L1.90018 1.15342ZM3.80014 1.15342L3.90385 1.47264H4.2395L3.96795 1.66992L4.07166 1.98917L3.80014 1.79188L3.52855 1.98917L3.63229 1.66992L3.36071 1.47264H3.6964L3.80014 1.15342ZM5.70019 1.15342L5.8039 1.47264H6.13958L5.868 1.66992L5.97174 1.98917L5.70016 1.79188L5.42863 1.98917L5.53234 1.66992L5.26079 1.47264H5.59645L5.70019 1.15342ZM7.60023 1.15342L7.70395 1.47264H8.03963L7.76805 1.66992L7.87179 1.98917L7.60023 1.79188L7.32865 1.98917L7.43245 1.66992L7.16087 1.47264H7.49655L7.60023 1.15342ZM9.5002 1.15342L9.60391 1.47264H9.93956L9.66801 1.66992L9.77172 1.98917L9.5002 1.79188L9.22861 1.98917L9.33235 1.66992L9.06077 1.47264H9.39646L9.5002 1.15342ZM0.950137 1.9611L1.05385 2.28032H1.38953L1.11795 2.47764L1.22169 2.79686L0.950107 2.59957L0.678584 2.79686L0.782295 2.47764L0.510742 2.28032H0.846396L0.950137 1.9611ZM2.85013 1.9611L2.95387 2.28032H3.28955L3.01797 2.47764L3.12171 2.79686L2.85013 2.59957L2.5786 2.79686L2.68231 2.47764L2.41076 2.28032H2.74642L2.85013 1.9611ZM4.75021 1.9611L4.85392 2.28032H5.1896L4.91802 2.47764L5.02176 2.79686L4.75021 2.59957L4.47865 2.79686L4.58236 2.47764L4.31081 2.28032H4.64649L4.75021 1.9611ZM6.65017 1.9611L6.75388 2.28032H7.08953L6.81798 2.47764L6.92169 2.79686L6.65017 2.59957L6.37858 2.79686L6.48232 2.47764L6.21074 2.28032H6.54643L6.65017 1.9611ZM8.55021 1.9611L8.65393 2.28032H8.98961L8.71803 2.47764L8.82177 2.79686L8.55019 2.59957L8.27866 2.79686L8.38237 2.47764L8.11082 2.28032H8.44647L8.55021 1.9611ZM10.4503 1.9611L10.554 2.28032H10.8897L10.6181 2.47764L10.7218 2.79686L10.4503 2.59957L10.1787 2.79686L10.2825 2.47764L10.0109 2.28032H10.3466L10.4503 1.9611ZM1.90018 2.76879L2.00389 3.08804H2.33957L2.06799 3.28532L2.17176 3.60457L1.90018 3.40729L1.62862 3.60457L1.73233 3.28532L1.46078 3.08804H1.79646L1.90018 2.76879ZM3.80014 2.76879L3.90385 3.08804H4.2395L3.96795 3.28532L4.07166 3.60457L3.80014 3.40729L3.52855 3.60457L3.63229 3.28532L3.36071 3.08804H3.6964L3.80014 2.76879ZM5.70019 2.76879L5.8039 3.08804H6.13958L5.868 3.28532L5.97174 3.60457L5.70016 3.40729L5.42863 3.60457L5.53234 3.28532L5.26079 3.08804H5.59645L5.70019 2.76879ZM7.60023 2.76879L7.70395 3.08804H8.03963L7.76805 3.28532L7.87179 3.60457L7.60023 3.40729L7.32865 3.60457L7.43242 3.28532L7.16084 3.08804H7.49652L7.60023 2.76879ZM9.5002 2.76879L9.60391 3.08804H9.93956L9.66801 3.28532L9.77172 3.60457L9.5002 3.40729L9.22861 3.60457L9.33235 3.28532L9.06077 3.08804H9.39646L9.5002 2.76879ZM0.950137 3.5765L1.05385 3.89572H1.38953L1.11795 4.09304L1.22169 4.41226L0.950107 4.21497L0.678584 4.41226L0.782295 4.09304L0.510742 3.89572H0.846396L0.950137 3.5765ZM2.85013 3.5765L2.95387 3.89572H3.28955L3.01797 4.09304L3.12171 4.41226L2.85013 4.21497L2.5786 4.41226L2.68231 4.09304L2.41076 3.89572H2.74642L2.85013 3.5765ZM4.75021 3.5765L4.85392 3.89572H5.1896L4.91802 4.09304L5.02176 4.41226L4.75021 4.21497L4.47865 4.41226L4.58236 4.09304L4.31081 3.89572H4.64649L4.75021 3.5765ZM6.65017 3.5765L6.75388 3.89572H7.08953L6.81798 4.09304L6.92169 4.41226L6.65017 4.21497L6.37858 4.41226L6.48232 4.09304L6.21074 3.89572H6.54643L6.65017 3.5765ZM8.55021 3.5765L8.65393 3.89572H8.98961L8.71803 4.09304L8.82177 4.41226L8.55019 4.21497L8.27866 4.41226L8.38237 4.09304L8.11082 3.89572H8.44647L8.55021 3.5765ZM10.4503 3.5765L10.554 3.89572H10.8897L10.6181 4.09304L10.7218 4.41226L10.4503 4.21497L10.1787 4.41226L10.2825 4.09304L10.0109 3.89572H10.3466L10.4503 3.5765ZM1.90018 4.38419L2.00389 4.70344H2.33957L2.06799 4.90072L2.17176 5.21997L1.90018 5.02269L1.62862 5.21997L1.73233 4.90072L1.46078 4.70344H1.79646L1.90018 4.38419ZM3.80014 4.38419L3.90385 4.70344H4.2395L3.96795 4.90072L4.07166 5.21997L3.80014 5.02269L3.52855 5.21997L3.63229 4.90072L3.36071 4.70344H3.6964L3.80014 4.38419ZM5.70019 4.38419L5.8039 4.70344H6.13958L5.868 4.90072L5.97174 5.21997L5.70016 5.02269L5.42863 5.21997L5.53234 4.90072L5.26079 4.70344H5.59645L5.70019 4.38419ZM7.60023 4.38419L7.70395 4.70344H8.03963L7.76805 4.90072L7.87179 5.21997L7.60023 5.02269L7.32865 5.21997L7.43242 4.90072L7.16084 4.70344H7.49652L7.60023 4.38419ZM9.5002 4.38419L9.60391 4.70344H9.93956L9.66801 4.90072L9.77172 5.21997L9.5002 5.02269L9.22861 5.21997L9.33235 4.90072L9.06077 4.70344H9.39646L9.5002 4.38419ZM0.950137 5.1919L1.05385 5.51112H1.38953L1.11795 5.70844L1.22169 6.02766L0.950107 5.83037L0.678584 6.02766L0.782295 5.70844L0.510742 5.51112H0.846396L0.950137 5.1919ZM2.85013 5.1919L2.95387 5.51112H3.28955L3.01797 5.70844L3.12171 6.02766L2.85013 5.83037L2.5786 6.02766L2.68231 5.70844L2.41076 5.51112H2.74642L2.85013 5.1919ZM4.75021 5.1919L4.85392 5.51112H5.1896L4.91802 5.70844L5.02176 6.02766L4.75021 5.83037L4.47865 6.02766L4.58236 5.70844L4.31081 5.51112H4.64649L4.75021 5.1919ZM6.65017 5.1919L6.75388 5.51112H7.08953L6.81798 5.70844L6.92169 6.02766L6.65017 5.83037L6.37858 6.02766L6.48232 5.70844L6.21074 5.51112H6.54643L6.65017 5.1919ZM8.55021 5.1919L8.65393 5.51112H8.98961L8.71803 5.70844L8.82177 6.02766L8.55019 5.83037L8.27866 6.02766L8.38237 5.70844L8.11082 5.51112H8.44647L8.55021 5.1919ZM10.4503 5.1919L10.554 5.51112H10.8897L10.6181 5.70844L10.7218 6.02766L10.4503 5.83037L10.1787 6.02766L10.2825 5.70844L10.0109 5.51112H10.3466L10.4503 5.1919ZM1.90018 5.99959L2.00389 6.31884H2.33957L2.06799 6.51612L2.17176 6.83537L1.90018 6.63809L1.62862 6.83537L1.73233 6.51612L1.46078 6.31884H1.79646L1.90018 5.99959ZM3.80014 5.99959L3.90385 6.31884H4.2395L3.96795 6.51612L4.07166 6.83537L3.80014 6.63809L3.52855 6.83537L3.63229 6.51612L3.36071 6.31884H3.6964L3.80014 5.99959ZM5.70019 5.99959L5.8039 6.31884H6.13958L5.868 6.51612L5.97174 6.83537L5.70016 6.63809L5.42863 6.83537L5.53234 6.51612L5.26079 6.31884H5.59645L5.70019 5.99959ZM7.60023 5.99959L7.70395 6.31884H8.03963L7.76805 6.51612L7.87179 6.83537L7.60023 6.63809L7.32865 6.83537L7.43242 6.51612L7.16084 6.31884H7.49652L7.60023 5.99959ZM9.5002 5.99959L9.60391 6.31884H9.93956L9.66801 6.51612L9.77172 6.83537L9.5002 6.63809L9.22861 6.83537L9.33235 6.51612L9.06077 6.31884H9.39646L9.5002 5.99959ZM0.950137 6.8073L1.05385 7.12652H1.38953L1.11795 7.32384L1.22169 7.64306L0.950107 7.44577L0.678584 7.64306L0.782295 7.32384L0.510742 7.12652H0.846396L0.950137 6.8073ZM2.85013 6.8073L2.95387 7.12652H3.28955L3.01797 7.32384L3.12171 7.64306L2.85013 7.44577L2.5786 7.64306L2.68231 7.32384L2.41076 7.12652H2.74642L2.85013 6.8073ZM4.75021 6.8073L4.85392 7.12652H5.1896L4.91802 7.32384L5.02176 7.64306L4.75021 7.44577L4.47865 7.64306L4.58236 7.32384L4.31081 7.12652H4.64649L4.75021 6.8073ZM6.65017 6.8073L6.75388 7.12652H7.08953L6.81798 7.32384L6.92169 7.64306L6.65017 7.44577L6.37858 7.64306L6.48232 7.32384L6.21074 7.12652H6.54643L6.65017 6.8073ZM8.55021 6.8073L8.65393 7.12652H8.98961L8.71803 7.32384L8.82177 7.64306L8.55019 7.44577L8.27866 7.64306L8.38237 7.32384L8.11082 7.12652H8.44647L8.55021 6.8073ZM10.4503 6.8073L10.554 7.12652H10.8897L10.6181 7.32384L10.7218 7.64306L10.4503 7.44577L10.1787 7.64306L10.2825 7.32384L10.0109 7.12652H10.3466L10.4503 6.8073Z"
+                                                                        fill="white" />
+                                                                </g>
+                                                                <defs>
+                                                                    <clipPath id="clip0_647_364">
+                                                                        <rect width="20" height="15" fill="white" />
+                                                                    </clipPath>
+                                                                </defs>
+                                                            </svg>
+                                                        </div>
+                                                        <div class="lang__country">
+                                                            <span>English</span>
+                                                        </div>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="lang__item" href="#">
+                                                        <div class="lang__icon">
+                                                            <svg width="20" height="15" viewBox="0 0 20 15" fill="none"
+                                                                xmlns="http://www.w3.org/2000/svg">
+                                                                <g clip-path="url(#clip0_650_408)">
+                                                                    <path d="M0 0H20V5H0V0Z" fill="#00732F" />
+                                                                    <path d="M0 5H20V10H0V5Z" fill="white" />
+                                                                    <path d="M0 10H20V15H0V10Z" fill="black" />
+                                                                    <path d="M0 0H6.875V15H0V0Z" fill="#FF0000" />
+                                                                </g>
+                                                                <defs>
+                                                                    <clipPath id="clip0_650_408">
+                                                                        <rect width="20" height="15" fill="white" />
+                                                                    </clipPath>
+                                                                </defs>
+                                                            </svg>
+                                                        </div>
+                                                        <div class="lang__country">
+                                                            <span>لعربية</span>
+                                                        </div>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="lang__item" href="#">
+                                                        <div class="lang__icon">
+                                                            <svg width="20" height="15" viewBox="0 0 20 15" fill="none"
+                                                                xmlns="http://www.w3.org/2000/svg">
+                                                                <g clip-path="url(#clip0_650_394)">
+                                                                    <path d="M0 0H20V15H0V0Z" fill="#DE2910" />
+                                                                    <path
+                                                                        d="M2.4269 5.5725L3.74988 1.5L5.07287 5.5725L1.60791 3.0525H5.89186L2.4269 5.5725Z"
+                                                                        fill="#FFDE00" />
+                                                                    <path
+                                                                        d="M8.25704 1.56588L6.86593 1.88534L7.8037 0.809307L7.67681 2.23181L6.94284 1.00688L8.25704 1.56588Z"
+                                                                        fill="#FFDE00" />
+                                                                    <path
+                                                                        d="M9.66184 3.3445L8.25572 3.09942L9.53741 2.47132L8.86876 3.73327L8.66731 2.31955L9.66184 3.3445Z"
+                                                                        fill="#FFDE00" />
+                                                                    <path
+                                                                        d="M9.46176 5.84138L8.27787 5.04411L9.70428 4.99338L8.57909 5.87289L8.97174 4.49993L9.46176 5.84138Z"
+                                                                        fill="#FFDE00" />
+                                                                    <path
+                                                                        d="M7.69664 7.47561L6.91253 6.28295L8.24786 6.78708L6.87029 7.16375L7.76274 6.04899L7.69664 7.47561Z"
+                                                                        fill="#FFDE00" />
+                                                                </g>
+                                                                <defs>
+                                                                    <clipPath id="clip0_650_394">
+                                                                        <rect width="20" height="15" fill="white" />
+                                                                    </clipPath>
+                                                                </defs>
+                                                            </svg>
+                                                        </div>
+                                                        <div class="lang__country">
+                                                            <span>简体中文</span>
+                                                        </div>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="lang__item" href="#">
+                                                        <div class="lang__icon">
+                                                            <svg width="20" height="15" viewBox="0 0 20 15" fill="none"
+                                                                xmlns="http://www.w3.org/2000/svg">
+                                                                <g clip-path="url(#clip0_651_428)">
+                                                                    <path d="M0 10H20V15.0001H0V10Z" fill="#FFCE00" />
+                                                                    <path d="M0 0H20V5H0V0Z" fill="black" />
+                                                                    <path d="M0 5H20V10H0V5Z" fill="#DD0000" />
+                                                                </g>
+                                                                <defs>
+                                                                    <clipPath id="clip0_651_428">
+                                                                        <rect width="20" height="15" fill="white" />
+                                                                    </clipPath>
+                                                                </defs>
+                                                            </svg>
+                                                        </div>
+                                                        <div class="lang__country">
+                                                            <span>Deutsch</span>
+                                                        </div>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="lang__item" href="#">
+                                                        <div class="lang__icon">
+                                                            <svg width="20" height="15" viewBox="0 0 20 15" fill="none"
+                                                                xmlns="http://www.w3.org/2000/svg">
+                                                                <g clip-path="url(#clip0_651_427)">
+                                                                    <path fill-rule="evenodd" clip-rule="evenodd"
+                                                                        d="M0 0H20V15H0V0Z" fill="white" />
+                                                                    <path fill-rule="evenodd" clip-rule="evenodd"
+                                                                        d="M0 0H6.66678V15H0V0Z" fill="#00267F" />
+                                                                    <path fill-rule="evenodd" clip-rule="evenodd"
+                                                                        d="M13.333 0H19.9998V15H13.333V0Z"
+                                                                        fill="#F31830" />
+                                                                </g>
+                                                                <defs>
+                                                                    <clipPath id="clip0_651_427">
+                                                                        <rect width="20" height="15" fill="white" />
+                                                                    </clipPath>
+                                                                </defs>
+                                                            </svg>
+                                                        </div>
+                                                        <div class="lang__country">
+                                                            <span>Français</span>
+                                                        </div>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li>
+                                    <a href="#!" onclick="javascript:toggleFullScreen()">
+                                        <div class="nav-item">
+                                            <div class="notification__icon">
+                                                <svg width="22" height="22" viewBox="0 0 22 22" fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg">
+                                                    <path
+                                                        d="M7.47106 21.549C7.09156 21.549 6.78356 21.2417 6.78356 20.8615V14.7984H0.6875C0.308 14.7984 0 14.4911 0 14.1109C0 13.7308 0.308 13.4234 0.6875 13.4234H7.47106C7.85056 13.4234 8.15856 13.7308 8.15856 14.1109V20.8615C8.15856 21.2417 7.85056 21.549 7.47106 21.549V21.549ZM14.5289 21.5318C14.1494 21.5318 13.8414 21.2245 13.8414 20.8443V14.0601C13.8414 13.6799 14.1494 13.3726 14.5289 13.3726H21.2795C21.659 13.3726 21.967 13.6799 21.967 14.0601C21.967 14.4403 21.659 14.7476 21.2795 14.7476H15.2164V20.8443C15.2164 21.2245 14.9084 21.5318 14.5289 21.5318V21.5318ZM7.47106 8.17644H0.7205C0.341 8.17644 0.033 7.86912 0.033 7.48894C0.033 7.10875 0.341 6.80144 0.7205 6.80144H6.78356V0.704688C6.78356 0.3245 7.09156 0.0171875 7.47106 0.0171875C7.85056 0.0171875 8.15856 0.3245 8.15856 0.704688V7.48894C8.15856 7.86844 7.85056 8.17644 7.47106 8.17644ZM21.3125 8.12556H14.5289C14.1494 8.12556 13.8414 7.81825 13.8414 7.43806V0.6875C13.8414 0.307312 14.1494 0 14.5289 0C14.9084 0 15.2164 0.307312 15.2164 0.6875V6.75056H21.3125C21.692 6.75056 22 7.05788 22 7.43806C22 7.81825 21.692 8.12556 21.3125 8.12556Z"
+                                                        fill="#7A7A7A" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li>
+                                    <div class="nav-item p-relative d-none">
+                                        <a id="emaildropdown" href="#">
+                                            <div class="notification__icon">
+                                                <svg width="22" height="16" viewBox="0 0 22 16" fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg">
+                                                    <path
+                                                        d="M20.0001 0H1.99998C0.895427 0 0 0.895428 0 2.00003V14.0001C0 15.1046 0.895427 16 1.99998 16H20C21.1046 16 22 15.1046 22 14.0001V2.00003C22 0.895428 21.1046 0 20.0001 0ZM1.99998 1.00001H20C20.1143 1.00074 20.2276 1.02103 20.335 1.06L11.68 9.71504C11.3083 10.0892 10.7036 10.0912 10.3295 9.71946C10.328 9.718 10.3265 9.7165 10.325 9.71504L1.665 1.06C1.77242 1.02103 1.88573 1.0007 1.99998 1.00001ZM1.00001 14V2.00003C0.9949 1.9418 0.9949 1.88324 1.00001 1.82502L7.19002 8.00002L1.00001 14.175C0.9949 14.1168 0.9949 14.0582 1.00001 14ZM20.0001 15H1.99998C1.88573 14.9993 1.77242 14.979 1.665 14.94L7.89999 8.70506L9.61501 10.4201C10.3771 11.185 11.6149 11.1873 12.3798 10.4253C12.3816 10.4236 12.3833 10.4218 12.385 10.4201L14.1 8.70506L20.335 14.94C20.2276 14.979 20.1143 14.9993 20.0001 15ZM21 14.175L14.81 8.00002L21 1.82502C21.0051 1.88324 21.0051 1.9418 21 2.00003V14.0001C21.0051 14.0582 21.0051 14.1168 21 14.175Z"
+                                                        fill="#7A7A7A" />
+                                                </svg>
+                                            </div>
+                                        </a>
+                                        <div class="email__dropdown">
+                                            <div class="notification__card card__scroll">
+                                                <div class="notification__header">
+                                                    <div class="notification__inner">
+                                                        <h5>Email Notifications</h5>
+                                                        <span>(8)</span>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar1.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <p><a href="email-read.html">HRM: New policy updates
+                                                                available.</a></p>
+                                                        <div class="notification__time">
+                                                            <span>1h ago</span>
+                                                            <span class="status">HRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar2.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <p><a href="email-read.html">CRM: Monthly performance
+                                                                report.</a></p>
+                                                        <div class="notification__time">
+                                                            <span>2h ago</span>
+                                                            <span class="status">CRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar3.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <p><a href="email-read.html">HRM: Team meeting at 3 PM.</a></p>
+                                                        <div class="notification__time">
+                                                            <span>3h ago</span>
+                                                            <span class="status">HRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar4.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <p><a href="email-read.html">CRM: New client inquiry from ABC
+                                                                Corp.</a></p>
+                                                        <div class="notification__time">
+                                                            <span>4h ago</span>
+                                                            <span class="status">CRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar5.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <p><a href="email-read.html">HRM: Annual leave request
+                                                                approved.</a></p>
+                                                        <div class="notification__time">
+                                                            <span>5h ago</span>
+                                                            <span class="status">HRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar6.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <p><a href="email-read.html">CRM: Follow-up required for DEF
+                                                                Ltd.</a></p>
+                                                        <div class="notification__time">
+                                                            <span>6h ago</span>
+                                                            <span class="status">CRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar7.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <p><a href="email-read.html">HRM: Training session reminder.</a>
+                                                        </p>
+                                                        <div class="notification__time">
+                                                            <span>7h ago</span>
+                                                            <span class="status">HRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar8.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <p><a href="email-read.html">CRM: Client feedback received.</a>
+                                                        </p>
+                                                        <div class="notification__time">
+                                                            <span>8h ago</span>
+                                                            <span class="status">CRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                                <li class="d-none">
+                                    <div class="nav-item p-relative">
+                                        <a id="notifydropdown" href="#">
+                                            <div class="notification__icon">
+                                                <svg width="22" height="22" viewBox="0 0 22 22" fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg">
+                                                    <g clip-path="url(#clip0_209_757)">
+                                                        <path
+                                                            d="M9.1665 22C7.27185 22 5.729 20.4582 5.729 18.5625C5.729 18.183 6.037 17.875 6.4165 17.875C6.79601 17.875 7.104 18.183 7.104 18.5625C7.104 19.7002 8.02985 20.625 9.1665 20.625C10.3032 20.625 11.229 19.7002 11.229 18.5625C11.229 18.183 11.537 17.875 11.9165 17.875C12.296 17.875 12.604 18.183 12.604 18.5625C12.604 20.4582 11.0613 22 9.1665 22Z"
+                                                            fill="#7A7A7A" />
+                                                        <path
+                                                            d="M16.7291 19.2499H1.60411C0.719559 19.2499 0 18.5304 0 17.6458C0 17.1764 0.204437 16.7319 0.560944 16.4266C0.583939 16.4065 0.608612 16.3882 0.634293 16.3715C1.97992 15.1973 2.75 13.5079 2.75 11.724V9.16655C2.75 6.18106 4.77306 3.61805 7.66975 2.93323C8.04002 2.84797 8.41046 3.07439 8.49757 3.44483C8.58452 3.81426 8.35541 4.18453 7.98698 4.27164C5.71266 4.80875 4.125 6.82174 4.125 9.16655V11.724C4.125 13.9388 3.15417 16.0343 1.46396 17.4724C1.4502 17.4835 1.43828 17.4936 1.42351 17.5037C1.39883 17.5349 1.375 17.5826 1.375 17.6458C1.375 17.7704 1.47957 17.8749 1.60411 17.8749H16.7291C16.8538 17.8749 16.9584 17.7704 16.9584 17.6458C16.9584 17.5815 16.9346 17.5349 16.9089 17.5037C16.8951 17.4936 16.8822 17.4835 16.8694 17.4724C16.0482 16.7722 15.3999 15.9271 14.9436 14.9599C14.7804 14.617 14.9269 14.2073 15.2707 14.0442C15.6173 13.881 16.0233 14.0296 16.1856 14.3723C16.5485 15.1387 17.0573 15.8116 17.7008 16.3744C17.7246 16.3908 17.7495 16.4083 17.7704 16.4266C18.129 16.7319 18.3334 17.1764 18.3334 17.6458C18.3334 18.5304 17.6138 19.2499 16.7291 19.2499Z"
+                                                            fill="#7A7A7A" />
+                                                        <path
+                                                            d="M16.0417 11.9166C12.7565 11.9166 10.0835 9.24365 10.0835 5.95839C10.0835 2.67296 12.7565 0 16.0417 0C19.3271 0 22.0001 2.67296 22.0001 5.95839C22.0001 9.24365 19.3271 11.9166 16.0417 11.9166ZM16.0417 1.375C13.5145 1.375 11.4585 3.43112 11.4585 5.95839C11.4585 8.48566 13.5145 10.5416 16.0417 10.5416C18.569 10.5416 20.6251 8.48566 20.6251 5.95839C20.6251 3.43112 18.569 1.375 16.0417 1.375Z"
+                                                            fill="#7A7A7A" />
+                                                        <path
+                                                            d="M16.2709 8.70828C15.8914 8.70828 15.5834 8.40028 15.5834 8.02078V5.0415H15.125C14.7455 5.0415 14.4375 4.73351 14.4375 4.354C14.4375 3.9745 14.7455 3.6665 15.125 3.6665H16.2709C16.6504 3.6665 16.9584 3.9745 16.9584 4.354V8.02078C16.9584 8.40028 16.6504 8.70828 16.2709 8.70828Z"
+                                                            fill="#7A7A7A" />
+                                                    </g>
+                                                    <defs>
+                                                        <clipPath id="clip0_209_757">
+                                                            <rect width="22" height="22" fill="white" />
+                                                        </clipPath>
+                                                    </defs>
+                                                </svg>
+                                            </div>
+                                        </a>
+
+                                        <div class="notification__dropdown item-two">
+                                            <div class="notification__card card__scroll">
+                                                <div class="notification__header">
+                                                    <div class="notification__inner">
+                                                        <h5>Notifications</h5>
+                                                        <span>(8)</span>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar1.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <a href="project-details.html">HRM: New employee onboarding
+                                                            session at 10 AM.</a>
+                                                        <div class="notification__time">
+                                                            <span>1h ago</span>
+                                                            <span class="status">HRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar2.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <a href="project-details.html">CRM: Upcoming meeting with ABC
+                                                            Corp at 2 PM.</a>
+                                                        <div class="notification__time">
+                                                            <span>2h ago</span>
+                                                            <span class="status">CRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar3.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <a href="project-details.html">HRM: Performance review deadlines
+                                                            approaching.</a>
+                                                        <div class="notification__time">
+                                                            <span>3h ago</span>
+                                                            <span class="status">HRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar4.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <a href="project-details.html">CRM: Follow-up call with XYZ Ltd
+                                                            scheduled for 4 PM.</a>
+                                                        <div class="notification__time">
+                                                            <span>4h ago</span>
+                                                            <span class="status">CRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar5.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <a href="project-details.html">HRM: Reminder to submit
+                                                            timesheets by EOD.</a>
+                                                        <div class="notification__time">
+                                                            <span>5h ago</span>
+                                                            <span class="status">HRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar6.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <a href="project-details.html">CRM: New lead from DEF Inc. added
+                                                            to the pipeline.</a>
+                                                        <div class="notification__time">
+                                                            <span>6h ago</span>
+                                                            <span class="status">CRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar7.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <a href="project-details.html">HRM: Training session on
+                                                            compliance starts at 3 PM.</a>
+                                                        <div class="notification__time">
+                                                            <span>7h ago</span>
+                                                            <span class="status">HRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="notification__item">
+                                                    <div class="notification__thumb">
+                                                        <a href="employee-profile.html"><img
+                                                                src="assets/images/avatar/avatar8.png"
+                                                                alt="image not found"></a>
+                                                    </div>
+                                                    <div class="notification__content">
+                                                        <a href="project-details.html">CRM: Client satisfaction survey
+                                                            results available.</a>
+                                                        <div class="notification__time">
+                                                            <span>8h ago</span>
+                                                            <span class="status">CRM</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                                <!-- Dedicated Approval & Disbursement Task Bell (shown only for approvers) -->
+                                <li id="topbarApprovalTaskItem" class="d-inline-block position-relative" style="display: none !important;">
+                                    <div class="nav-item p-relative">
+                                        <a id="topbarApprovalTaskBtn" href="javascript:void(0)" onclick="openApprovalReminderManually(); return false;" title="Pending Approvals & Tasks" class="position-relative d-inline-block" style="padding: 6px 8px;">
+                                            <div class="notification__icon position-relative">
+                                                <svg width="22" height="22" viewBox="0 0 22 22" fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg">
+                                                    <g clip-path="url(#clip0_209_757_appr)">
+                                                        <path
+                                                            d="M9.1665 22C7.27185 22 5.729 20.4582 5.729 18.5625C5.729 18.183 6.037 17.875 6.4165 17.875C6.79601 17.875 7.104 18.183 7.104 18.5625C7.104 19.7002 8.02985 20.625 9.1665 20.625C10.3032 20.625 11.229 19.7002 11.229 18.5625C11.229 18.183 11.537 17.875 11.9165 17.875C12.296 17.875 12.604 18.183 12.604 18.5625C12.604 20.4582 11.0613 22 9.1665 22Z"
+                                                            fill="#006837" />
+                                                        <path
+                                                            d="M16.7291 19.2499H1.60411C0.719559 19.2499 0 18.5304 0 17.6458C0 17.1764 0.204437 16.7319 0.560944 16.4266C0.583939 16.4065 0.608612 16.3882 0.634293 16.3715C1.97992 15.1973 2.75 13.5079 2.75 11.724V9.16655C2.75 6.18106 4.77306 3.61805 7.66975 2.93323C8.04002 2.84797 8.41046 3.07439 8.49757 3.44483C8.58452 3.81426 8.35541 4.18453 7.98698 4.27164C5.71266 4.80875 4.125 6.82174 4.125 9.16655V11.724C4.125 13.9388 3.15417 16.0343 1.46396 17.4724C1.4502 17.4835 1.43828 17.4936 1.42351 17.5037C1.39883 17.5349 1.375 17.5826 1.375 17.6458C1.375 17.7704 1.47957 17.8749 1.60411 17.8749H16.7291C16.8538 17.8749 16.9584 17.7704 16.9584 17.6458C16.9584 17.5815 16.9346 17.5349 16.9089 17.5037C16.8951 17.4936 16.8822 17.4835 16.8694 17.4724C16.0482 16.7722 15.3999 15.9271 14.9436 14.9599C14.7804 14.617 14.9269 14.2073 15.2707 14.0442C15.6173 13.881 16.0233 14.0296 16.1856 14.3723C16.5485 15.1387 17.0573 15.8116 17.7008 16.3744C17.7246 16.3908 17.7495 16.4083 17.7704 16.4266C18.129 16.7319 18.3334 17.1764 18.3334 17.6458C18.3334 18.5304 17.6138 19.2499 16.7291 19.2499Z"
+                                                            fill="#006837" />
+                                                        <path
+                                                            d="M16.0417 11.9166C12.7565 11.9166 10.0835 9.24365 10.0835 5.95839C10.0835 2.67296 12.7565 0 16.0417 0C19.3271 0 22.0001 2.67296 22.0001 5.95839C22.0001 9.24365 19.3271 11.9166 16.0417 11.9166ZM16.0417 1.375C13.5145 1.375 11.4585 3.43112 11.4585 5.95839C11.4585 8.48566 13.5145 10.5416 16.0417 10.5416C18.569 10.5416 20.6251 8.48566 20.6251 5.95839C20.6251 3.43112 18.569 1.375 16.0417 1.375Z"
+                                                            fill="#006837" />
+                                                        <path
+                                                            d="M16.2709 8.70828C15.8914 8.70828 15.5834 8.40028 15.5834 8.02078V5.0415H15.125C14.7455 5.0415 14.4375 4.73351 14.4375 4.354C14.4375 3.9745 14.7455 3.6665 15.125 3.6665H16.2709C16.6504 3.6665 16.9584 3.9745 16.9584 4.354V8.02078C16.9584 8.40028 16.6504 8.70828 16.2709 8.70828Z"
+                                                            fill="#006837" />
+                                                    </g>
+                                                    <defs>
+                                                        <clipPath id="clip0_209_757_appr">
+                                                            <rect width="22" height="22" fill="white" />
+                                                        </clipPath>
+                                                    </defs>
+                                                </svg>
+                                                <span id="topbarPendingApprovalBadge" class="badge bg-danger rounded-pill position-absolute" style="top: -4px; right: -6px; font-size: 10px; display: none; padding: 2px 5px; font-weight: 700;">0</span>
+                                            </div>
+                                        </a>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="nav-item p-relative">
+                            <a id="userportfolio" href="#">
+                                <div class="user__portfolio">
+                                    <div class="user__portfolio-thumb">
+
+
+                                        <img src="/TPHL-ERP/public/assets/images/avatar/avatar.png" alt="img not found">
+                                    </div>
+
+                                    <div class="user__content">
+                                        <h5>Management</h5>
+                                        <span>online</span>
+                                    </div>
+                                </div>
+                            </a>
+                            <div class="user__dropdown">
+                                <ul>
+                                    <li>
+                                        <a href="/TPHL-ERP/user-profile/1"><svg width="16" height="16"
+                                                viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <g clip-path="url(#clip0_643_344)">
+                                                    <path
+                                                        d="M13.6569 10.3431C12.7855 9.47181 11.7484 8.82678 10.6168 8.43631C11.8288 7.60159 12.625 6.20463 12.625 4.625C12.625 2.07478 10.5502 0 8 0C5.44978 0 3.375 2.07478 3.375 4.625C3.375 6.20463 4.17122 7.60159 5.38319 8.43631C4.25162 8.82678 3.2145 9.47181 2.34316 10.3431C0.832156 11.8542 0 13.8631 0 16H1.25C1.25 12.278 4.27803 9.25 8 9.25C11.722 9.25 14.75 12.278 14.75 16H16C16 13.8631 15.1678 11.8542 13.6569 10.3431ZM8 8C6.13903 8 4.625 6.486 4.625 4.625C4.625 2.764 6.13903 1.25 8 1.25C9.86097 1.25 11.375 2.764 11.375 4.625C11.375 6.486 9.86097 8 8 8Z"
+                                                        fill="#7A7A7A" />
+                                                </g>
+                                                <defs>
+                                                    <clipPath id="clip0_643_344">
+                                                        <rect width="16" height="16" fill="white" />
+                                                    </clipPath>
+                                                </defs>
+                                            </svg>
+                                            Profile</a>
+                                    </li>
+                                 
+                                    <li>
+                                        <a href="/TPHL-ERP/create-user"><svg width="18" height="18" viewBox="0 0 18 18"
+                                                fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path
+                                                    d="M12.9224 9.03197C12.5765 8.86754 12.2235 8.7259 11.8644 8.60724C13.0275 7.73424 13.7812 6.34413 13.7812 4.78125C13.7812 2.14488 11.6364 0 8.99999 0C6.36359 0 4.21874 2.14488 4.21874 4.78125C4.21874 6.34585 4.97418 7.73734 6.13943 8.61016C5.07181 8.96165 4.07003 9.50858 3.19323 10.2298C1.58546 11.5522 0.4676 13.3969 0.0456193 15.4239C-0.0866386 16.059 0.0718107 16.7114 0.480256 17.2136C0.886698 17.7134 1.48938 18 2.13373 18H10.793C11.1813 18 11.4961 17.6852 11.4961 17.2969C11.4961 16.9086 11.1813 16.5938 10.793 16.5938H2.13373C1.83356 16.5938 1.65247 16.4262 1.57126 16.3264C1.43102 16.1539 1.37674 15.9295 1.42234 15.7105C2.15201 12.2056 5.24351 9.64527 8.8136 9.55892C8.87544 9.56131 8.93756 9.56251 8.99999 9.56251C9.06303 9.56251 9.12578 9.56128 9.18822 9.55885C10.2823 9.58452 11.3345 9.8342 12.3187 10.3021C12.6694 10.4687 13.0888 10.3196 13.2556 9.96885C13.4223 9.61813 13.2731 9.19868 12.9224 9.03197ZM9.17149 8.15193C9.11443 8.15091 9.05726 8.15039 8.99999 8.15039C8.94325 8.15039 8.88651 8.15095 8.82984 8.152C7.04759 8.06309 5.62499 6.58519 5.62499 4.78125C5.62499 2.92026 7.139 1.40625 8.99999 1.40625C10.861 1.40625 12.375 2.92026 12.375 4.78125C12.375 6.58474 10.9531 8.06236 9.17149 8.15193Z"
+                                                    fill="#7A7A7A" />
+                                                <path
+                                                    d="M17.2969 13.957H15.3633V12.0234C15.3633 11.6351 15.0485 11.3203 14.6602 11.3203C14.2718 11.3203 13.957 11.6351 13.957 12.0234V13.957H12.0234C11.6351 13.957 11.3203 14.2718 11.3203 14.6602C11.3203 15.0485 11.6351 15.3633 12.0234 15.3633H13.957V17.2969C13.957 17.6852 14.2718 18 14.6602 18C15.0485 18 15.3633 17.6852 15.3633 17.2969V15.3633H17.2969C17.6852 15.3633 18 15.0485 18 14.6602C18 14.2718 17.6852 13.957 17.2969 13.957Z"
+                                                    fill="#7A7A7A" />
+                                            </svg>
+                                            add acount
+                                        </a>
+                                    </li>
+                                                                        <li>
+
+                                        <a href="/TPHL-ERP/logout"><svg width="18" height="18" viewBox="0 0 18 18"
+                                                fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <g clip-path="url(#clip0_643_343)">
+                                                    <path
+                                                        d="M17.4368 8.43771H10.312C10.0015 8.43771 9.74951 8.18572 9.74951 7.87523C9.74951 7.56474 10.0015 7.31274 10.312 7.31274H17.4368C17.7473 7.31274 17.9993 7.56474 17.9993 7.87523C17.9993 8.18572 17.7473 8.43771 17.4368 8.43771Z"
+                                                        fill="#7A7A7A" />
+                                                    <path
+                                                        d="M14.6244 11.2502C14.4803 11.2502 14.3364 11.1954 14.2268 11.0852C14.0071 10.8654 14.0071 10.5091 14.2268 10.2894L16.6418 7.87457L14.2268 5.45958C14.0071 5.23986 14.0071 4.88364 14.2268 4.66392C14.4467 4.44406 14.8029 4.44406 15.0226 4.66392L17.835 7.47633C18.0547 7.69605 18.0547 8.05227 17.835 8.27199L15.0226 11.0844C14.9123 11.1954 14.7684 11.2502 14.6244 11.2502Z"
+                                                        fill="#7A7A7A" />
+                                                    <path
+                                                        d="M5.99986 18.0002C5.83932 18.0002 5.68703 17.9776 5.53488 17.9304L1.02142 16.4267C0.407305 16.2122 0 15.64 0 15.0003V1.50073C0 0.673487 0.672754 0.000732422 1.5 0.000732422C1.66039 0.000732422 1.81269 0.0232537 1.96498 0.0704934L6.4783 1.5742C7.09255 1.7887 7.49972 2.36093 7.49972 3.00059V16.5002C7.49972 17.3274 6.8271 18.0002 5.99986 18.0002ZM1.5 1.1257C1.29374 1.1257 1.12496 1.29447 1.12496 1.50073V15.0003C1.12496 15.16 1.23222 15.3085 1.3852 15.3617L5.8775 16.8587C5.90977 16.8692 5.95179 16.8752 5.99986 16.8752C6.20612 16.8752 6.37475 16.7064 6.37475 16.5002V3.00059C6.37475 2.84088 6.2675 2.69244 6.11452 2.63915L1.62222 1.14218C1.58995 1.13174 1.54793 1.1257 1.5 1.1257Z"
+                                                        fill="#7A7A7A" />
+                                                    <path
+                                                        d="M11.4371 6.00035C11.1266 6.00035 10.8746 5.74836 10.8746 5.43786V2.06297C10.8746 1.54622 10.454 1.12545 9.93722 1.12545H1.49998C1.18949 1.12545 0.9375 0.873462 0.9375 0.562971C0.9375 0.252479 1.18949 0.000488281 1.49998 0.000488281H9.93722C11.075 0.000488281 11.9996 0.925234 11.9996 2.06297V5.43786C11.9996 5.74836 11.7476 6.00035 11.4371 6.00035Z"
+                                                        fill="#7A7A7A" />
+                                                    <path
+                                                        d="M9.93699 15.7501H6.93699C6.6265 15.7501 6.37451 15.4981 6.37451 15.1876C6.37451 14.8771 6.6265 14.6251 6.93699 14.6251H9.93699C10.4537 14.6251 10.8744 14.2044 10.8744 13.6876V10.3127C10.8744 10.0022 11.1264 9.75024 11.4369 9.75024C11.7473 9.75024 11.9993 10.0022 11.9993 10.3127V13.6876C11.9993 14.8254 11.0747 15.7501 9.93699 15.7501Z"
+                                                        fill="#7A7A7A" />
+                                                </g>
+                                                <defs>
+                                                    <clipPath id="clip0_643_343">
+                                                        <rect width="18" height="18" fill="white" />
+                                                    </clipPath>
+                                                </defs>
+                                            </svg>
+                                            Log Out</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- <pre>
+                <php print_r($_SESSION) ?>
+            </pre> -->
+
+            <div class="body__overlay"></div>
+            <!-- App header area end -->        </div> <!-- page__body-wrapper end -->
+        </div> <!-- page__full-wrapper end -->
+
+        <!-- Back to top -->
+        <div class="progress-wrap">
+            <svg class="progress-circle svg-content" width="100%" height="100%" viewBox="-1 -1 102 102">
+                <path d="M50,1 a49,49 0 0,1 0,98 a49,49 0 0,1 0,-98" />
+            </svg>
+        </div>
+
+
+        <!-- SweetAlert2 loaded locally below -->
+        
+
+                <!-- JS -->
+        <!-- Footer Scripts -->
+
+        <!-- ✅ base_url: set only if not already defined by page (avoids conflict with const base_url in views) -->
+        <script>
+            window.base_url = window.base_url || "/TPHL-ERP";
+        </script>
+
+        <!-- ✅ jQuery FIRST (MOST IMPORTANT) -->
+        <script src="http://localhost:3333/assets/js/vendor/jquery-3.7.0.js"></script>
+
+        <!-- ✅ Core JS -->
+        <script src="http://localhost:3333/assets/js/vendor/bootstrap.bundle.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/popper.min.js"></script>
+
+        <!-- ✅ Select2 (RIGHT AFTER jQuery) -->
+        <script src="http://localhost:3333/assets/js/plugins/select2.full.min.js"></script>
+
+        <!-- ✅ Other plugins -->
+        <script src="http://localhost:3333/assets/js/vendor/calendar-activision.js"></script>
+        <script src="http://localhost:3333/assets/js/vendor/isotope.pkgd.js"></script>
+        <script src="http://localhost:3333/assets/js/vendor/magnific-popup.min.js"></script>
+        <script src="http://localhost:3333/assets/js/vendor/ajax-form.js"></script>
+        <script src="http://localhost:3333/assets/js/vendor/jquery.repeater.js"></script>
+
+        <script src="http://localhost:3333/assets/js/plugins/waypoints.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/dayjs.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/loader.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/jsvectormap.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/world-merc.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/swiper-bundle.min.js"></script>
+
+        <script src="http://localhost:3333/assets/js/plugins/simplebar.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/simplebar-active.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/backtotop.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/smooth-scrollbar.js"></script>
+
+        <script src="http://localhost:3333/assets/js/plugins/cleave.min.js"></script>
+
+        <!-- ✅ Datatable -->
+        <script src="http://localhost:3333/assets/js/plugins/datatables.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/jquery.dataTables.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/dataTables.bootstrap5.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/dataTables.buttons.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/jszip.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/pdfmake.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/vfs_fonts.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/buttons.html5.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/buttons.print.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/buttons.colVis.min.js"></script>
+
+        <!-- ✅ Forms & UI -->
+        <script src="http://localhost:3333/assets/js/plugins/steps-form.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/dropify.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/dropzone.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/tinymce.min.js"></script>
+
+        <script src="http://localhost:3333/assets/js/plugins/typeahead.bundle.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/bloodhound.js"></script>
+
+        <script src="http://localhost:3333/assets/js/plugins/jquery.timepicker.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/flatpickr.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/tagify.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/jquery-ui.min.js"></script>
+
+        <script src="http://localhost:3333/assets/js/plugins/sweetalert2.all.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/apexcharts.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/fullcalendar.min.js"></script>
+        <script src="http://localhost:3333/assets/js/plugins/ion.rangeSlider.min.js"></script>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.14.0-beta3/js/bootstrap-select.min.js"></script>
+        <!-- ✅ Custom scripts LAST -->
+        <script src="http://localhost:3333/assets/js/plugins/custom.js"></script>
+        <script src="http://localhost:3333/assets/js/vendor/custom-tagify.js"></script>
+        <script src="http://localhost:3333/assets/js/vendor/height-equal.js"></script>
+        <script src="http://localhost:3333/assets/js/vendor/custom-chart.js"></script>
+        <script src="http://localhost:3333/assets/js/vendor/rangeslider-script.js"></script>
+        <script src="http://localhost:3333/assets/js/vendor/jquery.barrating.js"></script>
+        <script src="http://localhost:3333/assets/js/vendor/rating-script.js"></script>
+        <script src="http://localhost:3333/assets/js/main.js?v=1.0.1"></script>
+        <script src="http://localhost:3333/assets/js/vendor/sidebar.js?v=2.0.1"></script>
+
+        <!-- ✅ Global Delete Handler & Client-Side Error Logging -->
+        <script>
+        (function() {
+            var baseUrl = (typeof base_url !== 'undefined' ? base_url : '') || window.base_url || '/TPHL-ERP';
+
+            // Core Log Function
+            function sendClientLog(type, message, details) {
+                fetch(baseUrl + '/log-client-debug', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        url: window.location.href,
+                        type: type,
+                        message: message,
+                        details: details
+                    })
+                }).catch(function(err) {
+                    console.warn('Failed to send debug log to server:', err);
+                });
+            }
+
+            // 1. Capture Global JS Errors
+            window.addEventListener('error', function(e) {
+                sendClientLog('js-error', e.message || 'Unhandled JS Error', {
+                    filename: e.filename || '',
+                    lineno: e.lineno || 0,
+                    colno: e.colno || 0,
+                    stack: e.error ? e.error.stack : null
+                });
+            });
+
+            window.addEventListener('unhandledrejection', function(e) {
+                sendClientLog('js-promise-rejection', e.reason ? (e.reason.message || String(e.reason)) : 'Unhandled rejection', {
+                    stack: e.reason ? e.reason.stack : null
+                });
+            });
+
+            // 2. Capture Phase Click Listener (Intercept click immediately before it can be stopped by other scripts)
+            window.addEventListener('click', function(e) {
+                var btn = e.target.closest('.removeBtnCust');
+                if (!btn) return;
+
+                // Intercept immediately
+                e.preventDefault();
+                e.stopPropagation();
+
+                var itemId   = btn.getAttribute('data-id');
+                var itemName = btn.getAttribute('data-name') || 'this item';
+                var action   = btn.getAttribute('data-action');
+
+                sendClientLog('click-capture', 'Delete button clicked (Intercepted in Capture Phase)', {
+                    itemId: itemId,
+                    itemName: itemName,
+                    action: action,
+                    classes: btn.className,
+                    tagName: btn.tagName,
+                    swalLoaded: typeof Swal !== 'undefined',
+                    jqueryLoaded: typeof $ !== 'undefined'
+                });
+
+                if (!action) {
+                    sendClientLog('error-delete', 'Deletion failed: data-action attribute is missing on the button!', {
+                        itemId: itemId,
+                        itemName: itemName
+                    });
+                    return;
+                }
+
+                // Ensure Swal is loaded
+                if (typeof Swal === 'undefined') {
+                    var errMsg = 'SweetAlert2 (Swal) is undefined! Cannot open delete modal.';
+                    console.error(errMsg);
+                    sendClientLog('error-delete', errMsg, {
+                        itemId: itemId,
+                        action: action
+                    });
+                    alert('Error: SweetAlert2 is not loaded. Cannot delete.');
+                    return;
+                }
+
+                sendClientLog('info-delete', 'Triggering Swal.fire confirmation modal (Capture Phase)', {
+                    itemId: itemId,
+                    itemName: itemName,
+                    action: action
+                });
+
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: 'You are about to delete "' + itemName + '". This action cannot be undone!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, delete it!',
+                    cancelButtonText: 'Cancel'
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        sendClientLog('info-delete', 'Deletion confirmed by user. Submitting form...', {
+                            itemId: itemId,
+                            action: action,
+                            postUrl: baseUrl + '/' + action
+                        });
+
+                        // Special AJAX handling for DM executive dashboard delete
+                        // to preserve current page position
+                        if (action === 'delete-lead-permanent') {
+                            var fd = new FormData();
+                            fd.append('id',   itemId);
+                            fd.append('ajax', '1');
+                            var curPage = (typeof dmCurrentPage !== 'undefined') ? dmCurrentPage : 1;
+                            fd.append('redirect_page', curPage);
+                            fetch(baseUrl + '/' + action, { method: 'POST', body: fd })
+                                .then(function(r) { return r.json(); })
+                                .then(function(data) {
+                                    if (data.ok && typeof dmLoadLeads === 'function') {
+                                        dmLoadLeads(curPage);
+                                    } else if (!data.ok) {
+                                        alert(data.message || 'Delete failed.');
+                                    }
+                                })
+                                .catch(function() { alert('Delete failed. Please try again.'); });
+                            return;
+                        }
+
+                        var form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = baseUrl + '/' + action;
+                        var input = document.createElement('input');
+                        input.type  = 'hidden';
+                        input.name  = 'id';
+                        input.value = itemId;
+                        form.appendChild(input);
+                        document.body.appendChild(form);
+                        form.submit();
+                    } else {
+                        sendClientLog('info-delete', 'Deletion cancelled by user', {
+                            itemId: itemId
+                        });
+                    }
+                }).catch(function(swalErr) {
+                    sendClientLog('error-delete', 'Swal.fire encountered an error: ' + swalErr.message, {
+                        stack: swalErr.stack
+                    });
+                });
+            }, true); // true = capture phase
+        })();
+        </script>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                if (typeof $ !== 'undefined' && $.fn.selectpicker) {
+                    $('.selectpicker').selectpicker();
+                }
+            });
+
+            function startCountdown() {
+                document.querySelectorAll("[id^='timer-']").forEach(function(el) {
+                    const deadline = el.getAttribute("data-deadline");
+                    if (!deadline) {
+                        el.innerHTML = "No Deadline";
+                        return;
+                    }
+
+                    const targetTime = new Date(deadline).getTime();
+
+                    const timer = setInterval(function() {
+                        const now = new Date().getTime();
+                        const distance = targetTime - now;
+
+                        if (distance <= 0) {
+                            el.innerHTML = "Expired";
+                            el.classList.remove("bg-danger");
+                            el.classList.add("bg-secondary");
+                            clearInterval(timer);
+                            return;
+                        }
+
+                        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                        el.innerHTML = days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
+                    }, 1000);
+                });
+            }
+            startCountdown();
+            $(document).ready(function() {
+                // Date of Birth picker
+                if (document.querySelector("#dateofBirth")) {
+                    flatpickr("#dateofBirth", {
+                        altInput: true,
+                        altFormat: "F j, Y",
+                        dateFormat: "Y-m-d",
+                        defaultDate: ""
+                    });
+                }
+
+                // Month picker for filter
+                if (document.querySelector("#attendanceMonth")) {
+                    $("#attendanceMonth").flatpickr({
+                        plugins: [
+                            new monthSelectPlugin({
+                                shorthand: true, // Jan, Feb
+                                dateFormat: "Y-m", // backend format
+                                altFormat: "F Y" // display format
+                            })
+                        ]
+                    });
+                }
+
+                // Punch In / Out time
+                if (document.querySelector("#clockInTime")) {
+                    $("#clockInTime").flatpickr({
+                        enableTime: true,
+                        noCalendar: true,
+                        dateFormat: "H:i",
+                        defaultDate: "09:00",
+                        time_24hr: true
+                    });
+                }
+
+                if (document.querySelector("#clockOutTime")) {
+                    $("#clockOutTime").flatpickr({
+                        enableTime: true,
+                        noCalendar: true,
+                        dateFormat: "H:i",
+                        defaultDate: "18:00",
+                        time_24hr: true
+                    });
+                }
+            });
+        </script>
+
+        <!-- ✅ Select2 Init -->
+        <script>
+            function initSelect2(parent = document) {
+    if (!$.fn.select2) return;
+
+    $(parent).find('.select2').each(function () {
+        if ($(this).hasClass('select2-hidden-accessible')) return;
+
+        var hasEmptyOption = $(this).find('option[value=""]').length > 0;
+        var placeholder = $(this).data('placeholder');
+        var modalParent = $(this).closest('.modal');
+
+        var opts = {
+            width: '100%',
+            dropdownParent: modalParent.length ? modalParent : $('body')
+        };
+        if (placeholder || hasEmptyOption) {
+            opts.placeholder = placeholder || 'Select option';
+            opts.allowClear = hasEmptyOption;
+        }
+
+        $(this).select2(opts);
+    });
+
+    // ✅ Fix scroll-to-top for team assignment dropdowns
+    $(parent).find('.select2-no-scroll').each(function () {
+        if ($(this).hasClass('select2-hidden-accessible')) return;
+
+        var hasEmptyOption = $(this).find('option[value=""]').length > 0;
+        var placeholder = $(this).data('placeholder');
+        var modalParent = $(this).closest('.modal');
+
+        var opts = {
+            width: '100%',
+            dropdownParent: modalParent.length ? modalParent : $('body'),
+            scrollAfterSelect: false
+        };
+        if (placeholder || hasEmptyOption) {
+            opts.placeholder = placeholder || 'Select option';
+            opts.allowClear = hasEmptyOption;
+        }
+
+        $(this).select2(opts);
+    });
+}
+
+// ✅ Global: Prevent Select2 from scrolling page to top when search input gets focus
+$(document).on('select2:open', function () {
+    var scrollY = $(window).scrollTop();
+    var scrollX = $(window).scrollLeft();
+
+    // Use setTimeout(0) so scroll restores AFTER browser processes the focus event
+    setTimeout(function () {
+        $(window).scrollTop(scrollY);
+        $(window).scrollLeft(scrollX);
+    }, 0);
+});
+         
+
+            /**
+             * Auto init on page load
+             */
+            $(document).ready(function() {
+                initSelect2();
+            });
+        </script>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                const labels = [];
+                const series = [];
+
+                const options = {
+                    series: series,
+                    chart: {
+                        type: 'donut',
+                        height: 260
+                    },
+
+                    labels: labels,
+
+                    plotOptions: {
+                        pie: {
+                            donut: {
+                                size: '68%',
+                                labels: {
+                                    show: true,
+
+                                    name: {
+                                        show: true,
+                                        fontSize: '12px',
+                                        offsetY: -6,
+                                        color: '#63666bff'
+
+                                    },
+
+                                    value: {
+                                        show: true,
+                                        fontSize: '16px',
+                                        fontWeight: 600,
+                                        offsetY: 6,
+                                        formatter: val => val + ' Flats'
+                                    },
+
+                                    total: {
+                                        show: true,
+                                        label: 'Total',
+                                        fontSize: '13px',
+                                        color: '#7c7f85ff',
+                                        formatter: function(w) {
+                                            return w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+
+                    stroke: {
+                        width: 2,
+                        colors: ['#fff']
+                    },
+
+                    fill: {
+                        type: 'gradient',
+                        gradient: {
+                            shade: 'light',
+                            type: 'radial',
+                            shadeIntensity: 0.4,
+                            gradientToColors: [
+                                '#9f00fb',
+                                '#13684aff',
+                                '#da950cff',
+                                '#FF4560',
+                                '#775DD0'
+                            ],
+                            opacityFrom: 1,
+                            opacityTo: 1,
+                            stops: [70, 100]
+                        }
+                    },
+
+                    colors: [
+                        'rgb(252, 72, 171)',
+                        '#12976bff',
+                        '#fecc6a',
+                        '#ff8698',
+                        '#a796e0'
+                    ],
+
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            colors: '#707174ff'
+                        },
+                        formatter: function(seriesName, opts) {
+                            return `${seriesName} (${opts.w.globals.series[opts.seriesIndex]})`;
+                        }
+                    },
+
+                    tooltip: {
+                        y: {
+                            formatter: val => val + ' Flats'
+                        }
+                    },
+
+                    responsive: [{
+                            breakpoint: 1200, // Laptop
+                            options: {
+                                dataLabels: {
+                                    enabled: true //  hide %
+                                },
+                                plotOptions: {
+                                    pie: {
+                                        donut: {
+                                            size: '72%',
+                                            labels: {
+                                                name: {
+                                                    fontSize: '11px'
+                                                },
+                                                value: {
+                                                    fontSize: '14px'
+                                                },
+                                                total: {
+                                                    fontSize: '12px'
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            breakpoint: 768, // Tablet & Mobile
+                            options: {
+                                dataLabels: {
+                                    enabled: false // hide %
+                                },
+                                plotOptions: {
+                                    pie: {
+                                        donut: {
+                                            size: '78%',
+                                            labels: {
+                                                show: true //  hide center text
+                                            }
+                                        }
+                                    }
+                                },
+                                legend: {
+                                    position: 'bottom'
+                                }
+                            }
+                        }
+                    ]
+
+                };
+
+                const pieChartEl = document.querySelector("#pieChart");
+                if (pieChartEl) {
+                    new ApexCharts(pieChartEl, options).render();
+                }
+            });
+        </script>
+
+
+        <!-- sales overview chart -->
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+
+                const salesData = {
+                    week: {
+                        labels: [],
+                        totals: []                    },
+                    month: {
+                        labels: [],
+                        totals: []                    },
+                    year: {
+                        labels: [],
+                        totals: []                    }
+                };
+
+                // 🔥 THIS PART YOU MISSED (Restricted to Booking Overview tab wrapper)
+                const salesChartElForInit = document.querySelector("#salesChart");
+                const activeBtn = salesChartElForInit ? salesChartElForInit.closest('.card__wrapper').querySelector('.nav-link.active') : null;
+                const defaultPeriod = activeBtn ? activeBtn.dataset.period : 'week';
+
+                const colors = ['#1a6e40ff', '#23bb95ff'];
+
+                function getAlternatingColors(length) {
+                    return Array.from({
+                        length
+                    }, (_, i) => colors[i % colors.length]);
+                }
+
+                let options = {
+                    chart: {
+                        type: 'bar',
+                        height: 350,
+                        toolbar: {
+                            show: false
+                        }
+                    },
+                    legend: {
+                        show: false
+                    },
+
+                    plotOptions: {
+                        bar: {
+                            distributed: true,
+                            borderRadius: 4,
+                            columnWidth: '40%'
+                        }
+                    },
+
+                    dataLabels: {
+                        enabled: defaultPeriod !== 'month',
+                        formatter: val => val.toLocaleString()
+                    },
+
+                    series: [{
+                        name: 'Sales',
+                        data: salesData[defaultPeriod].totals
+                    }],
+
+                    xaxis: {
+                        categories: salesData[defaultPeriod].labels,
+                        labels: {
+                            style: {
+                                colors: getAlternatingColors(salesData[defaultPeriod].labels.length),
+                                fontSize: '12px',
+                                fontWeight: 500
+                            }
+                        }
+                    },
+
+                    yaxis: {
+                        labels: {
+                            style: {
+                                colors: '#1a6e40',
+                                fontSize: '12px',
+                                fontWeight: 700
+                            }
+                        }
+                    },
+
+                    colors: getAlternatingColors(salesData[defaultPeriod].totals.length),
+
+                    tooltip: {
+                        y: {
+                            formatter: val => val.toLocaleString()
+                        }
+                    }
+                };
+
+                const salesChartEl = document.querySelector("#salesChart");
+                if (salesChartEl) {
+                    const chart = new ApexCharts(salesChartEl, options);
+                    chart.render();
+
+                    // Tabs click (Restricted to Booking Overview tabs)
+                    const bookingTabs = salesChartEl.closest('.card__wrapper').querySelectorAll('.nav-link');
+                    bookingTabs.forEach(button => {
+                        button.addEventListener('click', function() {
+
+                            bookingTabs.forEach(btn => btn.classList.remove('active'));
+                            this.classList.add('active');
+
+                            const period = this.dataset.period;
+
+                            if (salesData[period]) {
+                                chart.updateOptions({
+                                    series: [{
+                                        data: salesData[period].totals
+                                    }],
+                                    xaxis: {
+                                        categories: salesData[period].labels
+                                    },
+                                    colors: getAlternatingColors(salesData[period].totals.length),
+                                    dataLabels: {
+                                        enabled: period !== 'month'
+                                    }
+                                });
+                            }
+                        });
+                    });
+                }
+
+            });
+        </script>
+
+
+
+
+
+
+<!-- Daily Meal Notice Widget & Modal for Enrolled Employees -->
+
+<!-- Role-based Approval & Disbursement Reminder Modal -->
+
+        </body>
+
+        </html>
