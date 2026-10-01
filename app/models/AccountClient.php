@@ -24,30 +24,92 @@ class AccountClient extends Model
     }
 
     /**
-     * Get all clients (booked leads) with full details, optionally filtered by project
+     * Get all clients (booked leads) with full details, optionally filtered and paginated
      */
-    public function getAllClients($projectId = null, $verificationStatus = null)
+    public function getAllClients($projectId = null, $verificationStatus = null, $search = null, $limit = null, $offset = 0, $hasConflict = false, $dateType = null, $startDate = null, $endDate = null)
     {
-        $whereClause = "WHERE 1=1";
-        $havingClause = "";
+        $whereParts = ["1=1"];
+        $havingParts = [];
         $params = [];
         $types = '';
 
         if ($projectId) {
-            $whereClause .= " AND lb.project_id = ?";
+            $whereParts[] = "lb.project_id = ?";
             $params[] = (int) $projectId;
             $types .= 'i';
         }
-        
-        if ($verificationStatus === 'verified') {
-            $havingClause = "HAVING latest_verification_status = 'verified'";
-        } elseif ($verificationStatus === 'pending') {
-            $havingClause = "HAVING total_pending_payments > 0";
-        } elseif ($verificationStatus === 'rejected') {
-            $havingClause = "HAVING latest_verification_status = 'rejected'";
+
+        if (!empty($search)) {
+            $searchTerm = '%' . trim($search) . '%';
+            $whereParts[] = "(l.full_name LIKE ? OR l.phone LIKE ? OR l.email LIKE ? OR l.company LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ?)";
+            for ($i = 0; $i < 6; $i++) {
+                $params[] = $searchTerm;
+                $types .= 's';
+            }
         }
 
-        $sql = $this->db->prepare("
+        if ($hasConflict) {
+            $whereParts[] = "EXISTS (
+                SELECT 1 FROM lead_bookings lb_c 
+                JOIN flats f_c ON lb_c.flat_id = f_c.id 
+                WHERE lb_c.lead_id = l.id 
+                  AND lb_c.deleted_at IS NULL
+                  AND lb_c.booking_status NOT IN ('refunded', 'cancelled')
+                  AND (lb_c.landshare_status IS NULL OR lb_c.landshare_status != 'cancelled')
+                  AND (lb_c.project_id, LOWER(TRIM(f_c.flat_name))) IN (
+                      SELECT lb_c2.project_id, LOWER(TRIM(f_c2.flat_name)) 
+                      FROM lead_bookings lb_c2 
+                      JOIN flats f_c2 ON lb_c2.flat_id = f_c2.id 
+                      WHERE lb_c2.deleted_at IS NULL 
+                        AND lb_c2.booking_status NOT IN ('refunded', 'cancelled')
+                        AND (lb_c2.landshare_status IS NULL OR lb_c2.landshare_status != 'cancelled')
+                      GROUP BY lb_c2.project_id, LOWER(TRIM(f_c2.flat_name)) 
+                      HAVING COUNT(DISTINCT lb_c2.id) > 1
+                  )
+            )";
+        }
+
+        // Date Range Filter (Booking Date or Last Payment Date)
+        if (!empty($startDate) || !empty($endDate)) {
+            $targetDateType = !empty($dateType) ? $dateType : 'booking_date';
+            if ($targetDateType === 'booking_date') {
+                if (!empty($startDate)) {
+                    $whereParts[] = "DATE(COALESCE(lb.booking_date, lb.created_at)) >= ?";
+                    $params[] = $startDate;
+                    $types .= 's';
+                }
+                if (!empty($endDate)) {
+                    $whereParts[] = "DATE(COALESCE(lb.booking_date, lb.created_at)) <= ?";
+                    $params[] = $endDate;
+                    $types .= 's';
+                }
+            } elseif ($targetDateType === 'last_payment_date') {
+                $whereParts[] = "p_stats.last_payment_date IS NOT NULL";
+                if (!empty($startDate)) {
+                    $whereParts[] = "DATE(p_stats.last_payment_date) >= ?";
+                    $params[] = $startDate;
+                    $types .= 's';
+                }
+                if (!empty($endDate)) {
+                    $whereParts[] = "DATE(p_stats.last_payment_date) <= ?";
+                    $params[] = $endDate;
+                    $types .= 's';
+                }
+            }
+        }
+        
+        if ($verificationStatus === 'verified') {
+            $havingParts[] = "latest_verification_status = 'verified' AND total_pending_payments = 0";
+        } elseif ($verificationStatus === 'pending') {
+            $havingParts[] = "total_pending_payments > 0";
+        } elseif ($verificationStatus === 'rejected') {
+            $havingParts[] = "latest_verification_status = 'rejected' AND total_pending_payments = 0";
+        }
+
+        $whereClause = "WHERE " . implode(" AND ", $whereParts);
+        $havingClause = !empty($havingParts) ? "HAVING " . implode(" AND ", $havingParts) : "";
+
+        $dataSql = "
         SELECT
             l.id AS lead_id,
             l.full_name AS client_name,
@@ -63,7 +125,21 @@ class AccountClient extends Model
             COALESCE(p_stats.total_pending_payments, 0) AS total_pending_payments,
             COALESCE(p_stats.total_paid, 0) AS total_paid,
             p_stats.last_payment_date,
-            MAX(lb.id) AS booking_id
+            MAX(lb.id) AS booking_id,
+            COALESCE(MAX(lb.booking_date), DATE(MAX(lb.created_at))) AS booking_date,
+            GROUP_CONCAT(
+                DISTINCT CONCAT(
+                    COALESCE(lb.booking_date, DATE(lb.created_at)),
+                    '||',
+                    COALESCE(f.flat_name, ''),
+                    '||',
+                    COALESCE(p.name, ''),
+                    '||',
+                    lb.id
+                )
+                ORDER BY COALESCE(lb.booking_date, DATE(lb.created_at)) DESC
+                SEPARATOR ';;'
+            ) AS all_booking_dates
         FROM leads l
         INNER JOIN lead_bookings lb ON lb.lead_id = l.id
             AND lb.deleted_at IS NULL
@@ -102,8 +178,16 @@ class AccountClient extends Model
         GROUP BY l.id
         $havingClause
         ORDER BY l.full_name
-    ");
+        ";
 
+        if ($limit !== null) {
+            $dataSql .= " LIMIT ? OFFSET ?";
+            $params[] = (int) $limit;
+            $params[] = (int) ($offset ?? 0);
+            $types .= 'ii';
+        }
+
+        $sql = $this->db->prepare($dataSql);
         if (!$sql) {
             error_log("getAllClients prepare failed: " . $this->db->error);
             return [];
@@ -116,6 +200,325 @@ class AccountClient extends Model
         $sql->execute();
         $result = $sql->get_result();
         return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+
+    /**
+     * Get total count of clients with given filters
+     */
+    public function getTotalClientsCount($projectId = null, $verificationStatus = null, $search = null, $hasConflict = false, $dateType = null, $startDate = null, $endDate = null)
+    {
+        $whereParts = ["1=1"];
+        $havingParts = [];
+        $params = [];
+        $types = '';
+
+        if ($projectId) {
+            $whereParts[] = "lb.project_id = ?";
+            $params[] = (int) $projectId;
+            $types .= 'i';
+        }
+
+        if (!empty($search)) {
+            $searchTerm = '%' . trim($search) . '%';
+            $whereParts[] = "(l.full_name LIKE ? OR l.phone LIKE ? OR l.email LIKE ? OR l.company LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ?)";
+            for ($i = 0; $i < 6; $i++) {
+                $params[] = $searchTerm;
+                $types .= 's';
+            }
+        }
+
+        if ($hasConflict) {
+            $whereParts[] = "EXISTS (
+                SELECT 1 FROM lead_bookings lb_c 
+                JOIN flats f_c ON lb_c.flat_id = f_c.id 
+                WHERE lb_c.lead_id = l.id 
+                  AND lb_c.deleted_at IS NULL
+                  AND lb_c.booking_status NOT IN ('refunded', 'cancelled')
+                  AND (lb_c.landshare_status IS NULL OR lb_c.landshare_status != 'cancelled')
+                  AND (lb_c.project_id, LOWER(TRIM(f_c.flat_name))) IN (
+                      SELECT lb_c2.project_id, LOWER(TRIM(f_c2.flat_name)) 
+                      FROM lead_bookings lb_c2 
+                      JOIN flats f_c2 ON lb_c2.flat_id = f_c2.id 
+                      WHERE lb_c2.deleted_at IS NULL 
+                        AND lb_c2.booking_status NOT IN ('refunded', 'cancelled')
+                        AND (lb_c2.landshare_status IS NULL OR lb_c2.landshare_status != 'cancelled')
+                      GROUP BY lb_c2.project_id, LOWER(TRIM(f_c2.flat_name)) 
+                      HAVING COUNT(DISTINCT lb_c2.id) > 1
+                  )
+            )";
+        }
+
+        // Date Range Filter (Booking Date or Last Payment Date)
+        if (!empty($startDate) || !empty($endDate)) {
+            $targetDateType = !empty($dateType) ? $dateType : 'booking_date';
+            if ($targetDateType === 'booking_date') {
+                if (!empty($startDate)) {
+                    $whereParts[] = "DATE(COALESCE(lb.booking_date, lb.created_at)) >= ?";
+                    $params[] = $startDate;
+                    $types .= 's';
+                }
+                if (!empty($endDate)) {
+                    $whereParts[] = "DATE(COALESCE(lb.booking_date, lb.created_at)) <= ?";
+                    $params[] = $endDate;
+                    $types .= 's';
+                }
+            } elseif ($targetDateType === 'last_payment_date') {
+                $whereParts[] = "p_stats.last_payment_date IS NOT NULL";
+                if (!empty($startDate)) {
+                    $whereParts[] = "DATE(p_stats.last_payment_date) >= ?";
+                    $params[] = $startDate;
+                    $types .= 's';
+                }
+                if (!empty($endDate)) {
+                    $whereParts[] = "DATE(p_stats.last_payment_date) <= ?";
+                    $params[] = $endDate;
+                    $types .= 's';
+                }
+            }
+        }
+
+        if ($verificationStatus === 'verified') {
+            $havingParts[] = "latest_verification_status = 'verified' AND total_pending_payments = 0";
+        } elseif ($verificationStatus === 'pending') {
+            $havingParts[] = "total_pending_payments > 0";
+        } elseif ($verificationStatus === 'rejected') {
+            $havingParts[] = "latest_verification_status = 'rejected' AND total_pending_payments = 0";
+        }
+
+        $whereClause = "WHERE " . implode(" AND ", $whereParts);
+        $havingClause = !empty($havingParts) ? "HAVING " . implode(" AND ", $havingParts) : "";
+
+        $countSql = "
+            SELECT COUNT(*) as total FROM (
+                SELECT 
+                    l.id,
+                    p_stats.latest_verification_status,
+                    COALESCE(p_stats.total_pending_payments, 0) AS total_pending_payments
+                FROM leads l
+                INNER JOIN lead_bookings lb ON lb.lead_id = l.id
+                    AND lb.deleted_at IS NULL
+                    AND lb.booking_status NOT IN ('refunded', 'cancelled')
+                    AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+                    AND lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+                LEFT JOIN projects p ON lb.project_id = p.id
+                LEFT JOIN flats f ON lb.flat_id = f.id
+                LEFT JOIN (
+                    SELECT 
+                        lb_sub.lead_id,
+                        SUM(CASE WHEN lp.payment_status IN ('paid','partially_paid') THEN lp.amount ELSE 0 END) AS total_paid,
+                        MAX(CASE WHEN lp.payment_status IN ('paid','partially_paid') THEN lp.payment_date ELSE NULL END) AS last_payment_date,
+                        SUM(CASE WHEN lp.verification_status = 'pending' THEN 1 ELSE 0 END) AS total_pending_payments,
+                        SUBSTRING_INDEX(GROUP_CONCAT(lp.verification_status ORDER BY lp.created_at DESC SEPARATOR ','), ',', 1) AS latest_verification_status
+                    FROM lead_bookings lb_sub
+                    INNER JOIN lead_payments lp ON lp.booking_id = lb_sub.id
+                    WHERE lb_sub.deleted_at IS NULL
+                       AND lb_sub.booking_status NOT IN ('refunded', 'cancelled')
+                       AND (lb_sub.landshare_status IS NULL OR lb_sub.landshare_status != 'cancelled')
+                       AND lb_sub.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))
+                    GROUP BY lb_sub.lead_id
+                ) AS p_stats ON p_stats.lead_id = l.id
+                $whereClause
+                GROUP BY l.id
+                $havingClause
+            ) AS count_table
+        ";
+
+        $stmt = $this->db->prepare($countSql);
+        if (!$stmt) {
+            error_log("getTotalClientsCount prepare failed: " . $this->db->error);
+            return 0;
+        }
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $res = $stmt->get_result();
+        return $res ? (int)($res->fetch_assoc()['total'] ?? 0) : 0;
+    }
+
+    /**
+     * Fast summary of due EMIs for the top statistics card
+     */
+    public function getDueStatsSummary($projectId = null)
+    {
+        $projectWhere = "";
+        $params = [];
+        $types = "";
+
+        if ($projectId) {
+            $projectWhere = " AND lb.project_id = ?";
+            $params[] = (int)$projectId;
+            $types .= "i";
+        }
+
+        $sql = "
+            SELECT 
+                COALESCE(SUM(lp.due_emi_amount), 0) AS total_due_amount,
+                COUNT(DISTINCT lp.id) AS total_due_emis_count,
+                COUNT(DISTINCT lb.lead_id) AS total_due_clients_count
+            FROM lead_payments lp
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            WHERE lp.is_trashed = 0
+              AND lp.payment_type = 'emi'
+              AND lp.due_emi_amount > 0
+              AND lp.verification_status IN ('verified', 'unverified', 'pending')
+              AND (lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement')
+              AND lb.deleted_at IS NULL
+              AND lb.booking_status NOT IN ('refunded', 'cancelled')
+              AND (lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')
+              AND lb.id NOT IN (
+                  SELECT crr.booking_id FROM client_refund_requests crr 
+                  WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded')
+              )
+              $projectWhere
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return ['total_due_amount' => 0, 'total_due_emis_count' => 0, 'total_due_clients_count' => 0];
+        }
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $row = $res ? $res->fetch_assoc() : null;
+
+        return [
+            'total_due_amount' => (float)($row['total_due_amount'] ?? 0),
+            'total_due_emis_count' => (int)($row['total_due_emis_count'] ?? 0),
+            'total_due_clients_count' => (int)($row['total_due_clients_count'] ?? 0)
+        ];
+    }
+
+    /**
+     * Get list of clients with due EMIs for the Due EMIs modal
+     */
+    public function getDueClientsList($projectId = null, $search = null, $limit = 200)
+    {
+        $whereParts = [
+            "lp.is_trashed = 0",
+            "lp.payment_type = 'emi'",
+            "lp.due_emi_amount > 0",
+            "lp.verification_status IN ('verified', 'unverified', 'pending')",
+            "(lp.settlement_type IS NULL OR lp.settlement_type != 'emi_due_settlement')",
+            "lb.deleted_at IS NULL",
+            "lb.booking_status NOT IN ('refunded', 'cancelled')",
+            "(lb.landshare_status IS NULL OR lb.landshare_status != 'cancelled')",
+            "lb.id NOT IN (SELECT crr.booking_id FROM client_refund_requests crr WHERE crr.booking_id IS NOT NULL AND crr.status IN ('pending', 'approved', 'refunded'))"
+        ];
+        $params = [];
+        $types = "";
+
+        if ($projectId) {
+            $whereParts[] = "lb.project_id = ?";
+            $params[] = (int)$projectId;
+            $types .= "i";
+        }
+
+        if (!empty($search)) {
+            $searchTerm = '%' . trim($search) . '%';
+            $whereParts[] = "(l.full_name LIKE ? OR l.phone LIKE ? OR p.name LIKE ? OR f.flat_name LIKE ?)";
+            for ($i = 0; $i < 4; $i++) {
+                $params[] = $searchTerm;
+                $types .= "s";
+            }
+        }
+
+        $whereClause = "WHERE " . implode(" AND ", $whereParts);
+
+        $sql = "
+            SELECT 
+                l.id AS lead_id,
+                lb.id AS booking_id,
+                l.full_name AS client_name,
+                l.phone,
+                l.email,
+                p.name AS project_name,
+                f.flat_name AS unit_name,
+                SUM(lp.due_emi_amount) AS total_due_amount,
+                COUNT(lp.id) AS due_count,
+                GROUP_CONCAT(CONCAT(COALESCE(es.emi_no, 0), '||', lp.due_emi_amount, '||', COALESCE(lp.payment_date, '')) ORDER BY lp.payment_date ASC SEPARATOR ';;') AS due_emis_raw
+            FROM lead_payments lp
+            INNER JOIN lead_bookings lb ON lp.booking_id = lb.id
+            INNER JOIN leads l ON lb.lead_id = l.id
+            LEFT JOIN emi_schedules es ON es.lead_payment_id = lp.id
+            LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN flats f ON lb.flat_id = f.id
+            $whereClause
+            GROUP BY lb.id
+            ORDER BY total_due_amount DESC
+            LIMIT ?
+        ";
+        $params[] = (int)$limit;
+        $types .= "i";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $list = [];
+        $today = new \DateTime();
+
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $dueEmis = [];
+                if (!empty($row['due_emis_raw'])) {
+                    $items = explode(';;', $row['due_emis_raw']);
+                    foreach ($items as $item) {
+                        $parts = explode('||', $item);
+                        $emiNo = (int)($parts[0] ?? 0);
+                        $dueAmt = (float)($parts[1] ?? 0);
+                        $dueDateStr = $parts[2] ?? '';
+                        $isExpired = false;
+                        $daysDiff = 0;
+
+                        if (!empty($dueDateStr)) {
+                            $dObj = new \DateTime($dueDateStr);
+                            if ($dObj < $today) {
+                                $isExpired = true;
+                                $daysDiff = $today->diff($dObj)->days;
+                            }
+                        }
+
+                        $dueEmis[$emiNo] = [
+                            'emi_no' => $emiNo,
+                            'due_amount' => $dueAmt,
+                            'due_date' => $dueDateStr,
+                            'is_expired' => $isExpired,
+                            'days_expired' => $daysDiff,
+                            'badge_class' => $isExpired ? 'bg-danger text-white' : 'bg-warning text-dark',
+                            'type_label' => $isExpired ? 'Overdue EMI' : 'Due EMI'
+                        ];
+                    }
+                }
+
+                $list[] = [
+                    'lead_id' => $row['lead_id'],
+                    'booking_id' => $row['booking_id'],
+                    'client_name' => $row['client_name'] ?? 'N/A',
+                    'phone' => $row['phone'] ?? 'N/A',
+                    'email' => $row['email'] ?? 'N/A',
+                    'project_flats' => ($row['project_name'] ?? '') . '||' . ($row['unit_name'] ?? ''),
+                    'due_count' => (int)($row['due_count'] ?? 0),
+                    'total_due_amount' => (float)($row['total_due_amount'] ?? 0),
+                    'due_emis' => $dueEmis
+                ];
+            }
+        }
+
+        return $list;
     }
 
     /**
