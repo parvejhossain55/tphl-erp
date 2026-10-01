@@ -12,11 +12,63 @@ class AccountClientController extends Controller
 
     public function index()
     {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
+                  || (isset($_GET['ajax']) && $_GET['ajax'] == '1');
+
         $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null;
         $verificationStatus = isset($_GET['verification_status']) && $_GET['verification_status'] !== '' ? $_GET['verification_status'] : null;
+        $search = trim($_GET['search'] ?? '');
+        $hasConflict = !empty($_GET['has_conflict']);
 
-        // Get all clients (unique leads) with filters
-        $clients = $this->clientModel->getAllClients($selectedProjectId, $verificationStatus);
+        $dateType = trim($_GET['date_type'] ?? '');
+        $startDate = trim($_GET['start_date'] ?? '');
+        $endDate = trim($_GET['end_date'] ?? '');
+        if (!in_array($dateType, ['booking_date', 'last_payment_date'])) {
+            $dateType = null;
+        }
+        if (empty($startDate)) $startDate = null;
+        if (empty($endDate)) $endDate = null;
+
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = min(100, max(5, (int)($_GET['limit'] ?? 20)));
+        $offset = ($page - 1) * $limit;
+
+        // Get total count & paginated clients
+        $totalClients = $this->clientModel->getTotalClientsCount($selectedProjectId, $verificationStatus, $search, $hasConflict, $dateType, $startDate, $endDate);
+        $totalPages = $totalClients > 0 ? (int)ceil($totalClients / $limit) : 1;
+        if ($page > $totalPages && $totalPages > 0) {
+            $page = $totalPages;
+            $offset = ($page - 1) * $limit;
+        }
+
+        $clients = $this->clientModel->getAllClients($selectedProjectId, $verificationStatus, $search, $limit, $offset, $hasConflict, $dateType, $startDate, $endDate);
+        $conflictedUnits = $this->clientModel->getConflictedUnits();
+
+        if ($isAjax) {
+            $tableHtml = $this->renderCashInRowsHtml($clients, $conflictedUnits);
+            $paginationHtml = $this->generateAjaxPagination($page, $totalPages, $totalClients, $limit, 'loadCashInPage');
+            $startEntry = $totalClients > 0 ? (($page - 1) * $limit) + 1 : 0;
+            $endEntry = min($totalClients, $page * $limit);
+            $infoText = "Showing {$startEntry} to {$endEntry} of {$totalClients} entries";
+
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'page' => $page,
+                'totalPages' => $totalPages,
+                'totalRecords' => $totalClients,
+                'total_clients' => $totalClients,
+                'limit' => $limit,
+                'table_html' => $tableHtml,
+                'pagination_html' => $paginationHtml,
+                'info_text' => $infoText
+            ]);
+            exit;
+        }
 
         // Get payment statistics
         $paymentStats = $this->clientModel->getPaymentStatistics($selectedProjectId);
@@ -25,24 +77,33 @@ class AccountClientController extends Controller
         $collectionStats = $this->clientModel->getCollectionStatsSummary($selectedProjectId);
         $projectCollectionBreakdown = $this->clientModel->getProjectCollectionBreakdown();
 
-        // Get all projects for dropdown
-        $projects = $this->clientModel->getProjectsForCED();
-
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        // Get all projects for dropdown (same as flat-lists)
+        $projectModel = new Project($this->db);
+        $projects = $projectModel->getAll();
+        if (empty($projects)) {
+            $projects = $this->clientModel->getProjectsForCED();
         }
 
         $this->view("accounts/cashIn/clients", [
             "current_route" => "clients-cash-in",
             "page_title" => "Clients Management - Cash In",
             "clients" => $clients,
+            "totalClients" => $totalClients,
+            "totalPages" => $totalPages,
+            "currentPage" => $page,
+            "limit" => $limit,
+            "search" => $search,
             "paymentStats" => $paymentStats,
             "collectionStats" => $collectionStats,
             "projectCollectionBreakdown" => $projectCollectionBreakdown,
             "projects" => $projects,
             "selectedProjectId" => $selectedProjectId,
             "selectedVerificationStatus" => $verificationStatus,
-            "conflictedUnits" => $this->clientModel->getConflictedUnits(),
+            "dateType" => $dateType,
+            "startDate" => $startDate,
+            "endDate" => $endDate,
+            "hasConflict" => $hasConflict,
+            "conflictedUnits" => $conflictedUnits,
             "conflictedBookingsDetail" => $this->clientModel->getConflictedBookingsDetail()
         ]);
     }
@@ -548,47 +609,54 @@ public function indexTwo($bookingId = null)
             session_start();
         }
 
-        // Check for project and verification status filters
-        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null;
-        $verificationStatus = isset($_GET['verification_status']) && $_GET['verification_status'] !== '' ? $_GET['verification_status'] : null;
-
-        // Get all clients, optionally filtered by project and verification status
-        $clients = $this->clientModel->getAllClients($selectedProjectId, $verificationStatus);
-
-        // Get payment statistics
-        $paymentStats = $this->clientModel->getPaymentStatistics($selectedProjectId);
-
-        // Get Collection Summary & Project Breakdown
-        $collectionStats = $this->clientModel->getCollectionStatsSummary($selectedProjectId);
-        $projectCollectionBreakdown = $this->clientModel->getProjectCollectionBreakdown();
-
-        // Get all projects for dropdown
-        $projects = $this->clientModel->getProjectsForCED();
-
-        // Get flat stats and booked flats if project selected
-        $flatStats = null;
-        $bookedFlats = [];
-        $availableFlats = [];
-        $selectedProjectName = '';
-
-        if ($selectedProjectId) {
-            $flatStats = $this->clientModel->getProjectFlatStats($selectedProjectId);
-            $bookedFlats = $this->clientModel->getBookedFlatsByProject($selectedProjectId);
-            $availableFlats = $this->clientModel->getAvailableFlatsByProject($selectedProjectId);
-
-            foreach ($projects as $project) {
-                if ((int) $project['id'] === $selectedProjectId) {
-                    $selectedProjectName = $project['name'];
-                    break;
-                }
-            }
+        // Handle AJAX request for Due EMIs modal
+        if (isset($_GET['ajax']) && $_GET['ajax'] === 'due_modal') {
+            $projectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
+            $search = trim($_GET['search'] ?? '');
+            $dueList = $this->clientModel->getDueClientsList($projectId, $search, 200);
+            $rowsHtml = $this->renderDueModalRowsHtml($dueList);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'count' => count($dueList),
+                'rows_html' => $rowsHtml
+            ]);
+            exit;
         }
 
-        $today = new \DateTime();
-        $totalDueAmountSum = 0;
-        $totalDueEmisCount = 0;
-        $dueClientsList = [];
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
+                  || (isset($_GET['ajax']) && $_GET['ajax'] == '1');
 
+        $selectedProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int) $_GET['project_id'] : null;
+        $verificationStatus = isset($_GET['verification_status']) && $_GET['verification_status'] !== '' ? $_GET['verification_status'] : null;
+        $search = trim($_GET['search'] ?? '');
+        $hasConflict = !empty($_GET['has_conflict']);
+
+        $dateType = trim($_GET['date_type'] ?? '');
+        $startDate = trim($_GET['start_date'] ?? '');
+        $endDate = trim($_GET['end_date'] ?? '');
+        if (!in_array($dateType, ['booking_date', 'last_payment_date'])) {
+            $dateType = null;
+        }
+        if (empty($startDate)) $startDate = null;
+        if (empty($endDate)) $endDate = null;
+
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = min(100, max(5, (int)($_GET['limit'] ?? 20)));
+        $offset = ($page - 1) * $limit;
+
+        // Get total count & paginated clients
+        $totalClients = $this->clientModel->getTotalClientsCount($selectedProjectId, $verificationStatus, $search, $hasConflict, $dateType, $startDate, $endDate);
+        $totalPages = $totalClients > 0 ? (int)ceil($totalClients / $limit) : 1;
+        if ($page > $totalPages && $totalPages > 0) {
+            $page = $totalPages;
+            $offset = ($page - 1) * $limit;
+        }
+
+        $clients = $this->clientModel->getAllClients($selectedProjectId, $verificationStatus, $search, $limit, $offset, $hasConflict, $dateType, $startDate, $endDate);
+
+        // Process virtual EMI schedule and dues ONLY for current page's clients
+        $today = new \DateTime();
         foreach ($clients as &$client) {
             $bookingId = (int)($client['booking_id'] ?? 0);
             $schedule = $bookingId > 0 ? $this->clientModel->getVirtualEmiSchedule($bookingId) : [];
@@ -690,52 +758,505 @@ public function indexTwo($bookingId = null)
             $client['due_summary_text'] = !empty($clientDueEmis) 
                 ? implode(', ', array_map(fn($n) => "EMI #{$n}", array_keys($clientDueEmis)))
                 : '';
-
-            if ($client['due_count'] > 0) {
-                $totalDueAmountSum += $clientDueTotal;
-                $totalDueEmisCount += $client['due_count'];
-                $dueClientsList[] = [
-                    'lead_id' => $client['lead_id'] ?? 0,
-                    'booking_id' => $bookingId,
-                    'client_name' => $client['client_name'] ?? 'N/A',
-                    'phone' => $client['phone'] ?? 'N/A',
-                    'email' => $client['email'] ?? 'N/A',
-                    'project_flats' => $client['project_flats_combined'] ?? '',
-                    'due_count' => $client['due_count'],
-                    'due_summary_text' => $client['due_summary_text'],
-                    'total_due_amount' => $clientDueTotal,
-                    'due_emis' => $clientDueEmis,
-                    'last_payment_date' => $client['last_payment_date'] ?? null
-                ];
-            }
         }
         unset($client);
 
-        $dueStats = [
-            'total_due_amount' => $totalDueAmountSum,
-            'total_due_clients_count' => count($dueClientsList),
-            'total_due_emis_count' => $totalDueEmisCount,
-        ];
+        if ($isAjax) {
+            $tableHtml = $this->renderCedRowsHtml($clients);
+            $paginationHtml = $this->generateAjaxPagination($page, $totalPages, $totalClients, $limit, 'loadCedClientsPage');
+            $startEntry = $totalClients > 0 ? (($page - 1) * $limit) + 1 : 0;
+            $endEntry = min($totalClients, $page * $limit);
+            $infoText = "Showing {$startEntry} to {$endEntry} of {$totalClients} entries";
+
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'page' => $page,
+                'totalPages' => $totalPages,
+                'totalRecords' => $totalClients,
+                'limit' => $limit,
+                'table_html' => $tableHtml,
+                'pagination_html' => $paginationHtml,
+                'info_text' => $infoText
+            ]);
+            exit;
+        }
+
+        // Fast statistics for top cards
+        $dueStats = $this->clientModel->getDueStatsSummary($selectedProjectId);
+        $paymentStats = $this->clientModel->getPaymentStatistics($selectedProjectId);
+        $collectionStats = $this->clientModel->getCollectionStatsSummary($selectedProjectId);
+        $projectCollectionBreakdown = $this->clientModel->getProjectCollectionBreakdown();
+        $projectModel = new Project($this->db);
+        $projects = $projectModel->getAll();
+        if (empty($projects)) {
+            $projects = $this->clientModel->getProjectsForCED();
+        }
+
+        $flatStats = null;
+        $bookedFlats = [];
+        $availableFlats = [];
+        $selectedProjectName = '';
+
+        if ($selectedProjectId) {
+            $flatStats = $this->clientModel->getProjectFlatStats($selectedProjectId);
+            $bookedFlats = $this->clientModel->getBookedFlatsByProject($selectedProjectId);
+            $availableFlats = $this->clientModel->getAvailableFlatsByProject($selectedProjectId);
+
+            foreach ($projects as $project) {
+                if ((int) $project['id'] === $selectedProjectId) {
+                    $selectedProjectName = $project['name'];
+                    break;
+                }
+            }
+        }
 
         $this->view("ced/clients-cashin-view", [
             "current_route" => "clients-cashin-view",
             "page_title" => "Clients Cash In" . ($selectedProjectName ? " - " . $selectedProjectName : ""),
             "clients" => $clients,
+            "totalClients" => $totalClients,
+            "totalPages" => $totalPages,
+            "currentPage" => $page,
+            "limit" => $limit,
+            "search" => $search,
             "paymentStats" => $paymentStats,
             "collectionStats" => $collectionStats,
             "projectCollectionBreakdown" => $projectCollectionBreakdown,
             "projects" => $projects,
             "selectedProjectId" => $selectedProjectId,
             "selectedVerificationStatus" => $verificationStatus,
+            "dateType" => $dateType,
+            "startDate" => $startDate,
+            "endDate" => $endDate,
             "selectedProjectName" => $selectedProjectName,
             "flatStats" => $flatStats,
             "bookedFlats" => $bookedFlats,
             "availableFlats" => $availableFlats,
             "dueStats" => $dueStats,
-            "dueClientsList" => $dueClientsList,
             "conflictedUnits" => $this->clientModel->getConflictedUnits(),
             "conflictedBookingsDetail" => $this->clientModel->getConflictedBookingsDetail()
         ]);
+    }
+
+    /**
+     * Render Agent Name and Booking Date(s) HTML (supporting multiple bookings)
+     */
+    protected function renderAgentAndBookingDatesHtml($client)
+    {
+        $agentName = htmlspecialchars($client['agent_name'] ?? 'N/A');
+        $bookingItems = !empty($client['all_booking_dates']) ? explode(';;', $client['all_booking_dates']) : [];
+        $uniqueBookings = [];
+
+        foreach ($bookingItems as $bItem) {
+            $parts = explode('||', $bItem);
+            $dStr = !empty($parts[0]) ? date('d M, Y', strtotime($parts[0])) : '';
+            if (!$dStr) continue;
+            $flatName = trim($parts[1] ?? '');
+            $projName = trim($parts[2] ?? '');
+            $uniqueBookings[] = [
+                'date' => $dStr,
+                'flat' => $flatName,
+                'project' => $projName
+            ];
+        }
+
+        if (count($uniqueBookings) > 1) {
+            $datesHtml = '<div class="d-flex flex-column gap-1 mt-1">';
+            $visibleBookings = array_slice($uniqueBookings, 0, 3);
+            $hiddenBookings = array_slice($uniqueBookings, 3);
+
+            foreach ($visibleBookings as $ub) {
+                $tooltip = htmlspecialchars($ub['project'] . ($ub['flat'] ? ' - ' . $ub['flat'] : ''));
+                $datesHtml .= '<div class="text-nowrap" style="font-size: 11.5px;" title="' . $tooltip . '">';
+                $datesHtml .= '<i class="fa-light fa-calendar-days me-1 text-primary"></i>' . $ub['date'];
+                if (!empty($ub['flat'])) {
+                    $datesHtml .= ' <span class="badge bg-light text-secondary border px-1" style="font-size: 9.5px; font-weight: 500;">' . htmlspecialchars($ub['flat']) . '</span>';
+                }
+                $datesHtml .= '</div>';
+            }
+
+            if (!empty($hiddenBookings)) {
+                $collapseId = 'collapse_bd_' . ($client['lead_id'] ?? rand(1000, 9999)) . '_' . rand(100, 999);
+                $datesHtml .= '<div class="collapse" id="' . $collapseId . '">';
+                foreach ($hiddenBookings as $ub) {
+                    $tooltip = htmlspecialchars($ub['project'] . ($ub['flat'] ? ' - ' . $ub['flat'] : ''));
+                    $datesHtml .= '<div class="text-nowrap mt-1" style="font-size: 11.5px;" title="' . $tooltip . '">';
+                    $datesHtml .= '<i class="fa-light fa-calendar-days me-1 text-primary"></i>' . $ub['date'];
+                    if (!empty($ub['flat'])) {
+                        $datesHtml .= ' <span class="badge bg-light text-secondary border px-1" style="font-size: 9.5px; font-weight: 500;">' . htmlspecialchars($ub['flat']) . '</span>';
+                    }
+                    $datesHtml .= '</div>';
+                }
+                $datesHtml .= '</div>';
+                $datesHtml .= '<a href="javascript:void(0)" class="extra-small text-primary text-decoration-none fw-semibold" style="font-size: 10px;" data-bs-toggle="collapse" data-bs-target="#' . $collapseId . '">+' . count($hiddenBookings) . ' more</a>';
+            }
+            $datesHtml .= '</div>';
+        } else {
+            $bDateFormatted = !empty($client['booking_date']) ? date('d M, Y', strtotime($client['booking_date'])) : 'N/A';
+            $datesHtml = '<small class="text-muted text-nowrap"><i class="fa-light fa-calendar-days me-1 text-primary"></i>' . $bDateFormatted . '</small>';
+        }
+
+        return '<div><div class="fw-semibold text-dark">' . $agentName . '</div>' . $datesHtml . '</div>';
+    }
+
+    /**
+     * Render HTML rows for clients-cash-in table
+     */
+    public function renderCashInRowsHtml($clients, $conflictedUnits = [])
+    {
+        if (empty($clients)) {
+            return '<tr><td colspan="11" class="text-center py-4 text-muted"><i class="fa-solid fa-inbox me-2"></i>No clients found matching your search or filters.</td></tr>';
+        }
+        $html = '';
+        foreach ($clients as $client) {
+            $verStatus    = $client['latest_verification_status'] ?? '';
+            $totalPending = (int)($client['total_pending_payments'] ?? 0);
+            $isPending    = ($totalPending > 0);
+            $isRejected   = !$isPending && ($verStatus === 'rejected');
+            $isVerified   = !$isPending && ($verStatus === 'verified');
+
+            $rowClass     = $isPending ? 'table-pending-highlight' : ($isRejected ? 'table-danger' : '');
+            $badgeClass   = $isVerified ? 'bg-success' : ($isRejected ? 'bg-danger' : ($isPending ? 'bg-warning text-dark' : 'bg-secondary'));
+            $badgeIcon    = $isVerified ? 'fa-check-circle' : ($isRejected ? 'fa-times-circle' : ($isPending ? 'fa-clock' : 'fa-minus'));
+            $verText      = $isVerified ? 'Verified' : ($isRejected ? 'Rejected' : ($isPending ? 'Pending' : 'No Payment'));
+
+            $clientHasConflict = false;
+            if (!empty($conflictedUnits) && !empty($client['project_flats_combined'])) {
+                $allProps = explode(';;', $client['project_flats_combined']);
+                foreach ($allProps as $ap) {
+                    $apParts = explode('||', $ap);
+                    $chkK = strtolower(trim($apParts[0] ?? '')) . '||' . strtolower(trim($apParts[1] ?? ''));
+                    if (isset($conflictedUnits[$chkK])) {
+                        $clientHasConflict = true;
+                        break;
+                    }
+                }
+            }
+
+            $html .= '<tr class="' . $rowClass . ' ' . ($clientHasConflict ? 'row-conflicted-unit' : '') . '" data-has-conflict="' . ($clientHasConflict ? '1' : '0') . '" ' . ($clientHasConflict ? 'style="background-color: #fff9f9;"' : '') . '>';
+            $html .= '<td>' . htmlspecialchars($client['client_name']);
+            if ($clientHasConflict) {
+                $html .= '<span class="badge bg-danger text-white ms-1" style="font-size: 10px;" title="This client has a double-booked unit"><i class="fa-solid fa-triangle-exclamation"></i> Conflict</span>';
+            }
+            $html .= '</td>';
+            $html .= '<td>' . htmlspecialchars($client['company'] ?? 'N/A') . '</td>';
+            $html .= '<td>' . htmlspecialchars($client['phone'] ?? 'N/A') . '</td>';
+            $html .= '<td>' . htmlspecialchars($client['email'] ?? 'N/A') . '</td>';
+            
+            // Project & Flats chips
+            $html .= '<td><div class="d-flex flex-wrap gap-2">';
+            if (!empty($client['project_flats_combined'])) {
+                $properties = explode(';;', $client['project_flats_combined']);
+                $totalProps = count($properties);
+                $visibleProps = array_slice($properties, 0, 3);
+                $hiddenProps = array_slice($properties, 3);
+                $clientId = $client['lead_id'] ?? uniqid();
+
+                foreach ($visibleProps as $prop) {
+                    $parts = explode('||', $prop);
+                    $pName = $parts[0] ?? '';
+                    $fName = $parts[1] ?? '';
+                    $cKey = strtolower(trim($pName)) . '||' . strtolower(trim($fName));
+                    $isDup = isset($conflictedUnits[$cKey]);
+                    $dupInfo = $isDup ? $conflictedUnits[$cKey] : null;
+
+                    $html .= '<div class="property-chip" ' . ($isDup ? 'style="border: 1px solid #dc3545; background: #fff5f5;"' : '') . '>';
+                    $html .= '<span class="project-name" title="' . htmlspecialchars($pName) . '"><i class="fa-solid fa-building me-1"></i>' . htmlspecialchars($pName) . '</span>';
+                    if (!empty($fName)) {
+                        $html .= '<span class="flat-name ' . ($isDup ? 'text-danger fw-bold' : '') . '" title="Flat/Unit">' . htmlspecialchars($fName) . '</span>';
+                    }
+                    if ($isDup) {
+                        $html .= '<a href="javascript:void(0)" class="badge bg-danger text-white ms-1 text-decoration-none" style="font-size: 10px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#conflictResolutionModal" title="Double Booked with: ' . htmlspecialchars($dupInfo['client_names'] ?? '') . ' (' . ($dupInfo['booking_count'] ?? '') . ' Bookings) - Click to Manage"><i class="fa-solid fa-triangle-exclamation me-1"></i>Double Booked (' . ($dupInfo['booking_count'] ?? '') . ')</a>';
+                    }
+                    $html .= '</div>';
+                }
+
+                if ($totalProps > 3) {
+                    $collapseId = "collapse_props_" . $clientId;
+                    $html .= '<div class="collapse w-100" id="' . $collapseId . '"><div class="d-flex flex-wrap gap-2 mt-1">';
+                    foreach ($hiddenProps as $prop) {
+                        $parts = explode('||', $prop);
+                        $pName = $parts[0] ?? '';
+                        $fName = $parts[1] ?? '';
+                        $cKey = strtolower(trim($pName)) . '||' . strtolower(trim($fName));
+                        $isDup = isset($conflictedUnits[$cKey]);
+                        $dupInfo = $isDup ? $conflictedUnits[$cKey] : null;
+
+                        $html .= '<div class="property-chip" ' . ($isDup ? 'style="border: 1px solid #dc3545; background: #fff5f5;"' : '') . '>';
+                        $html .= '<span class="project-name" title="' . htmlspecialchars($pName) . '"><i class="fa-solid fa-building me-1"></i>' . htmlspecialchars($pName) . '</span>';
+                        if (!empty($fName)) {
+                            $html .= '<span class="flat-name ' . ($isDup ? 'text-danger fw-bold' : '') . '" title="Flat/Unit">' . htmlspecialchars($fName) . '</span>';
+                        }
+                        if ($isDup) {
+                            $html .= '<a href="javascript:void(0)" class="badge bg-danger text-white ms-1 text-decoration-none" style="font-size: 10px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#conflictResolutionModal" title="Double Booked with: ' . htmlspecialchars($dupInfo['client_names'] ?? '') . ' (' . ($dupInfo['booking_count'] ?? '') . ' Bookings) - Click to Manage"><i class="fa-solid fa-triangle-exclamation me-1"></i>Double Booked (' . ($dupInfo['booking_count'] ?? '') . ')</a>';
+                        }
+                        $html .= '</div>';
+                    }
+                    $html .= '</div></div>';
+                    $html .= '<button class="btn btn-sm btn-link text-decoration-none p-0 fw-bold mt-1 w-100 text-start view-more-btn collapsed" style="font-size: 11.5px; color: #1d4ed8;" type="button" data-bs-toggle="collapse" data-bs-target="#' . $collapseId . '" aria-expanded="false" aria-controls="' . $collapseId . '">';
+                    $html .= '<span class="show-more-text">View ' . ($totalProps - 3) . ' more units <i class="fa-solid fa-caret-down ms-1"></i></span>';
+                    $html .= '<span class="show-less-text d-none">View less <i class="fa-solid fa-caret-up ms-1"></i></span>';
+                    $html .= '</button>';
+                }
+            } else {
+                $html .= '<span class="badge bg-light text-muted border">No Properties</span>';
+            }
+            $html .= '</div></td>';
+
+            $html .= '<td>' . $this->renderAgentAndBookingDatesHtml($client) . '</td>';
+            $html .= '<td>TK.' . number_format($client['total_paid'] ?? 0, 2) . '</td>';
+            $html .= '<td>' . ($client['last_payment_date'] ? date('d M, Y', strtotime($client['last_payment_date'])) : 'No Payment') . '</td>';
+            $html .= '<td><span class="badge ' . $badgeClass . '"><i class="fa-light ' . $badgeIcon . ' me-1"></i>' . ucfirst($verStatus) . '</span></td>';
+            $html .= '<td><button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="openProfileModal(' . (int)$client['lead_id'] . ')" title="View Client Profile" style="font-size:12px;"><i class="fa-light fa-id-card me-1"></i>Profile</button></td>';
+            $escapedName = htmlspecialchars(trim(preg_replace('/\s+/', ' ', $client['client_name'])), ENT_QUOTES);
+            $html .= '<td><div class="d-flex align-items-center justify-content-start gap-10"><button class="table__icon download" onclick="openProjectsModal(' . (int)$client['lead_id'] . ', \'' . $escapedName . '\')" title="View Projects"><i class="fa-regular fa-eye"></i></button></div></td>';
+            $html .= '</tr>';
+        }
+        return $html;
+    }
+
+    /**
+     * Render HTML rows for clients-cashin-view table
+     */
+    public function renderCedRowsHtml($clients)
+    {
+        if (empty($clients)) {
+            return '<tr><td colspan="12" class="text-center py-4 text-muted"><i class="fa-solid fa-inbox me-2"></i>No clients found matching your search or filters.</td></tr>';
+        }
+        $html = '';
+        foreach ($clients as $client) {
+            $html .= '<tr>';
+            $html .= '<td>' . htmlspecialchars($client['client_name']) . '</td>';
+            $html .= '<td>' . htmlspecialchars($client['company'] ?? 'N/A') . '</td>';
+            $html .= '<td>' . htmlspecialchars($client['phone'] ?? 'N/A') . '</td>';
+            $html .= '<td>' . htmlspecialchars($client['email'] ?? 'N/A') . '</td>';
+            $html .= '<td>' . $this->renderAgentAndBookingDatesHtml($client) . '</td>';
+
+            // Project & flats chips
+            $html .= '<td><div class="d-flex flex-wrap gap-2">';
+            if (!empty($client['project_flats_combined'])) {
+                $properties = explode(';;', $client['project_flats_combined']);
+                $totalProps = count($properties);
+                $visibleProps = array_slice($properties, 0, 3);
+                $hiddenProps = array_slice($properties, 3);
+                $clientId = $client['lead_id'] ?? uniqid();
+
+                foreach ($visibleProps as $prop) {
+                    $parts = explode('||', $prop);
+                    $pName = $parts[0] ?? '';
+                    $fName = $parts[1] ?? '';
+                    $html .= '<div class="property-chip">';
+                    $html .= '<span class="project-name" title="' . htmlspecialchars($pName) . '"><i class="fa-solid fa-building me-1"></i>' . htmlspecialchars($pName) . '</span>';
+                    if (!empty($fName)) {
+                        $html .= '<span class="flat-name" title="Flat/Unit">' . htmlspecialchars($fName) . '</span>';
+                    }
+                    $html .= '</div>';
+                }
+
+                if ($totalProps > 3) {
+                    $collapseId = "collapse_props_" . $clientId;
+                    $html .= '<div class="collapse w-100" id="' . $collapseId . '"><div class="d-flex flex-wrap gap-2 mt-1">';
+                    foreach ($hiddenProps as $prop) {
+                        $parts = explode('||', $prop);
+                        $pName = $parts[0] ?? '';
+                        $fName = $parts[1] ?? '';
+                        $html .= '<div class="property-chip">';
+                        $html .= '<span class="project-name" title="' . htmlspecialchars($pName) . '"><i class="fa-solid fa-building me-1"></i>' . htmlspecialchars($pName) . '</span>';
+                        if (!empty($fName)) {
+                            $html .= '<span class="flat-name" title="Flat/Unit">' . htmlspecialchars($fName) . '</span>';
+                        }
+                        $html .= '</div>';
+                    }
+                    $html .= '</div></div>';
+                    $html .= '<button class="btn btn-sm btn-link text-decoration-none p-0 fw-bold mt-1 w-100 text-start view-more-btn collapsed" style="font-size: 11.5px; color: #1d4ed8;" type="button" data-bs-toggle="collapse" data-bs-target="#' . $collapseId . '" aria-expanded="false" aria-controls="' . $collapseId . '">';
+                    $html .= '<span class="show-more-text">View ' . ($totalProps - 3) . ' more units <i class="fa-solid fa-caret-down ms-1"></i></span>';
+                    $html .= '<span class="show-less-text d-none">View less <i class="fa-solid fa-caret-up ms-1"></i></span>';
+                    $html .= '</button>';
+                }
+            } else {
+                $html .= '<span class="badge bg-light text-muted border">No Properties</span>';
+            }
+            $html .= '</div></td>';
+
+            $html .= '<td>TK.' . number_format($client['total_agreement_value'] ?? 0, 2) . '</td>';
+            $html .= '<td>TK.' . number_format($client['total_paid'] ?? 0, 2) . '</td>';
+            $html .= '<td>' . ($client['last_payment_date'] ? date('d M, Y', strtotime($client['last_payment_date'])) : 'No Payment') . '</td>';
+
+            // Current Month / Due status
+            $cms = $client['current_month_status'] ?? 'N/A';
+            $hasDueEmis = !empty($client['due_emis']);
+            $html .= '<td>';
+            if ($hasDueEmis) {
+                $html .= '<span class="badge bg-danger text-white mb-1" title="Due EMIs: ' . htmlspecialchars($client['due_summary_text']) . '">';
+                $html .= '<i class="fa-solid fa-triangle-exclamation me-1"></i>Due: ' . htmlspecialchars($client['due_summary_text']) . '</span>';
+                $html .= '<small class="d-block text-danger fw-bold" style="font-size: 11px;">৳' . number_format($client['total_due_amount'] ?? 0, 2) . '</small>';
+            } elseif ($cms === 'paid') {
+                $html .= '<span class="badge bg-success">Paid</span>';
+            } elseif ($cms === 'matured') {
+                $html .= '<span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;">Matured</span>';
+            } elseif ($cms === 'pending') {
+                $html .= '<span class="badge bg-warning text-dark">Pending</span>';
+            } elseif ($cms === 'due') {
+                $html .= '<span class="badge bg-danger">Due</span>';
+            } elseif ($cms === 'future') {
+                $html .= '<span class="badge bg-secondary">Future</span>';
+            } else {
+                $html .= '<span class="text-muted">-</span>';
+            }
+            $html .= '</td>';
+
+            $html .= '<td><button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="openProfileModal(' . (int)$client['lead_id'] . ')" title="View Client Profile" style="font-size:12px;"><i class="fa-light fa-id-card me-1"></i>Profile</button></td>';
+
+            $escapedName = htmlspecialchars(trim(preg_replace('/\s+/', ' ', $client['client_name'])), ENT_QUOTES);
+            $html .= '<td><div class="d-flex align-items-center justify-content-start gap-2">';
+            $html .= '<button class="table__icon download" onclick="openProjectsModal(' . (int)$client['lead_id'] . ', \'' . $escapedName . '\')" title="View Projects"><i class="fa-regular fa-eye"></i></button>';
+
+            if (!empty($client['booking_id'])) {
+                $fCount = (int)($client['total_followup_count'] ?? 0);
+                $html .= '<button type="button" onclick="openClientEmiFollowupModal(' . (int)$client['booking_id'] . ', \'' . $escapedName . '\', ' . (int)($client['total_emi_count'] ?? 36) . ', ' . ((int)$client['lead_id'] ?: 'null') . ')" class="btn btn-sm btn-outline-primary py-1 px-2 text-nowrap" style="font-size:11px;" title="Add / View Follow Up Notes">';
+                $html .= '<i class="fa-light fa-comment-dots me-1"></i>Follow Up';
+                $html .= '<span class="badge ' . ($fCount > 0 ? 'bg-primary' : 'bg-secondary') . ' rounded-pill ms-1 followup-count-badge" data-booking-id="' . (int)$client['booking_id'] . '" style="font-size:10px;">' . $fCount . '</span>';
+                $html .= '</button>';
+            }
+            $html .= '</div></td>';
+            $html .= '</tr>';
+        }
+        return $html;
+    }
+
+    /**
+     * Render HTML rows for Due EMIs modal
+     */
+    public function renderDueModalRowsHtml($dueClientsList)
+    {
+        if (empty($dueClientsList)) {
+            return '<tr><td colspan="8" class="text-center py-4 text-muted"><i class="fa-solid fa-check-circle text-success me-2"></i>No clients found with overdue or due EMIs.</td></tr>';
+        }
+        $html = '';
+        foreach ($dueClientsList as $dIdx => $dClient) {
+            $html .= '<tr class="due-client-row">';
+            $html .= '<td class="text-center text-muted fw-bold">' . ($dIdx + 1) . '</td>';
+            $html .= '<td class="fw-bold text-dark due-client-name">' . htmlspecialchars($dClient['client_name']) . '</td>';
+            $html .= '<td class="due-client-phone"><a href="tel:' . htmlspecialchars($dClient['phone']) . '" class="text-decoration-none text-primary"><i class="fa-solid fa-phone me-1" style="font-size: 11px;"></i>' . htmlspecialchars($dClient['phone']) . '</a></td>';
+            
+            $html .= '<td class="due-client-project">';
+            if (!empty($dClient['project_flats'])) {
+                $props = explode(';;', $dClient['project_flats']);
+                foreach ($props as $prop) {
+                    $parts = explode('||', $prop);
+                    $pName = $parts[0] ?? '';
+                    $fName = $parts[1] ?? '';
+                    $html .= '<div class="property-chip mb-1"><span class="project-name"><i class="fa-solid fa-building me-1"></i>' . htmlspecialchars($pName) . '</span>';
+                    if (!empty($fName)) {
+                        $html .= '<span class="flat-name">' . htmlspecialchars($fName) . '</span>';
+                    }
+                    $html .= '</div>';
+                }
+            } else {
+                $html .= '<span class="text-muted">-</span>';
+            }
+            $html .= '</td>';
+
+            $html .= '<td><div class="d-flex flex-wrap gap-1">';
+            foreach ($dClient['due_emis'] as $dEmi) {
+                $html .= '<span class="badge ' . ($dEmi['badge_class'] ?? 'bg-danger text-white') . ' py-1 px-2" style="font-size: 11px;" title="' . ($dEmi['type_label'] ?? '') . ': ৳' . number_format($dEmi['due_amount'], 2) . '">';
+                $html .= 'EMI #' . $dEmi['emi_no'] . ': ৳' . number_format($dEmi['due_amount'], 0);
+                $html .= '</span>';
+            }
+            $html .= '</div></td>';
+
+            $html .= '<td>';
+            foreach ($dClient['due_emis'] as $dEmi) {
+                $html .= '<div class="small text-nowrap" style="font-size: 11px;"><strong class="text-dark">#' . $dEmi['emi_no'] . ':</strong> ';
+                $html .= !empty($dEmi['due_date']) ? date('d M, Y', strtotime($dEmi['due_date'])) : 'N/A';
+                if (!empty($dEmi['is_expired'])) {
+                    $html .= ' <span class="text-danger fw-semibold">(' . (int)$dEmi['days_expired'] . 'd ago)</span>';
+                } else {
+                    $html .= ' <span class="text-warning fw-semibold">(this month)</span>';
+                }
+                $html .= '</div>';
+            }
+            $html .= '</td>';
+
+            $html .= '<td class="text-end fw-bold text-danger font-monospace fs-14">৳' . number_format($dClient['total_due_amount'], 2) . '</td>';
+            $html .= '<td class="text-center">';
+            if (!empty($dClient['booking_id'])) {
+                $html .= '<a href="' . $GLOBALS['base_url'] . '/clients-cash-in-history-view/' . (int)$dClient['booking_id'] . '" class="btn btn-xs btn-outline-primary py-1 px-2" title="View Cash In History & Pay"><i class="fa-solid fa-eye me-1"></i>View</a>';
+            } else {
+                $html .= '<span class="text-muted">-</span>';
+            }
+            $html .= '</td>';
+            $html .= '</tr>';
+        }
+        return $html;
+    }
+
+    /**
+     * Generate AJAX pagination controls
+     */
+    public function generateAjaxPagination($currentPage, $totalPages, $totalRecords, $perPage, $callbackFn = 'loadCashInPage')
+    {
+        if ($totalPages <= 1 && $totalRecords <= $perPage) {
+            return '';
+        }
+
+        $startEntry = $totalRecords > 0 ? (($currentPage - 1) * $perPage) + 1 : 0;
+        $endEntry = min($totalRecords, $currentPage * $perPage);
+
+        $html = '<div class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-2 w-100">';
+        $html .= '<div class="text-muted fs-13 font-semibold pagination-info-text">';
+        $html .= "Showing <span class='text-dark fw-bold'>{$startEntry}</span> to <span class='text-dark fw-bold'>{$endEntry}</span> of <span class='text-dark fw-bold'>{$totalRecords}</span> entries";
+        $html .= '</div>';
+
+        $html .= '<nav aria-label="Page navigation">';
+        $html .= '<ul class="pagination pagination-sm mb-0 gap-1">';
+
+        // Previous button
+        if ($currentPage > 1) {
+            $prevPage = $currentPage - 1;
+            $html .= "<li class='page-item'><a class='page-link ajax-page-link rounded-2 px-2.5' href='javascript:void(0);' onclick='{$callbackFn}({$prevPage}); return false;' data-page='{$prevPage}'><i class='fa-solid fa-chevron-left me-1'></i>Prev</a></li>";
+        } else {
+            $html .= "<li class='page-item disabled'><span class='page-link rounded-2 px-2.5 text-muted'><i class='fa-solid fa-chevron-left me-1'></i>Prev</span></li>";
+        }
+
+        // Page range calculation
+        $pages = [];
+        if ($totalPages <= 7) {
+            for ($i = 1; $i <= $totalPages; $i++) $pages[] = $i;
+        } else {
+            if ($currentPage <= 4) {
+                $pages = [1, 2, 3, 4, 5, '...', $totalPages];
+            } elseif ($currentPage >= $totalPages - 3) {
+                $pages = [1, '...', $totalPages - 4, $totalPages - 3, $totalPages - 2, $totalPages - 1, $totalPages];
+            } else {
+                $pages = [1, '...', $currentPage - 1, $currentPage, $currentPage + 1, '...', $totalPages];
+            }
+        }
+
+        foreach ($pages as $p) {
+            if ($p === '...') {
+                $html .= "<li class='page-item disabled'><span class='page-link border-0 px-2'>...</span></li>";
+            } elseif ($p == $currentPage) {
+                $html .= "<li class='page-item active'><span class='page-link rounded-2 px-3 fw-bold bg-primary text-white border-primary'>{$p}</span></li>";
+            } else {
+                $html .= "<li class='page-item'><a class='page-link ajax-page-link rounded-2 px-3' href='javascript:void(0);' onclick='{$callbackFn}({$p}); return false;' data-page='{$p}'>{$p}</a></li>";
+            }
+        }
+
+        // Next button
+        if ($currentPage < $totalPages) {
+            $nextPage = $currentPage + 1;
+            $html .= "<li class='page-item'><a class='page-link ajax-page-link rounded-2 px-2.5' href='javascript:void(0);' onclick='{$callbackFn}({$nextPage}); return false;' data-page='{$nextPage}'>Next<i class='fa-solid fa-chevron-right ms-1'></i></a></li>";
+        } else {
+            $html .= "<li class='page-item disabled'><span class='page-link rounded-2 px-2.5 text-muted'>Next<i class='fa-solid fa-chevron-right ms-1'></i></span></li>";
+        }
+
+        $html .= '</ul>';
+        $html .= '</nav>';
+        $html .= '</div>';
+
+        return $html;
     }
 
     public function CedView()

@@ -171,19 +171,38 @@ $show_breadcrumb = true;
         </div>
     </div>
 
-    <!-- ══ PROJECT & STATUS FILTER DROPDOWN ══ -->
+
+
+    <!-- ══ PROJECT, SEARCH & STATUS FILTER BAR ══ -->
     <div class="col-12">
         <div class="card__wrapper">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-10">
-                <form method="GET" action="<?= $GLOBALS['base_url'] ?>/clients-cashin-view" id="filterForm" class="d-flex align-items-center gap-10 w-100 flex-wrap">
-                    <div class="d-flex align-items-center gap-10">
+                <div class="d-flex align-items-center gap-10 flex-wrap w-100">
+                    <div class="d-flex align-items-center gap-2">
                         <div class="card__icon">
                             <span><i class="fa-light fa-filter"></i></span>
                         </div>
                         <div>
                             <h6 class="card__sub-title mb-0">Filter Data</h6>
                         </div>
-                        <select name="project_id" id="projectFilter" class="form-select select2" style="max-width: 350px;" onchange="document.getElementById('filterForm').submit()">
+                    </div>
+
+                    <!-- Search Box -->
+                    <div class="position-relative ms-sm-2" style="width: 280px; min-width: 200px;">
+                        <i class="fa-solid fa-magnifying-glass position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; z-index: 4; pointer-events: none;"></i>
+                        <input type="text" id="cedSearchInput" class="form-control form-control-sm" 
+                               style="padding-left: 36px !important; padding-right: 28px; height: 36px; border-radius: 6px;" 
+                               placeholder="Search client, phone, email, project..." 
+                               value="<?= htmlspecialchars($search ?? '') ?>" autocomplete="off">
+                        <button type="button" id="cedClearSearch" class="btn btn-sm btn-link text-muted position-absolute p-0 <?= empty($search) ? 'd-none' : '' ?>" 
+                                style="right: 10px; top: 50%; transform: translateY(-50%); text-decoration: none; z-index: 4;" title="Clear Search">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <!-- Project Filter (Same as flat-lists) -->
+                    <div style="min-width: 220px; max-width: 280px; flex: 1;">
+                        <select class="form-control form-control-sm select2" name="project_id" id="cedProjectFilter">
                             <option value="">All Projects</option>
                             <?php if (!empty($projects)): ?>
                                 <?php foreach ($projects as $project): ?>
@@ -194,25 +213,66 @@ $show_breadcrumb = true;
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </select>
-                        <select name="verification_status" class="form-select" style="max-width: 200px;" onchange="document.getElementById('filterForm').submit()">
+                    </div>
+
+                    <!-- Verification Status Filter -->
+                    <div style="width: 180px; min-width: 140px;">
+                        <select name="verification_status" id="cedStatusFilter" class="form-select form-select-sm" style="width: 100% !important; height: 36px; border-radius: 6px;">
                             <option value="">All Statuses</option>
                             <option value="pending" <?= (isset($selectedVerificationStatus) && $selectedVerificationStatus == 'pending') ? 'selected' : '' ?>>Pending Verification</option>
                             <option value="verified" <?= (isset($selectedVerificationStatus) && $selectedVerificationStatus == 'verified') ? 'selected' : '' ?>>Verified</option>
                             <option value="rejected" <?= (isset($selectedVerificationStatus) && $selectedVerificationStatus == 'rejected') ? 'selected' : '' ?>>Rejected</option>
                         </select>
                     </div>
+
+                    <!-- Date Type Filter -->
+                    <div style="width: 165px; min-width: 140px;">
+                        <select name="date_type" id="cedDateType" class="form-select form-select-sm" style="width: 100% !important; height: 36px; border-radius: 6px;">
+                            <option value="">Filter By Date...</option>
+                            <option value="booking_date" <?= (($dateType ?? '') == 'booking_date') ? 'selected' : '' ?>>Booking Date</option>
+                            <option value="last_payment_date" <?= (($dateType ?? '') == 'last_payment_date') ? 'selected' : '' ?>>Last Payment Date</option>
+                        </select>
+                    </div>
+
+                    <!-- Date Range (From & To) -->
+                    <div class="d-flex align-items-center gap-1">
+                        <div style="width: 135px;">
+                            <input type="date" name="start_date" id="cedStartDate" class="form-control form-control-sm" style="height: 36px; border-radius: 6px;" title="From Date" value="<?= htmlspecialchars($startDate ?? '') ?>">
+                        </div>
+                        <span class="text-muted small">to</span>
+                        <div style="width: 135px;">
+                            <input type="date" name="end_date" id="cedEndDate" class="form-control form-control-sm" style="height: 36px; border-radius: 6px;" title="To Date" value="<?= htmlspecialchars($endDate ?? '') ?>">
+                        </div>
+                    </div>
+
+                    <!-- Per Page Limit -->
+                    <div class="d-flex align-items-center gap-1" style="width: 120px;">
+                        <span class="text-muted extra-small text-nowrap">Show:</span>
+                        <select id="cedLimitSelect" class="form-select form-select-sm" style="width: 75px !important; height: 36px; border-radius: 6px;" title="Rows per page">
+                            <option value="10" <?= ($limit == 10) ? 'selected' : '' ?>>10</option>
+                            <option value="20" <?= ($limit == 20 || empty($limit)) ? 'selected' : '' ?>>20</option>
+                            <option value="50" <?= ($limit == 50) ? 'selected' : '' ?>>50</option>
+                            <option value="100" <?= ($limit == 100) ? 'selected' : '' ?>>100</option>
+                        </select>
+                    </div>
+
+                    <!-- Reset Filters Button -->
+                    <button type="button" id="cedResetFilters" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" style="height: 36px; border-radius: 6px; font-size: 12.5px;" title="Reset Search & Filters">
+                        <i class="fa-solid fa-rotate-left"></i> Reset
+                    </button>
+
                     <?php if ($selectedProjectId && $selectedProjectName): ?>
                         <div class="d-flex align-items-center gap-10 ms-auto">
                             <span class="bd-badge bg-primary">
                                 <i class="fa-light fa-building me-1"></i>
                                 <?= htmlspecialchars($selectedProjectName) ?>
                             </span>
-                            <a href="<?= $GLOBALS['base_url'] ?>/clients-cashin-view<?= isset($selectedVerificationStatus) && $selectedVerificationStatus ? '?verification_status=' . $selectedVerificationStatus : '' ?>" class="bd-badge bg-danger" style="text-decoration:none;">
+                            <a href="<?= $GLOBALS['base_url'] ?>/clients-cashin-view" class="bd-badge bg-danger" style="text-decoration:none;">
                                 <i class="fa-light fa-times"></i> Clear Project
                             </a>
                         </div>
                     <?php endif; ?>
-                </form>
+                </div>
             </div>
         </div>
     </div>
@@ -275,31 +335,35 @@ $show_breadcrumb = true;
     <!-- ══ CLIENTS TABLE ══ -->
     <div class="col-xxl-12">
         <div class="card__wrapper">
-            <div class="d-flex justify-content-between align-items-center mb-20">
+            <div class="d-flex justify-content-between align-items-center mb-20 flex-wrap gap-2">
                 <h4>
                     Clients Information
-                    <?php if ($selectedProjectName): ?>
-                        <small class="text-muted" style="font-size: 14px; font-weight: 400;">
-                            — <?= htmlspecialchars($selectedProjectName) ?> (<?= count($clients) ?> records)
-                        </small>
-                    <?php endif; ?>
+                    <small class="text-muted" style="font-size: 14px; font-weight: 400;">
+                        — <?= $selectedProjectName ? htmlspecialchars($selectedProjectName) . ' ' : '' ?>(<span id="cedTotalRecordsCount"><?= $totalClients ?? count($clients) ?></span> records)
+                    </small>
                 </h4>
                 <a href="<?= $GLOBALS['base_url'] ?>/csv-import-form" class="btn btn-sm btn-success rounded-2 shadow-sm px-3">
                     <i class="fa-light fa-file-csv me-1 fs-6"></i>Import CSV (EMI & Dev Charge)
                 </a>
             </div>
 
+            <div class="table__wrapper table-responsive position-relative">
+                <!-- Loading Overlay -->
+                <div id="cedTableLoadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none justify-content-center align-items-center" style="background: rgba(255,255,255,0.75); z-index: 10; min-height: 150px; border-radius: 8px;">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <div class="small text-muted mt-2 fw-semibold">Loading clients data...</div>
+                    </div>
+                </div>
 
-
-            <div class="table__wrapper table-responsive">
-                <table class="table mb-20 multiple_tables" id="clientsCedTable">
+                <table class="table mb-0" id="clientsCedTable">
                     <thead>
                         <tr class="table__title table__sort">
                             <th>Client Name</th>
                             <th>Company</th>
                             <th>Phone</th>
                             <th>Email</th>
-                            <th>Booking Agent(s)</th>
+                            <th>Booking Agent(s) & Date</th>
                             <th>Project & Flats</th>
                             <th>Total Agreement Value</th>
                             <th>Total Paid</th>
@@ -309,127 +373,21 @@ $show_breadcrumb = true;
                             <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody class="table__body">
-                        <?php if (!empty($clients)): ?>
-                            <?php foreach ($clients as $client): ?>
-                                <tr>
-                                    <td>
-                                        <?= htmlspecialchars($client['client_name']) ?>
-                                    </td>
-                                    <td><?= htmlspecialchars($client['company'] ?? 'N/A') ?></td>
-                                    <td><?= htmlspecialchars($client['phone'] ?? 'N/A') ?></td>
-                                    <td><?= htmlspecialchars($client['email'] ?? 'N/A') ?></td>
-                                    <td><?= htmlspecialchars($client['agent_name'] ?? 'N/A') ?></td>
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-2">
-                                            <?php 
-                                            if (!empty($client['project_flats_combined'])) {
-                                                $properties = explode(';;', $client['project_flats_combined']);
-                                                $totalProps = count($properties);
-                                                $visibleProps = array_slice($properties, 0, 3);
-                                                $hiddenProps = array_slice($properties, 3);
-                                                $clientId = $client['lead_id'] ?? uniqid();
-                                                
-                                                foreach($visibleProps as $prop) {
-                                                    $parts = explode('||', $prop);
-                                                    $pName = $parts[0] ?? '';
-                                                    $fName = $parts[1] ?? '';
-                                                    echo '<div class="property-chip">
-                                                            <span class="project-name" title="'.htmlspecialchars($pName).'"><i class="fa-solid fa-building me-1"></i>' . htmlspecialchars($pName) . '</span>
-                                                            ' . (!empty($fName) ? '<span class="flat-name" title="Flat/Unit">' . htmlspecialchars($fName) . '</span>' : '') . '
-                                                          </div>';
-                                                }
-
-                                                if ($totalProps > 3) {
-                                                    $collapseId = "collapse_props_" . $clientId;
-                                                    echo '<div class="collapse w-100" id="'.$collapseId.'">
-                                                            <div class="d-flex flex-wrap gap-2 mt-1">';
-                                                    foreach($hiddenProps as $prop) {
-                                                        $parts = explode('||', $prop);
-                                                        $pName = $parts[0] ?? '';
-                                                        $fName = $parts[1] ?? '';
-                                                        echo '<div class="property-chip">
-                                                                <span class="project-name" title="'.htmlspecialchars($pName).'"><i class="fa-solid fa-building me-1"></i>' . htmlspecialchars($pName) . '</span>
-                                                                ' . (!empty($fName) ? '<span class="flat-name" title="Flat/Unit">' . htmlspecialchars($fName) . '</span>' : '') . '
-                                                              </div>';
-                                                    }
-                                                    echo '  </div>
-                                                          </div>
-                                                          <button class="btn btn-sm btn-link text-decoration-none p-0 fw-bold mt-1 w-100 text-start view-more-btn collapsed" style="font-size: 11.5px; color: #1d4ed8;" type="button" data-bs-toggle="collapse" data-bs-target="#'.$collapseId.'" aria-expanded="false" aria-controls="'.$collapseId.'">
-                                                              <span class="show-more-text">View ' . ($totalProps - 3) . ' more units <i class="fa-solid fa-caret-down ms-1"></i></span>
-                                                              <span class="show-less-text d-none">View less <i class="fa-solid fa-caret-up ms-1"></i></span>
-                                                          </button>';
-                                                }
-                                            } else {
-                                                echo '<span class="badge bg-light text-muted border">No Properties</span>';
-                                            }
-                                            ?>
-                                        </div>
-                                    </td>
-
-                                    <td>TK.<?= number_format($client['total_agreement_value'] ?? 0, 2) ?></td>
-                                    <td>TK.<?= number_format($client['total_paid'] ?? 0, 2) ?></td>
-                                    <td>
-                                        <?= $client['last_payment_date'] ? date('d M, Y', strtotime($client['last_payment_date'])) : 'No Payment' ?>
-                                    </td>
-                                    <td>
-                                        <?php 
-                                            $cms = $client['current_month_status'] ?? 'N/A';
-                                            $hasDueEmis = !empty($client['due_emis']);
-                                            if ($hasDueEmis): ?>
-                                                <span class="badge bg-danger text-white mb-1" title="Due EMIs: <?= htmlspecialchars($client['due_summary_text']) ?>">
-                                                    <i class="fa-solid fa-triangle-exclamation me-1"></i>Due: <?= htmlspecialchars($client['due_summary_text']) ?>
-                                                </span>
-                                                <small class="d-block text-danger fw-bold" style="font-size: 11px;">
-                                                    ৳<?= number_format($client['total_due_amount'] ?? 0, 2) ?>
-                                                </small>
-                                            <?php elseif ($cms === 'paid'): ?>
-                                                <span class="badge bg-success">Paid</span>
-                                            <?php elseif ($cms === 'matured'): ?>
-                                                <span class="badge bg-info text-dark" style="background-color: #0dcaf0; color: #000;">Matured</span>
-                                            <?php elseif ($cms === 'pending'): ?>
-                                                <span class="badge bg-warning text-dark">Pending</span>
-                                            <?php elseif ($cms === 'due'): ?>
-                                                <span class="badge bg-danger">Due</span>
-                                            <?php elseif ($cms === 'future'): ?>
-                                                <span class="badge bg-secondary">Future</span>
-                                            <?php else: ?>
-                                                <span class="text-muted">-</span>
-                                            <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary py-0 px-2"
-                                            onclick="openProfileModal(<?= $client['lead_id'] ?>)"
-                                            title="View Client Profile" style="font-size:12px;">
-                                            <i class="fa-light fa-id-card me-1"></i>Profile
-                                        </button>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center justify-content-start gap-2">
-                                            <button class="table__icon download"
-                                                onclick="openProjectsModal(<?= $client['lead_id'] ?>, '<?= htmlspecialchars(trim(preg_replace('/\s+/', ' ', $client['client_name'])), ENT_QUOTES) ?>')"
-                                                title="View Projects">
-                                                <i class="fa-regular fa-eye"></i>
-                                            </button>
-                                            <?php if (!empty($client['booking_id'])): ?>
-                                                <?php $fCount = (int)($client['total_followup_count'] ?? 0); ?>
-                                                <button type="button"
-                                                        onclick="openClientEmiFollowupModal(<?= $client['booking_id'] ?>, '<?= htmlspecialchars($client['client_name'], ENT_QUOTES) ?>', <?= (int)($client['total_emi_count'] ?? 36) ?>, <?= $client['lead_id'] ?? 'null' ?>)"
-                                                        class="btn btn-sm btn-outline-primary py-1 px-2 text-nowrap"
-                                                        style="font-size:11px;"
-                                                        title="Add / View Follow Up Notes">
-                                                    <i class="fa-light fa-comment-dots me-1"></i>Follow Up
-                                                    <span class="badge <?= $fCount > 0 ? 'bg-primary' : 'bg-secondary' ?> rounded-pill ms-1 followup-count-badge" data-booking-id="<?= $client['booking_id'] ?>" style="font-size:10px;"><?= $fCount ?></span>
-                                                </button>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                      
-                        <?php endif; ?>
+                    <tbody class="table__body" id="clientsCedTableBody">
+                        <?php
+                        require_once __DIR__ . '/../../controllers/AccountClientController.php';
+                        $controllerInstance = new AccountClientController($GLOBALS['db'] ?? null);
+                        echo $controllerInstance->renderCedRowsHtml($clients);
+                        ?>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Pagination Container -->
+            <div id="clientsCedPaginationContainer">
+                <?php
+                echo $controllerInstance->generateAjaxPagination($currentPage ?? 1, $totalPages ?? 1, $totalClients ?? count($clients), $limit ?? 20, 'loadCedClientsPage');
+                ?>
             </div>
         </div>
     </div>
@@ -1839,7 +1797,7 @@ $show_breadcrumb = true;
                                 <th class="text-center" style="width: 110px;">Action</th>
                             </tr>
                         </thead>
-                        <tbody style="font-size: 13px;">
+                        <tbody id="dueEmisTableBody" style="font-size: 13px;">
                             <?php if (empty($dueClientsList)): ?>
                                 <tr>
                                     <td colspan="8" class="text-center py-4 text-muted">
@@ -1848,73 +1806,11 @@ $show_breadcrumb = true;
                                     </td>
                                 </tr>
                             <?php else: ?>
-                                <?php foreach ($dueClientsList as $dIdx => $dClient): ?>
-                                    <tr class="due-client-row">
-                                        <td class="text-center text-muted fw-bold"><?= $dIdx + 1 ?></td>
-                                        <td class="fw-bold text-dark due-client-name">
-                                            <?= htmlspecialchars($dClient['client_name']) ?>
-                                        </td>
-                                        <td class="due-client-phone">
-                                            <a href="tel:<?= htmlspecialchars($dClient['phone']) ?>" class="text-decoration-none text-primary">
-                                                <i class="fa-solid fa-phone me-1" style="font-size: 11px;"></i><?= htmlspecialchars($dClient['phone']) ?>
-                                            </a>
-                                        </td>
-                                        <td class="due-client-project">
-                                            <?php 
-                                            if (!empty($dClient['project_flats'])) {
-                                                $props = explode(';;', $dClient['project_flats']);
-                                                foreach($props as $prop) {
-                                                    $parts = explode('||', $prop);
-                                                    $pName = $parts[0] ?? '';
-                                                    $fName = $parts[1] ?? '';
-                                                    echo '<div class="property-chip mb-1">
-                                                            <span class="project-name"><i class="fa-solid fa-building me-1"></i>' . htmlspecialchars($pName) . '</span>
-                                                            ' . (!empty($fName) ? '<span class="flat-name">' . htmlspecialchars($fName) . '</span>' : '') . '
-                                                          </div>';
-                                                }
-                                            } else {
-                                                echo '<span class="text-muted">-</span>';
-                                            }
-                                            ?>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex flex-wrap gap-1">
-                                                <?php foreach ($dClient['due_emis'] as $dEmi): ?>
-                                                    <span class="badge <?= $dEmi['badge_class'] ?? 'bg-danger text-white' ?> py-1 px-2" style="font-size: 11px;" title="<?= $dEmi['type_label'] ?? '' ?>: ৳<?= number_format($dEmi['due_amount'], 2) ?>">
-                                                        EMI #<?= $dEmi['emi_no'] ?>: ৳<?= number_format($dEmi['due_amount'], 0) ?>
-                                                    </span>
-                                                <?php endforeach; ?>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <?php foreach ($dClient['due_emis'] as $dEmi): ?>
-                                                <div class="small text-nowrap" style="font-size: 11px;">
-                                                    <strong class="text-dark">#<?= $dEmi['emi_no'] ?>:</strong> 
-                                                    <?= !empty($dEmi['due_date']) ? date('d M, Y', strtotime($dEmi['due_date'])) : 'N/A' ?>
-                                                    <?php if (!empty($dEmi['is_expired'])): ?>
-                                                        <span class="text-danger fw-semibold">(<?= $dEmi['days_expired'] ?>d ago)</span>
-                                                    <?php else: ?>
-                                                        <span class="text-warning fw-semibold">(this month)</span>
-                                                    <?php endif; ?>
-                                                </div>
-                                            <?php endforeach; ?>
-                                        </td>
-                                        <td class="text-end fw-bold text-danger font-monospace fs-14">
-                                            ৳<?= number_format($dClient['total_due_amount'], 2) ?>
-                                        </td>
-                                        <td class="text-center">
-                                            <?php if (!empty($dClient['booking_id'])): ?>
-                                                <a href="<?= $GLOBALS['base_url'] ?>/clients-cash-in-history-view/<?= $dClient['booking_id'] ?>"
-                                                   class="btn btn-xs btn-outline-primary py-1 px-2"
-                                                   title="View Cash In History & Pay">
-                                                    <i class="fa-solid fa-eye me-1"></i>View
-                                                </a>
-                                            <?php else: ?>
-                                                <span class="text-muted">-</span>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
+                                <?php
+                                require_once __DIR__ . '/../../controllers/AccountClientController.php';
+                                $controllerInstance = new AccountClientController($GLOBALS['db'] ?? null);
+                                echo $controllerInstance->renderDueModalRowsHtml($dueClientsList);
+                                ?>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -2036,11 +1932,34 @@ function filterProjectBreakdownTable() {
     });
 }
 
+let dueEmisModalLoaded = false;
+
 function openDueEmisModal() {
     const modalEl = document.getElementById('dueEmisModal');
-    if (modalEl) {
-        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-        modal.show();
+    if (!modalEl) return;
+    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    modal.show();
+
+    const tbody = document.getElementById('dueEmisTableBody');
+    const projectId = $('#cedProjectFilter').val() || '';
+
+    // Load dynamic due rows via AJAX if needed
+    if (tbody && (!dueEmisModalLoaded || projectId)) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5"><div class="spinner-border text-danger me-2"></div>Loading due & overdue EMI details...</td></tr>`;
+        
+        fetch('<?= $GLOBALS['base_url'] ?>/clients-cashin-view?ajax=due_modal&project_id=' + encodeURIComponent(projectId), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && tbody) {
+                tbody.innerHTML = data.html;
+                dueEmisModalLoaded = true;
+            }
+        })
+        .catch(err => {
+            if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-danger">Failed to load due installments. Please try again.</td></tr>`;
+        });
     }
 }
 
@@ -2063,49 +1982,205 @@ function filterDueEmisTable() {
     });
 }
 
-// Double booking conflict filter logic for CED
-let conflictFilterActiveCed = false;
+// ── AJAX Server-Side Pagination & Filter Logic (Pure Vanilla JS) ──
+let cedSearchTimer = null;
+let cedConflictOnly = false;
 
-// Custom DataTables filter for conflicted units
-if ($.fn.dataTable && $.fn.dataTable.ext) {
-    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
-        if (!conflictFilterActiveCed) return true;
-        if (settings.nTable && (settings.nTable.id === 'clientsCedTable' || $(settings.nTable).hasClass('multiple_tables'))) {
-            const row = settings.aoData[dataIndex].nTr;
-            return $(row).attr('data-has-conflict') === '1';
+function loadCedClientsPage(page) {
+    page = parseInt(page) || 1;
+    if (page < 1) page = 1;
+
+    const overlay = document.getElementById('cedTableLoadingOverlay');
+    const tbody = document.getElementById('clientsCedTableBody');
+    const pagContainer = document.getElementById('clientsCedPaginationContainer');
+    const searchVal = document.getElementById('cedSearchInput') ? document.getElementById('cedSearchInput').value.trim() : '';
+    const projectId = document.getElementById('cedProjectFilter') ? document.getElementById('cedProjectFilter').value : '';
+    const verificationStatus = document.getElementById('cedStatusFilter') ? document.getElementById('cedStatusFilter').value : '';
+    const limit = document.getElementById('cedLimitSelect') ? document.getElementById('cedLimitSelect').value : '20';
+    const dateTypeVal = document.getElementById('cedDateType') ? document.getElementById('cedDateType').value : '';
+    const startDateVal = document.getElementById('cedStartDate') ? document.getElementById('cedStartDate').value : '';
+    const endDateVal = document.getElementById('cedEndDate') ? document.getElementById('cedEndDate').value : '';
+
+    if (overlay) {
+        overlay.classList.remove('d-none');
+        overlay.classList.add('d-flex');
+    }
+    if (tbody) tbody.style.opacity = '0.4';
+
+    const params = new URLSearchParams({
+        ajax: '1',
+        page: page,
+        limit: limit,
+        search: searchVal,
+        project_id: projectId,
+        verification_status: verificationStatus,
+        date_type: dateTypeVal,
+        start_date: startDateVal,
+        end_date: endDateVal,
+        has_conflict: cedConflictOnly ? '1' : '0'
+    });
+
+    fetch('<?= $GLOBALS['base_url'] ?>/clients-cashin-view?' + params.toString(), {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
         }
-        return true;
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data && data.success) {
+            if (tbody && data.table_html) {
+                tbody.innerHTML = data.table_html;
+            }
+            if (pagContainer && data.pagination_html) {
+                pagContainer.innerHTML = data.pagination_html;
+            }
+            const countEl = document.getElementById('cedTotalRecordsCount');
+            if (countEl && data.total_clients !== undefined) {
+                countEl.textContent = data.total_clients;
+            }
+        }
+    })
+    .catch(err => {
+        console.error('Failed to load CED clients:', err);
+    })
+    .finally(() => {
+        if (overlay) {
+            overlay.classList.add('d-none');
+            overlay.classList.remove('d-flex');
+        }
+        if (tbody) tbody.style.opacity = '1';
+    });
+
+    // Smooth scroll to table
+    const tableEl = document.getElementById('clientsCedTable');
+    if (tableEl) {
+        const topPos = tableEl.getBoundingClientRect().top + window.pageYOffset - 120;
+        window.scrollTo({ top: topPos, behavior: 'smooth' });
+    }
+}
+
+// Expose globally so onclick can always find them
+window.loadCedClientsPage = loadCedClientsPage;
+window.loadCashInPage = loadCedClientsPage;
+
+// Event Listeners for CED AJAX Controls (Vanilla JS)
+function initCedAjaxControls() {
+    // 1. Search input with debounce
+    const searchInput = document.getElementById('cedSearchInput');
+    const clearBtn = document.getElementById('cedClearSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const val = this.value.trim();
+            if (clearBtn) {
+                if (val.length > 0) clearBtn.classList.remove('d-none');
+                else clearBtn.classList.add('d-none');
+            }
+            clearTimeout(cedSearchTimer);
+            cedSearchTimer = setTimeout(() => {
+                loadCedClientsPage(1);
+            }, 300);
+        });
+    }
+
+    // Debounce for project & filter dropdown changes
+    let cedFilterChangeTimer = null;
+    function triggerCedFilterChange() {
+        clearTimeout(cedFilterChangeTimer);
+        cedFilterChangeTimer = setTimeout(() => {
+            dueEmisModalLoaded = false;
+            loadCedClientsPage(1);
+        }, 50);
+    }
+
+    // 2. Clear search button
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            if (searchInput) searchInput.value = '';
+            this.classList.add('d-none');
+            loadCedClientsPage(1);
+        });
+    }
+
+    // 3. Status, Date & Limit dropdowns / inputs
+    ['cedStatusFilter', 'cedLimitSelect', 'cedDateType', 'cedStartDate', 'cedEndDate'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', function() {
+                dueEmisModalLoaded = false;
+                loadCedClientsPage(1);
+            });
+        }
+    });
+
+    // Listen on Project Filter change (fires when Select2 or native select changes)
+    $(document).on('change', '#cedProjectFilter', function() {
+        triggerCedFilterChange();
+    });
+
+    // 4. Conflict filter toggle buttons
+    const btnConflicts = document.getElementById('btnFilterConflictsCed');
+    const btnResetConflicts = document.getElementById('btnResetConflictFilterCed');
+    if (btnConflicts) {
+        btnConflicts.addEventListener('click', function() {
+            cedConflictOnly = true;
+            this.classList.add('d-none');
+            if (btnResetConflicts) btnResetConflicts.classList.remove('d-none');
+            loadCedClientsPage(1);
+        });
+    }
+
+    if (btnResetConflicts) {
+        btnResetConflicts.addEventListener('click', function() {
+            cedConflictOnly = false;
+            this.classList.add('d-none');
+            if (btnConflicts) btnConflicts.classList.remove('d-none');
+            loadCedClientsPage(1);
+        });
+    }
+
+    // 5. Reset Filters Button
+    const resetBtn = document.getElementById('cedResetFilters');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            if (searchInput) searchInput.value = '';
+            if (clearBtn) clearBtn.classList.add('d-none');
+            $('#cedProjectFilter').val('').trigger('change');
+            const statusEl = document.getElementById('cedStatusFilter');
+            if (statusEl) statusEl.value = '';
+            const dateTypeEl = document.getElementById('cedDateType');
+            if (dateTypeEl) dateTypeEl.value = '';
+            const startDateEl = document.getElementById('cedStartDate');
+            if (startDateEl) startDateEl.value = '';
+            const endDateEl = document.getElementById('cedEndDate');
+            if (endDateEl) endDateEl.value = '';
+            const limitEl = document.getElementById('cedLimitSelect');
+            if (limitEl) limitEl.value = '20';
+            cedConflictOnly = false;
+            if (btnResetConflicts) btnResetConflicts.classList.add('d-none');
+            if (btnConflicts) btnConflicts.classList.remove('d-none');
+            dueEmisModalLoaded = false;
+            loadCedClientsPage(1);
+        });
+    }
+
+    // 6. Delegated click on pagination container (in addition to onclick)
+    document.addEventListener('click', function(e) {
+        const link = e.target.closest('#clientsCedPaginationContainer .ajax-page-link');
+        if (link && link.hasAttribute('data-page')) {
+            e.preventDefault();
+            const targetPage = parseInt(link.getAttribute('data-page'));
+            if (targetPage > 0) {
+                loadCedClientsPage(targetPage);
+            }
+        }
     });
 }
 
-$(document).ready(function() {
-    $('#btnFilterConflictsCed').on('click', function() {
-        conflictFilterActiveCed = true;
-        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#clientsCedTable')) {
-            $('#clientsCedTable').DataTable().draw();
-        } else if ($.fn.DataTable) {
-            $('.multiple_tables').DataTable().draw();
-        }
-        // Expand any collapsed units in the visible conflicted rows
-        $('.row-conflicted-unit .collapse').addClass('show');
-        $('.row-conflicted-unit .view-more-btn .show-more-text').addClass('d-none');
-        $('.row-conflicted-unit .view-more-btn .show-less-text').removeClass('d-none');
-        
-        $('#btnFilterConflictsCed').addClass('d-none');
-        $('#btnResetConflictFilterCed').removeClass('d-none');
-    });
-
-    $('#btnResetConflictFilterCed').on('click', function() {
-        conflictFilterActiveCed = false;
-        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#clientsCedTable')) {
-            $('#clientsCedTable').DataTable().draw();
-        } else if ($.fn.DataTable) {
-            $('.multiple_tables').DataTable().draw();
-        }
-        $('#btnFilterConflictsCed').removeClass('d-none');
-        $('#btnResetConflictFilterCed').addClass('d-none');
-    });
-});
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCedAjaxControls);
+} else {
+    initCedAjaxControls();
+}
 
 function cancelBookingAction(bookingId, clientName, unitName) {
     Swal.fire({

@@ -180,28 +180,97 @@ $show_breadcrumb = true;
 
 <div class="col-xxl-12">
     <div class="card__wrapper">
-        <div class="d-flex justify-content-between align-items-center mb-20 flex-wrap gap-3">
-            <h4>Clients Information</h4>
-            <div class="d-flex gap-3 align-items-center flex-wrap">
-                <form method="GET" action="<?= $GLOBALS['base_url'] ?>/clients-cash-in" id="filterForm" class="d-flex gap-2">
-                    <select name="project_id" class="form-select form-select-sm" style="min-width: 150px;" onchange="document.getElementById('filterForm').submit()">
+        <!-- Header: Title and Legend Badges -->
+        <div class="d-flex justify-content-between align-items-center mb-15 flex-wrap gap-2">
+            <div>
+                <h4 class="mb-1">
+                    Clients Information
+                    <small class="text-muted fs-13 font-semibold ms-2">
+                        (<span id="cashInTotalCount"><?= number_format($totalClients ?? 0) ?></span> Records)
+                    </small>
+                </h4>
+                <div class="text-muted fs-12">Manage all booked clients and installment collections</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1"><i class="fa-light fa-clock me-1"></i> Pending</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fa-light fa-check-circle me-1"></i> Verified</span>
+            </div>
+        </div>
+
+        <!-- Toolbar: Search & Filters (Side-by-Side) -->
+        <div class="p-2 px-3 mb-20 rounded-3 bg-light border d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="d-flex flex-wrap align-items-center gap-2 flex-grow-1">
+                <!-- Search Box -->
+                <div class="position-relative" style="width: 270px; min-width: 200px;">
+                    <i class="fa-solid fa-magnifying-glass position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; z-index: 4; pointer-events: none;"></i>
+                    <input type="text" id="cashInSearchInput" class="form-control form-control-sm" 
+                           style="padding-left: 36px !important; padding-right: 28px; height: 36px; border-radius: 6px;" 
+                           placeholder="Search client, phone, email, project..." 
+                           value="<?= htmlspecialchars($search ?? '') ?>" autocomplete="off">
+                    <button type="button" id="cashInClearSearch" class="btn btn-sm btn-link text-muted position-absolute p-0 <?= empty($search) ? 'd-none' : '' ?>" 
+                            style="right: 10px; top: 50%; transform: translateY(-50%); text-decoration: none; z-index: 4;" title="Clear Search">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Project Filter (Same as flat-lists) -->
+                <div style="min-width: 220px; max-width: 280px; flex: 1;">
+                    <select class="form-control form-control-sm select2" name="project_id" id="cashInProjectFilter">
                         <option value="">All Projects</option>
                         <?php if(!empty($projects)): foreach($projects as $p): ?>
-                            <option value="<?= $p['id'] ?>" <?= $selectedProjectId == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
+                            <option value="<?= $p['id'] ?>" <?= ($selectedProjectId == $p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
                         <?php endforeach; endif; ?>
                     </select>
-                    <select name="verification_status" class="form-select form-select-sm" style="min-width: 150px;" onchange="document.getElementById('filterForm').submit()">
-                        <option value="">All Statuses</option>
-                        <option value="pending" <?= $selectedVerificationStatus == 'pending' ? 'selected' : '' ?>>Pending Verification</option>
-                        <option value="verified" <?= $selectedVerificationStatus == 'verified' ? 'selected' : '' ?>>Verified</option>
-                        <option value="rejected" <?= $selectedVerificationStatus == 'rejected' ? 'selected' : '' ?>>Rejected</option>
-                    </select>
-                </form>
-                <div>
-                    <span class="badge bg-danger me-1"><i class="fa-light fa-clock me-1"></i> Pending Verification</span>
-                    <span class="badge bg-success"><i class="fa-light fa-check-circle me-1"></i> Verified</span>
                 </div>
+
+                <!-- Verification Status Filter -->
+                <div style="width: 170px; min-width: 140px;">
+                    <select name="verification_status" id="cashInStatusFilter" class="form-select form-select-sm" style="width: 100% !important; height: 36px; border-radius: 6px;">
+                        <option value="">All Statuses</option>
+                        <option value="pending" <?= ($selectedVerificationStatus == 'pending') ? 'selected' : '' ?>>Pending Verification</option>
+                        <option value="verified" <?= ($selectedVerificationStatus == 'verified') ? 'selected' : '' ?>>Verified</option>
+                        <option value="rejected" <?= ($selectedVerificationStatus == 'rejected') ? 'selected' : '' ?>>Rejected</option>
+                    </select>
+                </div>
+
+                <!-- Date Type Filter -->
+                <div style="width: 165px; min-width: 140px;">
+                    <select name="date_type" id="cashInDateType" class="form-select form-select-sm" style="width: 100% !important; height: 36px; border-radius: 6px;">
+                        <option value="">Filter By Date...</option>
+                        <option value="booking_date" <?= (($dateType ?? '') == 'booking_date') ? 'selected' : '' ?>>Booking Date</option>
+                        <option value="last_payment_date" <?= (($dateType ?? '') == 'last_payment_date') ? 'selected' : '' ?>>Last Payment Date</option>
+                    </select>
+                </div>
+
+                <!-- Date Range (From & To) -->
+                <div class="d-flex align-items-center gap-1">
+                    <div style="width: 135px;">
+                        <input type="date" name="start_date" id="cashInStartDate" class="form-control form-control-sm" style="height: 36px; border-radius: 6px;" title="From Date" value="<?= htmlspecialchars($startDate ?? '') ?>">
+                    </div>
+                    <span class="text-muted small">to</span>
+                    <div style="width: 135px;">
+                        <input type="date" name="end_date" id="cashInEndDate" class="form-control form-control-sm" style="height: 36px; border-radius: 6px;" title="To Date" value="<?= htmlspecialchars($endDate ?? '') ?>">
+                    </div>
+                </div>
+
+                <!-- Per Page Limit -->
+                <div class="d-flex align-items-center gap-1" style="width: 120px;">
+                    <span class="text-muted extra-small text-nowrap">Show:</span>
+                    <select id="cashInLimitSelect" class="form-select form-select-sm" style="width: 75px !important; height: 36px; border-radius: 6px;" title="Rows per page">
+                        <option value="10" <?= ($limit == 10) ? 'selected' : '' ?>>10</option>
+                        <option value="20" <?= ($limit == 20 || empty($limit)) ? 'selected' : '' ?>>20</option>
+                        <option value="50" <?= ($limit == 50) ? 'selected' : '' ?>>50</option>
+                        <option value="100" <?= ($limit == 100) ? 'selected' : '' ?>>100</option>
+                    </select>
+                </div>
+
+                <!-- Reset Filters Button -->
+                <button type="button" id="cashInResetFilters" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" style="height: 36px; border-radius: 6px; font-size: 12.5px;" title="Reset Search & Filters">
+                    <i class="fa-solid fa-rotate-left"></i> Reset
+                </button>
             </div>
+        </div>
+
         <?php if (!empty($conflictedUnits)): ?>
             <div class="card mb-3 border-0 shadow-sm" style="background: #fff5f5; border: 1px solid #fecdd3 !important; border-left: 5px solid #dc2626 !important; border-radius: 8px;">
                 <div class="card-body p-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
@@ -218,10 +287,10 @@ $show_breadcrumb = true;
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <button type="button" id="btnFilterConflicts" class="btn btn-sm btn-outline-danger fw-semibold" style="font-size: 12.5px; border-radius: 6px; padding: 6px 12px;">
+                        <button type="button" id="btnFilterConflicts" class="btn btn-sm btn-outline-danger fw-semibold <?= !empty($hasConflict) ? 'd-none' : '' ?>" style="font-size: 12.5px; border-radius: 6px; padding: 6px 12px;">
                             <i class="fa-solid fa-filter me-1"></i>Show Conflicted Units Only
                         </button>
-                        <button type="button" id="btnResetConflictFilter" class="btn btn-sm btn-secondary fw-semibold d-none" style="font-size: 12.5px; border-radius: 6px; padding: 6px 12px;">
+                        <button type="button" id="btnResetConflictFilter" class="btn btn-sm btn-secondary fw-semibold <?= empty($hasConflict) ? 'd-none' : '' ?>" style="font-size: 12.5px; border-radius: 6px; padding: 6px 12px;">
                             <i class="fa-solid fa-rotate-left me-1"></i>Show All
                         </button>
                         <button type="button" class="btn btn-sm btn-danger fw-semibold" data-bs-toggle="modal" data-bs-target="#conflictResolutionModal" style="font-size: 12.5px; border-radius: 6px; padding: 6px 12px;">
@@ -232,8 +301,16 @@ $show_breadcrumb = true;
             </div>
         <?php endif; ?>
 
-        <div class="table__wrapper table-responsive">
-            <table class="table mb-20 multiple_tables" id="clientsTable">
+        <div class="table__wrapper table-responsive position-relative">
+            <!-- Loading Overlay -->
+            <div id="cashInTableLoadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 d-none justify-content-center align-items-center" style="background: rgba(255,255,255,0.75); z-index: 10; min-height: 150px; border-radius: 8px;">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div class="small text-muted mt-2 fw-semibold">Loading clients data...</div>
+                </div>
+            </div>
+
+            <table class="table mb-0" id="clientsTable">
                 <thead>
                     <tr class="table__title table__sort">
                         <th>Client Name</th>
@@ -241,7 +318,7 @@ $show_breadcrumb = true;
                         <th>Phone</th>
                         <th>Email</th>
                         <th>Project & Flats</th>
-                        <th>Booking Agent(s)</th>
+                        <th>Booking Agent(s) & Date</th>
                         <th>Total Paid</th>
                         <th>Last Payment</th>
                         <th>Verification</th>
@@ -249,139 +326,24 @@ $show_breadcrumb = true;
                         <th>Action</th>
                     </tr>
                 </thead>
-                <tbody class="table__body">
-                    <?php if (!empty($clients)): ?>
-                        <?php foreach ($clients as $client): ?>
-                            <?php
-                                // Determine verification status based on latest payment and total pending
-                                $verStatus    = $client['latest_verification_status'] ?? '';
-                                $totalPending = (int)($client['total_pending_payments'] ?? 0);
-                                $isPending    = ($totalPending > 0);
-                                $isRejected   = !$isPending && ($verStatus === 'rejected');
-                                $isVerified   = !$isPending && ($verStatus === 'verified');
-
-                                $rowClass     = $isPending ? 'table-pending-highlight' : ($isRejected ? 'table-danger' : '');
-                                $badgeClass   = $isVerified ? 'bg-success' : ($isRejected ? 'bg-danger' : ($isPending ? 'bg-warning text-dark' : 'bg-secondary'));
-                                $badgeIcon    = $isVerified ? 'fa-check-circle' : ($isRejected ? 'fa-times-circle' : ($isPending ? 'fa-clock' : 'fa-minus'));
-                                $verText      = $isVerified ? 'Verified' : ($isRejected ? 'Rejected' : ($isPending ? 'Pending' : 'No Payment'));
-
-                                $clientHasConflict = false;
-                                if (!empty($conflictedUnits) && !empty($client['project_flats_combined'])) {
-                                    $allProps = explode(';;', $client['project_flats_combined']);
-                                    foreach ($allProps as $ap) {
-                                        $apParts = explode('||', $ap);
-                                        $chkK = strtolower(trim($apParts[0] ?? '')) . '||' . strtolower(trim($apParts[1] ?? ''));
-                                        if (isset($conflictedUnits[$chkK])) {
-                                            $clientHasConflict = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                            ?>
-                            <tr class="<?= $rowClass ?> <?= $clientHasConflict ? 'row-conflicted-unit' : '' ?>" data-has-conflict="<?= $clientHasConflict ? '1' : '0' ?>" <?= $clientHasConflict ? 'style="background-color: #fff9f9;"' : '' ?>>
-                                    <td>
-                                        <?= htmlspecialchars($client['client_name']) ?>
-                                        <?php if ($clientHasConflict): ?>
-                                            <span class="badge bg-danger text-white ms-1" style="font-size: 10px;" title="This client has a double-booked unit">
-                                                <i class="fa-solid fa-triangle-exclamation"></i> Conflict
-                                            </span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td><?= htmlspecialchars($client['company'] ?? 'N/A') ?></td>
-                                    <td><?= htmlspecialchars($client['phone'] ?? 'N/A') ?></td>
-                                    <td><?= htmlspecialchars($client['email'] ?? 'N/A') ?></td>
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-2">
-                                            <?php 
-                                            if (!empty($client['project_flats_combined'])) {
-                                                $properties = explode(';;', $client['project_flats_combined']);
-                                                $totalProps = count($properties);
-                                                $visibleProps = array_slice($properties, 0, 3);
-                                                $hiddenProps = array_slice($properties, 3);
-                                                $clientId = $client['lead_id'] ?? uniqid();
-                                                
-                                                foreach($visibleProps as $prop) {
-                                                    $parts = explode('||', $prop);
-                                                    $pName = $parts[0] ?? '';
-                                                    $fName = $parts[1] ?? '';
-                                                    $cKey = strtolower(trim($pName)) . '||' . strtolower(trim($fName));
-                                                    $isDup = isset($conflictedUnits[$cKey]);
-                                                    $dupInfo = $isDup ? $conflictedUnits[$cKey] : null;
-
-                                                    echo '<div class="property-chip" ' . ($isDup ? 'style="border: 1px solid #dc3545; background: #fff5f5;"' : '') . '>
-                                                            <span class="project-name" title="'.htmlspecialchars($pName).'"><i class="fa-solid fa-building me-1"></i>' . htmlspecialchars($pName) . '</span>
-                                                            ' . (!empty($fName) ? '<span class="flat-name ' . ($isDup ? 'text-danger fw-bold' : '') . '" title="Flat/Unit">' . htmlspecialchars($fName) . '</span>' : '') . '
-                                                            ' . ($isDup ? '<a href="javascript:void(0)" class="badge bg-danger text-white ms-1 text-decoration-none" style="font-size: 10px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#conflictResolutionModal" title="Double Booked with: ' . htmlspecialchars($dupInfo['client_names']) . ' (' . $dupInfo['booking_count'] . ' Bookings) - Click to Manage"><i class="fa-solid fa-triangle-exclamation me-1"></i>Double Booked (' . $dupInfo['booking_count'] . ')</a>' : '') . '
-                                                          </div>';
-                                                }
-
-                                                if ($totalProps > 3) {
-                                                    $collapseId = "collapse_props_" . $clientId;
-                                                    echo '<div class="collapse w-100" id="'.$collapseId.'">
-                                                            <div class="d-flex flex-wrap gap-2 mt-1">';
-                                                    foreach($hiddenProps as $prop) {
-                                                        $parts = explode('||', $prop);
-                                                        $pName = $parts[0] ?? '';
-                                                        $fName = $parts[1] ?? '';
-                                                        $cKey = strtolower(trim($pName)) . '||' . strtolower(trim($fName));
-                                                        $isDup = isset($conflictedUnits[$cKey]);
-                                                        $dupInfo = $isDup ? $conflictedUnits[$cKey] : null;
-
-                                                        echo '<div class="property-chip" ' . ($isDup ? 'style="border: 1px solid #dc3545; background: #fff5f5;"' : '') . '>
-                                                                <span class="project-name" title="'.htmlspecialchars($pName).'"><i class="fa-solid fa-building me-1"></i>' . htmlspecialchars($pName) . '</span>
-                                                                ' . (!empty($fName) ? '<span class="flat-name ' . ($isDup ? 'text-danger fw-bold' : '') . '" title="Flat/Unit">' . htmlspecialchars($fName) . '</span>' : '') . '
-                                                                ' . ($isDup ? '<a href="javascript:void(0)" class="badge bg-danger text-white ms-1 text-decoration-none" style="font-size: 10px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#conflictResolutionModal" title="Double Booked with: ' . htmlspecialchars($dupInfo['client_names']) . ' (' . $dupInfo['booking_count'] . ' Bookings) - Click to Manage"><i class="fa-solid fa-triangle-exclamation me-1"></i>Double Booked (' . $dupInfo['booking_count'] . ')</a>' : '') . '
-                                                              </div>';
-                                                    }
-                                                    echo '  </div>
-                                                          </div>
-                                                          <button class="btn btn-sm btn-link text-decoration-none p-0 fw-bold mt-1 w-100 text-start view-more-btn collapsed" style="font-size: 11.5px; color: #1d4ed8;" type="button" data-bs-toggle="collapse" data-bs-target="#'.$collapseId.'" aria-expanded="false" aria-controls="'.$collapseId.'">
-                                                              <span class="show-more-text">View ' . ($totalProps - 3) . ' more units <i class="fa-solid fa-caret-down ms-1"></i></span>
-                                                              <span class="show-less-text d-none">View less <i class="fa-solid fa-caret-up ms-1"></i></span>
-                                                          </button>';
-                                                }
-                                            } else {
-                                                echo '<span class="badge bg-light text-muted border">No Properties</span>';
-                                            }
-                                            ?>
-                                        </div>
-                                    </td>
-                                    <td><?= htmlspecialchars($client['agent_name'] ?? 'N/A') ?></td>
-                                    <td>TK.<?= number_format($client['total_paid'] ?? 0, 2) ?></td>
-                                    <td>
-                                        <?= $client['last_payment_date'] ? date('d M, Y', strtotime($client['last_payment_date'])) : 'No Payment' ?>
-                                    </td>
-                                    <td>
-                                        <span class="badge <?= $badgeClass ?>">
-                                            <i class="fa-light <?= $badgeIcon ?> me-1"></i>
-                                            <?= ucfirst($verStatus) ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary py-0 px-2"
-                                            onclick="openProfileModal(<?= $client['lead_id'] ?>)"
-                                            title="View Client Profile" style="font-size:12px;">
-                                            <i class="fa-light fa-id-card me-1"></i>Profile
-                                        </button>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center justify-content-start gap-10">
-                                            <button class="table__icon download"
-                                                onclick="openProjectsModal(<?= $client['lead_id'] ?>, '<?= htmlspecialchars(trim(preg_replace('/\s+/', ' ', $client['client_name'])), ENT_QUOTES) ?>')"
-                                                title="View Projects">
-                                                <i class="fa-regular fa-eye"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-
-                
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
+                <tbody class="table__body" id="clientsTableBody">
+                    <?php
+                    require_once __DIR__ . '/../../../controllers/AccountClientController.php';
+                    $controllerInstance = new AccountClientController($GLOBALS['db'] ?? null);
+                    echo $controllerInstance->renderCashInRowsHtml($clients, $conflictedUnits ?? []);
+                    ?>
+                </tbody>
+            </table>
         </div>
+
+        <!-- Pagination Container -->
+        <div id="clientsPaginationContainer">
+            <?php
+            echo $controllerInstance->generateAjaxPagination($currentPage ?? 1, $totalPages ?? 1, $totalClients ?? count($clients), $limit ?? 20, 'loadCashInPage');
+            ?>
+        </div>
+    </div>
+</div></div>
     </div>
 
 </div>
@@ -1238,45 +1200,207 @@ function filterProjectBreakdownTable() {
     });
 }
 
-// Double booking conflict filter logic
-let conflictFilterActive = false;
+// ── AJAX Pagination, Filter & Live Search Logic for Clients Cash In (Pure Vanilla JS) ──
+let cashInCurrentPage = <?= (int)($currentPage ?? 1) ?>;
+let cashInSearchTimer = null;
+let cashInConflictOnly = <?= !empty($hasConflict) ? 'true' : 'false' ?>;
 
-// Custom DataTables filter for conflicted units
-if ($.fn.dataTable && $.fn.dataTable.ext) {
-    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
-        if (!conflictFilterActive) return true;
-        if (settings.nTable && settings.nTable.id === 'clientsTable') {
-            const row = settings.aoData[dataIndex].nTr;
-            return $(row).attr('data-has-conflict') === '1';
+function loadCashInPage(page) {
+    page = parseInt(page) || 1;
+    if (page < 1) page = 1;
+    cashInCurrentPage = page;
+
+    const overlay = document.getElementById('cashInTableLoadingOverlay');
+    const tbody = document.getElementById('clientsTableBody');
+    const pagContainer = document.getElementById('clientsPaginationContainer');
+    const searchVal = document.getElementById('cashInSearchInput') ? document.getElementById('cashInSearchInput').value.trim() : '';
+    const projectVal = document.getElementById('cashInProjectFilter') ? document.getElementById('cashInProjectFilter').value : '';
+    const statusVal = document.getElementById('cashInStatusFilter') ? document.getElementById('cashInStatusFilter').value : '';
+    const limitVal = document.getElementById('cashInLimitSelect') ? document.getElementById('cashInLimitSelect').value : '20';
+    const dateTypeVal = document.getElementById('cashInDateType') ? document.getElementById('cashInDateType').value : '';
+    const startDateVal = document.getElementById('cashInStartDate') ? document.getElementById('cashInStartDate').value : '';
+    const endDateVal = document.getElementById('cashInEndDate') ? document.getElementById('cashInEndDate').value : '';
+
+    if (overlay) {
+        overlay.classList.remove('d-none');
+        overlay.classList.add('d-flex');
+    }
+    if (tbody) tbody.style.opacity = '0.4';
+
+    const params = new URLSearchParams({
+        ajax: '1',
+        page: page,
+        limit: limitVal,
+        search: searchVal,
+        project_id: projectVal,
+        verification_status: statusVal,
+        date_type: dateTypeVal,
+        start_date: startDateVal,
+        end_date: endDateVal
+    });
+    if (cashInConflictOnly) {
+        params.append('has_conflict', '1');
+    }
+
+    fetch('<?= $GLOBALS['base_url'] ?>/clients-cash-in?' + params.toString(), {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
         }
-        return true;
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data && data.success) {
+            if (tbody && data.table_html) {
+                tbody.innerHTML = data.table_html;
+            }
+            if (pagContainer && data.pagination_html) {
+                pagContainer.innerHTML = data.pagination_html;
+            }
+            const totalCountEl = document.getElementById('cashInTotalCount');
+            if (totalCountEl && (data.total_clients !== undefined || data.totalRecords !== undefined)) {
+                totalCountEl.textContent = Number(data.total_clients !== undefined ? data.total_clients : data.totalRecords).toLocaleString();
+            }
+        }
+    })
+    .catch(err => {
+        console.error('Failed to load clients:', err);
+    })
+    .finally(() => {
+        if (overlay) {
+            overlay.classList.add('d-none');
+            overlay.classList.remove('d-flex');
+        }
+        if (tbody) tbody.style.opacity = '1';
+    });
+
+    // Smooth scroll to table
+    const tableEl = document.getElementById('clientsTable');
+    if (tableEl) {
+        const topPos = tableEl.getBoundingClientRect().top + window.pageYOffset - 120;
+        window.scrollTo({ top: topPos, behavior: 'smooth' });
+    }
+}
+
+// Expose globally so onclick can always find them
+window.loadCashInPage = loadCashInPage;
+window.loadCedClientsPage = loadCashInPage;
+
+// Event Listeners for AJAX Controls (Vanilla JS)
+function initCashInAjaxControls() {
+    // 1. Search input with debounce
+    const searchInput = document.getElementById('cashInSearchInput');
+    const clearBtn = document.getElementById('cashInClearSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const val = this.value.trim();
+            if (clearBtn) {
+                if (val.length > 0) clearBtn.classList.remove('d-none');
+                else clearBtn.classList.add('d-none');
+            }
+            clearTimeout(cashInSearchTimer);
+            cashInSearchTimer = setTimeout(() => {
+                loadCashInPage(1);
+            }, 300);
+        });
+    }
+
+    // Debounce for project & filter dropdown changes
+    let cashInFilterChangeTimer = null;
+    function triggerCashInFilterChange() {
+        clearTimeout(cashInFilterChangeTimer);
+        cashInFilterChangeTimer = setTimeout(() => {
+            loadCashInPage(1);
+        }, 50);
+    }
+
+    // 2. Clear search button
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            if (searchInput) searchInput.value = '';
+            this.classList.add('d-none');
+            loadCashInPage(1);
+        });
+    }
+
+    // 3. Status, Date & Limit dropdowns / inputs
+    ['cashInStatusFilter', 'cashInLimitSelect', 'cashInDateType', 'cashInStartDate', 'cashInEndDate'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', function() {
+                loadCashInPage(1);
+            });
+        }
+    });
+
+    // Listen on Project Filter change (fires when Select2 or native select changes)
+    $(document).on('change', '#cashInProjectFilter', function() {
+        triggerCashInFilterChange();
+    });
+
+    // 4. Conflict Filter Buttons
+    const btnConflicts = document.getElementById('btnFilterConflicts');
+    const btnResetConflicts = document.getElementById('btnResetConflictFilter');
+    if (btnConflicts) {
+        btnConflicts.addEventListener('click', function() {
+            cashInConflictOnly = true;
+            this.classList.add('d-none');
+            if (btnResetConflicts) btnResetConflicts.classList.remove('d-none');
+            loadCashInPage(1);
+        });
+    }
+
+    if (btnResetConflicts) {
+        btnResetConflicts.addEventListener('click', function() {
+            cashInConflictOnly = false;
+            this.classList.add('d-none');
+            if (btnResetConflicts) btnResetConflicts.classList.add('d-none');
+            if (btnConflicts) btnConflicts.classList.remove('d-none');
+            loadCashInPage(1);
+        });
+    }
+
+    // 5. Reset Filters Button
+    const resetBtn = document.getElementById('cashInResetFilters');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            if (searchInput) searchInput.value = '';
+            if (clearBtn) clearBtn.classList.add('d-none');
+            $('#cashInProjectFilter').val('').trigger('change');
+            const statusEl = document.getElementById('cashInStatusFilter');
+            if (statusEl) statusEl.value = '';
+            const dateTypeEl = document.getElementById('cashInDateType');
+            if (dateTypeEl) dateTypeEl.value = '';
+            const startDateEl = document.getElementById('cashInStartDate');
+            if (startDateEl) startDateEl.value = '';
+            const endDateEl = document.getElementById('cashInEndDate');
+            if (endDateEl) endDateEl.value = '';
+            const limitEl = document.getElementById('cashInLimitSelect');
+            if (limitEl) limitEl.value = '20';
+            cashInConflictOnly = false;
+            if (btnResetConflicts) btnResetConflicts.classList.add('d-none');
+            if (btnConflicts) btnConflicts.classList.remove('d-none');
+            loadCashInPage(1);
+        });
+    }
+
+    // 6. Delegated click on pagination container (in addition to onclick)
+    document.addEventListener('click', function(e) {
+        const link = e.target.closest('#clientsPaginationContainer .ajax-page-link');
+        if (link && link.hasAttribute('data-page')) {
+            e.preventDefault();
+            const targetPage = parseInt(link.getAttribute('data-page'));
+            if (targetPage > 0) {
+                loadCashInPage(targetPage);
+            }
+        }
     });
 }
 
-$(document).ready(function() {
-    $('#btnFilterConflicts').on('click', function() {
-        conflictFilterActive = true;
-        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#clientsTable')) {
-            $('#clientsTable').DataTable().draw();
-        }
-        // Expand any collapsed units in the visible conflicted rows
-        $('.row-conflicted-unit .collapse').addClass('show');
-        $('.row-conflicted-unit .view-more-btn .show-more-text').addClass('d-none');
-        $('.row-conflicted-unit .view-more-btn .show-less-text').removeClass('d-none');
-        
-        $('#btnFilterConflicts').addClass('d-none');
-        $('#btnResetConflictFilter').removeClass('d-none');
-    });
-
-    $('#btnResetConflictFilter').on('click', function() {
-        conflictFilterActive = false;
-        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#clientsTable')) {
-            $('#clientsTable').DataTable().draw();
-        }
-        $('#btnFilterConflicts').removeClass('d-none');
-        $('#btnResetConflictFilter').addClass('d-none');
-    });
-});
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCashInAjaxControls);
+} else {
+    initCashInAjaxControls();
+}
 
 function cancelBookingAction(bookingId, clientName, unitName) {
     Swal.fire({
