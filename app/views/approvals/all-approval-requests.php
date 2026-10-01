@@ -1029,6 +1029,29 @@
                 </div>
 
                 <input type="hidden" id="ahModalReqId" value="">
+                
+                <div class="mb-3" id="ahModalCoaContainer">
+                    <label for="ahModalCoaId" class="form-label extra-small fw-bold text-muted text-uppercase">Chart of Accounts Category (Required for Posting)</label>
+                    <select class="form-select form-select-sm ah-coa-select2" id="ahModalCoaId" name="coa_id">
+                        <option value="">-- Select Expense / Asset Ledger --</option>
+                        <?php if(!empty($coaList)): ?>
+                            <?php 
+                            $currentGroup = '';
+                            foreach($coaList as $coa): 
+                                $group = $coa['account_type'];
+                                if($group !== $currentGroup):
+                                    if($currentGroup !== '') echo '</optgroup>';
+                                    echo '<optgroup label="'.htmlspecialchars($group).'">';
+                                    $currentGroup = $group;
+                                endif;
+                            ?>
+                                <option value="<?= $coa['id'] ?>"><?= htmlspecialchars($coa['account_code'] . ' - ' . $coa['account_name']) ?></option>
+                            <?php endforeach; ?>
+                            <?php if($currentGroup !== '') echo '</optgroup>'; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+
                 <div class="mb-3">
                     <label for="ahModalNote" class="form-label extra-small fw-bold text-muted text-uppercase">Approval / Rejection Note (Optional)</label>
                     <textarea class="form-control" id="ahModalNote" rows="2" placeholder="e.g. Verified and approved for payment disbursement."></textarea>
@@ -1237,6 +1260,13 @@
             ? '<?= $base_url ?>/approval-requests/reject-accounts-head' 
             : '<?= $base_url ?>/approval-requests/approve-accounts-head';
 
+        const coaId = document.getElementById('ahModalCoaId') ? document.getElementById('ahModalCoaId').value : null;
+
+        if (action === 'approve' && !coaId) {
+            alert('Please select a Chart of Accounts category before approving.');
+            return;
+        }
+
         if (btn) btn.disabled = true;
 
         fetch(endpoint, {
@@ -1244,7 +1274,8 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 approval_request_id: reqId,
-                note: note || (action === 'reject' ? 'Rejected by Accounts Head' : 'Approved by Accounts Head')
+                note: note || (action === 'reject' ? 'Rejected by Accounts Head' : 'Approved by Accounts Head'),
+                coa_id: coaId
             })
         })
         .then(res => res.json())

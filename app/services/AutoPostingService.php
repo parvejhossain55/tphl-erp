@@ -722,7 +722,8 @@ class AutoPostingService
                        {$purposeCol} as purpose, 
                        {$methodCol} as payment_method, 
                        {$projectCol} as project_id,
-                       {$createdByCol} as created_by
+                       {$createdByCol} as created_by,
+                       m.account_id
                 FROM {$table} m
                 LEFT JOIN journals j ON (j.source_module = '{$moduleName}' AND j.source_ref_id = m.id)
                 WHERE m.{$statusCol} IN ('{$paidVals}') 
@@ -746,7 +747,7 @@ class AutoPostingService
 
                     $method = $r['payment_method'] ?? 'cash';
                     $bankAccId = $this->getBankOrCashAccountId($method, '');
-                    $expAccId = $this->getModuleAccountId($mod['coa_name']);
+                    $expAccId = !empty($r['account_id']) ? (int)$r['account_id'] : $this->getModuleAccountId($mod['coa_name']);
                     
                     $voucherNo = $this->generateVoucherNumber('PV');
                     $this->db->begin_transaction();

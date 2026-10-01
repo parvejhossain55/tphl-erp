@@ -94,6 +94,15 @@ class ApprovalRequestController extends Controller
             }
         }
 
+        // Fetch COA Expense list for Accounts Head modal mapping
+        $coaList = [];
+        $coaRes = $this->db->query("SELECT id, account_code, account_name, account_type FROM chart_of_accounts WHERE account_type IN ('Expense', 'Asset') ORDER BY account_type, account_code ASC");
+        if ($coaRes) {
+            while ($cRow = $coaRes->fetch_assoc()) {
+                $coaList[] = $cRow;
+            }
+        }
+
         $metrics = $this->approvalModel->getApprovalDashboardMetrics();
         $moduleMetrics = $this->approvalModel->getModuleExpenseBreakdown($filters);
         $history = $this->approvalModel->getAllApprovalHistory($filters);
@@ -105,6 +114,7 @@ class ApprovalRequestController extends Controller
             "moduleMetrics"   => $moduleMetrics,
             "approvalHistory" => $history,
             "departmentsList" => $departmentsList,
+            "coaList"         => $coaList,
             "filters"         => $filters
         ]);
     }
@@ -253,6 +263,7 @@ class ApprovalRequestController extends Controller
         $sourceTable = !empty($payload['source_table']) ? trim($payload['source_table']) : '';
         $sourceId = !empty($payload['source_id']) ? (int)$payload['source_id'] : 0;
         $note = !empty($payload['note']) ? trim($payload['note']) : 'Approved by Accounts Head';
+        $coaId = !empty($payload['coa_id']) ? (int)$payload['coa_id'] : null;
 
         if (!$reqId && (!empty($sourceTable) && !empty($sourceId))) {
             $findStmt = $this->db->prepare("SELECT id FROM approval_requests WHERE source_table = ? AND source_id = ? ORDER BY id DESC LIMIT 1");
@@ -273,7 +284,7 @@ class ApprovalRequestController extends Controller
             exit;
         }
 
-        $res = $this->approvalModel->approveAccountsHead($reqId, $userId, $note);
+        $res = $this->approvalModel->approveAccountsHead($reqId, $userId, $note, $coaId);
         ob_clean();
         if ($res) {
             echo json_encode([
