@@ -34,3 +34,7 @@ custme-migration/tphl_db.sql
 # Onboard Clients Generated CSV & Audit files
 *.csv
 ONBOARD_CLIENTS_AUDIT_REPORT.md
+
+# Ignore Uploads
+public/uploads/*
+!public/uploads/.gitkeep

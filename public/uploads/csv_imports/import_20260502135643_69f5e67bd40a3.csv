@@ -1,7 +1,0 @@
-client_name,client_phone,project_name,flat_name,amount,payment_date,payment_type,payment_method,payment_status,verification_status,transaction_ref,bank_name,bank_account_no,cheque_no,online_type,payment_details,bulk_emi_discount,emi_due_date,emi_no,service_fee
-Atikur Rahman,8801875293008,"TPRC Crown Tower
-","6 B - FLOOR 6
-",62000,2026-05-01,emi,bank,paid,verified,TRX-001,EBL,1041260066908,,,,0,,1,6200
-Atikur Rahman,8801875293008,"TPRC Crown Tower
-","6 B - FLOOR 6
-",917,2026-05-15,emi_due_settlement,bank,paid,pending,TRX-002,EBL,1041260066908,,,EMI May 2026,0,2026-06-15,2,
