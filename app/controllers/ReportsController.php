@@ -20,12 +20,13 @@ class ReportsController extends Controller
      */
     public function balanceSheet()
     {
-        $asOfDate = $_GET['as_of_date'] ?? date('Y-m-d');
+        $dateFrom = $_GET['date_from'] ?? date('Y-m-d', strtotime('-1 year'));
+        $dateTo = $_GET['date_to'] ?? date('Y-m-d');
         $projectId = $_GET['project_id'] ?? null;
         $office = $_GET['office'] ?? null;
 
         $projects = $this->reportModel->getActiveProjects();
-        $reportData = $this->reportModel->getBalanceSheet($asOfDate, $projectId, $office);
+        $reportData = $this->reportModel->getBalanceSheet($dateFrom, $dateTo, $projectId, $office);
 
         $data = [
             'page_title' => 'Balance Sheet',
@@ -33,7 +34,8 @@ class ReportsController extends Controller
             'projects' => $projects,
             'report' => $reportData,
             'filters' => [
-                'as_of_date' => $asOfDate,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
                 'project_id' => $projectId,
                 'office' => $office
             ]
@@ -46,7 +48,7 @@ class ReportsController extends Controller
      */
     public function profitLoss()
     {
-        $dateFrom = $_GET['date_from'] ?? date('Y-m-01'); // First day of current month
+        $dateFrom = $_GET['date_from'] ?? date('Y-m-d', strtotime('-1 year')); // Default to last 1 year
         $dateTo = $_GET['date_to'] ?? date('Y-m-d');
         $projectId = $_GET['project_id'] ?? null;
         $office = $_GET['office'] ?? null;
@@ -74,7 +76,7 @@ class ReportsController extends Controller
      */
     public function cashflow()
     {
-        $dateFrom = $_GET['date_from'] ?? date('Y-01-01');
+        $dateFrom = $_GET['date_from'] ?? date('Y-m-d', strtotime('-1 year')); // Default to last 1 year
         $dateTo = $_GET['date_to'] ?? date('Y-m-d');
         $projectId = $_GET['project_id'] ?? null;
         $office = $_GET['office'] ?? null;

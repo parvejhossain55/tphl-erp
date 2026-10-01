@@ -18,7 +18,12 @@ $netIncome = $report['net_income'] ?? 0;
 $isProfit = $netIncome >= 0;
 $layoutMode = $_GET['layout'] ?? 'vertical';
 ?>
-
+<style>
+    .cursor-pointer { cursor: pointer; }
+    .module-breakdown-row { background-color: #f8f9fa; }
+    .collapse-icon { transition: transform 0.2s ease; }
+    .collapsed-row[aria-expanded="true"] .collapse-icon { transform: rotate(90deg); }
+</style>
 <div class="container-fluid mt-4">
     <!-- Header & Action Bar -->
     <div class="row mb-4 align-items-center">
@@ -266,11 +271,33 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                                             <tr><td colspan="3" class="text-center text-muted py-2">No direct operating revenue recorded.</td></tr>
                                         <?php else: ?>
                                             <?php foreach ($directRevenue as $acc): ?>
-                                                <tr>
+                                                <?php $rowId = 'dr_mod_' . $acc['account_id']; ?>
+                                                <tr class="cursor-pointer collapsed-row" data-bs-toggle="collapse" data-bs-target="#<?= $rowId ?>">
                                                     <td><span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold"><?= htmlspecialchars($acc['account_code']) ?></span></td>
-                                                    <td class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></td>
+                                                    <td class="fw-semibold text-dark fs-13">
+                                                        <i class="fa-solid fa-chevron-right text-muted me-2 fs-11 collapse-icon"></i>
+                                                        <?= htmlspecialchars($acc['account_name']) ?>
+                                                    </td>
                                                     <td class="text-end font-monospace text-success fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
                                                 </tr>
+                                                <?php if(!empty($acc['modules'])): ?>
+                                                <tr id="<?= $rowId ?>" class="collapse module-breakdown-row">
+                                                    <td colspan="3" class="p-0 border-0">
+                                                        <div class="ms-5 ps-3 py-2 border-start border-success border-2">
+                                                            <table class="table table-sm table-borderless mb-0 w-auto">
+                                                                <tbody>
+                                                                    <?php foreach($acc['modules'] as $modName => $modBal): if(abs($modBal) < 0.01) continue; ?>
+                                                                    <tr>
+                                                                        <td class="text-muted fs-12 py-1" style="width: 200px;"><i class="fa-light fa-arrow-turn-down-right me-1"></i> <?= htmlspecialchars($modName) ?></td>
+                                                                        <td class="text-end text-muted font-monospace fs-12 py-1">৳ <?= number_format($modBal, 2) ?></td>
+                                                                    </tr>
+                                                                    <?php endforeach; ?>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <?php endif; ?>
                                             <?php endforeach; ?>
                                         <?php endif; ?>
                                     </tbody>
@@ -299,11 +326,33 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                                     </thead>
                                     <tbody>
                                         <?php foreach ($indirectRevenue as $acc): ?>
-                                            <tr>
+                                            <?php $rowId = 'ir_mod_' . $acc['account_id']; ?>
+                                            <tr class="cursor-pointer collapsed-row" data-bs-toggle="collapse" data-bs-target="#<?= $rowId ?>">
                                                 <td><span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold"><?= htmlspecialchars($acc['account_code']) ?></span></td>
-                                                <td class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></td>
+                                                <td class="fw-semibold text-dark fs-13">
+                                                    <i class="fa-solid fa-chevron-right text-muted me-2 fs-11 collapse-icon"></i>
+                                                    <?= htmlspecialchars($acc['account_name']) ?>
+                                                </td>
                                                 <td class="text-end font-monospace text-info fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
                                             </tr>
+                                            <?php if(!empty($acc['modules'])): ?>
+                                            <tr id="<?= $rowId ?>" class="collapse module-breakdown-row">
+                                                <td colspan="3" class="p-0 border-0">
+                                                    <div class="ms-5 ps-3 py-2 border-start border-info border-2">
+                                                        <table class="table table-sm table-borderless mb-0 w-auto">
+                                                            <tbody>
+                                                                <?php foreach($acc['modules'] as $modName => $modBal): if(abs($modBal) < 0.01) continue; ?>
+                                                                <tr>
+                                                                    <td class="text-muted fs-12 py-1" style="width: 200px;"><i class="fa-light fa-arrow-turn-down-right me-1"></i> <?= htmlspecialchars($modName) ?></td>
+                                                                    <td class="text-end text-muted font-monospace fs-12 py-1">৳ <?= number_format($modBal, 2) ?></td>
+                                                                </tr>
+                                                                <?php endforeach; ?>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <?php endif; ?>
                                         <?php endforeach; ?>
                                     </tbody>
                                     <tfoot>
@@ -338,11 +387,33 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                                         <tr><td colspan="3" class="text-center text-muted py-2">No direct construction expenses recorded.</td></tr>
                                     <?php else: ?>
                                         <?php foreach ($directExpenses as $acc): ?>
-                                            <tr>
+                                            <?php $rowId = 'de_mod_' . $acc['account_id']; ?>
+                                            <tr class="cursor-pointer collapsed-row" data-bs-toggle="collapse" data-bs-target="#<?= $rowId ?>">
                                                 <td><span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold"><?= htmlspecialchars($acc['account_code']) ?></span></td>
-                                                <td class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></td>
+                                                <td class="fw-semibold text-dark fs-13">
+                                                    <i class="fa-solid fa-chevron-right text-muted me-2 fs-11 collapse-icon"></i>
+                                                    <?= htmlspecialchars($acc['account_name']) ?>
+                                                </td>
                                                 <td class="text-end font-monospace text-danger fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
                                             </tr>
+                                            <?php if(!empty($acc['modules'])): ?>
+                                            <tr id="<?= $rowId ?>" class="collapse module-breakdown-row">
+                                                <td colspan="3" class="p-0 border-0">
+                                                    <div class="ms-5 ps-3 py-2 border-start border-danger border-2">
+                                                        <table class="table table-sm table-borderless mb-0 w-auto">
+                                                            <tbody>
+                                                                <?php foreach($acc['modules'] as $modName => $modBal): if(abs($modBal) < 0.01) continue; ?>
+                                                                <tr>
+                                                                    <td class="text-muted fs-12 py-1" style="width: 200px;"><i class="fa-light fa-arrow-turn-down-right me-1"></i> <?= htmlspecialchars($modName) ?></td>
+                                                                    <td class="text-end text-muted font-monospace fs-12 py-1">৳ <?= number_format($modBal, 2) ?></td>
+                                                                </tr>
+                                                                <?php endforeach; ?>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <?php endif; ?>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
                                 </tbody>
@@ -381,11 +452,33 @@ $layoutMode = $_GET['layout'] ?? 'vertical';
                                         <tr><td colspan="3" class="text-center text-muted py-2">No operating expenses recorded.</td></tr>
                                     <?php else: ?>
                                         <?php foreach ($operatingExpenses as $acc): ?>
-                                            <tr>
+                                            <?php $rowId = 'oe_mod_' . $acc['account_id']; ?>
+                                            <tr class="cursor-pointer collapsed-row" data-bs-toggle="collapse" data-bs-target="#<?= $rowId ?>">
                                                 <td><span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-12 fw-bold"><?= htmlspecialchars($acc['account_code']) ?></span></td>
-                                                <td class="fw-semibold text-dark fs-13"><?= htmlspecialchars($acc['account_name']) ?></td>
+                                                <td class="fw-semibold text-dark fs-13">
+                                                    <i class="fa-solid fa-chevron-right text-muted me-2 fs-11 collapse-icon"></i>
+                                                    <?= htmlspecialchars($acc['account_name']) ?>
+                                                </td>
                                                 <td class="text-end font-monospace text-dark fw-bold fs-13">৳ <?= number_format($acc['balance'], 2) ?></td>
                                             </tr>
+                                            <?php if(!empty($acc['modules'])): ?>
+                                            <tr id="<?= $rowId ?>" class="collapse module-breakdown-row">
+                                                <td colspan="3" class="p-0 border-0">
+                                                    <div class="ms-5 ps-3 py-2 border-start border-warning border-2">
+                                                        <table class="table table-sm table-borderless mb-0 w-auto">
+                                                            <tbody>
+                                                                <?php foreach($acc['modules'] as $modName => $modBal): if(abs($modBal) < 0.01) continue; ?>
+                                                                <tr>
+                                                                    <td class="text-muted fs-12 py-1" style="width: 200px;"><i class="fa-light fa-arrow-turn-down-right me-1"></i> <?= htmlspecialchars($modName) ?></td>
+                                                                    <td class="text-end text-muted font-monospace fs-12 py-1">৳ <?= number_format($modBal, 2) ?></td>
+                                                                </tr>
+                                                                <?php endforeach; ?>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <?php endif; ?>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
                                 </tbody>

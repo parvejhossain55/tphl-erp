@@ -141,7 +141,7 @@
                         ?>
                         <tr>
                             <td>
-                                <span class="badge bg-light  font-monospace border px-2 py-1 fs-6">
+                                <span class=" font-monospace border px-2 py-1 fs-6">
                                     <?= htmlspecialchars($acc['account_code']) ?>
                                 </span>
                             </td>
@@ -149,7 +149,7 @@
                                 <div class="<?= $indent ?>">
                                     <?= htmlspecialchars($acc['account_name']) ?>
                                     <?php if (!empty($acc['is_system_account'])): ?>
-                                        <span class="badge bg-light text-primary border ms-2" style="font-size: 10px;" title="System Protected Account">
+                                        <span class="text-primary border ms-2" style="font-size: 10px;" title="System Protected Account">
                                             <i class="fa-solid fa-shield-halved me-1"></i>System
                                         </span>
                                     <?php endif; ?>
@@ -169,7 +169,8 @@
                             </td>
                             <td>
                                 <?php if ($acc['status'] === 'active'): ?>
-                                    <span class="badge bg-success-subtle text-success border border-success px-2 py-1">Active</span>
+                                    <span class="badge 
+                                    bg-success-subtle text-success border border-success px-2 py-1">Active</span>
                                 <?php else: ?>
                                     <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1">Inactive</span>
                                 <?php endif; ?>
@@ -189,7 +190,7 @@
                                         <i class="fa-light fa-trash"></i> Delete
                                     </a>
                                 <?php else: ?>
-                                    <span class="badge bg-light text-muted border"><i class="fa-solid fa-lock me-1"></i>Locked</span>
+                                    <span class="text-muted border"><i class="fa-solid fa-lock me-1"></i>Locked</span>
                                 <?php endif; ?>
                             </td>
                         </tr>

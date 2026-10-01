@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Debit Voucher - <?= htmlspecialchars($voucher['voucher_no']) ?></title>
+    <title><?= !empty($voucher['is_approval_voucher']) ? 'Approval' : 'Debit' ?> Voucher - <?= htmlspecialchars($voucher['voucher_no']) ?></title>
     <style>
         body {
             font-family: Arial, Helvetica, sans-serif;
@@ -361,7 +361,7 @@
 
     <div class="no-print" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; max-width: 820px; margin-left: auto; margin-right: auto;">
         <div style="font-size: 14px; color: #555; font-weight: bold;">
-            <i class="fa-solid fa-file-invoice-dollar"></i> Official Debit Voucher Preview
+            <i class="fa-solid fa-file-invoice-dollar"></i> Official <?= !empty($voucher['is_approval_voucher']) ? 'Approval' : 'Debit' ?> Voucher Preview
         </div>
         <div>
             <button onclick="window.print()" style="padding: 9px 18px; font-size: 14px; font-weight: bold; cursor: pointer; background: #000; color: #fff; border: none; border-radius: 4px;">
@@ -379,7 +379,7 @@
     <div class="voucher-container">
         
         <div class="header">
-            <h2>Debit Voucher</h2>
+            <h2><?= !empty($voucher['is_approval_voucher']) ? 'Approval Voucher' : 'Debit Voucher' ?></h2>
         </div>
 
         <div class="row">
@@ -477,7 +477,11 @@
         <div class="audit-trail-section">
             <div class="audit-trail-title">
                 <span><i class="fa-solid fa-clipboard-check"></i> System Audit & Approval Trail</span>
-                <span class="audit-status-badge">Settled & Verified</span>
+                <?php if (!empty($voucher['audit_trail']['disburser']['is_disbursed'])): ?>
+                    <span class="audit-status-badge">Settled & Verified</span>
+                <?php else: ?>
+                    <span class="audit-status-badge" style="background: #f59e0b;">Pending / In Progress</span>
+                <?php endif; ?>
             </div>
             
             <div class="audit-grid">
@@ -566,13 +570,22 @@
                         <div class="audit-user-name">
                             <?= htmlspecialchars($voucher['audit_trail']['disburser']['name'] ?? 'Accounts & Finance') ?>
                         </div>
-                        <div class="audit-date">
-                            <i class="fa-regular fa-clock"></i>
-                            <?= htmlspecialchars($voucher['audit_trail']['disburser']['date'] ?? date('d M, Y', strtotime($voucher['date']))) ?>
-                        </div>
-                        <div style="font-size: 11px; color: #198754; font-weight: bold; margin-top: 4px;">
-                            ✓ Disbursed (<?= htmlspecialchars($voucher['payment_method'] ?? 'Cash/Bank') ?>)
-                        </div>
+                        <?php if (!empty($voucher['audit_trail']['disburser']['date'])): ?>
+                            <div class="audit-date">
+                                <i class="fa-regular fa-clock"></i>
+                                <?= htmlspecialchars($voucher['audit_trail']['disburser']['date']) ?>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($voucher['audit_trail']['disburser']['is_disbursed'])): ?>
+                            <div style="font-size: 11px; color: #198754; font-weight: bold; margin-top: 4px;">
+                                ✓ Disbursed (<?= htmlspecialchars($voucher['payment_method'] ?? 'Cash/Bank') ?>)
+                            </div>
+                        <?php else: ?>
+                            <div style="font-size: 11px; color: #d97706; font-weight: bold; margin-top: 4px;">
+                                ⏳ Pending Disbursement
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

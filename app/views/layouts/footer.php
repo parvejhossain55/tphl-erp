@@ -835,6 +835,32 @@ if (isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id']
 <!-- Role-based Approval & Disbursement Reminder Modal -->
 <?php require_once __DIR__ . '/approval_reminder_modal.php'; ?>
 
+<script>
+    // Smart Back Button logic for All Approval Requests
+    document.addEventListener("DOMContentLoaded", function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('ref') === 'all_approvals') {
+            const backButtons = Array.from(document.querySelectorAll('a')).filter(a => {
+                const text = a.textContent.trim().toLowerCase();
+                const html = a.innerHTML.toLowerCase();
+                return text === 'back' || text.startsWith('back to') || text === '← back' || html.includes('arrow-left') || a.classList.contains('btn-back');
+            });
+            backButtons.forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (window.history.length > 1 && document.referrer.includes('all-approval-requests')) {
+                        window.history.back();
+                    } else if (document.referrer && document.referrer.includes('all-approval-requests')) {
+                        window.location.href = document.referrer;
+                    } else {
+                        window.location.href = (window.base_url || '') + '/all-approval-requests';
+                    }
+                });
+            });
+        }
+    });
+</script>
+
         </body>
 
         </html>
