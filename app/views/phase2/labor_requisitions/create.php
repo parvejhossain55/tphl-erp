@@ -164,6 +164,16 @@ $base = $GLOBALS['base_url'];
                             </ol>
                         </div>
                     </div>
+                    <?php if (!empty($coaList)): ?>
+                    <div class="card-body border-top pt-3">
+                        <label for="account_id" class="form-label fw-semibold">
+                            <i class="fa-solid fa-book me-1 text-primary"></i> Chart of Accounts Ledger
+                            <small class="text-muted fw-normal">(Optional)</small>
+                        </label>
+                        <?= renderCOADropdown($coaList, null, 'account_id') ?>
+                        <small class="text-muted">Auto-assigned if left blank.</small>
+                    </div>
+                    <?php endif; ?>
                     <div class="card-footer">
                         <button type="submit" class="btn btn-primary w-100">
                             <i class="fa-solid fa-paper-plane me-2"></i> Submit Requisition

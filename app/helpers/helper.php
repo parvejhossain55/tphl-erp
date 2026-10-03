@@ -1444,3 +1444,55 @@ function getBangladeshBanks(): array
     return $banks;
 }
 
+/**
+ * Get Chart of Accounts list (Expense + Asset types) for dropdowns.
+ * Pass the DB connection ($db) to fetch.
+ * Returns array of ['id', 'account_code', 'account_name', 'account_type', 'parent_id']
+ */
+function getCOAExpenseList($db) {
+    $list = [];
+    $res = $db->query("
+        SELECT c.id, c.account_code, c.account_name, c.account_type, c.parent_id,
+               p.account_name as parent_name
+        FROM chart_of_accounts c
+        LEFT JOIN chart_of_accounts p ON p.id = c.parent_id
+        WHERE c.account_type IN ('Expense','Asset')
+        ORDER BY c.account_type ASC, c.account_code ASC
+    ");
+    if ($res) {
+        while ($row = $res->fetch_assoc()) {
+            $list[] = $row;
+        }
+    }
+    return $list;
+}
+
+/**
+ * Render a COA dropdown <select> HTML for expense modules.
+ * $selected = currently saved account_id (int or null)
+ * $name = field name (default: account_id)
+ * $required = whether the field is required
+ */
+function renderCOADropdown($coaList, $selected = null, $name = 'account_id', $required = false) {
+    $req = $required ? 'required' : '';
+    $html = "<select name=\"{$name}\" id=\"{$name}\" class=\"form-select\" {$req}>";
+    $html .= '<option value="">-- Select COA Ledger (Optional) --</option>';
+    $currentGroup = '';
+    foreach ($coaList as $c) {
+        $group = $c['account_type'];
+        if ($group !== $currentGroup) {
+            if ($currentGroup !== '') $html .= '</optgroup>';
+            $html .= '<optgroup label="' . htmlspecialchars($group) . '">';
+            $currentGroup = $group;
+        }
+        $label = htmlspecialchars($c['account_code'] . ' - ' . $c['account_name']);
+        if (!empty($c['parent_name'])) {
+            $label .= ' (' . htmlspecialchars($c['parent_name']) . ')';
+        }
+        $sel = ((int)$selected === (int)$c['id']) ? 'selected' : '';
+        $html .= "<option value=\"{$c['id']}\" {$sel}>{$label}</option>";
+    }
+    if ($currentGroup !== '') $html .= '</optgroup>';
+    $html .= '</select>';
+    return $html;
+}

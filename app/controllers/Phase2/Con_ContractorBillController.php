@@ -198,6 +198,7 @@ class Con_ContractorBillController extends Controller
             'projects'      => $projects,
             'targets'       => $targets,
             'workTypes'     => $workTypes,
+            'coaList'       => getCOAExpenseList($this->db),
         ]);
     }
 
@@ -224,6 +225,7 @@ class Con_ContractorBillController extends Controller
             'attachment_path'  => null,
             'status'           => 'submitted',
             'created_by'       => $this->userId,
+            'account_id'       => !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null,
         ];
 
         // Handle file upload

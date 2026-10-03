@@ -351,6 +351,7 @@ class Con_VendorPaymentRequestController extends Controller
         $vendors      = $this->vendorModel->getAll();
         $paymentTypes = ['Advance', 'Partial', 'Final'];
 
+        $coaList = getCOAExpenseList($this->db);
         $this->view('phase2/vendor-payment-requests/create-payment', [
             'current_route' => 'con-vendor-payment-requests',
             'page_title'    => 'Create Payment Request',
@@ -358,7 +359,9 @@ class Con_VendorPaymentRequestController extends Controller
             'vendors'       => $vendors,
             'payment_types' => $paymentTypes,
             'all_pos'       => [],
+            'coaList' => $coaList,
         ]);
+
     }
 
     // =========================================================================

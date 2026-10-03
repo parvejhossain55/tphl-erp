@@ -334,12 +334,15 @@ class FundRequisitionController extends Controller {
         $dRes = $this->db->query("SELECT id, name FROM departments ORDER BY name ASC");
         $departments = $dRes ? $dRes->fetch_all(MYSQLI_ASSOC) : [];
 
+        $coaList = getCOAExpenseList($this->db);
+
         $this->view('phase2/fund_requisition/index', [
             'current_route' => 'fund-requisitions',
             'page_title' => 'Fund Requisitions',
             'requests' => $requests,
             'projects' => $projects,
             'departments' => $departments,
+            'coaList' => $coaList,
             'roleId' => $roleId,
             'startDate' => $startDate,
             'endDate' => $endDate,
@@ -528,6 +531,7 @@ class FundRequisitionController extends Controller {
         $project_id = !empty($_POST['project_id']) ? (int)$_POST['project_id'] : null;
         $requisition_type = trim($_POST['requisition_type'] ?? 'general');
         $category = trim($_POST['category'] ?? 'Other Expense');
+        $account_id = !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null;
 
         $rawAmount = trim(str_replace([',', ' '], '', $_POST['amount'] ?? ''));
         $amount = is_numeric($rawAmount) ? (float)$rawAmount : 0;
@@ -642,10 +646,10 @@ class FundRequisitionController extends Controller {
 
         $stmt = $this->db->prepare("
             INSERT INTO fund_requisitions 
-            (department_id, project_id, requested_by, requisition_type, category, amount, purpose, receipt_path, status, is_dept_approval_required, dept_head_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (department_id, project_id, requested_by, requisition_type, category, amount, purpose, receipt_path, status, is_dept_approval_required, dept_head_status, account_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("iiissdsssis", $department_id, $project_id, $requested_by, $requisition_type, $category, $amount, $purpose, $receipt_path, $status, $isDeptApprovalRequired, $deptHeadStatus);
+        $stmt->bind_param("iiissdsssisi", $department_id, $project_id, $requested_by, $requisition_type, $category, $amount, $purpose, $receipt_path, $status, $isDeptApprovalRequired, $deptHeadStatus, $account_id);
 
         if ($stmt->execute()) {
             $newReqId = $stmt->insert_id;

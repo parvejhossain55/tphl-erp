@@ -339,6 +339,17 @@ $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], tru
                         </div>
                     </div>
 
+                    <?php if (!empty($coaList)): ?>
+                    <div class="mb-3">
+                        <label for="account_id" class="form-label">
+                            <i class="fa-solid fa-book me-1 text-primary"></i> Chart of Accounts Ledger
+                            <small class="text-muted">(Optional — Auto-assigned if blank)</small>
+                        </label>
+                        <?= renderCOADropdown($coaList, null, 'account_id') ?>
+                        <small class="text-muted">Select the expense ledger for this requisition.</small>
+                    </div>
+                    <?php endif; ?>
+
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
