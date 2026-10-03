@@ -1083,14 +1083,15 @@ class FundRequisitionController extends Controller {
             if (in_array($status, ['approved', 'partially_approved']) && $posted_amount > 0) {
                 try {
                     require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
-                    $autoService = new \AutoPostingService($this->db);
-                    $officeExpenseAccId = $autoService->getAccountIdByCode('5220');
-                    $salaryPayableAccId = $autoService->getAccountIdByCode('2130');
+                    // Fetch the user selected account_id from the requisition, fallback to 5220 if missing
+                    $selectedAccountId = !empty($frData['account_id']) ? $frData['account_id'] : $autoService->getAccountIdByCode('5220');
+                    $accountsPayableAccId = $autoService->getAccountIdByCode('211000'); // Accounts Payable
+                    
                     $autoService->postAccrualEntry(
                         'fund_requisition',
                         $id,
-                        $officeExpenseAccId,
-                        $salaryPayableAccId,
+                        $selectedAccountId,
+                        $accountsPayableAccId,
                         $posted_amount,
                         "Fund Requisition (FR-{$id}): " . ($frData['purpose'] ?: 'Operational Expense'),
                         $frData['project_id'],
@@ -1265,11 +1266,12 @@ class FundRequisitionController extends Controller {
                     $autoService = new \AutoPostingService($this->db);
                     
                     $bankAccId = $autoService->getBankOrCashAccountId($payment_method);
-                    $advanceAccId = $autoService->getAccountIdByCode('110002'); // Advance to Employees against works/ Others
+                    $accountsPayableAccId = $autoService->getAccountIdByCode('211000'); // Accounts Payable
+                    
                     $autoService->postDisbursementEntry(
                         'fund_requisition',
                         $id,
-                        $advanceAccId,
+                        $accountsPayableAccId,
                         $bankAccId,
                         $posted_amount,
                         "Payment Disbursement for Fund Requisition (FR-{$id})",
