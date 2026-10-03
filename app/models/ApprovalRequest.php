@@ -1050,7 +1050,7 @@ class ApprovalRequest extends Model
                             $autoService->postAccrualEntry(
                                 'fund_requisition',
                                 $sourceId,
-                                $officeExpenseAccId,
+                                !empty($frData['account_id']) ? $frData['account_id'] : $officeExpenseAccId,
                                 $salaryPayableAccId,
                                 $postedAmount,
                                 "Fund Requisition (FR-{$sourceId}): " . ($frData['purpose'] ?: 'Operational Expense'),

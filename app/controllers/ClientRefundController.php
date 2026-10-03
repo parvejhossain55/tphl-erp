@@ -120,6 +120,7 @@ class ClientRefundController extends Controller
             'payments'           => $payments,
             'existing_refund'    => $existingRefund,
             'is_accounts_payout' => $isAccountsPayout,
+            'coaList'            => getCOAExpenseList($this->db)
         ]);
     }
 
@@ -145,6 +146,7 @@ class ClientRefundController extends Controller
         $reason          = trim($_POST['reason'] ?? '');
         $paymentMethod   = trim($_POST['payment_method'] ?? 'cash');
         $chequeNo        = trim($_POST['cheque_no'] ?? '');
+        $accountId       = !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null;
 
         $booking = $this->model->getBookingDetails($bookingId);
         if (!$booking || !in_array($booking['booking_status'], ['booked', 'completed', 'refunded'])) {
@@ -223,18 +225,18 @@ class ClientRefundController extends Controller
 
                 $upStmt = $this->db->prepare("UPDATE client_refund_requests 
                     SET total_paid = ?, retention_amount = ?, refund_amount = ?, reason = ?, document = IFNULL(?, document), 
-                        status = 'pending', approved_by = NULL, approved_at = NULL, refunded_at = NULL 
+                        status = 'pending', approved_by = NULL, approved_at = NULL, refunded_at = NULL, account_id = ? 
                     WHERE id = ?");
-                $upStmt->bind_param("dddssi", $totalPaid, $retentionAmount, $refundAmount, $reason, $documentPath, $refundId);
+                $upStmt->bind_param("dddssii", $totalPaid, $retentionAmount, $refundAmount, $reason, $documentPath, $accountId, $refundId);
                 $upStmt->execute();
             } else {
                 $inStmt = $this->db->prepare("INSERT INTO client_refund_requests 
-                    (booking_id, lead_id, project_id, flat_id, total_paid, retention_amount, refund_amount, reason, document, requested_by, status) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
+                    (booking_id, lead_id, project_id, flat_id, total_paid, retention_amount, refund_amount, reason, document, requested_by, status, account_id) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)");
                 $leadId = (int)$booking['lead_id'];
                 $projId = (int)$booking['project_id'];
                 $flatId = (int)$booking['flat_id'];
-                $inStmt->bind_param("iiiidddssi", $bookingId, $leadId, $projId, $flatId, $totalPaid, $retentionAmount, $refundAmount, $reason, $documentPath, $this->userId);
+                $inStmt->bind_param("iiiidddssii", $bookingId, $leadId, $projId, $flatId, $totalPaid, $retentionAmount, $refundAmount, $reason, $documentPath, $this->userId, $accountId);
                 $inStmt->execute();
                 $refundId = $inStmt->insert_id;
             }

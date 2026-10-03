@@ -32,11 +32,12 @@ $base = $GLOBALS['base_url'];
                         <div class="card-title fs-14"><i class="fa-solid fa-hard-hat me-2 text-warning"></i> Requisition Details</div>
                     </div>
                     <div class="card-body">
+
                         <div class="row">
                             <!-- Project -->
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold fs-13">Project <span class="text-danger">*</span></label>
-                                <select name="project_id" id="projectSelect" class="form-select" required>
+                                <select name="project_id" id="projectSelect" class="form-select select2" required>
                                     <option value="">-- Select Project --</option>
                                     <?php foreach ($projects as $p): ?>
                                         <option value="<?php echo $p['id']; ?>">
@@ -49,7 +50,7 @@ $base = $GLOBALS['base_url'];
                             <!-- Phase (optional) -->
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold fs-13">Phase <small class="text-muted">(Optional)</small></label>
-                                <select name="phase_id" class="form-select">
+                                <select name="phase_id" class="form-select select2">
                                     <option value="">-- Select Phase --</option>
                                     <?php foreach ($phases as $ph): ?>
                                         <option value="<?php echo $ph['id']; ?>">
@@ -117,6 +118,11 @@ $base = $GLOBALS['base_url'];
                                 <div class="form-text text-muted">= Laborers × Rate × Days (auto-calculated)</div>
                             </div>
 
+                            <!-- Account Head -->
+                            <div class="col-12 mt-3">
+                                <?= renderCOADropdown($coaList ?? [], null, 'account_id', false, 'laborreq') ?>
+                            </div>
+
                             <!-- Purpose -->
                             <div class="col-12">
                                 <label class="form-label fw-semibold fs-13">Purpose / Work Description <span class="text-danger">*</span></label>
@@ -164,6 +170,7 @@ $base = $GLOBALS['base_url'];
                             </ol>
                         </div>
                     </div>
+
                     <div class="card-footer">
                         <button type="submit" class="btn btn-primary w-100">
                             <i class="fa-solid fa-paper-plane me-2"></i> Submit Requisition

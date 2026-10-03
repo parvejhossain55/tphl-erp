@@ -108,7 +108,8 @@ class ProjectOtherCostController extends Controller
             'roleId' => $roleId,
             'userId' => $userId,
             'isReportingBoss' => $isReportingBoss,
-            'projects' => $projects
+            'projects' => $projects,
+            'coaList' => getCOAExpenseList($this->db)
         ]);
     }
 
@@ -154,7 +155,8 @@ class ProjectOtherCostController extends Controller
         }
 
         $this->view('project-other-costs/create', [
-            'projects' => $projects
+            'projects' => $projects,
+            'coaList'  => getCOAExpenseList($this->db)
         ]);
     }
 
@@ -180,7 +182,8 @@ class ProjectOtherCostController extends Controller
                 'purpose' => $_POST['purpose'],
                 'request_amount' => $_POST['request_amount'],
                 'created_by_id' => $userId,
-                'dept_head_status' => $dept_head_status
+                'dept_head_status' => $dept_head_status,
+                'account_id' => !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null,
             ];
 
             if (isset($_FILES['creator_attachment']) && $_FILES['creator_attachment']['error'] == UPLOAD_ERR_OK) {

@@ -131,7 +131,8 @@ class IncentiveController extends Controller
             "availableProjectsFlats" => $availableProjectsFlats,
             "externalClaimsList"     => $externalClaimsList,
             "employeeWallets"        => $employeeWallets,
-            "disbursementLogs"       => $disbursementLogs
+            "disbursementLogs"       => $disbursementLogs,
+            "coaList"                => getCOAExpenseList($this->db)
         ]);
     }
 
@@ -260,6 +261,7 @@ class IncentiveController extends Controller
         $transactionRef = trim($_POST['transaction_ref'] ?? '');
         $paymentDate    = trim($_POST['payment_date'] ?? date('Y-m-d'));
         $notes          = trim($_POST['notes'] ?? '');
+        $accountId      = !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null;
 
         if ($claimId <= 0 || $paymentAmount <= 0) {
             echo json_encode(['success' => false, 'message' => 'Invalid claim or payment amount']);
@@ -278,7 +280,7 @@ class IncentiveController extends Controller
             exit;
         }
 
-        $result = $this->incentiveModel->disbursePayment($disbursedBy, $claimId, $paymentAmount, $paymentMethod, $bankName, $transactionRef, $paymentDate, $notes);
+        $result = $this->incentiveModel->disbursePayment($disbursedBy, $claimId, $paymentAmount, $paymentMethod, $bankName, $transactionRef, $paymentDate, $notes, $accountId);
         echo json_encode($result);
         exit;
     }

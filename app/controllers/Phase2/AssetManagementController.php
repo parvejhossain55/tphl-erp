@@ -91,7 +91,8 @@ class AssetManagementController extends Controller
             'empBranchMap' => $empBranchMap,
             'stats' => $stats,
             'filters' => $filters,
-            'canEdit' => $this->canUserEdit()
+            'canEdit' => $this->canUserEdit(),
+            'coaList' => getCOAExpenseList($this->db)
         ];
 
         $this->view('phase2/asset-management/assets', $data);
@@ -519,7 +520,8 @@ class AssetManagementController extends Controller
             'isApprover'       => $isApprover,
             'activeTab'        => $activeTab,
             'pendingCount'     => $pendingCount,
-            'autoOpenRequest'  => $autoOpenRequest
+            'autoOpenRequest'  => $autoOpenRequest,
+            'coaList'          => getCOAExpenseList($this->db)
         ];
         $this->view('phase2/asset-management/extra-purchases', $data);
     }
@@ -714,14 +716,14 @@ class AssetManagementController extends Controller
                             $requestType = $req['request_type'] ?? 'Purchase';
                             if (strtolower($requestType) === 'purchase') {
                                 // Capitalize to Fixed Asset (Property, Plant & Equipment)
-                                $debitAccountId = $this->model->getFixedAssetAccountId($req['item_category_id'] ?? null, $req['item_name'] ?? '');
+                                $debitAccountId = !empty($req['account_id']) ? $req['account_id'] : $this->model->getFixedAssetAccountId($req['item_category_id'] ?? null, $req['item_name'] ?? '');
                                 if (!$debitAccountId) {
                                     $debitAccountId = $autoPosting->getAccountIdByCode('100002'); // Office Equipment
                                 }
                                 $narrationDesc = "Office Fixed Asset Procurement (PR-{$id}): " . $req['item_name'] . " (Qty: {$req['quantity']})";
                             } else {
                                 // Servicing / Maintenance is operating expense
-                                $debitAccountId = $autoPosting->getAccountIdByCode('5220'); // Office & Asset Expense
+                                $debitAccountId = !empty($req['account_id']) ? $req['account_id'] : $autoPosting->getAccountIdByCode('5220'); // Office & Asset Expense
                                 $narrationDesc = "Office Asset Servicing (PR-{$id}): " . $req['item_name'];
                             }
 

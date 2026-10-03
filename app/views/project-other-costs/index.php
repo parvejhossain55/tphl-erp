@@ -401,6 +401,8 @@
                             </div>
                         </div>
                         
+                        <?= renderCOADropdown($coaList ?? [], null, 'account_id', false, 'othercostmodal') ?>
+                        
                         <div class="mb-3">
                             <label class="form-label">Request Amount <span class="text-danger">*</span></label>
                             <input type="number" step="0.01" name="request_amount" class="form-control" required placeholder="0.00">

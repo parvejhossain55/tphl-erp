@@ -498,6 +498,9 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                 <?php endforeach; ?>
                             </select>
                         </div>
+                        <div class="col-md-12 mt-2">
+                            <?= renderCOADropdown($coaList ?? [], null, 'account_id', false, 'officeproc') ?>
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label">Branch / Location <span class="text-danger">*</span></label>
                             <select name="office_branch_id" id="new_request_branch_id" class="form-select" required onchange="var opt = this.options[this.selectedIndex]; document.getElementById('new_request_asset_location').value = (opt && opt.value) ? opt.text : '';">

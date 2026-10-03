@@ -819,8 +819,12 @@ class IncentiveModel extends Model
     /**
      * Disburse Payment
      */
-    public function disbursePayment($disbursedBy, $claimId, $paymentAmount, $paymentMethod, $bankName, $transactionRef, $paymentDate, $notes)
+    public function disbursePayment($disbursedBy, $claimId, $paymentAmount, $paymentMethod, $bankName, $transactionRef, $paymentDate, $notes, $accountId = null)
     {
+        if ($accountId !== null) {
+            $this->db->query("UPDATE project_incentive_claims SET account_id = " . (int)$accountId . " WHERE id = " . (int)$claimId);
+        }
+        
         // Fetch claim user_id and total incentive
         $sql = "SELECT user_id, incentive_amount FROM project_incentive_claims WHERE id = ? LIMIT 1";
         $stmt = $this->db->prepare($sql);

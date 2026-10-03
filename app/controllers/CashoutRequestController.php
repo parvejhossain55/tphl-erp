@@ -171,7 +171,8 @@ class CashoutRequestController extends Controller
             "isAdmin"       => $this->isAdminUser(),
             "projects"      => $projects,
             "officeOptions" => $officeOptions,
-            "banks"         => $banks
+            "banks"         => $banks,
+            "coaList"       => getCOAExpenseList($this->db)
         ]);
     }
 
@@ -220,6 +221,7 @@ class CashoutRequestController extends Controller
             'project_id'     => !empty($_POST['project_id']) ? implode(',', array_map('intval', (array)$_POST['project_id'])) : null,
             'office'         => !empty($_POST['office']) ? implode(',', array_map('trim', (array)$_POST['office'])) : null,
             'bank_id'        => (!empty($_POST['bank_id']) && $_POST['payment_method'] === 'bank') ? (int)$_POST['bank_id'] : null,
+            'account_id'     => !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null,
         ];
 
         if (empty($data['purpose_paid_to']) || $data['amount'] <= 0) {

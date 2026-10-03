@@ -269,7 +269,11 @@ $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], tru
                     $oldAmount = $oldFundReq['amount'] ?? '';
                     $oldPurpose = $oldFundReq['purpose'] ?? '';
                     ?>
-                    
+
+                    <?php if (!empty($coaList)): ?>
+                    <?= renderCOADropdown($coaList, null, 'account_id', false, 'fundreq') ?>
+                    <?php endif; ?>
+
                     <div class="mb-3">
                         <label for="department_id" class="form-label">Department <span class="text-danger">*</span></label>
                         <select name="department_id" id="department_id" class="form-select" required>
@@ -338,6 +342,8 @@ $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], tru
                             <small class="text-muted fs-11">Max 4 files (Image or PDF, up to 5MB each)</small>
                         </div>
                     </div>
+
+
 
                 </div>
                 <div class="modal-footer">

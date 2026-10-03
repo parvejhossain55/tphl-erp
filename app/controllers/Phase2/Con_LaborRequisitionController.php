@@ -115,6 +115,7 @@ class Con_LaborRequisitionController extends Controller
             'projects'      => $projects,
             'phases'        => $phases,
             'userRole'      => $this->userRole,
+            'coaList'       => getCOAExpenseList($this->db),
         ]);
     }
 
@@ -181,6 +182,8 @@ class Con_LaborRequisitionController extends Controller
             }
         }
 
+        $account_id = !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null;
+
         $data = [
             'project_id'       => $projectId,
             'phase_id'         => (int)($_POST['phase_id'] ?? 0) ?: null,
@@ -197,6 +200,7 @@ class Con_LaborRequisitionController extends Controller
             'remarks'          => trim($_POST['remarks'] ?? ''),
             'attachment'       => $attachment,
             'created_by'       => $this->userId,
+            'account_id'       => $account_id,
         ];
 
         $id = $this->model->create($data);

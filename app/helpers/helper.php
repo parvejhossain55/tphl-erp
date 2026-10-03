@@ -1444,3 +1444,56 @@ function getBangladeshBanks(): array
     return $banks;
 }
 
+/**
+ * Get Chart of Accounts list (Expense type only) for dropdowns.
+ */
+function getCOAExpenseList($db) {
+    $list = [];
+    $res = $db->query("
+        SELECT c.id, c.account_code, c.account_name, c.account_type, c.parent_id,
+               p.account_name as parent_name
+        FROM chart_of_accounts c
+        LEFT JOIN chart_of_accounts p ON p.id = c.parent_id
+        WHERE c.account_type = 'Expense'
+        ORDER BY c.account_code ASC
+    ");
+    if ($res) {
+        while ($row = $res->fetch_assoc()) {
+            $list[] = $row;
+        }
+    }
+    return $list;
+}
+
+/**
+ * Render a searchable COA dropdown for expense modules using Select2.
+ * $selected = currently saved account_id
+ * $name = field name
+ * $uid = unique suffix (not strictly needed for select2 but kept for signature compatibility)
+ */
+function renderCOADropdown($coaList, $selected = null, $name = 'account_id', $required = false, $uid = 'coa1') {
+    $optionsHtml = '';
+    foreach ($coaList as $c) {
+        $label = $c['account_code'] . ' - ' . $c['account_name'];
+        if (!empty($c['parent_name'])) {
+            $label .= ' (' . $c['parent_name'] . ')';
+        }
+        $sel = ((int)$selected === (int)$c['id']) ? 'selected' : '';
+        $optionsHtml .= '<option value="' . (int)$c['id'] . '" ' . $sel . '>' . htmlspecialchars($label) . '</option>';
+    }
+
+    $reqAttr = $required ? 'required' : '';
+    
+    $html = <<<HTML
+<div class="mb-3">
+    <label class="form-label fw-semibold fs-13 mb-1" for="{$name}_{$uid}">
+        <i class="fa-solid fa-tag me-1 text-primary" style="font-size:11px;"></i> Accounts Expense Type
+    </label>
+    <select name="{$name}" id="{$name}_{$uid}" class="form-select select2" {$reqAttr} style="width: 100%;">
+        <option value="">-- Select Expense Ledger --</option>
+        {$optionsHtml}
+    </select>
+</div>
+HTML;
+    return $html;
+}

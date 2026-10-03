@@ -157,6 +157,7 @@ class PayrollController extends Controller
             "defaultPaydate" => $defaultPaydate,
             "hasExplicitDate" => (isset($_GET['year']) && $_GET['year'] !== '') || (isset($_GET['month']) && $_GET['month'] !== ''),
             "preselectedEmployeeId" => isset($_GET['employee_id']) ? (int)$_GET['employee_id'] : null,
+            "coaList" => getCOAExpenseList($this->db)
         ]);
     }
 
@@ -199,6 +200,7 @@ class PayrollController extends Controller
             'status' => $status,
             'upload_by' => 'manual',
             'created_by' => $_SESSION['user']['id'],
+            'account_id' => !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null,
         ]);
 
         foreach ($payload['earnings'] as $itemId => $amount) {

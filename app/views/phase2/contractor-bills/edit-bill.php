@@ -47,6 +47,10 @@ $page_title = $page_title ?? 'Edit Contractor Bill';
                                     <?php endforeach; ?>
                                 </select>
                             </div>
+                            
+                            <div class="col-md-12 mb-3">
+                                <?= renderCOADropdown($coaList, $bill['account_id'] ?? null, 'account_id', false, 'contractor') ?>
+                            </div>
 
                             <!-- Work Order (cascades from project) -->
                             <div class="col-md-6">

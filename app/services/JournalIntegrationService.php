@@ -72,7 +72,7 @@ class JournalIntegrationService
             $ratio = $totalPoAmount > 0 ? ($netPayable / $totalPoAmount) : 1;
 
             foreach ($items as $item) {
-                $glAccountId = $item['gl_account_id'] ?: $this->getAccountIdByCode('1250'); // Default to Site Expenses if unmapped
+                $glAccountId = !empty($vpr['account_id']) ? $vpr['account_id'] : ($item['gl_account_id'] ?: $this->getAccountIdByCode('1250')); // Use selected account or default to Site Expenses
                 $amount = round($item['category_total'] * $ratio, 2);
                 
                 $details[] = [
@@ -86,7 +86,7 @@ class JournalIntegrationService
             }
         } else {
             // No PO attached (Direct Bill)
-            $glAccountId = $this->getAccountIdByCode('1250'); // Default to WIP - Site Expenses
+            $glAccountId = !empty($vpr['account_id']) ? $vpr['account_id'] : $this->getAccountIdByCode('1250'); // Default to WIP - Site Expenses
             $details[] = [
                 'account_id' => $glAccountId,
                 'debit' => $netPayable,
@@ -253,7 +253,7 @@ class JournalIntegrationService
             $ratio = $totalBillAmount > 0 ? ($approvedAmount / $totalBillAmount) : 1;
 
             foreach ($items as $item) {
-                $glAccountId = $item['gl_account_id'] ?: $this->getAccountIdByCode('1220'); // Default to Civil Construction
+                $glAccountId = !empty($bill['account_id']) ? $bill['account_id'] : ($item['gl_account_id'] ?: $this->getAccountIdByCode('1220')); // Default to Civil Construction
                 $amount = round($item['category_total'] * $ratio, 2);
                 
                 $details[] = [
@@ -267,7 +267,7 @@ class JournalIntegrationService
             }
         } else {
             // Default directly
-            $glAccountId = $this->getAccountIdByCode('1220'); // Default to Civil Construction
+            $glAccountId = !empty($bill['account_id']) ? $bill['account_id'] : $this->getAccountIdByCode('1220'); // Default to Civil Construction
             $details[] = [
                 'account_id' => $glAccountId,
                 'debit' => $approvedAmount,

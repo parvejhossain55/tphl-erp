@@ -596,6 +596,12 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                                             <div id="modal_amount_feedback" class="mt-1 small"></div>
                                         </div>
                                     </div>
+                                    <!-- Account Head -->
+                                    <div class="col-lg-12">
+                                        <div class="from__input-box mb-3">
+                                            <?= renderCOADropdown($coaList ?? [], null, 'account_id', false, 'landreq') ?>
+                                        </div>
+                                    </div>
 
                                     <!-- Purpose -->
                                     <div class="col-lg-12">

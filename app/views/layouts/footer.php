@@ -21,6 +21,7 @@
                         showConfirmButton: false,
                         timer: 20000,
                         timerProgressBar: true,
+                        backdrop: false,
                         customClass: {
                             popup: 'swal2-toast'
                         },
@@ -54,6 +55,7 @@
                         showConfirmButton: false,
                         timer: 20000,
                         width: '320px',
+                        backdrop: false,
                         didOpen: (toast) => {
                             const icon = toast.querySelector('.swal2-icon');
                             if (icon) {

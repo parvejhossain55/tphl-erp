@@ -87,6 +87,11 @@ $show_breadcrumb = true;
                                 <?php endif; ?>
                             </select>
                         </div>
+                        
+                        <!-- Account Expense Selection -->
+                        <div class="col-md-12 mb-3">
+                            <?= renderCOADropdown($coaList ?? [], null, 'account_id', false, 'cashout') ?>
+                        </div>
 
                         <!-- Description -->
                         <div class="col-md-12 mb-3">
