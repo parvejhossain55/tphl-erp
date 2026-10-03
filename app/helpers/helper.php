@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/ImageUploader.php';
 function uploadImage($input, $module = 'general', $mode = 'original', $width = 300, $height = 300)
 {
@@ -1466,12 +1466,10 @@ function getCOAExpenseList($db) {
 }
 
 /**
- * Render a searchable COA dropdown for expense modules.
- * Always visible: label + search input + select list.
- * Typing in the search input filters the select options in real-time.
+ * Render a searchable COA dropdown for expense modules using Select2.
  * $selected = currently saved account_id
  * $name = field name
- * $uid = unique suffix to allow multiple on same page
+ * $uid = unique suffix (not strictly needed for select2 but kept for signature compatibility)
  */
 function renderCOADropdown($coaList, $selected = null, $name = 'account_id', $required = false, $uid = 'coa1') {
     $optionsHtml = '';
@@ -1481,39 +1479,21 @@ function renderCOADropdown($coaList, $selected = null, $name = 'account_id', $re
             $label .= ' (' . $c['parent_name'] . ')';
         }
         $sel = ((int)$selected === (int)$c['id']) ? 'selected' : '';
-        $optionsHtml .= '<option value="' . (int)$c['id'] . '" ' . $sel . ' data-label="' . htmlspecialchars(strtolower($label)) . '">' . htmlspecialchars($label) . '</option>';
+        $optionsHtml .= '<option value="' . (int)$c['id'] . '" ' . $sel . '>' . htmlspecialchars($label) . '</option>';
     }
 
-    $searchId  = 'coaSearch_' . $uid;
-    $selectId  = 'coaSelect_' . $uid;
-
+    $reqAttr = $required ? 'required' : '';
+    
     $html = <<<HTML
-<div class="coa-field-wrapper mb-3">
-    <label class="form-label fw-semibold fs-13 mb-1">
+<div class="mb-3">
+    <label class="form-label fw-semibold fs-13 mb-1" for="{$name}">
         <i class="fa-solid fa-tag me-1 text-primary" style="font-size:11px;"></i> Accounts Expense Type
     </label>
-    <input type="text" id="{$searchId}" class="form-control form-control-sm mb-1"
-           placeholder="&#128269; Type to search expense ledger..."
-           oninput="coaFilter_{$uid}(this.value)"
-           autocomplete="off"
-           style="font-size:12px; border-bottom-left-radius:0; border-bottom-right-radius:0; border-bottom:none;">
-    <select name="{$name}" id="{$selectId}" class="form-select form-select-sm"
-            style="font-size:12px; border-top-left-radius:0; border-top-right-radius:0; height:160px;" size="6">
+    <select name="{$name}" id="{$name}" class="form-select select2" {$reqAttr} style="width: 100%;">
         <option value="">-- Select Expense Ledger --</option>
         {$optionsHtml}
     </select>
 </div>
-<script>
-function coaFilter_{$uid}(q) {
-    q = q.toLowerCase();
-    var sel = document.getElementById('{$selectId}');
-    Array.from(sel.options).forEach(function(opt) {
-        if (!opt.value) { opt.style.display = ''; return; }
-        var lbl = (opt.getAttribute('data-label') || opt.text).toLowerCase();
-        opt.style.display = lbl.includes(q) ? '' : 'none';
-    });
-}
-</script>
 HTML;
     return $html;
 }
