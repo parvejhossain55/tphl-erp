@@ -271,7 +271,7 @@ $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], tru
                     ?>
 
                     <?php if (!empty($coaList)): ?>
-                    <?= renderCOADropdown($coaList, null, 'account_id', false, 'fundReqCoaSection') ?>
+                    <?= renderCOADropdown($coaList, null, 'account_id', false, 'fundreq') ?>
                     <?php endif; ?>
 
                     <div class="mb-3">

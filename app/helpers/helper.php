@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/ImageUploader.php';
 function uploadImage($input, $module = 'general', $mode = 'original', $width = 300, $height = 300)
 {
@@ -1467,13 +1467,13 @@ function getCOAExpenseList($db) {
 
 /**
  * Render a searchable COA dropdown for expense modules.
- * Outputs a hidden-by-default collapsible panel with search.
+ * Always visible: label + search input + select list.
+ * Typing in the search input filters the select options in real-time.
  * $selected = currently saved account_id
  * $name = field name
- * $collapseId = unique ID for the collapse section
+ * $uid = unique suffix to allow multiple on same page
  */
-function renderCOADropdown($coaList, $selected = null, $name = 'account_id', $required = false, $collapseId = 'coaDropdownSection') {
-    $selectedLabel = '';
+function renderCOADropdown($coaList, $selected = null, $name = 'account_id', $required = false, $uid = 'coa1') {
     $optionsHtml = '';
     foreach ($coaList as $c) {
         $label = $c['account_code'] . ' - ' . $c['account_name'];
@@ -1481,59 +1481,37 @@ function renderCOADropdown($coaList, $selected = null, $name = 'account_id', $re
             $label .= ' (' . $c['parent_name'] . ')';
         }
         $sel = ((int)$selected === (int)$c['id']) ? 'selected' : '';
-        if ((int)$selected === (int)$c['id']) $selectedLabel = htmlspecialchars($label);
         $optionsHtml .= '<option value="' . (int)$c['id'] . '" ' . $sel . ' data-label="' . htmlspecialchars(strtolower($label)) . '">' . htmlspecialchars($label) . '</option>';
     }
 
-    $toggleLabel = $selected ? '✔ ' . $selectedLabel : 'Accounts Expense Type';
-    $showClass = $selected ? 'show' : '';
+    $searchId  = 'coaSearch_' . $uid;
+    $selectId  = 'coaSelect_' . $uid;
 
     $html = <<<HTML
 <div class="coa-field-wrapper mb-3">
-    <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start coa-toggle-btn d-flex justify-content-between align-items-center" 
-            onclick="document.getElementById('{$collapseId}').classList.toggle('show')" style="font-size:12px;">
-        <span class="coa-toggle-label"><i class="fa-solid fa-tag me-1 text-muted"></i>{$toggleLabel}</span>
-        <i class="fa-solid fa-chevron-down text-muted" style="font-size:10px;"></i>
-    </button>
-    <div id="{$collapseId}" class="coa-collapse-body {$showClass}" style="display:none;">
-        <div class="border rounded-bottom p-2 bg-white shadow-sm">
-            <input type="text" class="form-control form-control-sm mb-2 coa-search-input" 
-                   placeholder="Search ledger..." 
-                   oninput="filterCOAOptions(this)" 
-                   autocomplete="off" style="font-size:12px;">
-            <select name="{$name}" id="{$name}" class="form-select form-select-sm coa-select" style="max-height:200px;overflow-y:auto;font-size:12px;" onchange="updateCOALabel(this, '{$collapseId}')">
-                <option value="">-- Select Expense Ledger --</option>
-                {$optionsHtml}
-            </select>
-        </div>
-    </div>
+    <label class="form-label fw-semibold fs-13 mb-1">
+        <i class="fa-solid fa-tag me-1 text-primary" style="font-size:11px;"></i> Accounts Expense Type
+    </label>
+    <input type="text" id="{$searchId}" class="form-control form-control-sm mb-1"
+           placeholder="&#128269; Type to search expense ledger..."
+           oninput="coaFilter_{$uid}(this.value)"
+           autocomplete="off"
+           style="font-size:12px; border-bottom-left-radius:0; border-bottom-right-radius:0; border-bottom:none;">
+    <select name="{$name}" id="{$selectId}" class="form-select form-select-sm"
+            style="font-size:12px; border-top-left-radius:0; border-top-right-radius:0; height:160px;" size="6">
+        <option value="">-- Select Expense Ledger --</option>
+        {$optionsHtml}
+    </select>
 </div>
-<style>
-.coa-collapse-body { display: none; }
-.coa-collapse-body.show { display: block !important; }
-</style>
 <script>
-if (!window._coaHelperLoaded) {
-    window._coaHelperLoaded = true;
-    function filterCOAOptions(input) {
-        var q = input.value.toLowerCase();
-        var sel = input.parentElement.querySelector('.coa-select');
-        Array.from(sel.options).forEach(function(opt) {
-            if (!opt.value) return; // keep placeholder
-            var label = opt.getAttribute('data-label') || opt.text.toLowerCase();
-            opt.style.display = label.includes(q) ? '' : 'none';
-        });
-    }
-    function updateCOALabel(selectEl, collapseId) {
-        var btn = document.getElementById(collapseId).previousElementSibling;
-        var span = btn.querySelector('.coa-toggle-label');
-        if (selectEl.value && selectEl.options[selectEl.selectedIndex]) {
-            span.innerHTML = '<i class="fa-solid fa-check-circle me-1 text-success"></i>' + selectEl.options[selectEl.selectedIndex].text;
-        } else {
-            span.innerHTML = '<i class="fa-solid fa-tag me-1 text-muted"></i>Accounts Expense Type';
-        }
-        document.getElementById(collapseId).classList.remove('show');
-    }
+function coaFilter_{$uid}(q) {
+    q = q.toLowerCase();
+    var sel = document.getElementById('{$selectId}');
+    Array.from(sel.options).forEach(function(opt) {
+        if (!opt.value) { opt.style.display = ''; return; }
+        var lbl = (opt.getAttribute('data-label') || opt.text).toLowerCase();
+        opt.style.display = lbl.includes(q) ? '' : 'none';
+    });
 }
 </script>
 HTML;

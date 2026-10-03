@@ -33,7 +33,7 @@ $base = $GLOBALS['base_url'];
                     </div>
                     <div class="card-body">
                         <?php if (!empty($coaList)): ?>
-                        <?= renderCOADropdown($coaList, null, 'account_id', false, 'laborReqCoaSection') ?>
+                        <?= renderCOADropdown($coaList, null, 'account_id', false, 'laborreq') ?>
                         <?php endif; ?>
                         <div class="row">
                             <!-- Project -->
