@@ -269,7 +269,11 @@ $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], tru
                     $oldAmount = $oldFundReq['amount'] ?? '';
                     $oldPurpose = $oldFundReq['purpose'] ?? '';
                     ?>
-                    
+
+                    <?php if (!empty($coaList)): ?>
+                    <?= renderCOADropdown($coaList, null, 'account_id', false, 'fundReqCoaSection') ?>
+                    <?php endif; ?>
+
                     <div class="mb-3">
                         <label for="department_id" class="form-label">Department <span class="text-danger">*</span></label>
                         <select name="department_id" id="department_id" class="form-select" required>
@@ -339,16 +343,7 @@ $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], tru
                         </div>
                     </div>
 
-                    <?php if (!empty($coaList)): ?>
-                    <div class="mb-3">
-                        <label for="account_id" class="form-label">
-                            <i class="fa-solid fa-book me-1 text-primary"></i> Chart of Accounts Ledger
-                            <small class="text-muted">(Optional — Auto-assigned if blank)</small>
-                        </label>
-                        <?= renderCOADropdown($coaList, null, 'account_id') ?>
-                        <small class="text-muted">Select the expense ledger for this requisition.</small>
-                    </div>
-                    <?php endif; ?>
+
 
                 </div>
                 <div class="modal-footer">

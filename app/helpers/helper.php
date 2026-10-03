@@ -1445,9 +1445,7 @@ function getBangladeshBanks(): array
 }
 
 /**
- * Get Chart of Accounts list (Expense + Asset types) for dropdowns.
- * Pass the DB connection ($db) to fetch.
- * Returns array of ['id', 'account_code', 'account_name', 'account_type', 'parent_id']
+ * Get Chart of Accounts list (Expense type only) for dropdowns.
  */
 function getCOAExpenseList($db) {
     $list = [];
@@ -1456,8 +1454,8 @@ function getCOAExpenseList($db) {
                p.account_name as parent_name
         FROM chart_of_accounts c
         LEFT JOIN chart_of_accounts p ON p.id = c.parent_id
-        WHERE c.account_type IN ('Expense','Asset')
-        ORDER BY c.account_type ASC, c.account_code ASC
+        WHERE c.account_type = 'Expense'
+        ORDER BY c.account_code ASC
     ");
     if ($res) {
         while ($row = $res->fetch_assoc()) {
@@ -1468,31 +1466,76 @@ function getCOAExpenseList($db) {
 }
 
 /**
- * Render a COA dropdown <select> HTML for expense modules.
- * $selected = currently saved account_id (int or null)
- * $name = field name (default: account_id)
- * $required = whether the field is required
+ * Render a searchable COA dropdown for expense modules.
+ * Outputs a hidden-by-default collapsible panel with search.
+ * $selected = currently saved account_id
+ * $name = field name
+ * $collapseId = unique ID for the collapse section
  */
-function renderCOADropdown($coaList, $selected = null, $name = 'account_id', $required = false) {
-    $req = $required ? 'required' : '';
-    $html = "<select name=\"{$name}\" id=\"{$name}\" class=\"form-select\" {$req}>";
-    $html .= '<option value="">-- Select COA Ledger (Optional) --</option>';
-    $currentGroup = '';
+function renderCOADropdown($coaList, $selected = null, $name = 'account_id', $required = false, $collapseId = 'coaDropdownSection') {
+    $selectedLabel = '';
+    $optionsHtml = '';
     foreach ($coaList as $c) {
-        $group = $c['account_type'];
-        if ($group !== $currentGroup) {
-            if ($currentGroup !== '') $html .= '</optgroup>';
-            $html .= '<optgroup label="' . htmlspecialchars($group) . '">';
-            $currentGroup = $group;
-        }
-        $label = htmlspecialchars($c['account_code'] . ' - ' . $c['account_name']);
+        $label = $c['account_code'] . ' - ' . $c['account_name'];
         if (!empty($c['parent_name'])) {
-            $label .= ' (' . htmlspecialchars($c['parent_name']) . ')';
+            $label .= ' (' . $c['parent_name'] . ')';
         }
         $sel = ((int)$selected === (int)$c['id']) ? 'selected' : '';
-        $html .= "<option value=\"{$c['id']}\" {$sel}>{$label}</option>";
+        if ((int)$selected === (int)$c['id']) $selectedLabel = htmlspecialchars($label);
+        $optionsHtml .= '<option value="' . (int)$c['id'] . '" ' . $sel . ' data-label="' . htmlspecialchars(strtolower($label)) . '">' . htmlspecialchars($label) . '</option>';
     }
-    if ($currentGroup !== '') $html .= '</optgroup>';
-    $html .= '</select>';
+
+    $toggleLabel = $selected ? '✔ ' . $selectedLabel : 'Accounts Expense Type';
+    $showClass = $selected ? 'show' : '';
+
+    $html = <<<HTML
+<div class="coa-field-wrapper mb-3">
+    <button type="button" class="btn btn-sm btn-outline-secondary w-100 text-start coa-toggle-btn d-flex justify-content-between align-items-center" 
+            onclick="document.getElementById('{$collapseId}').classList.toggle('show')" style="font-size:12px;">
+        <span class="coa-toggle-label"><i class="fa-solid fa-tag me-1 text-muted"></i>{$toggleLabel}</span>
+        <i class="fa-solid fa-chevron-down text-muted" style="font-size:10px;"></i>
+    </button>
+    <div id="{$collapseId}" class="coa-collapse-body {$showClass}" style="display:none;">
+        <div class="border rounded-bottom p-2 bg-white shadow-sm">
+            <input type="text" class="form-control form-control-sm mb-2 coa-search-input" 
+                   placeholder="Search ledger..." 
+                   oninput="filterCOAOptions(this)" 
+                   autocomplete="off" style="font-size:12px;">
+            <select name="{$name}" id="{$name}" class="form-select form-select-sm coa-select" style="max-height:200px;overflow-y:auto;font-size:12px;" onchange="updateCOALabel(this, '{$collapseId}')">
+                <option value="">-- Select Expense Ledger --</option>
+                {$optionsHtml}
+            </select>
+        </div>
+    </div>
+</div>
+<style>
+.coa-collapse-body { display: none; }
+.coa-collapse-body.show { display: block !important; }
+</style>
+<script>
+if (!window._coaHelperLoaded) {
+    window._coaHelperLoaded = true;
+    function filterCOAOptions(input) {
+        var q = input.value.toLowerCase();
+        var sel = input.parentElement.querySelector('.coa-select');
+        Array.from(sel.options).forEach(function(opt) {
+            if (!opt.value) return; // keep placeholder
+            var label = opt.getAttribute('data-label') || opt.text.toLowerCase();
+            opt.style.display = label.includes(q) ? '' : 'none';
+        });
+    }
+    function updateCOALabel(selectEl, collapseId) {
+        var btn = document.getElementById(collapseId).previousElementSibling;
+        var span = btn.querySelector('.coa-toggle-label');
+        if (selectEl.value && selectEl.options[selectEl.selectedIndex]) {
+            span.innerHTML = '<i class="fa-solid fa-check-circle me-1 text-success"></i>' + selectEl.options[selectEl.selectedIndex].text;
+        } else {
+            span.innerHTML = '<i class="fa-solid fa-tag me-1 text-muted"></i>Accounts Expense Type';
+        }
+        document.getElementById(collapseId).classList.remove('show');
+    }
+}
+</script>
+HTML;
     return $html;
 }
