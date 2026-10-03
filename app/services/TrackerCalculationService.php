@@ -797,25 +797,25 @@ class TrackerCalculationService
 
         // Sort for Individual Ranking
         uasort($employees, function($a, $b) {
-            // 1. Sort by Achieved Volume
-            if (abs($a['total_volume_achieved'] - $b['total_volume_achieved']) > 0.01) {
-                return $b['total_volume_achieved'] <=> $a['total_volume_achieved'];
-            }
-            // 2. Sort by Units Sold if volume is equal
+            // 1. Sort by Units Sold
             if ($a['units_sold'] != $b['units_sold']) {
                 return $b['units_sold'] <=> $a['units_sold'];
             }
-            // 3. Sort by Visits Done if units are equal
+            // 2. Sort by total_follow_up_calls
+            if ($a['total_follow_up_calls'] != $b['total_follow_up_calls']) {
+                return $b['total_follow_up_calls'] <=> $a['total_follow_up_calls'];
+            }
+            // 3. Sort by Visits Done
             if ($a['visited'] != $b['visited']) {
                 return $b['visited'] <=> $a['visited'];
             }
-            // 4. Performance Score
+            // 4. Sort by Achieved Volume
+            if (abs($a['total_volume_achieved'] - $b['total_volume_achieved']) > 0.01) {
+                return $b['total_volume_achieved'] <=> $a['total_volume_achieved'];
+            }
+            // 5. Performance Score
             if (abs($a['performance_score'] - $b['performance_score']) > 0.01) {
                 return $b['performance_score'] <=> $a['performance_score'];
-            }
-            // 5. Unique leads followed
-            if ($a['unique_leads_followed'] != $b['unique_leads_followed']) {
-                return $b['unique_leads_followed'] <=> $a['unique_leads_followed'];
             }
             // 6. Assigned leads
             if ($a['assigned_leads'] != $b['assigned_leads']) {
@@ -944,7 +944,22 @@ class TrackerCalculationService
 
         // Sort Teams for Ranking
         uasort($teams, function($a, $b) {
-            return $b['performance_score'] <=> $a['performance_score'];
+            if ($a['units_sold'] != $b['units_sold']) {
+                return $b['units_sold'] <=> $a['units_sold'];
+            }
+            if ($a['total_follow_up_calls'] != $b['total_follow_up_calls']) {
+                return $b['total_follow_up_calls'] <=> $a['total_follow_up_calls'];
+            }
+            if ($a['visited'] != $b['visited']) {
+                return $b['visited'] <=> $a['visited'];
+            }
+            if (abs($a['total_volume_achieved'] - $b['total_volume_achieved']) > 0.01) {
+                return $b['total_volume_achieved'] <=> $a['total_volume_achieved'];
+            }
+            if (abs($a['performance_score'] - $b['performance_score']) > 0.01) {
+                return $b['performance_score'] <=> $a['performance_score'];
+            }
+            return strcmp($a['team_name'], $b['team_name']);
         });
 
         $trank = 1;
@@ -1427,7 +1442,19 @@ class TrackerCalculationService
         unset($emp);
 
         uasort($employees, function($a, $b) {
-            return $b['performance_score'] <=> $a['performance_score'];
+            if ($a['units_sold'] != $b['units_sold']) {
+                return $b['units_sold'] <=> $a['units_sold'];
+            }
+            if ($a['total_follow_up_calls'] != $b['total_follow_up_calls']) {
+                return $b['total_follow_up_calls'] <=> $a['total_follow_up_calls'];
+            }
+            if ($a['visited'] != $b['visited']) {
+                return $b['visited'] <=> $a['visited'];
+            }
+            if (abs($a['performance_score'] - $b['performance_score']) > 0.01) {
+                return $b['performance_score'] <=> $a['performance_score'];
+            }
+            return strcmp($a['member_name'], $b['member_name']);
         });
 
         $rank = 1;

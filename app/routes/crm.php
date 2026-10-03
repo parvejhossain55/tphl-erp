@@ -189,6 +189,8 @@ return [
     'set-sales-target/(\d+)' => ['controller' => 'SalesDashboardController', 'method' => 'salesTarget'],
     'save-sales-target/(\d+)' => ['controller' => 'SalesDashboardController', 'method' => 'storeSalesTarget'],
     'update-sales-target' => ['controller' => 'SalesDashboardController', 'method' => 'updateSalesTarget'],
+    'get-project-flats' => ['controller' => 'SalesDashboardController', 'method' => 'getProjectFlats'],
+    'get-target-totals' => ['controller' => 'SalesDashboardController', 'method' => 'getTargetTotals'],
 
     // =========================================================================
     // Controller: SalesHeadDashboardController

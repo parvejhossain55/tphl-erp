@@ -3,10 +3,13 @@
 class UserActivityLogController extends Controller
 {
     protected $db;
+    protected $kpiService;
 
     public function __construct($db)
     {
         $this->db = $db;
+        require_once __DIR__ . '/../services/EmployeeKPIService.php';
+        $this->kpiService = new EmployeeKPIService($db);
     }
 
     public function index()
@@ -22,9 +25,14 @@ class UserActivityLogController extends Controller
             exit;
         }
 
-        // ── Default Date Range (Current Month) ──────────────────────────────
-        $defaultFrom = date('Y-m-01');
-        $defaultTo = date('Y-m-d');
+        // ── Default Date Range (26th of previous/current month to 25th of current/next month) ──────────────────────────────
+        if ((int)date('d') > 25) {
+            $defaultFrom = date('Y-m-26');
+            $defaultTo = date('Y-m-25', strtotime('first day of +1 month'));
+        } else {
+            $defaultFrom = date('Y-m-26', strtotime('first day of -1 month'));
+            $defaultTo = date('Y-m-25');
+        }
 
         // ── Filters from GET ──────────────────────────────────────────────────
         $filterDeptId = isset($_GET['department_id']) && $_GET['department_id'] !== ''
@@ -570,7 +578,8 @@ class UserActivityLogController extends Controller
                     'no_followup_leads'      => $noFollowUpCount,
                     'total_booked'           => $bookedCount,
                     'total_land_share_value' => $landShareVal,
-                    'last_status_update'     => $lastUpdate
+                    'last_status_update'     => $lastUpdate,
+                    'kpi'                    => $this->kpiService->calculateSalesKPI($uid)
                 ];
 
                 $salesTotals['total_assigned_leads'] += $assignedCount;
@@ -582,6 +591,31 @@ class UserActivityLogController extends Controller
                 $salesTotals['total_booked'] += $bookedCount;
                 $salesTotals['total_land_share_value'] += $landShareVal;
             }
+
+            // Calculate Team Average KPI
+            $teamKpi = [
+                'revenue_generation' => 0, 'target_vs_achievement' => 0, 'unit_sold' => 0,
+                'highest_visit' => 0, 'sales_cvr' => 0, 'leads_connected' => 0,
+                'data_quality' => 0, 'hr' => 0, 'total_score' => 0
+            ];
+            if (count($salesTeamPerformance) > 0) {
+                foreach ($salesTeamPerformance as $s) {
+                    $teamKpi['revenue_generation'] += $s['kpi']['revenue_generation']['score'];
+                    $teamKpi['target_vs_achievement'] += $s['kpi']['target_vs_achievement']['score'];
+                    $teamKpi['unit_sold'] += $s['kpi']['unit_sold']['score'];
+                    $teamKpi['highest_visit'] += $s['kpi']['highest_visit']['score'];
+                    $teamKpi['sales_cvr'] += $s['kpi']['sales_cvr']['score'];
+                    $teamKpi['leads_connected'] += $s['kpi']['leads_connected']['score'];
+                    $teamKpi['data_quality'] += $s['kpi']['data_quality']['score'];
+                    $teamKpi['hr'] += $s['kpi']['hr']['score'];
+                    $teamKpi['total_score'] += $s['kpi']['total_score'];
+                }
+                $c = count($salesTeamPerformance);
+                foreach ($teamKpi as $k => $v) {
+                    $teamKpi[$k] = round($v / $c, 2);
+                }
+            }
+            $salesTotals['team_kpi'] = $teamKpi;
 
             usort($salesTeamPerformance, function($a, $b) {
                 if ($a['total_booked'] != $b['total_booked']) {

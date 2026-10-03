@@ -45,6 +45,38 @@ class SalesTarget extends Model
                 $catNames[] = $t['category_name'];
             }
             $t['category_names_display'] = !empty($catNames) ? implode(', ', $catNames) : 'All / None';
+            
+            // Map Projects
+            $projNames = [];
+            if (!empty($t['project_ids'])) {
+                $pIds = json_decode($t['project_ids'], true);
+                if (is_array($pIds) && !empty($pIds)) {
+                    $pIdsStr = implode(',', array_map('intval', $pIds));
+                    $pRes = $this->db->query("SELECT name FROM projects WHERE id IN ($pIdsStr)");
+                    if ($pRes) {
+                        while ($p = $pRes->fetch_assoc()) {
+                            $projNames[] = $p['name'];
+                        }
+                    }
+                }
+            }
+            $t['project_names_display'] = $projNames;
+
+            // Map Flats
+            $flatNames = [];
+            if (!empty($t['flat_ids'])) {
+                $fIds = json_decode($t['flat_ids'], true);
+                if (is_array($fIds) && !empty($fIds)) {
+                    $fIdsStr = implode(',', array_map('intval', $fIds));
+                    $fRes = $this->db->query("SELECT f.flat_name, p.name as project_name FROM flats f JOIN projects p ON f.project_id = p.id WHERE f.id IN ($fIdsStr)");
+                    if ($fRes) {
+                        while ($f = $fRes->fetch_assoc()) {
+                            $flatNames[] = $f['project_name'] . ' - ' . $f['flat_name'];
+                        }
+                    }
+                }
+            }
+            $t['flat_names_display'] = $flatNames;
         }
         unset($t);
 
@@ -55,7 +87,7 @@ class SalesTarget extends Model
     /**
      * Insert or update target with multiple categories, multiple projects and custom date range
      */
-    public function saveTarget($userId, $month, $siteVisit, $bookingTarget, $bookingValue, $categoryId = null, $projectIds = null, $salesRole = null, $categoryIds = null, $fromDate = null, $toDate = null)
+    public function saveTarget($userId, $month, $siteVisit, $bookingTarget, $bookingValue, $categoryId = null, $projectIds = null, $salesRole = null, $categoryIds = null, $fromDate = null, $toDate = null, $flatIds = null, $siteVisitLeads = 0)
     {
         if (is_array($categoryIds)) {
             if (empty($categoryId) && !empty($categoryIds)) {
@@ -66,8 +98,8 @@ class SalesTarget extends Model
 
         $sql = "
             INSERT INTO sales_targets
-            (sales_user_id, month, from_date, to_date, site_visit_target, booking_target, booking_value_target, category_id, category_ids, project_ids, sales_role)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (sales_user_id, month, from_date, to_date, site_visit_target, booking_target, booking_value_target, category_id, category_ids, project_ids, sales_role, flat_ids, site_visit_leads_target)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 from_date = VALUES(from_date),
                 to_date = VALUES(to_date),
@@ -77,11 +109,13 @@ class SalesTarget extends Model
                 category_id = VALUES(category_id),
                 category_ids = VALUES(category_ids),
                 project_ids = VALUES(project_ids),
-                sales_role = VALUES(sales_role)
+                sales_role = VALUES(sales_role),
+                flat_ids = VALUES(flat_ids),
+                site_visit_leads_target = VALUES(site_visit_leads_target)
         ";
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param(
-            "isssiidisss",
+            "isssiidissssi",
             $userId,
             $month,
             $fromDate,
@@ -92,7 +126,9 @@ class SalesTarget extends Model
             $categoryId,
             $categoryIds,
             $projectIds,
-            $salesRole
+            $salesRole,
+            $flatIds,
+            $siteVisitLeads
         );
         return $stmt->execute();
     }

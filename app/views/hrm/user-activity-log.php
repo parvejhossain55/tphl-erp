@@ -80,10 +80,10 @@ $salesTotals = $salesTotals ?? [
 .icon-circle.teal { background: #ccfbf1; color: #0d9488; }
 .icon-circle.gray { background: #f1f5f9; color: #64748b; }
 
-/* 5 KPI Cards Grid in EXACTLY ONE ROW */
+/* 8 KPI Cards Grid in 2 Rows */
 .kpi-cards-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 14px;
     margin-bottom: 22px;
 }
@@ -341,58 +341,58 @@ $salesTotals = $salesTotals ?? [
         <!-- =================================================================== -->
         <div class="tab-pane fade <?= $activeTab === 'sales' ? 'show active' : '' ?>" id="pane-sales" role="tabpanel">
 
-            <!-- 5 KPI Cards in EXACTLY ONE SINGLE ROW -->
+            <!-- 8 KPI Cards -->
             <div class="kpi-cards-grid">
-                <!-- 1. Total Assigned Leads -->
-                <div class="kpi-card">
-                    <div class="kpi-label">
-                        <div class="icon-circle blue"><i class="fa-solid fa-users"></i></div>
-                        <span>Assigned Leads</span>
+                <?php 
+                $topMetrics = [
+                    ['label' => 'Revenue Generation', 'key' => 'revenue_generation', 'icon' => 'fa-coins', 'color' => 'success', 'weight' => '30%'],
+                    ['label' => 'Target vs Achievement', 'key' => 'target_vs_achievement', 'icon' => 'fa-bullseye', 'color' => 'primary', 'weight' => '20%'],
+                    ['label' => 'No. of Unit Sold', 'key' => 'unit_sold', 'icon' => 'fa-building', 'color' => 'info', 'weight' => '10%'],
+                    ['label' => 'Highest Visit', 'key' => 'highest_visit', 'icon' => 'fa-route', 'color' => 'warning', 'weight' => '10%'],
+                    ['label' => 'Sales CVR (Min 1%)', 'key' => 'sales_cvr', 'icon' => 'fa-percent', 'color' => 'danger', 'weight' => '10%'],
+                    ['label' => 'Leads Connected', 'key' => 'leads_connected', 'icon' => 'fa-phone', 'color' => 'secondary', 'weight' => '10%'],
+                    ['label' => 'Data Quality', 'key' => 'data_quality', 'icon' => 'fa-database', 'color' => 'dark', 'weight' => '5%'],
+                    ['label' => 'HR', 'key' => 'hr', 'icon' => 'fa-user-clock', 'color' => 'primary', 'weight' => '5%']
+                ];
+                $teamKpiData = $salesTotals['team_kpi'] ?? [];
+                
+                foreach ($topMetrics as $m): 
+                    $score = $teamKpiData[$m['key']] ?? 0;
+                    $kpiColorClass = $m['color'];
+                ?>
+                <div class="kpi-card" style="min-height: 90px; padding: 12px 16px;">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="kpi-label mb-0" style="font-size: 10px;">
+                            <i class="fa-solid <?= $m['icon'] ?> text-<?= $kpiColorClass ?> me-1 fs-12"></i> 
+                            <?= $m['label'] ?>
+                        </div>
+                        <span class="badge bg-light text-dark border fs-10"><?= $m['weight'] ?></span>
                     </div>
-                    <div class="kpi-value text-primary"><?= number_format($salesTotals['total_assigned_leads']) ?></div>
-                    <div class="kpi-subtext">Total assigned in period</div>
+                    <div class="kpi-value text-<?= $kpiColorClass ?> mb-0 mt-2 fs-20">
+                        <?= $score ?>%
+                    </div>
+                    <?php if(isset($filterUserId) && $filterUserId != ''): ?>
+                        <div class="kpi-subtext mt-1" style="font-size: 10px;">User's individual score</div>
+                    <?php else: ?>
+                        <div class="kpi-subtext mt-1" style="font-size: 10px;">Team average score</div>
+                    <?php endif; ?>
                 </div>
+                <?php endforeach; ?>
+            </div>
 
-                <!-- 2. Follow-ups Done -->
-                <div class="kpi-card">
-                    <div class="kpi-label">
-                        <div class="icon-circle purple"><i class="fa-solid fa-phone-volume"></i></div>
-                        <span>Follow-ups Done</span>
+            <!-- Total Score Summary Box (Optional addition to show the overall 100% score) -->
+            <div class="dash-card mb-3 p-3 d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-left: 4px solid #1e3a8a;">
+                <div>
+                    <h5 class="fw-bold text-dark m-0 fs-15"><i class="fa-solid fa-ranking-star text-warning me-2"></i>Overall KPI Performance</h5>
+                    <div class="text-muted fs-12 mt-1">
+                        <?= (isset($filterUserId) && $filterUserId != '') ? "User's combined KPI score across all 8 metrics." : "Average team KPI score across all active sales members." ?>
                     </div>
-                    <div class="kpi-value" style="color:#9333ea;"><?= number_format($salesTotals['total_followups']) ?></div>
-                    <div class="kpi-subtext">Calls & visits logged</div>
                 </div>
-
-                <!-- 3. Total Booked Flats -->
-                <div class="kpi-card">
-                    <div class="kpi-label">
-                        <div class="icon-circle green"><i class="fa-solid fa-building-circle-check"></i></div>
-                        <span>Total Booked</span>
+                <div class="text-end">
+                    <div class="fs-12 fw-bold text-muted text-uppercase mb-1">Total Score (Out of 100%)</div>
+                    <div class="fs-3 fw-bold text-primary">
+                        <?= $teamKpiData['total_score'] ?? 0 ?>%
                     </div>
-                    <div class="kpi-value text-success"><?= number_format($salesTotals['total_booked']) ?></div>
-                    <div class="kpi-subtext">Bookings in date range</div>
-                </div>
-
-                <!-- 4. Total Land Share Value -->
-                <div class="kpi-card" style="background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%); border-color: #bbf7d0;">
-                    <div class="kpi-label">
-                        <div class="icon-circle teal"><i class="fa-solid fa-money-bill-wave"></i></div>
-                        <span>Land Share Value</span>
-                    </div>
-                    <div class="kpi-value text-success" style="font-size: 20px;" title="৳ <?= number_format($salesTotals['total_land_share_value'], 2) ?>">
-                        ৳ <?= number_format($salesTotals['total_land_share_value'], 0) ?>
-                    </div>
-                    <div class="kpi-subtext">Total for booked flats</div>
-                </div>
-
-                <!-- 5. Uncontacted / No Follow-up -->
-                <div class="kpi-card" style="background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%); border-color: #fde68a;">
-                    <div class="kpi-label">
-                        <div class="icon-circle yellow"><i class="fa-solid fa-user-clock"></i></div>
-                        <span>No Follow-up</span>
-                    </div>
-                    <div class="kpi-value" style="color:#d97706;"><?= number_format($salesTotals['total_no_followup']) ?></div>
-                    <div class="kpi-subtext">0 follow-ups in period</div>
                 </div>
             </div>
 
@@ -445,6 +445,7 @@ $salesTotals = $salesTotals ?? [
                                 <th class="text-center">No Follow-up</th>
                                 <th class="text-center">Total Booked</th>
                                 <th class="text-end">Land Share Value</th>
+                                <th class="text-center">KPI Score</th>
                                 <th>Last Update</th>
                                 <th class="text-end">Actions</th>
                             </tr>
@@ -476,6 +477,7 @@ $salesTotals = $salesTotals ?? [
                                         </div>
                                     </div>
                                 </td>
+                                
                                 <td class="text-center">
                                     <span class="fw-bold fs-13 text-dark"><?= number_format($s['assigned_leads']) ?></span>
                                 </td>
@@ -530,6 +532,12 @@ $salesTotals = $salesTotals ?? [
                                         <span class="text-muted">৳ 0</span>
                                     <?php endif; ?>
                                 </td>
+                                <td class="text-center">
+                                    <div class="fw-bold fs-14 <?= ($s['kpi']['total_score'] >= 80) ? 'text-success' : (($s['kpi']['total_score'] >= 50) ? 'text-warning' : 'text-danger') ?>">
+                                        <?= $s['kpi']['total_score'] ?>%
+                                    </div>
+                                    <button class="btn btn-sm btn-link p-0 text-decoration-none fs-11 btn-kpi-toggle" data-user-id="<?= $s['user_id'] ?>">View Board</button>
+                                </td>
                                 <td>
                                     <?php if ($s['last_status_update']): ?>
                                         <span class="d-block text-dark fs-12"><?= date('d M Y', strtotime($s['last_status_update'])) ?></span>
@@ -544,6 +552,54 @@ $salesTotals = $salesTotals ?? [
                                     </button>
                                 </td>
                             </tr>
+                            <template id="kpi-template-<?= $s['user_id'] ?>">
+                                <div class="p-4 bg-light rounded border">
+                                    <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-chart-pie me-2 text-primary"></i>100% KPI Performance Dashboard (<?= htmlspecialchars($s['full_name']) ?>)</h6>
+                                    <div class="row g-3">
+                                        <?php 
+                                        $metrics = [
+                                            ['label' => 'Revenue Generation', 'key' => 'revenue_generation', 'icon' => 'fa-coins', 'color' => 'success'],
+                                            ['label' => 'Target vs Achievement', 'key' => 'target_vs_achievement', 'icon' => 'fa-bullseye', 'color' => 'primary'],
+                                            ['label' => 'No. of Unit Sold', 'key' => 'unit_sold', 'icon' => 'fa-building', 'color' => 'info'],
+                                            ['label' => 'Highest Visit', 'key' => 'highest_visit', 'icon' => 'fa-route', 'color' => 'warning'],
+                                            ['label' => 'Sales CVR (Min 1%)', 'key' => 'sales_cvr', 'icon' => 'fa-percent', 'color' => 'danger'],
+                                            ['label' => 'Leads Connected', 'key' => 'leads_connected', 'icon' => 'fa-phone', 'color' => 'secondary'],
+                                            ['label' => 'Data Quality', 'key' => 'data_quality', 'icon' => 'fa-database', 'color' => 'dark'],
+                                            ['label' => 'HR', 'key' => 'hr', 'icon' => 'fa-user-clock', 'color' => 'primary']
+                                        ];
+                                        foreach ($metrics as $m): 
+                                            $k = $s['kpi'][$m['key']];
+                                            $pct = $k['max'] > 0 ? ($k['score'] / $k['max']) * 100 : 0;
+                                        ?>
+                                        <div class="col-md-3">
+                                            <div class="card border-0 shadow-sm h-100">
+                                                <div class="card-body p-3">
+                                                    <div class="d-flex justify-content-between mb-2">
+                                                        <span class="fs-12 fw-bold text-muted text-uppercase"><i class="fa-solid <?= $m['icon'] ?> text-<?= $m['color'] ?> me-1"></i> <?= $m['label'] ?></span>
+                                                        <span class="fs-12 fw-bold text-dark"><?= $k['score'] ?> / <?= $k['max'] ?></span>
+                                                    </div>
+                                                    <div class="progress progress-thin mb-2">
+                                                        <div class="progress-bar bg-<?= $m['color'] ?>" style="width: <?= $pct ?>%"></div>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between text-muted fs-11 mb-1">
+                                                        <span>Target: <?= (is_numeric($k['target']) && floor($k['target']) != $k['target']) ? number_format($k['target'], 2) : number_format($k['target']) ?></span>
+                                                        <span>Actual: <?= (is_numeric($k['actual']) && floor($k['actual']) != $k['actual']) ? number_format($k['actual'], 2) : number_format($k['actual']) ?></span>
+                                                    </div>
+                                                    <div class="bg-light p-1 rounded text-center border mt-2" style="font-size: 10px;">
+                                                        <strong>Formula:</strong> 
+                                                        <?php if ($k['max'] > 0): ?>
+                                                            (Actual / Target) &times; <?= $k['max'] ?>% = <span class="text-<?= $m['color'] ?> fw-bold"><?= $k['score'] ?>%</span>
+                                                        <?php else: ?>
+                                                            N/A
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            </template>
                             <?php endforeach; ?>
                         </tbody>
                         <tfoot>
@@ -557,7 +613,7 @@ $salesTotals = $salesTotals ?? [
                                 <td class="text-center text-warning"><?= number_format($salesTotals['total_no_followup']) ?></td>
                                 <td class="text-center text-success fs-14"><?= number_format($salesTotals['total_booked']) ?></td>
                                 <td class="text-end text-success fs-14">৳ <?= number_format($salesTotals['total_land_share_value'], 0) ?></td>
-                                <td colspan="2"></td>
+                                <td colspan="3"></td>
                             </tr>
                         </tfoot>
                     </table>
@@ -1094,6 +1150,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     "previous": "<i class='fa-solid fa-angle-left'></i>",
                     "next": "<i class='fa-solid fa-angle-right'></i>"
                 }
+            }
+        });
+
+        // Handle KPI Dashboard Toggle (Child Rows)
+        $('#dtSalesPerformance tbody').on('click', '.btn-kpi-toggle', function () {
+            var tr = $(this).closest('tr');
+            var row = salesTable.row(tr);
+            var userId = $(this).data('user-id');
+
+            if (row.child.isShown()) {
+                row.child.hide();
+                tr.removeClass('shown');
+                $(this).text('View Board');
+            } else {
+                var templateHtml = $('#kpi-template-' + userId).html();
+                row.child(templateHtml).show();
+                tr.addClass('shown');
+                $(this).text('Hide Board');
             }
         });
 

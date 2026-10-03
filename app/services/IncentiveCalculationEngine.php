@@ -18,7 +18,7 @@ class IncentiveCalculationEngine extends Model
         $end = $cycle['end'];
 
         // 1. Get Target for this month
-        $stmt = $this->db->prepare("SELECT booking_value_target, category_id, from_date, to_date 
+        $stmt = $this->db->prepare("SELECT booking_value_target, category_id, category_ids, project_ids, flat_ids, from_date, to_date 
                                     FROM sales_targets 
                                     WHERE sales_user_id = ? AND DATE_FORMAT(month, '%Y-%m') = ? LIMIT 1");
         $stmt->bind_param("is", $userId, $yearMonth);
@@ -39,10 +39,29 @@ class IncentiveCalculationEngine extends Model
         }
 
         $targetAmount = $targetRow ? (float)$targetRow['booking_value_target'] : 0.00;
+        
         $assignedCategoryId = $targetRow ? (int)$targetRow['category_id'] : 0;
+        
+        $catIds = [];
+        if (!empty($targetRow['category_ids'])) {
+            $catIds = json_decode($targetRow['category_ids'], true) ?: [];
+        }
+        if ($assignedCategoryId > 0 && !in_array($assignedCategoryId, $catIds)) {
+            $catIds[] = $assignedCategoryId;
+        }
+
+        $projIds = [];
+        if (!empty($targetRow['project_ids'])) {
+            $projIds = json_decode($targetRow['project_ids'], true) ?: [];
+        }
+
+        $flatIds = [];
+        if (!empty($targetRow['flat_ids'])) {
+            $flatIds = json_decode($targetRow['flat_ids'], true) ?: [];
+        }
 
         // 2. Get Bookings for this month
-        $sql = "SELECT lb.id, p.category_id, IFNULL(f.land_share_value, 0) as land_share
+        $sql = "SELECT lb.id, lb.project_id, lb.flat_id, p.category_id, IFNULL(f.land_share_value, 0) as land_share, IFNULL(lb.agreement_value, 0) as agreement_value
                 FROM lead_bookings lb
                 JOIN projects p ON lb.project_id = p.id
                 JOIN flats f ON lb.flat_id = f.id
@@ -60,8 +79,18 @@ class IncentiveCalculationEngine extends Model
         $unassignedAchieved = 0.00;
 
         foreach ($bookings as $b) {
-            if ($assignedCategoryId > 0 && $b['category_id'] == $assignedCategoryId) {
-                $assignedAchieved += (float)$b['land_share'];
+            $isAssigned = false;
+            if (!empty($flatIds) && in_array($b['flat_id'], $flatIds)) {
+                $isAssigned = true;
+            } elseif (empty($flatIds) && !empty($projIds) && in_array($b['project_id'], $projIds)) {
+                $isAssigned = true;
+            } elseif (empty($flatIds) && empty($projIds) && !empty($catIds) && in_array($b['category_id'], $catIds)) {
+                $isAssigned = true;
+            }
+
+            if ($isAssigned) {
+                // When assigned, target can be volume-based or unit-based. We usually count agreement_value or land_share.
+                $assignedAchieved += (float)$b['agreement_value'] > 0 ? (float)$b['agreement_value'] : (float)$b['land_share'];
             } else {
                 $unassignedAchieved += (float)$b['land_share'];
             }

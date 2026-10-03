@@ -564,6 +564,21 @@ class SalesDashboardController extends Controller
         $bookingValue = (float)($_POST['booking_value_target'] ?? 0);
         $salesRole = $_POST['sales_role'] ?? null;
         
+        $flatIds = !empty($_POST['flat_ids']) ? json_encode(array_values(array_map('strval', (array)$_POST['flat_ids']))) : null;
+        
+        // If flats are selected, calculate backend booking_value_target
+        if (!empty($_POST['flat_ids'])) {
+            $flatIdsArr = implode(',', array_map('intval', (array)$_POST['flat_ids']));
+            if (!empty($flatIdsArr)) {
+                $fQ = $this->db->query("SELECT SUM(land_share_value) as total_val FROM flats WHERE id IN ($flatIdsArr)");
+                if ($fQ && $fRow = $fQ->fetch_assoc()) {
+                    $bookingValue = (float)$fRow['total_val'];
+                }
+            }
+        }
+
+        $siteVisitLeads = (int)($_POST['site_visit_leads_target'] ?? 0);
+
         if (empty($salesRole)) {
             $_SESSION['error'] = "Sales Role is required!";
             header("Location: " . $GLOBALS['base_url'] . "/set-sales-target/" . $id);
@@ -581,7 +596,9 @@ class SalesDashboardController extends Controller
             $salesRole,
             $categoryIdsJson,
             $fromDate,
-            $toDate
+            $toDate,
+            $flatIds,
+            $siteVisitLeads
         );
 
         if ($saved) {
@@ -623,6 +640,20 @@ class SalesDashboardController extends Controller
         $salesRole = $_POST['sales_role'] ?? null;
         $userId = (int)$_POST['user_id'];
         
+        $siteVisitLeads = (int)($_POST['site_visit_leads_target'] ?? 0);
+        $flatIds = !empty($_POST['flat_ids']) ? json_encode(array_values(array_map('strval', (array)$_POST['flat_ids']))) : null;
+        
+        // If flats are selected, recalculate backend booking_value_target
+        if (!empty($_POST['flat_ids'])) {
+            $flatIdsArr = implode(',', array_map('intval', (array)$_POST['flat_ids']));
+            if (!empty($flatIdsArr)) {
+                $fQ = $this->db->query("SELECT SUM(land_share_value) as total_val FROM flats WHERE id IN ($flatIdsArr)");
+                if ($fQ && $fRow = $fQ->fetch_assoc()) {
+                    $bookingValue = (float)$fRow['total_val'];
+                }
+            }
+        }
+
         if (empty($salesRole)) {
             $_SESSION['error'] = "Sales Role is required!";
             header("Location: " . $GLOBALS['base_url'] . "/set-sales-target/" . $userId);
@@ -640,15 +671,85 @@ class SalesDashboardController extends Controller
                 category_id = ?,
                 category_ids = ?,
                 project_ids = ?,
-                sales_role = ?
+                sales_role = ?,
+                flat_ids = ?,
+                site_visit_leads_target = ?
             WHERE id = ?
         ";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param("sssiidisssi", $month, $fromDate, $toDate, $siteVisit, $booking, $bookingValue, $categoryId, $categoryIdsJson, $projectIds, $salesRole, $id);
+        $stmt->bind_param("sssiidissssii", $month, $fromDate, $toDate, $siteVisit, $booking, $bookingValue, $categoryId, $categoryIdsJson, $projectIds, $salesRole, $flatIds, $siteVisitLeads, $id);
         $stmt->execute();
 
         $_SESSION['success'] = "Target updated successfully!";
         header("Location: " . $GLOBALS['base_url'] . "/set-sales-target/" . $userId);
+        exit;
+    }
+
+    public function getProjectFlats()
+    {
+        header('Content-Type: application/json');
+        if (empty($_GET['project_ids'])) {
+            echo json_encode([]);
+            exit;
+        }
+
+        $projectIds = is_array($_GET['project_ids']) ? implode(',', array_map('intval', $_GET['project_ids'])) : (int)$_GET['project_ids'];
+        
+        $sql = "
+            SELECT f.id, f.flat_name, f.floor_no, f.sqft, f.land_share_value, f.project_id, p.name as project_name, f.is_booked, f.status as flat_status
+            FROM flats f 
+            LEFT JOIN projects p ON f.project_id = p.id 
+            WHERE f.project_id IN ($projectIds) AND f.status = 'available' AND f.deleted_at IS NULL
+            ORDER BY p.name ASC, f.floor_no ASC, f.flat_name ASC
+        ";
+        $result = $this->db->query($sql);
+        $flats = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $flats[] = $row;
+            }
+        }
+        echo json_encode($flats);
+        exit;
+    }
+
+    public function getTargetTotals()
+    {
+        header('Content-Type: application/json');
+        $projectIds = !empty($_GET['project_ids']) ? (is_array($_GET['project_ids']) ? implode(',', array_map('intval', $_GET['project_ids'])) : (int)$_GET['project_ids']) : '';
+        $categoryIds = !empty($_GET['category_ids']) ? (is_array($_GET['category_ids']) ? implode(',', array_map('intval', $_GET['category_ids'])) : (int)$_GET['category_ids']) : '';
+
+        if (empty($projectIds) && empty($categoryIds)) {
+            echo json_encode(['units' => 0, 'value' => 0]);
+            exit;
+        }
+
+        $whereClause = [];
+        if (!empty($projectIds)) {
+            $whereClause[] = "f.project_id IN ($projectIds)";
+        }
+        if (!empty($categoryIds)) {
+            $whereClause[] = "p.category_id IN ($categoryIds)";
+        }
+        $whereSql = implode(' OR ', $whereClause); // If they select both, it's a union.
+
+        $sql = "
+            SELECT COUNT(f.id) as total_units, SUM(f.land_share_value) as total_value
+            FROM flats f
+            JOIN projects p ON f.project_id = p.id
+            WHERE ($whereSql) 
+            AND f.status = 'available' 
+            AND (f.is_booked = 0 OR f.is_booked IS NULL)
+            AND f.deleted_at IS NULL
+        ";
+        
+        $result = $this->db->query($sql);
+        $row = $result ? $result->fetch_assoc() : null;
+
+        echo json_encode([
+            'units' => (int)($row['total_units'] ?? 0),
+            'value' => (float)($row['total_value'] ?? 0)
+        ]);
         exit;
     }
 }
