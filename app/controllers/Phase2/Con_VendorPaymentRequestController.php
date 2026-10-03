@@ -398,6 +398,7 @@ class Con_VendorPaymentRequestController extends Controller
             'net_payable'       => $netPayable,
             'delivery_verified' => ($paymentType === 'Advance') ? 0 : (int)($_POST['delivery_verified'] ?? 0),
             'created_by'        => $userId,
+            'account_id'        => !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null,
         ];
 
         // Handle optional payment_attachment file upload

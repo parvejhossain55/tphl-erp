@@ -163,6 +163,10 @@ $payments  = $payments ?? [];
                                 <h4 class="text-success fw-bold mb-0" id="refundAmountDisplay">৳ 0.00</h4>
                             </div>
                         </div>
+                        <!-- Account Head -->
+                        <div class="mb-3">
+                            <?= renderCOADropdown($coaList ?? [], $existing_refund['account_id'] ?? null, 'account_id', false, 'clientrefund') ?>
+                        </div>
 
                         <!-- Document Upload -->
                         <div class="mb-3">

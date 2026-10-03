@@ -797,6 +797,10 @@ $canApproveAh = $isAccountsHead || in_array($userRole, [1, 3]) || strpos($roleNa
                         <label class="form-label text-muted small fw-semibold">Claim Code</label>
                         <input type="text" id="modalDisburseClaim" class="form-control bg-light" value="" readonly>
                     </div>
+                    
+                    <div class="mb-3">
+                        <?= renderCOADropdown($coaList ?? [], null, 'account_id', false, 'salesincentive') ?>
+                    </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">

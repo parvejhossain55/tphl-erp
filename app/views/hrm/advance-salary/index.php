@@ -286,6 +286,9 @@
                         </select>
                     </div>
                     <div class="form__group mb-3">
+                        <?= renderCOADropdown($coaList ?? [], null, 'account_id', false, 'advancesalary') ?>
+                    </div>
+                    <div class="form__group mb-3">
                         <label class="form-label" style="font-weight: 600;">Advance Amount <span
                                 class="text-danger">*</span></label>
                         <div class="input-group">

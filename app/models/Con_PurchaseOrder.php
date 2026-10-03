@@ -116,7 +116,7 @@ class Con_PurchaseOrder extends Model
         $stmt = $this->db->prepare(
             "SELECT poi.*, m.name AS material_name, m.unit, v.name AS vendor_name, COALESCE(cat.name, 'Uncategorized') AS category_name,
                     COALESCE(pri.current_stock, 0) AS current_stock,
-                    COALESCE(pri.next_3_months_requirement, 0) AS next_3_months_requirement
+                    (COALESCE(pri.month_1_forecast, 0) + COALESCE(pri.month_2_forecast, 0) + COALESCE(pri.month_3_forecast, 0)) AS next_3_months_requirement
              FROM {$this->itemTable} poi
              JOIN purchase_orders po ON po.id = poi.purchase_order_id
              LEFT JOIN purchase_request_items pri ON pri.request_id = po.request_id AND pri.material_id = poi.material_id

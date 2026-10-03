@@ -382,6 +382,7 @@ class Con_ContractorBillController extends Controller
             'projects'      => $projects,
             'targets'       => $targets,
             'workTypes'     => $workTypes,
+            'coaList'       => getCOAExpenseList($this->db)
         ]);
     }
 
@@ -419,6 +420,7 @@ class Con_ContractorBillController extends Controller
             'bill_date'        => $_POST['bill_date'] ?? date('Y-m-d'),
             'work_description' => trim($_POST['work_description'] ?? ''),
             'bill_amount'      => $_POST['bill_amount'] ?? 0,
+            'account_id'       => !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null,
         ];
 
         // Handle file upload

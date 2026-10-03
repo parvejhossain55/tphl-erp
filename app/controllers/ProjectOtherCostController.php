@@ -108,7 +108,8 @@ class ProjectOtherCostController extends Controller
             'roleId' => $roleId,
             'userId' => $userId,
             'isReportingBoss' => $isReportingBoss,
-            'projects' => $projects
+            'projects' => $projects,
+            'coaList' => getCOAExpenseList($this->db)
         ]);
     }
 

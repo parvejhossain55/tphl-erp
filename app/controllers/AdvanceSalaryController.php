@@ -24,7 +24,8 @@ class AdvanceSalaryController extends Controller
             "current_route" => "advance-salary-lists",
             "page_title" => "Advance Salary Lists",
             "advances" => $advances,
-            "employees" => $employees
+            "employees" => $employees,
+            "coaList" => getCOAExpenseList($this->db)
         ]);
     }
 
@@ -59,7 +60,8 @@ class AdvanceSalaryController extends Controller
             'deduction_end_month' => $deduction_end_month,
             'deduction_months' => $deduction_months,
             'status' => 'pending_hr',
-            'created_by' => $created_by
+            'created_by' => $created_by,
+            'account_id' => !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null
         ];
 
         $id = $this->model->create($data);

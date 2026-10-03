@@ -49,7 +49,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Project <span class="text-danger">*</span></label>
-                            <select name="project_id" id="projectSelect" class="form-select" required>
+                            <select name="project_id" id="projectSelect" class="form-select select2" required>
                                 <option value="">-- Select Project --</option>
                                 <?php foreach ($projects as $p): ?>
                                     <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
@@ -58,7 +58,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Vendor <span class="text-danger">*</span></label>
-                            <select name="vendor_id" id="vendorSelect" class="form-select" required>
+                            <select name="vendor_id" id="vendorSelect" class="form-select select2" required>
                                 <option value="">-- Select Vendor --</option>
                                 <?php foreach ($vendors as $v): ?>
                                     <option value="<?= $v['id'] ?>"><?= htmlspecialchars($v['name'] ?? 'N/A') ?> - <?= htmlspecialchars($v['company_name'] ?? '') ?></option>
@@ -66,6 +66,7 @@
                             </select>
                         </div>
                     </div>
+                    
 
                     <!-- PO Dropdown -->
                     <div class="mb-3" id="poDropdownWrapper">
@@ -144,6 +145,11 @@
                                 <input type="text" id="netPayableAmt" class="form-control form-control-lg text-end text-success fw-bold bg-white" readonly value="0.00">
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Account Head -->
+                    <div class="p-3 rounded border mb-3">
+                        <?= renderCOADropdown($coaList ?? [], null, 'account_id', false, 'vendorpay') ?>
                     </div>
 
                     <!-- Date + Delivery -->

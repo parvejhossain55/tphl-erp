@@ -47,6 +47,10 @@ $page_title = $page_title ?? 'New Fund Request';
                                     <?php endforeach; ?>
                                 </select>
                             </div>
+                            
+                            <div class="col-md-12 mt-3">
+                                <?= renderCOADropdown($coaList, null, 'account_id', false, 'opfund') ?>
+                            </div>
 
                             <!-- Working Plan cascade -->
                             <div class="col-md-12">

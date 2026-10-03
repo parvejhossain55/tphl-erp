@@ -1107,10 +1107,12 @@ class AssetManagement
 
         $requestType = $data['request_type'] ?? 'Purchase';
 
+        $accountId = !empty($data['account_id']) ? (int)$data['account_id'] : null;
+
         $stmt = $this->db->prepare(
             "INSERT INTO project_extra_assets 
-            (project_id, department_id, office_branch_id, asset_location, assigned_to, item_category_id, request_type, item_name, quantity, unit_price, total_price, justification, attachment, requested_by, reporting_user_id, dept_head_status, operations_status, purchase_head_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending')"
+            (project_id, department_id, office_branch_id, asset_location, assigned_to, item_category_id, request_type, item_name, quantity, unit_price, total_price, justification, attachment, requested_by, reporting_user_id, dept_head_status, account_id, operations_status, purchase_head_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending')"
         );
 
         if (!$stmt) {
@@ -1119,7 +1121,7 @@ class AssetManagement
         }
 
         $stmt->bind_param(
-            'iiisiissiddssiis',
+            'iiisiissiddssiisi',
             $projectId,
             $departmentId,
             $officeBranchId,
@@ -1135,7 +1137,8 @@ class AssetManagement
             $attachment,
             $requestedBy,
             $reportingUserId,
-            $deptHeadStatus
+            $deptHeadStatus,
+            $accountId
         );
 
         if ($stmt->execute()) {

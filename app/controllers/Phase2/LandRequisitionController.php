@@ -178,7 +178,8 @@ class LandRequisitionController extends Controller {
             'projects' => $projects,
             'selectedProjectId' => $selectedProjectId,
             'selectedAcqId' => $selectedAcqId,
-            'roleId' => $roleId
+            'roleId' => $roleId,
+            'coaList' => getCOAExpenseList($this->db)
         ]);
     }
 
@@ -209,7 +210,8 @@ class LandRequisitionController extends Controller {
             'current_route' => 'con-land-requisitions',
             'page_title' => 'Create Land Fund Requisition',
             'acquisitions' => $acquisitions,
-            'projects' => $projects
+            'projects' => $projects,
+            'coaList' => getCOAExpenseList($this->db)
         ]);
     }
 
@@ -295,12 +297,14 @@ class LandRequisitionController extends Controller {
             }
         }
 
+        $accountId = !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null;
+
         $stmt = $this->db->prepare("
             INSERT INTO land_fund_requisitions 
-            (land_acquisition_id, requisition_type, cost_purpose, requested_amount, purpose, req_attachment_path, requested_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (land_acquisition_id, requisition_type, cost_purpose, requested_amount, purpose, req_attachment_path, requested_by, account_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("issdssi", $land_acquisition_id, $requisition_type, $cost_purpose, $requested_amount, $purpose, $req_attachment_path, $requested_by);
+        $stmt->bind_param("issdssii", $land_acquisition_id, $requisition_type, $cost_purpose, $requested_amount, $purpose, $req_attachment_path, $requested_by, $accountId);
 
         if ($stmt->execute()) {
             if (!class_exists('ApprovalRequest')) {

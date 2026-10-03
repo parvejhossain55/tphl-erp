@@ -83,6 +83,7 @@ class Con_FundRequestController extends Controller
             'page_title'    => 'New Fund Request',
             'operators'     => $operators,
             'projects'      => $projects,
+            'coaList'       => getCOAExpenseList($this->db),
         ]);
     }
 
@@ -103,6 +104,7 @@ class Con_FundRequestController extends Controller
             'fund_date'    => $_POST['fund_date']    ?? date('Y-m-d'),
             'status'       => 'pending',
             'created_by'   => $_SESSION['user']['id'] ?? null,
+            'account_id'   => !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null,
         ];
 
         if (empty($data['project_id']) || empty($data['purpose']) || empty($data['amount'])) {

@@ -26,7 +26,7 @@ $page_title = $page_title ?? 'New Contractor Bill';
                             <!-- Project -->
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold">Project <span class="text-danger">*</span></label>
-                                <select name="project_id" id="project_id" class="form-select" required>
+                                <select name="project_id" id="project_id" class="form-select select2" required>
                                     <option value="">-- Select Project --</option>
                                     <?php foreach ($projects as $p): ?>
                                         <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
@@ -37,7 +37,7 @@ $page_title = $page_title ?? 'New Contractor Bill';
                             <!-- Contractor -->
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold">Contractor <span class="text-danger">*</span></label>
-                                <select name="operator_id" class="form-select" required>
+                                <select name="operator_id" class="form-select select2" required>
                                     <option value="">-- Select Contractor --</option>
                                     <?php foreach ($operators as $o): ?>
                                         <option value="<?= $o['id'] ?>">
@@ -47,6 +47,7 @@ $page_title = $page_title ?? 'New Contractor Bill';
                                     <?php endforeach; ?>
                                 </select>
                             </div>
+
 
                             <!-- Work Order (cascades from project) -->
                             <div class="col-md-6">
@@ -101,6 +102,11 @@ $page_title = $page_title ?? 'New Contractor Bill';
                                 <label class="form-label fw-semibold">Bill Amount (৳) <span class="text-danger">*</span></label>
                                 <input type="number" name="bill_amount" class="form-control"
                                        step="0.01" min="0" placeholder="0.00" required>
+                            </div>
+
+                            <!-- Account Head -->
+                            <div class="col-12 mt-3 mb-2">
+                                <?= renderCOADropdown($coaList ?? [], null, 'account_id', false, 'conbill') ?>
                             </div>
 
                             <!-- Work Description -->

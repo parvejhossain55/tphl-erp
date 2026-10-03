@@ -1486,10 +1486,10 @@ function renderCOADropdown($coaList, $selected = null, $name = 'account_id', $re
     
     $html = <<<HTML
 <div class="mb-3">
-    <label class="form-label fw-semibold fs-13 mb-1" for="{$name}">
+    <label class="form-label fw-semibold fs-13 mb-1" for="{$name}_{$uid}">
         <i class="fa-solid fa-tag me-1 text-primary" style="font-size:11px;"></i> Accounts Expense Type
     </label>
-    <select name="{$name}" id="{$name}" class="form-select select2" {$reqAttr} style="width: 100%;">
+    <select name="{$name}" id="{$name}_{$uid}" class="form-select select2" {$reqAttr} style="width: 100%;">
         <option value="">-- Select Expense Ledger --</option>
         {$optionsHtml}
     </select>

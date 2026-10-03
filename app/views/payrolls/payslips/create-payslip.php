@@ -208,6 +208,11 @@
                             <strong>Net Salary:</strong> <span id="netSalaryText">0</span>
                         </div>
                     </div>
+                    
+                    <!-- Account Head -->
+                    <div class="my-3 mx-4">
+                        <?= renderCOADropdown($coaList ?? [], null, 'account_id', false, 'payslip') ?>
+                    </div>
 
                     <input type="hidden" name="payslip_payload" id="payslipPayload">
                     <input type="hidden" name="is_draft" id="isDraftInput" value="0">
