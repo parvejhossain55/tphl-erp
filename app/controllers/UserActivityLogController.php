@@ -445,12 +445,16 @@ class UserActivityLogController extends Controller
             $sIdPlaceholders = implode(',', array_fill(0, count($salesUserIds), '?'));
             $sTypes = str_repeat('i', count($salesUserIds));
 
+            $this->db->query("SET SESSION group_concat_max_len = 1000000");
+
             // 1. Leads counts & status breakdown
             $sLeadsSql = "
                 SELECT 
                     l.assigned_id,
                     COUNT(l.id) as assigned_leads_count,
+                    GROUP_CONCAT(CONCAT('#', l.id, ' ', IFNULL(l.full_name, 'Unknown')) SEPARATOR ', ') as assigned_leads_names,
                     SUM(CASE WHEN l.lead_type = 'Visited' THEN 1 ELSE 0 END) as visited_count,
+                    GROUP_CONCAT(CASE WHEN l.lead_type = 'Visited' THEN CONCAT('#', l.id, ' ', IFNULL(l.full_name, 'Unknown')) ELSE NULL END SEPARATOR ', ') as visited_names,
                     SUM(CASE WHEN l.lead_type = 'Hot' THEN 1 ELSE 0 END) as hot_count,
                     SUM(CASE WHEN l.lead_type = 'Cold' THEN 1 ELSE 0 END) as cold_count,
                     MAX(l.updated_at) as last_status_update
@@ -493,7 +497,9 @@ class UserActivityLogController extends Controller
 
             // 3. Contacted leads count (leads that have at least 1 follow up in date range)
             $sContactedSql = "
-                SELECT l.assigned_id, COUNT(DISTINCT l.id) as contacted_leads_count
+                SELECT l.assigned_id, 
+                       COUNT(DISTINCT l.id) as contacted_leads_count,
+                       GROUP_CONCAT(DISTINCT CONCAT('#', l.id, ' ', IFNULL(l.full_name, 'Unknown')) SEPARATOR ', ') as contacted_leads_names
                 FROM leads l
                 JOIN lead_follow_ups lfu ON lfu.lead_id = l.id
                 WHERE l.assigned_id IN ($sIdPlaceholders)
@@ -509,7 +515,7 @@ class UserActivityLogController extends Controller
             $stmtSCont->close();
             $sContMap = [];
             foreach ($sContRes as $sc) {
-                $sContMap[$sc['assigned_id']] = (int)$sc['contacted_leads_count'];
+                $sContMap[$sc['assigned_id']] = $sc;
             }
 
             // 4. Bookings in date range by lead_bookings.booking_date
@@ -517,9 +523,11 @@ class UserActivityLogController extends Controller
                 SELECT 
                     lb.sales_by_id,
                     COUNT(DISTINCT lb.id) as total_booked,
+                    GROUP_CONCAT(DISTINCT CONCAT('#', l.id, ' ', IFNULL(l.full_name, 'Unknown')) SEPARATOR ', ') as booked_names,
                     COALESCE(SUM(f.land_share_value), 0) as total_land_share_value
                 FROM lead_bookings lb
                 JOIN flats f ON f.id = lb.flat_id
+                LEFT JOIN leads l ON l.id = lb.lead_id
                 WHERE lb.booking_date BETWEEN ? AND ?
                   AND lb.deleted_at IS NULL
                   AND lb.sales_by_id IN ($sIdPlaceholders)
@@ -536,12 +544,56 @@ class UserActivityLogController extends Controller
                 $sBookMap[$sb['sales_by_id']] = $sb;
             }
 
-            // 5. Assemble sales performance data
+            // 5. Fetch Tipsoi attendance data for the period to calculate HR KPI
+            require_once __DIR__ . '/../services/ExternalApiService.php';
+            $extApi = new ExternalApiService($this->db);
+            
+            $oldTimezone = date_default_timezone_get();
+            date_default_timezone_set('Asia/Dhaka');
+            $fromTime = strtotime($filterDateFrom . ' 00:00:00') * 1000;
+            $toTime = strtotime($filterDateTo . ' 23:59:59') * 1000;
+            date_default_timezone_set($oldTimezone);
+            
+            $tipsoiData = $extApi->getAttendanceLogs($fromTime, $toTime) ?: [];
+            $tipsoiStatsByOfficeId = [];
+            foreach ($tipsoiData as $emp) {
+                $officeId = trim((string)($emp['employeeOfficeId'] ?? $emp['employeeId'] ?? ''));
+                if (!$officeId) continue;
+                $officeIdNorm = preg_match('/^\d+$/', $officeId) ? (string)((int)$officeId) : $officeId;
+                
+                $leaveCount = 0; $lateCount = 0;
+                $shiftStartStr = $emp['shiftStartTime'] ?? '09:30 AM';
+                
+                foreach ($emp['attendance'] ?? [] as $ts => $dayAtt) {
+                    if (!empty($dayAtt['isLeave'])) {
+                        $leaveCount++;
+                    } elseif (!empty($dayAtt['isPresent'])) {
+                        $firstLog = trim($dayAtt['firstLoggedTime'] ?? '');
+                        if ($firstLog && $firstLog !== '-') {
+                            $checkInTime = strtotime($firstLog);
+                            $shiftStartTime = strtotime($shiftStartStr);
+                            if ($checkInTime && $shiftStartTime) {
+                                if ($checkInTime > ($shiftStartTime + (10 * 60))) {
+                                    $lateCount++;
+                                }
+                            }
+                        }
+                    }
+                }
+                $tipsoiStatsByOfficeId[$officeIdNorm] = ['leave_count' => $leaveCount, 'late_count' => $lateCount];
+            }
+
+            // 6. Assemble sales performance data
             foreach ($salesUsers as $su) {
                 $uid = $su['id'];
+                
+                $empId = trim((string)($su['employee_id'] ?? ''));
+                $empIdNorm = preg_match('/^\d+$/', $empId) ? (string)((int)$empId) : $empId;
+                $tStat = $tipsoiStatsByOfficeId[$empIdNorm] ?? ['leave_count' => 0, 'late_count' => 0];
+
                 $lData = $sLeadsMap[$uid] ?? [];
                 $assignedCount = (int)($lData['assigned_leads_count'] ?? 0);
-                $contactedCount = (int)($sContMap[$uid] ?? 0);
+                $contactedCount = (int)($sContMap[$uid]['contacted_leads_count'] ?? 0);
                 $noFollowUpCount = max(0, $assignedCount - $contactedCount);
                 $bData = $sBookMap[$uid] ?? [];
                 $bookedCount = (int)($bData['total_booked'] ?? 0);
@@ -571,15 +623,19 @@ class UserActivityLogController extends Controller
                     'role_name'              => $su['role_name'] ?: ($su['designation_name'] ?: 'Sales'),
                     'department_name'        => $su['department_name'] ?: 'Sales',
                     'assigned_leads'         => $assignedCount,
+                    'assigned_leads_names'   => $lData['assigned_leads_names'] ?? '',
                     'total_followups'        => $fuCount,
+                    'contacted_names'        => $sContMap[$uid]['contacted_leads_names'] ?? '',
                     'visited'                => $visCount,
+                    'visited_names'          => $lData['visited_names'] ?? '',
                     'hot'                    => $hotCount,
                     'cold'                   => $coldCount,
                     'no_followup_leads'      => $noFollowUpCount,
                     'total_booked'           => $bookedCount,
+                    'booked_names'           => $bData['booked_names'] ?? '',
                     'total_land_share_value' => $landShareVal,
                     'last_status_update'     => $lastUpdate,
-                    'kpi'                    => $this->kpiService->calculateSalesKPI($uid)
+                    'kpi'                    => $this->kpiService->calculateSalesKPI($uid, null, $tStat, $filterDateFrom, $filterDateTo)
                 ];
 
                 $salesTotals['total_assigned_leads'] += $assignedCount;

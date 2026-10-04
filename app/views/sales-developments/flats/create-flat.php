@@ -26,6 +26,14 @@ $show_breadcrumb = true;
                     <select name="unit_type" id="unitType" class="form-control" required>
                         <option value="residential">Residential (Flat)</option>
                         <option value="commercial">Commercial (Shop)</option>
+                        <option value="Presidential">Presidential</option>
+                        <option value="Superior">Superior</option>
+                        <option value="Royal">Royal</option>
+                        <option value="Elite">Elite</option>
+                        <option value="Executive">Executive</option>
+                        <option value="Signature">Signature</option>
+                        <option value="Grand">Grand</option>
+                        <option value="Classic">Classic</option>
                     </select>
                 </div>
 

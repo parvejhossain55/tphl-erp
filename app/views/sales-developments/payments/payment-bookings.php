@@ -244,8 +244,8 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
 
                         <!-- Online Details -->
                         <div class="col-lg-6 extra-input" id="onlineFields" style="display:none;">
-                            <label class="form__input-title">Online Type *</label>
-                            <input type="text" name="online_type" class="form-control" placeholder="Enter Online Type (Bkash, Nagad, etc)">
+                            <label class="form__input-title">Online Type</label>
+                            <input type="text" name="online_type" class="form-control" placeholder="Enter Online Type (remittance, Bkash, Nagad, etc)">
                         </div>
                        
                         <?php
@@ -452,6 +452,9 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
 
                                     <td>
                                         <strong><?= ucfirst($p['payment_method']) ?></strong>
+                                        <?php if (!empty($p['online_type'])): ?>
+                                            (<?= htmlspecialchars($p['online_type']) ?>)
+                                        <?php endif; ?>
                                         <?php if (!empty($p['company_bank_name'])): ?>
                                             <br><small class="text-success"><i class="fa-solid fa-building-columns me-1"></i>To: <?= htmlspecialchars($p['company_bank_name']) ?><?= !empty($p['company_account_number']) ? ' (' . htmlspecialchars($p['company_account_number']) . ')' : '' ?></small>
                                         <?php endif; ?>
@@ -580,8 +583,11 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
                 document.querySelector('#chequeFields').style.display = 'block';
                 document.querySelector('#chequeFields input')?.setAttribute('required', 'required');
             } else if (method === 'online') {
+                document.querySelector('#companyBankFields').style.display = 'block';
+                document.querySelector('#bankSelect')?.setAttribute('required', 'required');
+                
                 document.querySelector('#onlineFields').style.display = 'block';
-                document.querySelector('#onlineFields input')?.setAttribute('required', 'required');
+                // Online type is optional now
             }
 
             // Initialize or re-init Select2 on clientBankSelect if jQuery and select2 available
@@ -904,6 +910,7 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
     });
 
     function toggleEditMethodFields(method) {
+        document.querySelectorAll('.edit-company-bank-fields').forEach(el => el.style.display = (method === 'bank' || method === 'cheque' || method === 'online') ? 'block' : 'none');
         document.querySelectorAll('.edit-bank-fields').forEach(el => el.style.display = (method === 'bank') ? 'block' : 'none');
         document.querySelectorAll('.edit-cheque-fields').forEach(el => el.style.display = (method === 'cheque') ? 'block' : 'none');
         document.querySelectorAll('.edit-online-fields').forEach(el => el.style.display = (method === 'online') ? 'block' : 'none');
@@ -996,7 +1003,7 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
                             <label class="form-label">Transaction Reference</label>
                             <input type="text" name="transaction_ref" id="edit_p_ref" class="form-control">
                         </div>
-                        <div class="col-md-6 mb-3 edit-bank-fields" style="display:none;">
+                        <div class="col-md-6 mb-3 edit-company-bank-fields" style="display:none;">
                             <label class="form-label">Transfer To / Company Bank</label>
                             <select name="bank_id" id="edit_p_bank_id" class="form-select">
                                 <option value="">-- Select Company Bank --</option>
@@ -1021,7 +1028,7 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
                         </div>
                         <div class="col-md-6 mb-3 edit-online-fields" style="display:none;">
                             <label class="form-label">Online Type</label>
-                            <input type="text" name="online_type" id="edit_p_online" class="form-control" placeholder="bKash / Nagad / Rocket / etc.">
+                            <input type="text" name="online_type" id="edit_p_online" class="form-control" placeholder="remittance/bKash / Nagad / Rocket / etc.">
                         </div>
                         <div class="col-md-12 mb-3">
                             <label class="form-label">Update Attachment Image (Optional)</label>
