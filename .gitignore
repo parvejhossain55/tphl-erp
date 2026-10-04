@@ -12,6 +12,7 @@ Readme.md
 .idea/
 # =====================
 # Logs / Data files
+
 # =====================
 schema/docs.txt
 
@@ -30,7 +31,7 @@ GEMINI.md
 AGENTS.md
 
 # Custom DB Migration
-custme-migration/tphl_db.sql
+schema/custom-migration/tphl_db.sql
 # Onboard Clients Generated CSV & Audit files
 *.csv
 ONBOARD_CLIENTS_AUDIT_REPORT.md

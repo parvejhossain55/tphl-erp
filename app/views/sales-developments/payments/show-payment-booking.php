@@ -227,6 +227,9 @@
         </div>
 
         <div class="print-btn">
+            <?php if (strtolower($invoice['payment_type']) === 'booking'): ?>
+                <a href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $invoice['id'] ?>" style="padding: 8px 16px; background: #007bff; color: #fff; border-radius: 5px; text-decoration: none; font-size: 14px; margin-right: 10px; display: inline-block;">📋 Booking Form</a>
+            <?php endif; ?>
             <button onclick="window.print()">🖨 Print Invoice</button>
         </div>
 
@@ -255,7 +258,7 @@
                 <?php if (!empty($invoice['company_bank_name'])): ?>
                     <span><strong>Receiver Bank:</strong> <?= $invoice['company_bank_name'] ?><?= !empty($invoice['company_account_number']) ? ' (A/C: ' . $invoice['company_account_number'] . ')' : '' ?></span>
                 <?php endif; ?>
-                <?php if (!empty($invoice['bank_name'])): ?>
+                <?php if (strtolower($invoice['payment_method']) !== 'online' && !empty($invoice['bank_name'])): ?>
                     <span><strong>Sender Bank:</strong> <?= $invoice['bank_name'] ?></span>
                     <span><strong>Sender A/C:</strong> <?= $invoice['bank_account_no'] ?></span>
                 <?php endif; ?>

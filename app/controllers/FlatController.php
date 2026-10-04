@@ -149,6 +149,10 @@ class FlatController extends Controller
                 $serial,
                 htmlspecialchars($flat['project_name'] ?? ''),
                 htmlspecialchars($flat['flat_name'] ?? 'N/A'),
+                htmlspecialchars($flat['suite_id'] ?? 'N/A'),
+                format_bdt($flat['per_sqft_price'] ?? 0),
+                format_bdt($flat['booking_money'] ?? 0),
+                format_bdt($flat['registration_money'] ?? 0),
                 $typeBadge,
                 $uploadFromText,
                 htmlspecialchars($flat['facing_site'] ?? 'N/A'),
@@ -231,6 +235,10 @@ class FlatController extends Controller
             'is_booked'              => $is_booked,
             'status'                 => $_POST['status'] ?? null,
             'created_by'             => $_SESSION['user']['id'] ?? null,
+            'suite_id'               => $_POST['suite_id'] ?? null,
+            'per_sqft_price'         => isset($_POST['per_sqft_price']) && $_POST['per_sqft_price'] !== '' ? str_replace(',', '', $_POST['per_sqft_price']) : null,
+            'booking_money'          => isset($_POST['booking_money']) && $_POST['booking_money'] !== '' ? str_replace(',', '', $_POST['booking_money']) : null,
+            'registration_money'     => isset($_POST['registration_money']) && $_POST['registration_money'] !== '' ? str_replace(',', '', $_POST['registration_money']) : null,
         ];
 
         // ======================
@@ -296,6 +304,10 @@ class FlatController extends Controller
             'development_charges'    => isset($_POST['development_charges']) && $_POST['development_charges'] !== '' ? str_replace(',', '', $_POST['development_charges']) : null,
             'facilities'             => $_POST['facilities'] ?? null,
             'created_by'             => $_SESSION['user']['id'] ?? null,
+            'suite_id'               => $_POST['suite_id'] ?? null,
+            'per_sqft_price'         => isset($_POST['per_sqft_price']) && $_POST['per_sqft_price'] !== '' ? str_replace(',', '', $_POST['per_sqft_price']) : null,
+            'booking_money'          => isset($_POST['booking_money']) && $_POST['booking_money'] !== '' ? str_replace(',', '', $_POST['booking_money']) : null,
+            'registration_money'     => isset($_POST['registration_money']) && $_POST['registration_money'] !== '' ? str_replace(',', '', $_POST['registration_money']) : null,
         ];
 
         // Update lead
@@ -581,6 +593,176 @@ class FlatController extends Controller
     // ──────────────────────────────────────────────────────────────────────
     //  Shop / Commercial Unit CSV Bulk Import
     // ──────────────────────────────────────────────────────────────────────
+        // ──────────────────────────────────────────────────────────────────────
+    //  Suite CSV Bulk Import
+    // ──────────────────────────────────────────────────────────────────────
+    public function importCsvBulkSuite()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        
+        $projectId = $_POST['project_id'] ?? null;
+        if (empty($projectId)) {
+            setError("Project is required");
+            header("Location: {$GLOBALS['base_url']}/flat-lists");
+            exit;
+        }
+
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== 0) {
+            setError("CSV upload failed");
+            header("Location: {$GLOBALS['base_url']}/flat-lists");
+            exit;
+        }
+
+        $fileTmp = $_FILES['csv_file']['tmp_name'];
+        $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
+
+        if ($ext !== 'csv') {
+            setError("Only CSV files allowed");
+            header("Location: {$GLOBALS['base_url']}/flat-lists");
+            exit;
+        }
+
+        if (($handle = fopen($fileTmp, "r")) !== false) {
+            $rawHeader = fgetcsv($handle);
+            $rawHeader[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $rawHeader[0]);
+            
+            $header = array_map(function ($col) {
+                return strtolower(trim(preg_replace('/\s+/', '_', $col)));
+            }, $rawHeader);
+
+            $aliasMap = [
+                'unit_name'          => 'flat_name',
+                'floor'              => 'floor_no',
+                'suite_no.'          => 'suite_id',
+                'suite_no'           => 'suite_id',
+                'unit_type'          => 'unit_type',
+                'size_(sq_ft)'       => 'sqft',
+                'size_sq_ft'         => 'sqft',
+                'size'               => 'sqft',
+                'rate_per_sft_(bdt)' => 'per_sqft_price',
+                'rate_per_sft_bdt'   => 'per_sqft_price',
+                'booking_20%'        => 'booking_money',
+                'booking_20'         => 'booking_money',
+                'registration_20%'   => 'registration_money',
+                'registration_20'    => 'registration_money',
+                'development_10%'    => 'development_charges',
+                'development_10'     => 'development_charges',
+                'total_price'        => 'price_value',
+                'facing_site'        => 'facing_site',
+                'facilities'         => 'facilities',
+                'status'             => 'status'
+            ];
+
+            $normalizedHeader = [];
+            foreach ($header as $col) {
+                $cleanCol = str_replace(['(', ')'], '', $col);
+                $normalizedHeader[] = $aliasMap[$col] ?? $aliasMap[$cleanCol] ?? $col;
+            }
+
+            $successCount = 0;
+            $skippedCount = 0;
+            $skippedRows = [];
+            $rowNum = 1;
+
+            while (($data = fgetcsv($handle)) !== false) {
+                $rowNum++;
+                if (array_filter($data) === []) continue;
+
+                $row = array_combine($normalizedHeader, $data);
+                
+                $flatName = trim($row['flat_name'] ?? '');
+                if (empty($flatName)) {
+                    $skippedRows[] = ['row' => $rowNum, 'project' => 'ID: '.$projectId, 'flat' => '', 'reason' => 'Flat/Unit name is empty'];
+                    $skippedCount++;
+                    continue;
+                }
+
+                $stmtCheck = $this->flatModel->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? AND deleted_at IS NULL");
+                $stmtCheck->bind_param("is", $projectId, $flatName);
+                $stmtCheck->execute();
+                if ($stmtCheck->get_result()->num_rows > 0) {
+                    $skippedRows[] = ['row' => $rowNum, 'project' => 'ID: '.$projectId, 'flat' => $flatName, 'reason' => 'Suite already exists'];
+                    $skippedCount++;
+                    continue;
+                }
+
+                $statusRaw = strtolower(trim($row['status'] ?? ''));
+                $statusMap = [
+                    'available' => 'available',
+                    'booked'    => 'booked',
+                    'sold'      => 'sold'
+                ];
+                $status = $statusMap[$statusRaw] ?? 'available';
+                $isBooked = ($status === 'booked' || $status === 'sold') ? 1 : 0;
+                
+                $bookingMoney = !empty($row['booking_money']) ? str_replace(',', '', $row['booking_money']) : 0;
+                $registrationMoney = !empty($row['registration_money']) ? str_replace(',', '', $row['registration_money']) : 0;
+                $landShareValue = $bookingMoney + $registrationMoney;
+                
+                $perSqftPrice = !empty($row['per_sqft_price']) ? str_replace(',', '', $row['per_sqft_price']) : 0;
+                $sqft = !empty($row['sqft']) ? str_replace(',', '', $row['sqft']) : 0;
+                $priceValue = !empty($row['price_value']) ? str_replace(',', '', $row['price_value']) : ($perSqftPrice * $sqft);
+
+                $insertData = [
+                    'project_id'             => $projectId,
+                    'flat_name'              => $flatName,
+                    'sqft'                   => (float)$sqft,
+                    'bhk'                    => 0,
+                    'bedroom'                => 0,
+                    'bathroom'               => 0,
+                    'balcony'                => 0,
+                    'drawing_dining_kitchen' => 0,
+                    'common_dining'          => 0,
+                    'floor_no'               => trim($row['floor_no'] ?? ''),
+                    'facing_site'            => trim($row['facing_site'] ?? ''),
+                    'is_shop'                => 0,
+                    'unit_type'              => trim($row['unit_type'] ?? 'residential'),
+                    'price_value'            => (float)$priceValue,
+                    'shop_service_charge'    => 0,
+                    'facilities'             => trim($row['facilities'] ?? ''),
+                    'land_share_value'       => (float)$landShareValue,
+                    'development_charges'    => !empty($row['development_charges']) ? (float)str_replace(',', '', $row['development_charges']) : 0,
+                    'created_by'             => $_SESSION['user']['id'] ?? null,
+                    'status'                 => $status,
+                    'is_booked'              => $isBooked,
+                    'upload_from'            => 'csv',
+                    'suite_id'               => trim($row['suite_id'] ?? ''),
+                    'per_sqft_price'         => (float)$perSqftPrice,
+                    'booking_money'          => (float)$bookingMoney,
+                    'registration_money'     => (float)$registrationMoney
+                ];
+
+                if ($this->flatModel->createFromCsvBulkSuite($insertData)) {
+                    $successCount++;
+                } else {
+                    $skippedRows[] = ['row' => $rowNum, 'project' => 'ID: '.$projectId, 'flat' => $flatName, 'reason' => 'DB insert failed'];
+                    $skippedCount++;
+                }
+            }
+
+            fclose($handle);
+            $_SESSION['csv_import_skipped'] = $skippedRows;
+            
+            if ($successCount > 0) {
+                $msg = "{$successCount} suite(s) imported successfully.";
+                if ($skippedCount > 0) $msg .= " {$skippedCount} row(s) skipped.";
+                setSuccess($msg);
+            } else {
+                $msg = "No suites were imported.";
+                if ($skippedCount > 0) $msg .= " {$skippedCount} row(s) skipped.";
+                setError($msg);
+            }
+
+            header("Location: {$GLOBALS['base_url']}/flat-lists");
+            exit;
+        } else {
+            setError("Unable to read CSV file");
+            header("Location: {$GLOBALS['base_url']}/flat-lists");
+            exit;
+        }
+    }
+
+
     public function importCsvBulkShops()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();

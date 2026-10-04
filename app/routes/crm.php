@@ -169,6 +169,7 @@ return [
     'update-flat/(\d+)' => ['controller' => 'FlatController', 'method' => 'update'],
     'delete-flat' => ['controller' => 'FlatController', 'method' => 'delete'],
     'bulk-flats-import-csv' => ['controller' => 'FlatController', 'method' => 'importCsvBulkFlats'],
+    'bulk-suite-import-csv' => ['controller' => 'FlatController', 'method' => 'importCsvBulkSuite'],
     'bulk-shops-import-csv' => ['controller' => 'FlatController', 'method' => 'importCsvBulkShops'],
 
     // =========================================================================

@@ -232,8 +232,12 @@ class FlatModel extends Model
         development_charges,
         created_by,
         status,
-        is_booked
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        is_booked,
+        suite_id,
+        per_sqft_price,
+        booking_money,
+        registration_money
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 ");
 
         if (!$stmt) {
@@ -241,7 +245,7 @@ class FlatModel extends Model
             return false;
         }
         $stmt->bind_param(
-            "isdiiiiiissississsisi",
+            "isdiiiiiissississsisissdd",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -262,7 +266,11 @@ class FlatModel extends Model
             $data['development_charges'],
             $data['created_by'],
             $data['status'],
-            $data['is_booked']
+            $data['is_booked'],
+            $data['suite_id'] ?? null,
+            $data['per_sqft_price'] ?? null,
+            $data['booking_money'] ?? null,
+            $data['registration_money'] ?? null
         );
 
         return $stmt->execute();
@@ -400,6 +408,110 @@ class FlatModel extends Model
     /**
      * Update lead
      */
+    /* =========================
+       Create Suite From CSV
+    ========================== */
+    public function createFromCsvBulkSuite($data)
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO flats (
+                project_id,
+                flat_name,
+                sqft,
+                bhk,
+                bedroom,
+                bathroom,
+                balcony,
+                drawing_dining_kitchen,
+                common_dining,
+                floor_no,
+                facing_site,
+                is_shop,
+                unit_type,
+                price_value,
+                shop_service_charge,
+                facilities,
+                land_share_value,
+                development_charges,
+                created_by,
+                status,
+                is_booked,
+                upload_from,
+                suite_id,
+                per_sqft_price,
+                booking_money,
+                registration_money
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ");
+
+        if (!$stmt) {
+            throw new Exception($this->db->error);
+        }
+
+        $project_id           = (int)trim($data['project_id']);
+        $flat_name            = trim($data['flat_name']);
+        
+        $sqft                 = $data['sqft'];
+        $bhk                  = $data['bhk'];
+        $bedroom              = $data['bedroom'];
+        $bathroom             = $data['bathroom'];
+        $balcony              = $data['balcony'];
+        $drawing_dining       = $data['drawing_dining_kitchen'];
+        $common_dining        = $data['common_dining'];
+        $floor_no             = $data['floor_no'];
+        $facing_site          = $data['facing_site'];
+        $is_shop              = $data['is_shop'];
+        $unit_type            = $data['unit_type'];
+        $price_value          = $data['price_value'];
+        $shop_service_charge  = $data['shop_service_charge'];
+        $facilities           = $data['facilities'];
+        $land_share_value     = $data['land_share_value'];
+        $development_charges  = $data['development_charges'];
+        $created_by           = $data['created_by'];
+
+        $status               = $data['status'];
+        $is_booked            = $data['is_booked'];
+        $upload_from          = $data['upload_from'];
+        
+        $suite_id             = $data['suite_id'];
+        $per_sqft_price       = $data['per_sqft_price'];
+        $booking_money        = $data['booking_money'];
+        $registration_money   = $data['registration_money'];
+
+        $stmt->bind_param(
+            "isdiiiiiissississsisissddd",
+            $project_id,
+            $flat_name,
+            $sqft,
+            $bhk,
+            $bedroom,
+            $bathroom,
+            $balcony,
+            $drawing_dining,
+            $common_dining,
+            $floor_no,
+            $facing_site,
+            $is_shop,
+            $unit_type,
+            $price_value,
+            $shop_service_charge,
+            $facilities,
+            $land_share_value,
+            $development_charges,
+            $created_by,
+            $status,
+            $is_booked,
+            $upload_from,
+            $suite_id,
+            $per_sqft_price,
+            $booking_money,
+            $registration_money
+        );
+
+        return $stmt->execute();
+    }
+
+
     public function update($id, $data)
     {
         $sql = "UPDATE flats SET
@@ -407,7 +519,8 @@ class FlatModel extends Model
         drawing_dining_kitchen = ?, common_dining = ?, floor_no = ?, facing_site = ?,
         is_shop = ?, unit_type = ?,
         price_value = ?, shop_service_charge = ?,
-        facilities = ?, created_by = ?, land_share_value = ?, development_charges = ?
+        facilities = ?, created_by = ?, land_share_value = ?, development_charges = ?,
+        suite_id = ?, per_sqft_price = ?, booking_money = ?, registration_money = ?
         WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -416,7 +529,7 @@ class FlatModel extends Model
         }
 
         $stmt->bind_param(
-            "isdiiiiiississisissi",
+            "isdiiiiiississisississsssi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -436,6 +549,10 @@ class FlatModel extends Model
             $data['created_by'],
             $data['land_share_value'],
             $data['development_charges'],
+            $data['suite_id'] ?? null,
+            $data['per_sqft_price'] ?? null,
+            $data['booking_money'] ?? null,
+            $data['registration_money'] ?? null,
             $id
         );
 

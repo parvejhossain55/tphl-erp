@@ -458,7 +458,7 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
                                         <?php if (!empty($p['company_bank_name'])): ?>
                                             <br><small class="text-success"><i class="fa-solid fa-building-columns me-1"></i>To: <?= htmlspecialchars($p['company_bank_name']) ?><?= !empty($p['company_account_number']) ? ' (' . htmlspecialchars($p['company_account_number']) . ')' : '' ?></small>
                                         <?php endif; ?>
-                                        <?php if (!empty($p['bank_name'])): ?>
+                                        <?php if (strtolower($p['payment_method']) !== 'online' && !empty($p['bank_name'])): ?>
                                             <br><small class="text-muted"><i class="fa-solid fa-user me-1"></i>From: <?= htmlspecialchars($p['bank_name']) ?></small>
                                         <?php endif; ?>
                                     </td>
@@ -490,6 +490,15 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
                                                 title="Print Money Receipt / Invoice">
                                                 <i class="fa-solid fa-receipt me-1"></i> <?= $p['payment_type'] === 'registration' ? 'Registration Invoice' : ($p['payment_type'] === 'land_share' ? 'Land Share Invoice' : 'Booking Invoice') ?>
                                             </a>
+                                            
+                                            <?php if (strtolower($p['payment_type']) === 'booking_money'): ?>
+                                                <a target="_blank"
+                                                    href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $p['id'] ?>"
+                                                    class="d-none btn btn-primary btn-sm"
+                                                    title="Print Booking Form">
+                                                    <i class="fa-solid fa-file-signature me-1"></i> Booking Form
+                                                </a>
+                                            <?php endif; ?>
 
                                             <!-- Edit Payment -->
                                             <?php if ($p['verification_status'] != 'verified' || $isSalesHead): ?>
