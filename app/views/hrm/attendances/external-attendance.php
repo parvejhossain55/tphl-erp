@@ -420,15 +420,25 @@ document.addEventListener("DOMContentLoaded", function () {
             Object.keys(attMap).forEach(timestamp => {
                 const dayAtt = attMap[timestamp];
                 
-                // Determine raw attendance status based on shiftStartTime + 10 minutes late override
-                const isLateOverride = dayAtt.isPresent && checkIfLate(dayAtt.firstLoggedTime, shiftStartTime);
+                // Determine raw attendance status based directly on Tipsoi isLate flag
+                const isLate = Boolean(dayAtt.isPresent && (dayAtt.isLate === true || dayAtt.isLate == 1));
                 let status = "absent";
                 if (dayAtt.isLeave) {
                     status = "leave";
                 } else if (dayAtt.isPresent) {
-                    status = isLateOverride ? "late" : "present";
+                    status = isLate ? "late" : "present";
                 } else if (dayAtt.isOffday || dayAtt.isHoliday) {
                     status = "offday";
+                }
+
+                // Resolve lateBy display (prefer Tipsoi lateBy, fallback to calculateLateBy if available)
+                let lateByDisplay = '—';
+                if (isLate) {
+                    if (dayAtt.lateBy && dayAtt.lateBy !== '-' && dayAtt.lateBy.trim() !== '') {
+                        lateByDisplay = dayAtt.lateBy;
+                    } else {
+                        lateByDisplay = calculateLateBy(dayAtt.firstLoggedTime, shiftStartTime);
+                    }
                 }
 
                 allRecords.push({
@@ -449,13 +459,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     firstLoggedTime: dayAtt.firstLoggedTime || '-',
                     lastLoggedTime: dayAtt.lastLoggedTime || '-',
                     totalHour: dayAtt.totalHour || '-',
-                    isLate: isLateOverride,
+                    isLate: isLate,
                     isEarly: dayAtt.isEarly || false,
                     isHoliday: dayAtt.isHoliday || false,
                     isOffday: dayAtt.isOffday || false,
                     isLeave: dayAtt.isLeave || false,
                     isPresent: dayAtt.isPresent || false,
-                    lateBy: isLateOverride ? calculateLateBy(dayAtt.firstLoggedTime, shiftStartTime) : '—',
+                    lateBy: lateByDisplay,
                     status: status
                 });
             });
