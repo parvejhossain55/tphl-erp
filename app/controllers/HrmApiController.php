@@ -339,6 +339,7 @@ class HrmApiController extends Controller
      */
     public function getAttendanceReport()
     {
+        @set_time_limit(180);
         header('Content-Type: application/json');
 
         // Store previous timezone to restore it later
@@ -412,7 +413,7 @@ class HrmApiController extends Controller
                 'Accept: application/json'
             ]);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 120);
 
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -558,7 +559,7 @@ class HrmApiController extends Controller
                 'Accept: application/json'
             ]);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 120);
 
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -602,7 +603,7 @@ class HrmApiController extends Controller
                 'Accept: application/json'
             ]);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 120);
             $balanceRes = curl_exec($ch);
             curl_close($ch);
 
@@ -1108,7 +1109,7 @@ class HrmApiController extends Controller
                 'Accept: application/json'
             ]);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 120);
 
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
