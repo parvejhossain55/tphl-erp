@@ -52,7 +52,8 @@ class FlatModel extends Model
         $stmt = $this->db->prepare($sql);
 
         if (!empty($params)) {
-            $stmt->bind_param($types, ...$params);
+            $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null;
+        $stmt->bind_param($types, ...$params);
         }
 
         $stmt->execute();
@@ -156,7 +157,8 @@ class FlatModel extends Model
 
         $stmt = $this->db->prepare($sql);
         if (!empty($params)) {
-            $stmt->bind_param($types, ...$params);
+            $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null;
+        $stmt->bind_param($types, ...$params);
         }
 
         $stmt->execute();
@@ -198,7 +200,8 @@ class FlatModel extends Model
 
         $stmt = $this->db->prepare($sql);
         if (!empty($params)) {
-            $stmt->bind_param($types, ...$params);
+            $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null;
+        $stmt->bind_param($types, ...$params);
         }
 
         $stmt->execute();
@@ -244,6 +247,7 @@ class FlatModel extends Model
             setError($this->db->error);
             return false;
         }
+        $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null;
         $stmt->bind_param(
             "isdiiiiiissississsisissdd",
             $data['project_id'],
@@ -267,10 +271,10 @@ class FlatModel extends Model
             $data['created_by'],
             $data['status'],
             $data['is_booked'],
-            $data['suite_id'] ?? null,
-            $data['per_sqft_price'] ?? null,
-            $data['booking_money'] ?? null,
-            $data['registration_money'] ?? null
+            $suite_id,
+            $per_sqft_price,
+            $booking_money,
+            $registration_money
         );
 
         return $stmt->execute();
@@ -355,6 +359,7 @@ class FlatModel extends Model
         // MySQL DECIMAL accepts numeric strings; avoids null→0 bug with 'd' type.
         // Types: i s sssssss ii ss i s s i s s s i s i s
         //        project_id, flat_name, sqft,bhk,bed,bath,balcony, draw,common, floor,facing, is_shop, unit_type, price_value, shop_sc, facilities, land_share, dev_charges, created_by, status, is_booked, upload_from
+        $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null;
         $stmt->bind_param(
             "issssssiissississsisis",
             $project_id,
@@ -400,6 +405,7 @@ class FlatModel extends Model
         LEFT JOIN projects AS p ON f.project_id = p.id
         WHERE f.id = ?
     ");
+        $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null;
         $stmt->bind_param("i", $id);
         $stmt->execute();
         return $stmt->get_result()->fetch_assoc();
@@ -411,6 +417,8 @@ class FlatModel extends Model
     /* =========================
        Create Suite From CSV
     ========================== */
+    public function checkIfExists($projectId, $flatName) { $stmt = $this->db->prepare('SELECT id FROM flats WHERE project_id = ? AND flat_name = ? AND deleted_at IS NULL'); $stmt->bind_param('is', $projectId, $flatName); $stmt->execute(); return $stmt->get_result()->num_rows > 0; }
+
     public function createFromCsvBulkSuite($data)
     {
         $stmt = $this->db->prepare("
@@ -478,6 +486,7 @@ class FlatModel extends Model
         $booking_money        = $data['booking_money'];
         $registration_money   = $data['registration_money'];
 
+        $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null;
         $stmt->bind_param(
             "isdiiiiiissississsisissddd",
             $project_id,
@@ -528,8 +537,9 @@ class FlatModel extends Model
             throw new Exception("Prepare failed: " . $this->db->error);
         }
 
+        $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null;
         $stmt->bind_param(
-            "isdiiiiiississisississsssi",
+            "isdiiiiiissisdisiddsdddi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -549,10 +559,10 @@ class FlatModel extends Model
             $data['created_by'],
             $data['land_share_value'],
             $data['development_charges'],
-            $data['suite_id'] ?? null,
-            $data['per_sqft_price'] ?? null,
-            $data['booking_money'] ?? null,
-            $data['registration_money'] ?? null,
+            $suite_id,
+            $per_sqft_price,
+            $booking_money,
+            $registration_money,
             $id
         );
 
@@ -578,6 +588,7 @@ class FlatModel extends Model
                                      WHERE f.project_id = ?
                                      AND f.deleted_at IS NULL
                                      ORDER BY f.flat_name ASC");
+        $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null;
         $stmt->bind_param("i", $projectId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -619,6 +630,7 @@ class FlatModel extends Model
             ORDER BY f.floor_no ASC, f.flat_name ASC
         ");
 
+        $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null;
         $stmt->bind_param("i", $projectId);
         $stmt->execute();
 
@@ -643,7 +655,8 @@ class FlatModel extends Model
                 $stmt = $this->db->prepare(
                     "UPDATE $table SET deleted_at=? WHERE $col=?"
                 );
-                $stmt->bind_param("si", $now, $flatId);
+                $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null;
+        $stmt->bind_param("si", $now, $flatId);
                 $stmt->execute();
                 $stmt->close();
             }
@@ -656,3 +669,9 @@ class FlatModel extends Model
         }
     }
 }
+
+
+
+
+
+

@@ -677,10 +677,7 @@ class FlatController extends Controller
                     continue;
                 }
 
-                $stmtCheck = $this->flatModel->db->prepare("SELECT id FROM flats WHERE project_id = ? AND flat_name = ? AND deleted_at IS NULL");
-                $stmtCheck->bind_param("is", $projectId, $flatName);
-                $stmtCheck->execute();
-                if ($stmtCheck->get_result()->num_rows > 0) {
+                if ($this->flatModel->checkIfExists($projectId, $flatName)) {
                     $skippedRows[] = ['row' => $rowNum, 'project' => 'ID: '.$projectId, 'flat' => $flatName, 'reason' => 'Suite already exists'];
                     $skippedCount++;
                     continue;
@@ -725,7 +722,7 @@ class FlatController extends Controller
                     'created_by'             => $_SESSION['user']['id'] ?? null,
                     'status'                 => $status,
                     'is_booked'              => $isBooked,
-                    'upload_from'            => 'csv',
+                    'upload_from'            => 'From company csv',
                     'suite_id'               => trim($row['suite_id'] ?? ''),
                     'per_sqft_price'         => (float)$perSqftPrice,
                     'booking_money'          => (float)$bookingMoney,
