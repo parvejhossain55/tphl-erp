@@ -948,6 +948,10 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                                                 $legacyPath = 'uploads/payments/' . $transaction['attachment_image'];
                                                 if (!in_array($legacyPath, $docFiles)) $docFiles[] = $legacyPath;
                                             }
+                                            if (!empty($transaction['attachment_image2'])) {
+                                                $legacyPath2 = 'uploads/payments/' . $transaction['attachment_image2'];
+                                                if (!in_array($legacyPath2, $docFiles)) $docFiles[] = $legacyPath2;
+                                            }
                                             $docCount = count($docFiles);
                                         ?>
                                         <?php if ($docCount > 0 && is_numeric($transaction['id'])): ?>

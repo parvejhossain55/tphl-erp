@@ -607,6 +607,8 @@ class FlatModel extends Model
                 f.bhk,
                 f.price_value,
                 f.land_share_value,
+                f.booking_money,
+                f.registration_money,
                 f.flat_name,
                 (SELECT lb.booking_status FROM lead_bookings lb 
                  WHERE lb.flat_id = f.id AND lb.deleted_at IS NULL AND lb.booking_status IN ('booked', 'completed') 
@@ -669,6 +671,8 @@ class FlatModel extends Model
         }
     }
 }
+
+
 
 
 

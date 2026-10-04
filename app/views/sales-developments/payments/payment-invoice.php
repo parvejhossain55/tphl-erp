@@ -852,14 +852,17 @@
 
                         <?php if (!empty($invoice['company_bank_name'])): ?>
                         <div class="field-group">
-                            <label class="field-label">Transfer To / Company Bank</label>
+                            <label class="field-label">Receiver Bank (Company)</label>
                             <input type="text" class="field-input" value="<?= htmlspecialchars($invoice['company_bank_name'] . (!empty($invoice['company_account_name']) ? ' - ' . $invoice['company_account_name'] : '') . (!empty($invoice['company_account_number']) ? ' (' . $invoice['company_account_number'] . ')' : '')) ?>" readonly>
                         </div>
                         <?php endif; ?>
+                        
+                        <?php if (strtolower($invoice['payment_method']) !== 'online' && strtolower($invoice['payment_method']) !== 'cash'): ?>
                         <div class="field-group">
-                            <label class="field-label"><?= !empty($invoice['company_bank_name']) ? 'Transfer From / Client Bank' : 'Bank Name' ?></label>
+                            <label class="field-label">Sender Bank (Client)</label>
                             <input type="text" class="field-input" value="<?= htmlspecialchars($invoice['bank_name'] ?? '') ?>" readonly>
                         </div>
+                        <?php endif; ?>
 
                         <div class="field-group">
                             <label class="field-label">Cheque Number</label>

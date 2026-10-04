@@ -61,6 +61,10 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                         $legacyPath = 'uploads/payments/' . $transaction['attachment_image'];
                         if (!in_array($legacyPath, $existingFiles)) $existingFiles[] = $legacyPath;
                     }
+                    if (!empty($transaction['attachment_image2'])) {
+                        $legacyPath2 = 'uploads/payments/' . $transaction['attachment_image2'];
+                        if (!in_array($legacyPath2, $existingFiles)) $existingFiles[] = $legacyPath2;
+                    }
                 ?>
                 <form action="<?= $GLOBALS['base_url'] ?>/update-transaction" method="post" id="transactionForm" enctype="multipart/form-data">
                     <input type="hidden" name="payment_id" value="<?= $transaction['id'] ?? '' ?>">
