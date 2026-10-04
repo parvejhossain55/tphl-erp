@@ -107,6 +107,10 @@ unset($_SESSION['csv_import_skipped']); // clear after reading
                             data-bs-toggle="modal" data-bs-target="#importShopCsvModal">
                             <i class="bi bi-shop me-1"></i> Import Shop CSV
                         </button>
+                        <button type="button" class="btn btn-info btn-sm"
+                            data-bs-toggle="modal" data-bs-target="#importSuiteCsvModal">
+                            <i class="fa-solid fa-file-csv me-1"></i> Import Flat Suite CSV
+                        </button>
                     <?php endif ?>
                 </div>
             </div>
@@ -126,6 +130,10 @@ unset($_SESSION['csv_import_skipped']); // clear after reading
                             <th style="width:40px">#</th>
                             <th>Project</th>
                             <th>Flat/Unit</th>
+                            <th>Suite No.</th>
+                            <th>Rate/SFT</th>
+                            <th>Booking</th>
+                            <th>Reg. Money</th>
                             <th>Type</th>
                             <th>Flat Uploaded From</th>
                             <th>Facing Site</th>
@@ -254,6 +262,53 @@ unset($_SESSION['csv_import_skipped']); // clear after reading
                     project_name, sqft, bhk, land_share_value, development_charges, bedroom, bathroom, balcony, drawing_dining_kitchen, common_dining, floor_no, flat_name, facing_site, price_value, facilities, status
                     <br><br>
                     <em>Note: project_name must exactly match an existing project. status can be available, booked, or sold.</em>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSV Import Modal (Flat Suite) -->
+<div class="modal fade" id="importSuiteCsvModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fa-solid fa-file-csv me-2"></i>Import Flat Suite from CSV</h5>
+                <button type="button" class="bd-btn-close" data-bs-dismiss="modal">
+                    <i class="fa-solid fa-xmark-large"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <form action="<?= $GLOBALS['base_url'] ?>/bulk-suite-import-csv"
+                    method="post" enctype="multipart/form-data">
+                    <div class="from__input-box mb-20">
+                        <label class="form-label">Select Project <span>*</span></label>
+                        <select name="project_id" class="form-control select2" required style="width: 100%;">
+                            <option value="">-- Choose Project --</option>
+                            <?php foreach ($projects as $proj): ?>
+                                <option value="<?= $proj['id'] ?>"><?= htmlspecialchars($proj['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="from__input-box mb-20">
+                        <div class="form__input-title">
+                            <label>Upload CSV File <span>*</span></label>
+                        </div>
+                        <div class="form__input">
+                            <input type="file" name="csv_file" class="form-control" accept=".csv" required>
+                        </div>
+                    </div>
+
+                    <div class="submit__btn text-center">
+                        <button class="btn btn-info">Import CSV</button>
+                    </div>
+                </form>
+
+                <div class="mt-15 p-2 rounded text-muted" style="font-size: 12px; max-height: 200px; overflow-y: auto;">
+                    <strong>Required CSV Headers (in order):</strong><br>
+                    unit_name, Floor, Suite No., Unit Type, Size (Sq Ft), Rate per sft (BDT), Booking 20%, Registration 20%, development 10%, Total Price, Facing Site, Facilities, Status
                 </div>
             </div>
         </div>

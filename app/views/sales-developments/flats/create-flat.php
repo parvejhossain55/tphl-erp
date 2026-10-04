@@ -110,6 +110,30 @@ $show_breadcrumb = true;
                     <input type="text" name="facing_site" class="form-control" placeholder="e.g., North, East">
                 </div>
 
+                <!-- Suite ID -->
+                <div class="col-xl-6">
+                    <label>Suite No.</label>
+                    <input type="text" name="suite_id" class="form-control" placeholder="e.g. 1, 2, A">
+                </div>
+
+                <!-- Per Sqft Price -->
+                <div class="col-xl-6">
+                    <label>Rate per SFT (BDT)</label>
+                    <input type="number" step="0.01" name="per_sqft_price" id="perSqftPrice" class="form-control">
+                </div>
+
+                <!-- Booking Money -->
+                <div class="col-xl-6">
+                    <label>Booking Money (BDT)</label>
+                    <input type="number" step="0.01" name="booking_money" id="bookingMoney" class="form-control">
+                </div>
+
+                <!-- Registration Money -->
+                <div class="col-xl-6">
+                    <label>Registration Money (BDT)</label>
+                    <input type="number" step="0.01" name="registration_money" id="registrationMoney" class="form-control">
+                </div>
+
                 <!-- Price Value -->
                 <div class="col-xl-6">
                     <label>Price (BDT) <span class="text-danger">(Approx. Changeable)</span></label>
@@ -178,6 +202,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const priceInput    = document.getElementById('priceValue');
     const landShare     = document.getElementById('landShareValue');
     const landShareNote = document.getElementById('landShareAutoNote');
+    const sqftInput     = document.querySelector('input[name="sqft"]');
+    const perSqftPrice  = document.getElementById('perSqftPrice');
+    const bookingMoney  = document.getElementById('bookingMoney');
+    const regMoney      = document.getElementById('registrationMoney');
 
     function applyUnitType() {
         const isCommercial = unitType.value === 'commercial';
@@ -205,15 +233,35 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function autoFillLandShare() {
-        if (unitType.value !== 'commercial') return;
+        if (unitType.value !== 'commercial') {
+            const b = parseFloat(bookingMoney.value) || 0;
+            const r = parseFloat(regMoney.value) || 0;
+            if (b > 0 || r > 0) {
+                landShare.value = (b + r).toFixed(2);
+            }
+            return;
+        }
         const price = parseFloat(priceInput.value) || 0;
         if (price > 0) {
             landShare.value = (price * 0.30).toFixed(2);
         }
     }
 
+    function autoCalculateTotalPrice() {
+        const sqft = parseFloat(sqftInput.value) || 0;
+        const rate = parseFloat(perSqftPrice.value) || 0;
+        if (sqft > 0 && rate > 0) {
+            priceInput.value = (sqft * rate).toFixed(2);
+            autoFillLandShare();
+        }
+    }
+
     unitType.addEventListener('change', applyUnitType);
     priceInput.addEventListener('input', autoFillLandShare);
+    sqftInput.addEventListener('input', autoCalculateTotalPrice);
+    perSqftPrice.addEventListener('input', autoCalculateTotalPrice);
+    bookingMoney.addEventListener('input', autoFillLandShare);
+    regMoney.addEventListener('input', autoFillLandShare);
 
     applyUnitType(); // run on load
 });

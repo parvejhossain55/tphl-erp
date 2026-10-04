@@ -374,33 +374,35 @@ class Lead extends Model
 
         // Date range filter
         if ($applyCreatedDateFilter) {
+            $dateCol = (!empty($assigned_user) || (isset($assigned) && $assigned === 'assigned')) ? 'l.assigned_at' : 'l.created_at';
+            
             if (!empty($from_date) && !empty($to_date)) {
-                $sql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+                $sql .= " AND DATE($dateCol) BETWEEN ? AND ?";
                 $params[] = $from_date;
                 $params[] = $to_date;
                 $types .= "ss";
             } elseif (!empty($from_date)) {
-                $sql .= " AND DATE(l.created_at) >= ?";
+                $sql .= " AND DATE($dateCol) >= ?";
                 $params[] = $from_date;
                 $types .= "s";
             } elseif (!empty($to_date)) {
-                $sql .= " AND DATE(l.created_at) <= ?";
+                $sql .= " AND DATE($dateCol) <= ?";
                 $params[] = $to_date;
                 $types .= "s";
             } elseif (!empty($date)) {
-                $sql .= " AND DATE(l.created_at) = ?";
+                $sql .= " AND DATE($dateCol) = ?";
                 $params[] = $date;
                 $types .= "s";
             } else {
                 // Year filter
                 if (!empty($year)) {
-                    $sql .= " AND YEAR(l.created_at) = ?";
+                    $sql .= " AND YEAR($dateCol) = ?";
                     $params[] = $year;
                     $types .= "i";
                 }
                 // Month filter
                 if (!empty($month)) {
-                    $sql .= " AND MONTH(l.created_at) = ?";
+                    $sql .= " AND MONTH($dateCol) = ?";
                     $params[] = $month;
                     $types .= "i";
                 }
@@ -510,18 +512,32 @@ class Lead extends Model
             } elseif ($filter_card === 'contacted_leads') {
                 $sql .= " AND (
                     l.last_lead_action IN ('contacted', 'follow up', 'booked', 'visited')
+                    OR l.call_status IN ('called', 'received')
+                    OR (l.communication_type IS NOT NULL AND l.communication_type != '' AND LOWER(l.communication_type) != 'not select')
                     OR EXISTS (
                         SELECT 1 FROM lead_follow_ups lf_sub
                         WHERE lf_sub.lead_id = l.id
                           AND lf_sub.deleted_at IS NULL
                     )
+                    OR EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub
+                        WHERE lb_sub.lead_id = l.id
+                          AND lb_sub.deleted_at IS NULL
+                    )
                 )";
             } elseif ($filter_card === 'not_contacted_leads') {
                 $sql .= " AND (l.last_lead_action IS NULL OR l.last_lead_action NOT IN ('contacted', 'follow up', 'booked', 'visited'))
+                          AND (l.call_status IS NULL OR l.call_status NOT IN ('called', 'received'))
+                          AND (l.communication_type IS NULL OR l.communication_type = '' OR LOWER(l.communication_type) = 'not select')
                           AND NOT EXISTS (
                               SELECT 1 FROM lead_follow_ups lf_sub
                               WHERE lf_sub.lead_id = l.id
                                 AND lf_sub.deleted_at IS NULL
+                          )
+                          AND NOT EXISTS (
+                              SELECT 1 FROM lead_bookings lb_sub
+                              WHERE lb_sub.lead_id = l.id
+                                AND lb_sub.deleted_at IS NULL
                           )";
             } elseif ($filter_card === 'assigned_leads') {
                 $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0";
@@ -665,33 +681,35 @@ class Lead extends Model
 
         // Date range filter
         if ($applyCreatedDateFilter) {
+            $dateCol = (!empty($assigned_user) || (isset($assigned) && $assigned === 'assigned')) ? 'l.assigned_at' : 'l.created_at';
+
             if (!empty($from_date) && !empty($to_date)) {
-                $sql .= " AND DATE(l.created_at) BETWEEN ? AND ?";
+                $sql .= " AND DATE($dateCol) BETWEEN ? AND ?";
                 $params[] = $from_date;
                 $params[] = $to_date;
                 $types .= "ss";
             } elseif (!empty($from_date)) {
-                $sql .= " AND DATE(l.created_at) >= ?";
+                $sql .= " AND DATE($dateCol) >= ?";
                 $params[] = $from_date;
                 $types .= "s";
             } elseif (!empty($to_date)) {
-                $sql .= " AND DATE(l.created_at) <= ?";
+                $sql .= " AND DATE($dateCol) <= ?";
                 $params[] = $to_date;
                 $types .= "s";
             } elseif (!empty($date)) {
-                $sql .= " AND DATE(l.created_at) = ?";
+                $sql .= " AND DATE($dateCol) = ?";
                 $params[] = $date;
                 $types .= "s";
             } else {
                 // Year filter
                 if (!empty($year)) {
-                    $sql .= " AND YEAR(l.created_at) = ?";
+                    $sql .= " AND YEAR($dateCol) = ?";
                     $params[] = $year;
                     $types .= "i";
                 }
                 // Month filter
                 if (!empty($month)) {
-                    $sql .= " AND MONTH(l.created_at) = ?";
+                    $sql .= " AND MONTH($dateCol) = ?";
                     $params[] = $month;
                     $types .= "i";
                 }
@@ -800,18 +818,32 @@ class Lead extends Model
             } elseif ($filter_card === 'contacted_leads') {
                 $sql .= " AND (
                     l.last_lead_action IN ('contacted', 'follow up', 'booked', 'visited')
+                    OR l.call_status IN ('called', 'received')
+                    OR (l.communication_type IS NOT NULL AND l.communication_type != '' AND LOWER(l.communication_type) != 'not select')
                     OR EXISTS (
                         SELECT 1 FROM lead_follow_ups lf_sub
                         WHERE lf_sub.lead_id = l.id
                           AND lf_sub.deleted_at IS NULL
                     )
+                    OR EXISTS (
+                        SELECT 1 FROM lead_bookings lb_sub
+                        WHERE lb_sub.lead_id = l.id
+                          AND lb_sub.deleted_at IS NULL
+                    )
                 )";
             } elseif ($filter_card === 'not_contacted_leads') {
                 $sql .= " AND (l.last_lead_action IS NULL OR l.last_lead_action NOT IN ('contacted', 'follow up', 'booked', 'visited'))
+                          AND (l.call_status IS NULL OR l.call_status NOT IN ('called', 'received'))
+                          AND (l.communication_type IS NULL OR l.communication_type = '' OR LOWER(l.communication_type) = 'not select')
                           AND NOT EXISTS (
                               SELECT 1 FROM lead_follow_ups lf_sub
                               WHERE lf_sub.lead_id = l.id
                                 AND lf_sub.deleted_at IS NULL
+                          )
+                          AND NOT EXISTS (
+                              SELECT 1 FROM lead_bookings lb_sub
+                              WHERE lb_sub.lead_id = l.id
+                                AND lb_sub.deleted_at IS NULL
                           )";
             } elseif ($filter_card === 'assigned_leads') {
                 $sql .= " AND l.assigned_id IS NOT NULL AND l.assigned_id > 0";
@@ -1267,7 +1299,7 @@ class Lead extends Model
             $types .= "ii";
         }
 
-        $contactedCond = "(LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked') OR leads.call_status IN ('called', 'received') OR (leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select') OR lf.id IS NOT NULL)";
+        $contactedCond = "(LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked') OR leads.call_status IN ('called', 'received') OR (leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select') OR lf.id IS NOT NULL OR EXISTS (SELECT 1 FROM lead_bookings lb_sub WHERE lb_sub.lead_id = leads.id AND lb_sub.deleted_at IS NULL))";
 
         if (!empty($lastAction)) {
             if (strtolower($lastAction) === 'contacted') {
@@ -1484,7 +1516,7 @@ class Lead extends Model
             $types .= "ii";
         }
 
-        $contactedCond = "(LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked') OR leads.call_status IN ('called', 'received') OR (leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select') OR lf.id IS NOT NULL)";
+        $contactedCond = "(LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked') OR leads.call_status IN ('called', 'received') OR (leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select') OR lf.id IS NOT NULL OR EXISTS (SELECT 1 FROM lead_bookings lb_sub WHERE lb_sub.lead_id = leads.id AND lb_sub.deleted_at IS NULL))";
 
         if (!empty($lastAction)) {
             if (strtolower($lastAction) === 'contacted') {
@@ -1623,7 +1655,7 @@ class Lead extends Model
 
     public function getMyAssignedLeadsSummaryCards(int $userId, $year = null, $month = null, $lastAction = null, $lead_status = null, $only_missing_followup = false, $search = null, $followup_date = null, $filter_card = null, $projectId = null, $projectCategoryId = null, $country = null, $assignedHours = null, $from_date = null, $to_date = null, $uncontacted = false)
     {
-        $contactedCond = "(LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked') OR leads.call_status IN ('called', 'received') OR (leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select') OR lf.id IS NOT NULL)";
+        $contactedCond = "(LOWER(leads.last_lead_action) IN ('contacted', 'follow up', 'visited', 'booked') OR leads.call_status IN ('called', 'received') OR (leads.communication_type IS NOT NULL AND leads.communication_type != '' AND LOWER(leads.communication_type) != 'not select') OR lf.id IS NOT NULL OR EXISTS (SELECT 1 FROM lead_bookings lb_sub WHERE lb_sub.lead_id = leads.id AND lb_sub.deleted_at IS NULL))";
 
         $sql = "SELECT 
             COUNT(DISTINCT leads.id) as total_leads,
