@@ -179,7 +179,7 @@ unset($_SESSION['csv_import_skipped']); // clear after reading
                 }
             },
             lengthMenu: [[10, 25, 50, -1], [10, 25, 50, 'All']],
-            order: [[1, 'asc']],   // default sort by Project name
+            order: [],   // default sort falls back to server-side (latest first)
             columnDefs: [
                 { orderable: false, searchable: false, targets: 0 },  // # serial column
                 { orderable: false, searchable: false, targets: -1 }, // Actions column
