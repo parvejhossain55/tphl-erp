@@ -837,7 +837,7 @@
                     <div class="fields-grid">
                         <div class="field-group">
                             <label class="field-label">Payment Method</label>
-                            <input type="text" class="field-input" value="<?= ucfirst($invoice['payment_method']) ?>">
+                            <input type="text" class="field-input" value="<?= ucfirst($invoice['payment_method']) ?><?= !empty($invoice['online_type']) ? ' (' . htmlspecialchars($invoice['online_type']) . ')' : '' ?>">
                         </div>
 
                         <div class="field-group">
@@ -916,7 +916,7 @@
                                 <tr>
                                     <td style="border: 1px solid #ddd; padding: 6px;"><?= date('d M Y', strtotime($ap['payment_date'])) ?></td>
                                     <td style="border: 1px solid #ddd; padding: 6px;"><?= ucfirst(str_replace('_', ' ', $ap['payment_type'])) ?></td>
-                                    <td style="border: 1px solid #ddd; padding: 6px;"><?= ucfirst($ap['payment_method']) ?></td>
+                                    <td style="border: 1px solid #ddd; padding: 6px;"><?= ucfirst($ap['payment_method']) ?><?= !empty($ap['online_type']) ? ' (' . htmlspecialchars($ap['online_type']) . ')' : '' ?></td>
                                     <td style="border: 1px solid #ddd; padding: 6px; text-align: right;"><?= number_format($ap['amount'], 2) ?></td>
                                 </tr>
                                 <?php endforeach; ?>

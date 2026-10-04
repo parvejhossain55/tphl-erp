@@ -35,6 +35,14 @@ $isShop            = (int)($flat['is_shop'] ?? 0);
                     <select name="unit_type" id="unitType" class="form-control" required>
                         <option value="residential" <?= $unitType === 'residential' ? 'selected' : '' ?>>Residential (Flat)</option>
                         <option value="commercial"  <?= $unitType === 'commercial'  ? 'selected' : '' ?>>Commercial (Shop)</option>
+                        <option value="Presidential" <?= $unitType === 'Presidential' ? 'selected' : '' ?>>Presidential</option>
+                        <option value="Superior" <?= $unitType === 'Superior' ? 'selected' : '' ?>>Superior</option>
+                        <option value="Royal" <?= $unitType === 'Royal' ? 'selected' : '' ?>>Royal</option>
+                        <option value="Elite" <?= $unitType === 'Elite' ? 'selected' : '' ?>>Elite</option>
+                        <option value="Executive" <?= $unitType === 'Executive' ? 'selected' : '' ?>>Executive</option>
+                        <option value="Signature" <?= $unitType === 'Signature' ? 'selected' : '' ?>>Signature</option>
+                        <option value="Grand" <?= $unitType === 'Grand' ? 'selected' : '' ?>>Grand</option>
+                        <option value="Classic" <?= $unitType === 'Classic' ? 'selected' : '' ?>>Classic</option>
                     </select>
                 </div>
 

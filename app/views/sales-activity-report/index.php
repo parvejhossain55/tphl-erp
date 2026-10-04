@@ -1115,46 +1115,46 @@
 
                         <!-- Scorecard Table -->
                         <div class="table-responsive border rounded shadow-sm">
-                            <table class="table table-hover table-bordered text-nowrap align-middle mb-0" id="scorecardDataTable">
-                                <thead class="table-light text-center">
-                                    <tr class="align-middle fs-12">
-                                        <th rowspan="2" style="width: 50px;">Rank</th>
-                                        <th rowspan="2" class="text-start">Sales Member</th>
-                                        <th colspan="3" class="bg-success-transparent text-success fw-bold">1. Volume Target (30%)</th>
-                                        <th colspan="2" class="bg-primary-transparent text-primary fw-bold">2. Value Realization (20%)</th>
-                                        <th colspan="2" class="bg-info-transparent text-info fw-bold">3. Units (10%)</th>
-                                        <th colspan="2" class="bg-dark-transparent text-dark fw-bold">4. Visits (10%)</th>
-                                        <th colspan="3" class="bg-warning-transparent text-warning fw-bold">5. Sales CVR (10%)</th>
-                                        <th colspan="2" class="bg-secondary-transparent text-secondary fw-bold">6. Connected (10%)</th>
-                                        <th colspan="2" class="bg-danger-transparent text-danger fw-bold">7. Quality (5%)</th>
-                                        <th rowspan="2" class="bg-secondary-transparent text-secondary">8. HR (5%)</th>
-                                        <th rowspan="2" style="min-width: 140px;" class="bg-success text-light fw-bold">Total Score</th>
-                                        <th rowspan="2" style="width: 60px;">Action</th>
+                            <table class="table table-hover table-bordered text-nowrap align-middle mb-0 bg-white" id="scorecardDataTable">
+                                <thead class="text-center" style="background-color: #ffffff;">
+                                    <tr class="align-middle">
+                                        <th rowspan="2" style="width: 50px; font-size: 12px; font-weight: 600; color: #475569; border-bottom: 1px solid #dee2e6;">Rank</th>
+                                        <th rowspan="2" class="text-start" style="font-size: 12px; font-weight: 600; color: #475569; border-bottom: 1px solid #dee2e6;">Sales Member</th>
+                                        <th colspan="3" class="text-success fw-bold border-bottom" style="font-size: 12px;">1. Volume Target (30%)</th>
+                                        <th colspan="2" class="text-primary fw-bold border-bottom" style="font-size: 12px;">2. Value Realization (20%)</th>
+                                        <th colspan="2" class="text-info fw-bold border-bottom" style="font-size: 12px;">3. Units (10%)</th>
+                                        <th colspan="2" class="text-dark fw-bold border-bottom" style="font-size: 12px;">4. Visits (10%)</th>
+                                        <th colspan="3" class="text-warning fw-bold border-bottom" style="font-size: 12px;">5. Sales CVR (10%)</th>
+                                        <th colspan="2" class="text-secondary fw-bold border-bottom" style="font-size: 12px;">6. Connected (10%)</th>
+                                        <th colspan="2" class="text-danger fw-bold border-bottom" style="font-size: 12px;">7. Quality (5%)</th>
+                                        <th rowspan="2" class="text-success fw-bold" style="font-size: 12px; border-bottom: 1px solid #dee2e6;">8. HR (5%)</th>
+                                        <th rowspan="2" style="min-width: 140px; font-size: 12px; font-weight: 600;" class="bg-success text-light fw-bold">Total Score</th>
+                                        <th rowspan="2" style="width: 60px; font-size: 12px; font-weight: 600; border-bottom: 1px solid #dee2e6;">Action</th>
                                     </tr>
-                                    <tr class="fs-11">
+                                    <tr>
                                         <!-- 1 -->
-                                        <th class="bg-success-transparent">Target (Tk)</th>
-                                        <th class="bg-success-transparent">Achieved (Tk)</th>
-                                        <th class="bg-success-transparent text-success fw-bold">Score (/30)</th>
+                                        <th class="text-muted fw-normal" style="font-size: 11px;">Target (Tk)</th>
+                                        <th class="text-muted fw-normal" style="font-size: 11px;">Achieved (Tk)</th>
+                                        <th class="text-success fw-bold" style="font-size: 11px;">Score (/30)</th>
                                         <!-- 2 -->
-                                        <th class="bg-primary-transparent">Ach %</th>
-                                        <th class="bg-primary-transparent text-primary fw-bold">Score (/20)</th>
+                                        <th class="text-muted fw-normal" style="font-size: 11px;">Ach %</th>
+                                        <th class="text-primary fw-bold" style="font-size: 11px;">Score (/20)</th>
                                         <!-- 3 -->
-                                        <th class="bg-info-transparent">Tgt / Sold</th>
-                                        <th class="bg-info-transparent text-info fw-bold">Score (/10)</th>
+                                        <th class="text-muted fw-normal" style="font-size: 11px;">Tgt / Sold</th>
+                                        <th class="text-info fw-bold" style="font-size: 11px;">Score (/10)</th>
                                         <!-- 4 -->
-                                        <th class="bg-dark-transparent">Tgt / Done</th>
-                                        <th class="bg-dark-transparent text-dark fw-bold">Score (/10)</th>
+                                        <th class="text-muted fw-normal" style="font-size: 11px;">Tgt / Done</th>
+                                        <th class="text-dark fw-bold" style="font-size: 11px;">Score (/10)</th>
                                         <!-- 5 -->
-                                        <th class="bg-warning-transparent">Leads</th>
-                                        <th class="bg-warning-transparent">CVR %</th>
-                                        <th class="bg-warning-transparent text-warning fw-bold">Score (/10)</th>
+                                        <th class="text-muted fw-normal" style="font-size: 11px;">Leads</th>
+                                        <th class="text-muted fw-normal" style="font-size: 11px;">CVR %</th>
+                                        <th class="text-warning fw-bold" style="font-size: 11px;">Score (/10)</th>
                                         <!-- 6 -->
-                                        <th class="bg-secondary-transparent">Cont. %</th>
-                                        <th class="bg-secondary-transparent text-secondary fw-bold">Score (/10)</th>
+                                        <th class="text-muted fw-normal" style="font-size: 11px;">Cont. %</th>
+                                        <th class="text-secondary fw-bold" style="font-size: 11px;">Score (/10)</th>
                                         <!-- 7 -->
-                                        <th class="bg-danger-transparent">Hot / High</th>
-                                        <th class="bg-danger-transparent text-danger fw-bold">Score (/5)</th>
+                                        <th class="text-muted fw-normal" style="font-size: 11px;">Hot / High</th>
+                                        <th class="text-danger fw-bold" style="font-size: 11px;">Score (/5)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1174,14 +1174,14 @@
                                         <!-- 1. Volume 30% -->
                                         <td><?= number_format($emp['volume_target'], 0) ?></td>
                                         <td class="fw-semibold <?= $emp['total_volume_achieved'] > 0 ? 'text-success' : 'text-muted' ?>"><?= number_format($emp['total_volume_achieved'], 0) ?></td>
-                                        <td class="fw-bold text-success bg-success-transparent"><?= number_format($sc['pillar1_score'] ?? 0, 2) ?></td>
+                                        <td class="fw-bold text-success"><?= number_format($sc['pillar1_score'] ?? 0, 2) ?></td>
                                         <!-- 2. Value 20% -->
                                         <td>
                                             <span class="badge <?= !empty($sc['min_20_met']) ? 'bg-success-transparent text-success' : 'bg-danger-transparent text-danger' ?>">
                                                 <?= $emp['volume_ach_pct'] ?>%
                                             </span>
                                         </td>
-                                        <td class="fw-bold text-primary bg-primary-transparent"><?= number_format($sc['pillar2_score'] ?? 0, 2) ?></td>
+                                        <td class="fw-bold text-primary"><?= number_format($sc['pillar2_score'] ?? 0, 2) ?></td>
                                         <!-- 3. Units 10% -->
                                         <td>
                                             <?= $emp['unit_target'] ?> / 
@@ -1200,10 +1200,10 @@
                                                 <strong>0</strong>
                                             <?php endif; ?>
                                         </td>
-                                        <td class="fw-bold text-info bg-info-transparent"><?= number_format($sc['pillar3_score'] ?? 0, 2) ?></td>
+                                        <td class="fw-bold text-info"><?= number_format($sc['pillar3_score'] ?? 0, 2) ?></td>
                                         <!-- 4. Visits 10% -->
                                         <td><?= $emp['visit_target'] ?> / <strong><?= $emp['visited'] ?></strong></td>
-                                        <td class="fw-bold text-dark bg-dark-transparent"><?= number_format($sc['pillar4_score'] ?? 0, 2) ?></td>
+                                        <td class="fw-bold text-dark"><?= number_format($sc['pillar4_score'] ?? 0, 2) ?></td>
                                         <!-- 5. Sales CVR 10% -->
                                         <td><?= $emp['assigned_leads'] ?></td>
                                         <td>
@@ -1211,17 +1211,17 @@
                                                 <?= $sc['cvr_pct'] ?>%
                                             </span>
                                         </td>
-                                        <td class="fw-bold text-warning bg-warning-transparent"><?= number_format($sc['pillar5_score'] ?? 0, 2) ?></td>
+                                        <td class="fw-bold text-warning"><?= number_format($sc['pillar5_score'] ?? 0, 2) ?></td>
                                         <!-- 6. Connected 10% -->
                                         <td><?= $sc['contacted_ratio_pct'] ?>%</td>
-                                        <td class="fw-bold text-secondary bg-secondary-transparent"><?= number_format($sc['pillar6_score'] ?? 0, 2) ?></td>
+                                        <td class="fw-bold text-secondary"><?= number_format($sc['pillar6_score'] ?? 0, 2) ?></td>
                                         <!-- 7. Quality 5% -->
                                         <td><?= $sc['quality_leads'] ?> <small class="text-muted">(<?= $sc['quality_pct'] ?>%)</small></td>
-                                        <td class="fw-bold text-danger bg-danger-transparent"><?= number_format($sc['pillar7_score'] ?? 0, 2) ?></td>
+                                        <td class="fw-bold text-danger"><?= number_format($sc['pillar7_score'] ?? 0, 2) ?></td>
                                         <!-- 8. HR 5% -->
-                                        <td class="fw-semibold text-secondary"><?= number_format($sc['pillar8_score'] ?? 0, 2) ?></td>
+                                        <td class="fw-semibold text-success"><?= number_format($sc['pillar8_score'] ?? 0, 2) ?></td>
                                         <!-- Total Score -->
-                                        <td class="text-start bg-light">
+                                        <td class="text-start">
                                             <div class="d-flex justify-content-between align-items-center mb-1">
                                                 <span class="fw-bold fs-13 "><?= number_format($sc['total_score'] ?? 0, 2) ?>%</span>
                                                 <span class="badge bg-<?= $gradeClass ?> fs-10"><?= $sc['grade'] ?? 'Good' ?></span>

@@ -97,10 +97,13 @@ class FlatController extends Controller
             $serial = $start + $index + 1;
             
             // Format type badge
-            if (($flat['unit_type'] ?? 'residential') === 'commercial') {
-                $typeBadge = '<span class="bd-badge bg-warning "><i class="bi bi-shop me-1"></i> Shop</span>';
+            $unitType = $flat['unit_type'] ?? 'residential';
+            if ($unitType === 'commercial') {
+                $typeBadge = '<span class="bd-badge bg-warning "><i class="bi bi-shop me-1"></i> Commercial (Shop)</span>';
+            } elseif ($unitType === 'residential') {
+                $typeBadge = '<span class="bd-badge bg-primary"><i class="bi bi-building me-1"></i> Residential (Flat)</span>';
             } else {
-                $typeBadge = '<span class="bd-badge bg-primary"><i class="bi bi-building me-1"></i> Flat</span>';
+                $typeBadge = '<span class="bd-badge bg-info"><i class="bi bi-building me-1"></i> ' . htmlspecialchars(ucfirst($unitType)) . '</span>';
             }
 
             // Format service charge

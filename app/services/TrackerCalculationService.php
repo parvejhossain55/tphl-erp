@@ -742,7 +742,8 @@ class TrackerCalculationService
                 : 0.00;
 
             // 8. HR Compliance & Discipline (5%)
-            $pillar8_score = 5.00;
+            $hasActivity = ($assignedLeads > 0 || $contacted > 0 || $visitsDone > 0 || $unitsSold > 0);
+            $pillar8_score = $hasActivity ? 5.00 : 0.00;
 
             $totalScorecard = round($pillar1_score + $pillar2_score + $pillar3_score + $pillar4_score + $pillar5_score + $pillar6_score + $pillar7_score + $pillar8_score, 2);
 

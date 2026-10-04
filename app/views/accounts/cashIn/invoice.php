@@ -376,7 +376,7 @@ if (!$isCashPayment) {
             if (!empty($rawBankName) && !in_array(strtolower($rawBankName), ['0', 'n/a', 'none', 'cash']) && stripos($rawBankName, $receiverHolderName) === false) {
                 $senderBankName = $rawBankName;
             } else {
-                $senderBankName = $matchedCb['bank_name'];
+                $senderBankName = (strtoupper($paymentMethod) === 'ONLINE' || strtoupper($paymentMethod) === 'CASH') ? 'N/A' : $matchedCb['bank_name'];
             }
         }
     } else {
@@ -1269,10 +1269,18 @@ if (!$isCashPayment) {
                 </div>
                 <?php else: ?>
                 <div class="proc-box">
-                    <span class="proc-label">Sender Bank Name:</span>
-                    <span class="proc-value"><?= htmlspecialchars($senderBankName) ?></span>
-                    <?php if (!empty($clientAccountNo) && $clientAccountNo !== 'N/A'): ?>
-                        <span class="proc-sub">A/C: <?= htmlspecialchars($clientAccountNo) ?></span>
+                    <?php if (strtoupper($paymentMethod) === 'ONLINE'): ?>
+                        <span class="proc-label">Online Type:</span>
+                        <span class="proc-value"><?= !empty($payment['online_type']) ? htmlspecialchars($payment['online_type']) : 'N/A' ?></span>
+                        <?php if (!empty($senderBankName) && $senderBankName !== 'N/A'): ?>
+                            <span class="proc-sub">Sender Bank: <?= htmlspecialchars($senderBankName) ?></span>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <span class="proc-label">Sender Bank Name:</span>
+                        <span class="proc-value"><?= htmlspecialchars($senderBankName) ?></span>
+                        <?php if (!empty($clientAccountNo) && $clientAccountNo !== 'N/A'): ?>
+                            <span class="proc-sub">A/C: <?= htmlspecialchars($clientAccountNo) ?></span>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
                 <div class="proc-box">
