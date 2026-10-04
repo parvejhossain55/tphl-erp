@@ -859,8 +859,8 @@ class EmployeeDashboardController extends Controller
                     $logOfficeId = $normalizeIdPhp($aLeave['employeeOfficeId'] ?? '');
                     if (($tipsoiId && (string)$logEmpId === (string)$tipsoiId) || ($normOfficeId && $logOfficeId === $normOfficeId)) {
                         $foundPendingLeaves = true;
-                        $sDate = !empty($aLeave['startDate']) ? date('Y-m-d', (int)($aLeave['startDate'] / 1000)) : '—';
-                        $eDate = !empty($aLeave['endDate']) ? date('Y-m-d', (int)($aLeave['endDate'] / 1000)) : $sDate;
+                        $sDate = !empty($aLeave['startDate']) ? (is_numeric($aLeave['startDate']) ? date('Y-m-d', (int)($aLeave['startDate'] / 1000)) : date('Y-m-d', strtotime($aLeave['startDate']))) : '—';
+                        $eDate = !empty($aLeave['endDate']) ? (is_numeric($aLeave['endDate']) ? date('Y-m-d', (int)($aLeave['endDate'] / 1000)) : date('Y-m-d', strtotime($aLeave['endDate']))) : $sDate;
                         $dateStr = ($sDate === $eDate) ? $sDate : "$sDate to $eDate";
                         $catName = $aLeave['categoryName'] ?? 'Leave';
                         $myPendingRequests[] = [
@@ -915,7 +915,11 @@ class EmployeeDashboardController extends Controller
                     foreach ($lateApps as $lateApp) {
                         $appStatus = $lateApp['approvalStatus'] ?? $lateApp['status'] ?? 0;
                         if ((int)$appStatus === 0) {
-                            $attDate = !empty($lateApp['attendanceDate']) ? date('Y-m-d', (int)($lateApp['attendanceDate'] / 1000)) : ($lateApp['date'] ?? '—');
+                            $rawLate = $lateApp['attendanceDate'] ?? $lateApp['date'] ?? null;
+                            $attDate = '—';
+                            if (!empty($rawLate)) {
+                                $attDate = is_numeric($rawLate) ? date('Y-m-d', (int)($rawLate / 1000)) : date('Y-m-d', strtotime($rawLate));
+                            }
                             $myPendingRequests[] = [
                                 'id' => $lateApp['lateApprovalLogId'] ?? $lateApp['id'] ?? null,
                                 'rawType' => 'late',
@@ -1110,7 +1114,7 @@ class EmployeeDashboardController extends Controller
                 foreach ($lJson['leaveLogList'] ?? [] as $lLog) {
                     $logId = $lLog['id'] ?? null;
                     if ($logId) {
-                        $sD = !empty($lLog['startDate']) ? date('Y-m-d', (int)($lLog['startDate'] / 1000)) : '';
+                        $sD = !empty($lLog['startDate']) ? (is_numeric($lLog['startDate']) ? date('Y-m-d', (int)($lLog['startDate'] / 1000)) : date('Y-m-d', strtotime($lLog['startDate']))) : '';
                         $cName = strtolower(trim($lLog['categoryName'] ?? ''));
                         $leaveIdMap[$cName . '_' . $sD] = $logId;
                         $leaveIdMap[$sD] = $logId;
@@ -1141,7 +1145,7 @@ class EmployeeDashboardController extends Controller
                                     'approvalStatus' => (int)($item['approvalStatus'] ?? 0),
                                     'reason' => $item['reason'] ?? '—',
                                     'duration' => !empty($item['days']) ? (float)$item['days'] : 1.0,
-                                    'appliedDate' => !empty($item['appliedDate']) ? date('Y-m-d', (int)($item['appliedDate'] / 1000)) : '—',
+                                    'appliedDate' => !empty($item['appliedDate']) ? (is_numeric($item['appliedDate']) ? date('Y-m-d', (int)($item['appliedDate'] / 1000)) : date('Y-m-d', strtotime($item['appliedDate']))) : '—',
                                     'firstApprover' => $item['firstApproverName'] ?? '',
                                     'secondApprover' => $item['secondApproverName'] ?? ''
                                 ];
@@ -1165,11 +1169,10 @@ class EmployeeDashboardController extends Controller
                 $lateData = json_decode($lateRes, true);
                 $rawLates = $lateData['lateLogList'] ?? [];
                 foreach ($rawLates as $late) {
+                    $rawLateDate = $late['attendanceDate'] ?? $late['date'] ?? null;
                     $logDate = '—';
-                    if (isset($late['attendanceDate'])) {
-                        $logDate = date('Y-m-d', (int)($late['attendanceDate'] / 1000));
-                    } elseif (isset($late['date'])) {
-                        $logDate = is_numeric($late['date']) ? date('Y-m-d', (int)($late['date'] / 1000)) : $late['date'];
+                    if (!empty($rawLateDate)) {
+                        $logDate = is_numeric($rawLateDate) ? date('Y-m-d', (int)($rawLateDate / 1000)) : date('Y-m-d', strtotime($rawLateDate));
                     }
 
                     $inTimeStr = '—';
@@ -1212,8 +1215,8 @@ class EmployeeDashboardController extends Controller
                     $typeVal = (int)($entry['manualEntryType'] ?? 1);
                     $typeName = ($typeVal === 1) ? 'Manual Entry' : (($typeVal === 2) ? 'Late Excuse' : 'Field Visit');
                     
-                    $startDate = !empty($entry['startDate']) ? date('Y-m-d', (int)($entry['startDate'] / 1000)) : '—';
-                    $endDate = !empty($entry['endDate']) ? date('Y-m-d', (int)($entry['endDate'] / 1000)) : $startDate;
+                    $startDate = !empty($entry['startDate']) ? (is_numeric($entry['startDate']) ? date('Y-m-d', (int)($entry['startDate'] / 1000)) : date('Y-m-d', strtotime($entry['startDate']))) : '—';
+                    $endDate = !empty($entry['endDate']) ? (is_numeric($entry['endDate']) ? date('Y-m-d', (int)($entry['endDate'] / 1000)) : date('Y-m-d', strtotime($entry['endDate']))) : $startDate;
                     
                     $entryTime = !empty($entry['entryTime']) && is_numeric($entry['entryTime']) ? date('h:i A', (int)($entry['entryTime'] / 1000)) : '—';
                     $exitTime = !empty($entry['exitTime']) && is_numeric($entry['exitTime']) ? date('h:i A', (int)($entry['exitTime'] / 1000)) : '—';

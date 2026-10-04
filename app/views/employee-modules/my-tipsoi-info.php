@@ -1692,6 +1692,10 @@ document.addEventListener("DOMContentLoaded", function() {
             .catch(err => {
                 banner.classList.add("d-none");
                 warning.classList.remove("d-none");
+                const headingEl = document.getElementById("notRegisteredHeading");
+                if (headingEl) {
+                    headingEl.textContent = "Tipsoi Data Sync Error";
+                }
                 document.getElementById("notRegisteredMsg").textContent = "API connection failure: " + err.message;
             });
     }
