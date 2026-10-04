@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 class AccountClientController extends Controller
 {
     protected $db;
@@ -3628,6 +3628,7 @@ public function discountStatement($bookingId = null)
                 lp.verification_status,
                 lp.attachment_paths,
                 lp.attachment_image,
+                lp.attachment_image2,
                 lp.rejection_reason,
                 uv.full_name AS verified_by_name,
                 lp.verified_at
@@ -3663,6 +3664,12 @@ public function discountStatement($bookingId = null)
             $legacyPath = 'uploads/payments/' . $row['attachment_image'];
             if (!in_array($legacyPath, $files)) {
                 $files[] = $legacyPath;
+            }
+        }
+        if (!empty($row['attachment_image2'])) {
+            $legacyPath2 = 'uploads/payments/' . $row['attachment_image2'];
+            if (!in_array($legacyPath2, $files)) {
+                $files[] = $legacyPath2;
             }
         }
 

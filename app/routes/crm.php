@@ -95,6 +95,7 @@ return [
     'payment-booking-update' => ['controller' => 'PaymentBookingController', 'method' => 'update'],
     'payment-booking-delete/(\d+)' => ['controller' => 'PaymentBookingController', 'method' => 'delete'],
     'payment-booking-invoice/(\d+)' => ['controller' => 'PaymentBookingController', 'method' => 'invoice'],
+    'payment-booking-combine' => ['controller' => 'PaymentBookingController', 'method' => 'combinePayments'],
 
     // =========================================================================
     // Controller: SalesTeamKpiController

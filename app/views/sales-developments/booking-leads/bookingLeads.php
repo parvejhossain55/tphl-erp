@@ -670,7 +670,15 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             const selectedFlatId = this.value;
             const flat = flatData.find(f => f.flat_id == selectedFlatId);
             flatPriceInput.value = flat ? Number(flat.price_value).toLocaleString() : '';
-            landValueInput.value = flat ? Number(flat.land_share_value).toLocaleString() : '';
+            if (flat) {
+                if (flat.booking_money && flat.booking_money > 0) {
+                    landValueInput.value = Number(flat.booking_money).toLocaleString();
+                } else {
+                    landValueInput.value = Number(flat.land_share_value).toLocaleString();
+                }
+            } else {
+                landValueInput.value = '';
+            }
         });
     });
 </script>

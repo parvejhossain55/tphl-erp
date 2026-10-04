@@ -44,7 +44,11 @@ foreach ($payments as $p) {
 $remaining = $finalAmount - $booking_pending_and_paid;
 $is_booking_fully_paid = ($remaining <= 0);
 
-$totalRegistrationAmount = abs((float)($booking['land_share_value'] ?? 0) - (float)($booking['agreement_value'] ?? 0));
+$totalRegistrationAmount = (float)($booking['registration_money'] ?? 0);
+if ($totalRegistrationAmount <= 0) {
+    // fallback if registration_money is not set in flat table
+    $totalRegistrationAmount = abs((float)($booking['land_share_value'] ?? 0) - (float)($booking['agreement_value'] ?? 0));
+}
 $registrationRemaining = $totalRegistrationAmount - $registration_pending_and_paid;
 $is_registration_fully_paid = ($registrationRemaining <= 0);
 
@@ -116,6 +120,7 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
                             <input type="text" class="form-control" value="<?= $booking['total_share'] ?>" readonly>
                         </div>
 
+
                         <div class="col-lg-6">
                             <div class="form__input-title">
 
@@ -136,6 +141,12 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
                                     <label class="form__input-title">Project Share Value</label>
                                 </div>
                                 <input type="text" class="form-control" value="<?= number_format($booking['price_value'], 2) ?>" readonly>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="form__input-title">
+                                    <label class="form__input-title">Land Share Value</label>
+                                </div>
+                                <input type="text" class="form-control" value="<?= number_format($booking['land_share_value'] ?? 0, 2) ?>" readonly>
                             </div>
                             <div class="col-lg-6">
                                 <div class="form__input-title">
@@ -276,8 +287,7 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
                             <input type="number" step="1" name="amount"
                                 class="form-control"
                                 placeholder="<?= $placeholderText ?>"
-                                <?= $form_mode === 'booking_money' ? 'max="' . $remaining . '"' : '' ?>
-                                <?= $form_mode === 'registration' ? 'max="' . $registrationRemaining . '" value="' . $registrationAmountValue . '"' : '' ?>
+                                <?= $form_mode === 'registration' ? 'value="' . $registrationAmountValue . '"' : '' ?>
                                 required>
                         </div>
 
@@ -304,6 +314,14 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
                                 <label class="form__input-title">Attachment Image</label>
                             </div>
                             <input type="file" name="attachment_image" class="form-control" accept="image/*,application/pdf">
+                        </div>
+
+                        <!-- Attachment Image 2 -->
+                        <div class="col-lg-6">
+                            <div class="form__input-title">
+                                <label class="form__input-title">Attachment Image 2 (Optional)</label>
+                            </div>
+                            <input type="file" name="attachment_image2" class="form-control" accept="image/*,application/pdf">
                         </div>
 
                         <!-- Status -->
@@ -359,6 +377,49 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
 <?php endif ?>
 
 <!-- Payment Table -->
+<?php
+// Find transaction refs that have more than 1 payment
+$multi_refs = [];
+$ref_counts = [];
+foreach ($payments as $p) {
+    if (!empty($p['transaction_ref']) && empty($p['batch_id'])) {
+        $ref_counts[$p['transaction_ref']] = ($ref_counts[$p['transaction_ref']] ?? 0) + 1;
+    }
+}
+foreach ($ref_counts as $ref => $count) {
+    if ($count > 1) {
+        $multi_refs[] = $ref;
+    }
+}
+?>
+
+<?php if (!empty($multi_refs)): ?>
+<div class="mb-3 d-flex align-items-center gap-2 bg-light p-2 rounded border">
+    <label class="mb-0 fw-bold">Combine Old Receipts:</label>
+    <select id="combine_ref_select" class="form-select form-select-sm w-auto">
+        <option value="">Select Reference No.</option>
+        <?php foreach ($multi_refs as $ref): ?>
+            <option value="<?= htmlspecialchars($ref) ?>"><?= htmlspecialchars($ref) ?></option>
+        <?php endforeach; ?>
+    </select>
+    <button type="button" class="btn btn-warning btn-sm" onclick="generateCombinedReceipt()">
+        <i class="fa-solid fa-object-group me-1"></i> Generate Combined Receipt
+    </button>
+</div>
+<script>
+function generateCombinedReceipt() {
+    const ref = document.getElementById('combine_ref_select').value;
+    if (!ref) {
+        alert('Please select a reference number first.');
+        return;
+    }
+    if (confirm('Are you sure you want to combine the receipts for reference: ' + ref + '?')) {
+        window.location.href = '<?= $GLOBALS["base_url"] ?>/payment-booking-combine?booking_id=<?= $booking["id"] ?>&ref=' + encodeURIComponent(ref);
+    }
+}
+</script>
+<?php endif; ?>
+
 <div class="row">
     <div class="col-xxl-12">
         <div class="card__wrapper">
@@ -493,10 +554,29 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
                                             
                                             <?php if (strtolower($p['payment_type']) === 'booking_money'): ?>
                                                 <a target="_blank"
-                                                    href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $p['id'] ?>"
-                                                    class="d-none btn btn-primary btn-sm"
+                                                    href="<?= $GLOBALS['base_url'] ?>/payment-booking-invoice/<?= $p['id'] ?>"
+                                                    class="btn btn-primary btn-sm"
                                                     title="Print Booking Form">
                                                     <i class="fa-solid fa-file-signature me-1"></i> Booking Form
+                                                </a>
+                                            <?php endif; ?>
+
+                                            <!-- Attachments -->
+                                            <?php if (!empty($p['attachment_image'])): ?>
+                                                <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/payments/<?= $p['attachment_image'] ?>" 
+                                                   target="_blank" 
+                                                   class="btn btn-outline-info btn-sm"
+                                                   title="View Attachment 1">
+                                                    <i class="fa-solid fa-paperclip"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                            
+                                            <?php if (!empty($p['attachment_image2'])): ?>
+                                                <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/payments/<?= $p['attachment_image2'] ?>" 
+                                                   target="_blank" 
+                                                   class="btn btn-outline-info btn-sm"
+                                                   title="View Attachment 2">
+                                                    <i class="fa-solid fa-paperclip"></i>
                                                 </a>
                                             <?php endif; ?>
 

@@ -36,8 +36,8 @@ class PaymentLeadBooking extends Model
             INSERT INTO lead_payments
             (booking_id, bank_id, bank_name, bank_account_no, cheque_no, online_type, 
              payment_type, amount, payment_method, payment_status, verification_status, verified_by,
-             payment_date, transaction_ref, total_emi_no, created_by, attachment_image)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             payment_date, transaction_ref, total_emi_no, created_by, attachment_image, attachment_image2)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $v = function($key) use ($data) {
@@ -49,10 +49,10 @@ class PaymentLeadBooking extends Model
         $v_amount = $v('amount'); $v_payment_method = $v('payment_method'); $v_payment_status = $v('payment_status');
         $v_verification_status = $v('verification_status') ?? 'pending'; $v_verified_by = $v('verified_by');
         $v_payment_date = $v('payment_date'); $v_transaction_ref = $v('transaction_ref'); $v_total_emi_no = $v('total_emi_no');
-        $v_created_by = $v('created_by'); $v_attachment_image = $v('attachment_image');
+        $v_created_by = $v('created_by'); $v_attachment_image = $v('attachment_image'); $v_attachment_image2 = $v('attachment_image2');
 
         $stmt->bind_param(
-            "iisssssdsssisssss",
+            "iisssssdsssissssss",
             $v_booking_id,
             $v_bank_id,
             $v_bank_name,
@@ -69,7 +69,8 @@ class PaymentLeadBooking extends Model
             $v_transaction_ref,
             $v_total_emi_no,
             $v_created_by,
-            $v_attachment_image
+            $v_attachment_image,
+            $v_attachment_image2
         );
 
         if (!$stmt->execute()) {
@@ -88,15 +89,17 @@ class PaymentLeadBooking extends Model
             INSERT INTO lead_payments
             (booking_id, bank_id, bank_name, bank_account_no, cheque_no, online_type, 
              payment_type, amount, payment_method, payment_status, verification_status,
-             payment_date, transaction_ref, total_emi_no, created_by, attachment_image)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             payment_date, transaction_ref, total_emi_no, created_by, attachment_image, attachment_image2, batch_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
             $verificationStatus = $data['verification_status'] ?? 'pending';
             $attachment_image = $data['attachment_image'] ?? '';
+            $attachment_image2 = $data['attachment_image2'] ?? '';
+            $batch_id = $data['batch_id'] ?? null;
 
             $stmt->bind_param(
-                "iisssssdsssssiss",
+                "iisssssdsssssissss",
                 $data['booking_id'],
                 $data['bank_id'],
                 $data['bank_name'],
@@ -112,7 +115,9 @@ class PaymentLeadBooking extends Model
                 $data['transaction_ref'],
                 $data['total_emi_no'],
                 $data['created_by'],
-                $attachment_image
+                $attachment_image,
+                $attachment_image2,
+                $batch_id
             );
 
             if (!$stmt->execute()) {
@@ -281,7 +286,25 @@ class PaymentLeadBooking extends Model
         $stmt->bind_param("i", $payment_id);
         $stmt->execute();
 
-        return $stmt->get_result()->fetch_assoc();
+        $invoice = $stmt->get_result()->fetch_assoc();
+
+        if ($invoice && !empty($invoice['batch_id'])) {
+            // It's part of a split/batch, get total amount for this batch
+            $batchStmt = $this->db->prepare("SELECT SUM(amount) as total_batch_amount FROM lead_payments WHERE batch_id = ? AND booking_id = ?");
+            $batchStmt->bind_param("si", $invoice['batch_id'], $invoice['booking_id']);
+            $batchStmt->execute();
+            $batchRow = $batchStmt->get_result()->fetch_assoc();
+            
+            if ($batchRow && $batchRow['total_batch_amount'] > 0) {
+                // If it's a combined payment, we can change the display type to indicate it
+                if ($invoice['payment_type'] === 'booking_money' || $invoice['payment_type'] === 'registration') {
+                    $invoice['payment_type'] = 'Booking_and_Registration'; 
+                }
+                $invoice['amount'] = $batchRow['total_batch_amount'];
+            }
+        }
+
+        return $invoice;
     }
 
     public function isPaymentVerified($payment_id)

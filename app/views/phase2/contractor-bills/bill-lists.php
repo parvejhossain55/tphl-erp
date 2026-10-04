@@ -1,6 +1,28 @@
 <?php
 $base_url   = $GLOBALS['base_url'];
 $page_title = $page_title ?? 'Contractor Bill Requests';
+
+$countAll        = count($bills ?? []);
+$countDraft      = 0;
+$countSubmitted  = 0;
+$countVerified   = 0;
+$countQcApproved = 0;
+$countApproved   = 0;
+$countRejected   = 0;
+$countPaid       = 0;
+
+foreach (($bills ?? []) as $b) {
+    match ($b['status'] ?? '') {
+        'draft'          => $countDraft++,
+        'submitted'      => $countSubmitted++,
+        'verified'       => $countVerified++,
+        'qc_approved'    => $countQcApproved++,
+        'approved'       => $countApproved++,
+        'rejected'       => $countRejected++,
+        'paid', 'partially_paid', 'fully_paid' => $countPaid++,
+        default          => null,
+    };
+}
 ?>
 <div class="container-fluid">
     <div class="d-md-flex d-block align-items-center justify-content-between my-4 page-header-breadcrumb">
@@ -13,6 +35,66 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
             <?php endif; ?>
         </div>
       
+    </div>
+
+    <!-- Filter Toolbar: Tabs / Pills + Status Dropdown -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary bill-filter-pill active" data-status="All" onclick="filterBillTable('All', this)">
+                <i class="bi bi-grid-fill me-1"></i> All <span class="badge bg-secondary ms-1 rounded-pill"><?= $countAll ?></span>
+            </button>
+
+            <button type="button" class="btn btn-sm btn-outline-warning bill-filter-pill" data-status="Draft" onclick="filterBillTable('Draft', this)">
+                <i class="bi bi-pencil-fill me-1"></i> Draft 
+                <span class="badge bg-warning text-dark ms-1 rounded-pill"><?= $countDraft ?></span>
+            </button>
+
+            <button type="button" class="btn btn-sm btn-outline-info bill-filter-pill" data-status="Submitted" onclick="filterBillTable('Submitted', this)">
+                <i class="bi bi-hourglass-split me-1"></i> Submitted 
+                <span class="badge bg-info text-dark ms-1 rounded-pill"><?= $countSubmitted ?></span>
+            </button>
+
+            <button type="button" class="btn btn-sm btn-outline-primary bill-filter-pill" data-status="Verified" onclick="filterBillTable('Verified', this)">
+                <i class="bi bi-check-circle me-1"></i> PM Verified 
+                <span class="badge bg-primary ms-1 rounded-pill"><?= $countVerified ?></span>
+            </button>
+
+            <button type="button" class="btn btn-sm btn-outline-secondary bill-filter-pill" data-status="Qc approved" onclick="filterBillTable('Qc approved', this)">
+                <i class="bi bi-shield-check me-1"></i> QC Approved 
+                <span class="badge bg-secondary ms-1 rounded-pill"><?= $countQcApproved ?></span>
+            </button>
+
+            <button type="button" class="btn btn-sm btn-outline-success bill-filter-pill" data-status="Approved" onclick="filterBillTable('Approved', this)">
+                <i class="bi bi-check-circle-fill me-1"></i> Approved 
+                <span class="badge bg-success ms-1 rounded-pill"><?= $countApproved ?></span>
+            </button>
+
+            <button type="button" class="btn btn-sm btn-outline-danger bill-filter-pill" data-status="Rejected" onclick="filterBillTable('Rejected', this)">
+                <i class="bi bi-x-circle-fill me-1"></i> Rejected 
+                <span class="badge bg-danger ms-1 rounded-pill"><?= $countRejected ?></span>
+            </button>
+
+            <button type="button" class="btn btn-sm btn-outline-dark bill-filter-pill" data-status="Paid" onclick="filterBillTable('Paid', this)">
+                <i class="bi bi-cash me-1"></i> Paid 
+                <span class="badge bg-dark ms-1 rounded-pill"><?= $countPaid ?></span>
+            </button>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <label for="billStatusFilterSelect" class="small text-muted fw-bold mb-0 text-nowrap">
+                <i class="bi bi-funnel-fill me-1"></i>Status Filter:
+            </label>
+            <select id="billStatusFilterSelect" class="form-select form-select-sm shadow-xs" style="min-width: 175px; font-weight: 600;" onchange="onStatusSelectChange(this.value)">
+                <option value="All">All Statuses (<?= $countAll ?>)</option>
+                <option value="Draft">Draft (<?= $countDraft ?>)</option>
+                <option value="Submitted">Submitted (<?= $countSubmitted ?>)</option>
+                <option value="Verified">PM Verified (<?= $countVerified ?>)</option>
+                <option value="Qc approved">QC Approved (<?= $countQcApproved ?>)</option>
+                <option value="Approved">Approved (<?= $countApproved ?>)</option>
+                <option value="Rejected">Rejected (<?= $countRejected ?>)</option>
+                <option value="Paid">Paid (<?= $countPaid ?>)</option>
+            </select>
+        </div>
     </div>
 
     <div class="card custom-card">
@@ -251,6 +333,71 @@ $page_title = $page_title ?? 'Contractor Bill Requests';
 </style>
 
 <script>
+window.filterBillTable = function (status, btnElement) {
+    document.querySelectorAll('.bill-filter-pill').forEach(function (pill) {
+        pill.classList.remove('active');
+        if (pill.classList.contains('btn-secondary')) {
+            pill.classList.replace('btn-secondary', 'btn-outline-secondary');
+        } else if (pill.classList.contains('btn-danger')) {
+            pill.classList.replace('btn-danger', 'btn-outline-danger');
+        } else if (pill.classList.contains('btn-success')) {
+            pill.classList.replace('btn-success', 'btn-outline-success');
+        } else if (pill.classList.contains('btn-primary')) {
+            pill.classList.replace('btn-primary', 'btn-outline-primary');
+        } else if (pill.classList.contains('btn-info')) {
+            pill.classList.replace('btn-info', 'btn-outline-info');
+        } else if (pill.classList.contains('btn-dark')) {
+            pill.classList.replace('btn-dark', 'btn-outline-dark');
+        } else if (pill.classList.contains('btn-warning')) {
+            pill.classList.replace('btn-warning', 'btn-outline-warning');
+        }
+    });
+
+    if (btnElement) {
+        btnElement.classList.add('active');
+        if (btnElement.classList.contains('btn-outline-secondary')) {
+            btnElement.classList.replace('btn-outline-secondary', 'btn-secondary');
+        } else if (btnElement.classList.contains('btn-outline-danger')) {
+            btnElement.classList.replace('btn-outline-danger', 'btn-danger');
+        } else if (btnElement.classList.contains('btn-outline-success')) {
+            btnElement.classList.replace('btn-outline-success', 'btn-success');
+        } else if (btnElement.classList.contains('btn-outline-primary')) {
+            btnElement.classList.replace('btn-outline-primary', 'btn-primary');
+        } else if (btnElement.classList.contains('btn-outline-info')) {
+            btnElement.classList.replace('btn-outline-info', 'btn-info');
+        } else if (btnElement.classList.contains('btn-outline-dark')) {
+            btnElement.classList.replace('btn-outline-dark', 'btn-dark');
+        } else if (btnElement.classList.contains('btn-outline-warning')) {
+            btnElement.classList.replace('btn-outline-warning', 'btn-warning');
+        }
+    }
+
+    // Keep dropdown in sync
+    var sel = document.getElementById('billStatusFilterSelect');
+    if (sel && sel.value !== status) {
+        sel.value = status;
+    }
+
+    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.DataTable !== 'undefined') {
+        var dt = jQuery('#billTable').DataTable();
+        if (!status || status === 'All') {
+            dt.column(6).search('').draw();
+        } else {
+            if (status === 'Paid') {
+                dt.column(6).search('Paid', true, false).draw();
+            } else {
+                var escaped = jQuery.fn.dataTable.util.escapeRegex(status);
+                dt.column(6).search('^' + escaped + '$', true, false).draw();
+            }
+        }
+    }
+};
+
+window.onStatusSelectChange = function (val) {
+    var matchingBtn = document.querySelector('.bill-filter-pill[data-status="' + val + '"]');
+    filterBillTable(val, matchingBtn);
+};
+
 $(document).ready(function () {
     if (typeof $ !== 'undefined' && $.fn.select2) {
         $('#contractor_id').select2({
@@ -263,10 +410,24 @@ $(document).ready(function () {
         });
     }
 
-    $('#billTable').DataTable({ 
-        responsive: true, 
-        pageLength: 25, 
-        order: [[4, 'desc']] 
-    });
+    if (typeof jQuery !== 'undefined' && typeof jQuery.fn.DataTable !== 'undefined') {
+        var table = $('#billTable').DataTable({ 
+            destroy: true,
+            responsive: true, 
+            pageLength: 25,
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+            order: [[4, 'desc']],
+            language: {
+                search: "_INPUT_",
+                searchPlaceholder: "Quick filter in table...",
+                paginate: {
+                    first: '<i class="fa-solid fa-angles-left"></i>',
+                    previous: '<i class="fa-solid fa-angle-left"></i>',
+                    next: '<i class="fa-solid fa-angle-right"></i>',
+                    last: '<i class="fa-solid fa-angles-right"></i>'
+                }
+            }
+        });
+    }
 });
 </script>

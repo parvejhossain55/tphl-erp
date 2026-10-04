@@ -22,7 +22,6 @@
             border-radius: 10px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
         }
-
         .site-logo {
             text-align: center;
             /* margin-bottom: 20px; */
@@ -289,7 +288,7 @@
                 <tbody>
                     <tr>
                         <td>BDT <?= number_format($invoice['price_value'], 2) ?></td>
-                        <td><?= ucfirst($invoice['payment_type']) ?> Payment</td>
+                        <td><?= str_replace('_', ' ', ucfirst($invoice['payment_type'])) ?> Payment</td>
                         <td><?= ucfirst($invoice['payment_method']) ?></td>
                         <td><?= ucfirst($invoice['payment_status']) ?></td>
                         <td class="text-right"><?= number_format($invoice['amount'], 2) ?></td>

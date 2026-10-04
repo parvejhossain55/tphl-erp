@@ -84,6 +84,12 @@ class PaymentBookingController extends Controller
                 $data['attachment_image'] = $uploadedFileName;
             }
         }
+        if (isset($_FILES['attachment_image2']) && $_FILES['attachment_image2']['error'] === UPLOAD_ERR_OK) {
+            $uploadedFileName2 = uploadImage('attachment_image2', 'payments');
+            if ($uploadedFileName2) {
+                $data['attachment_image2'] = $uploadedFileName2;
+            }
+        }
 
         // VALIDATION
         if (!$data['booking_id'] || !$data['amount'] || !$data['payment_type']) {
@@ -100,9 +106,12 @@ class PaymentBookingController extends Controller
 
         $sendSms = isset($_POST['send_sms']) ? filter_var($_POST['send_sms'], FILTER_VALIDATE_BOOLEAN) : false;
 
+        $sendSms = isset($_POST['send_sms']) ? filter_var($_POST['send_sms'], FILTER_VALIDATE_BOOLEAN) : false;
+
+        $bookingLead = $this->bookingModel->getById($data['booking_id']);
+        $clientPhone = !empty($bookingLead['phone']) ? trim($bookingLead['phone']) : (!empty($bookingLead['phone_number']) ? trim($bookingLead['phone_number']) : '');
+
         if ($sendSms && !$isTestingMode) {
-            $bookingLead = $this->bookingModel->getById($data['booking_id']);
-            $clientPhone = !empty($bookingLead['phone']) ? trim($bookingLead['phone']) : (!empty($bookingLead['phone_number']) ? trim($bookingLead['phone_number']) : '');
             $phoneCheck  = $smsService->validatePhoneNumber($clientPhone);
 
             if (!$phoneCheck['valid']) {
@@ -112,7 +121,48 @@ class PaymentBookingController extends Controller
             }
         }
 
-        $created = $this->paymentModel->create($data);
+        $inputAmount = (float)$data['amount'];
+        $created = null;
+        $createdRegistration = null;
+
+        if ($data['payment_type'] === 'booking_money') {
+            $finalAmount = !empty($bookingLead['approved_amount'])
+                ? (float)$bookingLead['agreement_value'] - (float)$bookingLead['approved_amount']
+                : (float)$bookingLead['agreement_value'];
+
+            if ($finalAmount <= 0) {
+                $finalAmount = (float)$bookingLead['agreement_value'];
+            }
+
+            $stmt = $this->db->prepare("SELECT SUM(amount) AS paid FROM lead_payments WHERE booking_id = ? AND payment_type = 'booking_money' AND verification_status IN ('verified', 'pending')");
+            $stmt->bind_param("i", $data['booking_id']);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
+            $booking_paid = (float)($row['paid'] ?? 0);
+            $remainingBookingMoney = $finalAmount - $booking_paid;
+
+            if ($inputAmount > $remainingBookingMoney && $remainingBookingMoney > 0) {
+                // Split payment
+                $batchId = uniqid('batch_');
+                
+                $data['amount'] = $remainingBookingMoney;
+                $data['batch_id'] = $batchId;
+                $created = $this->paymentModel->create($data);
+
+                $dataReg = $data;
+                $dataReg['amount'] = $inputAmount - $remainingBookingMoney;
+                $dataReg['payment_type'] = 'registration';
+                $dataReg['batch_id'] = $batchId;
+                $createdRegistration = $this->paymentModel->create($dataReg);
+            } elseif ($remainingBookingMoney <= 0) {
+                $data['payment_type'] = 'registration';
+                $created = $this->paymentModel->create($data);
+            } else {
+                $created = $this->paymentModel->create($data);
+            }
+        } else {
+            $created = $this->paymentModel->create($data);
+        }
 
         if (!empty($created)) {
             if ($sendSms) {
@@ -1073,6 +1123,26 @@ class PaymentBookingController extends Controller
     }
 
 
+
+
+    public function combinePayments() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $bookingId = (int)($_GET['booking_id'] ?? 0);
+        $ref = $_GET['ref'] ?? '';
+        if ($bookingId && $ref) {
+            $batchId = uniqid('batch_manual_');
+            $stmt = $this->db->prepare("UPDATE lead_payments SET batch_id = ? WHERE booking_id = ? AND transaction_ref = ? AND (batch_id IS NULL OR batch_id = '')");
+            $stmt->bind_param("sis", $batchId, $bookingId, $ref);
+            $stmt->execute();
+            if ($stmt->affected_rows > 0) {
+                setSuccess("Receipts successfully combined for reference: " . htmlspecialchars($ref));
+            } else {
+                setSuccess("Receipts are already combined or no changes were needed.");
+            }
+        }
+        header("Location: {$GLOBALS['base_url']}/payments-booking/" . $bookingId);
+        exit;
+    }
 
     public function update()
     {

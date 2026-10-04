@@ -668,6 +668,8 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                f.floor_no, 
                f.price_value,
                f.land_share_value,
+               f.booking_money,
+               f.registration_money,
                f.sqft,
                f.flat_name AS unit_name,
                (SELECT COUNT(*) FROM lead_payments lp WHERE lp.booking_id = lb.id AND lp.verification_status = 'verified') AS verified_payment_count,
