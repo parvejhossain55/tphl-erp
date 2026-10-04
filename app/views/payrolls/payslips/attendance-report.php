@@ -1,15 +1,24 @@
 <?php
-$page_title = "Payroll Attendance Report";
-$page = "Payroll Attendance";
+$page_title = 'Payroll Attendance Report';
+$page = 'Payroll Attendance';
 $show_breadcrumb = true;
 
-// Default Month and Year for Payroll format
-$defaultYear = date('Y');
-$defaultMonth = date('m');
+// Selected project id fallback from GET
+$selected_project_id = isset($selected_project_id) ? $selected_project_id : (isset($_GET['payroll_project_id']) && !empty($_GET['payroll_project_id']) ? (int)$_GET['payroll_project_id'] : null);
 
-// Default date range: today
-$default_from = date('Y-m-d');
-$default_to = date('Y-m-d');
+// Default Month and Year for Payroll format or from GET
+$defaultYear = isset($_GET['year']) && !empty($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
+$defaultMonth = isset($_GET['month']) && !empty($_GET['month']) ? str_pad($_GET['month'], 2, '0', STR_PAD_LEFT) : date('m');
+
+// Filter Type
+$filterType = isset($_GET['filter_type']) && in_array($_GET['filter_type'], ['monthly', 'custom']) ? $_GET['filter_type'] : 'monthly';
+
+// Attendance Status Filter
+$selectedStatus = isset($_GET['attendance_status']) ? $_GET['attendance_status'] : 'all';
+
+// Default date range
+$default_from = isset($_GET['from_date']) && !empty($_GET['from_date']) ? $_GET['from_date'] : date('Y-m-d');
+$default_to = isset($_GET['to_date']) && !empty($_GET['to_date']) ? $_GET['to_date'] : date('Y-m-d');
 ?>
 
 <!-- Info Indicator Card -->
@@ -32,11 +41,11 @@ $default_to = date('Y-m-d');
         <div class="filters card__wrapper p-3 bg-white rounded shadow-sm">
             <form id="filterForm" class="row gx-3 gy-2 align-items-end">
                 <!-- Filter Type -->
-                <div class="col-lg-3 col-md-4 col-sm-6">
+                <div class="col-lg-2 col-md-3 col-sm-6">
                     <label for="filterType" class="form-label fw-semibold text-muted mb-2">Select Filter Type</label>
                     <select class="form-select custom-select2" id="filterType">
-                        <option value="monthly">Monthly</option>
-                        <option value="custom">Custom Range</option>
+                        <option value="monthly" <?= $filterType === 'monthly' ? 'selected' : '' ?>>Monthly</option>
+                        <option value="custom" <?= $filterType === 'custom' ? 'selected' : '' ?>>Custom Range</option>
                     </select>
                 </div>
 
@@ -62,16 +71,17 @@ $default_to = date('Y-m-d');
                 </div>
 
                 <!-- Monthly Filter Container -->
-                <div class="col-lg-6 col-md-6 col-sm-12" id="monthlyContainer">
+                <div class="col-lg-4 col-md-3 col-sm-6" id="monthlyContainer" style="<?= $filterType === 'custom' ? 'display: none;' : '' ?>">
                     <div class="row gx-2">
                         <div class="col-6">
                             <label for="filterMonth" class="form-label fw-semibold text-muted mb-2">Month</label>
                             <select class="form-select custom-select2" name="month" id="filterMonth">
-                                <?php for ($m = 1; $m <= 12; $m++):
-                                    $monthNum = str_pad($m, 2, "0", STR_PAD_LEFT);
+                                <?php
+                                for ($m = 1; $m <= 12; $m++):
+                                    $monthNum = str_pad($m, 2, '0', STR_PAD_LEFT);
                                     $monthName = date('F', mktime(0, 0, 0, $m, 1));
                                     ?>
-                                    <option value="<?= $monthNum ?>" <?= $monthNum == str_pad($defaultMonth, 2, "0", STR_PAD_LEFT) ? 'selected' : '' ?>>
+                                    <option value="<?= $monthNum ?>" <?= $monthNum == str_pad($defaultMonth, 2, '0', STR_PAD_LEFT) ? 'selected' : '' ?>>
                                         <?= $monthName ?>
                                     </option>
                                 <?php endfor; ?>
@@ -83,7 +93,8 @@ $default_to = date('Y-m-d');
                                 <?php
                                 $startYear = 2025;
                                 $endYear = 2035;
-                                for ($y = $startYear; $y <= $endYear; $y++): ?>
+                                for ($y = $startYear; $y <= $endYear; $y++):
+                                    ?>
                                     <option value="<?= $y ?>" <?= $y == $defaultYear ? 'selected' : '' ?>>
                                         <?= $y ?>
                                     </option>
@@ -94,7 +105,7 @@ $default_to = date('Y-m-d');
                 </div>
 
                 <!-- Custom Range Filter Container -->
-                <div class="col-lg-6 col-md-6 col-sm-12" id="customContainer" style="display: none;">
+                <div class="col-lg-4 col-md-3 col-sm-6" id="customContainer" style="<?= $filterType === 'custom' ? '' : 'display: none;' ?>">
                     <div class="row gx-2">
                         <!-- From Date -->
                         <div class="col-6">
@@ -107,6 +118,19 @@ $default_to = date('Y-m-d');
                             <input type="date" class="form-control" id="toDate" value="<?= $default_to ?>">
                         </div>
                     </div>
+                </div>
+
+                <!-- Attendance Status Filter -->
+                <div class="col-lg-3 col-md-3 col-sm-6">
+                    <label for="filterAttendanceStatus" class="form-label fw-semibold text-muted mb-2">Attendance Status</label>
+                    <select class="form-select custom-select2" id="filterAttendanceStatus">
+                        <option value="all" <?= $selectedStatus === 'all' ? 'selected' : '' ?>>All Statuses</option>
+                        <option value="late" <?= $selectedStatus === 'late' ? 'selected' : '' ?>>Late</option>
+                        <option value="present" <?= $selectedStatus === 'present' ? 'selected' : '' ?>>Present</option>
+                        <option value="absent" <?= $selectedStatus === 'absent' ? 'selected' : '' ?>>Absent</option>
+                        <option value="leave" <?= $selectedStatus === 'leave' ? 'selected' : '' ?>>On Leave</option>
+                        <option value="deduction" <?= $selectedStatus === 'deduction' ? 'selected' : '' ?>>Has Deduction</option>
+                    </select>
                 </div>
 
                 <div class="col-auto d-none">
@@ -190,6 +214,7 @@ $default_to = date('Y-m-d');
     <input type="hidden" name="from_date" id="pdfFromDate">
     <input type="hidden" name="to_date" id="pdfToDate">
     <input type="hidden" name="payroll_project_id" id="pdfPayrollProject">
+    <input type="hidden" name="attendance_status" id="pdfAttendanceStatus">
 </form>
 
 <?php ob_start(); ?>
@@ -318,8 +343,87 @@ document.addEventListener("DOMContentLoaded", function () {
                 }],
                 order: [[1, 'asc']]
             });
+
+            // Re-apply attendance status filter if one is selected
+            dataTableInstance.draw();
         }
     }
+
+    // Custom DataTables Filter for Attendance Status
+    if (typeof $ !== 'undefined' && $.fn.DataTable) {
+        $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+            if (!settings.nTable || settings.nTable.id !== 'payrollAttendanceTable') {
+                return true;
+            }
+            const statusSelect = document.getElementById('filterAttendanceStatus');
+            const filterStatus = statusSelect ? statusSelect.value : 'all';
+            if (!filterStatus || filterStatus === 'all') {
+                return true;
+            }
+
+            const tr = settings.aoData[dataIndex] ? settings.aoData[dataIndex].nTr : null;
+            let present = 0, absent = 0, leave = 0, late = 0, approvedLates = 0, finalLate = 0, deduction = 0, lateUnpaid = 0;
+
+            if (tr) {
+                present = parseFloat(tr.querySelector('.in-present')?.value) || 0;
+                absent = parseFloat(tr.querySelector('.in-absent')?.value) || 0;
+                leave = parseFloat(tr.querySelector('.in-leave')?.value) || 0;
+                late = parseFloat(tr.querySelector('.in-late')?.value) || 0;
+                approvedLates = parseFloat(tr.querySelector('.in-approvedlates')?.value) || 0;
+                finalLate = parseFloat(tr.querySelector('.in-finallate')?.value) || 0;
+                deduction = parseFloat(tr.querySelector('.in-deduction')?.value) || 0;
+                lateUnpaid = parseFloat(tr.querySelector('.in-lateunpaidabsent')?.value) || 0;
+            } else if (data) {
+                const parseVal = (str) => {
+                    const m = String(str || '').match(/value=["']?([^"'>\s]+)/i);
+                    return m ? parseFloat(m[1]) || 0 : parseFloat(str) || 0;
+                };
+                present = parseVal(data[8]);
+                absent = parseVal(data[9]);
+                leave = parseVal(data[10]);
+                late = parseVal(data[12]);
+                approvedLates = parseVal(data[13]);
+                finalLate = parseVal(data[14]);
+                deduction = parseVal(data[15]);
+                lateUnpaid = parseVal(data[16]);
+            }
+
+            if (filterStatus === 'late') {
+                return (late > 0 || approvedLates > 0 || finalLate > 0);
+            }
+            if (filterStatus === 'present') {
+                return (present > 0 && absent === 0 && late === 0 && approvedLates === 0 && finalLate === 0);
+            }
+            if (filterStatus === 'absent') {
+                return (absent > 0);
+            }
+            if (filterStatus === 'leave') {
+                return (leave > 0);
+            }
+            if (filterStatus === 'deduction') {
+                return (deduction > 0 || lateUnpaid > 0);
+            }
+
+            return true;
+        });
+    }
+
+    // Attendance status change handler
+    $('#filterAttendanceStatus').on('change', function() {
+        if (dataTableInstance) {
+            dataTableInstance.draw();
+        }
+        try {
+            const currentUrl = new URL(window.location.href);
+            const statusVal = this.value || 'all';
+            if (statusVal !== 'all') {
+                currentUrl.searchParams.set('attendance_status', statusVal);
+            } else {
+                currentUrl.searchParams.delete('attendance_status');
+            }
+            window.history.replaceState(null, '', currentUrl.toString());
+        } catch (e) {}
+    });
 
     // Toggle logic
     filterType.addEventListener("change", function () {
@@ -330,6 +434,7 @@ document.addEventListener("DOMContentLoaded", function () {
             monthlyContainer.style.display = 'none';
             customContainer.style.display = 'block';
         }
+        fetchAttendanceData();
     });
 
     // Trigger API fetch and compilation
@@ -350,6 +455,38 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
             activeFromDate = fromDateInput.value;
             activeToDate = toDateInput.value;
+        }
+
+        // Sync browser URL so refreshing (F5) keeps the active filters intact
+        try {
+            const currentUrl = new URL(window.location.href);
+            if (projId) {
+                currentUrl.searchParams.set('payroll_project_id', projId);
+            } else {
+                currentUrl.searchParams.delete('payroll_project_id');
+            }
+            currentUrl.searchParams.set('filter_type', filterType.value);
+            if (filterType.value === 'monthly') {
+                currentUrl.searchParams.set('month', filterMonthInput.value);
+                currentUrl.searchParams.set('year', filterYearInput.value);
+                currentUrl.searchParams.delete('from_date');
+                currentUrl.searchParams.delete('to_date');
+            } else {
+                currentUrl.searchParams.set('from_date', activeFromDate);
+                currentUrl.searchParams.set('to_date', activeToDate);
+                currentUrl.searchParams.delete('month');
+                currentUrl.searchParams.delete('year');
+            }
+            const statusVal = $('#filterAttendanceStatus').val() || 'all';
+            if (statusVal !== 'all') {
+                currentUrl.searchParams.set('attendance_status', statusVal);
+            } else {
+                currentUrl.searchParams.delete('attendance_status');
+            }
+            window.history.replaceState(null, '', currentUrl.toString());
+            sessionStorage.setItem('payroll_att_filter_params', currentUrl.search);
+        } catch (e) {
+            console.warn('URL sync failed:', e);
         }
 
         // Show spinner safely
@@ -413,39 +550,76 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     const attMap = emp ? (emp.attendance || {}) : {};
                     const shiftStartTime = emp ? (emp.shiftStartTime || '') : '';
+                    const summ = emp ? (emp.summary || {}) : {};
 
-                    // Stats accumulation
-                    let workingDays = 0;
-                    let present = 0;
-                    let absent = 0;
-                    let leave = 0;
-                    let dayOff = 0;
-                    let late = 0;
-
+                    // Count approved lates directly from daily records where status is Accepted / Approved
+                    let approvedLates = 0;
                     Object.keys(attMap).forEach(timestamp => {
                         const dayAtt = attMap[timestamp];
-                        workingDays++;
-
-                        const isLateOverride = dayAtt.isPresent && checkIfLate(dayAtt.firstLoggedTime, shiftStartTime);
-
-                        if (dayAtt.isLeave) {
-                            leave++;
-                        } else if (dayAtt.isPresent) {
-                            present++;
-                            if (isLateOverride) late++;
-                        } else if (dayAtt.isOffday || dayAtt.isHoliday) {
-                            dayOff++;
-                            workingDays--; 
-                        } else {
-                            absent++;
+                        const lateStatus = String(dayAtt.lateApprovalStatus || '').toLowerCase().trim();
+                        if (lateStatus === 'accepted' || lateStatus === 'approved') {
+                            approvedLates++;
                         }
                     });
 
-                    // Calculations
-                    let finalLate = late;
-                    let approvedLates = 0;
+                    // Fallback from summary if daily status missing
+                    if (approvedLates === 0 && summ.totalApprovedLateApplication) {
+                        approvedLates = Math.round(parseInt(summ.totalApprovedLateApplication, 10) / 2);
+                    }
+
+                    // Use official Tipsoi summary figures if available, otherwise fallback to daily loop
+                    let present = (summ.totalPresent !== undefined) ? parseInt(summ.totalPresent, 10) : 0;
+                    let absent = (summ.totalAbsent !== undefined) ? parseInt(summ.totalAbsent, 10) : 0;
+                    let leave = (summ.totalLeave !== undefined) ? parseFloat(summ.totalLeave) : 0;
+                    let dayOff = (summ.totalWeeklyOffdays !== undefined) ? parseInt(summ.totalWeeklyOffdays, 10) : 0;
+                    if (summ.totalHolidays) {
+                        dayOff += parseInt(summ.totalHolidays, 10);
+                    }
+
+                    const totalPeriodDays = Object.keys(attMap).length || 30;
+                    let workingDays = Math.max(0, totalPeriodDays - dayOff);
+
+                    // If summary is empty (e.g. offline/fallback), calculate manually from attMap
+                    if (!emp || !emp.summary) {
+                        workingDays = 0;
+                        present = 0;
+                        absent = 0;
+                        leave = 0;
+                        dayOff = 0;
+
+                        Object.keys(attMap).forEach(timestamp => {
+                            const dayAtt = attMap[timestamp];
+                            workingDays++;
+
+                            if (dayAtt.isLeave) {
+                                leave += (dayAtt.isHalfDay ? 0.5 : 1);
+                            } else if (dayAtt.isPresent) {
+                                present++;
+                            } else if (dayAtt.isOffday || dayAtt.isHoliday) {
+                                dayOff++;
+                                workingDays--;
+                            } else {
+                                absent++;
+                            }
+                        });
+                    }
+
+                    // For site staff who worked on scheduled off days, adjust workingDays and dayOff accordingly
+                    if ((present + absent + leave) > workingDays) {
+                        workingDays = Math.min(totalPeriodDays, Math.round(present + absent + leave));
+                        dayOff = Math.max(0, totalPeriodDays - workingDays);
+                    }
+
+                    // Tipsoi's totalLateEntry is the official net unapproved late count
+                    let finalLate = (summ.totalLateEntry !== undefined)
+                        ? parseInt(summ.totalLateEntry, 10)
+                        : Math.max(0, 0);
+
+                    // Raw Late = Approved Lates + Final Unapproved Late
+                    let late = approvedLates + finalLate;
+
                     let deduction = Math.floor(finalLate / 3);
-                    let lateUnpaidAbsentDays = absent + deduction;
+                    let lateUnpaidAbsentDays = parseFloat((absent + deduction).toFixed(2));
                     let idCheck = emp ? "OK" : "Tipsoi Missing";
                     let nameCheck = emp ? "OK" : "Tipsoi Missing";
 
@@ -526,10 +700,8 @@ document.addEventListener("DOMContentLoaded", function () {
     toDateInput.addEventListener('change', fetchAttendanceData);
 
     // Bind auto-fetch for manual month/year selection
-    $('#filterYear, #filterMonth').on('change', function(e) {
-        if (e.originalEvent) {
-            fetchAttendanceData();
-        }
+    $('#filterYear, #filterMonth').on('change', function() {
+        fetchAttendanceData();
     });
 
     // Save data logic
@@ -713,15 +885,24 @@ document.addEventListener("DOMContentLoaded", function () {
     // Global PDF export trigger
     window.exportPdf = function() {
         const projId = document.getElementById("payrollProject") ? document.getElementById("payrollProject").value : '';
+        const statusVal = document.getElementById("filterAttendanceStatus") ? document.getElementById("filterAttendanceStatus").value : 'all';
         document.getElementById('pdfFromDate').value = activeFromDate || fromDateInput.value;
         document.getElementById('pdfToDate').value = activeToDate || toDateInput.value;
         document.getElementById('pdfPayrollProject').value = projId;
+        document.getElementById('pdfAttendanceStatus').value = statusVal;
         document.getElementById('exportPdfForm').submit();
     };
 
     // Initial load
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasExplicitUrlParams = urlParams.has('month') || urlParams.has('from_date');
+
     if (projectSelect && projectSelect.value) {
-        $(projectSelect).trigger('change');
+        if (!hasExplicitUrlParams) {
+            $(projectSelect).trigger('change');
+        } else {
+            fetchAttendanceData();
+        }
     } else {
         fetchAttendanceData();
     }
