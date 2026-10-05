@@ -173,7 +173,13 @@ $show_breadcrumb = true;
                                 <div class="fs-12 text-muted"><?= htmlspecialchars($row['designation_name'] ?: '—') ?></div>
                             </td>
                             <td>
-                                <div class="fw-semibold text-dark fs-13"><?= htmlspecialchars($row['shift_name'] ?: 'Regular') ?></div>
+                                <?php 
+                                    $rowShiftName = $row['shift_name'] ?: 'IT / Head Office Regular';
+                                    if ($rowShiftName === 'Friday OFF' || $rowShiftName === 'Saturday OFF') {
+                                        $rowShiftName = 'Regular Shift';
+                                    }
+                                ?>
+                                <div class="fw-semibold text-dark fs-13"><?= htmlspecialchars($rowShiftName) ?></div>
                                 <div class="fs-12 text-muted">
                                     <i class="fa-regular fa-clock me-1"></i><?= !empty($row['shift_start_time']) ? date('h:i A', strtotime($row['shift_start_time'])) : '09:30 AM' ?>
                                 </div>

@@ -150,7 +150,13 @@ $show_breadcrumb = true;
                             <?= $dayName ?>
                         </td>
                         <td>
-                            <div class="fw-semibold text-dark fs-13"><?= htmlspecialchars($rec['shift_name'] ?? 'Regular') ?></div>
+                            <?php 
+                                $sName = $rec['shift_name'] ?? 'IT / Head Office Regular';
+                                if ($sName === 'Friday OFF' || $sName === 'Saturday OFF') {
+                                    $sName = 'Regular Shift';
+                                }
+                            ?>
+                            <div class="fw-semibold text-dark fs-13"><?= htmlspecialchars($sName) ?></div>
                             <div class="fs-12 text-muted">
                                 <?= !empty($rec['shift_start_time']) ? date('h:i A', strtotime($rec['shift_start_time'])) : '09:30 AM' ?>
                             </div>

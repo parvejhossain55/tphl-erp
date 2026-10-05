@@ -9,6 +9,8 @@ class DayOffController extends Controller
     public function __construct($db)
     {
         $this->db = $db;
+        require_once dirname(__DIR__) . '/models/Employee.php';
+        require_once dirname(__DIR__) . '/models/EmpWeeklyDayOff.php';
         $this->employeeModel = new Employee($this->db);
         $this->dayOffModel = new EmpWeeklyDayOff($this->db);
     }

@@ -1528,14 +1528,37 @@
                                     </a>
                                 </li>
                             </ul>
-                        <!-- Attendance (Test) for HR / Management -->
-                        <li class="slide <?= isActive('attendance-test', $current_route) ? 'active' : '' ?>">
-                            <a href="<?= $base_url ?>/attendance-test"
-                                class="sidebar__menu-item <?= isActive('attendance-test', $current_route) ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-clipboard-user" style="color: #8b5cf6;"></i></div>
-                                <span class="sidebar__menu-label">Attendance (Test)</span>
+                        </li>
+                        <!-- Attendance Management (Test) -->
+                        <li class="slide has-sub <?= isActive(['attendance-test', 'shift-lists', 'day-off'], $current_route) ? 'active open' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['attendance-test', 'shift-lists', 'day-off'], $current_route) ? 'active' : '' ?>">
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                                <div class="side-menu__icon"><i class="fa-solid fa-clock-rotate-left" style="color: #8b5cf6;"></i></div>
+                                <span class="sidebar__menu-label">Attendance Management (Test)</span>
                                 <span class="badge text-white ms-auto fs-10 px-2 py-0 rounded-pill" style="background: #8b5cf6;">Test</span>
                             </a>
+                            <ul class="sidebar-menu child2"
+                                style="display: <?= isActive(['attendance-test', 'shift-lists', 'day-off'], $current_route) ? 'block' : 'none' ?>;">
+                                <li class="slide <?= isActive('attendance-test', $current_route) ?>">
+                                    <a href="<?= $base_url ?>/attendance-test"
+                                        class="sidebar__menu-item <?= isActive('attendance-test', $current_route) ?>">
+                                        Daily Attendance (Test)
+                                    </a>
+                                </li>
+                                <li class="slide <?= isActive('shift-lists', $current_route) ?>">
+                                    <a href="<?= $base_url ?>/shift-lists"
+                                        class="sidebar__menu-item <?= isActive('shift-lists', $current_route) ?>">
+                                        Shift Manage (Test)
+                                    </a>
+                                </li>
+                                <li class="slide <?= isActive('day-off', $current_route) ?>">
+                                    <a href="<?= $base_url ?>/day-off"
+                                        class="sidebar__menu-item <?= isActive('day-off', $current_route) ?>">
+                                        Day Off Manage (Test)
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                     <?php endif; ?>
 
@@ -1556,21 +1579,12 @@
                                 <span class="sidebar__menu-label">Designation Lists</span>
                             </a>
                         </li>
-                        <!-- designation 
-                        <li class="slide ">
+                        <!-- Holiday Manage -->
+                        <li class="slide <?= isActive('holiday-lists', $current_route) ? 'active' : '' ?>">
                             <a href="<?= $base_url ?>/holiday-lists"
                                 class="sidebar__menu-item <?= isActive('holiday-lists', $current_route) ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
+                                <div class="side-menu__icon"><i class="fa-solid fa-umbrella-beach"></i></div>
                                 <span class="sidebar__menu-label">Holiday Manage</span>
-                            </a>
-                        </li>
-                        -->
-                        <!-- Day Off Manage -->
-                        <li class="slide d-none">
-                            <a href="<?= $base_url ?>/day-off"
-                                class="sidebar__menu-item <?= isActive('day-off', $current_route) ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-id-card"></i></div>
-                                <span class="sidebar__menu-label">Day Off Manage</span>
                             </a>
                         </li>
                         <li class="slide">

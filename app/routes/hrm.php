@@ -67,6 +67,15 @@ return [
     'my-attendance-test' => ['controller' => 'AttendanceTestController', 'method' => 'myAttendanceTest'],
 
     // =========================================================================
+    // Controller: ShiftController (Shift & Roster Management)
+    // =========================================================================
+    'shift-lists' => ['controller' => 'ShiftController', 'method' => 'index'],
+    'store-shift' => ['controller' => 'ShiftController', 'method' => 'store'],
+    'update-shift/(\d+)' => ['controller' => 'ShiftController', 'method' => 'update'],
+    'delete-shift/(\d+)' => ['controller' => 'ShiftController', 'method' => 'delete'],
+    'assign-shift' => ['controller' => 'ShiftController', 'method' => 'assignShift'],
+
+    // =========================================================================
     // Controller: EmpAttendanceController
     // =========================================================================
     'attendance-list' => ['controller' => 'EmpAttendanceController', 'method' => 'index'],

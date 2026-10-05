@@ -132,14 +132,27 @@ class AttendanceTestSyncService
             $erpEmp = $erpEmployees[$normId];
             $localEmpId = (int)$erpEmp['id'];
 
-            // Extract Shift Info
-            $shiftGroupName = trim($empTipsoi['shiftGroupName'] ?? 'Regular');
-            $shiftStartTimeRaw = trim($empTipsoi['shiftStartTime'] ?? '09:30 AM');
-            $shiftEndTimeRaw = trim($empTipsoi['shiftEndTime'] ?? '06:30 PM');
+            // Extract Shift Info: Prioritize local ERP shift if assigned, else Tipsoi shift
+            $graceMinutes = 10;
+            if (!empty($erpEmp['custom_shift_name'])) {
+                $shiftGroupName = $erpEmp['custom_shift_name'];
+                $shiftStartTimeFormatted = $erpEmp['custom_start_time'] ?? '09:30:00';
+                $shiftEndTimeFormatted = $erpEmp['custom_end_time'] ?? '18:30:00';
+                $graceMinutes = (int)($erpEmp['custom_grace_minutes'] ?? 10);
+            } else {
+                $rawGroupName = trim($empTipsoi['shiftGroupName'] ?? 'Regular');
+                // Clean up "Friday OFF" / "Saturday OFF" display name
+                if (stripos($rawGroupName, 'OFF') !== false) {
+                    $shiftGroupName = 'Regular Shift (' . $rawGroupName . ')';
+                } else {
+                    $shiftGroupName = $rawGroupName ?: 'Regular';
+                }
 
-            // Format shift times to 24H (H:i:s)
-            $shiftStartTimeFormatted = date('H:i:s', strtotime($shiftStartTimeRaw));
-            $shiftEndTimeFormatted = date('H:i:s', strtotime($shiftEndTimeRaw));
+                $shiftStartTimeRaw = trim($empTipsoi['shiftStartTime'] ?? '09:30 AM');
+                $shiftEndTimeRaw = trim($empTipsoi['shiftEndTime'] ?? '06:30 PM');
+                $shiftStartTimeFormatted = date('H:i:s', strtotime($shiftStartTimeRaw));
+                $shiftEndTimeFormatted = date('H:i:s', strtotime($shiftEndTimeRaw));
+            }
 
             // Extract punches from Tipsoi day log
             $punchInStr = null;
@@ -173,7 +186,8 @@ class AttendanceTestSyncService
                 $shiftEndTimeFormatted,
                 $isPublicHoliday,
                 isset($approvedLeaves[$localEmpId]),
-                isset($empDaysOff[$localEmpId])
+                isset($empDaysOff[$localEmpId]),
+                $graceMinutes
             );
 
             // Execute UPSERT
@@ -218,7 +232,8 @@ class AttendanceTestSyncService
         $shiftEndTime,
         $isPublicHoliday,
         $hasApprovedLeave,
-        $isDayOff
+        $isDayOff,
+        $graceMinutes = 10
     ) {
         $status = 'Absent';
         $lateMinutes = 0;
@@ -242,7 +257,7 @@ class AttendanceTestSyncService
             $inTime = date('H:i:s', strtotime($punchIn));
             $shiftStartSeconds = strtotime($date . ' ' . $shiftStartTime);
             $inSeconds = strtotime($date . ' ' . $inTime);
-            $graceSeconds = $shiftStartSeconds + (10 * 60); // 10 minutes grace
+            $graceSeconds = $shiftStartSeconds + ($graceMinutes * 60); // Dynamic shift grace
 
             // Late threshold comparison
             if ($inSeconds <= $graceSeconds) {
@@ -295,7 +310,15 @@ class AttendanceTestSyncService
     protected function getErpEmployeesMap()
     {
         $map = [];
-        $res = $this->db->query("SELECT id, employee_id, full_name, email, department_id FROM employees WHERE deleted_at IS NULL");
+        $sql = "
+            SELECT 
+                e.id, e.employee_id, e.full_name, e.email, e.department_id, e.shift_id,
+                s.name AS custom_shift_name, s.start_time AS custom_start_time, s.end_time AS custom_end_time, s.grace_minutes AS custom_grace_minutes
+            FROM employees e
+            LEFT JOIN shifts s ON e.shift_id = s.id
+            WHERE e.deleted_at IS NULL
+        ";
+        $res = $this->db->query($sql);
         if ($res) {
             while ($row = $res->fetch_assoc()) {
                 $eid = trim((string)$row['employee_id']);
@@ -347,11 +370,26 @@ class AttendanceTestSyncService
     }
 
     /**
-     * Map of employee IDs whose weekly day-off matches the day of week
+     * Map of employee IDs whose weekly day-off matches the day of week.
+     * Rule:
+     * - If an employee has custom day-off entries in emp_weekly_day_off, use their custom configuration.
+     * - If an employee has NO custom entries in emp_weekly_day_off, they default to Friday (standard weekly off).
      */
     protected function getEmployeeDaysOffMap($dayOfWeekName)
     {
         $map = [];
+        $isFriday = (strtolower($dayOfWeekName) === 'friday');
+
+        // 1. Get all employees who have any custom day-off configured
+        $employeesWithCustomOff = [];
+        $resCustom = $this->db->query("SELECT DISTINCT employee_id FROM emp_weekly_day_off");
+        if ($resCustom) {
+            while ($row = $resCustom->fetch_assoc()) {
+                $employeesWithCustomOff[(int)$row['employee_id']] = true;
+            }
+        }
+
+        // 2. Mark employees who explicitly have THIS day configured as day-off
         $stmt = $this->db->prepare("
             SELECT employee_id 
             FROM emp_weekly_day_off 
@@ -362,10 +400,24 @@ class AttendanceTestSyncService
             $stmt->execute();
             $res = $stmt->get_result();
             while ($row = $res->fetch_assoc()) {
-                $map[$row['employee_id']] = true;
+                $map[(int)$row['employee_id']] = true;
             }
             $stmt->close();
         }
+
+        // 3. For Friday: all active employees who do NOT have a custom day-off configuration automatically get Friday Off!
+        if ($isFriday) {
+            $resAll = $this->db->query("SELECT id FROM employees WHERE deleted_at IS NULL");
+            if ($resAll) {
+                while ($row = $resAll->fetch_assoc()) {
+                    $empId = (int)$row['id'];
+                    if (!isset($employeesWithCustomOff[$empId])) {
+                        $map[$empId] = true;
+                    }
+                }
+            }
+        }
+
         return $map;
     }
 }
