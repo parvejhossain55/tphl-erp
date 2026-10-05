@@ -400,7 +400,15 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         if (!$stmt->execute()) {
             throw new Exception($stmt->error);
         }
-        return $this->db->insert_id;
+        $bookingId = $this->db->insert_id;
+        
+        $v_flat_id = $data['flat_id'] ?? null;
+        if (!empty($v_flat_id)) {
+            $flatId = (int)$v_flat_id;
+            $this->db->query("UPDATE flats SET is_booked = 1, status = 'booked' WHERE id = {$flatId}");
+        }
+        
+        return $bookingId;
     }
 
     public function create($data)
@@ -566,6 +574,37 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
         return $stmt->execute();
     }
 
+    public function syncFlatStatus($flatId)
+    {
+        if (!$flatId) return false;
+        
+        $flatId = (int)$flatId;
+        
+        $checkStmt = $this->db->prepare("
+            SELECT id FROM lead_bookings
+            WHERE flat_id = ?
+              AND booking_status IN ('booked', 'completed')
+              AND deleted_at IS NULL
+              AND id NOT IN (
+                  SELECT booking_id FROM client_refund_requests 
+                  WHERE booking_id IS NOT NULL AND status IN ('pending', 'approved', 'refunded')
+              )
+            LIMIT 1
+        ");
+        if (!$checkStmt) return false;
+        
+        $checkStmt->bind_param("i", $flatId);
+        $checkStmt->execute();
+        $isBooked = $checkStmt->get_result()->fetch_assoc() ? 1 : 0;
+        $checkStmt->close();
+        
+        $statusStr = $isBooked ? 'booked' : 'available';
+        
+        $updStmt = $this->db->prepare("UPDATE flats SET is_booked = ?, status = ? WHERE id = ?");
+        $updStmt->bind_param("isi", $isBooked, $statusStr, $flatId);
+        return $updStmt->execute();
+    }
+
     // Optional: get onboard records by lead
     public function getByLead($lead_id)
     {
@@ -706,9 +745,8 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
 
             // If flat changed, release old flat and reserve new flat
             if ($oldFlatId && $oldFlatId !== $newFlatId) {
-                $stmtOld = $this->db->prepare("UPDATE flats SET status = 'available', is_booked = 0 WHERE id = ?");
-                $stmtOld->bind_param("i", $oldFlatId);
-                $stmtOld->execute();
+                // Update old flat conditionally
+                $this->syncFlatStatus($oldFlatId);
             }
 
             if ($newFlatId && $oldFlatId !== $newFlatId) {
@@ -845,14 +883,18 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $stmtB->bind_param("i", $bookingId);
             $stmtB->execute();
 
-            // 4. Release flat in flats table
+            // 4. Release flat conditionally in flats table
             if ($flatId) {
-                $stmtF = $this->db->prepare("UPDATE flats SET status = 'available', is_booked = 0 WHERE id = ?");
-                $stmtF->bind_param("i", $flatId);
-                $stmtF->execute();
+                // Execute deletion commit first before syncing flat status
             }
 
             $this->db->commit();
+
+            // Sync flat status after transaction is committed
+            if (isset($flatId) && $flatId) {
+                $this->syncFlatStatus($flatId);
+            }
+
             return ['success' => true, 'lead_id' => $leadId];
         } catch (Exception $e) {
             $this->db->rollback();

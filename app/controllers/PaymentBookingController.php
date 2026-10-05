@@ -115,9 +115,10 @@ class PaymentBookingController extends Controller
             $phoneCheck  = $smsService->validatePhoneNumber($clientPhone);
 
             if (!$phoneCheck['valid']) {
-                setError("Cannot process payment: " . $phoneCheck['message'] . ". Please update the client's phone number first or enable Testing Mode.");
-                header("Location: {$GLOBALS['base_url']}/payments-booking/" . $data['booking_id']);
-                exit;
+                // Do not block payment creation. It will just fail gracefully later.
+                // setError("Cannot process payment: " . $phoneCheck['message'] . ". Please update the client's phone number first or enable Testing Mode.");
+                // header("Location: {$GLOBALS['base_url']}/payments-booking/" . $data['booking_id']);
+                // exit;
             }
         }
 
@@ -182,6 +183,38 @@ class PaymentBookingController extends Controller
             }
         } else {
             setError("Failed to create payment!");
+        }
+
+        if (!empty($created) && !$isTestingMode) {
+            // Get Lead info and send email
+            $leadInfoQuery = $this->db->query("
+                SELECT l.full_name, l.email, p.name AS project_name, f.flat_name
+                FROM lead_bookings lb
+                LEFT JOIN leads l ON lb.lead_id = l.id
+                LEFT JOIN flats f ON lb.flat_id = f.id
+                LEFT JOIN projects p ON f.project_id = p.id
+                WHERE lb.id = " . (int)$data['booking_id'] . "
+            ");
+            if ($leadInfoQuery && $leadInfoQuery->num_rows > 0) {
+                $leadInfo = $leadInfoQuery->fetch_assoc();
+                if (!empty($leadInfo['email']) && filter_var($leadInfo['email'], FILTER_VALIDATE_EMAIL)) {
+                    require_once dirname(__DIR__) . '/core/MailServiceForPHPMailer.php';
+                    $mailService = new MailService();
+                    $mailData = [
+                        'client_name' => $leadInfo['full_name'],
+                        'amount' => $inputAmount,
+                        'project_name' => $leadInfo['project_name'],
+                        'flat_name' => $leadInfo['flat_name'],
+                        'payment_date' => $data['payment_date']
+                    ];
+                    $mailSent = $mailService->sendPaymentSuccessMail($leadInfo['email'], $mailData);
+                    if ($mailSent) {
+                        setSuccess("Payment created successfully & Email sent to " . htmlspecialchars($leadInfo['email']) . "!");
+                    } else {
+                        setError("Payment created, BUT Email dispatch failed.");
+                    }
+                }
+            }
         }
 
         header("Location: {$GLOBALS['base_url']}/payments-booking/" . $data['booking_id']);

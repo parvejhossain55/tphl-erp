@@ -158,8 +158,9 @@ class FundRequisitionController extends Controller {
             $where .= " AND fr.requested_by = $userId";
         } elseif (empty($statusFilter) && $viewMode !== 'all') {
             if (in_array($roleId, [20, 32], true)) {
-                // Operation Head: show only management-pending items by default (up to 1 Lakh) OR their own requests
-                $where .= " AND ((fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 100000) OR fr.requested_by = $userId)";
+                // Operation Head: show only management-pending items by default (up to 1 Lakh) OR their own requests OR their dept_pending requests
+                $deptHeadCond = !empty($deptHeadDeptIds) ? "fr.department_id IN (" . implode(',', $deptHeadDeptIds) . ")" : "0";
+                $where .= " AND ((fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 100000) OR fr.requested_by = $userId OR (fr.status = 'pending_dept' AND (e_req.reporting_user_id = $userId OR $deptHeadCond)))";
             } elseif (in_array($roleId, [13, 24, 25], true)) {
                 // QC & Internal Audit: show only QC-pending items by default OR their own requests
                 $where .= " AND (fr.status = 'pending_qc' OR fr.requested_by = $userId)";
@@ -1083,6 +1084,7 @@ class FundRequisitionController extends Controller {
             if (in_array($status, ['approved', 'partially_approved']) && $posted_amount > 0) {
                 try {
                     require_once dirname(dirname(__DIR__)) . '/services/AutoPostingService.php';
+                    $autoService = new \AutoPostingService($this->db);
                     // Fetch the user selected account_id from the requisition, fallback to 5220 if missing
                     $selectedAccountId = !empty($frData['account_id']) ? $frData['account_id'] : $autoService->getAccountIdByCode('5220');
                     $accountsPayableAccId = $autoService->getAccountIdByCode('211000'); // Accounts Payable

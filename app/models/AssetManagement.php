@@ -812,6 +812,10 @@ class AssetManagement
             'dept_head_by'      => "INT NULL DEFAULT NULL AFTER `dept_head_status`",
             'dept_head_at'      => "DATETIME NULL DEFAULT NULL AFTER `dept_head_by`",
             'dept_head_note'    => "TEXT NULL DEFAULT NULL AFTER `dept_head_at`",
+            'it_head_status'    => "ENUM('pending','approved','rejected','not_required') DEFAULT 'not_required' AFTER `dept_head_note`",
+            'it_head_by'        => "INT NULL DEFAULT NULL AFTER `it_head_status`",
+            'it_head_at'        => "DATETIME NULL DEFAULT NULL AFTER `it_head_by`",
+            'it_head_note'      => "TEXT NULL DEFAULT NULL AFTER `it_head_at`",
             'operations_status' => "ENUM('pending','approved','rejected') DEFAULT 'approved' AFTER `dept_head_note`",
             'operations_by'     => "INT DEFAULT NULL AFTER `operations_status`",
             'operations_at'     => "TIMESTAMP NULL DEFAULT NULL AFTER `operations_by`",
@@ -840,6 +844,7 @@ class AssetManagement
                        COALESCE(ob.name, pea.asset_location, NULLIF(e_req.workplace, ''), 'Head Office') AS workplace_name,
                        COALESCE(NULLIF(u_req.full_name, ''), u_req.email, 'System Admin') AS requested_by_name,
                        u_dh.full_name AS dept_head_by_name,
+                       u_it.full_name AS it_head_by_name,
                        u_rb.full_name AS reporting_boss_name,
                        u_op.full_name AS operations_by_name,
                        u_ph.full_name AS purchase_head_by_name,
@@ -863,6 +868,7 @@ class AssetManagement
                 LEFT JOIN employees e_req ON e_req.user_id = u_req.id
                 LEFT JOIN departments d ON d.id = e_req.department_id
                 LEFT JOIN users u_dh ON u_dh.id = pea.dept_head_by
+                LEFT JOIN users u_it ON u_it.id = pea.it_head_by
                 LEFT JOIN users u_rb ON u_rb.id = pea.reporting_user_id
                 LEFT JOIN users u_op ON u_op.id = pea.operations_by
                 LEFT JOIN users u_ph ON u_ph.id = pea.purchase_head_by
@@ -939,8 +945,12 @@ class AssetManagement
                     // Reporting Boss (Dept Head approval step)
                     $conds[] = "(pea.reporting_user_id = {$userId} AND pea.dept_head_status = 'pending')";
 
+                    if ($userId === 242) {
+                        $conds[] = "(pea.dept_head_status IN ('approved', 'not_required') AND pea.it_head_status = 'pending')";
+                    }
+
                     if (!empty($filters['is_operations'])) {
-                        $conds[] = "(pea.dept_head_status IN ('approved', 'not_required') AND pea.operations_status = 'pending')";
+                        $conds[] = "(pea.dept_head_status IN ('approved', 'not_required') AND pea.it_head_status IN ('approved', 'not_required') AND pea.operations_status = 'pending')";
                     }
                     if (!empty($filters['is_purchase_head'])) {
                         $conds[] = "(pea.operations_status = 'approved' AND pea.purchase_head_status = 'pending')";
@@ -969,6 +979,7 @@ class AssetManagement
                 $conds = [
                     "pea.requested_by = " . $userId,
                     "pea.dept_head_by = " . $userId,
+                    "pea.it_head_by = " . $userId,
                     "pea.reporting_user_id = " . $userId,
                     "pea.operations_by = " . $userId,
                     "pea.purchase_head_by = " . $userId,
@@ -1011,6 +1022,7 @@ class AssetManagement
                     e_req.reporting_user_id AS requester_reporting_boss_id,
                     COALESCE(NULLIF(u_req.full_name, ''), u_req.email, 'System Admin') AS requested_by_name,
                     u_dh.full_name AS dept_head_by_name,
+                    u_it.full_name AS it_head_by_name,
                     u_rb.full_name AS reporting_boss_name,
                     u_op.full_name AS operations_by_name,
                     u_ph.full_name AS purchase_head_by_name,
@@ -1028,6 +1040,7 @@ class AssetManagement
              LEFT JOIN employees e_req ON e_req.user_id = u_req.id
              LEFT JOIN departments d ON d.id = e_req.department_id
              LEFT JOIN users u_dh ON u_dh.id = pea.dept_head_by
+             LEFT JOIN users u_it ON u_it.id = pea.it_head_by
              LEFT JOIN users u_rb ON u_rb.id = pea.reporting_user_id
              LEFT JOIN users u_op ON u_op.id = pea.operations_by
              LEFT JOIN users u_ph ON u_ph.id = pea.purchase_head_by
@@ -1105,14 +1118,30 @@ class AssetManagement
             $stmtEmp->close();
         }
 
+        $itHeadStatus = 'not_required';
+        if ($itemCategoryId) {
+            $catStmt = $this->db->prepare("SELECT name FROM office_procurement_categories WHERE id = ?");
+            if ($catStmt) {
+                $catStmt->bind_param('i', $itemCategoryId);
+                $catStmt->execute();
+                $catRes = $catStmt->get_result();
+                if ($catRes && $catRow = $catRes->fetch_assoc()) {
+                    if (strpos(strtolower($catRow['name']), 'it security') !== false || strpos(strtolower($catRow['name']), 'computer') !== false) {
+                        $itHeadStatus = 'pending';
+                    }
+                }
+                $catStmt->close();
+            }
+        }
+
         $requestType = $data['request_type'] ?? 'Purchase';
 
         $accountId = !empty($data['account_id']) ? (int)$data['account_id'] : null;
 
         $stmt = $this->db->prepare(
             "INSERT INTO project_extra_assets 
-            (project_id, department_id, office_branch_id, asset_location, assigned_to, item_category_id, request_type, item_name, quantity, unit_price, total_price, justification, attachment, requested_by, reporting_user_id, dept_head_status, account_id, operations_status, purchase_head_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending')"
+            (project_id, department_id, office_branch_id, asset_location, assigned_to, item_category_id, request_type, item_name, quantity, unit_price, total_price, justification, attachment, requested_by, reporting_user_id, dept_head_status, it_head_status, account_id, operations_status, purchase_head_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending')"
         );
 
         if (!$stmt) {
@@ -1121,7 +1150,7 @@ class AssetManagement
         }
 
         $stmt->bind_param(
-            'iiisiissiddssiisi',
+            'iiisiissiddssiisii',
             $projectId,
             $departmentId,
             $officeBranchId,
@@ -1138,6 +1167,7 @@ class AssetManagement
             $requestedBy,
             $reportingUserId,
             $deptHeadStatus,
+            $itHeadStatus,
             $accountId
         );
 
@@ -1159,7 +1189,7 @@ class AssetManagement
      */
     public function approveStep($id, $step, $status, $userId, $note = '', $document = null)
     {
-        $validSteps = ['dept_head', 'operations', 'purchase_head', 'qc_audit', 'mgmt'];
+        $validSteps = ['dept_head', 'it_head', 'operations', 'purchase_head', 'qc_audit', 'mgmt'];
         if (!in_array($step, $validSteps)) return false;
 
         $statusCol = $step . '_status';
@@ -1475,7 +1505,7 @@ class AssetManagement
         $row = $this->findExtraPurchase($id);
         if (!$row) return;
 
-        if (in_array($step, ['dept_head', 'operations', 'purchase_head', 'qc_audit']) && $stepStatus === 'approved') {
+        if (in_array($step, ['dept_head', 'it_head', 'operations', 'purchase_head', 'qc_audit']) && $stepStatus === 'approved') {
             $this->db->query("UPDATE project_extra_assets SET overall_status = 'in_review' WHERE id = " . (int)$id);
         } elseif ($step === 'mgmt' && $stepStatus === 'approved') {
             $this->db->query("UPDATE project_extra_assets SET overall_status = 'approved' WHERE id = " . (int)$id);

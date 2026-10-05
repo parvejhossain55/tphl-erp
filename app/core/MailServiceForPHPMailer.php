@@ -8,8 +8,8 @@ use PHPMailer\PHPMailer\Exception;
 class MailService
 {
     private $host = 'mail.dpremiumhomes.com';
-    private $username = 'tech@dpremiumhomes.com';
-    private $password = 'tech@#1235';
+    private $username = 'no-reply@dpremiumhomes.com';
+    private $password = 'djcdawaxdbmdotlj';
     private $port = 465;
     private $secure = 'ssl';
     public $lastError = '';
@@ -279,6 +279,69 @@ class MailService
         } catch (Exception $e) {
             $this->lastError = $mail->ErrorInfo;
             error_log("Mail Batch Error: " . $mail->ErrorInfo);
+            return false;
+        }
+    }
+    public function sendPaymentSuccessMail($email, $data)
+    {
+        $mail = new PHPMailer(true);
+
+        try {
+            $mail->isSMTP();
+            $mail->CharSet = 'UTF-8';
+            $mail->SMTPDebug = 0;
+            $mail->Timeout = 5;
+            $mail->Host       = $this->host;
+            $mail->SMTPAuth   = true;
+            $mail->Username   = $this->username;
+            $mail->Password   = $this->password;
+            $mail->SMTPSecure = isset($this->secure) ? $this->secure : 'ssl';
+            $mail->Port       = $this->port;
+
+            $mail->setFrom($this->username, 'The Premium Homes Ltd');
+            $mail->addAddress($email);
+
+            $mail->isHTML(true);
+            $mail->Subject = 'Payment Confirmation - The Premium Homes Ltd';
+
+            $clientName = $data['client_name'] ?? 'Valued Client';
+            $amount = $data['amount'] ?? '0.00';
+            $projectName = $data['project_name'] ?? 'N/A';
+            $flatName = $data['flat_name'] ?? 'N/A';
+            $paymentDate = $data['payment_date'] ?? date('Y-m-d');
+
+            $mail->Body = "
+            <div style='font-family:Arial,sans-serif;background:#f4f6f8;padding:20px;'>
+                <div style='max-width:600px;margin:auto;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.05);'>
+                    <div style='background:#28a745;color:#fff;padding:20px;text-align:center;'>
+                        <h2 style='margin:0;'>Payment Received Successfully!</h2>
+                    </div>
+                    <div style='padding:30px;color:#333;line-height:1.6;'>
+                        <p style='font-size:16px;'>Dear <strong>$clientName</strong>,</p>
+                        <p style='font-size:15px;'>We are delighted to inform you that we have successfully received your recent payment. Thank you for your continued trust in <strong>The Premium Homes Ltd</strong>.</p>
+                        
+                        <div style='background:#f8f9fa;border-left:4px solid #28a745;padding:15px;margin:25px 0;'>
+                            <p style='margin:5px 0;'><strong>Amount Paid:</strong> BDT " . number_format((float)$amount, 2) . "</p>
+                            <p style='margin:5px 0;'><strong>Project:</strong> $projectName</p>
+                            <p style='margin:5px 0;'><strong>Flat/Unit:</strong> $flatName</p>
+                            <p style='margin:5px 0;'><strong>Date of Payment:</strong> " . date('d M Y', strtotime($paymentDate)) . "</p>
+                        </div>
+                        
+                        <p style='font-size:14px;color:#555;'>If you have any questions regarding this payment or your property, please feel free to contact us.</p>
+                        <p style='font-size:14px;color:#555;margin-top:30px;'>Best Regards,<br><strong>The Premium Homes Ltd</strong></p>
+                    </div>
+                    <div style='background:#f1f1f1;padding:15px;text-align:center;font-size:12px;color:#777;'>
+                        © " . date('Y') . " The Premium Homes Ltd. All rights reserved.
+                    </div>
+                </div>
+            </div>
+            ";
+
+            $mail->send();
+            return true;
+        } catch (Exception $e) {
+            $this->lastError = $mail->ErrorInfo;
+            error_log("Payment Mail Error: " . $mail->ErrorInfo);
             return false;
         }
     }

@@ -216,12 +216,19 @@
             if ($resDept) $pendingFundReqTotalCount += (int)($resDept->fetch_assoc()['total'] ?? 0);
 
             // 2. Management pending
-            $resMgmt = $db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status = 'pending'");
+            $resMgmt = $db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status IN ('pending', 'partially_approved', 'partially_paid')");
             if ($resMgmt) $pendingFundReqTotalCount += (int)($resMgmt->fetch_assoc()['total'] ?? 0);
 
         } elseif (in_array($loggedRoleId, [20, 32])) {
-            // Operation Head: only management-pending (status = 'pending') up to 1 lakh
-            $resMgmt = $db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status = 'pending' AND amount <= 100000");
+            // Operation Head: management-pending (up to 1 lakh) + dept head pending
+            $resMgmt = $db->query("
+                SELECT COUNT(DISTINCT fr.id) AS total 
+                FROM fund_requisitions fr
+                LEFT JOIN users u ON fr.requested_by = u.id
+                LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                WHERE (fr.status IN ('pending', 'partially_approved', 'partially_paid') AND fr.amount <= 100000)
+                   OR (fr.status = 'pending_dept' AND e.reporting_user_id = $loggedUserId)
+            ");
             if ($resMgmt) $pendingFundReqTotalCount = (int)($resMgmt->fetch_assoc()['total'] ?? 0);
 
         } elseif (in_array($loggedRoleId, [13, 24, 25])) {
@@ -231,7 +238,7 @@
 
         } elseif (in_array($loggedRoleId, [6, 30])) {
             // Accounts: only approved (ready for payment)
-            $resAccts = $db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status = 'approved'");
+            $resAccts = $db->query("SELECT COUNT(*) AS total FROM fund_requisitions WHERE status IN ('approved', 'partially_approved', 'partially_paid')");
             if ($resAccts) $pendingFundReqTotalCount = (int)($resAccts->fetch_assoc()['total'] ?? 0);
 
         } else {
@@ -1681,19 +1688,20 @@
                         </ul>
 
                     <?php endif; ?>
-                    <!-- User Activity Log — Admin / Management only -->
-                    <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 34, 35])): ?>
-                        <li class="slide <?= isActive('user-activity-log', $current_route) ?>">
-                            <a href="<?= $base_url ?>/user-activity-log"
-                                class="sidebar__menu-item <?= isActive('user-activity-log', $current_route) ?>">
-                                <div class="side-menu__icon">
-                                    <i class="fa-solid fa-user-clock"></i>
-                                </div>
-                                <span class="sidebar__menu-label">User Activity Log</span>
-                            </a>
-                        </li>
-                    <?php endif; ?>
 
+                <?php endif; ?>
+
+                <!-- User Activity Log — Admin / Management only -->
+                <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 34, 35])): ?>
+                    <li class="slide <?= isActive('user-activity-log', $current_route) ?>">
+                        <a href="<?= $base_url ?>/user-activity-log"
+                            class="sidebar__menu-item <?= isActive('user-activity-log', $current_route) ?>">
+                            <div class="side-menu__icon">
+                                <i class="fa-solid fa-user-clock"></i>
+                            </div>
+                            <span class="sidebar__menu-label">User Activity Log</span>
+                        </a>
+                    </li>
                 <?php endif; ?>
 
 

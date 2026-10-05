@@ -110,12 +110,16 @@ class TaskController extends Controller
             // Send notification email
             if ($user && !empty($user['email'])) {
                 try {
-                    sendMail(
-                        $user['email'],
-                        'New Task Assigned: ' . $data['title'],
-                        $GLOBALS['base_url'] . '/task-lists',
-                        $assignedBy
-                    );
+                        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+                        $host = $_SERVER['HTTP_HOST'] ?? 'thepremiumhomesltd.com';
+                        $full_link = $protocol . $host . $GLOBALS['base_url'] . '/task-dashboard';
+                        
+                        sendMail(
+                            $user['email'],
+                            'New Task Assigned: ' . $data['title'],
+                            $full_link,
+                            $assignedBy
+                        );
                 } catch (\Throwable $th) {
                     error_log("Mail Sending Failed: " . $th->getMessage());
                 }

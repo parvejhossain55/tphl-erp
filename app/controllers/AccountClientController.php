@@ -1805,6 +1805,38 @@ public function addCedTransaction()
             }
         }
         
+        // EMAIL SENDING LOGIC
+        if (!$isTestingMode) {
+            $leadInfoQuery = $this->db->query("
+                SELECT l.full_name, l.email, p.name AS project_name, f.flat_name
+                FROM lead_bookings lb
+                LEFT JOIN leads l ON lb.lead_id = l.id
+                LEFT JOIN flats f ON lb.flat_id = f.id
+                LEFT JOIN projects p ON f.project_id = p.id
+                WHERE lb.id = " . (int)$bookingId . "
+            ");
+            if ($leadInfoQuery && $leadInfoQuery->num_rows > 0) {
+                $leadInfo = $leadInfoQuery->fetch_assoc();
+                if (!empty($leadInfo['email']) && filter_var($leadInfo['email'], FILTER_VALIDATE_EMAIL)) {
+                    require_once dirname(__DIR__) . '/core/MailServiceForPHPMailer.php';
+                    $mailService = new MailService();
+                    $mailData = [
+                        'client_name' => $leadInfo['full_name'],
+                        'amount' => (float)($transactionData['amount'] ?? 0),
+                        'project_name' => $leadInfo['project_name'],
+                        'flat_name' => $leadInfo['flat_name'],
+                        'payment_date' => $transactionData['payment_date'] ?? date('Y-m-d')
+                    ];
+                    $mailSent = $mailService->sendPaymentSuccessMail($leadInfo['email'], $mailData);
+                    if ($mailSent) {
+                        $smsMsg .= " & Email sent!";
+                    } else {
+                        $smsMsg .= " (Warning: Email dispatch failed)";
+                    }
+                }
+            }
+        }
+        
         setSuccess($result['message'] . " — Pending verification by Accounts." . $smsMsg);
         header("Location: {$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}");
         exit;
@@ -2086,6 +2118,38 @@ public function addTransaction()
                     $smsMsg = " (Warning: SMS dispatch failed for " . htmlspecialchars($clientPhone ?? '') . ": " . htmlspecialchars($errMsg) . ")";
                 }
             }
+            // EMAIL SENDING LOGIC
+            if (!$isTestingMode) {
+                $leadInfoQuery = $this->db->query("
+                    SELECT l.full_name, l.email, p.name AS project_name, f.flat_name
+                    FROM lead_bookings lb
+                    LEFT JOIN leads l ON lb.lead_id = l.id
+                    LEFT JOIN flats f ON lb.flat_id = f.id
+                    LEFT JOIN projects p ON f.project_id = p.id
+                    WHERE lb.id = " . (int)$bookingId . "
+                ");
+                if ($leadInfoQuery && $leadInfoQuery->num_rows > 0) {
+                    $leadInfo = $leadInfoQuery->fetch_assoc();
+                    if (!empty($leadInfo['email']) && filter_var($leadInfo['email'], FILTER_VALIDATE_EMAIL)) {
+                        require_once dirname(__DIR__) . '/core/MailServiceForPHPMailer.php';
+                        $mailService = new MailService();
+                        $mailData = [
+                            'client_name' => $leadInfo['full_name'],
+                            'amount' => (float)($transactionData['amount'] ?? 0),
+                            'project_name' => $leadInfo['project_name'],
+                            'flat_name' => $leadInfo['flat_name'],
+                            'payment_date' => $transactionData['payment_date'] ?? date('Y-m-d')
+                        ];
+                        $mailSent = $mailService->sendPaymentSuccessMail($leadInfo['email'], $mailData);
+                        if ($mailSent) {
+                            $smsMsg .= " & Email sent!";
+                        } else {
+                            $smsMsg .= " (Warning: Email dispatch failed)";
+                        }
+                    }
+                }
+            }
+
             setSuccess($result['message'] . $smsMsg);
             header("Location: {$GLOBALS['base_url']}/clients-cash-in-history?booking_id={$bookingId}");
             exit;

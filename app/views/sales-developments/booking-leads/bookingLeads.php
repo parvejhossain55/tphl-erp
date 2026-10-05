@@ -123,7 +123,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                             <label class="form-label">Land Share Money/Booking Money *</label>
                         </div>
-                        <input type="number" name="agreement_value" class="form-control"
+                        <input type="number" name="agreement_value" id="agreementValueInput" class="form-control"
                             placeholder="e.g. 5000000" required>
                     </div>
                     <div class="col-lg-6">
@@ -671,13 +671,25 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             const flat = flatData.find(f => f.flat_id == selectedFlatId);
             flatPriceInput.value = flat ? Number(flat.price_value).toLocaleString() : '';
             if (flat) {
-                if (flat.booking_money && flat.booking_money > 0) {
-                    landValueInput.value = Number(flat.booking_money).toLocaleString();
+                let sumValue = (Number(flat.booking_money) || 0) + (Number(flat.registration_money) || 0);
+                if (sumValue > 0) {
+                    landValueInput.value = sumValue.toLocaleString();
                 } else {
                     landValueInput.value = Number(flat.land_share_value).toLocaleString();
                 }
+                
+                const agreementValueInput = document.getElementById('agreementValueInput');
+                if (agreementValueInput) {
+                    if (flat.booking_money && Number(flat.booking_money) > 0) {
+                        agreementValueInput.value = Number(flat.booking_money);
+                    } else {
+                        agreementValueInput.value = '';
+                    }
+                }
             } else {
                 landValueInput.value = '';
+                const agreementValueInput = document.getElementById('agreementValueInput');
+                if (agreementValueInput) agreementValueInput.value = '';
             }
         });
     });
