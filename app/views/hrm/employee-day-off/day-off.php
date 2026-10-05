@@ -1,10 +1,22 @@
 <?php
-$page_title = "Employee Day Off Manage";
-$page = 'Day Off Management';
+$page_title = "Employee Day Off Manage (Test)";
+$page = 'Day Off Management (Test)';
 $show_breadcrumb = true;
 ?>
 
 <div class="content">
+
+    <!-- Header Section -->
+    <div class="row align-items-center mb-20">
+        <div class="col-12">
+            <h4 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
+                <i class="fa-solid fa-calendar-xmark text-primary"></i>
+                Day Off Management
+                <span class="badge text-white fs-12 px-2 py-1 rounded-pill" style="background: #8b5cf6;">Test</span>
+            </h4>
+            <p class="text-muted fs-13 mb-0">Manage weekly day-offs and custom roster holidays for employees (Friday is company default)</p>
+        </div>
+    </div>
 
     <div class="row">
         <div class="col-xxl-12">
@@ -106,16 +118,12 @@ $show_breadcrumb = true;
                                                     echo '<span class="badge bg-secondary me-1">' . htmlspecialchars($d) . '</span>';
                                                 }
                                             } else {
-                                                echo '<span class="text-muted">None</span>';
+                                                echo '<span class="badge bg-light text-muted border">None</span>';
                                             }
                                             ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="5" class="text-center">No days off assigned to any employee yet.</td>
-                                </tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -126,70 +134,66 @@ $show_breadcrumb = true;
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const employeeSelect = document.getElementById('employeeSelect');
-    const dayCheckboxes = document.querySelectorAll('.day-checkbox');
-    const saveBtn = document.getElementById('saveBtn');
+<?php ob_start(); ?>
+(function() {
+    function initDayOff() {
+        if (typeof jQuery === 'undefined' || !jQuery.fn.select2) {
+            setTimeout(initDayOff, 50);
+            return;
+        }
 
-    if(employeeSelect) {
-        employeeSelect.addEventListener('change', function() {
-            const employeeId = this.value;
-            
-            // Reset and disable checkboxes if no employee selected
+        var $ = jQuery;
+        var $employeeSelect = $('#employeeSelect');
+        var $dayCheckboxes = $('.day-checkbox');
+        var $saveBtn = $('#saveBtn');
+
+        function loadEmployeeDaysOff(employeeId) {
             if (!employeeId) {
-                dayCheckboxes.forEach(cb => {
-                    cb.checked = false;
-                    cb.disabled = true;
-                });
-                saveBtn.disabled = true;
+                $dayCheckboxes.prop('checked', false).prop('disabled', true);
+                $saveBtn.prop('disabled', true).removeClass('btn-primary').addClass('btn-secondary');
                 return;
             }
 
-            // Enable UI for fetching
-            dayCheckboxes.forEach(cb => {
-                cb.checked = false;
-                cb.disabled = true;
-            });
-            saveBtn.disabled = true;
+            // Immediately enable checkboxes and save button
+            $dayCheckboxes.prop('checked', false).prop('disabled', false);
+            $saveBtn.prop('disabled', false).removeClass('btn-secondary').addClass('btn-primary');
 
-            // Fetch employee days off
-            fetch('<?= $GLOBALS['base_url'] ?>/get-employee-days-off/' + employeeId)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
-                    }
-                    return response.text().then(text => {
-                        try {
-                            return JSON.parse(text);
-                        } catch (e) {
-                            console.error("Failed to parse JSON. Raw response:", text);
-                            throw new Error("Invalid JSON returned from server.");
-                        }
-                    });
-                })
-                .then(data => {
-                    if (data.status === 'success') {
-                        // Enable checkboxes and button
-                        dayCheckboxes.forEach(cb => cb.disabled = false);
-                        saveBtn.disabled = false;
-
-                        // Check the boxes for the days the employee has off
+            // Fetch existing days off via AJAX
+            $.ajax({
+                url: '<?= $GLOBALS['base_url'] ?>/get-employee-days-off/' + encodeURIComponent(employeeId),
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    if (data && data.status === 'success') {
                         if (data.days_off && data.days_off.length > 0) {
-                            data.days_off.forEach(day => {
-                                const cb = document.getElementById('day_' + day);
-                                if (cb) cb.checked = true;
+                            data.days_off.forEach(function(day) {
+                                $('#day_' + day).prop('checked', true);
                             });
                         }
-                    } else {
-                        alert('Failed to load employee data: ' + data.message);
                     }
-                })
-                .catch(error => {
-                    console.error('Error fetching days off:', error);
-                    alert('An error occurred while loading days off: ' + error.message);
-                });
+                },
+                error: function(xhr, status, error) {
+                    console.warn('Could not fetch existing days off:', error);
+                }
+            });
+        }
+
+        // Listen for Select2 change & native select change
+        $(document).on('change select2:select select2:clear', '#employeeSelect', function() {
+            loadEmployeeDaysOff($(this).val());
         });
+
+        // Automatically trigger for already selected employee
+        var currentVal = $employeeSelect.val();
+        if (currentVal) {
+            loadEmployeeDaysOff(currentVal);
+        }
     }
-});
-</script>
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initDayOff);
+    } else {
+        initDayOff();
+    }
+})();
+<?php $page_script = ob_get_clean(); ?>

@@ -69,7 +69,8 @@ class EmpWeeklyDayOff extends Model
                 FROM employees e
                 LEFT JOIN designations desg ON e.designation_id = desg.id
                 LEFT JOIN departments dept ON e.department_id = dept.id
-                JOIN emp_weekly_day_off w ON e.id = w.employee_id
+                LEFT JOIN emp_weekly_day_off w ON e.id = w.employee_id
+                WHERE e.deleted_at IS NULL
                 GROUP BY e.id
                 ORDER BY e.full_name ASC";
         

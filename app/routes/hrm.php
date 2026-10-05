@@ -60,6 +60,31 @@ return [
     'api/employee/my-pending-approvals' => ['controller' => 'EmployeeDashboardController', 'method' => 'getMyPendingApprovals'],
 
     // =========================================================================
+    // Controller: AttendanceTestController (Test Modules)
+    // =========================================================================
+    'attendance-test' => ['controller' => 'AttendanceTestController', 'method' => 'index'],
+    'api/attendance-test/sync' => ['controller' => 'AttendanceTestController', 'method' => 'syncPunches'],
+    'my-attendance-test' => ['controller' => 'AttendanceTestController', 'method' => 'myAttendanceTest'],
+
+    // =========================================================================
+    // Controller: ShiftController (Shift & Roster Management)
+    // =========================================================================
+    'shift-lists' => ['controller' => 'ShiftController', 'method' => 'index'],
+    'store-shift' => ['controller' => 'ShiftController', 'method' => 'store'],
+    'update-shift/(\d+)' => ['controller' => 'ShiftController', 'method' => 'update'],
+    'delete-shift/(\d+)' => ['controller' => 'ShiftController', 'method' => 'delete'],
+    'assign-shift' => ['controller' => 'ShiftController', 'method' => 'assignShift'],
+
+    // =========================================================================
+    // Controller: LeaveTestController (Leave Management - Test)
+    // =========================================================================
+    'leave-management-test' => ['controller' => 'LeaveTestController', 'method' => 'index'],
+    'store-leave-test' => ['controller' => 'LeaveTestController', 'method' => 'storeLeave'],
+    'approve-leave-test/(\d+)' => ['controller' => 'LeaveTestController', 'method' => 'approveLeave'],
+    'reject-leave-test/(\d+)' => ['controller' => 'LeaveTestController', 'method' => 'rejectLeave'],
+    'api/employee-leave-balances/(\d+)' => ['controller' => 'LeaveTestController', 'method' => 'getEmployeeBalances'],
+
+    // =========================================================================
     // Controller: EmpAttendanceController
     // =========================================================================
     'attendance-list' => ['controller' => 'EmpAttendanceController', 'method' => 'index'],
