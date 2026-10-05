@@ -351,6 +351,14 @@ class Lead extends Model
         $params = [];
         $types  = "";
 
+        // Hide leads that belong to Role 33 and 35's teams from other sales users (like Role 5 and 9)
+        $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
+        if (!in_array((int)$loggedInRole, [1, 3, 33, 35])) {
+            $sql .= " AND (l.team_id IS NULL OR l.team_id NOT IN (
+                SELECT e.team_id FROM employees e JOIN users u ON u.id = e.user_id WHERE u.role_id IN (33, 35) AND e.team_id IS NOT NULL
+            ))";
+        }
+
         // TEAM BASED FILTER
         if (!empty($teamId)) {
             if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
@@ -657,6 +665,14 @@ class Lead extends Model
         //  IMPORTANT: declare first
         $params = [];
         $types  = "";
+
+        // Hide leads that belong to Role 33 and 35's teams from other sales users (like Role 5 and 9)
+        $loggedInRole = $_SESSION['user']['role_id'] ?? 0;
+        if (!in_array((int)$loggedInRole, [1, 3, 33, 35])) {
+            $sql .= " AND (l.team_id IS NULL OR l.team_id NOT IN (
+                SELECT e.team_id FROM employees e JOIN users u ON u.id = e.user_id WHERE u.role_id IN (33, 35) AND e.team_id IS NOT NULL
+            ))";
+        }
 
         // TEAM BASED FILTER
         if (!empty($teamId)) {

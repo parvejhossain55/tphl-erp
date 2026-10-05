@@ -41,9 +41,9 @@ class LeadController extends Controller
             exit;
         }
 
-        // Role 9 (Sales Team Head) must always see all sales members across all teams for assignment and filtering,
+        // Role 9 (Sales Head), Roles 33, and 35 (Team CEO) must always see all sales members across all teams for assignment and filtering,
         // even if they have a team_id assigned in users/employees table.
-        if ((int)$userRoleId === 9) {
+        if (in_array((int)$userRoleId, [9, 33, 35])) {
             $assignedUsers = $this->userModel->getAllRoleUser();
         } elseif ((int)$userRoleId === 5 || $isCoLeader) {
             if (!empty($userTeamId)) {
@@ -68,6 +68,11 @@ class LeadController extends Controller
         $to_date   = $_GET['to_date']   ?? null;
         $filter_card = $_GET['filter_card'] ?? null;
         
+        // For Roles 33 and 35, if no team filter is applied (initial load) and they have a team_id, default to their team
+        if (in_array((int)$userRoleId, [33, 35]) && !isset($_GET['team_id']) && !empty($userTeamId)) {
+            $_GET['team_id'] = $userTeamId;
+        }
+
         $filterTeamId = isset($_GET['team_id']) && $_GET['team_id'] !== '' ? (int)$_GET['team_id'] : null;
         $filterProjectId = isset($_GET['project_id']) && $_GET['project_id'] !== '' ? (int)$_GET['project_id'] : null;
         $filterCategoryId = isset($_GET['project_category_id']) && $_GET['project_category_id'] !== '' ? (int)$_GET['project_category_id'] : null;

@@ -464,7 +464,7 @@ $activeCard = $_GET['filter_card'] ?? '';
                 </div>
             </form>
         </div>
-        <?php if ((isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 33])) || isSalesCoLeader()): ?>
+        <?php if ((isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 33, 35])) || isSalesCoLeader()): ?>
             <div class="col-md-6">
                 <div id="assignCard"
                     class="card__wrapper shadow-sm p-3 my-2"
@@ -716,7 +716,7 @@ $activeCard = $_GET['filter_card'] ?? '';
             </form>
         </div>
 
-        <?php if ((isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 33])) || isSalesCoLeader()): ?>
+        <?php if ((isset($_SESSION['user']['role_id']) && in_array($_SESSION['user']['role_id'], [1, 3, 5, 9, 33, 35])) || isSalesCoLeader()): ?>
         <!-- Mobile Assign Card (sticky bottom) -->
         <div class="mobile-only mb-2" id="assignCardMobile"
             style="display:none; position:sticky; bottom:0; z-index:1000; background:#fff; padding:10px; border-top:1px solid #ccc;">

@@ -851,6 +851,17 @@
                     <?php if ((hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 9, 15, 33, 34, 35]))): ?>
 
 
+                        <!-- Teams Manage for Sales -->
+                        <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 6, 9, 33, 34, 35])): ?>
+                            <li class="slide ">
+                                <a href="<?= $base_url ?>/teams"
+                                    class="sidebar__menu-item <?= isActive('teams', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-users-gear"></i></div>
+                                    <span class="sidebar__menu-label">Sales Teams Add</span>
+                                </a>
+                            </li>
+                        <?php endif; ?>
+
                         <!-- Flats Manage -->
                         <li
                             class="slide has-sub <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'active' : '' ?>">
