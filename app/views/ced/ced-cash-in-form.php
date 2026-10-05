@@ -45,7 +45,7 @@ if (!empty($outstandingDues)) {
 }
 
 $isRegistrationPaid    = $paymentSummary['is_registration_paid'] ?? false;
-$devChargePaid         = $isShop ? ($paymentSummary['shop_service_charge_paid'] ?? 0) : ($paymentSummary['development_charge_paid'] ?? 0);
+$devChargePaid         = $isShop ? ($paymentSummary['shop_service_charge_paid_total'] ?? 0) : ($paymentSummary['development_charge_paid_total'] ?? 0);
 $flatDevCharges        = (float)($isShop ? ($paymentSummary['total_shop_service_charge'] ?? 0) : ($paymentSummary['flat_development_charges'] ?? 0));
 $isDevChargeCompleted  = $isShop ? !empty($paymentSummary['is_shop_service_charge_completed']) : !empty($paymentSummary['is_dev_charge_completed']);
 $devChargeLabel        = $isShop ? "Shop Service Charge" : "Development Charges";
@@ -55,10 +55,10 @@ $serviceChargeRate     = (float)($paymentSummary['service_charge_per_emi'] ?? 0)
 $totalEmiDue           = (float)($paymentSummary['total_emi_due'] ?? 0);
 
 $hasOutstandingDues    = count($outstandingDues) > 0;
-$remainingCF           = (float)($paymentSummary['remaining_construction_fee'] ?? 0);
 $totalBulkDiscount     = (float)($paymentSummary['total_bulk_emi_discount'] ?? 0);
 $constructionFee       = (float)($paymentSummary['construction_fee'] ?? 0);
-$emiPaidSoFar          = (float)($paymentSummary['construction_fee_paid'] ?? 0);
+$emiPaidSoFar          = (float)($paymentSummary['emi_paid_total'] ?? 0);
+$remainingCF           = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDiscount);
 
 $virtualEmiSchedule    = $virtualEmiSchedule ?? [];
 $overduePenaltySum     = 0;
@@ -476,7 +476,14 @@ if (!empty($virtualEmiSchedule)) {
                             <?php endif; ?>
 
                             <div class="form-check form-switch p-2 bg-light border rounded mt-2">
-                                <input class="form-check-input ms-0 me-2" type="checkbox" name="is_testing_mode" id="isTestingMode" value="1" checked>
+                                <input class="form-check-input ms-0 me-2" type="checkbox" name="send_sms" id="sendSms" value="true" checked>
+                                <label class="form-check-label fw-semibold text-success" for="sendSms">
+                                    <i class="fa-solid fa-envelope me-1"></i> Send SMS Notification
+                                </label>
+                            </div>
+                            
+                            <div class="form-check form-switch p-2 bg-light border rounded mt-2">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" name="is_testing_mode" id="isTestingMode" value="1">
                                 <label class="form-check-label fw-semibold text-warning" for="isTestingMode">
                                     <i class="fa-solid fa-vial me-1"></i> Testing Mode (Skip SMS & Bypass Phone Validation)
                                 </label>

@@ -172,7 +172,7 @@ class SmsService
     /**
      * Send Trigger 1: Payment Received SMS
      */
-    public function sendPaymentReceivedSms($paymentId, $isTestingMode = false)
+    public function sendPaymentReceivedSms($paymentId, $isTestingMode = false, $overrideAmount = null, $overridePaymentType = null)
     {
         $info = $this->getPaymentInfo($paymentId);
         if (!$info) {
@@ -185,8 +185,12 @@ class SmsService
 
         $clientName  = $info['client_name'] ?? 'Client';
         $phone       = $info['phone'] ?? '';
-        $amount      = number_format((float)($info['amount'] ?? 0), 2);
-        $paymentType = ucfirst(str_replace('_', ' ', $info['payment_type'] ?? 'payment'));
+        
+        $amountRaw   = $overrideAmount !== null ? $overrideAmount : ($info['amount'] ?? 0);
+        $amount      = number_format((float)$amountRaw, 2);
+        
+        $paymentType = $overridePaymentType !== null ? $overridePaymentType : ucfirst(str_replace('_', ' ', $info['payment_type'] ?? 'payment'));
+        
         $projectName = $info['project_name'] ?? 'Project';
         $flatName    = $info['flat_name'] ?? 'Unit';
         $method      = ucfirst($info['payment_method'] ?? 'cash');
