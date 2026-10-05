@@ -119,6 +119,32 @@ class OnboardClientController extends Controller
     }
 
 
+    public function getLeadAllBookings($id = null)
+    {
+        $leadId = $id ?? $_GET['lead_id'] ?? 0;
+        if (!$leadId) {
+            echo json_encode(['success' => false]);
+            exit;
+        }
+
+        $sql = "SELECT lb.id, lb.project_id, lb.flat_id,
+                   p.name AS project_name,
+                   f.flat_name
+            FROM lead_bookings lb
+            LEFT JOIN projects p ON lb.project_id = p.id
+            LEFT JOIN flats f ON lb.flat_id = f.id
+            WHERE lb.lead_id = ? AND lb.deleted_at IS NULL AND lb.booking_status IN ('booked', 'completed')";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param("i", $leadId);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+        header('Content-Type: application/json');
+        echo json_encode($result ? ['success' => true, 'data' => $result] : ['success' => false]);
+        exit;
+    }
+
     public function edit($id)
     {
         $onboardClient = $this->onboardClient->find($id);

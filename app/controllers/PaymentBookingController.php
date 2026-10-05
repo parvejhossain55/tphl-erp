@@ -167,8 +167,15 @@ class PaymentBookingController extends Controller
 
         if (!empty($created)) {
             if ($sendSms) {
+                // Determine if a split happened and we should use the total input amount
+                $smsAmount = $inputAmount;
+                $smsPaymentType = ucfirst(str_replace('_', ' ', $data['payment_type'] ?? 'payment'));
+                if (!empty($createdRegistration)) {
+                    $smsPaymentType = 'Booking & Registration Money';
+                }
+
                 // Trigger 1: Send Payment Received SMS
-                $smsResult = $smsService->sendPaymentReceivedSms($created, $isTestingMode);
+                $smsResult = $smsService->sendPaymentReceivedSms($created, $isTestingMode, $smsAmount, $smsPaymentType);
 
                 if ($isTestingMode) {
                     setSuccess("Payment created successfully! (Testing Mode: SMS Skipped)");

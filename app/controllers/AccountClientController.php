@@ -1767,19 +1767,18 @@ public function addCedTransaction()
 
     $isTestingMode = !empty($_POST['is_testing_mode']);
 
+    $sendSms = isset($_POST['send_sms']) ? filter_var($_POST['send_sms'], FILTER_VALIDATE_BOOLEAN) : false;
+
     require_once dirname(__DIR__) . '/services/SmsService.php';
     $smsService = new SmsService($this->db);
 
-    if (!$isTestingMode) {
+    if ($sendSms && !$isTestingMode) {
         $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
         $clientPhone   = !empty($clientDetails['phone']) ? trim($clientDetails['phone']) : (!empty($clientDetails['phone_number']) ? trim($clientDetails['phone_number']) : '');
         $phoneCheck    = $smsService->validatePhoneNumber($clientPhone);
 
         if (!$phoneCheck['valid']) {
             // Do not block payment. It will gracefully show a warning instead.
-            // setError("Cannot process payment: " . $phoneCheck['message'] . ". Please update the client's phone number first or enable Testing Mode.");
-            // header("Location: {$GLOBALS['base_url']}/ced-add-transaction-form?booking_id={$bookingId}");
-            // exit;
         }
     }
 
@@ -1794,14 +1793,18 @@ public function addCedTransaction()
     if ($result['success']) {
         $smsMsg = "";
         if (!empty($result['payment_id'])) {
-            $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode);
-            if ($isTestingMode) {
-                $smsMsg = " (Testing Mode: SMS Skipped)";
-            } elseif (!empty($smsResult['success'])) {
-                $smsMsg = " & SMS dispatched to client!";
+            if ($sendSms) {
+                $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode);
+                if ($isTestingMode) {
+                    $smsMsg = " (Testing Mode: SMS Skipped)";
+                } elseif (!empty($smsResult['success'])) {
+                    $smsMsg = " & SMS dispatched to client!";
+                } else {
+                    $errMsg = !empty($smsResult['response']) ? $smsResult['response'] : ($smsResult['message'] ?? 'Gateway Error');
+                    $smsMsg = " (Warning: SMS dispatch failed: " . htmlspecialchars($errMsg) . ")";
+                }
             } else {
-                $errMsg = !empty($smsResult['response']) ? $smsResult['response'] : ($smsResult['message'] ?? 'Gateway Error');
-                $smsMsg = " (Warning: SMS dispatch failed: " . htmlspecialchars($errMsg) . ")";
+                $smsMsg = " (SMS Notification Disabled)";
             }
         }
         
@@ -2081,19 +2084,18 @@ public function addTransaction()
 
         $isTestingMode = !empty($_POST['is_testing_mode']);
 
+        $sendSms = isset($_POST['send_sms']) ? filter_var($_POST['send_sms'], FILTER_VALIDATE_BOOLEAN) : false;
+
         require_once dirname(__DIR__) . '/services/SmsService.php';
         $smsService = new SmsService($this->db);
 
-        if (!$isTestingMode) {
+        if ($sendSms && !$isTestingMode) {
             $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
             $clientPhone   = !empty($clientDetails['phone']) ? trim($clientDetails['phone']) : (!empty($clientDetails['phone_number']) ? trim($clientDetails['phone_number']) : '');
             $phoneCheck    = $smsService->validatePhoneNumber($clientPhone);
 
             if (!$phoneCheck['valid']) {
                 // Do not block payment. It will gracefully show a warning instead.
-                // setError("Cannot process payment: " . $phoneCheck['message'] . ". Please update the client's phone number first or enable Testing Mode.");
-                // header("Location: {$GLOBALS['base_url']}/client-cash-in-form?booking_id={$bookingId}");
-                // exit;
             }
         }
 
@@ -2108,14 +2110,18 @@ public function addTransaction()
         if ($result['success']) {
             $smsMsg = "";
             if (!empty($result['payment_id'])) {
-                $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode);
-                if ($isTestingMode) {
-                    $smsMsg = " (Testing Mode: SMS Skipped)";
-                } elseif (!empty($smsResult['success'])) {
-                    $smsMsg = " & SMS dispatched to client (" . htmlspecialchars($clientPhone ?? '') . ")!";
+                if ($sendSms) {
+                    $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode);
+                    if ($isTestingMode) {
+                        $smsMsg = " (Testing Mode: SMS Skipped)";
+                    } elseif (!empty($smsResult['success'])) {
+                        $smsMsg = " & SMS dispatched to client (" . htmlspecialchars($clientPhone ?? '') . ")!";
+                    } else {
+                        $errMsg = !empty($smsResult['response']) ? $smsResult['response'] : ($smsResult['message'] ?? 'Gateway Error');
+                        $smsMsg = " (Warning: SMS dispatch failed for " . htmlspecialchars($clientPhone ?? '') . ": " . htmlspecialchars($errMsg) . ")";
+                    }
                 } else {
-                    $errMsg = !empty($smsResult['response']) ? $smsResult['response'] : ($smsResult['message'] ?? 'Gateway Error');
-                    $smsMsg = " (Warning: SMS dispatch failed for " . htmlspecialchars($clientPhone ?? '') . ": " . htmlspecialchars($errMsg) . ")";
+                    $smsMsg = " (SMS Notification Disabled)";
                 }
             }
             // EMAIL SENDING LOGIC

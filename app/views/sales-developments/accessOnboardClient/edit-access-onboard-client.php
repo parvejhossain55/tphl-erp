@@ -11,27 +11,27 @@ $show_breadcrumb = true;
             <h5 class="card__heading-title">Edit Onboard Client</h5>
         </div>
 
-        <form action="<?= $GLOBALS['base_url'] ?>/update-onboard-client/<?= $onboardClient['id'] ?>" method="POST">
+        <form action="<?= $GLOBALS['base_url'] ?>/update-onboard-client/<?= $onboardClient['id'] ?>" method="POST" autocomplete="off">
             <div class="card__wrapper mb-20">
                 <div class="row g-20 align-items-center justify-content-center">
 
                     <!-- Email -->
                     <div class="col-lg-6 mb-3">
                         <label for="email">Contact Email</label>
-                        <input class="form-control" name="email" id="email" type="email" value="<?= $onboardClient['email'] ?>">
+                        <input class="form-control" name="email" id="email" type="email" value="<?= $onboardClient['email'] ?>" autocomplete="off">
                     </div>
 
                     <!-- Login Email -->
                     <div class="col-lg-6 mb-3">
                         <label for="login_email">Login Email <span>*</span></label>
-                        <input class="form-control" name="login_email" id="login_email" type="email" value="<?= $onboardClient['login_email'] ?>">
+                        <input class="form-control" name="login_email" id="login_email" type="email" value="<?= $onboardClient['login_email'] ?>" autocomplete="off">
                     </div>
 
                     <!-- Password -->
                     <div class="col-lg-6 mb-3">
                         <label for="password">Password <span>Before Update Retype*</span></label>
                         <div class="input-group">
-                            <input type="password" class="form-control" name="password" id="password" placeholder="Enter new password if you want" value="">
+                            <input type="password" class="form-control" name="password" id="password" placeholder="Enter new password if you want" value="" autocomplete="new-password">
                             <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
                                 <i class="fa-regular fa-eye" id="togglePasswordIcon"></i>
                             </button>

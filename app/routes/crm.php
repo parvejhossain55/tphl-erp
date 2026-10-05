@@ -67,6 +67,7 @@ return [
     'edit-onboard-client/(\d+)' => ['controller' => 'OnboardClientController', 'method' => 'edit'],
     'update-onboard-client/(\d+)' => ['controller' => 'OnboardClientController', 'method' => 'update'],
     'get-lead-booking-details/(\d+)' => ['controller' => 'OnboardClientController', 'method' => 'getLeadBookingDetails'],
+    'get-lead-all-bookings/(\d+)' => ['controller' => 'OnboardClientController', 'method' => 'getLeadAllBookings'],
     'assign-onboard-client' => ['controller' => 'OnboardClientController', 'method' => 'assignMultipleLeads'],
     'onboard-client-bulk-upload' => ['controller' => 'OnboardClientController', 'method' => 'bulkUploadForm'],
     'onboard-client-bulk-preview' => ['controller' => 'OnboardClientController', 'method' => 'bulkPreview'],

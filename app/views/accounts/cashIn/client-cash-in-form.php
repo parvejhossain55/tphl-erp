@@ -30,10 +30,10 @@ $totalEmiDue          = $paymentSummary['total_emi_due']           ?? 0;
 $hasOutstandingDues   = count($outstandingDues) > 0;
 // isRegistrationPaid is now tied to is_land_share_completed (same gate)
 $isRegistrationPaid   = $paymentSummary['is_registration_paid']   ?? false;
-$remainingCF          = (float)($paymentSummary['remaining_construction_fee'] ?? 0);
 $totalBulkDiscount    = (float)($paymentSummary['total_bulk_emi_discount'] ?? 0);
 $constructionFee      = (float)($paymentSummary['construction_fee'] ?? 0);
-$emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
+$emiPaidSoFar         = (float)($paymentSummary['emi_paid_total'] ?? 0);
+$remainingCF          = max(0, $constructionFee - $emiPaidSoFar - $totalBulkDiscount);
 ?>
 
 <div class="row">
@@ -436,8 +436,15 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                 </div>
                             <?php endif; ?>
 
-                            <div class="d-none form-check form-switch p-2 bg-light border rounded mt-2">
-                                <input class="form-check-input ms-0 me-2" type="checkbox" name="is_testing_mode" id="isTestingMode" value="1" checked>
+                            <div class="form-check form-switch p-2 bg-light border rounded mt-2">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" name="send_sms" id="sendSms" value="true" checked>
+                                <label class="form-check-label fw-semibold text-success" for="sendSms">
+                                    <i class="fa-solid fa-envelope me-1"></i> Send SMS Notification
+                                </label>
+                            </div>
+                            
+                            <div class="form-check form-switch p-2 bg-light border rounded mt-2">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" name="is_testing_mode" id="isTestingMode" value="1">
                                 <label class="form-check-label fw-semibold text-warning" for="isTestingMode">
                                     <i class="fa-solid fa-vial me-1"></i> Testing Mode (Skip SMS & Bypass Phone Validation)
                                 </label>

@@ -102,7 +102,7 @@ $steps = [
         'user'       => $req['paid_by_name'] ?? null,
         'role'       => $req['paid_by_role'] ?? null,
         'department' => $req['paid_by_dept'] ?? null,
-        'at'         => $req['payment_date'] ?? null,
+        'at'         => in_array($st, ['paid','labor_disbursed']) ? ($req['updated_at'] ?? $req['payment_date'] ?? null) : null,
         'amount'     => $req['total_paid'] ?? $req['paid_amount'] ?? null,
         'note'       => $req['payment_note'] ?? null
     ],
@@ -244,7 +244,7 @@ $steps = [
                         </div>
                         <?php endif; ?>
 
-                        <?php if (!is_null($req['pm_verified_amount'])): ?>
+                        <?php if (isset($req['pm_verified_amount']) && !is_null($req['pm_verified_amount'])): ?>
                         <div class="col-12">
                             <div class="p-2 rounded text-center" style="background:rgba(102,16,242,.08);border:1px solid rgba(102,16,242,.2)">
                                 <div class="fs-11 fw-semibold text-uppercase text-indigo">PM Verified Amount</div>
@@ -350,7 +350,11 @@ $steps = [
                                 <?php endif; ?>
 
                                 <?php if (!empty($step['at'])): ?>
-                                    <div class="fs-11 text-muted"><i class="fa-regular fa-clock me-1"></i><?php echo date('d M Y, h:i A', strtotime($step['at'])); ?></div>
+                                    <?php 
+                                    $ts = strtotime($step['at']);
+                                    $dateStr = (date('H:i:s', $ts) === '00:00:00') ? date('d M Y', $ts) : date('d M Y, h:i A', $ts);
+                                    ?>
+                                    <div class="fs-11 text-muted"><i class="fa-regular fa-clock me-1"></i><?php echo $dateStr; ?></div>
                                 <?php endif; ?>
                                 <?php if (!empty($step['note'])): ?>
                                     <div class="fs-11 text-dark fst-italic mt-1 p-2 bg-light rounded border"><i class="fa-solid fa-comment-dots me-1 text-muted"></i><?php echo htmlspecialchars($step['note']); ?></div>

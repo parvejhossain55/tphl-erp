@@ -147,6 +147,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
                 l.id AS lead_id, 
                 l.full_name, 
                 l.email, 
+                COALESCE(NULLIF(l.phone, ''), l.phone_number) AS phone,
                 MIN(lb.id) AS lead_booking_id
             FROM lead_bookings lb
             LEFT JOIN leads l ON lb.lead_id = l.id
@@ -170,7 +171,7 @@ ORDER BY lb.follow_up_date DESC, lb.follow_up_time ASC
             $types .= "i";
         }
 
-        $sql .= " GROUP BY l.id, l.full_name, l.email
+        $sql .= " GROUP BY l.id, l.full_name, phone, l.email
               ORDER BY l.full_name ASC";
 
         $stmt = $this->db->prepare($sql);

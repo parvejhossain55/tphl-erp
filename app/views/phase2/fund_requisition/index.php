@@ -219,7 +219,7 @@ $canRequestPettyCash = ($isSiteEngineer || in_array($roleId, [1, 3, 20, 32], tru
                     </div>
 
                     <div class="table__wrapper table-responsive">
-                        <table class="table mb-20" id="fundRequisitionTable">
+                        <table class="table mb-20 text-nowrap" id="fundRequisitionTable">
                             <thead>
                                 <tr class="table__title">
                                     <th style="width:40px" class="text-center">#</th>
@@ -1717,7 +1717,7 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
                 <div class="fs-11 text-info fw-normal">QC: BDT <?= number_format((float)$req['qc_approved_amount'], 2) ?></div>
             <?php endif; ?>
         </td>
-        <td class="text-wrap" style="max-width: 200px; word-break: break-word;">
+        <td class="text-wrap" style="min-width: 250px; max-width: 350px; word-break: break-word;">
             <?php 
             $purposeText = trim($req['purpose'] ?? '');
             $words = preg_split('/\s+/', $purposeText);
@@ -1725,7 +1725,7 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
                 $shortPurpose = implode(' ', array_slice($words, 0, 20)) . '...';
                 ?>
                 <div class="fs-12"><?= htmlspecialchars($shortPurpose) ?></div>
-                <button type="button" class="btn btn-link btn-sm p-0 fs-11 text-primary text-decoration-none fw-semibold d-inline-flex align-items-center gap-1 mt-1"
+                <button type="button" class="btn btn-link btn-sm p-0 fs-11 text-primary text-decoration-none fw-semibold d-inline-flex align-items-center gap-1 mt-1 text-nowrap"
                         onclick="openPurposeModal(<?= $req['id'] ?>, <?= htmlspecialchars(json_encode($purposeText), ENT_QUOTES, 'UTF-8') ?>, '<?= addslashes($req['requester_name'] ?? 'Requester') ?>')">
                     <i class="fa-solid fa-eye"></i> View Details
                 </button>
