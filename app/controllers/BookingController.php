@@ -532,12 +532,9 @@ class BookingController extends Controller
         // Execute changes inside a transaction
         $this->db->begin_transaction();
         try {
-            // 1. Release the flat: status = 'available', is_booked = 0
+            // 1. Release the flat conditionally in flats table
             if (!empty($booking['flat_id'])) {
-                $flatId = (int)$booking['flat_id'];
-                $fStmt = $this->db->prepare("UPDATE flats SET status = 'available', is_booked = 0 WHERE id = ?");
-                $fStmt->bind_param("i", $flatId);
-                $fStmt->execute();
+                // Execute refund commit first before syncing flat status
             }
 
             // 2. Update booking: booking_status = 'refunded', landshare_status = 'cancelled'
@@ -608,7 +605,13 @@ class BookingController extends Controller
             }
 
             $this->db->commit();
-            setSuccess("Refund request submitted successfully! Flat unit has been released to available, and the request is sent for management approval.");
+            
+            // Sync flat status after transaction is committed
+            if (!empty($booking['flat_id'])) {
+                $this->bookingModel->syncFlatStatus((int)$booking['flat_id']);
+            }
+
+            setSuccess("Refund request submitted successfully! Flat unit status has been synced, and the request is sent for management approval.");
         } catch (\Exception $e) {
             $this->db->rollback();
             error_log("quickRefund failed: " . $e->getMessage());

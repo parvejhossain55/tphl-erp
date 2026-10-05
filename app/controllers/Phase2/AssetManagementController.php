@@ -490,9 +490,12 @@ class AssetManagementController extends Controller
                 $step = '';
                 if (!$isCreator && !$isChiefOfficer) {
                     $dhStatus = $autoOpenRequest['dept_head_status'] ?? 'not_required';
+                    $itStatus = $autoOpenRequest['it_head_status'] ?? 'not_required';
                     if (($isReporterBoss || $isSuperAdmin) && $dhStatus === 'pending') {
                         $canApprove = true; $step = 'dept_head';
-                    } elseif ($isOperations && in_array($dhStatus, ['approved', 'not_required']) && $autoOpenRequest['operations_status'] === 'pending') {
+                    } elseif ($userId === 242 && in_array($dhStatus, ['approved', 'not_required']) && $itStatus === 'pending') {
+                        $canApprove = true; $step = 'it_head';
+                    } elseif ($isOperations && in_array($dhStatus, ['approved', 'not_required']) && in_array($itStatus, ['approved', 'not_required']) && $autoOpenRequest['operations_status'] === 'pending') {
                         $canApprove = true; $step = 'operations';
                     } elseif ($isPurchaseHead && $autoOpenRequest['operations_status'] === 'approved' && $autoOpenRequest['purchase_head_status'] === 'pending') {
                         $canApprove = true; $step = 'purchase_head';
@@ -562,6 +565,12 @@ class AssetManagementController extends Controller
                                 (int)$request['reporting_user_id'],
                                 'Department Head / Reporting Boss'
                             );
+                        } elseif (($request['it_head_status'] ?? 'not_required') === 'pending') {
+                            $this->mailService->sendOfficeProcurementToUser(
+                                $request,
+                                242,
+                                'IT Head'
+                            );
                         } else {
                             $this->mailService->sendOfficeProcurementToApprovalRoles(
                                 $request,
@@ -608,8 +617,20 @@ class AssetManagementController extends Controller
 
             // Guard: If trying to approve while earlier steps are still pending
             $dhStatus = $req['dept_head_status'] ?? 'not_required';
+            $itStatus = $req['it_head_status'] ?? 'not_required';
+            
+            if ($step === 'it_head' && $dhStatus === 'pending') {
+                setError("This request is currently pending Department Head approval.");
+                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                exit;
+            }
             if ($step === 'operations' && $dhStatus === 'pending') {
                 setError("This request is currently pending Department Head approval.");
+                header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                exit;
+            }
+            if ($step === 'operations' && $itStatus === 'pending') {
+                setError("This request is currently pending IT Head approval.");
                 header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
                 exit;
             }
@@ -640,6 +661,10 @@ class AssetManagementController extends Controller
                 if ($step === 'dept_head') {
                     $reportingBossId = (int)($req['reporting_user_id'] ?? $req['requester_reporting_boss_id'] ?? 0);
                     if ($reportingBossId === $userId) {
+                        $canApproveStep = true;
+                    }
+                } elseif ($step === 'it_head') {
+                    if ($userId === 242) {
                         $canApproveStep = true;
                     }
                 } elseif ($step === 'operations') {
@@ -686,7 +711,8 @@ class AssetManagementController extends Controller
                     try {
                         $updatedRequest = $this->model->findExtraPurchase($id);
                         $nextStage = [
-                            'dept_head'     => [[32], 'Admin & Operation'],
+                            'dept_head'     => (($updatedRequest['it_head_status'] ?? '') === 'pending') ? [[242], 'IT Head', 'user'] : [[32], 'Admin & Operation'],
+                            'it_head'       => [[32], 'Admin & Operation'],
                             'operations'    => [[17, 31], 'Purchase Head'],
                             'purchase_head' => [[24, 25], 'QC & Internal Audit'],
                             'qc_audit'      => [[1, 3, 33], 'Management'],
@@ -694,11 +720,19 @@ class AssetManagementController extends Controller
                         ][$step] ?? null;
 
                         if ($updatedRequest && $nextStage) {
-                            $this->mailService->sendOfficeProcurementToApprovalRoles(
-                                $updatedRequest,
-                                $nextStage[0],
-                                $nextStage[1]
-                            );
+                            if (isset($nextStage[2]) && $nextStage[2] === 'user') {
+                                $this->mailService->sendOfficeProcurementToUser(
+                                    $updatedRequest,
+                                    $nextStage[0][0],
+                                    $nextStage[1]
+                                );
+                            } else {
+                                $this->mailService->sendOfficeProcurementToApprovalRoles(
+                                    $updatedRequest,
+                                    $nextStage[0],
+                                    $nextStage[1]
+                                );
+                            }
                         }
                     } catch (\Throwable $e) {
                         error_log('Office Procurement email (approval stage) failed: ' . $e->getMessage());

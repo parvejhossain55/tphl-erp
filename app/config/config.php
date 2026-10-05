@@ -31,8 +31,8 @@ if ($current_server == 1) {
 
         // SMTP Email Configuration for Local Testing (Gmail)
         "smtp_host" => "smtp.gmail.com",
-        "smtp_user" => "farzana.tphl13@gmail.com",
-        "smtp_pass" => "hvptjfnsprecofmi",
+        "smtp_user" => "no-reply@dpremiumhomes.com",
+        "smtp_pass" => "djcdawaxdbmdotlj",
         "smtp_secure" => "ssl",
         "smtp_port" => 465,
     ];
@@ -116,8 +116,8 @@ if ($current_server == 3) {
         "sms_testing_mode" => false,
 
         "smtp_host" => "smtp.gmail.com",
-        "smtp_user" => "tech@dpremiumhomes.com",
-        "smtp_pass" => "mmericivwzybdogl",
+        "smtp_user" => "no-reply@dpremiumhomes.com",
+        "smtp_pass" => "djcdawaxdbmdotlj",
         "smtp_secure" => "ssl",
         "smtp_port" => 465,
     ];

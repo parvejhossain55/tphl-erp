@@ -1717,7 +1717,7 @@ function renderRow($req, $userId, $roleId, $isSiteEngineer, $serial = 1) {
                 <div class="fs-11 text-info fw-normal">QC: BDT <?= number_format((float)$req['qc_approved_amount'], 2) ?></div>
             <?php endif; ?>
         </td>
-        <td class="text-wrap" style="max-width: 200px;">
+        <td class="text-wrap" style="max-width: 200px; word-break: break-word;">
             <?php 
             $purposeText = trim($req['purpose'] ?? '');
             $words = preg_split('/\s+/', $purposeText);

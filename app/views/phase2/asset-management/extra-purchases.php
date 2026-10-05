@@ -176,6 +176,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                 <th class="text-end">Total (BDT)</th>
                                 <th>Requested By</th>
                                 <th class="text-center">Dept Head</th>
+                                <th class="text-center">IT Item Approved</th>
                                 <th class="text-center" title="Admin & Operation (Role 32)">Admin & Operation</th>
                                 <th class="text-center">Purchase Head</th>
                                 <th class="text-center">QC & Audit</th>
@@ -251,6 +252,32 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 <?php elseif ($dhStatus === 'pending' && !empty($r['reporting_boss_name'])): ?>
                                                     <small class="d-block text-muted fs-9 mt-1" style="line-height:1.2;">
                                                         <i class="fa-solid fa-user-clock me-1 text-warning"></i><?= htmlspecialchars($r['reporting_boss_name']) ?>
+                                                    </small>
+                                                <?php endif; ?>
+                                            <?php endif; ?>
+                                        </td>
+                                        <!-- Step: IT Head -->
+                                        <td class="text-center">
+                                            <?php
+                                            $itStatus = $r['it_head_status'] ?? 'not_required';
+                                            if ($itStatus === 'not_required'):
+                                            ?>
+                                                <span class="badge fs-10 px-2 py-1" style="background:#e9ecef;color:#6c757d;font-weight:600;">
+                                                    N/A
+                                                </span>
+                                            <?php else:
+                                                $itColor = $itStatus === 'approved' ? '#198754' : ($itStatus === 'rejected' ? '#dc3545' : '#e6a817');
+                                                $itBg = $itStatus === 'approved' ? '#d1e7dd' : ($itStatus === 'rejected' ? '#f8d7da' : '#fff3cd');
+                                            ?>
+                                                <span class="badge fs-10 px-2 py-1" style="background:<?= $itBg ?>;color:<?= $itColor ?>;font-weight:600;">
+                                                    <?= ucfirst($itStatus) ?>
+                                                </span>
+                                                <?php if ($itStatus !== 'pending' && !empty($r['it_head_by_name'])): ?>
+                                                    <small class="d-block text-muted fs-10 mt-1" style="line-height:1.2;" title="<?= !empty($r['it_head_at']) ? date('d M Y, h:i A', strtotime($r['it_head_at'])) : '' ?>">
+                                                        <i class="fa-solid fa-user-check text-success me-1 fs-9"></i><?= htmlspecialchars($r['it_head_by_name']) ?>
+                                                        <?php if (!empty($r['it_head_at'])): ?>
+                                                            <br><span class="text-secondary fs-9"><?= date('d M, h:i A', strtotime($r['it_head_at'])) ?></span>
+                                                        <?php endif; ?>
                                                     </small>
                                                 <?php endif; ?>
                                             <?php endif; ?>
@@ -972,8 +999,10 @@ function renderDetailModal(data) {
     var pcClass = data.overall_status === 'purchased' ? 'approved' : 'pending';
     
     // Add "waiting" animation to the current active step
+    var itClass = getStepClass(data.it_head_status);
     if (data.overall_status !== 'rejected' && data.overall_status !== 'purchased') {
         if (data.dept_head_status === 'pending') dhClass = 'waiting';
+        else if (data.it_head_status === 'pending') itClass = 'waiting';
         else if (data.operations_status === 'pending') opClass = 'waiting';
         else if (data.purchase_head_status === 'pending') phClass = 'waiting';
         else if (data.qc_audit_status === 'pending') qcClass = 'waiting';
@@ -1071,6 +1100,14 @@ function renderDetailModal(data) {
                 <div class="step-time">${data.dept_head_at ? formatDate(data.dept_head_at) : ''}</div>
             </div>
             ` : ''}
+            ${data.it_head_status !== 'not_required' ? `
+            <div class="approval-step">
+                <div class="step-circle ${itClass}">${getStepIcon(data.it_head_status)}</div>
+                <div class="step-label">IT Head</div>
+                <div class="step-person">${data.it_head_by_name || '<span class="text-muted">Awaiting</span>'}</div>
+                <div class="step-time">${data.it_head_at ? formatDate(data.it_head_at) : ''}</div>
+            </div>
+            ` : ''}
             <div class="approval-step">
                 <div class="step-circle ${opClass}">${getStepIcon(data.operations_status)}</div>
                 <div class="step-label">Admin & Operation</div>
@@ -1121,6 +1158,7 @@ function renderDetailModal(data) {
             <div class="detail-label mb-1 px-1">APPROVAL NOTES</div>
             <div class="bg-light rounded p-2">
                 ${data.dept_head_note ? '<div class="fs-11 mb-1"><strong class="text-info">Dept Head:</strong> ' + data.dept_head_note + '</div>' : ''}
+                ${data.it_head_note ? '<div class="fs-11 mb-1"><strong class="text-info">IT Head:</strong> ' + data.it_head_note + '</div>' : ''}
                 ${data.operations_note ? '<div class="fs-11 mb-1"><strong class="text-secondary">Operations:</strong> ' + data.operations_note + '</div>' : ''}
                 ${data.purchase_head_note ? '<div class="fs-11 mb-1"><strong class="text-primary">Purchase Head:</strong> ' + data.purchase_head_note + '</div>' : ''}
                 ${data.qc_audit_note ? '<div class="fs-11 mb-1"><strong class="text-info">QC & Audit:</strong> ' + data.qc_audit_note + '</div>' : ''}

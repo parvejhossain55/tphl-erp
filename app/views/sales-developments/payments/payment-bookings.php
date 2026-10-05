@@ -297,7 +297,7 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
 
                                 <label class="form__input-title">Payment Date *</label>
                             </div>
-                            <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" <?= $isSalesHead ? '' : 'readonly style="pointer-events:none; background-color:#e9ecef;" title="Only Sales Head can edit the payment date"' ?> required>
+                            <input type="date" name="payment_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
                         </div>
 
                         <!-- Transaction Reference -->
@@ -352,7 +352,7 @@ $isSalesHead = ((strpos($userRoleName, 'sales') !== false && strpos($userRoleNam
                             <?php endif; ?>
                             <div class="col-lg-12">
                                 <div class="form-check form-switch p-2 bg-light border rounded mb-2">
-                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="send_sms" id="sendSmsToggle" value="1">
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="send_sms" id="sendSmsToggle" value="1" checked>
                                     <label class="form-check-label fw-semibold text-primary" for="sendSmsToggle">
                                         <i class="fa-solid fa-envelope me-1"></i> Send SMS Notification
                                     </label>
@@ -443,6 +443,17 @@ function generateCombinedReceipt() {
                         </tr>
                     </thead>
                     <tbody>
+                        <?php 
+                            // Group payments by batch_id to enable combined invoice printing
+                            $batch_payment_ids = [];
+                            if (!empty($payments)) {
+                                foreach ($payments as $bp) {
+                                    if (!empty($bp['batch_id'])) {
+                                        $batch_payment_ids[$bp['batch_id']][] = $bp['id'];
+                                    }
+                                }
+                            }
+                        ?>
                         <?php if (!empty($payments)): ?>
 
                             <?php
@@ -544,11 +555,24 @@ function generateCombinedReceipt() {
 
                                     <td style="white-space: nowrap;">
                                         <div class="d-flex align-items-center gap-1">
-                                            <!-- Print Invoice (Always enabled so money receipt can be generated even if verification is pending) -->
+                                            <?php 
+                                                $isBatched = !empty($p['batch_id']) && isset($batch_payment_ids[$p['batch_id']]) && count($batch_payment_ids[$p['batch_id']]) > 1;
+                                            ?>
+                                            
+                                            <?php if ($isBatched): ?>
+                                                <a target="_blank"
+                                                    href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= implode(',', $batch_payment_ids[$p['batch_id']]) ?>"
+                                                    class="btn btn-warning btn-sm"
+                                                    title="Print Combined Money Receipt">
+                                                    <i class="fa-solid fa-object-group me-1"></i> Combined Invoice
+                                                </a>
+                                            <?php endif; ?>
+
+                                            <!-- Individual Invoice -->
                                             <a target="_blank"
                                                 href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $p['id'] ?>"
                                                 class="btn btn-success btn-sm"
-                                                title="Print Money Receipt / Invoice">
+                                                title="Print Individual Money Receipt">
                                                 <i class="fa-solid fa-receipt me-1"></i> <?= $p['payment_type'] === 'registration' ? 'Registration Invoice' : ($p['payment_type'] === 'land_share' ? 'Land Share Invoice' : 'Booking Invoice') ?>
                                             </a>
                                             

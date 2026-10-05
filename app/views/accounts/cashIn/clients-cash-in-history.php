@@ -522,7 +522,7 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
 
                     <div class="ms-auto d-flex align-items-center">
                         <div class="form-check form-switch p-2 bg-light border rounded mb-0">
-                            <input class="form-check-input ms-0 me-2" type="checkbox" id="globalSendSmsToggle">
+                            <input class="form-check-input ms-0 me-2" type="checkbox" id="globalSendSmsToggle" checked>
                             <label class="form-check-label fw-semibold text-primary" for="globalSendSmsToggle" style="cursor: pointer;">
                                 <i class="fa-solid fa-envelope me-1"></i> Send SMS on Verify
                             </label>
