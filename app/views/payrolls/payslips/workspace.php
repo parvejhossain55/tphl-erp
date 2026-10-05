@@ -335,9 +335,11 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                         <i class="fa-solid fa-file-csv me-1"></i> Export CSV
                     </button>
                     <button type="button" class="btn btn-danger fw-semibold shadow-sm me-2" onclick="
-                        var year = document.getElementById('year') ? document.getElementById('year').value : '';
-                        var month = document.getElementById('month') ? document.getElementById('month').value : '';
-                        window.location.href = '<?= $GLOBALS['base_url'] ?>/payroll-workspace-pdf?year=' + year + '&month=' + month;
+                        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#workspaceTable')) {
+                            $('#workspaceTable').DataTable().button('.buttons-pdf').trigger();
+                        } else {
+                            alert('Table is loading, please wait a moment.');
+                        }
                     ">
                         <i class="fa-solid fa-file-pdf me-1"></i> Export PDF
                     </button>
@@ -974,7 +976,7 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                     },
                     {
                         text: '<i class="fa-solid fa-file-pdf me-1"></i> PDF',
-                        className: 'btn btn-danger btn-sm',
+                        className: 'btn btn-danger btn-sm buttons-pdf',
                         action: function (e, dt, node, config) {
                             exportDynamicPDF(table);
                         }
@@ -984,29 +986,63 @@ $_selectedMonth = $selectedMonth   ?? date('m');
 
             // Extract all rows from DataTable and POST to PDF endpoint
             function exportDynamicPDF(dt) {
-                var year = document.getElementById('year') ? document.getElementById('year').value : '';
-                var month = document.getElementById('month') ? document.getElementById('month').value : '';
+                var yearSel = document.getElementById('year');
+                var monthSel = document.getElementById('month');
+                var year = yearSel ? yearSel.value : '';
+                var month = monthSel ? monthSel.value : '';
+                var projectSelect = document.getElementById('payrollProject');
+                var projectId = projectSelect ? projectSelect.value : '';
+                var projectName = '';
+                if (projectSelect && projectSelect.selectedIndex >= 0) {
+                    var pText = projectSelect.options[projectSelect.selectedIndex].text.trim();
+                    if (!pText.toLowerCase().includes('select')) {
+                        projectName = pText;
+                    }
+                    if (!year) {
+                        var pDate = projectSelect.options[projectSelect.selectedIndex].getAttribute('data-date');
+                        if (pDate) {
+                            var dp = pDate.split('-');
+                            if (dp.length >= 2) {
+                                year = dp[0];
+                                month = dp[1];
+                            }
+                        }
+                    }
+                }
 
                 var rowData = [];
                 var headerData = [];
+                var footerData = [];
 
-                // Get header data
-                $(dt.table().header()).find('th').each(function () {
+                // 1. Get header data (skip column 0 checkbox)
+                $(dt.table().header()).find('th').each(function (idx) {
+                    if (idx === 0) return;
                     headerData.push($(this).text().trim());
                 });
 
-                // Get data from all pages (not just current page)
+                // 2. Get data from all pages
                 var dtNodes = dt.rows().nodes();
+                var slCounter = 1;
 
                 $(dtNodes).each(function () {
                     var tr = $(this);
-                    var isExcluded = tr.find('.emp-checkbox').is(':checked') ? 0 : 1;
+                    // Filter out unchecked employees
+                    if (tr.find('.emp-checkbox').length > 0 && !tr.find('.emp-checkbox').is(':checked')) {
+                        return;
+                    }
+
                     var rowArr = [];
                     tr.find('td').each(function (index) {
-                        if (index === 0) return;
+                        if (index === 0) return; // Skip checkbox column
                         var cell = $(this);
-                        if (cell.find('input').length > 0) {
-                            rowArr.push(cell.find('input').val());
+                        if (index === 1) {
+                            rowArr.push(slCounter++);
+                            return;
+                        }
+                        if (cell.find('input[type="hidden"].in-salary-hold-string').length > 0) {
+                            rowArr.push(cell.find('input[type="hidden"].in-salary-hold-string').val() || 'Unhold');
+                        } else if (cell.find('input:not([type="hidden"])').length > 0) {
+                            rowArr.push(cell.find('input:not([type="hidden"])').val());
                         } else {
                             rowArr.push(cell.text().trim());
                         }
@@ -1014,22 +1050,36 @@ $_selectedMonth = $selectedMonth   ?? date('m');
                     rowData.push(rowArr);
                 });
 
+                // 3. Get footer totals if available
+                var $footTds = $('.dataTables_scrollFoot tfoot tr td');
+                if ($footTds.length === 0) {
+                    $footTds = $('#workspaceTable tfoot tr td');
+                }
+                if ($footTds.length > 0) {
+                    $footTds.each(function (idx) {
+                        if (idx === 0) return; // Skip checkbox column
+                        footerData.push($(this).text().trim());
+                    });
+                }
+
                 var form = document.createElement("form");
                 form.method = "POST";
-                form.action = '<?= $GLOBALS['base_url'] ?? '/' ?>/payroll-workspace-pdf?year=' + year + '&month=' + month;
+                form.action = '<?= $GLOBALS['base_url'] ?? '/' ?>/payroll-workspace-pdf?year=' + encodeURIComponent(year) + '&month=' + encodeURIComponent(month);
                 form.target = "_blank"; // Open PDF in new tab
 
-                var input = document.createElement("input");
-                input.type = "hidden";
-                input.name = "table_data";
-                input.value = JSON.stringify(rowData);
-                form.appendChild(input);
+                function addHidden(name, val) {
+                    var inp = document.createElement("input");
+                    inp.type = "hidden";
+                    inp.name = name;
+                    inp.value = val;
+                    form.appendChild(inp);
+                }
 
-                var inputHeaders = document.createElement("input");
-                inputHeaders.type = "hidden";
-                inputHeaders.name = "table_headers";
-                inputHeaders.value = JSON.stringify(headerData);
-                form.appendChild(inputHeaders);
+                addHidden("table_data", JSON.stringify(rowData));
+                addHidden("table_headers", JSON.stringify(headerData));
+                addHidden("table_footers", JSON.stringify(footerData));
+                addHidden("project_name", projectName);
+                addHidden("payroll_project_id", projectId);
 
                 document.body.appendChild(form);
                 form.submit();

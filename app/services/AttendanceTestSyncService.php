@@ -241,7 +241,7 @@ class AttendanceTestSyncService
         $overtimeMinutes = 0;
 
         // 1. Check Leave
-        if ($hasApprovedLeave) {
+        if ($hasApprovedLeave && empty($punchIn)) {
             $status = 'On Leave';
         }
         // 2. Check Weekly Day-Off

@@ -1530,16 +1530,16 @@
                             </ul>
                         </li>
                         <!-- Attendance Management (Test) -->
-                        <li class="slide has-sub <?= isActive(['attendance-test', 'shift-lists', 'day-off'], $current_route) ? 'active open' : '' ?>">
+                        <li class="slide has-sub <?= isActive(['attendance-test', 'shift-lists', 'day-off', 'leave-management-test'], $current_route) ? 'active open' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['attendance-test', 'shift-lists', 'day-off'], $current_route) ? 'active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['attendance-test', 'shift-lists', 'day-off', 'leave-management-test'], $current_route) ? 'active' : '' ?>">
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
                                 <div class="side-menu__icon"><i class="fa-solid fa-clock-rotate-left" style="color: #8b5cf6;"></i></div>
                                 <span class="sidebar__menu-label">Attendance Management (Test)</span>
                                 <span class="badge text-white ms-auto fs-10 px-2 py-0 rounded-pill" style="background: #8b5cf6;">Test</span>
                             </a>
                             <ul class="sidebar-menu child2"
-                                style="display: <?= isActive(['attendance-test', 'shift-lists', 'day-off'], $current_route) ? 'block' : 'none' ?>;">
+                                style="display: <?= isActive(['attendance-test', 'shift-lists', 'day-off', 'leave-management-test'], $current_route) ? 'block' : 'none' ?>;">
                                 <li class="slide <?= isActive('attendance-test', $current_route) ?>">
                                     <a href="<?= $base_url ?>/attendance-test"
                                         class="sidebar__menu-item <?= isActive('attendance-test', $current_route) ?>">
@@ -1556,6 +1556,12 @@
                                     <a href="<?= $base_url ?>/day-off"
                                         class="sidebar__menu-item <?= isActive('day-off', $current_route) ?>">
                                         Day Off Manage (Test)
+                                    </a>
+                                </li>
+                                <li class="slide <?= isActive('leave-management-test', $current_route) ?>">
+                                    <a href="<?= $base_url ?>/leave-management-test"
+                                        class="sidebar__menu-item <?= isActive('leave-management-test', $current_route) ?>">
+                                        Leave Manage (Test)
                                     </a>
                                 </li>
                             </ul>

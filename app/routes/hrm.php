@@ -76,6 +76,15 @@ return [
     'assign-shift' => ['controller' => 'ShiftController', 'method' => 'assignShift'],
 
     // =========================================================================
+    // Controller: LeaveTestController (Leave Management - Test)
+    // =========================================================================
+    'leave-management-test' => ['controller' => 'LeaveTestController', 'method' => 'index'],
+    'store-leave-test' => ['controller' => 'LeaveTestController', 'method' => 'storeLeave'],
+    'approve-leave-test/(\d+)' => ['controller' => 'LeaveTestController', 'method' => 'approveLeave'],
+    'reject-leave-test/(\d+)' => ['controller' => 'LeaveTestController', 'method' => 'rejectLeave'],
+    'api/employee-leave-balances/(\d+)' => ['controller' => 'LeaveTestController', 'method' => 'getEmployeeBalances'],
+
+    // =========================================================================
     // Controller: EmpAttendanceController
     // =========================================================================
     'attendance-list' => ['controller' => 'EmpAttendanceController', 'method' => 'index'],

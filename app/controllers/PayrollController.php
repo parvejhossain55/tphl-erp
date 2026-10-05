@@ -1880,61 +1880,121 @@ class PayrollController extends Controller
 
     public function exportWorkspacePDF()
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(300);
+
         $currentYear = date('Y');
         $currentMonth = date('m');
 
         $selectedYear = (!empty($_GET['year'])) ? $_GET['year'] : $currentYear;
         $selectedMonth = (!empty($_GET['month'])) ? $_GET['month'] : $currentMonth;
 
-        $monthName = date('F', mktime(0, 0, 0, $selectedMonth, 1));
+        $payrollProjectId = (int)($_POST['payroll_project_id'] ?? $_GET['payroll_project_id'] ?? 0);
+        $projectName = trim($_POST['project_name'] ?? '');
+
+        if (empty($projectName) && $payrollProjectId > 0) {
+            $pQuery = $this->db->query("SELECT name, date FROM payroll_projects WHERE id = $payrollProjectId LIMIT 1");
+            if ($pQuery && $pRow = $pQuery->fetch_assoc()) {
+                $projectName = $pRow['name'];
+                if (empty($_GET['year']) && !empty($pRow['date'])) {
+                    $dp = explode('-', $pRow['date']);
+                    if (count($dp) >= 2) {
+                        $selectedYear = $dp[0];
+                        $selectedMonth = $dp[1];
+                    }
+                }
+            }
+        }
+
+        $monthName = date('F', mktime(0, 0, 0, (int)$selectedMonth, 1));
 
         // Setup PDF Generator
-        $pdf = new \TCPDF('L', 'mm', 'A2');
+        $pdf = new \TCPDF('L', 'mm', 'A2', true, 'UTF-8', false);
         $pdf->SetCreator('TPHL ERP');
         $pdf->SetAuthor('Admin');
         $pdf->SetTitle('Payroll Workplace Report');
-        $pdf->SetMargins(10, 10, 10);
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        $pdf->SetMargins(8, 8, 8);
         $pdf->SetAutoPageBreak(TRUE, 10);
+        $pdf->setFontSubsetting(false); // Subsetting disabled drastically reduces memory consumption & boosts speed
         $pdf->AddPage();
-        $pdf->SetFont('helvetica', '', 7);
+        $pdf->SetFont('helvetica', '', 6.5);
 
         // Check if custom POST data is set from the client-side
         if (!empty($_POST['table_data']) && !empty($_POST['table_headers'])) {
             $tableData = json_decode($_POST['table_data'], true) ?: [];
             $tableHeaders = json_decode($_POST['table_headers'], true) ?: [];
+            $tableFooters = !empty($_POST['table_footers']) ? (json_decode($_POST['table_footers'], true) ?: []) : [];
 
+            $projectTitleStr = !empty($projectName) ? ' &mdash; ' . htmlspecialchars($projectName) : '';
             $html = '
-            <div style="text-align:center;">
-                <h1 style="color:#078134;">The Premium Homes Ltd</h1>
-                <h3 style="color:#28B463;">Payroll Workplace Report (' . $monthName . ' ' . $selectedYear . ')</h3>
-                <p style="font-size:14px;"><b>Total Employees: </b> ' . count($tableData) . '</p>
-            </div>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 6px;">
+                <tr>
+                    <td style="text-align: center;">
+                        <h1 style="color: #078134; margin: 0; padding: 0; font-size: 16px; font-weight: bold;">The Premium Homes Ltd</h1>
+                        <h3 style="color: #1a5632; margin: 2px 0; font-size: 11px;">Payroll Workplace Report' . $projectTitleStr . ' (' . htmlspecialchars($monthName . ' ' . $selectedYear) . ')</h3>
+                        <p style="font-size: 9px; color: #555555; margin: 0;"><b>Total Employees: </b> ' . count($tableData) . '</p>
+                    </td>
+                </tr>
+            </table>
             <br>
-            <table border="1" cellpadding="3" width="100%">
+            <table border="1" cellpadding="2" cellspacing="0" width="100%" style="font-size: 6px; border-collapse: collapse;">
                 <thead>
-                    <tr style="background-color:#078134; color:#ffffff; text-align:center; font-weight:bold;">';
+                    <tr style="background-color: #078134; color: #ffffff; text-align: center; font-weight: bold;">';
 
             foreach ($tableHeaders as $th) {
-                $html .= '<th>' . htmlspecialchars($th) . '</th>';
+                $html .= '<th style="padding: 3px 1px;">' . htmlspecialchars($th) . '</th>';
             }
             $html .= '</tr></thead><tbody>';
 
             if (empty($tableData)) {
-                $html .= '<tr><td colspan="' . count($tableHeaders) . '" style="text-align:center;"><b>No payslips found for this period.</b></td></tr>';
+                $html .= '<tr><td colspan="' . count($tableHeaders) . '" style="text-align: center; padding: 10px;"><b>No employees found for this period.</b></td></tr>';
             } else {
                 foreach ($tableData as $row) {
-                    $html .= '<tr style="text-align:center;">';
-                    foreach ($row as $cell) {
-                        $html .= '<td>' . htmlspecialchars($cell ?? '') . '</td>';
+                    $html .= '<tr>';
+                    foreach ($row as $colIdx => $cell) {
+                        $th = $tableHeaders[$colIdx] ?? '';
+                        $thLower = strtolower($th);
+                        $align = 'center';
+
+                        if (strpos($thLower, 'name') !== false || strpos($thLower, 'department') !== false || strpos($thLower, 'designation') !== false || strpos($thLower, 'workplace') !== false || strpos($thLower, 'remarks') !== false) {
+                            $align = 'left';
+                        } elseif (strpos($thLower, 'amount') !== false || strpos($thLower, 'salary') !== false || strpos($thLower, 'gross') !== false || strpos($thLower, 'daily') !== false || strpos($thLower, 'payable') !== false || strpos($thLower, 'bank') !== false || strpos($thLower, 'cash') !== false || strpos($thLower, 'allowance') !== false || strpos($thLower, 'deduction') !== false || strpos($thLower, 'lunch') !== false || strpos($thLower, 'bonus') !== false || strpos($thLower, 'overtime') !== false || strpos($thLower, 'arrear') !== false || strpos($thLower, 'tax') !== false) {
+                            $align = 'right';
+                        }
+
+                        $html .= '<td style="text-align: ' . $align . '; padding: 2px 1px;">' . htmlspecialchars((string)($cell ?? '')) . '</td>';
                     }
                     $html .= '</tr>';
                 }
             }
-            $html .= '</tbody></table>';
+            $html .= '</tbody>';
+
+            if (!empty($tableFooters) && count($tableFooters) === count($tableHeaders)) {
+                $html .= '<tfoot><tr style="background-color: #d1e7dd; color: #0f5132; font-weight: bold; font-size: 6.5px;">';
+                foreach ($tableFooters as $colIdx => $fcell) {
+                    $th = $tableHeaders[$colIdx] ?? '';
+                    $thLower = strtolower($th);
+                    $align = 'center';
+                    if (strpos($thLower, 'name') !== false || strpos($thLower, 'department') !== false || strpos($thLower, 'designation') !== false) {
+                        $align = 'left';
+                    } elseif (strpos($thLower, 'amount') !== false || strpos($thLower, 'salary') !== false || strpos($thLower, 'gross') !== false || strpos($thLower, 'daily') !== false || strpos($thLower, 'payable') !== false || strpos($thLower, 'bank') !== false || strpos($thLower, 'cash') !== false || strpos($thLower, 'allowance') !== false || strpos($thLower, 'deduction') !== false || strpos($thLower, 'lunch') !== false || strpos($thLower, 'bonus') !== false || strpos($thLower, 'overtime') !== false || strpos($thLower, 'arrear') !== false || strpos($thLower, 'tax') !== false) {
+                        $align = 'right';
+                    }
+                    $html .= '<td style="text-align: ' . $align . '; padding: 2px 1px;">' . htmlspecialchars((string)($fcell ?? '')) . '</td>';
+                }
+                $html .= '</tr></tfoot>';
+            }
+
+            $html .= '</table>';
 
             $pdf->writeHTML($html, true, false, true, false, '');
-            ob_end_clean();
-            $pdf->Output('Payroll_Workspace_Report_' . $monthName . '_' . $selectedYear . '.pdf', 'D');
+            if (ob_get_length()) {
+                ob_end_clean();
+            }
+            $pdfFilename = 'Payroll_Workspace_Report_' . (!empty($projectName) ? preg_replace('/[^a-zA-Z0-9_-]/', '_', $projectName) . '_' : '') . $monthName . '_' . $selectedYear . '.pdf';
+            $pdf->Output($pdfFilename, 'I');
             exit;
         }
 
@@ -1953,7 +2013,7 @@ class PayrollController extends Controller
             LEFT JOIN employees e ON p.employee_id = e.id
             LEFT JOIN departments dept ON e.department_id = dept.id
             LEFT JOIN designations desg ON e.designation_id = desg.id
-            WHERE e.employee_status = 'active' AND YEAR(p.payslip_month) = '$selectedYear' AND MONTH(p.payslip_month) = '$selectedMonth'
+            WHERE e.employee_status = 'active' " . ($payrollProjectId > 0 ? " AND p.payroll_project_id = $payrollProjectId" : " AND YEAR(p.payslip_month) = '$selectedYear' AND MONTH(p.payslip_month) = '$selectedMonth'") . "
             ORDER BY e.employee_id ASC
         ";
 
@@ -1975,10 +2035,11 @@ class PayrollController extends Controller
             }
         }
 
+        $projectTitleStr = !empty($projectName) ? ' &mdash; ' . htmlspecialchars($projectName) : '';
         $html = '
         <div style="text-align:center;">
             <h1 style="color:#078134;">The Premium Homes Ltd</h1>
-            <h3 style="color:#28B463;">Payroll Workplace Report (' . $monthName . ' ' . $selectedYear . ')</h3>
+            <h3 style="color:#28B463;">Payroll Workplace Report' . $projectTitleStr . ' (' . htmlspecialchars($monthName . ' ' . $selectedYear) . ')</h3>
             <p style="font-size:14px;"><b>Total Employees: </b> ' . count($payslips) . '</p>
         </div>
         <br>
@@ -2167,8 +2228,11 @@ class PayrollController extends Controller
 
         $pdf->writeHTML($html, true, false, true, false, '');
 
-        ob_end_clean();
-        $pdf->Output('Payroll_Workspace_Report_' . $monthName . '_' . $selectedYear . '.pdf', 'D');
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+        $filename = 'Payroll_Workspace_Report_' . (!empty($projectName) ? preg_replace('/[^a-zA-Z0-9_-]/', '_', $projectName) . '_' : '') . $monthName . '_' . $selectedYear . '.pdf';
+        $pdf->Output($filename, 'I');
         exit;
     }
 
