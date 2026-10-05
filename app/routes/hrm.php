@@ -60,6 +60,13 @@ return [
     'api/employee/my-pending-approvals' => ['controller' => 'EmployeeDashboardController', 'method' => 'getMyPendingApprovals'],
 
     // =========================================================================
+    // Controller: AttendanceTestController (Test Modules)
+    // =========================================================================
+    'attendance-test' => ['controller' => 'AttendanceTestController', 'method' => 'index'],
+    'api/attendance-test/sync' => ['controller' => 'AttendanceTestController', 'method' => 'syncPunches'],
+    'my-attendance-test' => ['controller' => 'AttendanceTestController', 'method' => 'myAttendanceTest'],
+
+    // =========================================================================
     // Controller: EmpAttendanceController
     // =========================================================================
     'attendance-list' => ['controller' => 'EmpAttendanceController', 'method' => 'index'],

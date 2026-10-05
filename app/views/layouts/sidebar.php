@@ -1528,6 +1528,14 @@
                                     </a>
                                 </li>
                             </ul>
+                        <!-- Attendance (Test) for HR / Management -->
+                        <li class="slide <?= isActive('attendance-test', $current_route) ? 'active' : '' ?>">
+                            <a href="<?= $base_url ?>/attendance-test"
+                                class="sidebar__menu-item <?= isActive('attendance-test', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-clipboard-user" style="color: #8b5cf6;"></i></div>
+                                <span class="sidebar__menu-label">Attendance (Test)</span>
+                                <span class="badge text-white ms-auto fs-10 px-2 py-0 rounded-pill" style="background: #8b5cf6;">Test</span>
+                            </a>
                         </li>
                     <?php endif; ?>
 
@@ -1923,6 +1931,15 @@
                         class="sidebar__menu-item <?= isActive('my-profile', $current_route) ?>">
                         <div class="side-menu__icon"><i class="fas fa-user"></i></div>
                         <span class="sidebar__menu-label">My Profile</span>
+                    </a>
+                </li>
+                <!-- My Attendance (Test) Accessible by all logged-in employees -->
+                <li class="slide <?= isActive('my-attendance-test', $current_route) ? 'active' : '' ?>">
+                    <a href="<?= $base_url ?>/my-attendance-test"
+                        class="sidebar__menu-item <?= isActive('my-attendance-test', $current_route) ?>">
+                        <div class="side-menu__icon"><i class="fa-solid fa-calendar-check" style="color: #8b5cf6;"></i></div>
+                        <span class="sidebar__menu-label">My Attendance (Test)</span>
+                        <span class="badge bg-purple text-white ms-auto fs-10 px-2 py-0 rounded-pill" style="background: #8b5cf6;">Test</span>
                     </a>
                 </li>
 
