@@ -2023,6 +2023,21 @@ function loadCedClientsPage(page) {
         has_conflict: cedConflictOnly ? '1' : '0'
     });
 
+    // Update browser URL without reloading to preserve state for Back button
+    const urlParams = new URLSearchParams();
+    if (page > 1) urlParams.set('page', page);
+    if (limit && limit !== '20') urlParams.set('limit', limit);
+    if (searchVal) urlParams.set('search', searchVal);
+    if (projectId) urlParams.set('project_id', projectId);
+    if (verificationStatus) urlParams.set('verification_status', verificationStatus);
+    if (dateTypeVal) urlParams.set('date_type', dateTypeVal);
+    if (startDateVal) urlParams.set('start_date', startDateVal);
+    if (endDateVal) urlParams.set('end_date', endDateVal);
+    if (cedConflictOnly) urlParams.set('has_conflict', '1');
+
+    const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+    window.history.replaceState({path: newUrl}, '', newUrl);
+
     fetch('<?= $GLOBALS['base_url'] ?>/clients-cashin-view?' + params.toString(), {
         headers: {
             'X-Requested-With': 'XMLHttpRequest'

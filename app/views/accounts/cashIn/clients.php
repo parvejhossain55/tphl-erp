@@ -1245,6 +1245,21 @@ function loadCashInPage(page) {
         params.append('has_conflict', '1');
     }
 
+    // Update browser URL without reloading to preserve state for Back button
+    const urlParams = new URLSearchParams();
+    if (page > 1) urlParams.set('page', page);
+    if (limitVal && limitVal !== '20') urlParams.set('limit', limitVal);
+    if (searchVal) urlParams.set('search', searchVal);
+    if (projectVal) urlParams.set('project_id', projectVal);
+    if (statusVal) urlParams.set('verification_status', statusVal);
+    if (dateTypeVal) urlParams.set('date_type', dateTypeVal);
+    if (startDateVal) urlParams.set('start_date', startDateVal);
+    if (endDateVal) urlParams.set('end_date', endDateVal);
+    if (cashInConflictOnly) urlParams.set('has_conflict', '1');
+
+    const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+    window.history.replaceState({path: newUrl}, '', newUrl);
+
     fetch('<?= $GLOBALS['base_url'] ?>/clients-cash-in?' + params.toString(), {
         headers: {
             'X-Requested-With': 'XMLHttpRequest'
