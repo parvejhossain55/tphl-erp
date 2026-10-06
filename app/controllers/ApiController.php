@@ -776,7 +776,7 @@ class ApiController extends Controller
                 if ($camRes && $camRes->num_rows > 0) {
                     $cams = [];
                     while ($camRow = $camRes->fetch_assoc()) {
-                        $rawCam = trim($camRow['hls_path'] ?: ($camRow['rtsp_url'] ?? ''));
+                        $rawCam = trim(($camRow['web_link'] ?? '') ?: ($camRow['rtsp_url'] ?? ''));
                         if ($rawCam) {
                             $cams[] = str_starts_with($rawCam, 'http') ? $rawCam : ('https://tphlcamera.xyz/' . ltrim($rawCam, '/'));
                         }
