@@ -116,6 +116,16 @@ $show_breadcrumb = true;
                     <input type="text" name="suite_id" class="form-control" placeholder="e.g. 1, 2, A">
                 </div>
 
+                <!-- Ownership Type -->
+                <div class="col-xl-6">
+                    <label>Ownership Type <span class="text-muted">(Optional, for Suite)</span></label>
+                    <select name="ownership_type" class="form-control">
+                        <option value="">Select Ownership Type</option>
+                        <option value="Group">Group</option>
+                        <option value="Individual">Individual</option>
+                    </select>
+                </div>
+
                 <!-- Per Sqft Price -->
                 <div class="col-xl-6">
                     <label>Rate per SFT (BDT)</label>

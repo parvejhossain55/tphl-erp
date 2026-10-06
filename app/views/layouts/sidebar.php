@@ -307,8 +307,12 @@
             if ($dhProcRes) {
                 $sidebarPendingProcurementCount += (int)($dhProcRes->fetch_assoc()['c'] ?? 0);
             }
+            if ($sidebarUserId === 242) {
+                $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE dept_head_status IN ('approved', 'not_required') AND it_head_status = 'pending'");
+                if ($procRes) $sidebarPendingProcurementCount += (int)($procRes->fetch_assoc()['c'] ?? 0);
+            }
             if ($sidebarRoleId === 32) {
-                $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE dept_head_status IN ('approved', 'not_required') AND operations_status = 'pending'");
+                $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE dept_head_status IN ('approved', 'not_required') AND it_head_status IN ('approved', 'not_required') AND operations_status = 'pending'");
                 if ($procRes) $sidebarPendingProcurementCount += (int)($procRes->fetch_assoc()['c'] ?? 0);
             } elseif (in_array($sidebarRoleId, [17, 31])) {
                 $procRes = $db->query("SELECT COUNT(*) AS c FROM project_extra_assets WHERE operations_status = 'approved' AND purchase_head_status = 'pending'");

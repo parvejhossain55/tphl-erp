@@ -396,9 +396,9 @@ class AssetManagementController extends Controller
         $isManagement   = $isSuperAdmin && !$isChiefOfficer;
         $isAccounts     = ($isSuperAdmin || in_array($roleId, [6, 30])) && !$isChiefOfficer;
         $isGlobalViewer = in_array($roleId, [1, 3, 33, 34, 35, 6, 17, 20, 24, 25, 30, 31, 32]);
-        $isApprover     = $isGlobalViewer && !$isChiefOfficer;
+        $isApprover     = ($isGlobalViewer || $userId === 242) && !$isChiefOfficer;
 
-        $activeTab  = $_GET['tab'] ?? 'all_requests';
+        $activeTab  = $_GET['tab'] ?? ($isApprover ? 'pending_approval' : 'all_requests');
 
         $filters = [
             'department_id'    => $_GET['department_id'] ?? '',
@@ -420,7 +420,7 @@ class AssetManagementController extends Controller
 
         if ($activeTab === 'my_requests') {
             $filters['created_by'] = $userId;
-        } elseif (!$isGlobalViewer) {
+        } elseif (!$isGlobalViewer && !in_array($activeTab, ['all_requests', 'pending_approval'])) {
             $filters['restrict_user'] = true;
         }
 
