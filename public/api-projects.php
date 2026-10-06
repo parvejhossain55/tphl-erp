@@ -465,6 +465,7 @@ function formatProjectSlug($p) {
     $amenities = buildAmenitiesList($p, $formatImg);
     $specifications = buildSpecifications($p, $units);
 
+    $buildingType = $p['building_type'] ?? '';
     $brochure = !empty($p['brochure_link']) ? (strpos($p['brochure_link'], 'http') === 0 ? $p['brochure_link'] : "{$baseUrl}/public/uploads/brochures/" . ltrim($p['brochure_link'], '/')) : '';
     $mapLink = !empty($p['map_link']) ? $p['map_link'] : (!empty($p['project_map_location']) ? $p['project_map_location'] : 'https://maps.google.com/?q=23.8759,90.3795');
 
