@@ -538,6 +538,13 @@
                             <?php endif; ?>
                         </a>
                     </li>
+                    <li class="slide <?= isActive('my-approval-history', $current_route) ?>">
+                        <a href="<?= $base_url ?>/my-approval-history"
+                            class="sidebar__menu-item <?= isActive('my-approval-history', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-clock-rotate-left text-info"></i></div>
+                            <span class="sidebar__menu-label">My Approval History</span>
+                        </a>
+                    </li>
                 <?php endif; ?>
 
                 <?php 
@@ -3739,9 +3746,9 @@
                     <?php if (hasPermission("task manage")): ?>
 
                         <li
-                            class="slide has-sub <?= isActive(['create-task', 'task-lists'], $current_route) ? 'active' : '' ?>">
+                            class="slide has-sub <?= isActive(['create-task', 'task-lists', 'todo'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['create-task', 'task-lists'], $current_route) ? 'menu-open active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['create-task', 'task-lists', 'todo'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
                                 <span class="sidebar__menu-label">Task Manage</span>
                                 <?php if ($pendingTasksCount > 0): ?>
@@ -3768,6 +3775,10 @@
                                 <li class="slide <?= isActive('task-lists', $current_route) ?>">
                                     <a class="sidebar__menu-item <?= isActive('task-lists', $current_route) ?>"
                                         href="<?= $base_url ?>/task-lists">Task List</a>
+                                </li>
+                                <li class="slide <?= isActive('todo', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('todo', $current_route) ?>"
+                                        href="<?= $base_url ?>/todo">My Todo Lists</a>
                                 </li>
                             </ul>
                         </li>

@@ -223,6 +223,11 @@ return [
     // Controller: ApprovalRequestController (All Approval Requests Dashboard)
     // =========================================================================
     'all-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'allApprovalRequests'],
+    'my-approval-history' => ['controller' => 'MyApprovalHistoryController', 'method' => 'index'],
+    'todo' => ['controller' => 'TodoListController', 'method' => 'index'],
+    'todo/store' => ['controller' => 'TodoListController', 'method' => 'store'],
+    'todo/complete' => ['controller' => 'TodoListController', 'method' => 'complete'],
+    'todo/cron' => ['controller' => 'TodoListController', 'method' => 'cron'],
     'batch-process-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'batchProcessApprovalRequests'],
     'approval-requests/approve-accounts-head' => ['controller' => 'ApprovalRequestController', 'method' => 'approveAccountsHead'],
     'approval-requests/reject-accounts-head' => ['controller' => 'ApprovalRequestController', 'method' => 'rejectAccountsHead'],

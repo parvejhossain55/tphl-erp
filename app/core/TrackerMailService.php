@@ -13,7 +13,7 @@ class TrackerMailService
     // OAuth and SMTP configuration placeholders
     private $smtpHost = 'smtp.gmail.com';
     private $smtpPort = 587; // Or 465 for SSL
-    private $senderEmail = 'tech@dpremiumhomes.com';
+    private $senderEmail = 'no-reply@dpremiumhomes.com';
     private $senderName = 'TPHL ERP Notification';
     private $clientId = '684667519692-hcdp7rhi9r64d87g93eq1cagpgqurk35.apps.googleusercontent.com';
     private $clientSecret = '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';
