@@ -435,31 +435,15 @@ function formatProjectSlug($p) {
         $locationStr = $p['project_map_location'];
     }
 
-    $images = [];
-    if (!empty($p['images']) && is_array($p['images'])) {
-        foreach ($p['images'] as $img) {
-            if (is_string($img) && !empty($img)) {
-                $url = $formatImg($img);
-                if ($url && !in_array($url, $images)) $images[] = $url;
-            } elseif (is_array($img) && !empty($img['url'])) {
-                $url = $formatImg($img['url']);
-                if ($url && !in_array($url, $images)) $images[] = $url;
-            }
-        }
-    }
-    foreach (['image', 'image2', 'image3', 'map_image'] as $imgKey) {
-        if (!empty($p[$imgKey]) && is_string($p[$imgKey])) {
-            $url = $formatImg($p[$imgKey]);
-            if ($url && !in_array($url, $images)) $images[] = $url;
-        }
-    }
 
     $mainImage = !empty($images) ? $images[0] : ($formatImg($p['image'] ?? null) ?? '');
     if (empty($images) && !empty($mainImage)) $images[] = $mainImage;
 
     $image2 = !empty($p['image2']) ? $formatImg($p['image2']) : (isset($images[1]) ? $images[1] : $mainImage);
     $image3 = !empty($p['image3']) ? $formatImg($p['image3']) : (isset($images[2]) ? $images[2] : $image2);
-    $mapImage = !empty($p['map_image']) ? $formatImg($p['map_image']) : (isset($images[3]) ? $images[3] : $mainImage);
+    $mapImage = !empty($p['map_image']) ? $formatImg($p['map_image']) : '';
+
+    $totalShare = $p['total_share'] ?? 0;
 
     $units = parseAllUnits($p, $formatImg, $mainImage);
     $amenities = buildAmenitiesList($p, $formatImg);
@@ -477,6 +461,18 @@ function formatProjectSlug($p) {
         ];
     }
 
+    $floorWiseUnitMeta = $p['floor_wise_unit_meta'] ?? [];
+    $unitPerFloor = count($floorWiseUnitMeta['typical_floor'] ?? []);
+    $frontRoad =$p['front_road'];
+    $cargoLift =$p['cargo_lift'] ?? 0;
+    $passengerLift =$p['passenger_lift'] ?? 0;
+    $carParking =$p['car_parking'] ?? 0;
+    $electricityBackup = $p['electricity_backup'] ?? 0;
+    $convention =$p['convention'] ?? 0;
+    $rooftopGardening = $p['rooftop_gardening'] ?? 0;
+    $swimmingPool = $p['swimming_pool'];
+
+
     $beds = (int)($p['beds'] ?? ($units[0]['bedrooms'] ?? 3));
     $size = (string)($units[0]['size'] ?? '1565 sqft');
     $type = (string)($p['type'] ?? $p['types'] ?? 'Single Project');
@@ -492,12 +488,22 @@ function formatProjectSlug($p) {
         'image2' => $image2,
         'image3' => $image3,
         'mapImage' => $mapImage,
+        'buildingType' => $buildingType,
         'fullLocation' => $locationStr,
         'mapLink' => $mapLink,
         'brochureLink' => $brochure,
         'apartmentCount' => (string)($p['apartment_count'] ?? count($units)),
         'specifications' => $specifications,
         'amenities' => $amenities,
+        'frontRoad' => $frontRoad,
+        'cargoLift' => $cargoLift,
+        'passengerLift' => $passengerLift,
+        'carParking' => $carParking,
+        'electricityBackup' => $electricityBackup,
+        'convention' => $convention,
+        'rooftopGardening' => $rooftopGardening,
+        'swimmingPool' => $swimmingPool,
+        'unitPerFloor' => $unitPerFloor,
         'units' => $units,
         // Compatibility fields
         'location' => $locationStr,
