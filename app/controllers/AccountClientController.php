@@ -2467,8 +2467,8 @@ public function updateTransaction()
         
         $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
         
-        // Allowed roles: Admin (1), Super Admin (3), Accounts (6), CED (7), Accounts Head (30), Chief Officer (33), SEAL CEO (35)
-        if (!in_array($roleId, [1, 3, 6, 7, 30, 33, 35])) {
+        // Only Super Admin (3) is allowed to delete bookings
+        if ($roleId !== 3) {
             echo json_encode(['success' => false, 'message' => 'You do not have permission to delete bookings.']);
             exit;
         }

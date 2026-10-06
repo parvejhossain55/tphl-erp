@@ -455,6 +455,12 @@ class ProjectOtherCostController extends Controller
         $approvedBy = null;
         $approvedAt = null;
         $approvalNote = null;
+        
+        $deptName = 'Project Operations';
+        $requestType = $row['rcost_type'] ?? 'Project Other Cost';
+        $metaData = json_encode(['project_id' => $row['project_id']]);
+        $createdAt = $row['created_at'] ?? date('Y-m-d H:i:s');
+
 
         if ($row['status'] == 'rejected' || $row['dept_head_status'] == 'rejected') {
             $status = 'rejected';

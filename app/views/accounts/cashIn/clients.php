@@ -521,11 +521,13 @@ $show_breadcrumb = true;
                                                             title="Cancel this booking">
                                                             <i class="fa-solid fa-ban me-1"></i>Cancel
                                                         </button>
-                                                        <button type="button" class="btn btn-xs btn-outline-danger" style="padding: 4px 8px; font-size: 11px;"
-                                                            onclick="deleteBookingAction(<?= $bk['booking_id'] ?>, '<?= htmlspecialchars($bk['client_name'], ENT_QUOTES) ?>', '<?= htmlspecialchars($projName . ' - ' . $fltName, ENT_QUOTES) ?>', <?= $paidAmt ?>)"
-                                                            title="Permanently delete this booking">
-                                                            <i class="fa-solid fa-trash-can me-1"></i>Delete
-                                                        </button>
+                                                        <?php if (($_SESSION['user']['role_id'] ?? 0) === 3): ?>
+                                                            <button type="button" class="btn btn-xs btn-outline-danger" style="padding: 4px 8px; font-size: 11px;"
+                                                                onclick="deleteBookingAction(<?= $bk['booking_id'] ?>, '<?= htmlspecialchars($bk['client_name'], ENT_QUOTES) ?>', '<?= htmlspecialchars($projName . ' - ' . $fltName, ENT_QUOTES) ?>', <?= $paidAmt ?>)"
+                                                                title="Permanently delete this booking">
+                                                                <i class="fa-solid fa-trash-can me-1"></i>Delete
+                                                            </button>
+                                                        <?php endif; ?>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -619,12 +621,16 @@ $show_breadcrumb = true;
                         onclick="cancelBookingFromModal(${land.booking_id}, '${escapeHtml(land.unit_name || '')}')"
                         title="Cancel Booking">
                         <i class="fa-solid fa-ban"></i>
-                    </button>
+                    </button>`;
+                
+                <?php if (($_SESSION['user']['role_id'] ?? 0) === 3): ?>
+                actionHtml += `
                     <button type="button" class="table__icon delete" style="color: #dc3545; border: 1px solid #dc3545; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;"
                         onclick="deleteBooking(${land.booking_id})"
                         title="Delete Booking & All Payments">
                         <i class="fa-regular fa-trash-can"></i>
                     </button>`;
+                <?php endif; ?>
             }
             
             actionHtml += `</div>`;
