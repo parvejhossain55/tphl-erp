@@ -144,6 +144,10 @@ return [
     'camera-lists' => ['controller' => 'CameraController', 'method' => 'index'],
     'create-camera' => ['controller' => 'CameraController', 'method' => 'create'],
     'store-camera' => ['controller' => 'CameraController', 'method' => 'store'],
+    'edit-camera/(\d+)' => ['controller' => 'CameraController', 'method' => 'edit'],
+    'update-camera/(\d+)' => ['controller' => 'CameraController', 'method' => 'update'],
+    'delete-camera/(\d+)' => ['controller' => 'CameraController', 'method' => 'delete'],
+    'delete-camera' => ['controller' => 'CameraController', 'method' => 'delete'],
 
     // =========================================================================
     // Controller: Ai\ChatController
