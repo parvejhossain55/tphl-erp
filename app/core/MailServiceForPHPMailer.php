@@ -51,7 +51,7 @@ class MailService
             $mail->Port       = $this->port;
 
             // Sender & receiver
-            $mail->setFrom($this->username, 'TPHL ERP');
+            $mail->setFrom('no-reply@dpremiumhomes.com', 'TPHL ERP');
             $mail->addAddress($email);
 
             // Email content
@@ -139,7 +139,7 @@ class MailService
             $mail->SMTPSecure = isset($this->secure) ? $this->secure : 'ssl';
             $mail->Port       = $this->port;
 
-            $mail->setFrom($this->username, 'TPHL ERP');
+            $mail->setFrom('no-reply@dpremiumhomes.com', 'TPHL ERP');
             $mail->addAddress($email);
 
             $mail->isHTML(true);
@@ -249,7 +249,7 @@ class MailService
             $mail->SMTPSecure = isset($this->secure) ? $this->secure : 'ssl';
             $mail->Port       = $this->port;
 
-            $mail->setFrom($this->username, 'TPHL ERP');
+            $mail->setFrom('no-reply@dpremiumhomes.com', 'TPHL ERP');
             
             $primaryAdded = false;
             foreach ($recipients as $item) {
@@ -298,7 +298,7 @@ class MailService
             $mail->SMTPSecure = isset($this->secure) ? $this->secure : 'ssl';
             $mail->Port       = $this->port;
 
-            $mail->setFrom($this->username, 'The Premium Homes Ltd');
+            $mail->setFrom('no-reply@dpremiumhomes.com', 'The Premium Homes Ltd');
             $mail->addAddress($email);
 
             $mail->isHTML(true);

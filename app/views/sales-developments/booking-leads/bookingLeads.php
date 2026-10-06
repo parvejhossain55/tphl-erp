@@ -121,7 +121,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     <div class="col-lg-6">
                         <div class="form__input-title">
 
-                            <label class="form-label">Land Share Money/Booking Money *</label>
+                            <label class="form-label">Booking Money *</label>
                         </div>
                         <input type="number" name="agreement_value" id="agreementValueInput" class="form-control"
                             placeholder="e.g. 5000000" required>
