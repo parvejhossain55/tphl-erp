@@ -1,0 +1,577 @@
+                            <tr>
+                                <td colspan="10" class="text-center py-4 text-muted">
+                                    <i class="fa-solid fa-folder-open fs-3 d-block mb-2"></i>
+                                    No approval requests found matching your filter criteria.
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($approvalHistory as $req): ?>
+                                <?php
+                                // Direct module target URL resolution so clicking review/view opens the exact module page!
+                                $targetUrl = 'javascript:void(0)';
+                                $sourceTable = strtolower($req['source_table'] ?? '');
+                                $requestType = strtolower($req['request_type'] ?? '');
+
+                                if ($sourceTable === 'lead_payments') {
+                                    if (!empty($req['booking_id'])) {
+                                        $targetUrl = $base_url . '/clients-cash-in-history-view/' . $req['booking_id'];
+                                    } else {
+                                        $targetUrl = $base_url . '/ced-dashboard';
+                                    }
+                                } elseif ($sourceTable === 'lead_bookings') {
+                                    $bookingId = $req['source_id'] ?? $req['booking_id'] ?? null;
+                                    if (!empty($bookingId)) {
+                                        $targetUrl = $base_url . '/clients-cash-in-history-view/' . $bookingId;
+                                    } else {
+                                        $targetUrl = $base_url . '/ced-dashboard';
+                                    }
+                                } elseif ($sourceTable === 'project_incentive_claims') {
+                                    $targetUrl = $base_url . '/incentive-management';
+                                } elseif ($sourceTable === 'vendor_payment_requests') {
+                                    $targetUrl = $base_url . '/con-vendor-payment-show/' . $req['source_id'];
+                                } elseif ($sourceTable === 'contractor_bill_requests') {
+                                    $targetUrl = $base_url . '/con-contractor-bill/' . $req['source_id'];
+                                } elseif ($sourceTable === 'con_land_requisitions' || $sourceTable === 'land_fund_requisitions') {
+                                    $targetUrl = $base_url . '/con-land-requisitions?pay_id=' . $req['source_id'];
+                                } elseif ($sourceTable === 'con_labor_requisitions') {
+                                    $targetUrl = $base_url . '/con-labor-requisition/' . $req['source_id'];
+                                } elseif ($sourceTable === 'con_work_orders') {
+                                    $targetUrl = $base_url . '/con-work-order/' . $req['source_id'];
+                                } elseif ($sourceTable === 'fund_requisitions' || $sourceTable === 'operational_fund_requests') {
+                                    $targetUrl = $base_url . '/fund-requisitions/view/' . $req['source_id'];
+                                } elseif ($sourceTable === 'cashout_requests') {
+                                    $targetUrl = $base_url . '/view-cashout-request?id=' . $req['source_id'];
+                                } elseif ($sourceTable === 'payslips' || $sourceTable === 'salary_requests' || $requestType === 'salary') {
+                                    $targetUrl = $base_url . '/show-payslip/' . $req['source_id'];
+                                } elseif ($sourceTable === 'client_refund_requests') {
+                                    $targetUrl = $base_url . '/client-refund/' . $req['source_id'];
+                                } elseif ($sourceTable === 'employee_leaves' || $sourceTable === 'leave') {
+                                    $targetUrl = $base_url . '/hrm-leave-history';
+                                } elseif ($sourceTable === 'manpower_requisitions') {
+                                    $targetUrl = $base_url . '/manpower-requisitions';
+                                } elseif ($sourceTable === 'advance_salaries') {
+                                    $targetUrl = $base_url . '/advance-salary';
+                                } elseif ($sourceTable === 'project_other_costs') {
+                                    $targetUrl = $base_url . '/project-other-costs/review/' . $req['source_id'];
+                                } elseif ($sourceTable === 'project_extra_assets' || $sourceTable === 'purchase_requests') {
+                                    $targetUrl = $base_url . '/asset-extra-purchases?view=' . $req['source_id'];
+                                } elseif ($sourceTable === 'expense_adjustments') {
+                                    $targetUrl = $base_url . '/expense-adjustments/show?id=' . $req['source_id'];
+                                }
+                                
+                                if ($targetUrl !== 'javascript:void(0)') {
+                                    $targetUrl .= (strpos($targetUrl, '?') !== false ? '&' : '?') . 'ref=all_approvals';
+                                }
+
+                                $reqApproveRole = strtolower($req['approve_role'] ?? 'management');
+                                if (empty($reqApproveRole)) {
+                                    $reqApproveRole = 'management';
+                                }
+                                $isMgmtRequest = ($reqApproveRole === 'management');
+                                $userRoleId = (int) ($_SESSION['user']['role_id'] ?? 0);
+                                $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+                                $isChiefOfficer = (in_array($userRoleId, [33, 34, 35], true) || in_array($sessionRoleName, ['chief officer', 'management viewer', 'seal ceo'], true));
+
+                                $isManagementUser = (in_array($userRoleId, [1, 3], true) || in_array($sessionRoleName, ['super admin', 'admin', 'management'], true)) && !$isChiefOfficer;
+                                $isSiteOperator = in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false;
+                                $isAccountsHeadUser = ($userRoleId === 30) || strpos($sessionRoleName, 'accounts head') !== false;
+                                $isAccountsStaffUser = ($userRoleId === 6) || (strpos($sessionRoleName, 'account') !== false && !$isAccountsHeadUser);
+                                $isAccountsUser = in_array($userRoleId, [6, 30], true) || strpos($sessionRoleName, 'account') !== false;
+                                $isQcUser = in_array($userRoleId, [13, 24, 25], true) || strpos($sessionRoleName, 'qc') !== false || strpos($sessionRoleName, 'audit') !== false;
+                                $isHrUser = ($userRoleId === 4) || strpos($sessionRoleName, 'hr') !== false;
+                                $isPurchaseUser = in_array($userRoleId, [17, 23, 31], true) || strpos($sessionRoleName, 'purchase') !== false;
+                                $isDeptHeadUser = in_array($userRoleId, [8, 9, 10, 11, 12, 14, 15, 16, 18, 19], true) || strpos($sessionRoleName, 'head') !== false || strpos($sessionRoleName, 'manager') !== false;
+
+                                $statusLower = strtolower($req['status'] ?? '');
+                                $isPendingStatus = in_array($statusLower, ['pending', 'partially_approved', '']);
+                                $reqAmount = (float)($req['request_amount'] ?? 0);
+                                $payoutStatus = $req['payout_status'] ?? '';
+                                $ahStatus = strtolower($req['accounts_head_status'] ?? 'pending');
+                                $isPendingAccountsHead = ($statusLower === 'approved' || $req['status'] === 'approved') && ($ahStatus !== 'approved' || $reqApproveRole === 'accounts_head');
+                                $isAccountsHeadApproved = ($ahStatus === 'approved');
+
+                                // Determine whether this request is actionable by the logged-in user right now
+                                $isActionableByMe = false;
+                                $canUserApprove = false;
+                                if ($isChiefOfficer) {
+                                    // Chief Officer has view-only access across all requests; strictly cannot approve or reject
+                                    $isActionableByMe = false;
+                                    $canUserApprove = false;
+                                } elseif ($isPendingAccountsHead) {
+                                    // Pending Accounts Head approval: Actionable by Accounts Head (Role 30) and Super Admin / Admin (1, 3)
+                                    if ($isAccountsHeadUser || $isManagementUser) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    } else {
+                                        $isActionableByMe = false;
+                                        $canUserApprove = false;
+                                    }
+                                } elseif ($isAccountsHeadApproved && in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid'])) {
+                                    // Approved by Accounts Head & awaiting payout: Actionable by BOTH Accounts (Role 6) and Accounts Head (Role 30)
+                                    if ($isAccountsUser) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    }
+                                } elseif ($isAccountsUser) {
+                                    if (in_array($payoutStatus, ['Pending Accounts Payout', 'Partially Paid']) || ($reqApproveRole === 'accounts' && in_array($statusLower, ['pending', 'approved', 'partially_approved', 'partially_paid']) && $isAccountsHeadApproved)) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    }
+                                } elseif ($isSiteOperator) {
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', '']) && ($reqAmount <= 100000.01 || $sourceTable === 'project_other_costs' || $sourceTable === 'expense_adjustments')) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    }
+                                } elseif ($isManagementUser) {
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', ''])) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    }
+                                } elseif ($isQcUser) {
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['qc', 'qc_head'])) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    }
+                                } elseif ($isPurchaseUser) {
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['purchase', 'purchase team leader', 'purchase_lead'])) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    }
+                                } elseif ($isHrUser) {
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['hr', 'hr_head'])) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    }
+                                } elseif ($isDeptHeadUser) {
+                                    if ($isPendingStatus && ($reqApproveRole === 'dept_head' || $reqApproveRole === 'dept_head_' . ($_SESSION['user']['id'] ?? 0))) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    }
+                                } else {
+                                    if ($isPendingStatus && !empty($reqApproveRole) && strpos($sessionRoleName, $reqApproveRole) !== false) {
+                                        $isActionableByMe = true;
+                                        $canUserApprove = true;
+                                    }
+                                }
+
+                                $rowBgStyle = $isActionableByMe ? 'background-color: #f8fafc;' : '';
+                                ?>
+                                <tr data-source-table="<?= htmlspecialchars($req['source_table']) ?>" <?= !empty($targetUrl) ? 'data-href="' . htmlspecialchars($targetUrl) . '" class="clickable-approval-row' . ($isActionableByMe ? ' border-start border-primary border-3' : '') . '" style="cursor: pointer; ' . $rowBgStyle . '"' : '' ?>>
+                                    <td class="ps-3">
+                                        <input type="checkbox" class="approval-req-checkbox form-check-input"
+                                            value="<?= $req['id'] ?>" <?= ((!in_array($req['status'], ['pending', 'partially_approved', 'partially_paid']) && !($isPendingAccountsHead && ($isAccountsHeadUser || $isManagementUser))) || !$canUserApprove || $isChiefOfficer) ? 'disabled' : '' ?> onchange="updateBulkApprovalCount()">
+                                    </td>
+                                    <!-- Req # & Date -->
+                                    <td>
+                                        <?php if (!empty($targetUrl)): ?>
+                                            <a href="<?= $targetUrl ?>" class="text-decoration-none d-block">
+                                                <?php if ($sourceTable === 'vendor_payment_requests'): ?>
+                                                    <span class="fw-bold text-dark">VPR-<?= (int)$req['source_id'] ?></span>
+                                                    <?php if (!empty($req['po_number'])): ?>
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded px-1 ms-1 extra-small">PO-<?= htmlspecialchars($req['po_number']) ?></span>
+                                                    <?php endif; ?>
+                                                <?php elseif ($sourceTable === 'expense_adjustments'): ?>
+                                                    <span class="fw-bold text-dark">ADJ-<?= (int)$req['source_id'] ?></span>
+                                                <?php elseif (!empty($req['po_number'])): ?>
+                                                    <span class="fw-bold text-success">PO-
+                                                        <?= htmlspecialchars($req['po_number']) ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="fw-bold text-dark">#REQ-
+                                                        <?= str_pad($req['id'], 5, '0', STR_PAD_LEFT) ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </a>
+                                        <?php else: ?>
+                                            <?php if ($sourceTable === 'vendor_payment_requests'): ?>
+                                                <span class="fw-bold text-dark">VPR-<?= (int)$req['source_id'] ?></span>
+                                                <?php if (!empty($req['po_number'])): ?>
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded px-1 ms-1 extra-small">PO-<?= htmlspecialchars($req['po_number']) ?></span>
+                                                <?php endif; ?>
+                                            <?php elseif ($sourceTable === 'expense_adjustments'): ?>
+                                                <span class="fw-bold text-dark d-block">ADJ-<?= (int)$req['source_id'] ?></span>
+                                            <?php elseif (!empty($req['po_number'])): ?>
+                                                <span class="fw-bold text-success d-block">PO-
+                                                    <?= htmlspecialchars($req['po_number']) ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="fw-bold text-dark d-block">#REQ-
+                                                    <?= str_pad($req['id'], 5, '0', STR_PAD_LEFT) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                        <span class="text-muted extra-small">
+                                            <?= date('d M, Y', strtotime($req['requested_at'])) ?>
+                                        </span>
+                                    </td>
+
+                                    <!-- Department & Module -->
+                                    <td>
+                                        <span
+                                            class="badge bg-success text-white rounded-pill px-3 py-1 extra-small d-block mb-1">
+                                            <?= htmlspecialchars($req['department'] ?? 'General') ?>
+                                        </span>
+                                        <span class="badge bg-light text-muted border extra-small">
+                                            <?= htmlspecialchars($req['request_type'] ?? $req['source_table']) ?>
+                                        </span>
+                                    </td>
+
+                                    <!-- Title -->
+                                    <td style="max-width: 250px;">
+                                        <div class="fw-semibold text-dark text-truncate"
+                                            title="<?= htmlspecialchars($req['title']) ?>">
+                                            <?php if (!empty($targetUrl)): ?>
+                                                <a href="<?= $targetUrl ?>" class="text-dark text-decoration-none hover-primary">
+                                                    <?= htmlspecialchars($req['title']) ?>
+                                                </a>
+                                            <?php else: ?>
+                                                <?= htmlspecialchars($req['title']) ?>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php if ($sourceTable === 'expense_adjustments'): ?>
+                                            <div class="mt-1 d-flex flex-wrap gap-1">
+                                                <?php if (($req['request_type'] ?? '') === 'Extra Expense' || strpos(strtolower($req['title'] ?? ''), 'extra') !== false): ?>
+                                                    <span class="badge bg-warning text-dark border border-warning-subtle extra-small fw-bold">
+                                                        <i class="fa-solid fa-plus-circle me-1"></i>Extra Amount Request
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-info-subtle text-info border border-info-subtle extra-small fw-bold">
+                                                        <i class="fa-solid fa-arrow-rotate-left me-1"></i>Return Unused Money
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($req['project_name'])): ?>
+                                            <div class="mt-1">
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle extra-small">
+                                                    <i class="fa-solid fa-building me-1"></i><?= htmlspecialchars($req['project_name']) ?>
+                                                </span>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($req['attachment'])): ?>
+                                            <div class="mt-1">
+                                                <a href="<?= $base_url ?>/<?= htmlspecialchars(ltrim($req['attachment'], '/')) ?>" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle extra-small text-decoration-none" onclick="event.stopPropagation();" title="View Attachment / Supporting Document">
+                                                    <i class="fa-solid fa-paperclip me-1"></i>Attachment Document
+                                                </a>
+                                            </div>
+                                        <?php endif; ?>
+                                        <span class="text-muted extra-small">Source Table:
+                                            <code><?= htmlspecialchars($req['source_table']) ?></code></span>
+                                    </td>
+
+                                    <!-- Requested By -->
+                                    <td>
+                                        <div class="fw-bold text-dark extra-small">
+                                            <?= htmlspecialchars($req['requester_name'] ?? 'N/A') ?>
+                                        </div>
+                                        <span class="badge bg-light text-secondary border extra-small">
+                                            <?= !empty($req['requester_code']) ? htmlspecialchars($req['requester_code']) : 'null' ?>
+                                        </span>
+                                    </td>
+
+                                    <!-- Requested Amount -->
+                                    <td>
+                                        <?php
+                                        $displayAmount = $req['request_amount'];
+                                        if ($sourceTable === 'advance_salaries' && $displayAmount <= 0) {
+                                            $db = $GLOBALS['db'] ?? null;
+                                            if ($db) {
+                                                $res = $db->query("SELECT amount FROM advance_salaries WHERE id = " . (int) $req['source_id']);
+                                                if ($res && $row = $res->fetch_assoc()) {
+                                                    $displayAmount = $row['amount'];
+                                                    // Self-heal the record in the DB
+                                                    $db->query("UPDATE approval_requests SET request_amount = {$displayAmount} WHERE id = " . (int) $req['id']);
+                                                }
+                                            }
+                                        }
+                                        ?>
+                                        <?php if ($displayAmount > 0): ?>
+                                            <span class="fw-bold text-dark">৳
+                                                <?= number_format($displayAmount, 2) ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-muted extra-small">N/A</span>
+                                        <?php endif; ?>
+                                        <?php if ($sourceTable === 'vendor_payment_requests' && !empty($req['vpr_payment_type'])): ?>
+                                            <?php
+                                            $vprType = strtolower($req['vpr_payment_type']);
+                                            $typeLabel = match ($vprType) {
+                                                'advance' => 'Advance',
+                                                'partial' => 'Partially',
+                                                'final', 'full', 'fully' => 'Fully',
+                                                default => ucfirst($vprType)
+                                            };
+                                            $typeClass = match ($vprType) {
+                                                'advance' => 'bg-primary-subtle text-primary border-primary-subtle',
+                                                'partial' => 'bg-warning-subtle text-warning border-warning-subtle',
+                                                'final', 'full', 'fully' => 'bg-success-subtle text-success border-success-subtle',
+                                                default => 'bg-secondary-subtle text-secondary border-secondary-subtle'
+                                            };
+                                            ?>
+                                            <div class="mt-1"><span class="badge <?= $typeClass ?> border extra-small">
+                                                    <?= $typeLabel ?>
+                                                </span>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <!-- Approved Amount -->
+                                    <td>
+                                        <?php 
+                                        $appAmt = (float)($req['approved_amount'] ?? 0);
+                                        $qcAmt = (float)($req['qc_approved_amount'] ?? 0);
+                                        $isPendingMgmt = in_array(strtolower($req['approve_role'] ?? ''), ['management', 'operation_head']);
+                                        ?>
+                                        <?php if ($appAmt > 0): ?>
+                                            <span class="fw-bold <?= ($qcAmt > 0 && $appAmt == $qcAmt && $isPendingMgmt) ? 'text-primary' : 'text-success' ?>">
+                                                ৳ <?= number_format($appAmt, 2) ?>
+                                            </span>
+                                            <?php if ($qcAmt > 0 && $appAmt == $qcAmt && $isPendingMgmt): ?>
+                                                <div class="mt-1"><span class="badge bg-info-subtle text-info border border-info-subtle extra-small" style="font-size: 9px; padding: 2px 6px;"><i class="bi bi-shield-check me-1"></i>QC Approved</span></div>
+                                            <?php endif; ?>
+                                        <?php elseif ($qcAmt > 0): ?>
+                                            <span class="fw-bold text-primary">৳ <?= number_format($qcAmt, 2) ?></span>
+                                            <div class="mt-1"><span class="badge bg-info-subtle text-info border border-info-subtle extra-small" style="font-size: 9px; padding: 2px 6px;"><i class="bi bi-shield-check me-1"></i>QC Approved</span></div>
+                                        <?php else: ?>
+                                            <span class="text-muted extra-small">--</span>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <!-- Approval Status & Pending At -->
+                                    <td class="text-center">
+                                        <?php if ($req['status'] === 'pending'): ?>
+                                            <?php
+                                            $stageLabel = str_replace(['\u0026', '&amp;'], ['&', '&'], $req['pending_stage_label'] ?? 'Pending Review');
+                                            $pendingFor = str_replace(['\u0026', '&amp;'], ['&', '&'], $req['pending_for_text'] ?? 'Management');
+                                            $pendingFor = trim(preg_replace('/\s*\(Role\s*[0-9,\s]+\)/i', '', $pendingFor));
+
+                                            $badgeClass = 'bg-warning text-dark';
+                                            if (stripos($stageLabel, 'QC') !== false || stripos($stageLabel, 'Audit') !== false) {
+                                                $badgeClass = 'bg-info text-dark';
+                                            } elseif (stripos($stageLabel, 'Dept') !== false) {
+                                                $badgeClass = 'bg-secondary text-white';
+                                            } elseif (stripos($stageLabel, 'HR') !== false) {
+                                                $badgeClass = 'bg-primary text-white';
+                                            } elseif (stripos($stageLabel, 'Purchase') !== false) {
+                                                $badgeClass = 'bg-secondary text-white';
+                                            } elseif (stripos($stageLabel, 'PM') !== false) {
+                                                $badgeClass = 'bg-info text-white';
+                                            } elseif (stripos($stageLabel, 'Management') !== false) {
+                                                $badgeClass = 'bg-warning text-dark';
+                                            } elseif (stripos($stageLabel, 'Accounts') !== false) {
+                                                $badgeClass = 'bg-success text-white';
+                                            }
+                                            ?>
+                                            <span class="badge <?= $badgeClass ?> rounded-pill px-3 py-1 extra-small fw-semibold">
+                                                <i class="fa-solid fa-clock me-1"></i><?= htmlspecialchars($stageLabel) ?>
+                                            </span>
+                                            <div class="extra-small text-dark mt-1">
+                                                <i class="fa-solid fa-hourglass-half text-warning me-1"></i><strong>Pending at:</strong>
+                                                <span class="text-primary fw-semibold d-block"><?= htmlspecialchars($pendingFor) ?></span>
+                                            </div>
+                                        <?php elseif (in_array($req['status'], ['approved', 'partially_approved', 'partially_paid'])): ?>
+                                            <span
+                                                class="badge <?= $req['status'] === 'approved' ? 'bg-success' : 'bg-info' ?> text-white rounded-pill px-3 py-1 extra-small d-block mb-1">
+                                                <i class="fa-solid fa-user-shield me-1"></i>
+                                                <?= $req['status'] === 'approved' ? 'Approved from Management' : 'Partially Approved' ?>
+                                            </span>
+                                            <div class="fw-bold text-dark extra-small">
+                                                <i class="fa-solid fa-user-check text-success me-1"></i>
+                                                <?= htmlspecialchars($req['approver_name'] ?? 'Management') ?>
+                                            </div>
+                                            <?php if (!empty($req['approver_designation'])): ?>
+                                                <span
+                                                    class="badge bg-primary-subtle text-primary border border-primary-subtle extra-small d-block my-1">
+                                                    <?= htmlspecialchars($req['approver_designation']) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($req['approver_email'])): ?>
+                                                <span class="text-muted extra-small d-block"><i class="fa-solid fa-envelope me-1"></i>
+                                                    <?= htmlspecialchars($req['approver_email']) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                            <?php if ($req['approved_at']): ?>
+                                                <span class="text-muted extra-small d-block"><i
+                                                        class="fa-solid fa-calendar-check me-1"></i>
+                                                    <?= date('d M, Y h:i A', strtotime($req['approved_at'])) ?>
+                                                </span>
+                                            <?php endif; ?>
+
+                                            <?php if ($isPendingAccountsHead): ?>
+                                                <div class="mt-2 pt-2 border-top border-warning-subtle text-start">
+                                                    <span class="badge bg-warning text-dark rounded-pill px-2 py-1 extra-small d-inline-block mb-1 fw-bold">
+                                                        <i class="fa-solid fa-hourglass-half me-1"></i>Pending Accounts Head
+                                                    </span>
+                                                    <div class="extra-small text-dark fw-bold">
+                                                        <i class="fa-solid fa-user-clock text-warning me-1"></i>Md. Mamunoor Rashid
+                                                        <span class="badge bg-light text-secondary border extra-small">1309</span>
+                                                    </div>
+                                                    <span class="text-muted extra-small d-block">AGM - Finance & Accounts</span>
+                                                </div>
+                                            <?php elseif ($isAccountsHeadApproved): ?>
+                                                <div class="mt-2 pt-2 border-top border-primary-subtle text-start">
+                                                    <span class="badge bg-primary text-white rounded-pill px-2 py-1 extra-small d-inline-block mb-1 fw-bold">
+                                                        <i class="fa-solid fa-user-check me-1"></i>Accounts Head Approved
+                                                    </span>
+                                                    <div class="extra-small text-dark fw-bold">
+                                                        <i class="fa-solid fa-check-double text-primary me-1"></i><?= htmlspecialchars(!empty($req['accounts_head_name']) ? $req['accounts_head_name'] : 'Md. Mamunoor Rashid') ?>
+                                                        <span class="badge bg-light text-secondary border extra-small"><?= htmlspecialchars(!empty($req['accounts_head_employee_code']) ? $req['accounts_head_employee_code'] : '1309') ?></span>
+                                                    </div>
+                                                    <span class="text-muted extra-small d-block"><?= htmlspecialchars(!empty($req['accounts_head_designation']) ? $req['accounts_head_designation'] : 'AGM - Finance & Accounts') ?></span>
+                                                    <?php if (!empty($req['accounts_head_at'])): ?>
+                                                        <span class="text-muted extra-small d-block"><i class="fa-solid fa-calendar-check me-1"></i><?= date('d M, Y h:i A', strtotime($req['accounts_head_at'])) ?></span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php elseif ($req['status'] === 'rejected'): ?>
+                                            <span
+                                                class="badge bg-danger text-white rounded-pill px-3 py-1 extra-small d-block mb-1">
+                                                <i class="fa-solid fa-circle-xmark me-1"></i>Rejected
+                                            </span>
+                                            <span class="extra-small text-muted">By:
+                                                <?= htmlspecialchars($req['approver_name'] ?? 'Management') ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <!-- Accounts Payout Status -->
+                                    <td class="text-center">
+                                        <?php if ($req['payout_status'] === 'Paid & Settled'): ?>
+                                            <span
+                                                class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small d-block mb-1">
+                                                <i class="fa-solid fa-money-check-dollar me-1"></i>Paid & Settled
+                                            </span>
+                                            <span class="extra-small fw-bold text-success">৳
+                                                <?= number_format($req['payout_amount'], 2) ?>
+                                            </span>
+                                            <?php if ($req['payout_date']): ?>
+                                                <div class="extra-small text-muted">
+                                                    <?= date('d M, Y', strtotime($req['payout_date'])) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php elseif ($req['payout_status'] === 'Partially Paid'): ?>
+                                            <span
+                                                class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small d-block mb-1">
+                                                <i class="fa-solid fa-money-check-dollar me-1"></i>Partially Paid
+                                            </span>
+                                            <span class="extra-small fw-bold text-success">৳
+                                                <?= number_format($req['payout_amount'], 2) ?>
+                                            </span>
+                                            <?php if ($req['payout_date']): ?>
+                                                <div class="extra-small text-muted">
+                                                    <?= date('d M, Y', strtotime($req['payout_date'])) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php elseif ($isPendingAccountsHead): ?>
+                                            <span
+                                                class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 extra-small">
+                                                <i class="fa-solid fa-user-clock me-1"></i>Pending Accounts Head Approval
+                                            </span>
+                                        <?php elseif ($req['payout_status'] === 'Pending Accounts Payout' || $req['status'] === 'partially_approved'): ?>
+                                            <span
+                                                class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1 extra-small">
+                                                <i class="fa-solid fa-wallet me-1"></i>Pending Accounts Payout
+                                            </span>
+                                        <?php elseif (in_array($req['status'], ['approved', 'partially_approved'])): ?>
+                                            <span
+                                                class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-3 py-1 extra-small">
+                                                <i class="fa-solid fa-check me-1"></i>Approved
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge bg-light text-muted border extra-small">N/A</span>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    <!-- Action Button (Directly routes to specific module page or Debit Voucher!) -->
+                                    <td class="pe-4 text-end text-nowrap">
+                                        <?php
+                                        $isVoucherSupported = true;
+                                        $voucherUrl = $base_url . '/print-debit-voucher?module=' . urlencode($sourceTable) . '&id=' . (int)$req['source_id'];
+                                        $isPaidOrSettled = in_array($payoutStatus, ['Paid & Settled', 'Settled']) || in_array(strtolower($req['status']), ['paid', 'fully_paid', 'labor_disbursed', 'deducted']);
+                                        $isPartiallyPaid = ($payoutStatus === 'Partially Paid') || strtolower($req['status']) === 'partially_paid';
+                                        ?>
+
+                                        <?php if ($isVoucherSupported && !$isPaidOrSettled): ?>
+                                            <a href="<?= $voucherUrl ?>&is_approval=1" target="_blank" class="btn btn-sm btn-outline-info rounded-2 px-2 shadow-sm fw-semibold mb-1" title="View & Print Approval Voucher">
+                                                <i class="fa-solid fa-file-signature me-1"></i>Approval Voucher
+                                            </a>
+                                        <?php endif; ?>
+
+                                        <?php if ($isPartiallyPaid): ?>
+                                            <?php if ($isAccountsUser && $isAccountsHeadApproved): ?>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-success rounded-2 px-2 shadow-sm fw-semibold me-1" title="Disburse remaining amount">
+                                                    <i class="fa-solid fa-money-check-dollar me-1"></i>Pay
+                                                </a>
+                                            <?php endif; ?>
+                                            <?php if ($isVoucherSupported): ?>
+                                                <a href="<?= $voucherUrl ?>" target="_blank" class="btn btn-sm btn-outline-primary rounded-2 px-2 shadow-sm fw-semibold" title="View, Print & Download Payment Voucher">
+                                                    <i class="fa-solid fa-file-invoice-dollar me-1"></i>Payment Voucher
+                                                </a>
+                                            <?php endif; ?>
+
+                                        <?php elseif ($isPaidOrSettled): ?>
+                                            <?php if ($isVoucherSupported): ?>
+                                                <a href="<?= $voucherUrl ?>" target="_blank" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold me-1" title="View, Print & Download Payment Voucher">
+                                                    <i class="fa-solid fa-file-invoice-dollar me-1"></i>Payment Voucher
+                                                </a>
+                                            <?php endif; ?>
+                                            <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Module Page">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </a>
+
+                                        <?php elseif ($isPendingAccountsHead): ?>
+                                            <?php if ($isAccountsHeadUser || $isManagementUser): ?>
+                                                <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold me-1" 
+                                                    onclick="openAccountsHeadApprovalModal(<?= (int)$req['id'] ?>, '<?= htmlspecialchars(addslashes($req['title'] ?? '')) ?>', '<?= number_format($req['approved_amount'] > 0 ? $req['approved_amount'] : $req['request_amount'], 2) ?>')"
+                                                    title="Approve as Accounts Head (Md. Mamunoor Rashid [1309])">
+                                                    <i class="fa-solid fa-stamp me-1"></i>Approve (Accounts Head)
+                                                </button>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Module Page">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </a>
+                                            <?php elseif ($isAccountsStaffUser): ?>
+                                                <span class="badge bg-light text-muted border rounded-2 px-2 py-1 extra-small me-1" title="Payment locked until Accounts Head (Md. Mamunoor Rashid [1309]) approves">
+                                                    <i class="fa-solid fa-lock text-warning me-1"></i>Awaiting Accounts Head
+                                                </span>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Module Page">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-light text-dark rounded-2 px-2 border" title="View Module Page">
+                                                    <i class="fa-solid fa-eye me-1"></i>View Module Page
+                                                </a>
+                                            <?php endif; ?>
+
+                                        <?php elseif ($isAccountsUser && in_array($payoutStatus, ['Pending Accounts Payout']) && $isAccountsHeadApproved): ?>
+                                            <a href="<?= $targetUrl ?>" class="btn btn-sm btn-success rounded-2 px-3 shadow-sm fw-semibold">
+                                                <i class="fa-solid fa-money-check-dollar me-1"></i>Pay / Disburse
+                                            </a>
+
+                                        <?php elseif (in_array($req['status'], ['pending', 'partially_approved'])): ?>
+                                            <?php if ($isChiefOfficer): ?>
+                                                <a href="<?= !empty($targetUrl) && $targetUrl !== 'javascript:void(0)' ? $targetUrl : 'javascript:void(0)' ?>"
+                                                    class="btn btn-sm btn-light text-dark rounded-2 px-2 border"
+                                                    title="Pending for <?= htmlspecialchars($req['pending_for_text'] ?? 'Management') ?>">
+                                                    <i class="fa-solid fa-eye me-1"></i>View Details
+                                                </a>
+                                            <?php elseif ($canUserApprove): ?>
+                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold">
+                                                    <i class="fa-solid fa-up-right-from-square me-1"></i>Review / Process
+                                                </a>
+                                            <?php else: ?>
+                                                <a href="javascript:void(0)"
+                                                    class="btn btn-sm btn-light text-muted rounded-2 px-2 border"
+                                                    title="<?= ($isSiteOperator && $reqAmount > 100000) ? 'Amount exceeds ৳1,00,000 threshold - Full Management approval required' : 'Pending for ' . htmlspecialchars($req['pending_for_text'] ?? 'Other Role') ?>">
+                                                    <i class="fa-solid fa-lock me-1 text-warning"></i><?= ($isSiteOperator && $reqAmount > 100000) ? 'Management Only' : 'Pending Other Role' ?>
+                                                </a>
+                                            <?php endif; ?>
+
+                                        <?php else: ?>
+                                            <a href="<?= $targetUrl ?>"
+                                                class="btn btn-sm btn-light text-dark rounded-2 px-2 border">
+                                                <i class="fa-solid fa-eye me-1"></i>View Module Page
+                                            </a>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>

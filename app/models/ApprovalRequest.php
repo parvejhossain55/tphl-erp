@@ -4072,4 +4072,127 @@ class ApprovalRequest extends Model
             error_log("syncMissingLandFundRequisitions sync error: " . $e->getMessage());
         }
     }
+
+    public function countAllApprovalHistory($filters = [])
+    {
+        $userId = (int)($filters['user_id'] ?? 0);
+        $roleId = (int)($filters['role_id'] ?? 0);
+        $roleName = strtolower(trim($filters['role_name'] ?? ''));
+
+        $isChiefOfficer = (in_array($roleId, [33, 34, 35], true) || in_array($roleName, ['chief officer', 'management viewer', 'seal ceo'], true));
+
+        $where = ["1=1"];
+        $params = [];
+        $types = "";
+
+        if (!empty($filters['department'])) {
+            $where[] = "ar.department = ?";
+            $types .= "s";
+            $params[] = $filters['department'];
+        }
+
+        if (!empty($filters['source_table'])) {
+            $where[] = "ar.source_table = ?";
+            $types .= "s";
+            $params[] = $filters['source_table'];
+        }
+
+        $status = $filters['status'] ?? '';
+        if ($status) {
+            if ($status === 'all_pending') {
+                $where[] = "(ar.status = 'pending' OR ar.status = 'partially_approved' OR (ar.status = 'approved' AND ar.accounts_head_status != 'approved'))";
+            } elseif ($status === 'my_pending') {
+                if (!$isChiefOfficer) {
+                    $myPendingCondition = "1=0";
+                    $conditions = [];
+
+                    $isManagementUser = (in_array($roleId, [1, 3], true) || in_array($roleName, ['super admin', 'admin', 'management'], true));
+                    $isSiteOperator = in_array($roleId, [20, 32], true) || strpos($roleName, 'operation head') !== false || strpos($roleName, 'admin & operation') !== false;
+                    $isAccountsHeadUser = ($roleId === 30) || strpos($roleName, 'accounts head') !== false;
+                    $isAccountsStaffUser = ($roleId === 6) || (strpos($roleName, 'account') !== false && !$isAccountsHeadUser);
+                    $isAccountsUser = $isAccountsHeadUser || $isAccountsStaffUser;
+                    $isQcUser = in_array($roleId, [13, 24, 25], true) || strpos($roleName, 'qc') !== false || strpos($roleName, 'audit') !== false;
+                    $isHrUser = ($roleId === 4) || strpos($roleName, 'hr') !== false;
+                    $isPurchaseUser = in_array($roleId, [17, 23, 31], true) || strpos($roleName, 'purchase') !== false;
+                    $isDeptHeadUser = in_array($roleId, [8, 9, 10, 11, 12, 14, 15, 16, 18, 19], true) || strpos($roleName, 'head') !== false || strpos($roleName, 'manager') !== false;
+
+                    if ($isAccountsHeadUser || $isManagementUser) {
+                        $conditions[] = "(ar.status = 'approved' AND ar.accounts_head_status != 'approved')";
+                    }
+                    if ($isManagementUser) {
+                        $conditions[] = "(ar.status = 'pending' AND (ar.approve_role = 'management' OR ar.approve_role = ''))";
+                    }
+                    if ($isSiteOperator) {
+                        $conditions[] = "(ar.status = 'pending' AND (ar.approve_role = 'management' OR ar.approve_role = '') AND (IFNULL(ar.request_amount, 0) <= 100000.01 OR ar.source_table IN ('project_other_costs', 'expense_adjustments')))";
+                    }
+                    if ($isQcUser) {
+                        $conditions[] = "(ar.status = 'pending' AND (ar.approve_role = 'qc' OR ar.approve_role = 'qc_head'))";
+                    }
+                    if ($isPurchaseUser) {
+                        $conditions[] = "(ar.status = 'pending' AND ar.approve_role IN ('purchase', 'purchase team leader', 'purchase_lead'))";
+                    }
+                    if ($isHrUser) {
+                        $conditions[] = "(ar.status = 'pending' AND ar.approve_role IN ('hr', 'hr_head'))";
+                    }
+                    if ($isDeptHeadUser) {
+                        $conditions[] = "(ar.status = 'pending' AND (ar.approve_role = 'dept_head' OR ar.approve_role = 'dept_head_{$userId}'))";
+                    }
+                    if (!$isAccountsHeadUser && !$isManagementUser && !$isSiteOperator && !$isQcUser && !$isPurchaseUser && !$isHrUser && !$isDeptHeadUser) {
+                        if (!empty($roleName)) {
+                            $conditions[] = "(ar.status = 'pending' AND ar.approve_role != '' AND ar.approve_role LIKE '%" . $this->db->real_escape_string($roleName) . "%')";
+                        }
+                    }
+
+                    if (!empty($conditions)) {
+                        $myPendingCondition = "(" . implode(" OR ", $conditions) . ")";
+                    }
+                    $where[] = $myPendingCondition;
+                } else {
+                    $where[] = "1=0";
+                }
+            } elseif ($status === 'pending_payout') {
+                $where[] = "(ar.status IN ('approved', 'partially_approved', 'partially_paid') AND ar.accounts_head_status = 'approved')";
+            } elseif ($status === 'paid') {
+                $where[] = "(ar.status = 'paid' OR ar.status = 'fully_paid' OR ar.status = 'settled' OR ar.status = 'deducted' OR ar.status = 'labor_disbursed')";
+            } elseif ($status === 'rejected') {
+                $where[] = "ar.status = 'rejected'";
+            } elseif ($status !== 'all') {
+                $where[] = "ar.status = ?";
+                $types .= "s";
+                $params[] = $status;
+            }
+        }
+
+        $whereClause = implode(" AND ", $where);
+        
+        if (!empty($filters['search'])) {
+            $search = '%' . $filters['search'] . '%';
+            $whereClause .= " AND (ar.title LIKE ? OR ar.source_table LIKE ? OR u_req.full_name LIKE ? OR ar.request_type LIKE ? OR d_req.name LIKE ?)";
+            $types .= "sssss";
+            $params[] = $search;
+            $params[] = $search;
+            $params[] = $search;
+            $params[] = $search;
+            $params[] = $search;
+        }
+
+        $sql = "SELECT COUNT(ar.id) as total
+                FROM approval_requests ar
+                LEFT JOIN users u_req ON ar.requested_by = u_req.id
+                LEFT JOIN employees e_req ON (e_req.user_id = u_req.id OR e_req.id = u_req.employee_id)
+                LEFT JOIN departments d_req ON e_req.department_id = d_req.id
+                WHERE {$whereClause}";
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) return 0;
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            return (int)$row['total'];
+        }
+        return 0;
+    }
 }
