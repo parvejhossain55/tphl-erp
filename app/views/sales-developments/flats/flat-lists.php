@@ -308,7 +308,7 @@ unset($_SESSION['csv_import_skipped']); // clear after reading
 
                 <div class="mt-15 p-2 rounded text-muted" style="font-size: 12px; max-height: 200px; overflow-y: auto;">
                     <strong>Required CSV Headers (in order):</strong><br>
-                    unit_name, Floor, Suite No., Unit Type, Size (Sq Ft), Rate per sft (BDT), Booking 20%, Registration 20%, development 10%, Total Price, Facing Site, Facilities, Status
+                    unit_name, Floor, Suite No., Ownership Type, Unit Type, Size (Sq Ft), Rate per sft (BDT), Booking 20%, Registration 20%, development 10%, Total Price, Facing Site, Facilities, Status
                 </div>
             </div>
         </div>

@@ -127,6 +127,16 @@ $isShop            = (int)($flat['is_shop'] ?? 0);
                     <input type="text" name="suite_id" class="form-control" value="<?= htmlspecialchars($flat['suite_id'] ?? '') ?>">
                 </div>
 
+                <!-- Ownership Type -->
+                <div class="col-xl-6">
+                    <label>Ownership Type <span class="text-muted">(Optional, for Suite)</span></label>
+                    <select name="ownership_type" class="form-control">
+                        <option value="">Select Ownership Type</option>
+                        <option value="Group" <?= ($flat['ownership_type'] ?? '') === 'Group' ? 'selected' : '' ?>>Group</option>
+                        <option value="Individual" <?= ($flat['ownership_type'] ?? '') === 'Individual' ? 'selected' : '' ?>>Individual</option>
+                    </select>
+                </div>
+
                 <!-- Per Sqft Price -->
                 <div class="col-xl-6">
                     <label>Rate per SFT (BDT)</label>

@@ -656,7 +656,7 @@ class LeadController extends Controller
                 $bk_text = !empty($bookingCount[$lead['id']]) ? 'Booked' : 'Booking';
 
                 $deleteOptionHtml = '';
-                if ($isManagement) {
+                if ($isManagement && $userRoleId != 35) {
                     $leadNameEscaped = htmlspecialchars($lead['full_name'] ?? 'Lead', ENT_QUOTES, 'UTF-8');
                     $deleteOptionHtml = '
                             <li>
@@ -2118,8 +2118,19 @@ class LeadController extends Controller
 
     public function deleteLeadAjax()
     {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Content-Type: application/json');
+            
+            if ($userRoleId === 35) {
+                echo json_encode(['success' => false, 'message' => 'You do not have permission to delete leads.']);
+                exit;
+            }
+            
             $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
             
             if ($id > 0) {
@@ -2215,7 +2226,7 @@ class LeadController extends Controller
 
         $redirectUrl = !empty($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ($GLOBALS['base_url'] . "/lead-lists");
 
-        if (!$isManagement) {
+        if (!$isManagement || $userRoleId === 35) {
             setError("You do not have permission to delete leads.");
             header("Location: " . $redirectUrl);
             exit;

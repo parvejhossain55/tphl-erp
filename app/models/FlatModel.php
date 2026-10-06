@@ -239,17 +239,18 @@ class FlatModel extends Model
         suite_id,
         per_sqft_price,
         booking_money,
-        registration_money
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        registration_money,
+        ownership_type
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 ");
 
         if (!$stmt) {
             setError($this->db->error);
             return false;
         }
-        $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null;
+        $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null; $ownership_type = $data['ownership_type'] ?? null;
         $stmt->bind_param(
-            "isdiiiiiissississsisissdd",
+            "isdiiiiiissississsisissdds",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -274,7 +275,8 @@ class FlatModel extends Model
             $suite_id,
             $per_sqft_price,
             $booking_money,
-            $registration_money
+            $registration_money,
+            $ownership_type
         );
 
         return $stmt->execute();
@@ -448,8 +450,9 @@ class FlatModel extends Model
                 suite_id,
                 per_sqft_price,
                 booking_money,
-                registration_money
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                registration_money,
+                ownership_type
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
 
         if (!$stmt) {
@@ -486,9 +489,9 @@ class FlatModel extends Model
         $booking_money        = $data['booking_money'];
         $registration_money   = $data['registration_money'];
 
-        $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null;
+        $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null; $ownership_type = $data['ownership_type'] ?? null;
         $stmt->bind_param(
-            "isdiiiiiissississsisissddd",
+            "isdiiiiiissississsisissddds",
             $project_id,
             $flat_name,
             $sqft,
@@ -514,7 +517,8 @@ class FlatModel extends Model
             $suite_id,
             $per_sqft_price,
             $booking_money,
-            $registration_money
+            $registration_money,
+            $ownership_type
         );
 
         return $stmt->execute();
@@ -529,7 +533,7 @@ class FlatModel extends Model
         is_shop = ?, unit_type = ?,
         price_value = ?, shop_service_charge = ?,
         facilities = ?, created_by = ?, land_share_value = ?, development_charges = ?,
-        suite_id = ?, per_sqft_price = ?, booking_money = ?, registration_money = ?
+        suite_id = ?, per_sqft_price = ?, booking_money = ?, registration_money = ?, ownership_type = ?
         WHERE id = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -537,9 +541,9 @@ class FlatModel extends Model
             throw new Exception("Prepare failed: " . $this->db->error);
         }
 
-        $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null;
+        $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null; $ownership_type = $data['ownership_type'] ?? null;
         $stmt->bind_param(
-            "isdiiiiiissisdisiddsdddi",
+            "isdiiiiiissisdisiddsdddsi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -563,6 +567,7 @@ class FlatModel extends Model
             $per_sqft_price,
             $booking_money,
             $registration_money,
+            $ownership_type,
             $id
         );
 

@@ -1127,7 +1127,7 @@ class AssetManagement
                 $catRes = $catStmt->get_result();
                 if ($catRes && $catRow = $catRes->fetch_assoc()) {
                     if (strpos(strtolower($catRow['name']), 'it security') !== false || strpos(strtolower($catRow['name']), 'computer') !== false) {
-                        $itHeadStatus = 'pending';
+                        $itHeadStatus = ((int)$requestedBy === 242) ? 'not_required' : 'pending';
                     }
                 }
                 $catStmt->close();
@@ -1150,7 +1150,7 @@ class AssetManagement
         }
 
         $stmt->bind_param(
-            'iiisiissiddssiisii',
+            'iiisiissiddssiissi',
             $projectId,
             $departmentId,
             $officeBranchId,

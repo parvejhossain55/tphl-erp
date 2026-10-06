@@ -16,8 +16,8 @@ $isAccounts     = ($isAdminOrMgmt || in_array($roleId, [6, 30])) && !$isChiefOff
 
 // Global approvers / viewers include Management, Operations, Purchase, QC/Audit, Accounts roles
 $isGlobalViewer = in_array($roleId, [1, 3, 33, 34, 35, 6, 17, 20, 24, 25, 30, 31, 32]);
-$isApprover     = $isGlobalViewer && !$isChiefOfficer;
-$activeTab      = $_GET['tab'] ?? 'all_requests';
+$isApprover     = ($isGlobalViewer || $userId === 242) && !$isChiefOfficer;
+$activeTab      = $_GET['tab'] ?? ($isApprover ? 'pending_approval' : 'all_requests');
 
 $overallBadges = [
     'pending' => 'warning', 'in_review' => 'info', 'approved' => 'success',
@@ -403,7 +403,9 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 if (!$isCreator) {
                                                     if (($isReporterBoss || $isAdminOrMgmt) && $rowDhStatus === 'pending') {
                                                         $canApprove = true; $step = 'dept_head';
-                                                    } elseif ($isOperations && in_array($rowDhStatus, ['approved', 'not_required']) && $r['operations_status'] === 'pending') {
+                                                    } elseif (($userId === 242 || $isAdminOrMgmt) && in_array($rowDhStatus, ['approved', 'not_required']) && ($r['it_head_status'] ?? '') === 'pending') {
+                                                        $canApprove = true; $step = 'it_head';
+                                                    } elseif ($isOperations && in_array($rowDhStatus, ['approved', 'not_required']) && in_array(($r['it_head_status'] ?? 'not_required'), ['approved', 'not_required']) && $r['operations_status'] === 'pending') {
                                                         $canApprove = true; $step = 'operations';
                                                     } elseif ($isPurchaseHead && $r['operations_status'] === 'approved' && $r['purchase_head_status'] === 'pending') {
                                                         $canApprove = true; $step = 'purchase_head';
@@ -421,7 +423,7 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 $canConfirmPurchase = !empty($isOperations) && $r['payment_status'] === 'paid' && $r['overall_status'] === 'paid';
 
                                                 // Creator or Admin can delete BEFORE any approval step has passed
-                                                $isInitialPending = in_array($rowDhStatus, ['pending', 'not_required']) && ($r['operations_status'] === 'pending' && $r['purchase_head_status'] === 'pending' && $r['qc_audit_status'] === 'pending' && $r['mgmt_status'] === 'pending');
+                                                $isInitialPending = in_array($rowDhStatus, ['pending', 'not_required']) && in_array(($r['it_head_status'] ?? 'not_required'), ['pending', 'not_required']) && ($r['operations_status'] === 'pending' && $r['purchase_head_status'] === 'pending' && $r['qc_audit_status'] === 'pending' && $r['mgmt_status'] === 'pending');
                                                 $canDelete = ($isCreator || $isAdminOrMgmt) && $isInitialPending;
                                                 $r['can_approve'] = $canApprove;
                                                 $r['approval_step'] = $step;
