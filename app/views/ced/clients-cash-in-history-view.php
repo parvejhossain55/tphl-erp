@@ -996,7 +996,7 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                                     </td>
                                      <td>
                                          <div><?php echo !empty($transaction['created_by_name']) ? htmlspecialchars($transaction['created_by_name']) : '<span class="text-muted">System</span>'; ?></div>
-                                         <?php if (!empty($transaction['updated_by_name'])): ?>
+                                         <?php if (!empty($transaction['updated_by_name']) && stripos($transaction['updated_by_name'], 'Management') === false): ?>
                                              <div class="text-primary mt-1 border-top pt-1" style="font-size: 0.82em;" title="Last Updated By">
                                                  <i class="fa-solid fa-pen-to-square me-1 text-info"></i>Edited by: <strong><?= htmlspecialchars($transaction['updated_by_name']) ?></strong>
                                                  <?php if (!empty($transaction['updated_at'])): ?>
@@ -1089,6 +1089,18 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                                                         title="Edit / Approve Management Discount">
                                                     <i class="fa-solid fa-tags"></i>
                                                 </button>
+                                            <?php endif; ?>
+
+                                            <?php 
+                                                $isEditableByManagement = $isManagementUser && in_array($transaction['payment_type'] ?? '', ['development_charge', 'land_share', 'shop_service_charge', 'emi']);
+                                            ?>
+                                            <?php if ($hasId && $isEditableByManagement): ?>
+                                                <a href="<?= $GLOBALS['base_url'] ?>/edit-client-cash-in/<?= htmlspecialchars($transaction['id']) ?>"
+                                                   class="table__icon edit border-0"
+                                                   style="color:#fff;background-color:#6c5ffc;"
+                                                   title="Edit Transaction (Management Only)">
+                                                    <i class="fa-solid fa-pen-to-square"></i>
+                                                </a>
                                             <?php endif; ?>
 
                                             <?php if ($isManagementUser && $hasId): ?>

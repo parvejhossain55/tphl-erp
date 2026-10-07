@@ -1,4 +1,19 @@
 <!-- app-sidebar-start -->
+<style>
+    .sidebar__menu-item .badge {
+        font-size: 10px !important;
+        padding: 3px 6px !important;
+        line-height: 1 !important;
+        height: auto !important;
+        width: auto !important;
+        min-width: 20px;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50px !important;
+    }
+</style>
 <!--<pre>
 <php print_r($_SESSION['user']['permissions']); ?>
 </pre> -->
@@ -1145,7 +1160,7 @@
 
                         <li class="slide d-none">
                             <a href="<?= $base_url ?>/task-dashboard"
-                                class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
+                                class="sidebar__menu-item">
                                 <span class="sidebar__menu-label">Task Dashboard</span>
                                 <?php if ($pendingTasksCount > 0): ?>
                                     <span class="badge bg-danger ms-auto me-2 rounded-pill"
@@ -1307,7 +1322,7 @@
                     <!-- sales Dashboard -->
                     <li class="slide d-none">
                         <a href="<?= $base_url ?>/task-dashboard"
-                            class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
+                            class="sidebar__menu-item">
                             <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
                             <span class="sidebar__menu-label">Task Dashboard</span>
                             <?php if ($pendingTasksCount > 0): ?>
@@ -1417,7 +1432,7 @@
                     </li>
                     <li class="slide d-none">
                         <a href="<?= $base_url ?>/task-dashboard"
-                            class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
+                            class="sidebar__menu-item">
                             <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
                             <span class="sidebar__menu-label">Task Dashboard</span>
                             <?php if ($pendingTasksCount > 0): ?>
@@ -3765,9 +3780,9 @@
                     <?php if (hasPermission("task manage")): ?>
 
                         <li
-                            class="slide has-sub <?= isActive(['create-task', 'task-lists', 'todo'], $current_route) ? 'active' : '' ?>">
+                            class="slide has-sub <?= isActive(['create-task', 'task-lists', 'todo', 'task-dashboard'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['create-task', 'task-lists', 'todo'], $current_route) ? 'menu-open active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['create-task', 'task-lists', 'todo', 'task-dashboard'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
                                 <span class="sidebar__menu-label">Task Manage</span>
                                 <?php if ($pendingTasksCount > 0): ?>

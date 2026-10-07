@@ -3606,7 +3606,10 @@ class AccountClient extends Model
                 throw new Exception("Transaction not found");
             }
 
-            if (($oldTransaction['verification_status'] ?? '') === 'verified') {
+            $isManagementRole = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35]) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'management') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin') !== false;
+            $isEditableByManagement = $isManagementRole && in_array($oldTransaction['payment_type'] ?? '', ['development_charge', 'land_share', 'shop_service_charge', 'emi']);
+
+            if (($oldTransaction['verification_status'] ?? '') === 'verified' && !$isEditableByManagement) {
                 throw new Exception("Verified transactions cannot be edited. Please contact Accounts.");
             }
 

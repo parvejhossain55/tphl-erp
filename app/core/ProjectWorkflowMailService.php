@@ -19,13 +19,8 @@ class ProjectWorkflowMailService
     private $db;
 
     // SMTP / OAuth config (same credentials as MailService.php)
-    private $smtpHost     = 'smtp.gmail.com';
-    private $smtpPort     = 587;
     private $senderEmail  = 'no-reply@dpremiumhomes.com';
     private $senderName   = 'TPHL ERP System';
-    private $clientId     = '684667519692-hcdp7rhi9r64d87g93eq1cagpgqurk35.apps.googleusercontent.com';
-    private $clientSecret = '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';
-    private $refreshToken = '1//041-wDvZzKIoVCgYIARAAGAQSNwF-L9IrP3uKc9BZMrTRHt9EHVR-PDRZdgog0Hk8uAOapqaf45h4Xkp8rkwzPTIY2Vhxt1DgIx4';
 
     public function __construct($db)
     {
@@ -1362,11 +1357,12 @@ class ProjectWorkflowMailService
             return;
         }
 
-        // Initialize Google OAuth provider
-        $provider = new Google([
-            'clientId'     => $this->clientId,
-            'clientSecret' => $this->clientSecret,
-        ]);
+        $config = require __DIR__ . '/../config/config.php';
+        $smtpHost = $config['smtp_host'] ?? 'smtp.gmail.com';
+        $smtpPort = $config['smtp_port'] ?? 465;
+        $senderEmail = $config['smtp_user'] ?? 'no-reply@dpremiumhomes.com';
+        $smtpPass = $config['smtp_pass'] ?? '';
+        $smtpSecure = $config['smtp_secure'] ?? 'ssl';
 
         foreach ($uniqueRecipients as $user) {
             $subject = "⚡ [DEBUG] Approve BOQ / BOM — {$projectName}";
@@ -1386,19 +1382,12 @@ class ProjectWorkflowMailService
             try {
                 $mail = new PHPMailer(true);
                 $mail->isSMTP();
-                $mail->Host       = $this->smtpHost;
-                $mail->Port       = $this->smtpPort;
+                $mail->Host       = $smtpHost;
+                $mail->Port       = $smtpPort;
                 $mail->SMTPAuth   = true;
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                
-                $mail->AuthType = 'XOAUTH2';
-                $mail->setOAuth(new OAuth([
-                    'provider'     => $provider,
-                    'clientId'     => $this->clientId,
-                    'clientSecret' => $this->clientSecret,
-                    'refreshToken' => $this->refreshToken,
-                    'userName'     => $this->senderEmail,
-                ]));
+                $mail->Username   = $senderEmail;
+                $mail->Password   = $smtpPass;
+                $mail->SMTPSecure = (strtolower($smtpSecure) === 'ssl') ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
 
                 $mail->setFrom($this->senderEmail, $this->senderName);
                 $mail->addAddress($user['email']);
