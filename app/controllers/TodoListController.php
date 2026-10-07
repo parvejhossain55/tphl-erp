@@ -49,34 +49,51 @@ class TodoListController extends Controller
         $viewType = $_GET['view'] ?? 'inbox';
         $projectId = isset($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
         
-        $where = "t.user_id = {$this->userId} AND t.status = 'pending'";
+        $where = "t.user_id = {$this->userId}";
         $title = 'Inbox';
         
-        if ($viewType === 'today') {
-            $where .= " AND DATE(t.due_date) <= CURDATE()";
-            $title = 'Today';
-        } elseif ($viewType === 'upcoming') {
-            $where .= " AND DATE(t.due_date) > CURDATE()";
-            $title = 'Upcoming';
-        } elseif ($viewType === 'project' && $projectId > 0) {
-            $where .= " AND t.todo_project_id = $projectId";
-            $pNameRes = $this->db->query("SELECT name FROM todo_projects WHERE id = $projectId");
-            if ($pNameRes && $pName = $pNameRes->fetch_assoc()) {
-                $title = $pName['name'];
-            }
+        if ($viewType === 'completed') {
+            $where .= " AND t.status = 'completed'";
+            $title = 'Completed Tasks';
         } else {
-            // Inbox usually shows all tasks that are in the Inbox project, or we can just show all unassigned/inbox tasks.
-            // For now, we let Inbox show everything, or we can filter by inboxId. Let's filter by inboxId.
-            // $where .= " AND t.todo_project_id = $inboxId";
+            // We now show both pending and completed tasks in the views so the user can see what they marked
+            if ($viewType === 'today') {
+                $where .= " AND DATE(t.due_date) <= CURDATE()";
+                $title = 'Today';
+            } elseif ($viewType === 'upcoming') {
+                $where .= " AND DATE(t.due_date) > CURDATE()";
+                $title = 'Upcoming';
+            } elseif ($viewType === 'project' && $projectId > 0) {
+                $where .= " AND t.todo_project_id = $projectId";
+                $pNameRes = $this->db->query("SELECT name FROM todo_projects WHERE id = $projectId");
+                if ($pNameRes && $pName = $pNameRes->fetch_assoc()) {
+                    $title = $pName['name'];
+                }
+            }
         }
+
+        // Pagination
+        $limit = 20;
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        if ($page < 1) $page = 1;
+        $offset = ($page - 1) * $limit;
+        
+        $countQueryTotal = "SELECT COUNT(*) as total FROM todo_tasks t WHERE $where";
+        $countResTotal = $this->db->query($countQueryTotal);
+        $totalRows = $countResTotal ? $countResTotal->fetch_assoc()['total'] : 0;
+        $totalPages = ceil($totalRows / $limit);
 
         // Fetch tasks
         $taskQuery = "
-            SELECT t.*, p.name as project_name, p.color_code as project_color 
+            SELECT t.*, p.name as project_name, p.color_code as project_color,
+                   tr.repeat_type, r.max_reminders
             FROM todo_tasks t 
             LEFT JOIN todo_projects p ON t.todo_project_id = p.id 
+            LEFT JOIN todo_task_recurrences tr ON t.id = tr.todo_task_id
+            LEFT JOIN todo_task_reminders r ON t.id = r.todo_task_id
             WHERE $where 
-            ORDER BY t.due_date ASC, t.priority ASC, t.created_at DESC
+            ORDER BY (t.status = 'completed') ASC, t.due_date ASC, t.priority ASC, t.created_at DESC
+            LIMIT $limit OFFSET $offset
         ";
         $taskRes = $this->db->query($taskQuery);
         $tasks = [];
@@ -118,7 +135,9 @@ class TodoListController extends Controller
             'pageTitle' => $title,
             'projectId' => $projectId,
             'counts' => $counts,
-            'labels' => $labels
+            'labels' => $labels,
+            'totalPages' => $totalPages,
+            'currentPage' => $page
         ];
 
         $this->view('todo/index', $data);
@@ -138,10 +157,14 @@ class TodoListController extends Controller
                 // Handle Attachment
                 $attachmentPath = "NULL";
                 if (!empty($_FILES['attachment']['name'])) {
+                    $uploadDir = __DIR__ . '/../../public/uploads/todo/';
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0777, true);
+                    }
                     $fileName = time() . '_' . preg_replace('/[^a-zA-Z0-9.\-_]/', '', basename($_FILES['attachment']['name']));
-                    $targetPath = 'uploads/todo/' . $fileName;
+                    $targetPath = $uploadDir . $fileName;
                     if (move_uploaded_file($_FILES['attachment']['tmp_name'], $targetPath)) {
-                        $attachmentPath = "'" . $this->db->real_escape_string($targetPath) . "'";
+                        $attachmentPath = "'" . $this->db->real_escape_string('public/uploads/todo/' . $fileName) . "'";
                     }
                 }
                 
@@ -232,6 +255,112 @@ class TodoListController extends Controller
         exit();
     }
 
+    public function delete()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['task_id'])) {
+            $taskId = (int)$_POST['task_id'];
+            $deleteFuture = isset($_POST['delete_future']) ? true : false;
+            
+            // Check if it's the user's task
+            $taskRes = $this->db->query("SELECT * FROM todo_tasks WHERE id = $taskId AND user_id = {$this->userId}");
+            if ($taskRes && $task = $taskRes->fetch_assoc()) {
+                if (!$deleteFuture) {
+                    // Generate next occurrence before deleting current one
+                    $recRes = $this->db->query("SELECT * FROM todo_task_recurrences WHERE todo_task_id = $taskId");
+                    if ($recRes && $rec = $recRes->fetch_assoc()) {
+                        $nextDueDate = null;
+                        if ($task['due_date']) {
+                            $currentDate = new DateTime($task['due_date']);
+                            if ($rec['repeat_type'] === 'daily') {
+                                $currentDate->modify('+1 day');
+                            } elseif ($rec['repeat_type'] === 'weekly') {
+                                $currentDate->modify('+1 week');
+                            } elseif ($rec['repeat_type'] === 'monthly') {
+                                $currentDate->modify('+1 month');
+                            }
+                            $nextDueDate = "'" . $currentDate->format('Y-m-d H:i:s') . "'";
+                        }
+                        
+                        $title = $this->db->real_escape_string($task['title']);
+                        $desc = $this->db->real_escape_string($task['description'] ?? '');
+                        $projectId = $task['todo_project_id'] ? $task['todo_project_id'] : "NULL";
+                        $priority = (int)$task['priority'];
+                        
+                        $this->db->query("INSERT INTO todo_tasks (user_id, todo_project_id, title, description, priority, due_date) 
+                                          VALUES ({$this->userId}, $projectId, '$title', '$desc', $priority, " . ($nextDueDate ?? 'NULL') . ")");
+                        $newTaskId = $this->db->insert_id;
+                        $this->db->query("INSERT INTO todo_task_recurrences (todo_task_id, repeat_type) VALUES ($newTaskId, '{$rec['repeat_type']}')");
+                    }
+                }
+                
+                // Now delete the task
+                $this->db->query("DELETE FROM todo_tasks WHERE id = $taskId");
+            }
+        }
+        
+        $view = $_POST['redirect_view'] ?? 'inbox';
+        header("Location: " . $GLOBALS['base_url'] . "/todo?view=" . urlencode($view));
+        exit();
+    }
+
+    public function update()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['task_id'])) {
+            $taskId = (int)$_POST['task_id'];
+            $title = $this->db->real_escape_string($_POST['title'] ?? '');
+            if (!empty($title)) {
+                $description = $this->db->real_escape_string($_POST['description'] ?? '');
+                $location = $this->db->real_escape_string($_POST['location'] ?? '');
+                $priority = (int)($_POST['priority'] ?? 4);
+                $dueDate = !empty($_POST['due_date']) ? "'" . $this->db->real_escape_string($_POST['due_date']) . "'" : "NULL";
+                
+                // Check if user owns task
+                $taskRes = $this->db->query("SELECT * FROM todo_tasks WHERE id = $taskId AND user_id = {$this->userId}");
+                if ($taskRes && $taskRes->num_rows > 0) {
+                    
+                    $attachmentQuery = "";
+                    if (!empty($_FILES['attachment']['name'])) {
+                        $uploadDir = __DIR__ . '/../../public/uploads/todo/';
+                        if (!is_dir($uploadDir)) {
+                            mkdir($uploadDir, 0777, true);
+                        }
+                        $fileName = time() . '_' . preg_replace('/[^a-zA-Z0-9.\-_]/', '', basename($_FILES['attachment']['name']));
+                        $targetPath = $uploadDir . $fileName;
+                        if (move_uploaded_file($_FILES['attachment']['tmp_name'], $targetPath)) {
+                            $attachmentPath = "'" . $this->db->real_escape_string('public/uploads/todo/' . $fileName) . "'";
+                            $attachmentQuery = ", attachment = $attachmentPath";
+                        }
+                    }
+                    
+                    $this->db->query("UPDATE todo_tasks SET title = '$title', description = '$description', priority = $priority, due_date = $dueDate, location = '$location' $attachmentQuery WHERE id = $taskId");
+                    
+                    // Update recurrence
+                    if (!empty($_POST['repeat_type'])) {
+                        $repeatType = $this->db->real_escape_string($_POST['repeat_type']);
+                        $this->db->query("INSERT INTO todo_task_recurrences (todo_task_id, repeat_type) VALUES ($taskId, '$repeatType') ON DUPLICATE KEY UPDATE repeat_type = '$repeatType'");
+                    } else {
+                        $this->db->query("DELETE FROM todo_task_recurrences WHERE todo_task_id = $taskId");
+                    }
+                    
+                    // Update Reminders
+                    if (isset($_POST['max_reminders'])) {
+                        $max = (int)$_POST['max_reminders'];
+                        if ($max > 0) {
+                            $triggerTime = !empty($_POST['due_date']) ? "'" . $this->db->real_escape_string($_POST['due_date']) . " 09:00:00'" : "NOW()";
+                            $this->db->query("DELETE FROM todo_task_reminders WHERE todo_task_id = $taskId");
+                            $this->db->query("INSERT INTO todo_task_reminders (todo_task_id, trigger_time, max_reminders) VALUES ($taskId, $triggerTime, $max)");
+                        } else {
+                            $this->db->query("DELETE FROM todo_task_reminders WHERE todo_task_id = $taskId");
+                        }
+                    }
+                }
+            }
+        }
+        $view = $_POST['redirect_view'] ?? 'inbox';
+        header("Location: " . $GLOBALS['base_url'] . "/todo?view=" . urlencode($view));
+        exit();
+    }
+
     public function cron()
     {
         // 1. Find all active reminders where trigger_time <= NOW()
@@ -252,7 +381,7 @@ class TodoListController extends Controller
         $res = $this->db->query($query);
         if ($res && $res->num_rows > 0) {
             require_once __DIR__ . '/../core/TodoMailService.php';
-            $mailService = new TodoMailService();
+            $mailService = new TodoMailService($this->db);
 
             while ($row = $res->fetch_assoc()) {
                 // Send Email
@@ -288,5 +417,25 @@ class TodoListController extends Controller
         }
         
         echo "Cron Executed Successfully at " . date('Y-m-d H:i:s');
+    }
+
+    public function testEmail()
+    {
+        require_once __DIR__ . '/../core/TodoMailService.php';
+        $mailService = new TodoMailService($this->db);
+        
+        $body = "
+        <div style='font-family: Arial, sans-serif; padding: 20px;'>
+            <h2 style='color: #d1453b;'>Test Task Reminder</h2>
+            <p>Hello Farzana,</p>
+            <p>This is a test reminder from the new Todo List module to verify the email functionality.</p>
+            <p>If you received this, the queue and SMTP configuration are working correctly!</p>
+        </div>";
+
+        if ($mailService->send('farzana.tphl13@gmail.com', 'Test Task Reminder', $body)) {
+            echo "Test email queued for farzana.tphl13@gmail.com! Background processor triggered.";
+        } else {
+            echo "Failed to queue test email.";
+        }
     }
 }

@@ -1,46 +1,49 @@
 <?php
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
 
 class TodoMailService
 {
-    private $smtpHost = 'smtp.gmail.com';
-    private $smtpPort = 587;
-    private $senderEmail = 'no-reply@dpremiumhomes.com'; // Changed to no-reply
-    private $senderName = 'TPHL ERP Todo Alerts';
-    private $username = 'tech@dpremiumhomes.com'; // Use their actual SMTP user
-    private $password = 'YourSMTPPasswordHere'; // Note: User needs to update this or use OAuth if they use OAuth.
+    private $db;
 
-    // If they use OAuth like in ProjectWorkflowMailService, we should use that setup. 
-    // Let's assume standard SMTP or the user will copy their credentials over.
-    
+    public function __construct($db)
+    {
+        $this->db = $db;
+    }
+
+    private function getBaseUrl(): string
+    {
+        $base = rtrim($GLOBALS['base_url'] ?? '/TPHL-ERP', '/');
+        if (str_starts_with($base, 'http')) {
+            return $base;
+        }
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host   = $_SERVER['HTTP_HOST'] ?? 'localhost:8080';
+        return $scheme . '://' . $host . $base;
+    }
+
     public function send($toEmail, $subject, $body)
     {
-        // For demonstration, using simple mail() if PHPMailer isn't fully configured, 
-        // but we will write PHPMailer logic assuming they have it in vendor.
-        require_once __DIR__ . '/../../vendor/autoload.php';
-
-        $mail = new PHPMailer(true);
         try {
-            $mail->isSMTP();
-            $mail->Host       = 'smtp.gmail.com';
-            $mail->SMTPAuth   = true;
-            // The user will need to put their actual SMTP credentials here since we don't have the exact ones for no-reply
-            $mail->Username   = 'tech@dpremiumhomes.com'; 
-            $mail->Password   = 'YourAppPassword'; // User must replace this
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = 587;
-
-            $mail->setFrom($this->senderEmail, $this->senderName);
-            $mail->addAddress($toEmail);
-
-            $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body    = $body;
-
-            $mail->send();
+            $stmt = $this->db->prepare("INSERT INTO email_queue (to_email, subject, body, status) VALUES (?, ?, ?, 'pending')");
+            if (!$stmt) {
+                error_log("[TodoMailService] email_queue table missing or prepare failed: " . $this->db->error);
+                return false;
+            }
+            $stmt->bind_param("sss", $toEmail, $subject, $body);
+            $stmt->execute();
+            $stmt->close();
+            
+            // Trigger the async processor immediately via cURL
+            $url = $this->getBaseUrl() . '/process_email_queue.php';
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_TIMEOUT_MS, 200); // 200ms timeout
+            curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_exec($ch);
+            curl_close($ch);
+            
             return true;
         } catch (Exception $e) {
+            error_log("[TodoMailService] Failed to queue email to {$toEmail}: " . $e->getMessage());
             return false;
         }
     }
