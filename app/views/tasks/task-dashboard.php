@@ -3,25 +3,36 @@
         ?>
         <!-- Task Count Cards -->
         <div class="row mb-4">
-            <div class="col-md-6 col-sm-12">
-                <div class="card h-100 shadow-sm border-0" style="background: linear-gradient(135deg, #fff3cd 0%, #fff9e6 100%); border-left: 4px solid #ffc107 !important;">
-                    <div class="card-body d-flex justify-content-between align-items-center py-3">
+            <div class="col-md-4 col-sm-12 mb-3 mb-md-0">
+                <div class="card h-100 shadow-sm border-0" style="background: linear-gradient(135deg, #fff3cd 0%, #fff9e6 100%); border-left: 4px solid #ffc107 !important; cursor: default;">
+                    <div class="card-body d-flex justify-content-between align-items-center py-2 px-3">
                         <div>
-                            <h6 class="mb-1 text-warning-emphasis fw-bold" style="color: #664d03 !important;"><i class="bi bi-calendar2-event me-2"></i>Today's Tasks</h6>
-                            <span class="text-muted small">Tasks due today</span>
+                            <h6 class="mb-1 text-warning-emphasis fw-bold" style="color: #664d03 !important; font-size: 14px;"><i class="bi bi-calendar2-event me-2"></i>Today's Tasks</h6>
+                            <span class="text-muted" style="font-size: 12px;">Tasks due today</span>
                         </div>
-                        <span class="badge bg-warning text-dark fs-5 rounded-pill px-3 py-2 fw-bold shadow-sm"><?= $todayTaskCount ?></span>
+                        <span class="badge bg-warning text-dark fs-6 rounded-pill px-2 py-1 fw-bold shadow-sm"><?= $todayTaskCount ?></span>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6 col-sm-12">
-                <div class="card h-100 shadow-sm border-0" style="background: linear-gradient(135deg, #e8e6ff 0%, #f3f1ff 100%); border-left: 4px solid #5e4cdc !important;">
-                    <div class="card-body d-flex justify-content-between align-items-center py-3">
+            <div class="col-md-4 col-sm-12 mb-3 mb-md-0">
+                <div class="card h-100 shadow-sm border-0" onclick="toggleTaskView('pending')" style="background: linear-gradient(135deg, #e8e6ff 0%, #f3f1ff 100%); border-left: 4px solid #5e4cdc !important; cursor: pointer;">
+                    <div class="card-body d-flex justify-content-between align-items-center py-2 px-3">
                         <div>
-                            <h6 class="mb-1 text-primary fw-bold" style="color: #493aa6 !important;"><i class="bi bi-clipboard-data me-2"></i>Total Pending Tasks</h6>
-                            <span class="text-muted small">All incomplete tasks</span>
+                            <h6 class="mb-1 text-primary fw-bold" style="color: #493aa6 !important; font-size: 14px;"><i class="bi bi-clipboard-data me-2"></i>Total Pending Tasks</h6>
+                            <span class="text-muted" style="font-size: 12px;">All incomplete tasks</span>
                         </div>
-                        <span class="badge text-white fs-5 rounded-pill px-3 py-2 fw-bold shadow-sm" style="background-color: #5e4cdc !important;"><?= count($pendingTasks) ?></span>
+                        <span class="badge text-white fs-6 rounded-pill px-2 py-1 fw-bold shadow-sm" style="background-color: #5e4cdc !important;"><?= count($pendingTasks) ?></span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-12">
+                <div class="card h-100 shadow-sm border-0" onclick="toggleTaskView('completed')" style="background: linear-gradient(135deg, #d1e7dd 0%, #e8f5e9 100%); border-left: 4px solid #198754 !important; cursor: pointer;">
+                    <div class="card-body d-flex justify-content-between align-items-center py-2 px-3">
+                        <div>
+                            <h6 class="mb-1  fw-bold" style="color: #0f5132 !important; font-size: 14px;"><i class="bi bi-check-circle-fill me-2"></i>My Completed Tasks</h6>
+                            <span class="text-muted" style="font-size: 12px;">Total completed</span>
+                        </div>
+                        <span class="badge text-white fs-6 rounded-pill px-2 py-1 fw-bold shadow-sm" style="background-color: #198754 !important;"><?= count($completedTasks) ?></span>
                     </div>
                 </div>
             </div>
@@ -30,7 +41,7 @@
 
         <!-- Task Notification Section -->
         <?php if (!empty($pendingTasks)): ?>
-            <div class="tasks-container">
+        <div class="tasks-container" id="pending-tasks-view">
                 <div class="row ">
                     <?php foreach ($pendingTasks as $task): ?>
                         <?php
@@ -190,7 +201,7 @@
             </div>
 
         <?php else: ?>
-            <div class="empty-state-container">
+            <div class="empty-state-container" id="pending-tasks-view">
                 <div class="empty-state-card">
                     <div class="empty-icon">
                         <i class="bi bi-clipboard-check"></i>
@@ -200,6 +211,203 @@
                 </div>
             </div>
         <?php endif; ?>
+
+        <!-- Completed Tasks Section -->
+        <div class="tasks-container" id="completed-tasks-view" style="display: none;">
+            <?php if (!empty($completedTasks)): ?>
+                <div class="row" id="completed-tasks-list">
+                    <?php foreach ($completedTasks as $index => $ctask): ?>
+                        <div class="col-lg-4 col-md-6 col-sm-12 completed-task-item" data-page="<?= floor($index / 10) + 1 ?>" style="display: none;">
+                            <div class="card__wrapper task-card card-completed">
+                                <!-- Task Header -->
+                                <div class="task-header">
+                                    <div class="task-title-section">
+                                        <div class="task-icon-wrapper" style="background: #e8f5e9; color: #198754;">
+                                            <i class="bi bi-check2-all"></i>
+                                        </div>
+                                        <h5 class="task-title"><?= htmlspecialchars($ctask['title']) ?></h5>
+                                    </div>
+                                    <div class="task-actions">
+                                        <span class="badge badge-completed"><i class="bi bi-check-circle-fill me-1"></i>Completed</span>
+                                        <button class="btn-collapse" type="button" data-bs-toggle="collapse"
+                                            data-bs-target="#ctask-<?= $ctask['id'] ?>" aria-expanded="true">
+                                            <i class="bi bi-chevron-down"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Collapsible Content -->
+                                <div class="collapse show" id="ctask-<?= $ctask['id'] ?>">
+                                    <!-- Assigned By Info -->
+                                    <div class="assigned-section">
+                                        <div class="assigned-info-card">
+                                            <div class="info-icon">
+                                                <i class="bi bi-person-badge"></i>
+                                            </div>
+                                            <div class="info-content">
+                                                <p class="info-label">Assigned by</p>
+                                                <p class="info-value"><?= htmlspecialchars($ctask['assigned_by_name'] ?? 'System') ?></p>
+                                                <p class="info-designation"><?= htmlspecialchars($ctask['assigned_by_designation'] ?? '') ?></p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Description -->
+                                    <?php if (!empty($ctask['description'])): ?>
+                                        <div class="task-description-section">
+                                            <h6 class="section-title">
+                                                <i class="bi bi-file-text me-2"></i>Description
+                                            </h6>
+                                            <div class="description-content">
+                                                <?= $ctask['description'] ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <!-- Date Info -->
+                                    <div class="date-info-section">
+                                        <div class="date-card">
+                                            <div class="date-icon start-icon">
+                                                <i class="bi bi-calendar-check"></i>
+                                            </div>
+                                            <div class="date-details">
+                                                <p class="date-label">Start Date</p>
+                                                <p class="date-value"><?= !empty($ctask['start_date']) ? date('d M, Y', strtotime($ctask['start_date'])) : 'N/A' ?></p>
+                                            </div>
+                                        </div>
+                                        <div class="date-card">
+                                            <div class="date-icon deadline-icon" style="background: #e8f5e9; color: #198754;">
+                                                <i class="bi bi-check-circle"></i>
+                                            </div>
+                                            <div class="date-details">
+                                                <p class="date-label">Completed On</p>
+                                                <p class="date-value"><?= !empty($ctask['updated_at']) ? date('d M, Y', strtotime($ctask['updated_at'])) : 'N/A' ?></p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Progress Bar -->
+                                    <div class="progress-section">
+                                        <div class="progress-header">
+                                            <span class="progress-label">
+                                                <i class="bi bi-graph-up me-1"></i>Progress
+                                            </span>
+                                            <span class="progress-percentage ">100%</span>
+                                        </div>
+                                        <div class="progress-bar-container">
+                                            <div class="progress-bar-fill progress-completed" style="width: 100%">
+                                                <span class="progress-shine"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Rating Section -->
+                                    <?php if (!empty($ctask['satisfaction_rating'])): ?>
+                                        <div class="mt-3 p-3 rounded" style="background: #ffffff; border: 1px solid #e8e6ff; box-shadow: 0 2px 8px rgba(94, 76, 220, 0.05);">
+                                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                                <span class="fw-bold" style="color: #4b3db1; font-size: 13px;">
+                                                    <i class="bi bi-award-fill me-1" style="color: #ffc107; font-size: 16px;"></i> Satisfaction Rating
+                                                </span>
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <?php for($i=1; $i<=10; $i++): ?>
+                                                        <i class="bi bi-star<?= $i <= $ctask['satisfaction_rating'] ? '-fill' : '' ?>" style="font-size: 15px; color: <?= $i <= $ctask['satisfaction_rating'] ? '#ffc107' : '#e4e5e9' ?>;"></i>
+                                                    <?php endfor; ?>
+                                                    <span class="badge ms-2 px-2 py-1" style="background: #fff8e1; color: #f57f17; border: 1px solid #ffe082; font-size: 12px; font-weight: bold;">
+                                                        <?= $ctask['satisfaction_rating'] ?> / 10
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <!-- Action Info -->
+                                    <div class="mt-3">
+                                        <?php if (!empty($ctask['remarks'])): ?>
+                                            <div class="mb-2">
+                                                <label class="form-label fw-semibold text-dark fs-13"><i class="bi bi-chat-left-text me-1"></i>Remarks</label>
+                                                <div class="p-2 bg-light rounded text-muted fs-13"><?= htmlspecialchars($ctask['remarks']) ?></div>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($ctask['attachment_image'])): ?>
+                                            <div class="mt-2 text-start">
+                                                <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/tasks/<?= $ctask['attachment_image'] ?>" target="_blank" class="text-primary fs-13"><i class="bi bi-image me-1"></i>View Attachment</a>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <!-- Pagination Controls -->
+                <div class="d-flex justify-content-center mt-4" id="pagination-controls">
+                    <!-- JS will inject buttons here -->
+                </div>
+            <?php else: ?>
+                <div class="empty-state-container">
+                    <div class="empty-state-card">
+                        <div class="empty-icon" style="background: #198754;">
+                            <i class="bi bi-check-all"></i>
+                        </div>
+                        <h4 class="empty-title">No Completed Tasks</h4>
+                        <p class="empty-description">You haven't completed any tasks yet.</p>
+                    </div>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <script>
+            let currentPage = 1;
+            const tasksPerPage = 10;
+            const totalTasks = <?= count($completedTasks) ?>;
+            const totalPages = Math.ceil(totalTasks / tasksPerPage);
+
+            function toggleTaskView(view) {
+                if (view === 'pending') {
+                    document.getElementById('pending-tasks-view').style.display = 'block';
+                    document.getElementById('completed-tasks-view').style.display = 'none';
+                } else if (view === 'completed') {
+                    document.getElementById('pending-tasks-view').style.display = 'none';
+                    document.getElementById('completed-tasks-view').style.display = 'block';
+                    showPage(1);
+                }
+            }
+
+            function showPage(page) {
+                if (page < 1 || page > totalPages) return;
+                currentPage = page;
+                
+                // Hide all tasks
+                document.querySelectorAll('.completed-task-item').forEach(el => el.style.display = 'none');
+                
+                // Show tasks for current page
+                document.querySelectorAll(`.completed-task-item[data-page="${page}"]`).forEach(el => el.style.display = 'block');
+                
+                renderPagination();
+            }
+
+            function renderPagination() {
+                const container = document.getElementById('pagination-controls');
+                if (!container || totalPages <= 1) return;
+                
+                let html = '<ul class="pagination pagination-sm">';
+                
+                // Prev btn
+                html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0)" onclick="showPage(${currentPage - 1})">Previous</a></li>`;
+                
+                // Page numbers
+                for (let i = 1; i <= totalPages; i++) {
+                    html += `<li class="page-item ${currentPage === i ? 'active' : ''}"><a class="page-link" href="javascript:void(0)" onclick="showPage(${i})">${i}</a></li>`;
+                }
+                
+                // Next btn
+                html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0)" onclick="showPage(${currentPage + 1})">Next</a></li>`;
+                
+                html += '</ul>';
+                container.innerHTML = html;
+            }
+        </script>
 
         <style>
             /* Task Container Styles */

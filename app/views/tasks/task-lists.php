@@ -14,6 +14,29 @@
         text-align: center !important;
     }
 }
+.rating-stars {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 2px;
+}
+.rating-stars input {
+    display: none;
+}
+.rating-stars label {
+    cursor: pointer;
+    font-size: 20px;
+    color: #e4e5e9;
+    transition: all 0.2s ease-in-out;
+    margin: 0;
+    line-height: 1;
+}
+.rating-stars input:checked ~ label,
+.rating-stars label:hover,
+.rating-stars label:hover ~ label {
+    color: #ffc107;
+    transform: scale(1.15);
+}
 </style>
 
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
@@ -56,7 +79,7 @@
                       <div class="task__top-content">
                           <h5 class="mb-8"><a href="task-details.html"><?= $task['title'] ?></a>
                           </h5>
-                          <div class="d-flex align-items-center g-5 text-success">
+                          <div class="d-flex align-items-center g-5 ">
                               <i class="fa-solid fa-circle blink"></i><span class="d-block"><?= $task['status'] ?></span>
                           </div>
                           <div class="fs-14 d-none mb-15">
@@ -145,6 +168,45 @@
                       </div>
 
                   </div>
+                  <!-- Rating Section -->
+                  <?php if (strtolower($task['status']) === 'completed' || $task['progress'] >= 100): ?>
+                      <div class="mt-2 mb-3 p-2 bg-light rounded border border-light-subtle">
+                          <div class="d-flex justify-content-between align-items-center">
+                              <span class="fw-semibold text-dark fs-13"><i class="bi bi-star-fill text-warning me-1"></i> Rating</span>
+                              <?php if (!empty($task['satisfaction_rating'])): ?>
+                                  <div class="mt-2 w-100 p-2 rounded" style="background: #ffffff; border: 1px solid #e8e6ff; box-shadow: 0 2px 8px rgba(94, 76, 220, 0.05);">
+                                      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                          <div class="d-flex align-items-center gap-1">
+                                              <?php for($i=1; $i<=10; $i++): ?>
+                                                  <i class="bi bi-star<?= $i <= $task['satisfaction_rating'] ? '-fill' : '' ?>" style="font-size: 14px; color: <?= $i <= $task['satisfaction_rating'] ? '#ffc107' : '#e4e5e9' ?>;"></i>
+                                              <?php endfor; ?>
+                                          </div>
+                                          <span class="badge px-2 py-1" style="background: #fff8e1; color: #f57f17; border: 1px solid #ffe082; font-size: 11px; font-weight: bold;">
+                                              <?= $task['satisfaction_rating'] ?> / 10
+                                          </span>
+                                      </div>
+                                  </div>
+                              <?php else: ?>
+                                  <span class="badge bg-secondary bg-opacity-10 px-2 py-1 fs-12">Unrated</span>
+                              <?php endif; ?>
+                          </div>
+                          
+                          <?php if (empty($task['satisfaction_rating']) && (($_SESSION['user']['id'] ?? 0) == $task['assigned_by'] || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 4]))): ?>
+                              <form action="<?= $GLOBALS['base_url'] ?>/rate-task" method="POST" class="mt-3 w-100">
+                                  <input type="hidden" name="task_id" value="<?= $task['id'] ?>">
+                                  <div class="d-flex align-items-center justify-content-between bg-white px-3 py-2 rounded shadow-sm border">
+                                      <span class="text-muted fs-12 fw-medium me-2">Rate:</span>
+                                      <div class="rating-stars">
+                                          <?php for($i=10; $i>=1; $i--): ?>
+                                              <input type="radio" id="star<?= $i ?>-<?= $task['id'] ?>" name="satisfaction_rating" value="<?= $i ?>" onchange="this.form.submit()">
+                                              <label for="star<?= $i ?>-<?= $task['id'] ?>" title="<?= $i ?>/10"><i class="bi bi-star-fill"></i></label>
+                                          <?php endfor; ?>
+                                      </div>
+                                  </div>
+                              </form>
+                          <?php endif; ?>
+                      </div>
+                  <?php endif; ?>
                   <div class="task__btn mt-auto d-flex justify-content-between align-items-center gap-2">
                       <a class="btn btn-sm btn-outline-theme-border flex-grow-1 text-center" href="<?= $base_url ?>/show-task/<?= $task['id'] ?>">View</a>
                       <a class="btn btn-sm btn-outline-theme-border flex-grow-1 text-center" href="<?= $base_url ?>/edit-task/<?= $task['id'] ?>">Edit</a>
