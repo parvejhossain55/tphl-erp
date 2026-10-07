@@ -132,7 +132,8 @@
 
 /* Enhanced Add Task Button */
 .btn-add-task {
-    color: #888;
+    color: #2ea043;
+    background-color: #eaf5eb;
     text-decoration: none;
     font-size: 15px;
     display: inline-flex;
@@ -142,11 +143,11 @@
     cursor: pointer;
     border-radius: 8px;
     transition: all 0.2s;
-    font-weight: 500;
+    font-weight: 600;
 }
 .btn-add-task:hover {
-    color: #2ea043;
-    background-color: #eaf5eb;
+    background-color: #dcefdc;
+    color: #238636;
 }
 .btn-add-task i {
     margin-right: 10px;
@@ -237,6 +238,9 @@
                     <i class="far fa-calendar-check text-warning"></i> Upcoming
                     <span class="ms-auto text-muted small"><?php echo $counts['upcoming_count'] > 0 ? $counts['upcoming_count'] : ''; ?></span>
                 </a>
+                <a href="<?php echo $GLOBALS['base_url']; ?>/todo?view=completed" class="nav-item-custom <?php echo $viewType == 'completed' ? 'active' : ''; ?>">
+                    <i class="fas fa-check-double text-secondary"></i> Completed
+                </a>
 
                 <div class="project-header">
                     <span>My Projects</span>
@@ -269,14 +273,25 @@
                     <?php else: ?>
                         <?php foreach($tasks as $t): ?>
                         <div class="task-item">
-                            <div class="task-checkbox p<?php echo $t['priority']; ?>" onclick="completeTask(<?php echo $t['id']; ?>)">
-                                <i class="fas fa-check"></i>
-                            </div>
-                            <div class="task-content">
-                                <div class="task-title"><?php echo htmlspecialchars($t['title']); ?></div>
-                                <?php if($t['description']): ?>
-                                <div class="task-desc"><?php echo htmlspecialchars($t['description']); ?></div>
-                                <?php endif; ?>
+                            <?php if ($t['status'] === 'completed'): ?>
+                                <div class="task-checkbox completed">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                                <div class="task-content" style="opacity: 0.6;">
+                                    <div class="task-title text-decoration-line-through"><?php echo htmlspecialchars($t['title']); ?></div>
+                                    <?php if($t['description']): ?>
+                                    <div class="task-desc text-decoration-line-through"><?php echo htmlspecialchars($t['description']); ?></div>
+                                    <?php endif; ?>
+                            <?php else: ?>
+                                <div class="task-checkbox p<?php echo $t['priority']; ?>" onclick="completeTask(<?php echo $t['id']; ?>)">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                                <div class="task-content">
+                                    <div class="task-title"><?php echo htmlspecialchars($t['title']); ?></div>
+                                    <?php if($t['description']): ?>
+                                    <div class="task-desc"><?php echo htmlspecialchars($t['description']); ?></div>
+                                    <?php endif; ?>
+                            <?php endif; ?>
                                 
                                 <div class="task-meta">
                                     <?php if($t['due_date']): ?>
@@ -287,9 +302,9 @@
                                     <span><i class="fas fa-circle" style="color: <?php echo $t['project_color']; ?>; font-size: 8px;"></i> <?php echo htmlspecialchars($t['project_name']); ?></span>
                                     <?php endif; ?>
                                     
-                                    <?php if($t['priority'] < 4): ?>
-                                    <span class="text-muted"><i class="fas fa-flag"></i> P<?php echo $t['priority']; ?></span>
-                                    <?php endif; ?>
+                                    <span style="color: <?php echo $t['priority'] == 1 ? '#d1453b' : ($t['priority'] == 2 ? '#eb8909' : ($t['priority'] == 3 ? '#246fe0' : '#808080')); ?>; font-size: 11px; font-weight: bold;">
+                                        <i class="fas fa-flag"></i> P<?php echo $t['priority']; ?>
+                                    </span>
                                     
                                     <?php if(!empty($t['location'])): ?>
                                     <span class="text-muted"><i class="fas fa-map-marker-alt text-primary"></i> <?php echo htmlspecialchars($t['location']); ?></span>
@@ -300,12 +315,46 @@
                                         <i class="fas fa-paperclip text-info"></i> Attachment
                                     </a>
                                     <?php endif; ?>
+
+                                    <?php if(!empty($t['repeat_type'])): ?>
+                                    <span class="text-info fw-bold" style="font-size: 11px;"><i class="fas fa-redo"></i> <?php echo ucfirst($t['repeat_type']); ?></span>
+                                    <?php endif; ?>
                                 </div>
+                            </div>
+                            
+                            <div class="ms-auto ps-3 align-self-center d-flex align-items-center" style="opacity: 0.6;">
+                                <button type="button" class="btn btn-sm text-secondary border-0 p-0 me-3" onclick='editTask(<?php echo json_encode([
+                                    "id" => $t["id"],
+                                    "title" => htmlspecialchars($t["title"]),
+                                    "description" => htmlspecialchars($t["description"] ?? ""),
+                                    "due_date" => $t["due_date"] ? date("Y-m-d", strtotime($t["due_date"])) : "",
+                                    "priority" => $t["priority"],
+                                    "location" => htmlspecialchars($t["location"] ?? ""),
+                                    "repeat_type" => $t["repeat_type"] ?? "",
+                                    "max_reminders" => $t["max_reminders"] ?? 0
+                                ], JSON_HEX_APOS); ?>)' title="Edit Task">
+                                    <i class="fas fa-pen" style="font-size: 15px;"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm text-danger border-0 p-0" onclick="deleteTask(<?php echo $t['id']; ?>, '<?php echo $t['repeat_type'] ?? ''; ?>')" title="Delete Task">
+                                    <i class="far fa-trash-alt" style="font-size: 16px;"></i>
+                                </button>
                             </div>
                         </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
+
+                <?php if(isset($totalPages) && $totalPages > 1): ?>
+                <nav aria-label="Task pagination" class="mt-4">
+                    <ul class="pagination pagination-sm justify-content-center">
+                        <?php for($i=1; $i<=$totalPages; $i++): ?>
+                        <li class="page-item <?php echo $i == $currentPage ? 'active' : ''; ?>">
+                            <a class="page-link text-success" href="?view=<?php echo urlencode($viewType); ?><?php echo $projectId ? '&project_id='.$projectId : ''; ?>&page=<?php echo $i; ?>"><?php echo $i; ?></a>
+                        </li>
+                        <?php endfor; ?>
+                    </ul>
+                </nav>
+                <?php endif; ?>
 
                 <!-- Add Task Trigger Button -->
                 <a class="btn-add-task" onclick="showAddTaskForm()">
@@ -409,6 +458,117 @@
   </div>
 </div>
 
+<!-- Task Delete Modal -->
+<div class="modal fade" id="deleteTaskModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3 text-danger" style="font-size: 40px;">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+                <h5 class="fw-bold mb-2">Delete Task?</h5>
+                <p class="text-muted small mb-3">Are you sure you want to delete this task?</p>
+                <form action="<?php echo $GLOBALS['base_url']; ?>/todo/delete" method="POST">
+                    <input type="hidden" name="task_id" id="delete_task_id" value="">
+                    <input type="hidden" name="redirect_view" value="<?php echo htmlspecialchars($viewType); ?>">
+                    
+                    <div class="form-check text-start mb-4 bg-light p-2 rounded" id="deleteFutureWrap" style="display: none; font-size: 13px;">
+                        <input class="form-check-input ms-1" type="checkbox" name="delete_future" value="1" id="deleteFutureCheck" checked>
+                        <label class="form-check-label text-danger fw-bold ms-1" for="deleteFutureCheck">
+                            Turn off future repetition
+                        </label>
+                    </div>
+
+                    <div class="d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="font-weight: 500;">Cancel</button>
+                        <button type="submit" class="btn btn-danger px-4" style="font-weight: 600; border: none;">Delete</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Task Edit Modal -->
+<div class="modal fade" id="editTaskModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-body p-4">
+                <h5 class="fw-bold mb-3"><i class="fas fa-pen text-primary"></i> Edit Task</h5>
+                <form action="<?php echo $GLOBALS['base_url']; ?>/todo/update" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="task_id" id="edit_task_id" value="">
+                    <input type="hidden" name="redirect_view" value="<?php echo htmlspecialchars($viewType); ?>">
+                    
+                    <div class="mb-3">
+                        <input type="text" name="title" id="edit_title" class="form-control fw-bold border-0 bg-light" style="font-size: 16px;" placeholder="Task name" required autocomplete="off">
+                    </div>
+                    <div class="mb-3">
+                        <input type="text" name="description" id="edit_description" class="form-control border-0 bg-light" style="font-size: 14px;" placeholder="Description (optional)" autocomplete="off">
+                    </div>
+                    
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <div class="input-group input-group-sm" style="width: auto;">
+                            <span class="input-group-text bg-light border-0 text-muted"><i class="far fa-calendar"></i></span>
+                            <input type="date" name="due_date" id="edit_due_date" class="form-control border-0 bg-light">
+                        </div>
+                        
+                        <select name="priority" id="edit_priority" class="form-select form-select-sm border-0 bg-light" style="width: auto;">
+                            <option value="4">Priority 4 (Gray)</option>
+                            <option value="3">Priority 3 (Blue)</option>
+                            <option value="2">Priority 2 (Orange)</option>
+                            <option value="1">Priority 1 (Red)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+                        <div class="input-group input-group-sm" style="width: 200px;">
+                            <span class="input-group-text bg-light border-0 text-muted"><i class="fas fa-map-marker-alt"></i></span>
+                            <input type="text" name="location" id="edit_location" class="form-control border-0 bg-light" placeholder="Location/Deadline">
+                        </div>
+                        
+                        <div class="input-group input-group-sm" style="width: auto;">
+                            <span class="input-group-text bg-light text-muted border-0"><i class="fas fa-paperclip"></i> File</span>
+                            <input type="file" name="attachment" class="form-control border-0 bg-light" style="font-size: 12px;">
+                        </div>
+                    </div>
+
+                    <div class="card border-0 bg-light mt-3 mb-4 rounded-3">
+                        <div class="card-body p-3">
+                            <h6 class="card-title text-muted mb-3" style="font-size:13px; font-weight:bold;">
+                                <i class="fas fa-bell text-warning"></i> Advanced Reminders & Repeat
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted" style="font-size:12px;">Repeat Task</label>
+                                    <select name="repeat_type" id="edit_repeat_type" class="form-select form-select-sm border-0">
+                                        <option value="">Do not repeat</option>
+                                        <option value="daily">Daily</option>
+                                        <option value="weekly">Weekly</option>
+                                        <option value="monthly">Monthly</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted" style="font-size:12px;">Email Reminder Count</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white border-0">Max</span>
+                                        <input type="number" name="max_reminders" id="edit_max_reminders" class="form-control border-0" value="0" min="0">
+                                        <span class="input-group-text bg-white border-0">Times</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary px-4" style="background-color: #2ea043; border: none;">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function showAddTaskForm() {
     document.querySelector('.btn-add-task').style.display = 'none';
@@ -425,5 +585,31 @@ function completeTask(taskId) {
     document.getElementById('modalTaskId').value = taskId;
     var completeModal = new bootstrap.Modal(document.getElementById('completeTaskModal'));
     completeModal.show();
+}
+
+function deleteTask(id, repeatType) {
+    document.getElementById('delete_task_id').value = id;
+    const futureWrap = document.getElementById('deleteFutureWrap');
+    if (repeatType && repeatType.trim() !== '') {
+        futureWrap.style.display = 'block';
+    } else {
+        futureWrap.style.display = 'none';
+    }
+    var deleteModal = new bootstrap.Modal(document.getElementById('deleteTaskModal'));
+    deleteModal.show();
+}
+
+function editTask(task) {
+    document.getElementById('edit_task_id').value = task.id;
+    document.getElementById('edit_title').value = task.title;
+    document.getElementById('edit_description').value = task.description;
+    document.getElementById('edit_due_date').value = task.due_date;
+    document.getElementById('edit_priority').value = task.priority;
+    document.getElementById('edit_location').value = task.location;
+    document.getElementById('edit_repeat_type').value = task.repeat_type;
+    document.getElementById('edit_max_reminders').value = task.max_reminders;
+    
+    var editModal = new bootstrap.Modal(document.getElementById('editTaskModal'));
+    editModal.show();
 }
 </script>

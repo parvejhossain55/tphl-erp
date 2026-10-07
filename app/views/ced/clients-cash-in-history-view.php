@@ -319,7 +319,11 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Land Share Paid</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['total_land_share_paid'] ?? 0, 2) ?></h4>
+                            <?php if (!empty($paymentSummary['discount_amount']) && (float)$paymentSummary['discount_amount'] == (float)$paymentSummary['total_land_share']): ?>
+                                <h4 class="card__title text-success" style="font-size: 14px;">Paid by Discount Approved</h4>
+                            <?php else: ?>
+                                <h4 class="card__title">TK.<?= number_format($paymentSummary['total_land_share_paid'] ?? 0, 2) ?></h4>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -1862,7 +1866,11 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                         </div>
                         <div class="d-flex justify-content-between">
                             <span class="text-muted fs-13">Current Remaining Land Share:</span>
-                            <span class="fw-bold fs-13 text-danger">TK. <?= number_format((float)($clientDetails['remaining_land_share'] ?? 0), 2) ?></span>
+                            <?php if (!empty($clientDetails['discount_amount']) && (float)$clientDetails['discount_amount'] == (float)$clientDetails['total_land_share']): ?>
+                                <span class="fw-bold fs-13 text-success">Paid by Discount Approved</span>
+                            <?php else: ?>
+                                <span class="fw-bold fs-13 text-danger">TK. <?= number_format((float)($clientDetails['remaining_land_share'] ?? 0), 2) ?></span>
+                            <?php endif; ?>
                         </div>
                     </div>
 

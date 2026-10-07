@@ -178,7 +178,11 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Landshare Paid</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title">TK.<?= number_format($paymentSummary['landshare_paid'] ?? $paymentSummary['total_land_share_paid'] ?? 0, 2) ?></h4>
+                            <?php if (!empty($paymentSummary['discount_amount']) && (float)$paymentSummary['discount_amount'] == (float)$paymentSummary['total_land_share']): ?>
+                                <h4 class="card__title text-success" style="font-size: 14px;">Paid by Discount Approved</h4>
+                            <?php else: ?>
+                                <h4 class="card__title">TK.<?= number_format($paymentSummary['landshare_paid'] ?? $paymentSummary['total_land_share_paid'] ?? 0, 2) ?></h4>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -192,9 +196,13 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Remaining Land Share</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title <?= $landRemain > 0 ? 'text-danger' : 'text-success' ?>">
-                                TK.<?= number_format($landRemain, 2) ?>
-                            </h4>
+                            <?php if (!empty($paymentSummary['discount_amount']) && (float)$paymentSummary['discount_amount'] == (float)$paymentSummary['total_land_share']): ?>
+                                <h4 class="card__title text-success" style="font-size: 14px;">Paid by Discount Approved</h4>
+                            <?php else: ?>
+                                <h4 class="card__title <?= $landRemain > 0 ? 'text-danger' : 'text-success' ?>">
+                                    TK.<?= number_format($landRemain, 2) ?>
+                                </h4>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
