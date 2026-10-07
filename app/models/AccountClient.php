@@ -3113,8 +3113,9 @@ class AccountClient extends Model
             // Calculate remaining targets
             $bookingMoneyRemaining = max(0, $summary['effective_booking_target'] - $summary['booking_money_total']);
             $landShareRemaining = max(0, $summary['remaining_land_share']);
-            $devTarget = (float) ($summary['flat_development_charges'] ?? 0);
-            $devPaid   = (float) ($summary['development_charge_paid_total'] ?? 0);
+            $isShop = !empty($clientDetails['is_shop']);
+            $devTarget = (float) ($isShop ? ($summary['shop_service_charge_target'] ?? 0) : ($summary['flat_development_charges'] ?? 0));
+            $devPaid   = (float) ($isShop ? ($summary['shop_service_charge_paid_total'] ?? 0) : ($summary['development_charge_paid_total'] ?? 0));
             $devRemaining = max(0, $devTarget - $devPaid);
             
             // ─── CASCADING WATERFALL LOGIC ───
@@ -3139,7 +3140,10 @@ class AccountClient extends Model
             if (in_array($paymentType, ['development_charge', 'shop_service_charge', 'emi'])) {
                 if ($devRemaining > 0) {
                     $payAmount = min($pool, $devRemaining);
-                    $actualType = ($paymentType === 'emi') ? 'development_charge' : $paymentType;
+                    $actualType = $paymentType;
+                    if ($paymentType === 'emi' || $paymentType === 'development_charge') {
+                        $actualType = $isShop ? 'shop_service_charge' : 'development_charge';
+                    }
                     $paymentsToInsert[] = ['type' => $actualType, 'amount' => $payAmount];
                     $pool -= $payAmount;
                 }

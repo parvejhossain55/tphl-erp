@@ -1457,13 +1457,6 @@
                             <span class="sidebar__menu-label">Employee Manage</span>
                         </a>
                     </li>
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/all-employee-tasks"
-                            class="sidebar__menu-item <?= isActive('all-employee-tasks', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
-                            <span class="sidebar__menu-label">All Employees Task</span>
-                        </a>
-                    </li>
 
                     <!-- Tipsoi Employee Data Group -->
                     <li class="slide has-sub open <?= isActive(['hrm-external-employees', 'hrm-create-tipsoi-employee', 'hrm-attendance-dashboard', 'hrm-leave-history', 'hrm-leave-balances', 'hrm-monthly-lwp', 'hrm-tipsoi-requests', 'tipsoi-email-logs'], $current_route) ? 'active' : '' ?>">
@@ -3767,13 +3760,7 @@
                             <span class="sidebar__menu-label">Email Station</span>
                         </a>
                     </li>
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/task-sheets"
-                            class="sidebar__menu-item <?= isActive('task-sheets', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
-                            <span class="sidebar__menu-label">My Task Sheets</span>
-                        </a>
-                    </li>
+
                     <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 4, 33]) || hasPermission("Hr Manage") || hasPermission("HRM Management") || (stripos($_SESSION['user']['role_name'] ?? '', 'hr') !== false) || (stripos($_SESSION['user']['role_name'] ?? '', 'admin') !== false)): ?>
                     <li class="slide ">
                         <a href="<?= $base_url ?>/all-employee-tasks"
@@ -3786,9 +3773,9 @@
                     <?php if (hasPermission("task manage")): ?>
 
                         <li
-                            class="slide has-sub <?= isActive(['create-task', 'task-lists', 'todo', 'task-dashboard'], $current_route) ? 'active' : '' ?>">
+                            class="slide has-sub <?= isActive(['create-task', 'task-lists', 'todo', 'task-dashboard', 'task-sheets'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['create-task', 'task-lists', 'todo', 'task-dashboard'], $current_route) ? 'menu-open active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['create-task', 'task-lists', 'todo', 'task-dashboard', 'task-sheets'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
                                 <span class="sidebar__menu-label">Task Manage</span>
                                 <?php if ($pendingTasksCount > 0): ?>
@@ -3819,6 +3806,10 @@
                                 <li class="slide <?= isActive('todo', $current_route) ?>">
                                     <a class="sidebar__menu-item <?= isActive('todo', $current_route) ?>"
                                         href="<?= $base_url ?>/todo">My Todo Lists</a>
+                                </li>
+                                <li class="slide <?= isActive('task-sheets', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('task-sheets', $current_route) ?>"
+                                        href="<?= $base_url ?>/task-sheets">My Task Sheets</a>
                                 </li>
                             </ul>
                         </li>

@@ -1635,7 +1635,11 @@ public function addCedTransaction()
 
     if (session_status() === PHP_SESSION_NONE) session_start();
 
-    $paymentType = $_POST['payment_type'] ?? '';
+    $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+    if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
+        require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+        $this->clientModel = new AccountShopClient($this->db);
+    }
 
     $paymentType = $_POST['payment_type'] ?? '';
 
@@ -2257,6 +2261,12 @@ public function updateTransaction()
 
         if (session_status() === PHP_SESSION_NONE) session_start();
         
+        $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+        if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
+            require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+            $this->clientModel = new AccountShopClient($this->db);
+        }
+
         error_log("Session User ID: " . ($_SESSION['user']['id'] ?? 'null'));
 
         // Get the OLD transaction data to compare due amounts
@@ -2402,6 +2412,12 @@ public function updateTransaction()
 
         $paymentId = isset($_GET['payment_id']) ? (int) $_GET['payment_id'] : 0;
         $bookingId = isset($_GET['booking_id']) ? (int) $_GET['booking_id'] : 0;
+
+        $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+        if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
+            require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+            $this->clientModel = new AccountShopClient($this->db);
+        }
 
         // Determine redirect based on role
         $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);

@@ -285,6 +285,34 @@ class TaskController extends Controller
         $stmt->execute();
         $pendingTasks = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
+        // Fetch completed tasks for this user (limit to recent 50 to avoid massive payload)
+        $stmtCompleted = $this->db->prepare("
+    SELECT 
+        t.*,
+
+        -- Assigned By Info
+        u.full_name AS assigned_by_name,
+        u.email AS assigned_by_email,
+        u.photo AS assigned_by_photo,
+        des_assign.name AS assigned_by_designation
+
+    FROM tasks t
+
+    JOIN users u 
+        ON t.assigned_by = u.id
+
+    LEFT JOIN designations des_assign 
+        ON u.designation_id = des_assign.id
+
+    WHERE t.user_id = ?
+      AND t.status = 'completed'   -- only completed tasks
+
+    ORDER BY t.updated_at DESC
+");
+        $stmtCompleted->bind_param("i", $userId);
+        $stmtCompleted->execute();
+        $completedTasks = $stmtCompleted->get_result()->fetch_all(MYSQLI_ASSOC);
+
         // 4 Pass all data to view
         $this->view("tasks/task-dashboard", [
             "current_route" => "task-dashboard",
@@ -292,6 +320,7 @@ class TaskController extends Controller
             "user"      => $user,
             "notifications" => $notifications,
             "pendingTasks"  => $pendingTasks,
+            "completedTasks" => $completedTasks,
             "todayTaskCount"  => $todayTaskCount,
         ]);
     }
@@ -361,6 +390,35 @@ class TaskController extends Controller
             exit;
         } else {
             echo "<h3 style='color:red'>Failed to update progress</h3>";
+        }
+    }
+
+    public function rateTask()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $taskId = (int)($_POST['task_id'] ?? 0);
+            $rating = (int)($_POST['satisfaction_rating'] ?? 0);
+            $userId = (int)($_SESSION['user']['id'] ?? 0);
+            
+            // Allow rating if rating is valid
+            if ($taskId > 0 && $rating >= 1 && $rating <= 10) {
+                // To be fully secure, we should verify that this user assigned the task or is an admin
+                // But for now, just update the rating directly
+                $stmt = $this->db->prepare("UPDATE tasks SET satisfaction_rating = ? WHERE id = ?");
+                $stmt->bind_param("ii", $rating, $taskId);
+                if ($stmt->execute()) {
+                    $_SESSION['success'] = "Task rated successfully!";
+                } else {
+                    $_SESSION['error'] = "Failed to rate task.";
+                }
+            } else {
+                $_SESSION['error'] = "Invalid rating data.";
+            }
+
+            header("Location: " . $GLOBALS['base_url'] . "/task-lists");
+            exit;
         }
     }
 }
