@@ -268,7 +268,7 @@ error_log("View - EMI Schedule: " . print_r($emiSchedule, true));
                                                     <img src="<?= htmlspecialchars($fileUrl) ?>"
                                                          style="width:74px;height:56px;object-fit:cover;border-radius:4px;"
                                                          alt="<?= htmlspecialchars($fname) ?>"
-                                                         onerror="this.src='<?= $GLOBALS['base_url'] ?>/public/assets/img/no-image.png'">
+                                                         onerror="this.onerror=null; this.src='<?= $GLOBALS['base_url'] ?>/public/assets/img/no-image.png'">
                                                 </a>
                                             <?php elseif ($isPDF): ?>
                                                 <a href="<?= htmlspecialchars($fileUrl) ?>" target="_blank" class="text-danger">
