@@ -26,18 +26,12 @@ $result = $db->query("SELECT * FROM email_queue WHERE status = 'processing'");
 
 if ($result && $result->num_rows > 0) {
     // Mail configuration
-    $smtpHost     = 'smtp.gmail.com';
-    $smtpPort     = 587;
-    $senderEmail  = 'tech@dpremiumhomes.com';
+    $smtpHost     = $config['smtp_host'] ?? 'smtp.gmail.com';
+    $smtpPort     = $config['smtp_port'] ?? 465;
+    $senderEmail  = $config['smtp_user'] ?? 'no-reply@dpremiumhomes.com';
+    $smtpPass     = $config['smtp_pass'] ?? '';
+    $smtpSecure   = $config['smtp_secure'] ?? 'ssl';
     $senderName   = 'TPHL ERP System';
-    $clientId     = '684667519692-hcdp7rhi9r64d87g93eq1cagpgqurk35.apps.googleusercontent.com';
-    $clientSecret = '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';
-    $refreshToken = '1//041-wDvZzKIoVCgYIARAAGAQSNwF-L9IrP3uKc9BZMrTRHt9EHVR-PDRZdgog0Hk8uAOapqaf45h4Xkp8rkwzPTIY2Vhxt1DgIx4';
-
-    $provider = new Google([
-        'clientId'     => $clientId,
-        'clientSecret' => $clientSecret,
-    ]);
 
     while ($row = $result->fetch_assoc()) {
         $id = $row['id'];
@@ -51,16 +45,9 @@ if ($result && $result->num_rows > 0) {
             $mail->Host       = $smtpHost;
             $mail->Port       = $smtpPort;
             $mail->SMTPAuth   = true;
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            
-            $mail->AuthType = 'XOAUTH2';
-            $mail->setOAuth(new OAuth([
-                'provider'     => $provider,
-                'clientId'     => $clientId,
-                'clientSecret' => $clientSecret,
-                'refreshToken' => $refreshToken,
-                'userName'     => $senderEmail,
-            ]));
+            $mail->Username   = $senderEmail;
+            $mail->Password   = $smtpPass;
+            $mail->SMTPSecure = (strtolower($smtpSecure) === 'ssl') ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
 
             $mail->setFrom($senderEmail, $senderName);
             $mail->addAddress($toEmail);

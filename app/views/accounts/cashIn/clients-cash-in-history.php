@@ -844,7 +844,7 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                                     </td>
                                      <td>
                                          <div><?php echo !empty($transaction['created_by_name']) ? htmlspecialchars($transaction['created_by_name']) : '<span class="text-muted">System</span>'; ?></div>
-                                         <?php if (!empty($transaction['updated_by_name'])): ?>
+                                         <?php if (!empty($transaction['updated_by_name']) && stripos($transaction['updated_by_name'], 'Management') === false): ?>
                                              <div class="text-muted mt-1 border-top pt-1" style="font-size: 0.85em;" title="Last Updated By">
                                                  <i class="fa-light fa-pen-to-square me-1"></i><?= htmlspecialchars($transaction['updated_by_name']) ?>
                                                  <?php if (!empty($transaction['updated_at'])): ?>
@@ -877,7 +877,9 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                                                 <?php 
                                                     $isAccountsHead = function_exists('isAccountsHead') ? isAccountsHead() : (($_SESSION['user']['role_id'] ?? 0) == 30);
                                                     $isAccExec = function_exists('isAccountsExecutive') ? isAccountsExecutive() : ((int)($_SESSION['user']['role_id'] ?? 0) === 36);
-                                                    $canEdit = ((!$isVerified && $transaction['payment_type'] !== 'booking_money') || $isAccountsHead) && !$isAccExec;
+                                                    $isManagementRole = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35]) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'management') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin') !== false;
+                                                    $isEditableByManagement = $isManagementRole && in_array($transaction['payment_type'] ?? '', ['development_charge', 'land_share', 'shop_service_charge', 'emi']);
+                                                    $canEdit = ((!$isVerified && $transaction['payment_type'] !== 'booking_money') || $isAccountsHead || $isEditableByManagement) && !$isAccExec;
                                                     $canDelete = !$isVerified && !$isAccExec; // Keep delete logic standard
                                                     $canTrash = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 6, 30]) && !$isAccExec;
                                                 ?>
