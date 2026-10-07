@@ -1794,7 +1794,9 @@ public function addCedTransaction()
         $smsMsg = "";
         if (!empty($result['payment_id'])) {
             if ($sendSms) {
-                $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode);
+                $overrideAmount = $_POST['amount'] ?? null;
+                $overridePaymentType = !empty($_POST['payment_type']) ? ucfirst(str_replace('_', ' ', $_POST['payment_type'])) : null;
+                $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode, $overrideAmount, $overridePaymentType);
                 if ($isTestingMode) {
                     $smsMsg = " (Testing Mode: SMS Skipped)";
                 } elseif (!empty($smsResult['success'])) {
@@ -2111,7 +2113,9 @@ public function addTransaction()
             $smsMsg = "";
             if (!empty($result['payment_id'])) {
                 if ($sendSms) {
-                    $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode);
+                    $overrideAmount = $_POST['amount'] ?? null;
+                $overridePaymentType = !empty($_POST['payment_type']) ? ucfirst(str_replace('_', ' ', $_POST['payment_type'])) : null;
+                $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode, $overrideAmount, $overridePaymentType);
                     if ($isTestingMode) {
                         $smsMsg = " (Testing Mode: SMS Skipped)";
                     } elseif (!empty($smsResult['success'])) {
@@ -2988,7 +2992,9 @@ public function addPayment()
         $result = $accountModel->addTransaction($transactionData, $emiScheduleData);
         
         if (!empty($result['success']) && !empty($result['payment_id'])) {
-            $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode);
+            $overrideAmount = $data['amount'] ?? null;
+            $overridePaymentType = !empty($data['payment_type']) ? ucfirst(str_replace('_', ' ', $data['payment_type'])) : null;
+            $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode, $overrideAmount, $overridePaymentType);
         }
 
         echo json_encode($result);
