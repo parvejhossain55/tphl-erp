@@ -1563,6 +1563,28 @@ class LeadController extends Controller
             exit;
         }
 
+        if (!$project_category_id) {
+            setError("Please select a project category");
+            header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+            exit;
+        }
+
+        if (!$project_id) {
+            setError("Please select a project");
+            header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+            exit;
+        }
+
+        // Selected project must belong to the selected category
+        $chk = $this->db->prepare("SELECT 1 FROM projects WHERE id = ? AND category_id = ? AND deleted_at IS NULL LIMIT 1");
+        $chk->bind_param("ii", $project_id, $project_category_id);
+        $chk->execute();
+        if (!$chk->get_result()->fetch_row()) {
+            setError("Selected project does not belong to the selected category");
+            header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+            exit;
+        }
+
         $fileTmp = $_FILES['csv_file']['tmp_name'];
         $ext = strtolower(pathinfo($_FILES['csv_file']['name'], PATHINFO_EXTENSION));
 
@@ -1597,7 +1619,8 @@ class LeadController extends Controller
                 return $this->cleanCsvValueEncoding($value);
             }, $header);
 
-            while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+            // length 0 = no line length limit (long text fields were getting split at 1000 chars)
+            while (($row = fgetcsv($handle, 0, ",")) !== false) {
                 $rowIndex++;
 
                 // skip empty row
@@ -1656,31 +1679,71 @@ class LeadController extends Controller
         }
 
         // Otherwise, import directly
-        $this->executeImport($tempPath, $team_id, $project_category_id, $project_id, $source_type_id);
+        $result = $this->executeImport($tempPath, $team_id, $project_category_id, $project_id, $source_type_id);
         unlink($tempPath);
 
-        setSuccess("CSV imported successfully");
+        $this->setImportResultFlash($result);
         header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
         exit;
     }
 
+    /**
+     * Show an accurate summary toast after DM executive CSV import.
+     */
+    private function setImportResultFlash(array $result)
+    {
+        unset($_SESSION['flash_success'], $_SESSION['flash_error']);
+
+        $imported = (int)($result['imported'] ?? 0);
+        $skipped  = $result['skipped'] ?? [];
+
+        if (empty($skipped)) {
+            setSuccess("CSV imported successfully: {$imported} lead(s) added.");
+            return;
+        }
+
+        // Toast is small, so show only the first few reasons; full list goes to error log
+        $preview = implode(' | ', array_slice($skipped, 0, 3));
+        $more = count($skipped) > 3 ? ' ...' : '';
+        setError("Imported {$imported}, skipped " . count($skipped) . " row(s). {$preview}{$more}");
+        error_log("DM CSV Import skipped rows: " . implode("\n", $skipped));
+    }
+
     private function executeImport($filePath, $team_id, $project_category_id, $project_id = null, $source_type_id = null)
     {
+        $result = ['imported' => 0, 'skipped' => []];
+
         if (($handle = fopen($filePath, "r")) !== false) {
             $header = fgetcsv($handle);
             $header = array_map(function ($value) {
                 return $this->cleanCsvValueEncoding($value);
             }, $header);
 
-            while (($row = fgetcsv($handle, 1000, ",")) !== false) {
+            $rowIndex = 1;
+            while (($row = fgetcsv($handle, 0, ",")) !== false) {
+                $rowIndex++;
                 $row = array_map(function ($value) {
                     return $this->cleanCsvValueEncoding($value);
                 }, $row);
 
                 if (count(array_filter($row)) === 0) continue;
-                if (count($header) !== count($row)) continue;
+                if (count($header) !== count($row)) {
+                    $result['skipped'][] = "Row {$rowIndex}: column count mismatch";
+                    continue;
+                }
 
                 $data = array_combine($header, $row);
+
+                // Truncate to DB column limits (warned about during pre-check)
+                if (isset($data['platform'])) {
+                    $data['platform'] = mb_substr((string)$data['platform'], 0, 100, 'UTF-8');
+                }
+                if (isset($data['phone_number'])) {
+                    $data['phone_number'] = mb_substr((string)$data['phone_number'], 0, 20, 'UTF-8');
+                }
+                if (isset($data['email'])) {
+                    $data['email'] = mb_substr((string)$data['email'], 0, 191, 'UTF-8');
+                }
                 $rowSourceTypeId = $source_type_id ? (int)$source_type_id : (!empty($data['source_type_id']) ? (int)$data['source_type_id'] : null);
                 $data['source_type_id'] = $rowSourceTypeId;
                 $data['status'] = 'active';
@@ -1708,14 +1771,23 @@ class LeadController extends Controller
                 $data['email'] = !empty($data['email']) ? trim((string)$data['email']) : null;
 
                 try {
-                    $this->leadModel->create($data);
-                } catch (Exception $e) {
+                    unset($_SESSION['flash_error']);
+                    if ($this->leadModel->create($data)) {
+                        $result['imported']++;
+                    } else {
+                        $reason = $_SESSION['flash_error'] ?? 'insert failed';
+                        $result['skipped'][] = "Row {$rowIndex}: {$reason}";
+                    }
+                } catch (Throwable $e) {
                     error_log("CSV Import Error: " . $e->getMessage());
+                    $result['skipped'][] = "Row {$rowIndex}: " . $e->getMessage();
                     continue;
                 }
             }
             fclose($handle);
         }
+
+        return $result;
     }
 
     /**
@@ -1830,7 +1902,7 @@ class LeadController extends Controller
             exit;
         }
 
-        $this->executeImport($tempFile, $meta['team_id'], $meta['project_category_id'], $meta['project_id'] ?? null, $meta['source_type_id'] ?? null);
+        $result = $this->executeImport($tempFile, $meta['team_id'], $meta['project_category_id'], $meta['project_id'] ?? null, $meta['source_type_id'] ?? null);
 
         // Cleanup
         unlink($tempFile);
@@ -1838,7 +1910,7 @@ class LeadController extends Controller
         unset($_SESSION['dm_csv_metadata']);
         unset($_SESSION['dm_csv_issues']);
 
-        setSuccess("CSV imported successfully with truncations applied.");
+        $this->setImportResultFlash($result);
         header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
         exit;
     }
