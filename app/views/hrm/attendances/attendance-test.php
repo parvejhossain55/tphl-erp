@@ -10,7 +10,7 @@ $show_breadcrumb = true;
         <h4 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
             <i class="fa-solid fa-clipboard-user text-primary"></i>
             Daily Attendance 
-            <span class="badge bg-purple text-white fs-12 px-3 py-1 rounded-pill" style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);">
+            <span class="badge bg-success-subtle text-success border border-success-subtle fs-12 px-3 py-1 rounded-pill">
                 Test Module
             </span>
         </h4>

@@ -390,6 +390,22 @@ return [
     'api/meal-tracker/sync-attendance' => ['controller' => 'MealTrackerController', 'method' => 'syncAttendance'],
     'my-meal-tracker' => ['controller' => 'MealTrackerController', 'method' => 'myMeals'],
     'meal-project-delete' => ['controller' => 'MealTrackerController', 'method' => 'deleteProject'],
-    'meal-project-update-rate' => ['controller' => 'MealTrackerController', 'method' => 'updateStandardRate']
+    'meal-project-update-rate' => ['controller' => 'MealTrackerController', 'method' => 'updateStandardRate'],
+
+    // =========================================================================
+    // HR ATS (Applicant Tracking System) Routes
+    // =========================================================================
+    'ats-tracker' => ['controller' => 'AtsController', 'method' => 'index'],
+    'ats-candidate-store' => ['controller' => 'AtsController', 'method' => 'store'],
+    'api/ats/candidate-details/(\d+)' => ['controller' => 'AtsController', 'method' => 'getDetails'],
+    'ats-candidate-update/(\d+)' => ['controller' => 'AtsController', 'method' => 'update'],
+    'api/ats/quick-update' => ['controller' => 'AtsController', 'method' => 'quickUpdate'],
+    'api/ats/bulk-update' => ['controller' => 'AtsController', 'method' => 'bulkUpdate'],
+    'ats-csv-upload' => ['controller' => 'AtsController', 'method' => 'csvUpload'],
+    'ats-sample-csv' => ['controller' => 'AtsController', 'method' => 'downloadSampleCsv'],
+    'ats-dropdown-settings' => ['controller' => 'AtsController', 'method' => 'dropdownSettings'],
+    'api/ats/dropdown-save' => ['controller' => 'AtsController', 'method' => 'saveDropdownOption'],
+    'api/ats/dropdown-toggle' => ['controller' => 'AtsController', 'method' => 'toggleDropdownStatus'],
+    'ats-dashboard' => ['controller' => 'AtsController', 'method' => 'dashboard'],
 ];
 

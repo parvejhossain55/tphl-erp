@@ -10,7 +10,7 @@ $show_breadcrumb = true;
         <h4 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
             <i class="fa-solid fa-business-time text-primary"></i>
             Shift Management
-            <span class="badge text-white fs-12 px-2 py-1 rounded-pill" style="background: #8b5cf6;">Test</span>
+            <span class="badge bg-success-subtle text-success border border-success-subtle fs-12 px-2 py-1 rounded-pill">Test</span>
         </h4>
         <p class="text-muted fs-13 mb-0">Define office working hours, grace periods, and assign shifts to employees</p>
     </div>
@@ -48,7 +48,7 @@ $show_breadcrumb = true;
     <div class="col-xl-4 col-md-6 col-12">
         <div class="card__wrapper border-0 shadow-sm rounded-4 p-4 bg-white d-flex align-items-center gap-3">
             <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
-                 style="width: 48px; height: 48px; background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);">
+                 style="width: 48px; height: 48px; background: linear-gradient(135deg, #198754 0%, #20c997 100%);">
                 <i class="fa-solid fa-clock fs-5"></i>
             </div>
             <div>
