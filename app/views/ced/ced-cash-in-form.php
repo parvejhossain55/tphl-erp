@@ -50,6 +50,10 @@ $flatDevCharges        = (float)($isShop ? ($paymentSummary['shop_service_charge
 $isDevChargeCompleted  = $isShop ? !empty($paymentSummary['is_shop_service_charge_completed']) : !empty($paymentSummary['is_dev_charge_completed']);
 $devChargeLabel        = $isShop ? "Shop Service Charge" : "Development Charges";
 $devChargeValue        = $isShop ? "shop_service_charge" : "development_charge";
+// Shops can also have a Development Charge (flats.development_charges) — paid before Shop Service Charge
+$shopDevTarget         = $isShop ? (float)($paymentSummary['flat_development_charges'] ?? 0) : 0;
+$shopDevPaid           = $isShop ? (float)($paymentSummary['development_charge_paid_total'] ?? 0) : 0;
+$shopDevRemaining      = max(0, $shopDevTarget - $shopDevPaid);
 $perEmiAmount          = (float)($paymentSummary['per_emi_amount'] ?? 0);
 $serviceChargeRate     = (float)($paymentSummary['service_charge_per_emi'] ?? 0);
 $totalEmiDue           = (float)($paymentSummary['total_emi_due'] ?? 0);
@@ -133,6 +137,19 @@ if (!empty($virtualEmiSchedule)) {
                                     <option value="land_share" data-details="false">
                                         Land Share (Remaining: TK.<?= number_format($paymentSummary['remaining_land_share'] ?? 0, 2) ?>)
                                     </option>
+                                <?php endif; ?>
+
+                                <!-- Shop: Development Charge (only if set on the shop unit) -->
+                                <?php if ($isShop && $shopDevTarget > 0): ?>
+                                    <?php if ($shopDevRemaining > 0): ?>
+                                        <option value="development_charge" data-details="false">
+                                            Development Charge (Remaining: TK.<?= number_format($shopDevRemaining, 2) ?>)
+                                        </option>
+                                    <?php else: ?>
+                                        <option value="development_charge" disabled>
+                                            Development Charge — Fully Paid ✓ (TK.<?= number_format($shopDevPaid, 2) ?>)
+                                        </option>
+                                    <?php endif; ?>
                                 <?php endif; ?>
 
                                 <!-- Development Charges or Shop Service Charge -->
@@ -567,7 +584,14 @@ if (!empty($virtualEmiSchedule)) {
                 case 'development_charge':
                 case 'shop_service_charge':
                     var cedRemainingDev = <?= json_encode(max(0, (float)$flatDevCharges - (float)$devChargePaid)) ?>;
-                    helpText = '<?= addslashes($devChargeLabel) ?> payment. Remaining: TK.' + cedRemainingDev.toLocaleString('en-IN', {minimumFractionDigits:2}) + '. Any surplus amount will automatically cascade to EMI.';
+                    var cedDevLabel = '<?= addslashes($devChargeLabel) ?>';
+                    <?php if ($isShop): ?>
+                    if (paymentTypeValue === 'development_charge') {
+                        cedRemainingDev = <?= json_encode($shopDevRemaining) ?>;
+                        cedDevLabel = 'Development Charge';
+                    }
+                    <?php endif; ?>
+                    helpText = cedDevLabel + ' payment. Remaining: TK.' + cedRemainingDev.toLocaleString('en-IN', {minimumFractionDigits:2}) + '. Any surplus amount will automatically cascade to the next stage (<?= $isShop ? 'Shop Service Charge → EMI' : 'EMI' ?>).';
                     amountField.setAttribute('placeholder', 'Enter amount (Surplus cascades to EMI)');
                     amountField.removeAttribute('max');
                     amountField.removeAttribute('disabled');

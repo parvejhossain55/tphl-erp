@@ -25,6 +25,9 @@ $perEmiAmount         = $paymentSummary['per_emi_amount']          ?? 0;
 $serviceChargeRate    = $paymentSummary['service_charge_per_emi']  ?? 0;
 $shopServiceChargeTarget = $paymentSummary['shop_service_charge_target'] ?? 0;
 $shopServiceChargePaid   = $paymentSummary['shop_service_charge_paid_total'] ?? 0;
+$devChargeTarget         = (float)($paymentSummary['flat_development_charges'] ?? 0);
+$devChargePaid           = (float)($paymentSummary['development_charge_paid_total'] ?? 0);
+$devChargeRemaining      = max(0, $devChargeTarget - $devChargePaid);
 $totalEmiDue          = $paymentSummary['total_emi_due']           ?? 0;
 $hasOutstandingDues   = count($outstandingDues) > 0;
 // isRegistrationPaid is now tied to is_land_share_completed (same gate)
@@ -127,6 +130,19 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                                     </option>
                                 <?php else: ?>
                                     <option value="registration" disabled>Registration (Completed ✓)</option>
+                                <?php endif; ?>
+
+                                <!-- Development Charge (only if set on the shop unit) -->
+                                <?php if ($devChargeTarget > 0): ?>
+                                    <?php if ($devChargeRemaining > 0): ?>
+                                        <option value="development_charge">
+                                            Development Charge (Remaining: TK.<?= number_format($devChargeRemaining, 2) ?>)
+                                        </option>
+                                    <?php else: ?>
+                                        <option value="development_charge" disabled>
+                                            Development Charge (Fully Paid ✓ — TK.<?= number_format($devChargePaid, 2) ?>)
+                                        </option>
+                                    <?php endif; ?>
                                 <?php endif; ?>
 
                                 <!-- Shop Service Charge -->
@@ -469,6 +485,12 @@ $emiPaidSoFar         = (float)($paymentSummary['construction_fee_paid'] ?? 0);
                         helpText = 'Land share fully paid — registration not needed.';
                         amountField.setAttribute('disabled', 'disabled');
                     }
+                    amountField.removeAttribute('disabled');
+                    break;
+
+                case 'development_charge':
+                    helpText = 'Development charge payment. Remaining: TK.' + (<?= json_encode($devChargeRemaining) ?>).toLocaleString('en-IN', {minimumFractionDigits:2}) + '. Any surplus cascades to Shop Service Charge → EMI.';
+                    amountField.removeAttribute('max');
                     amountField.removeAttribute('disabled');
                     break;
 

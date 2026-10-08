@@ -39,8 +39,7 @@ if ($current_server == 1) {
 }
 // CREATE USER 'tphl_read_only'@'localhost' IDENT IFIED BY 'ReadOnlyPass123!';
 
-// GRANT SELECT ON tphl_db.* TO 'tphl_read_only'@'localhost';
-// FLUSH PRIVILEGES;
+
 if ($current_server == 2) {
     return [
         "db_host" => "127.0.0.1",

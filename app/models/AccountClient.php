@@ -3114,11 +3114,19 @@ class AccountClient extends Model
             $bookingMoneyRemaining = max(0, $summary['effective_booking_target'] - $summary['booking_money_total']);
             $landShareRemaining = max(0, $summary['remaining_land_share']);
             $isShop = !empty($clientDetails['is_shop']);
-            $devTarget = (float) ($isShop ? ($summary['shop_service_charge_target'] ?? 0) : ($summary['flat_development_charges'] ?? 0));
-            $devPaid   = (float) ($isShop ? ($summary['shop_service_charge_paid_total'] ?? 0) : ($summary['development_charge_paid_total'] ?? 0));
-            $devRemaining = max(0, $devTarget - $devPaid);
+            // Development Charge (flats.development_charges) — applies to both flats and shops
+            $flatDevTarget    = (float) ($summary['flat_development_charges'] ?? 0);
+            $flatDevPaid      = (float) ($summary['development_charge_paid_total'] ?? 0);
+            $flatDevRemaining = max(0, $flatDevTarget - $flatDevPaid);
+            // Shop Service Charge — shops only
+            $shopSvcRemaining = $isShop
+                ? max(0, (float) ($summary['shop_service_charge_target'] ?? 0) - (float) ($summary['shop_service_charge_paid_total'] ?? 0))
+                : 0;
+            // Combined pre-EMI remaining (used further below)
+            $devRemaining = $flatDevRemaining + $shopSvcRemaining;
             
             // ─── CASCADING WATERFALL LOGIC ───
+            // Order: Booking → Land Share/Registration → Development Charge → Shop Service Charge (shops) → EMI
             if ($paymentType === 'booking_money') {
                 if ($bookingMoneyRemaining > 0) {
                     $payAmount = min($pool, $bookingMoneyRemaining);
@@ -3138,13 +3146,16 @@ class AccountClient extends Model
             }
             
             if (in_array($paymentType, ['development_charge', 'shop_service_charge', 'emi'])) {
-                if ($devRemaining > 0) {
-                    $payAmount = min($pool, $devRemaining);
-                    $actualType = $paymentType;
-                    if ($paymentType === 'emi' || $paymentType === 'development_charge') {
-                        $actualType = $isShop ? 'shop_service_charge' : 'development_charge';
-                    }
-                    $paymentsToInsert[] = ['type' => $actualType, 'amount' => $payAmount];
+                // Stage: Development Charge
+                if ($flatDevRemaining > 0 && $pool > 0) {
+                    $payAmount = min($pool, $flatDevRemaining);
+                    $paymentsToInsert[] = ['type' => 'development_charge', 'amount' => $payAmount];
+                    $pool -= $payAmount;
+                }
+                // Stage: Shop Service Charge (shops only)
+                if ($isShop && $shopSvcRemaining > 0 && $pool > 0) {
+                    $payAmount = min($pool, $shopSvcRemaining);
+                    $paymentsToInsert[] = ['type' => 'shop_service_charge', 'amount' => $payAmount];
                     $pool -= $payAmount;
                 }
                 if ($pool > 0) $paymentType = 'emi';

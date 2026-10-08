@@ -74,6 +74,7 @@ class AccountShopClient extends AccountClient
                 p.name as project_name,
                 p.types as project_type,
                 COALESCE(f.shop_service_charge, 0) as shop_service_charge,
+                COALESCE(f.development_charges, 0) as flat_development_charges,
                 f.id as flat_id,
                 f.floor_no as flat_no,
                 f.sqft as flat_size,
@@ -152,6 +153,23 @@ class AccountShopClient extends AccountClient
                     0
                 ) as shop_service_charge_paid_total,
                 COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.payment_status IN ('paid','partially_paid')
+                     AND lp.verification_status = 'verified'
+                     AND lp.payment_type = 'development_charge'), 
+                    0
+                ) as development_charge_paid,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.verification_status != 'rejected'
+                     AND lp.payment_type = 'development_charge'), 
+                    0
+                ) as development_charge_paid_total,
+                COALESCE(
                     (SELECT SUM(lp.due_emi_amount)
                      FROM lead_payments lp
                      WHERE {$lpTrash}lp.booking_id = lb.id
@@ -228,7 +246,13 @@ class AccountShopClient extends AccountClient
             $bookingMoneyPaid      = (float) $clientDetails['booking_money_paid'];
             $registrationPaid      = (float) $clientDetails['registration_paid'];
             $registrationPaidTotal = (float) ($clientDetails['registration_paid_total'] ?? $registrationPaid);
-            $shopServiceChargePaid = (float) $clientDetails['shop_service_charge_paid'];
+            // Development Charge (flats.development_charges) is tracked separately from Shop Service Charge
+            $flatDevCharges        = (float) ($clientDetails['flat_development_charges'] ?? 0);
+            $devChargePaid         = (float) ($clientDetails['development_charge_paid'] ?? 0);
+            $devChargePaidTotal    = (float) ($clientDetails['development_charge_paid_total'] ?? $devChargePaid);
+            $devChargeRemaining    = max(0, round($flatDevCharges - $devChargePaidTotal));
+            $isDevChargeCompleted  = ($flatDevCharges <= 0) || ($devChargePaidTotal >= $flatDevCharges || $devChargePaid >= $flatDevCharges);
+            $shopServiceChargePaid      = (float) $clientDetails['shop_service_charge_paid'];
             $shopServiceChargePaidTotal = (float) ($clientDetails['shop_service_charge_paid_total'] ?? $shopServiceChargePaid);
             $emiPaid               = (float) $clientDetails['emi_paid'];
             $emiPaidTotal          = (float) ($clientDetails['emi_paid_total'] ?? $emiPaid);
@@ -245,7 +269,7 @@ class AccountShopClient extends AccountClient
             $remainingLandShareTotal  = max(0, round($effectiveLandShareTarget - $totalLandSharePaidTotal));
             $isLandShareCompleted     = ($remainingLandShareTotal <= 0 || $remainingLandShare <= 0);
 
-            $constructionFee = max(0, round($totalPrice - ($totalLandShare + $shopServiceChargeTarget)));
+            $constructionFee = max(0, round($totalPrice - ($totalLandShare + $shopServiceChargeTarget + $flatDevCharges)));
 
             $isShopServiceChargeCompleted = ($shopServiceChargeTarget > 0 && ($shopServiceChargePaidTotal >= $shopServiceChargeTarget || $shopServiceChargePaid >= $shopServiceChargeTarget));
             if ($shopServiceChargeTarget <= 0) {
@@ -348,6 +372,12 @@ class AccountShopClient extends AccountClient
             $clientDetails['shop_service_charge_target']           = $shopServiceChargeTarget;
             $clientDetails['shop_service_charge_paid']             = $shopServiceChargePaid;
             $clientDetails['shop_service_charge_paid_total']       = $shopServiceChargePaidTotal;
+            $clientDetails['flat_development_charges']             = $flatDevCharges;
+            $clientDetails['development_charge_paid']              = $devChargePaid;
+            $clientDetails['development_charge_paid_total']        = $devChargePaidTotal;
+            $clientDetails['development_charge_remaining']         = $devChargeRemaining;
+            $clientDetails['is_dev_charge_completed']              = $isDevChargeCompleted;
+            $clientDetails['shop_service_charge_remaining']        = max(0, round($shopServiceChargeTarget - $shopServiceChargePaidTotal));
             $clientDetails['remaining_land_share']                 = $remainingLandShare;
             $clientDetails['remaining_land_share_total']           = $remainingLandShareTotal;
             $clientDetails['is_land_share_completed']              = $isLandShareCompleted;
@@ -360,6 +390,7 @@ class AccountShopClient extends AccountClient
             $clientDetails['emi_updated_at']                       = $emiUpdatedAt;
             $clientDetails['emi_updated_by_name']                  = $emiUpdatedByName;
             $clientDetails['construction_fee_paid']                = $constructionFeePaid;
+            $clientDetails['emi_paid_total']                       = $emiPaidTotal;
             $clientDetails['construction_fee_paid_after_service']  = $constructionFeePaid;
             $clientDetails['remaining_construction_fee']           = $remainingConstructionFee;
             $clientDetails['total_due']                            = $totalDue;
@@ -456,9 +487,16 @@ class AccountShopClient extends AccountClient
             'is_shop_service_charge_completed'     => $clientDetails['is_shop_service_charge_completed'] ?? false,
             'shop_service_charge_paid'             => $clientDetails['shop_service_charge_paid'] ?? 0,
             'shop_service_charge_paid_total'       => $clientDetails['shop_service_charge_paid_total'] ?? 0,
+            'shop_service_charge_remaining'        => $clientDetails['shop_service_charge_remaining'] ?? 0,
+            'development_charge_paid'              => $clientDetails['development_charge_paid'] ?? 0,
+            'development_charge_paid_total'        => $clientDetails['development_charge_paid_total'] ?? 0,
+            'development_charge_remaining'         => $clientDetails['development_charge_remaining'] ?? 0,
+            'is_dev_charge_completed'              => $clientDetails['is_dev_charge_completed'] ?? true,
+            'flat_development_charges'             => $clientDetails['flat_development_charges'] ?? 0,
             'construction_fee'                     => $clientDetails['construction_fee'],
             'per_emi_amount'                       => $clientDetails['per_emi_amount'],
             'construction_fee_paid'                => $clientDetails['construction_fee_paid'],
+            'emi_paid_total'                       => $clientDetails['emi_paid_total'] ?? $clientDetails['construction_fee_paid'],
             'construction_fee_paid_after_service'  => $clientDetails['construction_fee_paid_after_service'],
             'remaining_construction_fee'           => $clientDetails['remaining_construction_fee'],
             'total_paid'                           => $clientDetails['total_paid'],
