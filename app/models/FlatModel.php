@@ -250,7 +250,7 @@ class FlatModel extends Model
         }
         $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null; $ownership_type = $data['ownership_type'] ?? null;
         $stmt->bind_param(
-            "isdiiiiiissississsisissdds",
+            "isdiiiiiississdsssisissdds",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],
@@ -348,7 +348,7 @@ class FlatModel extends Model
         $price_value         = isset($data['price_value'])         && trim($data['price_value'])         !== '' ? $extractDecimal($data['price_value'])         : null;
         $land_share_value    = isset($data['land_share_value'])    && trim($data['land_share_value'])    !== '' ? $extractDecimal($data['land_share_value'])    : null;
         $development_charges = isset($data['development_charges']) && trim($data['development_charges']) !== '' ? $extractDecimal($data['development_charges']) : null;
-        $shop_service_charge  = isset($data['shop_service_charge']) && $data['shop_service_charge'] !== '' ? (int)$extractInt($data['shop_service_charge']) : null;
+        $shop_service_charge  = isset($data['shop_service_charge']) && $data['shop_service_charge'] !== '' ? $extractDecimal($data['shop_service_charge']) : null;
         $facilities           = isset($data['facilities'])          && trim($data['facilities'])          !== '' ? trim($data['facilities'])                  : null;
         $created_by           = isset($data['created_by'])          && trim($data['created_by'])          !== '' ? (int)trim($data['created_by'])                  : null;
 
@@ -363,7 +363,7 @@ class FlatModel extends Model
         //        project_id, flat_name, sqft,bhk,bed,bath,balcony, draw,common, floor,facing, is_shop, unit_type, price_value, shop_sc, facilities, land_share, dev_charges, created_by, status, is_booked, upload_from
         $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null;
         $stmt->bind_param(
-            "issssssiissississsisis",
+            "issssssiississssssisis",
             $project_id,
             $flat_name,
             $sqft,
@@ -491,7 +491,7 @@ class FlatModel extends Model
 
         $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null; $ownership_type = $data['ownership_type'] ?? null;
         $stmt->bind_param(
-            "isdiiiiiissississsisissddds",
+            "isdiiiiiississdsssisissddds",
             $project_id,
             $flat_name,
             $sqft,
@@ -543,7 +543,7 @@ class FlatModel extends Model
 
         $suite_id = $data['suite_id'] ?? null; $per_sqft_price = $data['per_sqft_price'] ?? null; $booking_money = $data['booking_money'] ?? null; $registration_money = $data['registration_money'] ?? null; $ownership_type = $data['ownership_type'] ?? null;
         $stmt->bind_param(
-            "isdiiiiiissisdisiddsdddsi",
+            "isdiiiiiissisddsiddsdddsi",
             $data['project_id'],
             $data['flat_name'],
             $data['sqft'],

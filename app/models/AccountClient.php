@@ -3133,7 +3133,7 @@ class AccountClient extends Model
                     $paymentsToInsert[] = ['type' => 'booking_money', 'amount' => $payAmount];
                     $pool -= $payAmount;
                 }
-                if ($pool > 0) $paymentType = 'land_share';
+                if ($pool > 0) $paymentType = $isShop ? 'registration' : 'land_share';
             }
             
             if (in_array($paymentType, ['land_share', 'registration', 'mutation_cost'])) {

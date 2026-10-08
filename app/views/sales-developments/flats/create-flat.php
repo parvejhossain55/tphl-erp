@@ -55,7 +55,7 @@ $show_breadcrumb = true;
                 <!-- Sqft -->
                 <div class="col-xl-6">
                     <label>Sqft</label>
-                    <input type="number" step="0.01" name="sqft" class="form-control">
+                    <input type="number" step="any" min="0" name="sqft" class="form-control">
                 </div>
 
                 <!-- BHK (hidden for commercial) -->
@@ -154,8 +154,8 @@ $show_breadcrumb = true;
                 <div class="col-xl-6 commercial-only" id="shopServiceRow" style="display:none;">
                     <label>Shop Service Charge <span class="text-warning">(%)</span></label>
                     <div class="input-group">
-                        <input type="number" min="0" max="100" name="shop_service_charge" id="shopServiceCharge"
-                            class="form-control" placeholder="e.g. 10">
+                        <input type="number" step="any" min="0" max="100" name="shop_service_charge" id="shopServiceCharge"
+                            class="form-control" placeholder="e.g. 7.5">
                         <span class="input-group-text">%</span>
                     </div>
                     <small class="text-muted">Enter percentage only (e.g. 10 = 10%)</small>

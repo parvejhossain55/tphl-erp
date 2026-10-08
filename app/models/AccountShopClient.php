@@ -75,6 +75,24 @@ class AccountShopClient extends AccountClient
                 p.types as project_type,
                 COALESCE(f.shop_service_charge, 0) as shop_service_charge,
                 COALESCE(f.development_charges, 0) as flat_development_charges,
+                COALESCE(f.land_share_value, 0) as flat_land_share_value,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.payment_status IN ('paid','partially_paid')
+                     AND lp.verification_status = 'verified'
+                     AND lp.payment_type = 'land_share'), 
+                    0
+                ) as land_share_type_paid,
+                COALESCE(
+                    (SELECT SUM(lp.amount) 
+                     FROM lead_payments lp 
+                     WHERE {$lpTrash}lp.booking_id = lb.id 
+                     AND lp.verification_status != 'rejected'
+                     AND lp.payment_type = 'land_share'), 
+                    0
+                ) as land_share_type_paid_total,
                 f.id as flat_id,
                 f.floor_no as flat_no,
                 f.sqft as flat_size,
@@ -233,8 +251,9 @@ class AccountShopClient extends AccountClient
             $totalPrice            = (float) $clientDetails['total_price'];
             $discountAmount        = (float) $clientDetails['discount_amount'];
 
-            // Shop logic
-            $totalLandShare        = $totalPrice * 0.30;
+            // Shop logic — Land Share = flats.land_share_value (fallback 30% of price if not set)
+            $flatLandShareValue    = (float) ($clientDetails['flat_land_share_value'] ?? 0);
+            $totalLandShare        = $flatLandShareValue > 0 ? $flatLandShareValue : $totalPrice * 0.30;
             $shopServiceChargePct  = (float) ($clientDetails['shop_service_charge'] ?? 0);
             $shopServiceChargeTarget = ($totalPrice * $shopServiceChargePct) / 100;
 
@@ -260,10 +279,13 @@ class AccountShopClient extends AccountClient
             // Shops have no per-EMI service fee
             $totalServiceFee       = 0;
 
-            $totalLandSharePaid      = $bookingMoney + $registrationPaid;
-            $totalLandSharePaidTotal = $bookingMoneyTotal + $registrationPaidTotal;
+            // Land share group = booking money + land_share payments + registration
+            $landShareTypePaid       = (float) ($clientDetails['land_share_type_paid'] ?? 0);
+            $landShareTypePaidTotal  = (float) ($clientDetails['land_share_type_paid_total'] ?? $landShareTypePaid);
+            $totalLandSharePaid      = $bookingMoney + $landShareTypePaid + $registrationPaid;
+            $totalLandSharePaidTotal = $bookingMoneyTotal + $landShareTypePaidTotal + $registrationPaidTotal;
 
-            $landSharePaymentsOnly    = round($bookingMoney + $registrationPaid);
+            $landSharePaymentsOnly    = round($bookingMoney + $landShareTypePaid + $registrationPaid);
             $effectiveLandShareTarget = max(0, round($totalLandShare - $discountAmount));
             $remainingLandShare       = max(0, round($effectiveLandShareTarget - $landSharePaymentsOnly));
             $remainingLandShareTotal  = max(0, round($effectiveLandShareTarget - $totalLandSharePaidTotal));
@@ -366,6 +388,7 @@ class AccountShopClient extends AccountClient
             }
 
             // Assign fields
+            $clientDetails['total_land_share']                     = $totalLandShare;
             $clientDetails['total_land_share_paid']                = $totalLandSharePaid;
             $clientDetails['total_land_share_paid_total']          = $totalLandSharePaidTotal;
             $clientDetails['landshare_paid']                       = $totalLandSharePaid;
@@ -451,12 +474,14 @@ class AccountShopClient extends AccountClient
             ];
         }
 
-        $agreementValue       = (float) ($clientDetails['total_price'] * 0.30); // Agreement value conceptually is Land Share
+        // Booking target = lead_bookings.agreement_value (same as flats); fallback 15% of price if not set
+        $rawAgreementValue    = (float) ($clientDetails['agreement_value'] ?? 0);
+        $agreementValue       = $rawAgreementValue > 0 ? $rawAgreementValue : (float) ($clientDetails['total_price'] * 0.15);
         $discountForBooking   = (float) ($clientDetails['discount_amount'] ?? 0);
         $bookingMoneyTotal    = (float) ($clientDetails['booking_money_total'] ?? 0);
         $bookingMoneyPaid     = (float) ($clientDetails['booking_money_paid'] ?? 0);
         
-        $effectiveBookingTarget = max(0, ($clientDetails['total_price'] * 0.15) - $discountForBooking);
+        $effectiveBookingTarget = max(0, $agreementValue - $discountForBooking);
         $isBookingFullyPaid  = ($effectiveBookingTarget > 0 && $bookingMoneyPaid >= ($effectiveBookingTarget - 1.0));
         if ($effectiveBookingTarget <= 0 && $clientDetails['total_price'] <= 0) {
             $isBookingFullyPaid = false; 
@@ -465,7 +490,7 @@ class AccountShopClient extends AccountClient
         return [
             'total_price'                          => $clientDetails['total_price'],
             'agreement_value'                      => $agreementValue,
-            'total_land_share'                     => $clientDetails['total_price'] * 0.30,
+            'total_land_share'                     => $clientDetails['total_land_share'] ?? ($clientDetails['total_price'] * 0.30),
             'shop_service_charge_target'           => $clientDetails['shop_service_charge_target'] ?? 0,
             'shop_service_charge_pct'              => $clientDetails['shop_service_charge_pct'] ?? 0,
             'booking_money'                        => $clientDetails['booking_money'],
