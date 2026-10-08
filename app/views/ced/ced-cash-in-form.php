@@ -46,7 +46,7 @@ if (!empty($outstandingDues)) {
 
 $isRegistrationPaid    = $paymentSummary['is_registration_paid'] ?? false;
 $devChargePaid         = $isShop ? ($paymentSummary['shop_service_charge_paid_total'] ?? 0) : ($paymentSummary['development_charge_paid_total'] ?? 0);
-$flatDevCharges        = (float)($isShop ? ($paymentSummary['total_shop_service_charge'] ?? 0) : ($paymentSummary['flat_development_charges'] ?? 0));
+$flatDevCharges        = (float)($isShop ? ($paymentSummary['shop_service_charge_target'] ?? 0) : ($paymentSummary['flat_development_charges'] ?? 0));
 $isDevChargeCompleted  = $isShop ? !empty($paymentSummary['is_shop_service_charge_completed']) : !empty($paymentSummary['is_dev_charge_completed']);
 $devChargeLabel        = $isShop ? "Shop Service Charge" : "Development Charges";
 $devChargeValue        = $isShop ? "shop_service_charge" : "development_charge";

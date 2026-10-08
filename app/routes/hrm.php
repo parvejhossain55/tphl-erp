@@ -16,6 +16,7 @@ return [
     'task-dashboard' => ['controller' => 'TaskController', 'method' => 'taskDashboard'],
     'update-task-status' => ['controller' => 'TaskController', 'method' => 'updateTaskStatus'],
     'update-task-progress' => ['controller' => 'TaskController', 'method' => 'updateTaskProgress'],
+    'rate-task' => ['controller' => 'TaskController', 'method' => 'rateTask'],
     'show-task/(\d+)' => ['controller' => 'TaskController', 'method' => 'show'],
     'edit-task/(\d+)' => ['controller' => 'TaskController', 'method' => 'edit'],
     'update-task/(\d+)' => ['controller' => 'TaskController', 'method' => 'update'],

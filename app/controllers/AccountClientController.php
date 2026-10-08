@@ -1635,7 +1635,11 @@ public function addCedTransaction()
 
     if (session_status() === PHP_SESSION_NONE) session_start();
 
-    $paymentType = $_POST['payment_type'] ?? '';
+    $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+    if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
+        require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+        $this->clientModel = new AccountShopClient($this->db);
+    }
 
     $paymentType = $_POST['payment_type'] ?? '';
 
@@ -1794,7 +1798,9 @@ public function addCedTransaction()
         $smsMsg = "";
         if (!empty($result['payment_id'])) {
             if ($sendSms) {
-                $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode);
+                $overrideAmount = $_POST['amount'] ?? null;
+                $overridePaymentType = !empty($_POST['payment_type']) ? ucfirst(str_replace('_', ' ', $_POST['payment_type'])) : null;
+                $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode, $overrideAmount, $overridePaymentType);
                 if ($isTestingMode) {
                     $smsMsg = " (Testing Mode: SMS Skipped)";
                 } elseif (!empty($smsResult['success'])) {
@@ -2111,7 +2117,9 @@ public function addTransaction()
             $smsMsg = "";
             if (!empty($result['payment_id'])) {
                 if ($sendSms) {
-                    $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode);
+                    $overrideAmount = $_POST['amount'] ?? null;
+                $overridePaymentType = !empty($_POST['payment_type']) ? ucfirst(str_replace('_', ' ', $_POST['payment_type'])) : null;
+                $smsResult = $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode, $overrideAmount, $overridePaymentType);
                     if ($isTestingMode) {
                         $smsMsg = " (Testing Mode: SMS Skipped)";
                     } elseif (!empty($smsResult['success'])) {
@@ -2253,6 +2261,12 @@ public function updateTransaction()
 
         if (session_status() === PHP_SESSION_NONE) session_start();
         
+        $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+        if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
+            require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+            $this->clientModel = new AccountShopClient($this->db);
+        }
+
         error_log("Session User ID: " . ($_SESSION['user']['id'] ?? 'null'));
 
         // Get the OLD transaction data to compare due amounts
@@ -2398,6 +2412,12 @@ public function updateTransaction()
 
         $paymentId = isset($_GET['payment_id']) ? (int) $_GET['payment_id'] : 0;
         $bookingId = isset($_GET['booking_id']) ? (int) $_GET['booking_id'] : 0;
+
+        $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+        if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
+            require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+            $this->clientModel = new AccountShopClient($this->db);
+        }
 
         // Determine redirect based on role
         $roleId = (int) ($_SESSION['user']['role_id'] ?? 0);
@@ -2988,7 +3008,9 @@ public function addPayment()
         $result = $accountModel->addTransaction($transactionData, $emiScheduleData);
         
         if (!empty($result['success']) && !empty($result['payment_id'])) {
-            $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode);
+            $overrideAmount = $data['amount'] ?? null;
+            $overridePaymentType = !empty($data['payment_type']) ? ucfirst(str_replace('_', ' ', $data['payment_type'])) : null;
+            $smsService->sendPaymentReceivedSms($result['payment_id'], $isTestingMode, $overrideAmount, $overridePaymentType);
         }
 
         echo json_encode($result);

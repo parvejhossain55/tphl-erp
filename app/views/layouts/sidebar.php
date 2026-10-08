@@ -649,7 +649,7 @@
 
                 $upcomingCount = getFollowUpCount($userId, 'upcoming');
                 ?>
-                <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22, 9, 33, 34, 35])): ?>
+                <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 15, 22, 9, 7, 33, 34, 35])): ?>
 
                     <!--Sales CATEGORY -->
                     <li class="sidebar__menu-category">
@@ -886,6 +886,30 @@
                         </ul>
                     </li>
 
+                    <?php if (hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 7, 9, 15, 33, 34, 35])): ?>
+                        <!-- Flats Manage -->
+                        <li class="slide has-sub <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'active' : '' ?>">
+                            <a href="javascript:void(0);"
+                                class="sidebar__menu-item <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'menu-open active' : '' ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-house"></i></div>
+                                <span class="sidebar__menu-label">Flats Manage</span>
+                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                            </a>
+                            <ul class="sidebar-menu child2" style="display:block;">
+                                <?php if (!$isManagement && ($_SESSION['user']['role_id'] ?? 0) != 7): ?>
+                                    <li class="slide child2">
+                                        <a href="<?= $base_url ?>/create-flat"
+                                            class="sidebar__menu-item <?= isActive('create-flat', $current_route) ?>">Add Flat</a>
+                                    </li>
+                                <?php endif; ?>
+                                <li class="slide">
+                                    <a href="<?= $base_url ?>/flat-lists"
+                                        class="sidebar__menu-item <?= isActive('flat-lists', $current_route) ?>">Flat List</a>
+                                </li>
+                            </ul>
+                        </li>
+                    <?php endif; ?>
+
                     <?php if ((hasPermission("sales & business") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3, 5, 9, 15, 33, 34, 35]))): ?>
 
 
@@ -899,29 +923,6 @@
                                 </a>
                             </li>
                         <?php endif; ?>
-
-                        <!-- Flats Manage -->
-                        <li
-                            class="slide has-sub <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'active' : '' ?>">
-                            <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['create-flat', 'flat-lists'], $current_route) ? 'menu-open active' : '' ?>">
-                                <div class="side-menu__icon"><i class="fa-solid fa-house"></i></div>
-                                <span class="sidebar__menu-label">Flats Manage</span>
-                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                            </a>
-                            <ul class="sidebar-menu child2" style="display:block;">
-                                <?php if (!$isManagement): ?>
-                                    <li class="slide child2">
-                                        <a href="<?= $base_url ?>/create-flat"
-                                            class="sidebar__menu-item <?= isActive('create-flat', $current_route) ?>">Add Flat</a>
-                                    </li>
-                                <?php endif; ?>
-                                <li class="slide">
-                                    <a href="<?= $base_url ?>/flat-lists"
-                                        class="sidebar__menu-item <?= isActive('flat-lists', $current_route) ?>">Flat List</a>
-                                </li>
-                            </ul>
-                        </li>
                         <!-- Inventroy -->
                         <li class="slide ">
                             <a href="<?= $base_url ?>/inventory-lists"
@@ -1187,6 +1188,30 @@
                     </ul>
                 <?php endif; ?>
                 <!-- for sales executive  -->
+
+                <?php if (($_SESSION['user']['role_id'] ?? 0) == 33): ?>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/all-platform-leads"
+                            class="sidebar__menu-item <?= isActive('all-platform-leads', $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-layer-group"></i></div>
+                            <span class="sidebar__menu-label">All Platform Leads</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/campaign-leads"
+                            class="sidebar__menu-item <?= isActive(['campaign-leads'], $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-bullhorn"></i></div>
+                            <span class="sidebar__menu-label">Campaign Leads</span>
+                        </a>
+                    </li>
+                    <li class="slide ">
+                        <a href="<?= $base_url ?>/team-lead-report"
+                            class="sidebar__menu-item <?= isActive(['team-lead-report', 'digital-marketing-upload-report'], $current_route) ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-file-waveform"></i></div>
+                            <span class="sidebar__menu-label">Team Lead Report</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
 
                 <!--Start Marketing Head Dashboard  -->
                 <?php if (hasPermission("Digital Marketing Panel") || (isset($_SESSION['user']) && (($_SESSION['user']['role_id'] ?? 0) == 10 || ($_SESSION['user']['secondary_role_id'] ?? 0) == 10))): ?>
@@ -1459,13 +1484,6 @@
                             <div class="side-menu__icon"><i class="fa-solid fa-users"></i>
                             </div>
                             <span class="sidebar__menu-label">Employee Manage</span>
-                        </a>
-                    </li>
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/all-employee-tasks"
-                            class="sidebar__menu-item <?= isActive('all-employee-tasks', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-list-check"></i></div>
-                            <span class="sidebar__menu-label">All Employees Task</span>
                         </a>
                     </li>
 
@@ -3771,13 +3789,7 @@
                             <span class="sidebar__menu-label">Email Station</span>
                         </a>
                     </li>
-                    <li class="slide ">
-                        <a href="<?= $base_url ?>/task-sheets"
-                            class="sidebar__menu-item <?= isActive('task-sheets', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fa-solid fa-user-group"></i></div>
-                            <span class="sidebar__menu-label">My Task Sheets</span>
-                        </a>
-                    </li>
+
                     <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 4, 33]) || hasPermission("Hr Manage") || hasPermission("HRM Management") || (stripos($_SESSION['user']['role_name'] ?? '', 'hr') !== false) || (stripos($_SESSION['user']['role_name'] ?? '', 'admin') !== false)): ?>
                     <li class="slide ">
                         <a href="<?= $base_url ?>/all-employee-tasks"
@@ -3790,9 +3802,9 @@
                     <?php if (hasPermission("task manage")): ?>
 
                         <li
-                            class="slide has-sub <?= isActive(['create-task', 'task-lists', 'todo', 'task-dashboard'], $current_route) ? 'active' : '' ?>">
+                            class="slide has-sub <?= isActive(['create-task', 'task-lists', 'todo', 'task-dashboard', 'task-sheets'], $current_route) ? 'active' : '' ?>">
                             <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['create-task', 'task-lists', 'todo', 'task-dashboard'], $current_route) ? 'menu-open active' : '' ?>">
+                                class="sidebar__menu-item <?= isActive(['create-task', 'task-lists', 'todo', 'task-dashboard', 'task-sheets'], $current_route) ? 'menu-open active' : '' ?>">
                                 <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
                                 <span class="sidebar__menu-label">Task Manage</span>
                                 <?php if ($pendingTasksCount > 0): ?>
@@ -3823,6 +3835,10 @@
                                 <li class="slide <?= isActive('todo', $current_route) ?>">
                                     <a class="sidebar__menu-item <?= isActive('todo', $current_route) ?>"
                                         href="<?= $base_url ?>/todo">My Todo Lists</a>
+                                </li>
+                                <li class="slide <?= isActive('task-sheets', $current_route) ?>">
+                                    <a class="sidebar__menu-item <?= isActive('task-sheets', $current_route) ?>"
+                                        href="<?= $base_url ?>/task-sheets">My Task Sheets</a>
                                 </li>
                             </ul>
                         </li>

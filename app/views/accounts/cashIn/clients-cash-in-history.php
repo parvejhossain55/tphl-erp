@@ -1449,7 +1449,7 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                                             <img src="${fullUrl}" class="card-img-top"
                                                  style="height:200px;object-fit:contain;background:#f8f9fa;padding:8px;"
                                                  alt="Document ${idx+1}"
-                                                 onerror="this.src='${BASE_URL}/public/assets/img/no-image.png'">
+                                                 onerror="this.onerror=null; this.src='${BASE_URL}/public/assets/img/no-image.png'">
                                         </a>
                                         <div class="card-body p-2 d-flex justify-content-between align-items-center">
                                             <small class="text-muted text-truncate" style="max-width:70%" title="${fileName}">${fileName}</small>
