@@ -208,6 +208,12 @@ class AttendanceTestSyncService
 
             if ($stmt->execute()) {
                 $syncedCount++;
+
+                // If employee punched in on an Off-Day or Holiday, grant +1 Duty Leave (Comp-off)
+                if (!empty($punchInStr) && ($isDayOff || $isPublicHoliday)) {
+                    $dayType = $isPublicHoliday ? 'public_holiday' : 'weekly_holiday';
+                    $this->creditDutyLeaveIfEligible($localEmpId, $date, $dayType);
+                }
             }
         }
 
@@ -419,5 +425,54 @@ class AttendanceTestSyncService
         }
 
         return $map;
+    }
+
+    /**
+     * Credit +1 Duty Leave (Comp-off) when employee punches in on an off-day or holiday
+     * Prevents duplicate accruals via emp_duty_leave_earnings unique key
+     */
+    protected function creditDutyLeaveIfEligible($employeeId, $date, $dayType)
+    {
+        // 1. Check if already credited for this date to prevent duplicate increments
+        $checkStmt = $this->db->prepare("SELECT id FROM emp_duty_leave_earnings WHERE employee_id = ? AND work_date = ?");
+        $checkStmt->bind_param("is", $employeeId, $date);
+        $checkStmt->execute();
+        $exists = $checkStmt->get_result()->fetch_assoc();
+        $checkStmt->close();
+
+        if ($exists) {
+            return; // Already awarded for this date
+        }
+
+        // 2. Insert into emp_duty_leave_earnings
+        $ins = $this->db->prepare("
+            INSERT INTO emp_duty_leave_earnings (employee_id, work_date, day_type, earned_days, is_credited, created_at)
+            VALUES (?, ?, ?, 1.0, 1, NOW())
+        ");
+        $ins->bind_param("iss", $employeeId, $date, $dayType);
+        $ins->execute();
+        $ins->close();
+
+        // 3. Increment Duty Leave in employee_leave_balances
+        $dtRes = $this->db->query("SELECT id FROM leave_types WHERE LOWER(name) LIKE '%duty%' LIMIT 1");
+        $dutyTypeId = $dtRes ? (int)($dtRes->fetch_assoc()['id'] ?? 4) : 4;
+
+        $balStmt = $this->db->prepare("SELECT id, remaining_days FROM employee_leave_balances WHERE employee_id = ? AND leave_type_id = ?");
+        $balStmt->bind_param("ii", $employeeId, $dutyTypeId);
+        $balStmt->execute();
+        $bal = $balStmt->get_result()->fetch_assoc();
+        $balStmt->close();
+
+        if ($bal) {
+            $up = $this->db->prepare("UPDATE employee_leave_balances SET remaining_days = remaining_days + 1, updated_at = NOW() WHERE id = ?");
+            $up->bind_param("i", $bal['id']);
+            $up->execute();
+            $up->close();
+        } else {
+            $inBal = $this->db->prepare("INSERT INTO employee_leave_balances (employee_id, leave_type_id, remaining_days, created_at, updated_at) VALUES (?, ?, 1, NOW(), NOW())");
+            $inBal->bind_param("ii", $employeeId, $dutyTypeId);
+            $inBal->execute();
+            $inBal->close();
+        }
     }
 }

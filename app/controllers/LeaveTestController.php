@@ -24,6 +24,8 @@ class LeaveTestController extends Controller
         $statRes = $this->db->query("
             SELECT approval_status, COUNT(*) as cnt 
             FROM employee_leaves 
+            WHERE (supervisor_status = 'approved' OR reporting_user_id IS NULL)
+              AND approval_status != 'cancelled'
             GROUP BY approval_status
         ");
         if ($statRes) {
@@ -31,9 +33,9 @@ class LeaveTestController extends Controller
                 $status = strtolower($row['approval_status']);
                 $cnt = (int)$row['cnt'];
                 $totalCount += $cnt;
-                if ($status === 'pending') $pendingCount = $cnt;
+                if ($status === 'pending_hr' || $status === 'pending') $pendingCount += $cnt;
                 elseif ($status === 'approved' || $status === 'partial') $approvedCount += $cnt;
-                elseif ($status === 'rejected') $rejectedCount = $cnt;
+                elseif ($status === 'rejected') $rejectedCount += $cnt;
             }
         }
 
@@ -45,7 +47,7 @@ class LeaveTestController extends Controller
         ");
         $todayOnLeaveCount = $todayLeaveRes ? (int)$todayLeaveRes->fetch_assoc()['cnt'] : 0;
 
-        // 2. Fetch All Leave Applications
+        // 2. Fetch All Leave Applications for HR (Only supervisor-approved or direct HR requests)
         $leaves = [];
         $leavesRes = $this->db->query("
             SELECT el.*, 
@@ -54,12 +56,16 @@ class LeaveTestController extends Controller
                    desg.name AS designation_name, 
                    dept.name AS department_name,
                    lt.name AS leave_type_name, 
-                   lt.is_paid
+                   lt.is_paid,
+                   boss.full_name AS supervisor_name
             FROM employee_leaves el
             JOIN employees e ON el.employee_id = e.id
             JOIN leave_types lt ON el.leave_type_id = lt.id
             LEFT JOIN designations desg ON e.designation_id = desg.id
             LEFT JOIN departments dept ON e.department_id = dept.id
+            LEFT JOIN users boss ON boss.id = el.reporting_user_id
+            WHERE (el.supervisor_status = 'approved' OR el.reporting_user_id IS NULL)
+              AND el.approval_status != 'cancelled'
             ORDER BY el.id DESC
         ");
         if ($leavesRes) {
@@ -238,7 +244,7 @@ class LeaveTestController extends Controller
     }
 
     /**
-     * 1-Click Approve Leave
+     * 1-Click Approve Leave (HR Final Approval)
      */
     public function approveLeave($id)
     {
@@ -261,6 +267,13 @@ class LeaveTestController extends Controller
             exit;
         }
 
+        // Rule: 1st approval approve na korle 2nd Approvar approve korte parbe na
+        if (!empty($leave['reporting_user_id']) && $leave['supervisor_status'] !== 'approved') {
+            $_SESSION['error'] = "The 1st Approver (Reporting Boss) has not approved this application yet. HR cannot approve before supervisor approval.";
+            header("Location: {$GLOBALS['base_url']}/leave-management-test");
+            exit;
+        }
+
         $days = (int)$leave['requested_days'];
         $empId = (int)$leave['employee_id'];
         $typeId = (int)$leave['leave_type_id'];
@@ -268,13 +281,21 @@ class LeaveTestController extends Controller
         // Deduct from balance
         $this->deductBalance($empId, $typeId, $days);
 
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $hrUserId = (int)($_SESSION['user']['id'] ?? 0);
+
         // Update status to approved
         $upStmt = $this->db->prepare("
             UPDATE employee_leaves 
-            SET approval_status = 'approved', approved_days = ?, updated_at = NOW() 
+            SET approval_status = 'approved', 
+                hr_status = 'approved',
+                hr_approved_by = ?,
+                hr_approved_at = NOW(),
+                approved_days = ?, 
+                updated_at = NOW() 
             WHERE id = ?
         ");
-        $upStmt->bind_param("ii", $days, $id);
+        $upStmt->bind_param("iii", $hrUserId, $days, $id);
         $upStmt->execute();
         $upStmt->close();
 
@@ -310,12 +331,20 @@ class LeaveTestController extends Controller
             $this->refundBalance($empId, $typeId, $approvedDays);
         }
 
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $hrUserId = (int)($_SESSION['user']['id'] ?? 0);
+
         $upStmt = $this->db->prepare("
             UPDATE employee_leaves 
-            SET approval_status = 'rejected', approved_days = 0, updated_at = NOW() 
+            SET approval_status = 'rejected', 
+                hr_status = 'rejected',
+                hr_approved_by = ?,
+                hr_approved_at = NOW(),
+                approved_days = 0, 
+                updated_at = NOW() 
             WHERE id = ?
         ");
-        $upStmt->bind_param("i", $id);
+        $upStmt->bind_param("iii", $hrUserId, $id);
         $upStmt->execute();
         $upStmt->close();
 
@@ -453,5 +482,474 @@ class LeaveTestController extends Controller
         $stmt->bind_param("iii", $days, $employeeId, $leaveTypeId);
         $stmt->execute();
         $stmt->close();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 2-Tier Supervisor Approvals
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Supervisor 1-Click Approve Leave
+     */
+    public function approveSupervisorLeave($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $id = (int)$id;
+        $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
+
+        $leaveStmt = $this->db->prepare("SELECT * FROM employee_leaves WHERE id = ?");
+        $leaveStmt->bind_param("i", $id);
+        $leaveStmt->execute();
+        $leave = $leaveStmt->get_result()->fetch_assoc();
+        $leaveStmt->close();
+
+        if (!$leave) {
+            $_SESSION['error'] = "Leave record not found.";
+            header("Location: {$GLOBALS['base_url']}/my-leaves-test");
+            exit;
+        }
+
+        $isAdminOrHr = (hasPermission("HRM Management") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 34, 35]));
+        if ($leave['reporting_user_id'] != $currentUserId && !$isAdminOrHr) {
+            $_SESSION['error'] = "Unauthorized: You are not the reporting supervisor for this employee.";
+            header("Location: {$GLOBALS['base_url']}/my-leaves-test");
+            exit;
+        }
+
+        $upStmt = $this->db->prepare("
+            UPDATE employee_leaves 
+            SET supervisor_status = 'approved', 
+                supervisor_approved_at = NOW(), 
+                approval_status = 'pending_hr', 
+                updated_at = NOW() 
+            WHERE id = ?
+        ");
+        $upStmt->bind_param("i", $id);
+        $upStmt->execute();
+        $upStmt->close();
+
+        $_SESSION['success'] = "Leave application #{$id} has been recommended/approved by you and forwarded to HR for final approval.";
+        header("Location: {$GLOBALS['base_url']}/my-leaves-test");
+        exit;
+    }
+
+    /**
+     * Supervisor 1-Click Reject Leave
+     */
+    public function rejectSupervisorLeave($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $id = (int)$id;
+        $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
+
+        $leaveStmt = $this->db->prepare("SELECT * FROM employee_leaves WHERE id = ?");
+        $leaveStmt->bind_param("i", $id);
+        $leaveStmt->execute();
+        $leave = $leaveStmt->get_result()->fetch_assoc();
+        $leaveStmt->close();
+
+        if (!$leave) {
+            $_SESSION['error'] = "Leave record not found.";
+            header("Location: {$GLOBALS['base_url']}/my-leaves-test");
+            exit;
+        }
+
+        $isAdminOrHr = (hasPermission("HRM Management") || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 34, 35]));
+        if ($leave['reporting_user_id'] != $currentUserId && !$isAdminOrHr) {
+            $_SESSION['error'] = "Unauthorized: You are not the reporting supervisor for this employee.";
+            header("Location: {$GLOBALS['base_url']}/my-leaves-test");
+            exit;
+        }
+
+        $upStmt = $this->db->prepare("
+            UPDATE employee_leaves 
+            SET supervisor_status = 'rejected', 
+                approval_status = 'rejected', 
+                updated_at = NOW() 
+            WHERE id = ?
+        ");
+        $upStmt->bind_param("i", $id);
+        $upStmt->execute();
+        $upStmt->close();
+
+        $_SESSION['success'] = "Leave application #{$id} has been rejected.";
+        header("Location: {$GLOBALS['base_url']}/my-leaves-test");
+        exit;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Employee Self-Service: My Leaves, Apply & Cancel
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Employee Self-Service: My Leaves Portal
+     */
+    public function myLeavesTest()
+    {
+        $employee = $this->getCurrentEmployee();
+        if (!$employee) {
+            echo "Employee profile not found. Please contact HR.";
+            return;
+        }
+
+        $employeeId = (int)$employee['id'];
+        $balances = $this->getEmployeeCoreBalances($employeeId);
+
+        // Fetch my leaves history with 2-tier approval details
+        $histStmt = $this->db->prepare("
+            SELECT el.*, 
+                   lt.name AS leave_type_name, lt.is_paid,
+                   boss.full_name AS supervisor_name,
+                   hr_user.full_name AS hr_approver_name
+            FROM employee_leaves el
+            JOIN leave_types lt ON el.leave_type_id = lt.id
+            LEFT JOIN users boss ON boss.id = el.reporting_user_id
+            LEFT JOIN users hr_user ON hr_user.id = el.hr_approved_by
+            WHERE el.employee_id = ?
+            ORDER BY el.id DESC
+        ");
+        $histStmt->bind_param("i", $employeeId);
+        $histStmt->execute();
+        $myLeaves = $histStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $histStmt->close();
+
+        // Fetch subordinates' leave requests pending supervisor approval (if current user is a supervisor)
+        $currentUserId = (int)($_SESSION['user']['id'] ?? 0);
+        $teamRequests = [];
+        $teamStmt = $this->db->prepare("
+            SELECT el.*, 
+                   e.full_name AS employee_name, e.employee_id AS office_id,
+                   dept.name AS department_name, desg.name AS designation_name,
+                   lt.name AS leave_type_name, lt.is_paid
+            FROM employee_leaves el
+            JOIN employees e ON el.employee_id = e.id
+            JOIN leave_types lt ON el.leave_type_id = lt.id
+            LEFT JOIN departments dept ON e.department_id = dept.id
+            LEFT JOIN designations desg ON e.designation_id = desg.id
+            WHERE el.reporting_user_id = ?
+              AND el.supervisor_status = 'pending'
+              AND el.approval_status = 'pending_supervisor'
+            ORDER BY el.id DESC
+        ");
+        $teamStmt->bind_param("i", $currentUserId);
+        $teamStmt->execute();
+        $teamRequests = $teamStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $teamStmt->close();
+
+        return $this->view('employee-modules/my-leaves-test', [
+            'current_route'  => 'my-leaves-test',
+            'employee'       => $employee,
+            'balances'       => $balances,
+            'my_leaves'      => $myLeaves,
+            'team_requests'  => $teamRequests
+        ]);
+    }
+
+    /**
+     * Employee Self-Service: Apply for Leave
+     */
+    public function applyLeaveSelf()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/my-leaves-test");
+            exit;
+        }
+
+        $employee = $this->getCurrentEmployee();
+        if (!$employee) {
+            header("Location: {$GLOBALS['base_url']}/login");
+            exit;
+        }
+
+        $employeeId  = (int)$employee['id'];
+        $leaveTypeId = (int)($_POST['leave_type_id'] ?? 0);
+        $startDate   = trim($_POST['start_date'] ?? '');
+        $endDate     = trim($_POST['end_date'] ?? '');
+        $reason      = trim($_POST['reason'] ?? '');
+
+        if ($leaveTypeId <= 0 || empty($startDate) || empty($endDate)) {
+            $_SESSION['error'] = "Please fill in all required fields (Leave Type, Start Date, End Date).";
+            header("Location: {$GLOBALS['base_url']}/my-leaves-test");
+            exit;
+        }
+
+        if ($endDate < $startDate) {
+            $_SESSION['error'] = "End Date cannot be earlier than Start Date.";
+            header("Location: {$GLOBALS['base_url']}/my-leaves-test");
+            exit;
+        }
+
+        // Check overlapping leave
+        $overlapStmt = $this->db->prepare("
+            SELECT id, start_date, end_date, approval_status 
+            FROM employee_leaves 
+            WHERE employee_id = ? 
+              AND approval_status IN ('pending_supervisor', 'pending_hr', 'approved', 'pending')
+              AND NOT (end_date < ? OR start_date > ?)
+            LIMIT 1
+        ");
+        $overlapStmt->bind_param("iss", $employeeId, $startDate, $endDate);
+        $overlapStmt->execute();
+        $overlap = $overlapStmt->get_result()->fetch_assoc();
+        $overlapStmt->close();
+
+        if ($overlap) {
+            $_SESSION['error'] = "You already have an active leave ({$overlap['approval_status']}) from {$overlap['start_date']} to {$overlap['end_date']}. Overlapping leaves are not allowed.";
+            header("Location: {$GLOBALS['base_url']}/my-leaves-test");
+            exit;
+        }
+
+        // Calculate working days (excluding employee's day-off / Friday)
+        $workingDays = $this->calculateWorkingDays($employeeId, $startDate, $endDate);
+        if ($workingDays <= 0) {
+            $_SESSION['error'] = "The selected date range only covers your weekly off-days. No leave balance needs to be deducted.";
+            header("Location: {$GLOBALS['base_url']}/my-leaves-test");
+            exit;
+        }
+
+        // Check Leave Balance
+        $balStmt = $this->db->prepare("SELECT remaining_days FROM employee_leave_balances WHERE employee_id = ? AND leave_type_id = ?");
+        $balStmt->bind_param("ii", $employeeId, $leaveTypeId);
+        $balStmt->execute();
+        $balRow = $balStmt->get_result()->fetch_assoc();
+        $balStmt->close();
+
+        $remainingDays = $balRow ? (int)$balRow['remaining_days'] : 0;
+
+        // Check if selected leave type is LWP (is_paid = 0)
+        $tStmt = $this->db->prepare("SELECT is_paid, name FROM leave_types WHERE id = ?");
+        $tStmt->bind_param("i", $leaveTypeId);
+        $tStmt->execute();
+        $typeRow = $tStmt->get_result()->fetch_assoc();
+        $tStmt->close();
+        $isPaid = (int)($typeRow['is_paid'] ?? 1);
+
+        $appliedLeaveTypeId = $leaveTypeId;
+        if ($isPaid == 1 && $remainingDays < $workingDays) {
+            // Balance insufficient! Fallback to LWP (Leave Without Pay)
+            $lwpRes = $this->db->query("SELECT id FROM leave_types WHERE LOWER(name) LIKE '%lwp%' OR is_paid = 0 ORDER BY id ASC LIMIT 1");
+            $lwpId = $lwpRes ? (int)($lwpRes->fetch_assoc()['id'] ?? 5) : 5;
+
+            $appliedLeaveTypeId = $lwpId;
+            $reason = "[Auto-routed to LWP: {$typeRow['name']} balance was {$remainingDays}d, needed {$workingDays}d] " . $reason;
+            $_SESSION['warning'] = "Your {$typeRow['name']} balance was insufficient ({$remainingDays} days remaining, requested {$workingDays} days). Your application has been submitted as Leave Without Pay (LWP).";
+        }
+
+        // Determine 2-tier approval route
+        $reportingUserId = (!empty($employee['reporting_user_id']) && empty($employee['is_dept_head'])) 
+            ? (int)$employee['reporting_user_id'] 
+            : null;
+
+        if ($reportingUserId) {
+            $supervisorStatus  = 'pending';
+            $overallStatus     = 'pending_supervisor';
+            $supervisorRemarks = null;
+        } else {
+            // Auto-bypass: employee has no supervisor or is dept head
+            $supervisorStatus  = 'approved';
+            $overallStatus     = 'pending_hr';
+            $supervisorRemarks = 'Auto-bypassed: Direct submission to HR (No reporting boss assigned)';
+        }
+
+        $hrStatus = 'pending';
+
+        $inStmt = $this->db->prepare("
+            INSERT INTO employee_leaves 
+            (employee_id, reporting_user_id, leave_type_id, start_date, end_date, requested_days, approved_days,
+             approval_status, supervisor_status, supervisor_remarks, hr_status, reason, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, NOW(), NOW())
+        ");
+        $inStmt->bind_param(
+            "iiississsss",
+            $employeeId,
+            $reportingUserId,
+            $appliedLeaveTypeId,
+            $startDate,
+            $endDate,
+            $workingDays,
+            $overallStatus,
+            $supervisorStatus,
+            $supervisorRemarks,
+            $hrStatus,
+            $reason
+        );
+        $success = $inStmt->execute();
+        $inStmt->close();
+
+        if ($success) {
+            if (empty($_SESSION['warning'])) {
+                $_SESSION['success'] = "Leave application submitted successfully for {$workingDays} working day(s). Awaiting " . ($reportingUserId ? "Reporting Boss" : "HR") . " review.";
+            }
+        } else {
+            $_SESSION['error'] = "Failed to submit leave application: " . $this->db->error;
+        }
+
+        header("Location: {$GLOBALS['base_url']}/my-leaves-test");
+        exit;
+    }
+
+    /**
+     * Employee Self-Service: Cancel Pending Leave Application
+     */
+    public function cancelLeaveSelf($id)
+    {
+        $id = (int)$id;
+        $employee = $this->getCurrentEmployee();
+        if (!$employee) {
+            header("Location: {$GLOBALS['base_url']}/login");
+            exit;
+        }
+
+        $employeeId = (int)$employee['id'];
+
+        $stmt = $this->db->prepare("SELECT * FROM employee_leaves WHERE id = ? AND employee_id = ?");
+        $stmt->bind_param("ii", $id, $employeeId);
+        $stmt->execute();
+        $leave = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$leave) {
+            $_SESSION['error'] = "Leave record not found or unauthorized.";
+            header("Location: {$GLOBALS['base_url']}/my-leaves-test");
+            exit;
+        }
+
+        // Only allow cancel if still pending
+        if (!in_array($leave['approval_status'], ['pending_supervisor', 'pending_hr', 'pending'])) {
+            $_SESSION['error'] = "This leave application cannot be cancelled because it has already been " . htmlspecialchars($leave['approval_status']) . ".";
+            header("Location: {$GLOBALS['base_url']}/my-leaves-test");
+            exit;
+        }
+
+        $upStmt = $this->db->prepare("
+            UPDATE employee_leaves 
+            SET approval_status = 'cancelled', cancelled_at = NOW(), updated_at = NOW() 
+            WHERE id = ?
+        ");
+        $upStmt->bind_param("i", $id);
+        $upStmt->execute();
+        $upStmt->close();
+
+        $_SESSION['success'] = "Your leave application #{$id} has been cancelled successfully.";
+        header("Location: {$GLOBALS['base_url']}/my-leaves-test");
+        exit;
+    }
+
+    /**
+     * Helper: Resolve current logged-in employee record
+     */
+    protected function getCurrentEmployee()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!isset($_SESSION['user']['id'])) {
+            return null;
+        }
+
+        $employeeId = $_SESSION['user']['employee_id'] ?? null;
+        $userId = (int)$_SESSION['user']['id'];
+
+        $emp = null;
+        if ($employeeId) {
+            $stmt = $this->db->prepare("
+                SELECT e.*, dept.name AS department_name, desg.name AS designation_name,
+                       boss.full_name AS reporting_boss_name, boss.email AS reporting_boss_email
+                FROM employees e
+                LEFT JOIN departments dept ON e.department_id = dept.id
+                LEFT JOIN designations desg ON e.designation_id = desg.id
+                LEFT JOIN users boss ON boss.id = e.reporting_user_id
+                WHERE e.id = ? LIMIT 1
+            ");
+            $stmt->bind_param("i", $employeeId);
+            $stmt->execute();
+            $emp = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+        }
+
+        if (!$emp) {
+            $stmt = $this->db->prepare("
+                SELECT e.*, dept.name AS department_name, desg.name AS designation_name,
+                       boss.full_name AS reporting_boss_name, boss.email AS reporting_boss_email
+                FROM employees e
+                LEFT JOIN departments dept ON e.department_id = dept.id
+                LEFT JOIN designations desg ON e.designation_id = desg.id
+                LEFT JOIN users boss ON boss.id = e.reporting_user_id
+                WHERE e.user_id = ? LIMIT 1
+            ");
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            $emp = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+        }
+
+        return $emp;
+    }
+
+    /**
+     * Helper: Fetch and auto-initialize the 4 core leave balances for an employee
+     */
+    protected function getEmployeeCoreBalances($employeeId)
+    {
+        $typesRes = $this->db->query("
+            SELECT id, name, total_days, is_paid 
+            FROM leave_types 
+            WHERE is_active = 1 
+            ORDER BY id ASC
+        ");
+        $types = $typesRes ? $typesRes->fetch_all(MYSQLI_ASSOC) : [];
+
+        $balances = [];
+        foreach ($types as $t) {
+            $typeId = (int)$t['id'];
+            $bStmt = $this->db->prepare("
+                SELECT remaining_days 
+                FROM employee_leave_balances 
+                WHERE employee_id = ? AND leave_type_id = ?
+            ");
+            $bStmt->bind_param("ii", $employeeId, $typeId);
+            $bStmt->execute();
+            $row = $bStmt->get_result()->fetch_assoc();
+            $bStmt->close();
+
+            if ($row) {
+                $rem = (int)$row['remaining_days'];
+            } else {
+                // Initialize default quota from leave_types
+                $rem = (int)$t['total_days'];
+                $ins = $this->db->prepare("
+                    INSERT INTO employee_leave_balances 
+                    (employee_id, leave_type_id, remaining_days, created_at, updated_at) 
+                    VALUES (?, ?, ?, NOW(), NOW())
+                ");
+                $ins->bind_param("iii", $employeeId, $typeId, $rem);
+                $ins->execute();
+                $ins->close();
+            }
+
+            // Calculate used days from approved leaves
+            $uStmt = $this->db->prepare("
+                SELECT COALESCE(SUM(approved_days), 0) AS used 
+                FROM employee_leaves 
+                WHERE employee_id = ? AND leave_type_id = ? AND approval_status = 'approved'
+            ");
+            $uStmt->bind_param("ii", $employeeId, $typeId);
+            $uStmt->execute();
+            $usedRow = $uStmt->get_result()->fetch_assoc();
+            $usedDays = (int)($usedRow['used'] ?? 0);
+            $uStmt->close();
+
+            $balances[$typeId] = [
+                'type_id'        => $typeId,
+                'name'           => $t['name'],
+                'total_days'     => (int)$t['total_days'],
+                'remaining_days' => $rem,
+                'used_days'      => $usedDays,
+                'is_paid'        => (int)$t['is_paid']
+            ];
+        }
+
+        return $balances;
     }
 }
