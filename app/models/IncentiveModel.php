@@ -708,7 +708,7 @@ class IncentiveModel extends Model
                     'project_name'     => $row['project_name'],
                     'flat_id'          => (int)$row['flat_id'],
                     'flat_name'        => $row['flat_name'],
-                    'sqft'             => (int)$row['sqft'],
+                    'sqft'             => (float)$row['sqft'],
                     'flat_price'       => (float)$row['flat_price'],
                     'land_share_value' => (float)$row['land_share_value']
                 ];

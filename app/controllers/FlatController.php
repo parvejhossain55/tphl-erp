@@ -108,7 +108,7 @@ class FlatController extends Controller
 
             // Format service charge
             if (($flat['unit_type'] ?? 'residential') === 'commercial' && !empty($flat['shop_service_charge'])) {
-                $serviceCharge = '<span class="bd-badge bg-info ">' . (int)$flat['shop_service_charge'] . '%</span>';
+                $serviceCharge = '<span class="bd-badge bg-info ">' . (float)$flat['shop_service_charge'] . '%</span>';
             } else {
                 $serviceCharge = '<span class="text-muted">—</span>';
             }
@@ -895,9 +895,9 @@ class FlatController extends Controller
                 $data['development_charges']    = null;
                 $data['facilities']             = null;
 
-                // shop_service_charge: integer %
+                // shop_service_charge: decimal % (fractions allowed, e.g. 7.5)
                 $data['shop_service_charge'] = !empty($data['shop_service_charge'])
-                    ? (int)$data['shop_service_charge']
+                    ? (float)str_replace([',', '%'], '', $data['shop_service_charge'])
                     : null;
 
                 // ── Normalize status column ────────────────────────────

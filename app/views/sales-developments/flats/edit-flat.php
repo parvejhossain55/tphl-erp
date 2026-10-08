@@ -64,7 +64,7 @@ $isShop            = (int)($flat['is_shop'] ?? 0);
                 <!-- Sqft -->
                 <div class="col-xl-6">
                     <label>Sqft</label>
-                    <input type="number" step="0.01" name="sqft" class="form-control" value="<?= $flat['sqft'] ?? '' ?>">
+                    <input type="number" step="any" min="0" name="sqft" class="form-control" value="<?= (isset($flat['sqft']) && $flat['sqft'] !== '') ? (float)$flat['sqft'] : '' ?>">
                 </div>
 
                 <!-- BHK (hidden for commercial) -->
@@ -165,8 +165,8 @@ $isShop            = (int)($flat['is_shop'] ?? 0);
                 <div class="col-xl-6 commercial-only" id="shopServiceRow" style="<?= $unitType === 'commercial' ? '' : 'display:none;' ?>">
                     <label>Shop Service Charge <span class="text-warning">(%)</span></label>
                     <div class="input-group">
-                        <input type="number" min="0" max="100" name="shop_service_charge"
-                            class="form-control" value="<?= $flat['shop_service_charge'] ?? '' ?>" placeholder="e.g. 10">
+                        <input type="number" step="any" min="0" max="100" name="shop_service_charge"
+                            class="form-control" value="<?= (isset($flat['shop_service_charge']) && $flat['shop_service_charge'] !== '') ? (float)$flat['shop_service_charge'] : '' ?>" placeholder="e.g. 7.5">
                         <span class="input-group-text">%</span>
                     </div>
                     <small class="text-muted">Enter percentage only (e.g. 10 = 10%)</small>

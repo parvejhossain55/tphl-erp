@@ -584,7 +584,7 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                         <h6 class="card__sub-title mb-10">Service Charge Rate</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
                             <?php $svcRate = (float)($isShop ? ($paymentSummary['shop_service_charge_pct'] ?? 0) : ($paymentSummary['service_charge_per_emi'] ?? 0)); ?>
-                            <h4 class="card__title" style="color:#e67e22;"><?= number_format($svcRate, 0) ?>% <small style="font-size:13px;color:#999;"><?= $isShop ? 'of Total Value' : 'per EMI' ?></small></h4>
+                            <h4 class="card__title" style="color:#e67e22;"><?= (float)round($svcRate, 4) ?>% <small style="font-size:13px;color:#999;"><?= $isShop ? 'of Total Value' : 'per EMI' ?></small></h4>
                         </div>
                     </div>
                 </div>

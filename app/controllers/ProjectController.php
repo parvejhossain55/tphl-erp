@@ -287,7 +287,7 @@ class ProjectController extends Controller
                 if (!empty($unit['unit_name']) && !empty($unit['sqft'])) {
                     $cleanUnits[] = [
                         'unit_name' => trim($unit['unit_name']),
-                        'sqft' => (int)$unit['sqft']
+                        'sqft' => (float)$unit['sqft']
                     ];
                 }
             }
