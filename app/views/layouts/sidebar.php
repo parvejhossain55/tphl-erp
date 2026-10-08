@@ -2007,22 +2007,44 @@
 
 
 
-                <!-- My Profile (Accessible by all logged-in users) -->
-                <li class="slide d-none<?= isActive('my-profile', $current_route) ?>">
-                    <a href="<?= $base_url ?>/my-profile"
-                        class="sidebar__menu-item <?= isActive('my-profile', $current_route) ?>">
+                <!-- My Profile (Accessible by all logged-in employees) -->
+                <li class="slide has-sub <?= isActive(['my-profile', 'my-attendance-test', 'my-leaves-test', 'my-employees-test'], $current_route) ? 'active open' : '' ?>">
+                    <a href="javascript:void(0);"
+                        class="sidebar__menu-item <?= isActive(['my-profile', 'my-attendance-test', 'my-leaves-test', 'my-employees-test'], $current_route) ? 'active' : '' ?>">
+                        <i class="fa-regular fa-angle-down side-menu__angle"></i>
                         <div class="side-menu__icon"><i class="fas fa-user"></i></div>
                         <span class="sidebar__menu-label">My Profile</span>
                     </a>
-                </li>
-                <!-- My Attendance (Test) Accessible by all logged-in employees -->
-                <li class="slide <?= isActive('my-attendance-test', $current_route) ? 'active' : '' ?>">
-                    <a href="<?= $base_url ?>/my-attendance-test"
-                        class="sidebar__menu-item <?= isActive('my-attendance-test', $current_route) ?>">
-                        <div class="side-menu__icon"><i class="fa-solid fa-calendar-check"></i></div>
-                        <span class="sidebar__menu-label">My Attendance (Test)</span>
-                        <span class="badge bg-success-subtle text-success border border-success-subtle ms-auto fs-10 px-2 py-0 rounded-pill">Test</span>
-                    </a>
+                    <ul class="sidebar-menu child2"
+                        style="display: <?= isActive(['my-profile', 'my-attendance-test', 'my-leaves-test', 'my-employees-test'], $current_route) ? 'block' : 'none' ?>;">
+                        <li class="slide <?= isActive('my-profile', $current_route) ?>">
+                            <a href="<?= $base_url ?>/my-profile"
+                                class="sidebar__menu-item <?= isActive('my-profile', $current_route) ?>">
+                                Profile
+                            </a>
+                        </li>
+                        <li class="slide <?= isActive('my-attendance-test', $current_route) ?>">
+                            <a href="<?= $base_url ?>/my-attendance-test"
+                                class="sidebar__menu-item <?= isActive('my-attendance-test', $current_route) ?>">
+                                Attendance
+                                <span class="badge bg-success-subtle text-success border border-success-subtle ms-auto fs-10 px-2 py-0 rounded-pill">Test</span>
+                            </a>
+                        </li>
+                        <li class="slide <?= isActive('my-leaves-test', $current_route) ?>">
+                            <a href="<?= $base_url ?>/my-leaves-test"
+                                class="sidebar__menu-item <?= isActive('my-leaves-test', $current_route) ?>">
+                                Leaves
+                                <span class="badge bg-success-subtle text-success border border-success-subtle ms-auto fs-10 px-2 py-0 rounded-pill">Test</span>
+                            </a>
+                        </li>
+                        <li class="slide <?= isActive('my-employees-test', $current_route) ?>">
+                            <a href="<?= $base_url ?>/my-employees-test"
+                                class="sidebar__menu-item <?= isActive('my-employees-test', $current_route) ?>">
+                                Employees
+                                <span class="badge bg-success-subtle text-success border border-success-subtle ms-auto fs-10 px-2 py-0 rounded-pill">Test</span>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
 
                 <?php

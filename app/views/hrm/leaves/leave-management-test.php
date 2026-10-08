@@ -151,11 +151,22 @@ $show_breadcrumb = true;
                             <?php else: ?>
                                 <?php foreach ($leaves as $idx => $row): ?>
                                     <?php
-                                    $statusBadge = match(strtolower($row['approval_status'])) {
-                                        'approved' => 'bg-success-subtle text-success border border-success-subtle',
-                                        'pending'  => 'bg-warning-subtle text-warning border border-warning-subtle',
-                                        'rejected' => 'bg-danger-subtle text-danger border border-danger-subtle',
-                                        default    => 'bg-secondary-subtle text-secondary'
+                                    $rawStatus = strtolower($row['approval_status']);
+                                    $statusBadge = match($rawStatus) {
+                                        'approved'           => 'bg-success-subtle text-success border border-success-subtle',
+                                        'pending', 'pending_hr' => 'bg-warning-subtle text-warning border border-warning-subtle',
+                                        'pending_supervisor' => 'bg-info-subtle text-info border border-info-subtle',
+                                        'rejected'           => 'bg-danger-subtle text-danger border border-danger-subtle',
+                                        'cancelled'          => 'bg-secondary-subtle text-secondary border',
+                                        default              => 'bg-secondary-subtle text-secondary'
+                                    };
+                                    $statusLabel = match($rawStatus) {
+                                        'pending_hr'         => 'Pending HR',
+                                        'pending_supervisor' => 'Pending Boss',
+                                        'approved'           => 'Approved',
+                                        'rejected'           => 'Rejected',
+                                        'cancelled'          => 'Cancelled',
+                                        default              => ucfirst(str_replace('_', ' ', $row['approval_status']))
                                     };
                                     ?>
                                     <tr>
@@ -189,14 +200,19 @@ $show_breadcrumb = true;
                                         </td>
                                         <td class="text-center">
                                             <span class="badge rounded-pill px-3 py-1 fs-11 fw-bold text-uppercase <?= $statusBadge ?>">
-                                                <?= htmlspecialchars($row['approval_status']) ?>
+                                                <?= htmlspecialchars($statusLabel) ?>
                                             </span>
+                                            <?php if (!empty($row['supervisor_name'])): ?>
+                                                <div class="fs-10 text-muted mt-1" title="Recommended by Reporting Boss">
+                                                    <i class="fa-solid fa-user-check text-success"></i> <?= htmlspecialchars($row['supervisor_name']) ?>
+                                                </div>
+                                            <?php endif; ?>
                                         </td>
                                         <td class="text-end">
-                                            <?php if (strtolower($row['approval_status']) === 'pending'): ?>
+                                            <?php if (in_array($rawStatus, ['pending', 'pending_hr'])): ?>
                                                 <div class="btn-group btn-group-sm" role="group">
                                                     <a href="<?= $GLOBALS['base_url'] ?>/approve-leave-test/<?= $row['id'] ?>" 
-                                                       class="btn btn-success px-3 fw-semibold rounded-start-3"
+                                                       class="btn btn-success px-3 fw-semibold rounded-start-3 shadow-sm"
                                                        onclick="return confirm('Are you sure you want to APPROVE this leave request for <?= htmlspecialchars($row['employee_name']) ?>?');">
                                                         <i class="fa-solid fa-check me-1"></i> Approve
                                                     </a>
@@ -206,7 +222,11 @@ $show_breadcrumb = true;
                                                         <i class="fa-solid fa-xmark me-1"></i> Reject
                                                     </a>
                                                 </div>
-                                            <?php elseif (strtolower($row['approval_status']) === 'approved'): ?>
+                                            <?php elseif ($rawStatus === 'pending_supervisor'): ?>
+                                                <span class="badge bg-light text-muted border fs-11" title="Waiting for 1st Tier Supervisor Recommendation">
+                                                    <i class="fa-regular fa-clock me-1 text-warning"></i>Waiting Boss
+                                                </span>
+                                            <?php elseif ($rawStatus === 'approved'): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/reject-leave-test/<?= $row['id'] ?>" 
                                                    class="btn btn-outline-danger btn-sm px-3 fw-semibold rounded-3"
                                                    onclick="return confirm('Rejecting this approved leave will REFUND the days back to the employee\'s balance. Proceed?');">

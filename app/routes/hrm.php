@@ -61,11 +61,18 @@ return [
     'api/employee/my-pending-approvals' => ['controller' => 'EmployeeDashboardController', 'method' => 'getMyPendingApprovals'],
 
     // =========================================================================
-    // Controller: AttendanceTestController (Test Modules)
+    // Controller: AttendanceTestController (Test Modules & Late Approvals)
     // =========================================================================
     'attendance-test' => ['controller' => 'AttendanceTestController', 'method' => 'index'],
     'api/attendance-test/sync' => ['controller' => 'AttendanceTestController', 'method' => 'syncPunches'],
     'my-attendance-test' => ['controller' => 'AttendanceTestController', 'method' => 'myAttendanceTest'],
+    'my-employees-test' => ['controller' => 'AttendanceTestController', 'method' => 'myTeamAttendance'],
+    'apply-late-approval-test' => ['controller' => 'AttendanceTestController', 'method' => 'applyLateApprovalSelf'],
+    'cancel-late-approval-test/(\d+)' => ['controller' => 'AttendanceTestController', 'method' => 'cancelLateApprovalSelf'],
+    'supervisor-approve-late/(\d+)' => ['controller' => 'AttendanceTestController', 'method' => 'approveSupervisorLate'],
+    'supervisor-reject-late/(\d+)' => ['controller' => 'AttendanceTestController', 'method' => 'rejectSupervisorLate'],
+    'hr-approve-late/(\d+)' => ['controller' => 'AttendanceTestController', 'method' => 'approveHrLate'],
+    'hr-reject-late/(\d+)' => ['controller' => 'AttendanceTestController', 'method' => 'rejectHrLate'],
 
     // =========================================================================
     // Controller: ShiftController (Shift & Roster Management)
@@ -84,6 +91,11 @@ return [
     'approve-leave-test/(\d+)' => ['controller' => 'LeaveTestController', 'method' => 'approveLeave'],
     'reject-leave-test/(\d+)' => ['controller' => 'LeaveTestController', 'method' => 'rejectLeave'],
     'api/employee-leave-balances/(\d+)' => ['controller' => 'LeaveTestController', 'method' => 'getEmployeeBalances'],
+    'my-leaves-test' => ['controller' => 'LeaveTestController', 'method' => 'myLeavesTest'],
+    'apply-leave-test' => ['controller' => 'LeaveTestController', 'method' => 'applyLeaveSelf'],
+    'cancel-leave-test/(\d+)' => ['controller' => 'LeaveTestController', 'method' => 'cancelLeaveSelf'],
+    'supervisor-approve-leave/(\d+)' => ['controller' => 'LeaveTestController', 'method' => 'approveSupervisorLeave'],
+    'supervisor-reject-leave/(\d+)' => ['controller' => 'LeaveTestController', 'method' => 'rejectSupervisorLeave'],
 
     // =========================================================================
     // Controller: EmpAttendanceController
