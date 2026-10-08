@@ -1448,6 +1448,35 @@
                         </a>
                     </li>
 
+                    <!-- ATS Recruitment Module -->
+                    <li class="slide has-sub <?= isActive(['ats-tracker', 'ats-dashboard', 'ats-dropdown-settings'], $current_route) ? 'open' : '' ?>">
+                        <a href="javascript:void(0);" class="sidebar__menu-item <?= isActive(['ats-tracker', 'ats-dashboard', 'ats-dropdown-settings'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fa-solid fa-address-book"></i></div>
+                            <span class="sidebar__menu-label">ATS (Recruitment)</span>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="<?= isActive(['ats-tracker', 'ats-dashboard', 'ats-dropdown-settings'], $current_route) ? 'display:block;' : 'display:none;' ?>">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/ats-tracker"
+                                    class="sidebar__menu-item <?= isActive('ats-tracker', $current_route) ?>">
+                                    Candidate Tracker
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/ats-dashboard"
+                                    class="sidebar__menu-item <?= isActive('ats-dashboard', $current_route) ?>">
+                                    Recruitment Dashboard
+                                </a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/ats-dropdown-settings"
+                                    class="sidebar__menu-item <?= isActive('ats-dropdown-settings', $current_route) ?>">
+                                    Dropdown Settings
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
                     <!-- Location -->
                     <li class="slide ">
                         <a href="<?= $base_url ?>/employee-lists"
@@ -1566,9 +1595,9 @@
                             <a href="javascript:void(0);"
                                 class="sidebar__menu-item <?= isActive(['attendance-test', 'shift-lists', 'day-off', 'leave-management-test'], $current_route) ? 'active' : '' ?>">
                                 <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                                <div class="side-menu__icon"><i class="fa-solid fa-clock-rotate-left" style="color: #8b5cf6;"></i></div>
+                                <div class="side-menu__icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
                                 <span class="sidebar__menu-label">Attendance Management (Test)</span>
-                                <span class="badge text-white ms-auto fs-10 px-2 py-0 rounded-pill" style="background: #8b5cf6;">Test</span>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle ms-auto fs-10 px-2 py-0 rounded-pill">Test</span>
                             </a>
                             <ul class="sidebar-menu child2"
                                 style="display: <?= isActive(['attendance-test', 'shift-lists', 'day-off', 'leave-management-test'], $current_route) ? 'block' : 'none' ?>;">
@@ -1990,9 +2019,9 @@
                 <li class="slide <?= isActive('my-attendance-test', $current_route) ? 'active' : '' ?>">
                     <a href="<?= $base_url ?>/my-attendance-test"
                         class="sidebar__menu-item <?= isActive('my-attendance-test', $current_route) ?>">
-                        <div class="side-menu__icon"><i class="fa-solid fa-calendar-check" style="color: #8b5cf6;"></i></div>
+                        <div class="side-menu__icon"><i class="fa-solid fa-calendar-check"></i></div>
                         <span class="sidebar__menu-label">My Attendance (Test)</span>
-                        <span class="badge bg-purple text-white ms-auto fs-10 px-2 py-0 rounded-pill" style="background: #8b5cf6;">Test</span>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle ms-auto fs-10 px-2 py-0 rounded-pill">Test</span>
                     </a>
                 </li>
 

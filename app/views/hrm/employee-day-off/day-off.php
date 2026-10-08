@@ -12,7 +12,7 @@ $show_breadcrumb = true;
             <h4 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
                 <i class="fa-solid fa-calendar-xmark text-primary"></i>
                 Day Off Management
-                <span class="badge text-white fs-12 px-2 py-1 rounded-pill" style="background: #8b5cf6;">Test</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle fs-12 px-2 py-1 rounded-pill">Test</span>
             </h4>
             <p class="text-muted fs-13 mb-0">Manage weekly day-offs and custom roster holidays for employees (Friday is company default)</p>
         </div>
