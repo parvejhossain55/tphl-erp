@@ -10,7 +10,7 @@ $show_breadcrumb = true;
         <h4 class="mb-1 fw-bold text-dark d-flex align-items-center gap-2">
             <i class="fa-solid fa-calendar-check text-primary"></i>
             My Attendance 
-            <span class="badge bg-purple text-white fs-12 px-3 py-1 rounded-pill" style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);">
+            <span class="badge bg-success-subtle text-success border border-success-subtle fs-12 px-3 py-1 rounded-pill">
                 Test Module
             </span>
         </h4>
@@ -32,7 +32,7 @@ $show_breadcrumb = true;
         <div class="card__wrapper border-0 shadow-sm rounded-4 p-4 bg-white h-100 d-flex flex-column justify-content-center">
             <div class="d-flex align-items-center gap-3">
                 <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" 
-                     style="width: 52px; height: 52px; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); font-size: 20px;">
+                     style="width: 52px; height: 52px; background: linear-gradient(135deg, #198754 0%, #20c997 100%); font-size: 20px;">
                     <?= strtoupper(substr($employee['full_name'] ?? 'U', 0, 1)) ?>
                 </div>
                 <div>
