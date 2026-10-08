@@ -222,6 +222,19 @@ class ApiController extends Controller
                                     $erpClient = $cRes->fetch_assoc();
                                 }
                             }
+
+                            // Fetch ALL OTHER bookings for this client so multiple flats show up!
+                            if ($erpClient) {
+                                $allBRes = $this->db->query("SELECT * FROM lead_bookings WHERE lead_id = " . (int)$erpClient['id'] . " AND booking_status != 'cancelled'");
+                                if ($allBRes) {
+                                    while ($ab = $allBRes->fetch_assoc()) {
+                                        if (!in_array($ab['id'], $processedBookingIds)) {
+                                            $bookingsToProcess[] = $ab;
+                                            $processedBookingIds[] = $ab['id'];
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

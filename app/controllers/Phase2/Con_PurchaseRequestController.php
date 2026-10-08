@@ -66,6 +66,220 @@ class Con_PurchaseRequestController extends Controller
     }
 
     // =========================================================================
+    // PENDING REPORT
+    // =========================================================================
+
+    public function pendingReport()
+    {
+        error_reporting(E_ALL);
+        ini_set('display_errors', 1);
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userId   = (int)($_SESSION['user']['id'] ?? 0);
+
+        // Fetch pending PRs from last 1 month
+        $query = "
+            SELECT 
+                pr.id AS pr_id,
+                pr.created_at,
+                p.name AS project_name,
+                u.full_name AS requested_by,
+                pr.status,
+                pr.assigned_executive_id,
+                ex.full_name AS assigned_executive_name,
+                pr.approved_by_id,
+                pr.qc_approved_by_id,
+                cat.name AS category_name,
+                COALESCE(cat.total_lead_days, 0) AS total_lead_days,
+                COUNT(pri.id) AS total_items,
+                GROUP_CONCAT(m.name SEPARATOR ', ') AS item_names,
+                MAX(pri.required_date) AS required_date,
+                DATEDIFF(NOW(), pr.created_at) AS aging_days,
+                (SELECT COUNT(id) FROM quotations WHERE request_id = pr.id) AS qtn_count,
+                (SELECT COUNT(id) FROM purchase_orders WHERE request_id = pr.id AND status != 'Cancelled') AS po_count
+            FROM purchase_requests pr
+            JOIN projects p ON p.id = pr.project_id
+            JOIN users u ON u.id = pr.created_by
+            LEFT JOIN users ex ON ex.id = pr.assigned_executive_id
+            JOIN purchase_request_items pri ON pri.request_id = pr.id
+            JOIN con_materials m ON m.id = pri.material_id
+            LEFT JOIN con_material_categories cat ON cat.id = m.category_id
+            WHERE pr.created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+              AND pr.status != 'Rejected'
+            GROUP BY 
+                pr.id, cat.id, pr.created_at, p.name, u.full_name, pr.status, 
+                pr.assigned_executive_id, ex.full_name, pr.approved_by_id, 
+                pr.qc_approved_by_id, cat.name, cat.total_lead_days
+            ORDER BY p.name ASC, pr.created_at DESC
+        ";
+        
+        $stmt = $this->db->prepare($query);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        
+        $pendingPRs = [];
+        $cumulative = [
+            'total_raised' => 0,
+            'pending_approval' => 0,
+            'pending_purchase' => 0,
+            'pending_delivery' => 0
+        ];
+        
+        // Count total raised in last month
+        $totalRaisedQuery = "SELECT COUNT(id) AS total FROM purchase_requests WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)";
+        $resTotal = $this->db->query($totalRaisedQuery)->fetch_assoc();
+        $cumulative['total_raised'] = $resTotal['total'] ?? 0;
+
+        // Fetch PR total received vs required to filter out fully received
+        $prIds = array_unique(array_column($result, 'pr_id'));
+        $fullyReceivedPrIds = [];
+        if (!empty($prIds)) {
+            $inClause = implode(',', $prIds);
+            $recvQuery = "
+                SELECT 
+                    pri.request_id,
+                    SUM(pri.quantity) AS total_req,
+                    COALESCE((
+                        SELECT SUM(mri.received_quantity)
+                        FROM material_receiving_items mri
+                        JOIN material_receiving mr ON mr.id = mri.receiving_id
+                        JOIN purchase_orders po ON po.id = mr.purchase_order_id
+                        WHERE po.request_id = pri.request_id AND mri.status = 'Accepted'
+                    ), 0) AS total_recv
+                FROM purchase_request_items pri
+                WHERE pri.request_id IN ($inClause)
+                GROUP BY pri.request_id
+            ";
+            $recvRes = $this->db->query($recvQuery)->fetch_all(MYSQLI_ASSOC);
+            foreach ($recvRes as $r) {
+                if ($r['total_req'] > 0 && $r['total_recv'] >= $r['total_req']) {
+                    $fullyReceivedPrIds[] = $r['request_id'];
+                }
+            }
+        }
+
+        foreach ($result as $row) {
+            // Skip fully received PRs
+            if (in_array($row['pr_id'], $fullyReceivedPrIds)) {
+                continue;
+            }
+            $pendingWith = 'Unknown';
+            $currentStatus = $row['status'];
+            
+            if ($row['status'] === 'Draft') {
+                $pendingWith = 'Site Engineer (' . $row['requested_by'] . ')';
+                $currentStatus = 'Draft (Not Submitted)';
+            } elseif ($row['status'] === 'Submitted') {
+                $cumulative['pending_approval']++;
+                if (empty($row['approved_by_id'])) {
+                    $pendingWith = 'Project Manager';
+                    $currentStatus = 'Awaiting PM Approval';
+                } elseif (empty($row['qc_approved_by_id'])) {
+                    $pendingWith = 'Operation Head';
+                    $currentStatus = 'Awaiting Op Head Approval';
+                } else {
+                    $pendingWith = 'Management';
+                    $currentStatus = 'Awaiting Management Approval';
+                }
+            } elseif ($row['status'] === 'Approved') {
+                $cumulative['pending_purchase']++;
+                if (empty($row['assigned_executive_id'])) {
+                    $pendingWith = 'Purchase Head';
+                    $currentStatus = 'Awaiting Executive Assignment';
+                } else {
+                    if ($row['qtn_count'] < 2) {
+                        $pendingWith = 'Purchase Exec (' . $row['assigned_executive_name'] . ')';
+                        $currentStatus = 'Collecting Quotations';
+                    } elseif ($row['po_count'] == 0) {
+                        $pendingWith = 'Purchase Exec / Management';
+                        $currentStatus = 'Awaiting CST Winner / PO Gen';
+                    } else {
+                        $pendingWith = 'Management / Vendor';
+                        $currentStatus = 'Awaiting PO Approval';
+                    }
+                }
+            } elseif ($row['status'] === 'PO Issued') {
+                $cumulative['pending_delivery']++;
+                $pendingWith = 'Vendor / Logistics';
+                $currentStatus = 'Awaiting Material Delivery';
+            }
+            
+            $row['pending_with'] = $pendingWith;
+            $row['detailed_status'] = $currentStatus;
+            $row['delay_status'] = ($row['aging_days'] > $row['total_lead_days']) ? 'Delayed' : 'On Track';
+            
+            $pendingPRs[] = $row;
+        }
+        
+        if (isset($_GET['export']) && $_GET['export'] == 'excel') {
+            $this->exportPendingExcel($pendingPRs);
+            exit;
+        }
+
+        $this->view('phase2/purchase-requests/pending-report', [
+            'current_route' => 'con-purchase-pending-report',
+            'page_title'    => 'Cumulative Pending PR Report',
+            'pendingPRs'    => $pendingPRs,
+            'cumulative'    => $cumulative,
+        ]);
+    }
+    
+    private function exportPendingExcel($pendingPRs)
+    {
+        header("Content-Type: application/vnd.ms-excel; charset=utf-8");
+        header("Content-Disposition: attachment; filename=PR_Pending_Report_" . date('Y-m-d') . ".xls");
+        header("Pragma: no-cache");
+        header("Expires: 0");
+
+        echo '<table border="1">';
+        echo '<tr>
+                <th>SL No.</th>
+                <th>Project Name</th>
+                <th>PR No.</th>
+                <th>PR Date</th>
+                <th>Required Date</th>
+                <th>Material Category</th>
+                <th>Requested By</th>
+                <th>Total Lead Time (Days)</th>
+                <th>Items Overview</th>
+                <th>Current Status</th>
+                <th>Pending With</th>
+                <th>Aging (Days)</th>
+                <th>Delay Status</th>
+              </tr>';
+        
+        $sl = 1;
+        foreach ($pendingPRs as $pr) {
+            $catName = htmlspecialchars($pr['category_name'] ?? 'N/A');
+            $prDate = date('d-M-Y', strtotime($pr['created_at']));
+            $reqDate = $pr['required_date'] ? date('d-M-Y', strtotime($pr['required_date'])) : 'N/A';
+            $itemNames = $pr['item_names'] ?? '';
+            $items = htmlspecialchars(strlen($itemNames) > 50 ? substr($itemNames, 0, 50) . '...' : $itemNames);
+            
+            $delayStyle = $pr['delay_status'] == 'Delayed' ? 'style="color:red; font-weight:bold;"' : 'style="color:green;"';
+            
+            echo "<tr>
+                    <td>{$sl}</td>
+                    <td>" . htmlspecialchars($pr['project_name']) . "</td>
+                    <td>PR-{$pr['pr_id']}</td>
+                    <td>{$prDate}</td>
+                    <td>{$reqDate}</td>
+                    <td>{$catName}</td>
+                    <td>" . htmlspecialchars($pr['requested_by'] ?? 'N/A') . "</td>
+                    <td>{$pr['total_lead_days']}</td>
+                    <td>{$items}</td>
+                    <td>{$pr['detailed_status']}</td>
+                    <td>{$pr['pending_with']}</td>
+                    <td>{$pr['aging_days']}</td>
+                    <td {$delayStyle}>{$pr['delay_status']}</td>
+                  </tr>";
+            $sl++;
+        }
+        echo '</table>';
+        exit;
+    }
+
+    // =========================================================================
     // CREATE
     // =========================================================================
 

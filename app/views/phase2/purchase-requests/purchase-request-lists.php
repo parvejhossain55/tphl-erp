@@ -31,6 +31,9 @@ foreach (($requests ?? []) as $reqItem) {
         </nav>
     </div>
     <div class="d-flex gap-2">
+        <a href="<?= $base_url ?>/con-purchase-pending-report" class="btn btn-outline-warning btn-sm fw-bold shadow-sm text-nowrap">
+            <i class="bi bi-file-earmark-bar-graph me-1"></i> PR Pending Report
+        </a>
         <button type="button" class="btn btn-outline-info btn-sm fw-bold shadow-sm text-nowrap" data-bs-toggle="modal" data-bs-target="#leadTimeReportModal">
             <i class="bi bi-table me-1"></i> Lead Time Report
         </button>

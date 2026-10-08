@@ -386,6 +386,7 @@ return [
     // Controller: Phase2\Con_PurchaseRequestController
     // =========================================================================
     'con-purchase-requests' => ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'index'],
+    'con-purchase-pending-report' => ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'pendingReport'],
     'con-purchase-request-create' => ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'create'],
     'con-purchase-request-store' => ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'store'],
     'con-purchase-request-edit/(\d+)' => ['controller' => 'Phase2\Con_PurchaseRequestController', 'method' => 'edit'],
