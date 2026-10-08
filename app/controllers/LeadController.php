@@ -1563,26 +1563,38 @@ class LeadController extends Controller
             exit;
         }
 
-        if (!$project_category_id) {
+        // "Common Lead" ticked → project & category are optional (campaign_name auto-detect fills them)
+        $is_common_lead = !empty($_POST['is_common_lead']);
+
+        if (!$is_common_lead && !$project_category_id) {
             setError("Please select a project category");
             header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
             exit;
         }
 
-        if (!$project_id) {
+        if (!$is_common_lead && !$project_id) {
             setError("Please select a project");
             header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
             exit;
         }
 
-        // Selected project must belong to the selected category
-        $chk = $this->db->prepare("SELECT 1 FROM projects WHERE id = ? AND category_id = ? AND deleted_at IS NULL LIMIT 1");
-        $chk->bind_param("ii", $project_id, $project_category_id);
-        $chk->execute();
-        if (!$chk->get_result()->fetch_row()) {
-            setError("Selected project does not belong to the selected category");
-            header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
-            exit;
+        if ($project_id && !$project_category_id) {
+            // Project given without category → take the project's own category
+            $catStmt = $this->db->prepare("SELECT category_id FROM projects WHERE id = ? AND deleted_at IS NULL LIMIT 1");
+            $catStmt->bind_param("i", $project_id);
+            $catStmt->execute();
+            $catRow = $catStmt->get_result()->fetch_assoc();
+            $project_category_id = !empty($catRow['category_id']) ? (int)$catRow['category_id'] : null;
+        } elseif ($project_id && $project_category_id) {
+            // Selected project must belong to the selected category
+            $chk = $this->db->prepare("SELECT 1 FROM projects WHERE id = ? AND category_id = ? AND deleted_at IS NULL LIMIT 1");
+            $chk->bind_param("ii", $project_id, $project_category_id);
+            $chk->execute();
+            if (!$chk->get_result()->fetch_row()) {
+                setError("Selected project does not belong to the selected category");
+                header("Location: {$GLOBALS['base_url']}/digital-marketing-executive-dashboard");
+                exit;
+            }
         }
 
         $fileTmp = $_FILES['csv_file']['tmp_name'];
@@ -1756,7 +1768,8 @@ class LeadController extends Controller
                 // Auto-detect project and category from campaign_name if project_id is not explicitly set
                 if (empty($rowProjectId) && !empty($data['campaign_name'])) {
                     $detected = $this->detectProjectFromCampaign($data['campaign_name']);
-                    if ($detected) {
+                    // If a category was chosen, only accept a detected project from that same category
+                    if ($detected && (empty($rowCategoryId) || (int)$detected['category_id'] === (int)$rowCategoryId)) {
                         $rowProjectId = $detected['project_id'];
                         if (empty($rowCategoryId)) {
                             $rowCategoryId = $detected['category_id'];

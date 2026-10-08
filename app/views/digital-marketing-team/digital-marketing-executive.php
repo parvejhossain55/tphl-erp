@@ -950,8 +950,12 @@
               <?php endforeach; ?>
             </select>
           </div>
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" name="is_common_lead" id="importCommonLead" value="1">
+            <label class="form-check-label" for="importCommonLead">Common Lead <small class="text-muted">(Project optional only for whatsapp)</small></label>
+          </div>
           <div class="mb-3">
-            <label class="form-label">Select Project Category <span class="text-danger">*</span></label>
+            <label class="form-label">Select Project Category <span class="text-danger import-req-star">*</span></label>
             <select name="project_category_id" id="importCategorySelect" class="form-select select2-no-scroll" data-placeholder="-- Select Category --" required>
               <option value="">-- Select Category --</option>
               <?php foreach ($categories as $category): ?>
@@ -962,7 +966,7 @@
             </select>
           </div>
           <div class="mb-3">
-            <label class="form-label">Select Project <span class="text-danger">*</span></label>
+            <label class="form-label">Select Project <span class="text-danger import-req-star">*</span></label>
             <select name="project_id" id="importProjectSelect" class="form-select select2-no-scroll" data-placeholder="-- Select Category First --" required disabled>
               <option value="">-- Select Project --</option>
               <?php foreach (($projects ?? []) as $proj): ?>
@@ -1010,6 +1014,17 @@
 
     $cat.on('change', refreshProjects);
     refreshProjects();
+
+    // "Common Lead" ticked → Category & Project optional
+    var $common = $('#importCommonLead');
+    function toggleCommon() {
+      var isCommon = $common.is(':checked');
+      $cat.prop('required', !isCommon);
+      $proj.prop('required', !isCommon);
+      $('.import-req-star').toggle(!isCommon);
+    }
+    $common.on('change', toggleCommon);
+    toggleCommon();
   });
 </script>
 <!-- Bootstrap 5 JS -->

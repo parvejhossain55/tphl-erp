@@ -195,7 +195,6 @@ class UserController extends Controller
             'media_link2'    => $_POST['media_link2'] ?? '',
             'created_by'     => $_SESSION['user']['id'] ?? null,
             'employee_id'    => $_POST['employee_id'] ?? null,
-            'team_id'        => $existingUser['team_id'] ?? 0,
         ];
 
         $redirectTo = $_POST['redirect_to'] ?? $_SERVER['HTTP_REFERER'] ?? "{$GLOBALS['base_url']}/user-lists";
@@ -207,6 +206,11 @@ class UserController extends Controller
             header("Location: " . $redirectTo);
             exit;
         }
+
+        // Edit-user form has no team / secondary role fields, so keep the existing values.
+        // (Previously team_id was read before $existingUser was loaded, which reset it to 0.)
+        $data['team_id']           = $existingUser['team_id'] ?? 0;
+        $data['secondary_role_id'] = $existingUser['secondary_role_id'] ?? null;
 
         // Only Admin (1) and Super Admin/Director (3) can update user roles
         $loggedInUserRole = (int)($_SESSION['user']['role_id'] ?? 0);
