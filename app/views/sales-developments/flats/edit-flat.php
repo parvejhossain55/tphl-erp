@@ -180,8 +180,8 @@ $isShop            = (int)($flat['is_shop'] ?? 0);
                     <input type="number" step="0.01" name="land_share_value" id="landShareValue" class="form-control" value="<?= $flat['land_share_value'] ?? '' ?>">
                 </div>
 
-                <!-- Development Charges (residential only) -->
-                <div class="col-xl-6 residential-only">
+                <!-- Development Charges (residential + commercial shop) -->
+                <div class="col-xl-6" id="devChargesRow">
                     <label>Development Charges (BDT)</label>
                     <input type="number" step="0.01" name="development_charges" class="form-control"
                         value="<?= $flat['development_charges'] ?? '' ?>" placeholder="0.00">

@@ -132,9 +132,15 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
 
     <!-- Summary Cards -->
     <?php
-        $devTarget = (float)($paymentSummary['flat_development_charges'] ?? 0);
-        $devPaid   = (float)($paymentSummary['development_charge_paid']  ?? 0);
+        $isShop    = !empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1;
+        $devTarget = (float)($isShop ? ($paymentSummary['shop_service_charge_target'] ?? 0) : ($paymentSummary['flat_development_charges'] ?? 0));
+        $devPaid   = (float)($isShop ? ($paymentSummary['shop_service_charge_paid_total'] ?? 0) : ($paymentSummary['development_charge_paid']  ?? 0));
         $devRemain = max(0, $devTarget - $devPaid);
+        // Shops: Development Charge (flats.development_charges) tracked separately from Shop Service Charge
+        $shopDevTarget = $isShop ? (float)($paymentSummary['flat_development_charges'] ?? 0) : 0;
+        $shopDevPaid   = $isShop ? (float)($paymentSummary['development_charge_paid_total'] ?? 0) : 0;
+        $shopDevRemain = max(0, $shopDevTarget - $shopDevPaid);
+        $showShopDev   = $isShop; // always show Dev. Charge cards for shops
 
         // Compute all Due / Expired / Overdue EMIs
         $dueEmisList = [];
@@ -347,9 +353,9 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
-                    <div class="card__icon"><span><i class="fa-light fa-wrench"></i></span></div>
+                    <div class="card__icon"><span><i class="fa-light <?= $isShop ? 'fa-store' : 'fa-wrench' ?>"></i></span></div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Development Charges</h6>
+                        <h6 class="card__sub-title mb-10"><?= $isShop ? 'Shop Service Charge' : 'Development Charges' ?></h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
                             <h4 class="card__title">TK.<?= number_format($devTarget, 2) ?></h4>
                         </div>
@@ -365,7 +371,7 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                 <div class="d-flex align-items-center gap-1">
                     <div class="card__icon"><span><i class="fa-light fa-hammer"></i></span></div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Dev. Charges Paid</h6>
+                        <h6 class="card__sub-title mb-10"><?= $isShop ? 'Shop Service Charge Paid' : 'Dev. Charges Paid' ?></h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
                             <h4 class="card__title">TK.<?= number_format($devPaid, 2) ?></h4>
                         </div>
@@ -381,7 +387,7 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                         <span style="color:<?= $devRemain > 0 ? '#e74c3c' : '#27ae60' ?>;"><i class="fa-light fa-hourglass-end"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Dev. Charges Remaining</h6>
+                        <h6 class="card__sub-title mb-10"><?= $isShop ? 'Shop Svc Charge Remaining' : 'Dev. Charges Remaining' ?></h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
                             <h4 class="card__title" style="color:<?= $devRemain > 0 ? '#e74c3c' : '#27ae60' ?>;">
                                 <?php if ($devRemain <= 0): ?>
@@ -395,6 +401,58 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                 </div>
             </div>
         </div>
+        <?php if ($showShopDev): ?>
+        <!-- 10a. Shop Development Charges (Total) -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon"><span><i class="fa-light fa-wrench"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Development Charges</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">TK.<?= number_format($shopDevTarget, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 10b. Shop Dev. Charges Paid -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon"><span><i class="fa-light fa-hammer"></i></span></div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Dev. Charges Paid</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title">TK.<?= number_format($shopDevPaid, 2) ?></h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 10c. Shop Dev. Charges Remaining -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span style="color:<?= $shopDevRemain > 0 ? '#e74c3c' : '#27ae60' ?>;"><i class="fa-light fa-hourglass-end"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">Dev. Charges Remaining</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <h4 class="card__title" style="color:<?= $shopDevRemain > 0 ? '#e74c3c' : '#27ae60' ?>;">
+                                <?php if ($shopDevRemain <= 0): ?>
+                                    Fully Paid ✓
+                                <?php else: ?>
+                                    TK.<?= number_format($shopDevRemain, 2) ?>
+                                <?php endif; ?>
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
         <!-- 11. Total Construction Fee -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
@@ -525,8 +583,8 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                     <div class="card__title-wrap">
                         <h6 class="card__sub-title mb-10">Service Charge Rate</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <?php $svcRate = (float)($paymentSummary['service_charge_per_emi'] ?? 0); ?>
-                            <h4 class="card__title" style="color:#e67e22;"><?= number_format($svcRate, 0) ?>% <small style="font-size:13px;color:#999;">per EMI</small></h4>
+                            <?php $svcRate = (float)($isShop ? ($paymentSummary['shop_service_charge_pct'] ?? 0) : ($paymentSummary['service_charge_per_emi'] ?? 0)); ?>
+                            <h4 class="card__title" style="color:#e67e22;"><?= number_format($svcRate, 0) ?>% <small style="font-size:13px;color:#999;"><?= $isShop ? 'of Total Value' : 'per EMI' ?></small></h4>
                         </div>
                     </div>
                 </div>
@@ -799,6 +857,9 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                     <button type="button" class="btn btn-sm btn-outline-primary payment-filter" data-filter="booking_money">Booking Money</button>
                     <button type="button" class="btn btn-sm btn-outline-info payment-filter" data-filter="registration">Registration</button>
                     <button type="button" class="btn btn-sm btn-outline-success payment-filter" data-filter="land_share">Land Share</button>
+                    <?php if ($isShop): ?>
+                    <button type="button" class="btn btn-sm btn-outline-warning payment-filter" data-filter="shop_service_charge">Shop Svc Charge</button>
+                    <?php endif; ?>
                     <button type="button" class="btn btn-sm btn-outline-warning payment-filter" data-filter="development_charge">Dev. Charge</button>
                     <button type="button" class="btn btn-sm btn-outline-danger payment-filter" data-filter="emi">EMI</button>
                     <button type="button" class="btn btn-sm btn-outline-dark payment-filter" data-filter="emi_due_settlement">EMI Settlement</button>
@@ -814,6 +875,10 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                                 <th>Amount</th>
                                 <th>Due Amount</th>
                                 <th>Land Share</th>
+                                <th style="white-space:nowrap;">Dev. Charge</th>
+                                <?php if ($isShop): ?>
+                                <th style="white-space:nowrap;">Shop Svc Charge</th>
+                                <?php endif; ?>
                                 <th>Service Fee</th>
                                 <th>Method</th>
                                 <th>Bank</th>
@@ -879,6 +944,24 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                                             <span class="text-muted">-</span>
                                         <?php endif; ?>
                                     </td>
+                                    <!-- Dev. Charge -->
+                                    <td style="white-space:nowrap;">
+                                        <?php if (($transaction['payment_type'] ?? '') === 'development_charge' && (float)($transaction['amount'] ?? 0) > 0): ?>
+                                            TK.<?= number_format((float)$transaction['amount'], 2) ?>
+                                        <?php else: ?>
+                                            <span class="text-muted">-</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <?php if ($isShop): ?>
+                                    <!-- Shop Service Charge -->
+                                    <td style="white-space:nowrap;">
+                                        <?php if (($transaction['payment_type'] ?? '') === 'shop_service_charge' && (float)($transaction['amount'] ?? 0) > 0): ?>
+                                            TK.<?= number_format((float)$transaction['amount'], 2) ?>
+                                        <?php else: ?>
+                                            <span class="text-muted">-</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <?php endif; ?>
                                     <td>
                                         <?php if ($transaction['service_fee'] > 0): ?>
                                             TK.<?php echo number_format($transaction['service_fee'], 2); ?>

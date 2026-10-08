@@ -1470,6 +1470,12 @@ public function indexTwoView($bookingId = null)
         return;
     }
 
+    if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
+        require_once dirname(__DIR__) . '/models/AccountShopClient.php';
+        $this->clientModel = new AccountShopClient($this->db);
+        $clientDetails = $this->clientModel->getClientByBookingId($bookingId);
+    }
+
     $transactions = $this->clientModel->getTransactionsByBookingId($bookingId);
     
     // Check if booking money transaction exists in database

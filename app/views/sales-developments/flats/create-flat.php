@@ -169,8 +169,8 @@ $show_breadcrumb = true;
                     <input type="number" step="0.01" name="land_share_value" id="landShareValue" class="form-control">
                 </div>
 
-                <!-- Development Charges (residential only) -->
-                <div class="col-xl-6 residential-only">
+                <!-- Development Charges (residential + commercial shop) -->
+                <div class="col-xl-6" id="devChargesRow">
                     <label>Development Charges (BDT)</label>
                     <input type="number" step="0.01" name="development_charges" class="form-control" placeholder="0.00">
                 </div>
