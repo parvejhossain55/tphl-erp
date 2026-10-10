@@ -462,7 +462,7 @@ function formatProjectSlug($p) {
     }
 
     $floorWiseUnitMeta = $p['floor_wise_unit_meta'] ?? [];
-    $unitPerFloor = count($floorWiseUnitMeta['typical_floor'] ?? []);
+    $unitPerFloor = $p['unit_per_floor'];
     $frontRoad =$p['front_road'];
     $cargoLift =$p['cargo_lift'] ?? 0;
     $passengerLift =$p['passenger_lift'] ?? 0;
