@@ -161,10 +161,57 @@
                                         </div>
                                     </div>
                                 </li>
-
                             </ul>
                         </div>
                     </div>
+
+                    <?php if (!empty($mentionUsers)): ?>
+                    <div class="card__wrapper">
+                        <div class="card__title-wrap mb-20 d-flex align-items-center justify-content-between">
+                            <h5 class="card__heading-title mb-0">Mentioned Team</h5>
+                            <span class="badge bg-primary bg-opacity-10 text-primary fw-semibold"><?= count($mentionUsers) ?> Mentioned</span>
+                        </div>
+                        <div class="card__body">
+                            <ul class="user__list">
+                                <?php foreach ($mentionUsers as $mUser): ?>
+                                    <li class="mb-10 pb-10 border-bottom">
+                                        <div class="d-flex align-items-center gap-10">
+                                            <img class="img-40 border-circle" src="<?= getImage('users', $mUser['photo'] ?? '') ?>" alt="user image" style="width: 40px; height: 40px; object-fit: cover; object-position: top; border-radius: 50%;">
+                                            <div class="profile-info">
+                                                <h6 class="mb-0 fs-14 fw-bold">@<?= htmlspecialchars($mUser['full_name']) ?></h6>
+                                                <p class="mb-0 text-muted fs-12"><?= htmlspecialchars($mUser['designation_name'] ?? $mUser['email'] ?? '') ?></p>
+                                            </div>
+                                        </div>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($ccUsers)): ?>
+                    <div class="card__wrapper">
+                        <div class="card__title-wrap mb-20 d-flex align-items-center justify-content-between">
+                            <h5 class="card__heading-title mb-0">CC Team</h5>
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary fw-semibold"><?= count($ccUsers) ?> in CC</span>
+                        </div>
+                        <div class="card__body">
+                            <ul class="user__list">
+                                <?php foreach ($ccUsers as $cUser): ?>
+                                    <li class="mb-10 pb-10 border-bottom">
+                                        <div class="d-flex align-items-center gap-10">
+                                            <img class="img-40 border-circle" src="<?= getImage('users', $cUser['photo'] ?? '') ?>" alt="user image" style="width: 40px; height: 40px; object-fit: cover; object-position: top; border-radius: 50%;">
+                                            <div class="profile-info">
+                                                <h6 class="mb-0 fs-14 fw-bold"><?= htmlspecialchars($cUser['full_name']) ?></h6>
+                                                <p class="mb-0 text-muted fs-12"><?= htmlspecialchars($cUser['designation_name'] ?? $cUser['email'] ?? '') ?></p>
+                                            </div>
+                                        </div>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                     <div class="card__wrapper">
                         <div class="card__title-wrap mb-25">
                             <h5 class="card__heading-title">Work Progress</h5>

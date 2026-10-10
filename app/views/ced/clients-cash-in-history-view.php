@@ -1723,7 +1723,7 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                         <div class="d-flex align-items-start gap-2">
                             <i class="fa-solid fa-circle-info text-primary mt-1" style="font-size: 15px;"></i>
                             <div>
-                                Updating <strong>Booking Date</strong> will update <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">lead_bookings.booking_date</code> and payment date for <strong>Booking Money</strong> and <strong>Registration</strong>.<br>
+                                Updating <strong>Booking Date</strong> will update <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">lead_bookings.booking_date</code> and payment date for <strong>Booking Money</strong>.<br>
                                 Updating <strong>Sales By</strong> will update <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">lead_bookings.sales_by_id</code> and <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">leads.assigned_id</code>.<br>
                                 Updating <strong>Total EMI</strong> will divide remaining construction fee among remaining future EMIs (completed/paid EMIs remain unchanged).
                             </div>
@@ -1740,7 +1740,7 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                                class="form-control" 
                                value="<?= !empty($clientDetails['booking_date']) ? date('Y-m-d', strtotime($clientDetails['booking_date'])) : '' ?>" 
                                required>
-                        <small class="text-muted d-block mt-1">Updates booking date and payment date for booking & registration.</small>
+                        <small class="text-muted d-block mt-1">Updates booking date and payment date for booking money.</small>
                     </div>
 
                     <div class="mb-3">
@@ -2286,45 +2286,42 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Handle Edit Payment Date click for Booking & Registration
-    document.querySelectorAll('.btn-edit-payment-date').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const pId = this.dataset.paymentId || '';
-            const bId = this.dataset.bookingId || '';
-            const pType = this.dataset.paymentType || '';
-            const pLabel = this.dataset.paymentLabel || (pType === 'booking_money' ? 'BOOKING' : 'REGISTRATION');
-            const pDetails = this.dataset.paymentDetails || (pType === 'booking_money' ? 'Booking Money' : 'Registration Money');
-            const amount = this.dataset.amount || '0.00';
-            const pDate = this.dataset.paymentDate || '';
-            const fDate = this.dataset.formattedDate || pDate;
+    $(document).on('click', '.btn-edit-payment-date', function(e) {
+        e.preventDefault();
+        var btn = $(this);
+        var pId = btn.attr('data-payment-id') || btn.data('payment-id') || '';
+        var bId = btn.attr('data-booking-id') || btn.data('booking-id') || '';
+        var pType = btn.attr('data-payment-type') || btn.data('payment-type') || '';
+        var pLabel = btn.attr('data-payment-label') || btn.data('payment-label') || (pType === 'booking_money' ? 'BOOKING' : 'REGISTRATION');
+        var pDetails = btn.attr('data-payment-details') || btn.data('payment-details') || (pType === 'booking_money' ? 'Booking Money' : 'Registration Money');
+        var amount = btn.attr('data-amount') || btn.data('amount') || '0.00';
+        var pDate = btn.attr('data-payment-date') || btn.data('payment-date') || '';
+        var fDate = btn.attr('data-formatted-date') || btn.data('formatted-date') || pDate;
 
-            const idInput = document.getElementById('epd_payment_id');
-            if (idInput) idInput.value = pId;
-            const bInput = document.getElementById('epd_booking_id');
-            if (bInput) bInput.value = bId;
-            const typeInput = document.getElementById('epd_payment_type');
-            if (typeInput) typeInput.value = pType;
+        $('#epd_payment_id').val(pId);
+        $('#epd_booking_id').val(bId);
+        $('#epd_payment_type').val(pType);
+        $('#epd_badge').text(pLabel);
+        $('#epd_details').text(pDetails);
+        $('#epd_amount').text('TK. ' + amount);
+        $('#epd_current_date').text(fDate);
+        $('#epd_payment_date').val(pDate);
 
-            const badge = document.getElementById('epd_badge');
-            if (badge) badge.textContent = pLabel;
-            const details = document.getElementById('epd_details');
-            if (details) details.textContent = pDetails;
-            const amt = document.getElementById('epd_amount');
-            if (amt) amt.textContent = 'TK. ' + amount;
-            const curDate = document.getElementById('epd_current_date');
-            if (curDate) curDate.textContent = fDate;
-
-            const dateInput = document.getElementById('epd_payment_date');
-            if (dateInput) {
-                dateInput.value = pDate;
+        var modalEl = document.getElementById('editPaymentDateModal');
+        if (modalEl) {
+            try {
+                if (window.bootstrap && bootstrap.Modal) {
+                    var myModal = (typeof bootstrap.Modal.getOrCreateInstance === 'function') 
+                        ? bootstrap.Modal.getOrCreateInstance(modalEl) 
+                        : (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl));
+                    myModal.show();
+                } else {
+                    $('#editPaymentDateModal').modal('show');
+                }
+            } catch (err) {
+                $('#editPaymentDateModal').modal('show');
             }
-
-            const modalEl = document.getElementById('editPaymentDateModal');
-            if (modalEl) {
-                const modal = new bootstrap.Modal(modalEl);
-                modal.show();
-            }
-        });
+        }
     });
 
     // Focus on EMI input when opened via edit-emi-btn

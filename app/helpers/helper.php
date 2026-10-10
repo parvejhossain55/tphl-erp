@@ -1105,6 +1105,24 @@ if (!function_exists('sendMail')) {
     }
 }
 
+if (!function_exists('sendTaskMailWithCC')) {
+    function sendTaskMailWithCC($email, $title, $link, $assignedBy, $assignedTo, $ccUsers = [], $mentionUsers = [], $taskDetails = [])
+    {
+        require_once __DIR__ . '/../core/MailServiceForPHPMailer.php';
+        $mail = new MailService();
+        return $mail->sendTaskMailWithCC($email, $title, $link, $assignedBy, $assignedTo, $ccUsers, $mentionUsers, $taskDetails);
+    }
+}
+
+if (!function_exists('sendMentionMail')) {
+    function sendMentionMail($email, $mentionName, $title, $link, $assignedBy, $assignedTo, $allMentions = [], $allCcs = [], $taskDetails = [])
+    {
+        require_once __DIR__ . '/../core/MailServiceForPHPMailer.php';
+        $mail = new MailService();
+        return $mail->sendMentionMail($email, $mentionName, $title, $link, $assignedBy, $assignedTo, $allMentions, $allCcs, $taskDetails);
+    }
+}
+
 if (!function_exists('sendGenericMail')) {
     function sendGenericMail($email, $subject, $body)
     {

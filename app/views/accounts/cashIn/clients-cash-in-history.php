@@ -12,7 +12,46 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                     || (function_exists('isAccountsExecutive') && isAccountsExecutive())
                     || strpos($userRoleName, 'account') !== false 
                     || strpos($userRoleName, 'admin') !== false;
+
+$bookingId = (int)($clientDetails['booking_id'] ?? ($_GET['booking_id'] ?? 0));
 ?>
+
+<script>
+window.openEditPaymentDateModal = function(target) {
+    if (!target) return;
+    var btn = null;
+    if (target.nodeType) {
+        btn = target.closest ? target.closest('.btn-edit-payment-date, [data-payment-id]') : target;
+    } else if (typeof jQuery !== 'undefined' && target instanceof jQuery) {
+        btn = target[0];
+    } else if (target.target) {
+        btn = target.target.closest ? target.target.closest('.btn-edit-payment-date, [data-payment-id]') : target.target;
+    }
+
+    if (!btn) return;
+
+    var pId = btn.getAttribute('data-payment-id') || '';
+    var bId = btn.getAttribute('data-booking-id') || '';
+    var pType = btn.getAttribute('data-payment-type') || 'registration';
+    var pDetails = btn.getAttribute('data-payment-details') || 'Registration Money';
+    var amount = btn.getAttribute('data-amount') || '0.00';
+    var pDate = btn.getAttribute('data-payment-date') || '';
+
+    var elPaymentId = document.getElementById('epd_payment_id');
+    var elBookingId = document.getElementById('epd_booking_id');
+    var elPaymentType = document.getElementById('epd_payment_type');
+    var elDetails = document.getElementById('epd_details');
+    var elAmount = document.getElementById('epd_amount');
+    var elPaymentDate = document.getElementById('epd_payment_date');
+
+    if (elPaymentId) elPaymentId.value = pId;
+    if (elBookingId) elBookingId.value = bId;
+    if (elPaymentType) elPaymentType.value = pType;
+    if (elDetails) elDetails.textContent = pDetails;
+    if (elAmount) elAmount.textContent = 'TK. ' + amount;
+    if (elPaymentDate) elPaymentDate.value = pDate;
+};
+</script>
 
 <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
     <div>
@@ -669,7 +708,38 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                                     <td style="text-align: center;">
                                         <input type="checkbox" class="form-check-input row-checkbox" value="<?= $transaction['id'] ?>">
                                     </td>
-                                    <td><?php echo $transaction['formatted_date']; ?></td>
+                                    <td>
+                                        <span><?php echo $transaction['formatted_date']; ?></span>
+                                        <?php if (($transaction['payment_type'] ?? '') === 'booking_money' && $canEditBookingInfo): ?>
+                                            <button type="button" class="btn btn-link p-0 ms-1 text-primary"
+                                                    style="text-decoration:none; vertical-align: middle;"
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#editBookingInfoModal" 
+                                                    title="Edit Booking Date, Sales Agent & Total EMI">
+                                                <i class="fa-solid fa-pen-to-square" style="font-size:12px;"></i>
+                                            </button>
+                                        <?php elseif (($transaction['payment_type'] ?? '') === 'registration' && $canEditBookingInfo): ?>
+                                            <?php 
+                                                $regPaymentDateYmd = !empty($transaction['payment_date']) ? date('Y-m-d', strtotime($transaction['payment_date'])) : '';
+                                            ?>
+                                            <button type="button" class="btn btn-link p-0 ms-1 text-primary btn-edit-payment-date"
+                                                    style="text-decoration:none; vertical-align: middle;"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#editPaymentDateModal"
+                                                    data-payment-id="<?= (int)($transaction['id'] ?? 0) ?>"
+                                                    data-booking-id="<?= (int)$bookingId ?>"
+                                                    data-payment-type="registration"
+                                                    data-payment-label="<?= htmlspecialchars($transaction['installment_label'] ?? 'REGISTRATION', ENT_QUOTES) ?>"
+                                                    data-payment-details="<?= htmlspecialchars($transaction['payment_details'] ?? 'Registration Money', ENT_QUOTES) ?>"
+                                                    data-amount="<?= htmlspecialchars(number_format((float)($transaction['amount'] ?? 0), 2), ENT_QUOTES) ?>"
+                                                    data-payment-date="<?= $regPaymentDateYmd ?>"
+                                                    data-formatted-date="<?= htmlspecialchars($transaction['formatted_date'] ?? '', ENT_QUOTES) ?>"
+                                                    onclick="openEditPaymentDateModal(this)"
+                                                    title="Edit Registration Payment Date">
+                                                <i class="fa-solid fa-pen-to-square" style="font-size:12px; pointer-events: none;"></i>
+                                            </button>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <span class="badge bg-primary">
                                             <?php echo $transaction['installment_label']; ?>
@@ -965,15 +1035,49 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                                                     $isBookingOrReg = in_array($transaction['payment_type'], ['booking_money', 'registration']);
                                                 ?>
                                                 <!-- EDIT BUTTON -->
-                                                <?php if ($isBookingOrReg): ?>
+                                                <?php if (($transaction['payment_type'] ?? '') === 'booking_money'): ?>
                                                     <?php if ($canEditBookingInfo): ?>
-                                                    <button type="button" class="table__icon edit" style="border:none; cursor:pointer;" data-bs-toggle="modal" data-bs-target="#editBookingInfoModal" title="Edit Booking Date & Sales Agent">
+                                                    <button type="button" class="table__icon edit" style="border:none; cursor:pointer;" data-bs-toggle="modal" data-bs-target="#editBookingInfoModal" title="Edit Booking Date, Sales Agent & Total EMI">
                                                         <i class="fa-sharp fa-light fa-pen"></i>
                                                     </button>
                                                     <?php else: ?>
-                                                    <span class="table__icon disabled" title="Booking/Registration Date editable by Accounts only" style="background-color: #f3f6f9; color: #a5aeb7;">
+                                                    <span class="table__icon disabled" title="Booking Date editable by Accounts only" style="background-color: #f3f6f9; color: #a5aeb7;">
                                                         <i class="fa-regular fa-lock"></i>
                                                     </span>
+                                                    <?php endif; ?>
+                                                <?php elseif (($transaction['payment_type'] ?? '') === 'registration'): ?>
+                                                    <?php if ($canEditBookingInfo): ?>
+                                                    <?php 
+                                                        $regPaymentDateYmd = !empty($transaction['payment_date']) ? date('Y-m-d', strtotime($transaction['payment_date'])) : '';
+                                                    ?>
+                                                    <button type="button" 
+                                                            class="table__icon edit border-0 btn-edit-payment-date" 
+                                                            style="color:#fff;background-color:#0284c7;cursor:pointer;"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#editPaymentDateModal"
+                                                            data-payment-id="<?= (int)($transaction['id'] ?? 0) ?>"
+                                                            data-booking-id="<?= (int)$bookingId ?>"
+                                                            data-payment-type="registration"
+                                                            data-payment-label="<?= htmlspecialchars($transaction['installment_label'] ?? 'REGISTRATION', ENT_QUOTES) ?>"
+                                                            data-payment-details="<?= htmlspecialchars($transaction['payment_details'] ?? 'Registration Money', ENT_QUOTES) ?>"
+                                                            data-amount="<?= htmlspecialchars(number_format((float)($transaction['amount'] ?? 0), 2), ENT_QUOTES) ?>"
+                                                            data-payment-date="<?= $regPaymentDateYmd ?>"
+                                                            data-formatted-date="<?= htmlspecialchars($transaction['formatted_date'] ?? '', ENT_QUOTES) ?>"
+                                                            onclick="openEditPaymentDateModal(this)"
+                                                            title="Edit Registration Payment Date">
+                                                        <i class="fa-solid fa-calendar-days" style="pointer-events: none;"></i>
+                                                    </button>
+                                                    <?php else: ?>
+                                                    <span class="table__icon disabled" title="Registration Date editable by Accounts only" style="background-color: #f3f6f9; color: #a5aeb7;">
+                                                        <i class="fa-regular fa-lock"></i>
+                                                    </span>
+                                                    <?php endif; ?>
+                                                    <?php if ($canEdit): ?>
+                                                    <a href="<?= $GLOBALS['base_url'] ?>/edit-client-cash-in/<?= $transaction['id'] ?>"
+                                                        class="table__icon edit"
+                                                        title="Edit Full Transaction">
+                                                        <i class="fa-sharp fa-light fa-pen"></i>
+                                                    </a>
                                                     <?php endif; ?>
                                                 <?php elseif ($canEdit): ?>
                                                 <a href="<?= $GLOBALS['base_url'] ?>/edit-client-cash-in/<?= $transaction['id'] ?>"
@@ -1262,7 +1366,7 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                         <div class="d-flex align-items-start gap-2">
                             <i class="fa-solid fa-circle-info text-primary mt-1" style="font-size: 15px;"></i>
                             <div>
-                                Updating <strong>Booking Date</strong> will update <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">lead_bookings.booking_date</code> and payment date for <strong>Booking Money</strong> and <strong>Registration</strong>.<br>
+                                Updating <strong>Booking Date</strong> will update <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">lead_bookings.booking_date</code> and payment date for <strong>Booking Money</strong>.<br>
                                 Updating <strong>Sales By</strong> will update <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">lead_bookings.sales_by_id</code> and <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">leads.assigned_id</code>.<br>
                                 Updating <strong>Total EMI</strong> will divide remaining construction fee among remaining future EMIs (completed/paid EMIs remain unchanged).
                             </div>
@@ -1279,7 +1383,7 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                                class="form-control" 
                                value="<?= !empty($clientDetails['booking_date']) ? date('Y-m-d', strtotime($clientDetails['booking_date'])) : '' ?>" 
                                required>
-                        <small class="text-muted d-block mt-1">Updates booking date and payment date for booking & registration.</small>
+                        <small class="text-muted d-block mt-1">Updates booking date and payment date for booking money.</small>
                     </div>
 
                     <div class="mb-3">
@@ -1355,6 +1459,53 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                 <div class="modal-footer bg-light px-4 py-3 d-flex justify-content-end gap-2">
                     <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-warning text-dark fw-bold px-4" id="btnSaveBookingInfo">
+                        <i class="fa-solid fa-save me-1"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Edit Registration Payment Date -->
+<div class="modal fade" id="editPaymentDateModal" tabindex="-1" aria-labelledby="editPaymentDateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold" id="editPaymentDateModalLabel">
+                    <i class="fa-solid fa-pen-to-square text-warning me-2"></i>Edit Registration Payment Date
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="<?= $GLOBALS['base_url'] ?>/update-payment-date" method="POST" id="editPaymentDateForm">
+                <input type="hidden" name="payment_id" id="epd_payment_id" value="">
+                <input type="hidden" name="booking_id" id="epd_booking_id" value="<?= htmlspecialchars($bookingId) ?>">
+                <input type="hidden" name="payment_type" id="epd_payment_type" value="registration">
+                <input type="hidden" name="redirect_to" value="clients-cash-in-history/<?= htmlspecialchars($bookingId) ?>">
+
+                <div class="modal-body p-4">
+                    <div class="mb-3 p-3 rounded-3" style="background: #eef6ff; border: 1px solid #bfdbfe; color: #1e40af; font-size: 13px; line-height: 1.6;">
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="fa-solid fa-circle-info text-primary mt-1" style="font-size: 15px;"></i>
+                            <div>
+                                Updating <strong>Registration Payment Date</strong> will only update this specific payment record (<span class="fw-bold text-dark" id="epd_details">Registration Money</span> - <span class="fw-bold text-success" id="epd_amount">TK. 0.00</span>).<br>
+                                Booking Date and other payment records will remain unchanged.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="epd_payment_date" class="form-label fw-bold">
+                            <i class="fa-light fa-calendar-days text-primary me-1"></i> Registration Payment Date <span class="text-danger">*</span>
+                        </label>
+                        <input type="date" name="payment_date" id="epd_payment_date" class="form-control" required>
+                        <small class="text-muted d-block mt-1">Updates payment date only for this registration payment.</small>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light px-4 py-3 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning text-dark fw-bold px-4" id="btnSavePaymentDate">
                         <i class="fa-solid fa-save me-1"></i> Save Changes
                     </button>
                 </div>
@@ -2291,4 +2442,121 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
             }
         });
     });
+
+    // Global function to populate Edit Payment Date Modal
+    window.openEditPaymentDateModal = function(target) {
+        if (!target) return;
+        var btn = null;
+        if (target.nodeType) {
+            btn = target.closest ? target.closest('.btn-edit-payment-date, [data-payment-id]') : target;
+        } else if (typeof jQuery !== 'undefined' && target instanceof jQuery) {
+            btn = target[0];
+        } else if (target.target) {
+            btn = target.target.closest ? target.target.closest('.btn-edit-payment-date, [data-payment-id]') : target.target;
+        }
+
+        if (!btn) return;
+
+        var pId = btn.getAttribute('data-payment-id') || '';
+        var bId = btn.getAttribute('data-booking-id') || '';
+        var pType = btn.getAttribute('data-payment-type') || 'registration';
+        var pDetails = btn.getAttribute('data-payment-details') || 'Registration Money';
+        var amount = btn.getAttribute('data-amount') || '0.00';
+        var pDate = btn.getAttribute('data-payment-date') || '';
+
+        var elPaymentId = document.getElementById('epd_payment_id');
+        var elBookingId = document.getElementById('epd_booking_id');
+        var elPaymentType = document.getElementById('epd_payment_type');
+        var elDetails = document.getElementById('epd_details');
+        var elAmount = document.getElementById('epd_amount');
+        var elPaymentDate = document.getElementById('epd_payment_date');
+
+        if (elPaymentId) elPaymentId.value = pId;
+        if (elBookingId) elBookingId.value = bId;
+        if (elPaymentType) elPaymentType.value = pType;
+        if (elDetails) elDetails.textContent = pDetails;
+        if (elAmount) elAmount.textContent = 'TK. ' + amount;
+        if (elPaymentDate) elPaymentDate.value = pDate;
+    };
+
+    // Handle AJAX submit for editPaymentDateForm
+    $('#editPaymentDateForm').on('submit', function (e) {
+        e.preventDefault();
+        var form = $(this);
+        var btn = $('#btnSavePaymentDate');
+        var originalBtnText = btn.html();
+
+        var paymentId = $('#epd_payment_id').val();
+        if (!paymentId) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Missing Reference',
+                text: 'Invalid payment reference ID. Please re-open the edit window and try again.'
+            });
+            return;
+        }
+
+        btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-1"></i> Saving...');
+
+        $.ajax({
+            url: form.attr('action'),
+            type: 'POST',
+            data: form.serialize() + '&is_ajax=1',
+            dataType: 'json',
+            success: function (res) {
+                btn.prop('disabled', false).html(originalBtnText);
+                if (res.success) {
+                    $('#editPaymentDateModal').modal('hide');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Updated Successfully!',
+                        text: res.message,
+                        timer: 1800,
+                        showConfirmButton: false
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Update Failed',
+                        text: res.message || 'Could not update payment date.'
+                    });
+                }
+            },
+            error: function () {
+                btn.prop('disabled', false).html(originalBtnText);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Server error while updating payment date.'
+                });
+            }
+        });
+    });
+
+    // Listen on show.bs.modal for Bootstrap 5 native event
+    var epdModalEl = document.getElementById('editPaymentDateModal');
+    if (epdModalEl) {
+        epdModalEl.addEventListener('show.bs.modal', function (e) {
+            var trigger = e.relatedTarget || document.activeElement;
+            if (trigger) {
+                window.openEditPaymentDateModal(trigger);
+            }
+        });
+    }
+
+    // Also support jQuery delegated click and show.bs.modal
+    if (typeof jQuery !== 'undefined') {
+        jQuery(document).on('click', '.btn-edit-payment-date', function(e) {
+            window.openEditPaymentDateModal(this);
+        });
+
+        jQuery('#editPaymentDateModal').on('show.bs.modal', function(e) {
+            var trigger = e.relatedTarget || (e.originalEvent && e.originalEvent.relatedTarget);
+            if (trigger) {
+                window.openEditPaymentDateModal(trigger);
+            }
+        });
+    }
     </script>

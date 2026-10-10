@@ -1284,15 +1284,8 @@ class AccountClient extends Model
             $completedEmiCount = $emiStats['completed_emi'];
             $remainingEmiCount = max(0, $totalEmiCount - $completedEmiCount);
 
-            // OPTION 1: Dynamic Remaining Per-EMI Calculation
-            // Past paid installments stay untouched at their paid amount.
-            // Distribute remaining unscheduled construction fee among remaining future EMIs.
-            if ($completedEmiCount > 0) {
-                $unscheduledCF = max(0, $remainingConstructionFee - $totalEmiDue);
-                $perEmiAmount  = ($remainingEmiCount > 0) ? round($unscheduledCF / $remainingEmiCount) : 0;
-            } else {
-                $perEmiAmount  = ($totalEmiCount > 0) ? round($constructionFee / $totalEmiCount) : 0;
-            }
+            // Fixed Per-EMI Calculation: Total Construction Fee ÷ Total EMI Count
+            $perEmiAmount = ($totalEmiCount > 0) ? round($constructionFee / $totalEmiCount) : 0;
 
             // Registration paid status
             $isRegistrationPaid = ($registrationPaid > 0);

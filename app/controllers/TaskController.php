@@ -61,67 +61,138 @@ class TaskController extends Controller
     // Handle form submission
     public function store()
     {
+        $mentionUserIds = !empty($_POST['mention_user_ids']) && is_array($_POST['mention_user_ids']) 
+            ? array_values(array_filter(array_map('intval', $_POST['mention_user_ids']))) 
+            : [];
+        $ccUserIds = !empty($_POST['cc_user_ids']) && is_array($_POST['cc_user_ids']) 
+            ? array_values(array_filter(array_map('intval', $_POST['cc_user_ids']))) 
+            : [];
+
         $data = [
-            'title' => trim($_POST['title'] ?? ''),
-            'user_id' => (int) ($_POST['user_id'] ?? 0),
-            'description' => trim($_POST['description'] ?? ''),
-            'start_date' => $_POST['start_date'] ?? null,
-            'deadline' => $_POST['deadline'] ?? null,
-            'employee_accept' => (int) ($_POST['employee_accept'] ?? 0),
-            'status' => $_POST['status'] ?? 'pending',
-            'progress' => (int) ($_POST['progress'] ?? 0),
-            'priority' => $_POST['priority'] ?? 'medium',
-            'assigned_by' => $_SESSION['user']['id'] ?? null,
+            'title'              => trim($_POST['title'] ?? ''),
+            'user_id'            => (int) ($_POST['user_id'] ?? 0),
+            'mentioned_user_ids' => !empty($mentionUserIds) ? json_encode($mentionUserIds) : null,
+            'cc_user_ids'        => !empty($ccUserIds) ? json_encode($ccUserIds) : null,
+            'description'        => trim($_POST['description'] ?? ''),
+            'start_date'         => !empty($_POST['start_date']) ? $_POST['start_date'] : null,
+            'deadline'           => !empty($_POST['deadline']) ? $_POST['deadline'] : null,
+            'employee_accept'    => (int) ($_POST['employee_accept'] ?? 0),
+            'status'             => $_POST['status'] ?? 'pending',
+            'progress'           => (int) ($_POST['progress'] ?? 0),
+            'priority'           => $_POST['priority'] ?? 'medium',
+            'assigned_by'        => $_SESSION['user']['id'] ?? null,
         ];
 
         // Receiver (assigned user)
-        $stmt = $this->db->prepare("SELECT email, full_name FROM users WHERE id = ?");
+        $stmt = $this->db->prepare("SELECT id, email, full_name FROM users WHERE id = ?");
         $stmt->bind_param("i", $data['user_id']);
         $stmt->execute();
         $user = $stmt->get_result()->fetch_assoc();
 
+        // Mentioned Users (full details)
+        $mentionUsers = [];
+        if (!empty($mentionUserIds)) {
+            $inMentions = implode(',', $mentionUserIds);
+            $mRes = $this->db->query("SELECT id, email, full_name FROM users WHERE id IN ($inMentions)");
+            if ($mRes) {
+                while ($mRow = $mRes->fetch_assoc()) {
+                    $mentionUsers[] = $mRow;
+                }
+            }
+        }
+
+        // CC Users (full details)
+        $ccUsers = [];
+        if (!empty($ccUserIds)) {
+            $inCcs = implode(',', $ccUserIds);
+            $ccRes = $this->db->query("SELECT id, email, full_name FROM users WHERE id IN ($inCcs)");
+            if ($ccRes) {
+                while ($ccRow = $ccRes->fetch_assoc()) {
+                    $ccUsers[] = $ccRow;
+                }
+            }
+        }
+
         // Assigned By (full details)
         $stmt2 = $this->db->prepare("
-        SELECT u.full_name, r.name AS role_name, dsg.name AS designation_name, dep.name AS department_name
-        FROM users u
-        LEFT JOIN roles r ON u.role_id = r.id
-        LEFT JOIN designations dsg ON u.designation_id = dsg.id
-        LEFT JOIN departments dep ON dsg.department_id = dep.id
-        WHERE u.id = ?
-    ");
+            SELECT u.full_name, r.name AS role_name, dsg.name AS designation_name, dep.name AS department_name
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            LEFT JOIN designations dsg ON u.designation_id = dsg.id
+            LEFT JOIN departments dep ON dsg.department_id = dep.id
+            WHERE u.id = ?
+        ");
         $stmt2->bind_param("i", $data['assigned_by']);
         $stmt2->execute();
         $assignedBy = $stmt2->get_result()->fetch_assoc();
 
         if (session_status() === PHP_SESSION_NONE) session_start();
 
-        // save task data to database
+        // Save task data to database
         if ($this->taskModel->create($data)) {
             $taskId = $this->db->insert_id;
 
+            // 1. Notification for Assigned User
             $stmt3 = $this->db->prepare(
                 "INSERT INTO notifications (user_id, task_id, assigned_by, message) VALUES (?, ?, ?, ?)"
             );
-
             $message = "New task assigned: " . $data['title'];
             $stmt3->bind_param("iiis", $data['user_id'], $taskId, $data['assigned_by'], $message);
             $stmt3->execute();
 
-            // Send notification email
+            // 2. Notifications for Mentioned Users
+            foreach ($mentionUsers as $mUser) {
+                if ($mUser['id'] != $data['user_id']) {
+                    $stmtM = $this->db->prepare(
+                        "INSERT INTO notifications (user_id, task_id, assigned_by, message) VALUES (?, ?, ?, ?)"
+                    );
+                    $mMiniMsg = "You were mentioned in task: " . $data['title'] . " (Assigned to: " . ($user['full_name'] ?? 'Employee') . ")";
+                    $stmtM->bind_param("iiis", $mUser['id'], $taskId, $data['assigned_by'], $mMiniMsg);
+                    $stmtM->execute();
+                }
+            }
+
+            // 3. URLs
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['SERVER_PORT'] ?? 0) == 443) ? "https://" : "http://";
+            $host = $_SERVER['HTTP_HOST'] ?? 'thepremiumhomesltd.com';
+            $full_link = $protocol . $host . $GLOBALS['base_url'] . '/task-dashboard';
+
+            // 4. Send Task Assignment Email (With CC included)
             if ($user && !empty($user['email'])) {
                 try {
-                        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-                        $host = $_SERVER['HTTP_HOST'] ?? 'thepremiumhomesltd.com';
-                        $full_link = $protocol . $host . $GLOBALS['base_url'] . '/task-dashboard';
-                        
-                        sendMail(
-                            $user['email'],
-                            'New Task Assigned: ' . $data['title'],
-                            $full_link,
-                            $assignedBy
-                        );
+                    sendTaskMailWithCC(
+                        $user['email'],
+                        $data['title'],
+                        $full_link,
+                        $assignedBy,
+                        $user,
+                        $ccUsers,
+                        $mentionUsers,
+                        $data
+                    );
                 } catch (\Throwable $th) {
-                    error_log("Mail Sending Failed: " . $th->getMessage());
+                    error_log("Task Mail with CC Failed: " . $th->getMessage());
+                }
+            }
+
+            // 5. Send Dedicated Mention Notification Email to each Mentioned User
+            foreach ($mentionUsers as $mUser) {
+                if (!empty($mUser['email'])) {
+                    try {
+                        sendMentionMail(
+                            $mUser['email'],
+                            $mUser['full_name'],
+                            $data['title'],
+                            $full_link,
+                            $assignedBy,
+                            $user,
+                            $mentionUsers,
+                            $ccUsers,
+                            $data
+                        );
+                    } catch (\Throwable $th) {
+                        error_log("Mention Mail Sending Failed to {$mUser['email']}: " . $th->getMessage());
+                    }
                 }
             }
 
@@ -134,6 +205,7 @@ class TaskController extends Controller
         header("Location: {$GLOBALS['base_url']}/create-task");
         exit;
     }
+
     // Edit Employee Page
     public function edit($id)
     {
@@ -145,26 +217,36 @@ class TaskController extends Controller
             "page_title"      => "Edit task",
             "show_breadcrumb" => true,
             "task"            => $task,
-            "users"       => $users,
+            "users"           => $users,
         ]);
     }
 
     public function update($id)
     {
+        $mentionUserIds = !empty($_POST['mention_user_ids']) && is_array($_POST['mention_user_ids']) 
+            ? array_values(array_filter(array_map('intval', $_POST['mention_user_ids']))) 
+            : [];
+        $ccUserIds = !empty($_POST['cc_user_ids']) && is_array($_POST['cc_user_ids']) 
+            ? array_values(array_filter(array_map('intval', $_POST['cc_user_ids']))) 
+            : [];
+
         $data = [
-            'title'            => trim($_POST['title'] ?? ''),
-            'user_id'      => (int) ($_POST['user_id'] ?? 0),
-            'description'      => trim($_POST['description'] ?? ''),
-            'start_date'       => $_POST['start_date'] ?? null,
-            'deadline'         => $_POST['deadline'] ?? null,
-            'employee_accept'  => (int) ($_POST['employee_accept'] ?? 0),
-            'status'           => $_POST['status'] ?? 'pending',
-            'progress'         => (int) ($_POST['progress'] ?? 0),
-            'priority'         => $_POST['priority'] ?? 'medium',
-            'assigned_by'      => $_SESSION['user']['id'] ?? null,
+            'title'              => trim($_POST['title'] ?? ''),
+            'user_id'            => (int) ($_POST['user_id'] ?? 0),
+            'mentioned_user_ids' => !empty($mentionUserIds) ? json_encode($mentionUserIds) : null,
+            'cc_user_ids'        => !empty($ccUserIds) ? json_encode($ccUserIds) : null,
+            'description'        => trim($_POST['description'] ?? ''),
+            'start_date'         => !empty($_POST['start_date']) ? $_POST['start_date'] : null,
+            'deadline'           => !empty($_POST['deadline']) ? $_POST['deadline'] : null,
+            'employee_accept'    => (int) ($_POST['employee_accept'] ?? 0),
+            'status'             => $_POST['status'] ?? 'pending',
+            'progress'           => (int) ($_POST['progress'] ?? 0),
+            'priority'           => $_POST['priority'] ?? 'medium',
+            'assigned_by'        => $_SESSION['user']['id'] ?? null,
         ];
 
         if ($this->taskModel->update($id, $data)) {
+            setSuccess("Task updated successfully!");
             header("Location: {$GLOBALS['base_url']}/task-lists");
             exit;
         } else {
@@ -211,9 +293,45 @@ class TaskController extends Controller
     {
         $task = $this->taskModel->find($id);
 
+        $mentionUsers = [];
+        if (!empty($task['mentioned_user_ids'])) {
+            $mIds = json_decode($task['mentioned_user_ids'], true);
+            if (is_array($mIds) && !empty($mIds)) {
+                $inM = implode(',', array_map('intval', $mIds));
+                $mRes = $this->db->query("
+                    SELECT u.id, u.full_name, u.email, u.photo, dsg.name AS designation_name
+                    FROM users u
+                    LEFT JOIN designations dsg ON u.designation_id = dsg.id
+                    WHERE u.id IN ($inM)
+                ");
+                if ($mRes) {
+                    while ($r = $mRes->fetch_assoc()) $mentionUsers[] = $r;
+                }
+            }
+        }
+
+        $ccUsers = [];
+        if (!empty($task['cc_user_ids'])) {
+            $cIds = json_decode($task['cc_user_ids'], true);
+            if (is_array($cIds) && !empty($cIds)) {
+                $inC = implode(',', array_map('intval', $cIds));
+                $cRes = $this->db->query("
+                    SELECT u.id, u.full_name, u.email, u.photo, dsg.name AS designation_name
+                    FROM users u
+                    LEFT JOIN designations dsg ON u.designation_id = dsg.id
+                    WHERE u.id IN ($inC)
+                ");
+                if ($cRes) {
+                    while ($r = $cRes->fetch_assoc()) $ccUsers[] = $r;
+                }
+            }
+        }
+
         $this->view("tasks/show-task", [
             "current_route" => "show-task",
-            "task" => $task,
+            "task"          => $task,
+            "mentionUsers"  => $mentionUsers,
+            "ccUsers"       => $ccUsers,
         ]);
     }
 

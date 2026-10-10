@@ -1,49 +1,36 @@
 <?php
 
+require_once __DIR__ . '/MailService.php';
+
 class TodoMailService
 {
     private $db;
+    private $mailService;
 
     public function __construct($db)
     {
         $this->db = $db;
-    }
-
-    private function getBaseUrl(): string
-    {
-        $base = rtrim($GLOBALS['base_url'] ?? '/TPHL-ERP', '/');
-        if (str_starts_with($base, 'http')) {
-            return $base;
-        }
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host   = $_SERVER['HTTP_HOST'] ?? 'localhost:8080';
-        return $scheme . '://' . $host . $base;
+        $this->mailService = new MailService();
     }
 
     public function send($toEmail, $subject, $body)
     {
         try {
-            $stmt = $this->db->prepare("INSERT INTO email_queue (to_email, subject, body, status) VALUES (?, ?, ?, 'pending')");
-            if (!$stmt) {
-                error_log("[TodoMailService] email_queue table missing or prepare failed: " . $this->db->error);
-                return false;
+            // Send directly via PHPMailer / SMTP
+            $sent = $this->mailService->sendGenericMail($toEmail, $subject, $body);
+
+            // Also record in email_queue for logging/audit trail
+            $status = $sent ? 'sent' : 'failed';
+            $stmt = $this->db->prepare("INSERT INTO email_queue (to_email, subject, body, status) VALUES (?, ?, ?, ?)");
+            if ($stmt) {
+                $stmt->bind_param("ssss", $toEmail, $subject, $body, $status);
+                $stmt->execute();
+                $stmt->close();
             }
-            $stmt->bind_param("sss", $toEmail, $subject, $body);
-            $stmt->execute();
-            $stmt->close();
-            
-            // Trigger the async processor immediately via cURL
-            $url = $this->getBaseUrl() . '/process_email_queue.php';
-            $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_TIMEOUT_MS, 200); // 200ms timeout
-            curl_setopt($ch, CURLOPT_NOSIGNAL, 1);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_exec($ch);
-            curl_close($ch);
-            
-            return true;
+
+            return $sent;
         } catch (Exception $e) {
-            error_log("[TodoMailService] Failed to queue email to {$toEmail}: " . $e->getMessage());
+            error_log("[TodoMailService] Failed to send email to {$toEmail}: " . $e->getMessage());
             return false;
         }
     }

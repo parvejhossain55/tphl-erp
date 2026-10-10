@@ -483,8 +483,8 @@ public function indexTwo($bookingId = null)
                 $updB->close();
             }
 
-            // 2. Update lead_payments (booking_money and registration payment_date)
-            $updP = $this->db->prepare("UPDATE lead_payments SET payment_date = ?, updated_by = ?, updated_at = NOW() WHERE booking_id = ? AND payment_type IN ('booking_money', 'registration')");
+            // 2. Update lead_payments (booking_money payment_date only)
+            $updP = $this->db->prepare("UPDATE lead_payments SET payment_date = ?, updated_by = ?, updated_at = NOW() WHERE booking_id = ? AND payment_type = 'booking_money'");
             if (!$updP) {
                 throw new Exception("Prepare lead_payments update failed: " . $this->db->error);
             }
@@ -4359,7 +4359,14 @@ public function discountStatement($bookingId = null)
             session_start();
         }
 
+        $isAjax = !empty($_POST['is_ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
+                exit;
+            }
             header("Location: {$GLOBALS['base_url']}/clients-cashin-view");
             exit;
         }
@@ -4374,14 +4381,26 @@ public function discountStatement($bookingId = null)
             : ($bookingId > 0 ? "{$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}" : "{$GLOBALS['base_url']}/clients-cashin-view");
 
         if (!$bookingId || empty($newDate)) {
-            setError("Invalid booking ID or payment date provided.");
+            $msg = "Invalid booking ID or payment date provided.";
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
             header("Location: {$redirectUrl}");
             exit;
         }
 
         // Strict restriction: Only allow editing date for booking_money and registration
         if (!in_array($paymentType, ['booking_money', 'registration'])) {
-            setError("Permission denied: Only Booking Money and Registration payment dates can be edited.");
+            $msg = "Permission denied: Only Booking Money and Registration payment dates can be edited.";
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
             header("Location: {$redirectUrl}");
             exit;
         }
@@ -4389,7 +4408,13 @@ public function discountStatement($bookingId = null)
         // Validate date format YYYY-MM-DD
         $d = DateTime::createFromFormat('Y-m-d', $newDate);
         if (!$d || $d->format('Y-m-d') !== $newDate) {
-            setError("Invalid date format. Please use a valid calendar date.");
+            $msg = "Invalid date format. Please use a valid calendar date (YYYY-MM-DD).";
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
             header("Location: {$redirectUrl}");
             exit;
         }
@@ -4402,9 +4427,21 @@ public function discountStatement($bookingId = null)
             if ($stmt) {
                 $stmt->bind_param('si', $newDate, $bookingId);
                 $stmt->execute();
-                setSuccess("Booking agreement date updated to " . date('d M, Y', strtotime($newDate)) . " successfully!");
+                $successMsg = "Booking agreement date updated to " . date('d M, Y', strtotime($newDate)) . " successfully!";
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => true, 'message' => $successMsg]);
+                    exit;
+                }
+                setSuccess($successMsg);
             } else {
-                setError("Failed to update booking date in database.");
+                $msg = "Failed to update booking date in database.";
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => $msg]);
+                    exit;
+                }
+                setError($msg);
             }
             header("Location: {$redirectUrl}");
             exit;
@@ -4412,7 +4449,13 @@ public function discountStatement($bookingId = null)
 
         $numericPaymentId = (int)$paymentId;
         if ($numericPaymentId <= 0) {
-            setError("Invalid payment reference ID.");
+            $msg = "Invalid payment reference ID.";
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
             header("Location: {$redirectUrl}");
             exit;
         }
@@ -4420,7 +4463,13 @@ public function discountStatement($bookingId = null)
         // Fetch existing payment to confirm type and booking_id
         $checkStmt = $this->db->prepare("SELECT id, booking_id, payment_type FROM lead_payments WHERE id = ? AND booking_id = ?");
         if (!$checkStmt) {
-            setError("Database query error.");
+            $msg = "Database query error.";
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
             header("Location: {$redirectUrl}");
             exit;
         }
@@ -4430,7 +4479,13 @@ public function discountStatement($bookingId = null)
         $existing = $checkStmt->get_result()->fetch_assoc();
 
         if (!$existing || !in_array($existing['payment_type'], ['booking_money', 'registration'])) {
-            setError("Transaction not found or not eligible for date modification.");
+            $msg = "Transaction not found or not eligible for date modification.";
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
             header("Location: {$redirectUrl}");
             exit;
         }
@@ -4451,12 +4506,30 @@ public function discountStatement($bookingId = null)
                     }
                 }
                 $typeLabel = $existing['payment_type'] === 'booking_money' ? 'Booking Money' : 'Registration Money';
-                setSuccess("{$typeLabel} payment date updated to " . date('d M, Y', strtotime($newDate)) . " successfully!");
+                $successMsg = "{$typeLabel} payment date updated to " . date('d M, Y', strtotime($newDate)) . " successfully!";
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => true, 'message' => $successMsg]);
+                    exit;
+                }
+                setSuccess($successMsg);
             } else {
-                setError("Failed to update payment date in database.");
+                $msg = "Failed to update payment date in database.";
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => $msg]);
+                    exit;
+                }
+                setError($msg);
             }
         } else {
-            setError("Database query preparation failed.");
+            $msg = "Database query preparation failed.";
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
         }
 
         header("Location: {$redirectUrl}");

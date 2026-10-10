@@ -515,11 +515,98 @@ function ajax_execute_without_waiting($ch) {
     curl_close($ch);
 }
 
+// G. PROCESS TODO LIST TASK REMINDERS
+require_once __DIR__ . '/../app/core/TodoMailService.php';
+$todoMailService = new TodoMailService($db);
+
+$todoRes = $db->query("
+    SELECT r.id as reminder_id, r.max_reminders, r.reminders_sent_count, r.trigger_time,
+           t.id as task_id, t.title, t.description, t.priority, t.location, t.user_id, t.due_date,
+           u.email as user_email, u.full_name as user_full_name,
+           e.email as employee_email, e.full_name as employee_name
+    FROM todo_task_reminders r
+    JOIN todo_tasks t ON r.todo_task_id = t.id
+    JOIN users u ON t.user_id = u.id
+    LEFT JOIN employees e ON u.employee_id = e.id
+    WHERE r.is_active = 1 
+      AND r.trigger_time <= NOW() 
+      AND r.reminders_sent_count < r.max_reminders
+      AND t.status = 'pending'
+");
+
+$todoRemindersSent = 0;
+if ($todoRes && $todoRes->num_rows > 0) {
+    while ($row = $todoRes->fetch_assoc()) {
+        $recipientEmail = !empty($row['employee_email']) ? $row['employee_email'] : $row['user_email'];
+        $recipientName = !empty($row['employee_name']) ? $row['employee_name'] : (!empty($row['user_full_name']) ? $row['user_full_name'] : 'User');
+        $newSentCount = (int)$row['reminders_sent_count'] + 1;
+        $maxReminders = (int)$row['max_reminders'];
+
+        $targetEmail = $isTestMode ? $testEmail : $recipientEmail;
+        $subject = ($isTestMode ? "[TEST] " : "") . "Task Reminder ({$newSentCount}/{$maxReminders}): " . $row['title'];
+        
+        $body = "
+        <div style='font-family: \"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; padding: 35px 15px;'>
+            <div style='max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;'>
+                <div style='background: linear-gradient(135deg, #16a34a, #15803d); padding: 22px 28px;'>
+                    <div style='font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.8); margin-bottom: 4px;'>TPHL ERP &middot; Task Management</div>
+                    <h2 style='margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;'>Task Reminder Notification</h2>
+                </div>
+                <div style='padding: 28px;'>
+                    <p style='color: #334155; font-size: 15px; margin: 0 0 14px;'>Hello <strong>" . htmlspecialchars($recipientName) . "</strong>,</p>
+                    <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 20px;'>This is a scheduled reminder (<strong>Reminder {$newSentCount} of {$maxReminders}</strong>) for your pending task:</p>
+                    
+                    <div style='background-color: #f1f5f9; border-left: 4px solid #16a34a; border-radius: 6px; padding: 18px 20px; margin-bottom: 24px;'>
+                        <div style='font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 8px;'>" . htmlspecialchars($row['title']) . "</div>";
+                        if (!empty($row['description'])) {
+                            $body .= "<div style='font-size: 13.5px; color: #475569; margin-bottom: 10px;'>" . nl2br(htmlspecialchars($row['description'])) . "</div>";
+                        }
+                        $body .= "<div style='font-size: 12.5px; color: #64748b;'>";
+                        if (!empty($row['due_date'])) {
+                            $body .= "<span style='margin-right: 15px;'>📅 <strong>Due:</strong> " . date('d M Y', strtotime($row['due_date'])) . "</span>";
+                        }
+                        if (!empty($row['location'])) {
+                            $body .= "<span>📍 <strong>Location:</strong> " . htmlspecialchars($row['location']) . "</span>";
+                        }
+                        $body .= "</div>
+                    </div>
+                    
+                    <div style='text-align: center; margin-top: 25px; margin-bottom: 10px;'>
+                        <a href='https://thepremiumhomesltd.com/TPHL-ERP/todo' style='background-color: #16a34a; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;'>View Task in Todo List &rarr;</a>
+                    </div>
+                </div>
+                <div style='background-color: #f8fafc; padding: 14px 28px; text-align: center; border-top: 1px solid #f1f5f9;'>
+                    <p style='margin: 0; font-size: 11.5px; color: #94a3b8;'>This is an automated notification from TPHL ERP. Please do not reply directly.</p>
+                </div>
+            </div>
+        </div>";
+
+        if (!empty($targetEmail)) {
+            $todoMailService->send($targetEmail, $subject, $body);
+        }
+
+        // Insert into notifications table
+        $msg = "Reminder for task: " . $db->real_escape_string($row['title']);
+        $db->query("INSERT INTO notifications (user_id, message) VALUES ({$row['user_id']}, '$msg')");
+
+        // Update Reminder Logic
+        if ($newSentCount >= $maxReminders) {
+            $db->query("UPDATE todo_task_reminders SET reminders_sent_count = $newSentCount, is_active = 0 WHERE id = {$row['reminder_id']}");
+        } else {
+            $intervalHours = 24 / $maxReminders;
+            $intervalMinutes = round($intervalHours * 60);
+            $db->query("UPDATE todo_task_reminders SET reminders_sent_count = $newSentCount, trigger_time = DATE_ADD(trigger_time, INTERVAL $intervalMinutes MINUTE) WHERE id = {$row['reminder_id']}");
+        }
+        $todoRemindersSent++;
+    }
+}
+
 header('Content-Type: application/json');
 echo json_encode([
     'success' => true,
-    'message' => "Cron execution completed. Queued {$emailsQueued} notifications in email_queue.",
+    'message' => "Cron execution completed. Queued {$emailsQueued} notifications in email_queue, sent {$todoRemindersSent} Todo reminders.",
     'test_mode' => $isTestMode,
+    'todo_reminders_sent' => $todoRemindersSent,
     'debug_logs' => $debugLogs
 ], JSON_PRETTY_PRINT);
 exit;
