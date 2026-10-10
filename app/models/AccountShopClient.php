@@ -371,13 +371,8 @@ class AccountShopClient extends AccountClient
             $completedEmi = count($paidEmiNumbers);
             $remainingEmiCount = max(0, $totalEmiCount - $completedEmi);
 
-            // OPTION 1: Dynamic Remaining Per-EMI Calculation
-            if ($completedEmi > 0) {
-                $unscheduledCF = max(0, $remainingConstructionFee - $totalEmiDue);
-                $perEmiAmount  = ($remainingEmiCount > 0) ? round($unscheduledCF / $remainingEmiCount) : 0;
-            } else {
-                $perEmiAmount  = ($totalEmiCount > 0) ? round($constructionFee / $totalEmiCount) : 0;
-            }
+            // Fixed Per-EMI Calculation: Total Construction Fee ÷ Total EMI Count
+            $perEmiAmount = ($totalEmiCount > 0) ? round($constructionFee / $totalEmiCount) : 0;
 
             $pendingEmi = $remainingEmiCount;
             $pendingEmiNumbers = [];

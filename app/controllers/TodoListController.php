@@ -19,6 +19,9 @@ class TodoListController extends Controller
 
     public function index()
     {
+        // Auto-process any pending reminders that reached their trigger time
+        $this->processPendingReminders();
+
         // Fetch projects for sidebar
         $projRes = $this->db->query("SELECT * FROM todo_projects WHERE user_id = {$this->userId} ORDER BY is_inbox DESC, name ASC");
         $projects = [];
@@ -86,7 +89,7 @@ class TodoListController extends Controller
         // Fetch tasks
         $taskQuery = "
             SELECT t.*, p.name as project_name, p.color_code as project_color,
-                   tr.repeat_type, r.max_reminders
+                   tr.repeat_type, tr.repeat_until, r.max_reminders, r.trigger_time as reminder_trigger_time
             FROM todo_tasks t 
             LEFT JOIN todo_projects p ON t.todo_project_id = p.id 
             LEFT JOIN todo_task_recurrences tr ON t.id = tr.todo_task_id
@@ -184,23 +187,112 @@ class TodoListController extends Controller
                         }
                     }
                     
-                    // Handle Recurrence
+                    // Handle Recurrence & Date Range (From Date to To Date)
                     if (!empty($_POST['repeat_type'])) {
                         $repeatType = $this->db->real_escape_string($_POST['repeat_type']);
-                        $this->db->query("INSERT INTO todo_task_recurrences (todo_task_id, repeat_type) VALUES ($taskId, '$repeatType')");
+                        $repeatUntil = !empty($_POST['repeat_until']) ? "'" . $this->db->real_escape_string($_POST['repeat_until']) . "'" : "NULL";
+                        $this->db->query("INSERT INTO todo_task_recurrences (todo_task_id, repeat_type, repeat_until) VALUES ($taskId, '$repeatType', $repeatUntil)");
                     }
                     
-                    // Handle Reminders
+                    // Handle Reminders (Custom Date/Time or default to Due Date 09:00 AM)
                     if (!empty($_POST['max_reminders']) && (int)$_POST['max_reminders'] > 0) {
                         $max = (int)$_POST['max_reminders'];
-                        $triggerTime = !empty($_POST['due_date']) ? "'" . $this->db->real_escape_string($_POST['due_date']) . " 09:00:00'" : "NOW()";
-                        $this->db->query("INSERT INTO todo_task_reminders (todo_task_id, trigger_time, max_reminders) VALUES ($taskId, $triggerTime, $max)");
+                        if (!empty($_POST['reminder_date_time'])) {
+                            $triggerTime = "'" . date('Y-m-d H:i:s', strtotime($_POST['reminder_date_time'])) . "'";
+                        } elseif (!empty($_POST['due_date'])) {
+                            $triggerTime = "'" . $this->db->real_escape_string($_POST['due_date']) . " 09:00:00'";
+                        } else {
+                            $triggerTime = "NOW()";
+                        }
+                        $this->db->query("INSERT INTO todo_task_reminders (todo_task_id, trigger_time, max_reminders, reminders_sent_count, is_active) 
+                                          VALUES ($taskId, $triggerTime, $max, 0, 1)");
                     }
                 }
             }
         }
         header("Location: " . $GLOBALS['base_url'] . "/todo");
         exit();
+    }
+
+    private function createNextRecurrenceOccurrence($taskId, $task, $rec)
+    {
+        $nextDueDate = null;
+        $triggerDate = 'NOW()';
+        if (!empty($task['due_date'])) {
+            $dueDateObj = new DateTime($task['due_date']);
+            $now = new DateTime('today');
+
+            if ($rec['repeat_type'] === 'daily' || $rec['repeat_type'] === 'custom') {
+                $dueDateObj->modify('+1 day');
+                if ($dueDateObj < $now) {
+                    $dueDateObj = new DateTime('tomorrow');
+                }
+            } elseif ($rec['repeat_type'] === 'weekly') {
+                $dueDateObj->modify('+1 week');
+                while ($dueDateObj < $now) {
+                    $dueDateObj->modify('+1 week');
+                }
+            } elseif ($rec['repeat_type'] === 'monthly') {
+                $dueDateObj->modify('+1 month');
+                while ($dueDateObj < $now) {
+                    $dueDateObj->modify('+1 month');
+                }
+            }
+
+            // Check if repeat_until is reached
+            if (!empty($rec['repeat_until'])) {
+                $untilDate = new DateTime($rec['repeat_until'] . ' 23:59:59');
+                if ($dueDateObj > $untilDate) {
+                    return null; // Stop repeating as end date reached
+                }
+            }
+
+            $formattedDate = $dueDateObj->format('Y-m-d H:i:s');
+            $nextDueDate = "'" . $formattedDate . "'";
+            $triggerDate = "'" . $dueDateObj->format('Y-m-d 09:00:00') . "'";
+        }
+
+        $title = $this->db->real_escape_string($task['title']);
+        $desc = $this->db->real_escape_string($task['description'] ?? '');
+        $location = $this->db->real_escape_string($task['location'] ?? '');
+        $projectId = !empty($task['todo_project_id']) ? (int)$task['todo_project_id'] : "NULL";
+        $priority = (int)$task['priority'];
+        $attachment = !empty($task['attachment']) ? "'" . $this->db->real_escape_string($task['attachment']) . "'" : "NULL";
+
+        $insertTaskSql = "INSERT INTO todo_tasks (user_id, todo_project_id, title, description, priority, due_date, location, attachment) 
+                          VALUES ({$this->userId}, $projectId, '$title', '$desc', $priority, " . ($nextDueDate ?? 'NULL') . ", '$location', $attachment)";
+        
+        if ($this->db->query($insertTaskSql)) {
+            $newTaskId = $this->db->insert_id;
+
+            // 1. Copy Recurrence with repeat_until
+            $repeatType = $this->db->real_escape_string($rec['repeat_type']);
+            $repeatUntil = !empty($rec['repeat_until']) ? "'" . $this->db->real_escape_string($rec['repeat_until']) . "'" : "NULL";
+            $this->db->query("INSERT INTO todo_task_recurrences (todo_task_id, repeat_type, repeat_until) VALUES ($newTaskId, '$repeatType', $repeatUntil)");
+
+            // 2. Copy Reminders (carry over max_reminders with fresh counter)
+            $remRes = $this->db->query("SELECT * FROM todo_task_reminders WHERE todo_task_id = $taskId LIMIT 1");
+            if ($remRes && $rem = $remRes->fetch_assoc()) {
+                $maxReminders = (int)$rem['max_reminders'];
+                if ($maxReminders > 0) {
+                    $this->db->query("INSERT INTO todo_task_reminders (todo_task_id, trigger_time, max_reminders, reminders_sent_count, is_active) 
+                                      VALUES ($newTaskId, $triggerDate, $maxReminders, 0, 1)");
+                }
+            }
+
+            // 3. Copy Labels
+            $lblRes = $this->db->query("SELECT todo_label_id FROM todo_task_labels WHERE todo_task_id = $taskId");
+            if ($lblRes) {
+                while ($lbl = $lblRes->fetch_assoc()) {
+                    $lId = (int)$lbl['todo_label_id'];
+                    $this->db->query("INSERT IGNORE INTO todo_task_labels (todo_task_id, todo_label_id) VALUES ($newTaskId, $lId)");
+                }
+            }
+
+            return $newTaskId;
+        }
+
+        return null;
     }
 
     public function complete()
@@ -212,40 +304,16 @@ class TodoListController extends Controller
             $taskRes = $this->db->query("SELECT * FROM todo_tasks WHERE id = $taskId AND user_id = {$this->userId}");
             if ($taskRes && $task = $taskRes->fetch_assoc()) {
                 
-                // Check recurrence
+                // Check recurrence and spawn next occurrence
                 $recRes = $this->db->query("SELECT * FROM todo_task_recurrences WHERE todo_task_id = $taskId");
                 if ($recRes && $rec = $recRes->fetch_assoc()) {
-                    $nextDueDate = null;
-                    if ($task['due_date']) {
-                        $currentDate = new DateTime($task['due_date']);
-                        if ($rec['repeat_type'] === 'daily') {
-                            $currentDate->modify('+1 day');
-                        } elseif ($rec['repeat_type'] === 'weekly') {
-                            $currentDate->modify('+1 week');
-                        } elseif ($rec['repeat_type'] === 'monthly') {
-                            $currentDate->modify('+1 month');
-                        }
-                        $nextDueDate = "'" . $currentDate->format('Y-m-d H:i:s') . "'";
-                    }
-                    
-                    // Create duplicate task for next occurrence
-                    $title = $this->db->real_escape_string($task['title']);
-                    $desc = $this->db->real_escape_string($task['description'] ?? '');
-                    $projectId = $task['todo_project_id'] ? $task['todo_project_id'] : "NULL";
-                    $priority = (int)$task['priority'];
-                    
-                    $this->db->query("INSERT INTO todo_tasks (user_id, todo_project_id, title, description, priority, due_date) 
-                                      VALUES ({$this->userId}, $projectId, '$title', '$desc', $priority, " . ($nextDueDate ?? 'NULL') . ")");
-                    $newTaskId = $this->db->insert_id;
-                    
-                    // Copy recurrence
-                    $this->db->query("INSERT INTO todo_task_recurrences (todo_task_id, repeat_type) VALUES ($newTaskId, '{$rec['repeat_type']}')");
+                    $this->createNextRecurrenceOccurrence($taskId, $task, $rec);
                 }
                 
                 // Mark current task completed
                 $this->db->query("UPDATE todo_tasks SET status = 'completed' WHERE id = $taskId");
                 
-                // Deactivate reminders
+                // Deactivate reminders for completed task
                 $this->db->query("UPDATE todo_task_reminders SET is_active = 0 WHERE todo_task_id = $taskId");
             }
         }
@@ -268,28 +336,7 @@ class TodoListController extends Controller
                     // Generate next occurrence before deleting current one
                     $recRes = $this->db->query("SELECT * FROM todo_task_recurrences WHERE todo_task_id = $taskId");
                     if ($recRes && $rec = $recRes->fetch_assoc()) {
-                        $nextDueDate = null;
-                        if ($task['due_date']) {
-                            $currentDate = new DateTime($task['due_date']);
-                            if ($rec['repeat_type'] === 'daily') {
-                                $currentDate->modify('+1 day');
-                            } elseif ($rec['repeat_type'] === 'weekly') {
-                                $currentDate->modify('+1 week');
-                            } elseif ($rec['repeat_type'] === 'monthly') {
-                                $currentDate->modify('+1 month');
-                            }
-                            $nextDueDate = "'" . $currentDate->format('Y-m-d H:i:s') . "'";
-                        }
-                        
-                        $title = $this->db->real_escape_string($task['title']);
-                        $desc = $this->db->real_escape_string($task['description'] ?? '');
-                        $projectId = $task['todo_project_id'] ? $task['todo_project_id'] : "NULL";
-                        $priority = (int)$task['priority'];
-                        
-                        $this->db->query("INSERT INTO todo_tasks (user_id, todo_project_id, title, description, priority, due_date) 
-                                          VALUES ({$this->userId}, $projectId, '$title', '$desc', $priority, " . ($nextDueDate ?? 'NULL') . ")");
-                        $newTaskId = $this->db->insert_id;
-                        $this->db->query("INSERT INTO todo_task_recurrences (todo_task_id, repeat_type) VALUES ($newTaskId, '{$rec['repeat_type']}')");
+                        $this->createNextRecurrenceOccurrence($taskId, $task, $rec);
                     }
                 }
                 
@@ -334,21 +381,28 @@ class TodoListController extends Controller
                     
                     $this->db->query("UPDATE todo_tasks SET title = '$title', description = '$description', priority = $priority, due_date = $dueDate, location = '$location' $attachmentQuery WHERE id = $taskId");
                     
-                    // Update recurrence
+                    // Update recurrence & repeat_until
                     if (!empty($_POST['repeat_type'])) {
                         $repeatType = $this->db->real_escape_string($_POST['repeat_type']);
-                        $this->db->query("INSERT INTO todo_task_recurrences (todo_task_id, repeat_type) VALUES ($taskId, '$repeatType') ON DUPLICATE KEY UPDATE repeat_type = '$repeatType'");
+                        $repeatUntil = !empty($_POST['repeat_until']) ? "'" . $this->db->real_escape_string($_POST['repeat_until']) . "'" : "NULL";
+                        $this->db->query("INSERT INTO todo_task_recurrences (todo_task_id, repeat_type, repeat_until) VALUES ($taskId, '$repeatType', $repeatUntil) ON DUPLICATE KEY UPDATE repeat_type = '$repeatType', repeat_until = $repeatUntil");
                     } else {
                         $this->db->query("DELETE FROM todo_task_recurrences WHERE todo_task_id = $taskId");
                     }
                     
-                    // Update Reminders
+                    // Update Reminders (Custom Date/Time or default to Due Date 09:00 AM)
                     if (isset($_POST['max_reminders'])) {
                         $max = (int)$_POST['max_reminders'];
                         if ($max > 0) {
-                            $triggerTime = !empty($_POST['due_date']) ? "'" . $this->db->real_escape_string($_POST['due_date']) . " 09:00:00'" : "NOW()";
+                            if (!empty($_POST['reminder_date_time'])) {
+                                $triggerTime = "'" . date('Y-m-d H:i:s', strtotime($_POST['reminder_date_time'])) . "'";
+                            } elseif (!empty($_POST['due_date'])) {
+                                $triggerTime = "'" . $this->db->real_escape_string($_POST['due_date']) . " 09:00:00'";
+                            } else {
+                                $triggerTime = "NOW()";
+                            }
                             $this->db->query("DELETE FROM todo_task_reminders WHERE todo_task_id = $taskId");
-                            $this->db->query("INSERT INTO todo_task_reminders (todo_task_id, trigger_time, max_reminders) VALUES ($taskId, $triggerTime, $max)");
+                            $this->db->query("INSERT INTO todo_task_reminders (todo_task_id, trigger_time, max_reminders, reminders_sent_count, is_active) VALUES ($taskId, $triggerTime, $max, 0, 1)");
                         } else {
                             $this->db->query("DELETE FROM todo_task_reminders WHERE todo_task_id = $taskId");
                         }
@@ -363,15 +417,22 @@ class TodoListController extends Controller
 
     public function cron()
     {
-        // 1. Find all active reminders where trigger_time <= NOW()
+        $processed = $this->processPendingReminders();
+        echo "Cron Executed Successfully at " . date('Y-m-d H:i:s') . ". Processed {$processed} reminders.";
+    }
+
+    private function processPendingReminders(): int
+    {
+        // Find all active reminders where trigger_time <= NOW()
         $query = "
             SELECT r.id as reminder_id, r.max_reminders, r.reminders_sent_count, r.trigger_time,
-                   t.id as task_id, t.title, t.user_id, t.due_date,
-                   u.employee_id, e.email, e.name as employee_name
+                   t.id as task_id, t.title, t.description, t.priority, t.location, t.user_id, t.due_date,
+                   u.email as user_email, u.full_name as user_full_name,
+                   e.email as employee_email, e.full_name as employee_name
             FROM todo_task_reminders r
             JOIN todo_tasks t ON r.todo_task_id = t.id
             JOIN users u ON t.user_id = u.id
-            JOIN employees e ON u.employee_id = e.id
+            LEFT JOIN employees e ON u.employee_id = e.id
             WHERE r.is_active = 1 
               AND r.trigger_time <= NOW() 
               AND r.reminders_sent_count < r.max_reminders
@@ -379,22 +440,63 @@ class TodoListController extends Controller
         ";
         
         $res = $this->db->query($query);
+        $count = 0;
         if ($res && $res->num_rows > 0) {
             require_once __DIR__ . '/../core/TodoMailService.php';
             $mailService = new TodoMailService($this->db);
 
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host   = $_SERVER['HTTP_HOST'] ?? 'localhost:8080';
+            $base   = rtrim($GLOBALS['base_url'] ?? '/TPHL-ERP', '/');
+            $todoLink = $scheme . '://' . $host . $base . '/todo';
+
             while ($row = $res->fetch_assoc()) {
-                // Send Email
-                $subject = "Task Reminder: " . $row['title'];
-                $body = "Hello " . $row['employee_name'] . ",<br><br>";
-                $body .= "This is a reminder for your task: <strong>" . $row['title'] . "</strong>.<br>";
-                if ($row['due_date']) {
-                    $body .= "Due Date: " . date('d M, Y h:i A', strtotime($row['due_date'])) . "<br>";
-                }
-                $body .= "<br>Please check your ERP Todo List.";
+                $recipientEmail = !empty($row['employee_email']) ? $row['employee_email'] : $row['user_email'];
+                $recipientName = !empty($row['employee_name']) ? $row['employee_name'] : (!empty($row['user_full_name']) ? $row['user_full_name'] : 'User');
+                $newSentCount = (int)$row['reminders_sent_count'] + 1;
+                $maxReminders = (int)$row['max_reminders'];
+
+                // Send Professional Email
+                $subject = "Task Reminder ({$newSentCount}/{$maxReminders}): " . $row['title'];
                 
-                if (!empty($row['email'])) {
-                    $mailService->send($row['email'], $subject, $body);
+                $body = "
+                <div style='font-family: \"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; padding: 35px 15px;'>
+                    <div style='max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;'>
+                        <div style='background: linear-gradient(135deg, #16a34a, #15803d); padding: 22px 28px;'>
+                            <div style='font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.8); margin-bottom: 4px;'>TPHL ERP &middot; Task Management</div>
+                            <h2 style='margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;'>Task Reminder Notification</h2>
+                        </div>
+                        <div style='padding: 28px;'>
+                            <p style='color: #334155; font-size: 15px; margin: 0 0 14px;'>Hello <strong>" . htmlspecialchars($recipientName) . "</strong>,</p>
+                            <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 20px;'>This is a scheduled reminder (<strong>Reminder {$newSentCount} of {$maxReminders}</strong>) for your pending task:</p>
+                            
+                            <div style='background-color: #f1f5f9; border-left: 4px solid #16a34a; border-radius: 6px; padding: 18px 20px; margin-bottom: 24px;'>
+                                <div style='font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 8px;'>" . htmlspecialchars($row['title']) . "</div>";
+                                if (!empty($row['description'])) {
+                                    $body .= "<div style='font-size: 13.5px; color: #475569; margin-bottom: 10px;'>" . nl2br(htmlspecialchars($row['description'])) . "</div>";
+                                }
+                                $body .= "<div style='font-size: 12.5px; color: #64748b;'>";
+                                if (!empty($row['due_date'])) {
+                                    $body .= "<span style='margin-right: 15px;'>📅 <strong>Due:</strong> " . date('d M Y', strtotime($row['due_date'])) . "</span>";
+                                }
+                                if (!empty($row['location'])) {
+                                    $body .= "<span>📍 <strong>Location:</strong> " . htmlspecialchars($row['location']) . "</span>";
+                                }
+                                $body .= "</div>
+                            </div>
+                            
+                            <div style='text-align: center; margin-top: 25px; margin-bottom: 10px;'>
+                                <a href='{$todoLink}' style='background-color: #16a34a; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;'>View Task in Todo List &rarr;</a>
+                            </div>
+                        </div>
+                        <div style='background-color: #f8fafc; padding: 14px 28px; text-align: center; border-top: 1px solid #f1f5f9;'>
+                            <p style='margin: 0; font-size: 11.5px; color: #94a3b8;'>This is an automated notification from TPHL ERP. Please do not reply directly.</p>
+                        </div>
+                    </div>
+                </div>";
+                
+                if (!empty($recipientEmail)) {
+                    $mailService->send($recipientEmail, $subject, $body);
                 }
 
                 // Insert into ERP notifications table
@@ -402,21 +504,17 @@ class TodoListController extends Controller
                 $this->db->query("INSERT INTO notifications (user_id, message) VALUES ({$row['user_id']}, '$msg')");
 
                 // Update Reminder Logic
-                $newSentCount = $row['reminders_sent_count'] + 1;
-                $maxReminders = (int)$row['max_reminders'];
-                
                 if ($newSentCount >= $maxReminders) {
                     $this->db->query("UPDATE todo_task_reminders SET reminders_sent_count = $newSentCount, is_active = 0 WHERE id = {$row['reminder_id']}");
                 } else {
-                    // Divide 24 hours by max_reminders
                     $intervalHours = 24 / $maxReminders;
                     $intervalMinutes = round($intervalHours * 60);
                     $this->db->query("UPDATE todo_task_reminders SET reminders_sent_count = $newSentCount, trigger_time = DATE_ADD(trigger_time, INTERVAL $intervalMinutes MINUTE) WHERE id = {$row['reminder_id']}");
                 }
+                $count++;
             }
         }
-        
-        echo "Cron Executed Successfully at " . date('Y-m-d H:i:s');
+        return $count;
     }
 
     public function testEmail()

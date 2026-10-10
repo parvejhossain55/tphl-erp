@@ -4,18 +4,19 @@ $show_breadcrumb = false;
 ?>
 
 <style>
-/* Premium Inventory CSS */
-.kpi-card card__wrapper {
-    /* background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); */
-    border: 1px solid rgba(0,0,0,0.05);
+/* Premium Theme-Aware Inventory CSS */
+.kpi-card.card__wrapper,
+.kpi-card {
+    background-color: var(--clr-bg-card, #ffffff);
+    border: 1px solid var(--clr-border-1, rgba(0,0,0,0.06));
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.03);
     padding: 20px;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     height: 100%;
 }
-.kpi-card card__wrapper:hover {
-    transform: translateY(-5px);
+.kpi-card:hover {
+    transform: translateY(-4px);
     box-shadow: 0 8px 25px rgba(0,0,0,0.08);
 }
 .kpi-icon {
@@ -27,100 +28,149 @@ $show_breadcrumb = false;
     justify-content: center;
     font-size: 20px;
     margin-right: 15px;
+    flex-shrink: 0;
 }
-.kpi-primary { background: rgba(13, 110, 253, 0.1); color: #0d6efd; }
-.kpi-success { background: rgba(25, 135, 84, 0.1); color: #198754; }
-.kpi-danger { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
-.kpi-info { background: rgba(13, 202, 240, 0.1); color: #0dcaf0; }
+.kpi-primary { background: rgba(13, 110, 253, 0.12); color: #0d6efd; }
+.kpi-success { background: rgba(25, 135, 84, 0.12); color: #198754; }
+.kpi-danger  { background: rgba(220, 53, 69, 0.12); color: #dc3545; }
+.kpi-info    { background: rgba(13, 202, 240, 0.12); color: #0dcaf0; }
 
 .project-accordion .accordion-item {
-    border: none;
-    background: #fff;
+    border: 1px solid var(--clr-border-1, rgba(0,0,0,0.06));
+    background-color: var(--clr-bg-card, #ffffff);
     border-radius: 15px !important;
     box-shadow: 0 2px 10px rgba(0,0,0,0.04);
     margin-bottom: 20px;
     overflow: hidden;
 }
 .project-accordion .accordion-button {
-    background: #ffffff;
-    padding: 20px 25px;
+    background-color: var(--clr-bg-card, #ffffff);
+    padding: 18px 22px;
     border: none;
     box-shadow: none;
     font-weight: 600;
-    color: #2b3445;
+    color: var(--clr-text-body, #2b3445);
 }
 .project-accordion .accordion-button:not(.collapsed) {
-    background: #fdfdfe;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
+    background-color: var(--clr-bg-card, #ffffff);
+    border-bottom: 1px solid var(--clr-border-1, rgba(0,0,0,0.06));
     box-shadow: none;
 }
 .project-accordion .accordion-button:focus {
     box-shadow: none;
 }
 .project-badge {
-    padding: 6px 14px;
+    padding: 5px 12px;
     border-radius: 20px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
 }
 
 .flat-card {
-    background: #fff;
+    background-color: var(--clr-bg-card, #ffffff);
     border-radius: 12px;
-    border: 1px solid rgba(0,0,0,0.08);
+    border: 1px solid var(--clr-border-1, rgba(0,0,0,0.08));
     overflow: hidden;
     transition: all 0.3s ease;
     height: 100%;
     position: relative;
 }
 .flat-card:hover {
-    box-shadow: 0 10px 20px rgba(0,0,0,0.06);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08);
     transform: translateY(-3px);
 }
 .flat-header {
-    padding: 15px 20px;
+    padding: 14px 18px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
+    border-bottom: 1px solid var(--clr-border-1, rgba(0,0,0,0.06));
 }
-.flat-available .flat-header { border-top: 4px solid #198754; background: rgba(25, 135, 84, 0.02); }
-.flat-booked .flat-header { border-top: 4px solid #dc3545; background: rgba(220, 53, 69, 0.02); }
-.flat-sold .flat-header { border-top: 4px solid #343a40; background: rgba(52, 58, 64, 0.02); }
+.flat-available .flat-header { border-top: 4px solid #198754; background: rgba(25, 135, 84, 0.05); }
+.flat-booked .flat-header { border-top: 4px solid #dc3545; background: rgba(220, 53, 69, 0.05); }
+.flat-sold .flat-header { border-top: 4px solid #6c757d; background: rgba(108, 117, 125, 0.05); }
 
-.flat-title { font-size: 17px; font-weight: 700; color: #2b3445; margin: 0; }
-.flat-body { padding: 20px; }
+.flat-title { font-size: 16px; font-weight: 700; color: var(--clr-text-body, #2b3445); margin: 0; }
+.flat-body { padding: 18px; }
 .flat-detail-item {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 12px;
-    font-size: 14px;
-    color: #495057;
+    margin-bottom: 10px;
+    font-size: 13.5px;
+    color: var(--clr-text-muted, #6c757d);
 }
-.flat-detail-val { font-weight: 600; color: #212529; }
+.flat-detail-val { font-weight: 600; color: var(--clr-text-body, #212529); }
 .flat-footer {
-    padding: 15px 20px;
-    background: #f8f9fa;
-    border-top: 1px solid rgba(0,0,0,0.05);
+    padding: 14px 18px;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-top: 1px solid var(--clr-border-1, rgba(0,0,0,0.06));
     display: flex;
     gap: 10px;
 }
 .price-tag {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 800;
-    color: #0f4c3a; /* TPHL Green */
-    margin-top: 5px;
-    margin-bottom: 5px;
+    color: var(--clr-theme-primary, #198754);
+    margin-top: 4px;
+    margin-bottom: 4px;
     display: block;
 }
 .booking-money-tag {
-    font-size: 14px;
+    font-size: 13px;
     color: #dc3545;
     font-weight: 700;
-    background: rgba(220,53,69,0.08);
+    background: rgba(220,53,69,0.1);
     padding: 6px 12px;
     border-radius: 8px;
     display: inline-block;
+}
+
+/* Dark theme explicit overrides */
+[bd-theme="bd-theme-dark"] .kpi-card,
+[bd-theme="bd-theme-dark"] .project-accordion .accordion-item,
+[bd-theme="bd-theme-dark"] .project-accordion .accordion-button,
+[bd-theme="bd-theme-dark"] .flat-card {
+    background-color: var(--clr-bg-card, #1f2937) !important;
+    border-color: var(--clr-border-1, #374151) !important;
+    color: var(--clr-text-body, #f9fafb) !important;
+}
+
+[bd-theme="bd-theme-dark"] .project-accordion .accordion-button:not(.collapsed) {
+    background-color: rgba(255, 255, 255, 0.02) !important;
+    border-bottom-color: var(--clr-border-1, #374151) !important;
+}
+
+[bd-theme="bd-theme-dark"] .flat-footer {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border-color: var(--clr-border-1, #374151) !important;
+}
+
+[bd-theme="bd-theme-dark"] .price-tag {
+    color: #34d399 !important;
+}
+
+[bd-theme="bd-theme-dark"] .flat-detail-val {
+    color: #f9fafb !important;
+}
+
+[bd-theme="bd-theme-dark"] .flat-available .flat-header {
+    background: rgba(52, 211, 153, 0.12) !important;
+    border-top-color: #34d399 !important;
+}
+
+[bd-theme="bd-theme-dark"] .flat-booked .flat-header {
+    background: rgba(248, 113, 113, 0.12) !important;
+    border-top-color: #f87171 !important;
+}
+
+[bd-theme="bd-theme-dark"] .flat-sold .flat-header {
+    background: rgba(156, 163, 175, 0.12) !important;
+    border-top-color: #9ca3af !important;
+}
+
+[bd-theme="bd-theme-dark"] .booking-money-tag {
+    background: rgba(248, 113, 113, 0.15) !important;
+    color: #f87171 !important;
 }
 
 /* Responsive adjustments */
@@ -141,10 +191,10 @@ $show_breadcrumb = false;
     <!-- Filters Panel -->
     <div class="card__wrapper p-4 mb-4" style="border: 1px solid rgba(0,0,0,0.05); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
         <div class="row">
-            <!-- Project Filter -->
+            <!-- Project Filter (Searchable Select2) -->
             <div class="col-md-4">
                 <label class="form-label fw-semibold fs-13 text-muted"><i class="fa-solid fa-building me-1"></i> Filter by Project</label>
-                <select id="filterProject" class="form-control rounded-pill">
+                <select id="filterProject" class="form-control select2" data-placeholder="Search or Select Project">
                     <option value="all">All Projects</option>
                     <?php foreach ($inventoryProjects as $projRow): ?>
                         <option value="<?= htmlspecialchars($projRow['project_name']) ?>"><?= htmlspecialchars($projRow['project_name']) ?></option>
@@ -222,18 +272,18 @@ $show_breadcrumb = false;
                                 <span class="badge bg-info rounded-pill matching-count-badge ms-2" style="display:none;"></span>
                             </div>
                             <div class="d-flex flex-wrap gap-2">
-                                <span class="project-badge bg-success bg-opacity-10 text-light border border-success border-opacity-25">
+                                <span class="project-badge bg-success-subtle text-success border border-success-subtle">
                                     <i class="fa-solid fa-door-open me-1"></i> Available: <?= $row['available_flats'] ?>
                                 </span>
-                                <span class="project-badge bg-danger bg-opacity-10 text-light border border-danger border-opacity-25">
+                                <span class="project-badge bg-danger-subtle text-danger border border-danger-subtle">
                                     <i class="fa-solid fa-lock me-1"></i> Booked: <?= $row['booked_flats'] ?>
                                 </span>
                                 <?php if (!empty($row['sold_flats']) && $row['sold_flats'] > 0): ?>
-                                    <span class="project-badge bg-dark bg-opacity-10 text-light border border-secondary border-opacity-25">
+                                    <span class="project-badge bg-secondary-subtle text-secondary border border-secondary-subtle">
                                         <i class="fa-solid fa-handshake me-1"></i> Sold: <?= $row['sold_flats'] ?>
                                     </span>
                                 <?php endif; ?>
-                                <span class="project-badge bg-primary bg-opacity-10 text-light border border-primary border-opacity-25 ms-lg-2">
+                                <span class="project-badge bg-primary-subtle text-primary border border-primary-subtle ms-lg-2">
                                     <i class="fa-solid fa-sack-dollar me-1"></i> Value: <?= format_bdt($row['total_flat_value']) ?> ৳
                                 </span>
                             </div>
@@ -308,7 +358,7 @@ $show_breadcrumb = false;
                                 <?php endforeach; ?>
                             </div>
                         <?php else: ?>
-                            <div class="text-center py-5 bg-white rounded-3 border">
+                            <div class="text-center py-5 card__wrapper rounded-3 border">
                                 <div class="text-muted mb-3"><i class="fa-regular fa-folder-open display-4"></i></div>
                                 <h5 class="text-muted">No flats found for this project.</h5>
                             </div>
@@ -321,7 +371,7 @@ $show_breadcrumb = false;
     </div>
 
     <!-- No matching results message -->
-    <div id="noInventoryMessage" class="text-center py-5 bg-white rounded-3 border mt-4" style="display: none;">
+    <div id="noInventoryMessage" class="text-center py-5 card__wrapper rounded-3 border mt-4" style="display: none;">
         <div class="text-muted mb-3"><i class="fa-solid fa-circle-exclamation display-4 text-warning"></i></div>
         <h5 class="text-muted fw-semibold">No matching inventory found</h5>
         <p class="text-muted fs-13 mb-0">Try adjusting your filters or search query.</p>
@@ -329,76 +379,104 @@ $show_breadcrumb = false;
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const filterProject = document.getElementById('filterProject');
-    const filterStatus = document.getElementById('filterStatus');
-    const searchFlat = document.getElementById('searchFlat');
-    const accordionItems = document.querySelectorAll('#inventoryAccordion .accordion-item');
-    const noInventoryMessage = document.getElementById('noInventoryMessage');
+(function() {
+    function initInventoryScripts() {
+        if (typeof jQuery === 'undefined') {
+            setTimeout(initInventoryScripts, 50);
+            return;
+        }
 
-    function applyFilters() {
-        const selectedProject = filterProject.value;
-        const selectedStatus = filterStatus.value;
-        const searchText = searchFlat.value.toLowerCase().trim();
+        jQuery(function($) {
+            const $filterProject = $('#filterProject');
+            const $filterStatus  = $('#filterStatus');
+            const $searchFlat    = $('#searchFlat');
+            const $accordionItems = $('#inventoryAccordion .accordion-item');
+            const $noInventoryMessage = $('#noInventoryMessage');
 
-        let visibleProjectsCount = 0;
-
-        accordionItems.forEach(item => {
-            const projectName = item.getAttribute('data-project-name');
-            const flats = item.querySelectorAll('.flat-container');
-            let visibleFlatsCount = 0;
-            const totalFlatsCount = flats.length;
-
-            // Check if project matches selected project
-            const projectMatches = (selectedProject === 'all' || selectedProject === projectName);
-
-            flats.forEach(flat => {
-                const status = flat.getAttribute('data-status');
-                const flatName = flat.getAttribute('data-flat-name').toLowerCase();
-
-                // Check if status matches
-                const statusMatches = (selectedStatus === 'all' || selectedStatus === status);
-
-                // Check if search text matches (search in flat name)
-                const searchMatches = (searchText === '' || flatName.includes(searchText));
-
-                if (projectMatches && statusMatches && searchMatches) {
-                    flat.style.display = 'block';
-                    visibleFlatsCount++;
-                } else {
-                    flat.style.display = 'none';
-                }
-            });
-
-            const matchingBadge = item.querySelector('.matching-count-badge');
-
-            if (projectMatches && visibleFlatsCount > 0) {
-                item.style.display = 'block';
-                visibleProjectsCount++;
-                
-                // Show matching flats count badge
-                if (matchingBadge) {
-                    matchingBadge.textContent = `Showing: ${visibleFlatsCount} of ${totalFlatsCount}`;
-                    matchingBadge.style.display = 'inline-block';
-                }
-            } else {
-                item.style.display = 'none';
-                if (matchingBadge) {
-                    matchingBadge.style.display = 'none';
+            // Initialize Select2 if available and not initialized
+            if ($.fn.select2 && $filterProject.length) {
+                if (!$filterProject.hasClass('select2-hidden-accessible')) {
+                    $filterProject.select2({
+                        width: '100%',
+                        placeholder: 'Search or Select Project',
+                        allowClear: false
+                    });
                 }
             }
-        });
 
-        // Show/hide no results message
-        if (visibleProjectsCount === 0) {
-            noInventoryMessage.style.display = 'block';
-        } else {
-            noInventoryMessage.style.display = 'none';
-        }
+            function applyFilters() {
+                const selectedProject = $filterProject.val() || 'all';
+                const selectedStatus  = $filterStatus.val() || 'all';
+                const searchText      = ($searchFlat.val() || '').toLowerCase().trim();
+
+                let visibleProjectsCount = 0;
+
+                $accordionItems.each(function() {
+                    const $item = $(this);
+                    const projectName = $item.attr('data-project-name');
+                    const $flats = $item.find('.flat-container');
+                    let visibleFlatsCount = 0;
+                    const totalFlatsCount = $flats.length;
+
+                    // Check if project matches selected project
+                    const projectMatches = (selectedProject === 'all' || selectedProject === projectName);
+
+                    $flats.each(function() {
+                        const $flat = $(this);
+                        const status = $flat.attr('data-status');
+                        const flatName = ($flat.attr('data-flat-name') || '').toLowerCase();
+
+                        // Check if status matches
+                        const statusMatches = (selectedStatus === 'all' || selectedStatus === status);
+
+                        // Check if search text matches (search in flat name)
+                        const searchMatches = (searchText === '' || flatName.includes(searchText));
+
+                        if (projectMatches && statusMatches && searchMatches) {
+                            $flat.show();
+                            visibleFlatsCount++;
+                        } else {
+                            $flat.hide();
+                        }
+                    });
+
+                    const $matchingBadge = $item.find('.matching-count-badge');
+
+                    if (projectMatches && visibleFlatsCount > 0) {
+                        $item.show();
+                        visibleProjectsCount++;
+                        
+                        // Show matching flats count badge
+                        if ($matchingBadge.length) {
+                            $matchingBadge.text(`Showing: ${visibleFlatsCount} of ${totalFlatsCount}`).show();
+                        }
+                    } else {
+                        $item.hide();
+                        if ($matchingBadge.length) {
+                            $matchingBadge.hide();
+                        }
+                    }
+                });
+
+                // Show/hide no results message
+                if (visibleProjectsCount === 0) {
+                    $noInventoryMessage.show();
+                } else {
+                    $noInventoryMessage.hide();
+                }
+            }
+
+            // Bind change events
+            $filterProject.on('change select2:select select2:clear', applyFilters);
+            $filterStatus.on('change', applyFilters);
+            $searchFlat.on('input keyup', applyFilters);
+        });
     }
 
-    filterProject.addEventListener('change', applyFilters);
-    filterStatus.addEventListener('change', applyFilters);
-    searchFlat.addEventListener('input', applyFilters);
-});
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initInventoryScripts);
+    } else {
+        initInventoryScripts();
+    }
+})();
 </script>

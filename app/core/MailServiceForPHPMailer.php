@@ -31,38 +31,218 @@ class MailService
         }
     }
 
+    public function sendTaskMailWithCC($toEmail, $title, $link, $assignedBy, $assignedTo, $ccUsers = [], $mentionUsers = [], $taskDetails = [])
+    {
+        $mail = new PHPMailer(true);
+
+        try {
+            $mail->isSMTP();
+            $mail->CharSet = 'UTF-8';
+            $mail->SMTPDebug = 0;
+            $mail->Timeout = 10;
+
+            $mail->Host       = $this->host;
+            $mail->SMTPAuth   = true;
+            $mail->Username   = $this->username;
+            $mail->Password   = $this->password;
+            $mail->SMTPSecure = isset($this->secure) ? $this->secure : 'ssl';
+            $mail->Port       = $this->port;
+
+            $mail->setFrom('no-reply@dpremiumhomes.com', 'TPHL ERP');
+            if (!empty($toEmail)) {
+                $mail->addAddress($toEmail, $assignedTo['full_name'] ?? '');
+            }
+
+            // Add CC recipients
+            foreach ($ccUsers as $cc) {
+                if (!empty($cc['email']) && filter_var($cc['email'], FILTER_VALIDATE_EMAIL)) {
+                    $mail->addCC($cc['email'], $cc['full_name'] ?? '');
+                }
+            }
+
+            $mail->isHTML(true);
+            $mail->Subject = 'New Task Assigned: ' . $title;
+
+            $ccNames = !empty($ccUsers) ? implode(', ', array_map(fn($u) => $u['full_name'] ?? $u['email'], $ccUsers)) : '';
+            $mentionNames = !empty($mentionUsers) ? implode(', ', array_map(fn($u) => $u['full_name'] ?? $u['email'], $mentionUsers)) : '';
+
+            $priorityBadge = ucfirst($taskDetails['priority'] ?? 'Medium');
+            $startFormatted = !empty($taskDetails['start_date']) ? date('d M Y', strtotime($taskDetails['start_date'])) : 'N/A';
+            $deadlineFormatted = !empty($taskDetails['deadline']) ? date('d M Y', strtotime($taskDetails['deadline'])) : 'N/A';
+
+            $body = "
+            <div style='font-family: \"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; padding: 35px 15px;'>
+                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;'>
+                    <div style='background: linear-gradient(135deg, #16a34a, #15803d); padding: 22px 28px;'>
+                        <div style='font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.8); margin-bottom: 4px;'>TPHL ERP &middot; Task Management</div>
+                        <h2 style='margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;'>New Task Assignment</h2>
+                    </div>
+                    <div style='padding: 28px;'>
+                        <p style='color: #334155; font-size: 15px; margin: 0 0 14px;'>Hello <strong>" . htmlspecialchars($assignedTo['full_name'] ?? 'Team Member') . "</strong>,</p>
+                        <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 20px;'>A new task has been assigned to you in TPHL ERP. Details are given below:</p>
+                        
+                        <div style='background-color: #f1f5f9; border-left: 4px solid #16a34a; border-radius: 6px; padding: 18px 20px; margin-bottom: 22px;'>
+                            <div style='font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 8px;'>" . htmlspecialchars($title) . "</div>";
+                            if (!empty($taskDetails['description'])) {
+                                $body .= "<div style='font-size: 13.5px; color: #475569; margin-bottom: 12px; line-height: 1.5;'>" . nl2br(strip_tags($taskDetails['description'])) . "</div>";
+                            }
+                            $body .= "
+                            <div style='font-size: 12.5px; color: #64748b; line-height: 1.8;'>
+                                <div>📅 <strong>Start:</strong> {$startFormatted} &nbsp;|&nbsp; ⏰ <strong>Deadline:</strong> {$deadlineFormatted}</div>
+                                <div> <strong>Priority:</strong> <span style='font-weight: 600; color: #16a34a;'>{$priorityBadge}</span></div>";
+                                if (!empty($mentionNames)) {
+                                    $body .= "<div>📢 <strong>Mentioned:</strong> <span style='color: #2563eb;'>{$mentionNames}</span></div>";
+                                }
+                                if (!empty($ccNames)) {
+                                    $body .= "<div>✉️ <strong>CC:</strong> <span style='color: #0891b2;'>{$ccNames}</span></div>";
+                                }
+                            $body .= "
+                            </div>
+                        </div>
+
+                        <div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 18px; margin-bottom: 22px; font-size: 13px; color: #475569;'>
+                            <strong>Assigned By:</strong> " . htmlspecialchars($assignedBy['full_name'] ?? 'Management') . "
+                            " . (!empty($assignedBy['designation_name']) ? "<br><span style='color:#64748b;'>{$assignedBy['designation_name']} &middot; {$assignedBy['department_name']}</span>" : "") . "
+                        </div>
+                        
+                        <div style='text-align: center; margin: 25px 0 10px;'>
+                            <a href='{$link}' style='background-color: #16a34a; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;'>View Task Details &rarr;</a>
+                        </div>
+                    </div>
+                    <div style='background-color: #f8fafc; padding: 14px 28px; text-align: center; border-top: 1px solid #f1f5f9;'>
+                        <p style='margin: 0; font-size: 11.5px; color: #94a3b8;'>This is an automated notification from TPHL ERP. Please do not reply directly.</p>
+                    </div>
+                </div>
+            </div>";
+
+            $mail->Body = $body;
+            $mail->AltBody = "New Task: {$title}\nAssigned To: {$assignedTo['full_name']}\nAssigned By: {$assignedBy['full_name']}\nLink: {$link}";
+
+            $mail->send();
+            return true;
+        } catch (Exception $e) {
+            $this->lastError = $mail->ErrorInfo;
+            error_log("[MailService] Task Mail Error: " . $mail->ErrorInfo);
+            return false;
+        }
+    }
+
+    public function sendMentionMail($toEmail, $mentionName, $title, $link, $assignedBy, $assignedTo, $allMentions = [], $allCcs = [], $taskDetails = [])
+    {
+        $mail = new PHPMailer(true);
+
+        try {
+            $mail->isSMTP();
+            $mail->CharSet = 'UTF-8';
+            $mail->SMTPDebug = 0;
+            $mail->Timeout = 10;
+
+            $mail->Host       = $this->host;
+            $mail->SMTPAuth   = true;
+            $mail->Username   = $this->username;
+            $mail->Password   = $this->password;
+            $mail->SMTPSecure = isset($this->secure) ? $this->secure : 'ssl';
+            $mail->Port       = $this->port;
+
+            $mail->setFrom('no-reply@dpremiumhomes.com', 'TPHL ERP');
+            $mail->addAddress($toEmail, $mentionName);
+
+            $mail->isHTML(true);
+            $mail->Subject = '[Mentioned] You were mentioned in task: ' . $title;
+
+            $mentionNames = !empty($allMentions) ? implode(', ', array_map(fn($u) => $u['full_name'] ?? $u['email'], $allMentions)) : $mentionName;
+            $ccNames = !empty($allCcs) ? implode(', ', array_map(fn($u) => $u['full_name'] ?? $u['email'], $allCcs)) : '';
+
+            $priorityBadge = ucfirst($taskDetails['priority'] ?? 'Medium');
+            $startFormatted = !empty($taskDetails['start_date']) ? date('d M Y', strtotime($taskDetails['start_date'])) : 'N/A';
+            $deadlineFormatted = !empty($taskDetails['deadline']) ? date('d M Y', strtotime($taskDetails['deadline'])) : 'N/A';
+
+            $body = "
+            <div style='font-family: \"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; padding: 35px 15px;'>
+                <div style='max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;'>
+                    <div style='background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 22px 28px;'>
+                        <div style='font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.8); margin-bottom: 4px;'>TPHL ERP &middot; Task Mention Alert</div>
+                        <h2 style='margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;'>You were Mentioned in a Task</h2>
+                    </div>
+                    <div style='padding: 28px;'>
+                        <div style='background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 14px; color: #1e40af;'>
+                            📢 <strong>Notice:</strong> <strong>" . htmlspecialchars($assignedBy['full_name'] ?? 'Someone') . "</strong> mentioned you in a task assigned to <strong>" . htmlspecialchars($assignedTo['full_name'] ?? 'an employee') . "</strong>.
+                        </div>
+
+                        <p style='color: #334155; font-size: 15px; margin: 0 0 14px;'>Hello <strong>" . htmlspecialchars($mentionName) . "</strong>,</p>
+                        <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 20px;'>Here are the complete details of the task you were mentioned in:</p>
+                        
+                        <div style='background-color: #f1f5f9; border-left: 4px solid #2563eb; border-radius: 6px; padding: 18px 20px; margin-bottom: 22px;'>
+                            <div style='font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 8px;'>" . htmlspecialchars($title) . "</div>";
+                            if (!empty($taskDetails['description'])) {
+                                $body .= "<div style='font-size: 13.5px; color: #475569; margin-bottom: 12px; line-height: 1.5;'>" . nl2br(strip_tags($taskDetails['description'])) . "</div>";
+                            }
+                            $body .= "
+                            <div style='font-size: 12.5px; color: #64748b; line-height: 1.8;'>
+                                <div>👤 <strong>Assigned To:</strong> <span style='font-weight: 600; color: #0f172a;'>" . htmlspecialchars($assignedTo['full_name'] ?? 'N/A') . "</span></div>
+                                <div>📢 <strong>Mentioned Users:</strong> <span style='color: #2563eb;'>{$mentionNames}</span></div>";
+                                if (!empty($ccNames)) {
+                                    $body .= "<div>✉️ <strong>CC Users:</strong> <span style='color: #0891b2;'>{$ccNames}</span></div>";
+                                }
+                            $body .= "
+                                <div>📅 <strong>Start Date:</strong> {$startFormatted} &nbsp;|&nbsp; ⏰ <strong>Deadline:</strong> {$deadlineFormatted}</div>
+                                <div>🚩 <strong>Priority:</strong> <span style='font-weight: 600; color: #2563eb;'>{$priorityBadge}</span></div>
+                            </div>
+                        </div>
+
+                        <div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 18px; margin-bottom: 22px; font-size: 13px; color: #475569;'>
+                            <strong>Assigned By:</strong> " . htmlspecialchars($assignedBy['full_name'] ?? 'Management') . "
+                            " . (!empty($assignedBy['designation_name']) ? "<br><span style='color:#64748b;'>{$assignedBy['designation_name']} &middot; {$assignedBy['department_name']}</span>" : "") . "
+                        </div>
+                        
+                        <div style='text-align: center; margin: 25px 0 10px;'>
+                            <a href='{$link}' style='background-color: #2563eb; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;'>View Task in Dashboard &rarr;</a>
+                        </div>
+                    </div>
+                    <div style='background-color: #f8fafc; padding: 14px 28px; text-align: center; border-top: 1px solid #f1f5f9;'>
+                        <p style='margin: 0; font-size: 11.5px; color: #94a3b8;'>This is an automated notification from TPHL ERP. Please do not reply directly.</p>
+                    </div>
+                </div>
+            </div>";
+
+            $mail->Body = $body;
+            $mail->AltBody = "You were mentioned in task: {$title}\nAssigned To: {$assignedTo['full_name']}\nAssigned By: {$assignedBy['full_name']}\nLink: {$link}";
+
+            $mail->send();
+            return true;
+        } catch (Exception $e) {
+            $this->lastError = $mail->ErrorInfo;
+            error_log("[MailService] Mention Mail Error: " . $mail->ErrorInfo);
+            return false;
+        }
+    }
+
     public function sendMail($email, $title, $link, $assignedBy)
     {
         $mail = new PHPMailer(true);
 
         try {
-            // SMTP config
-
             $mail->isSMTP();
             $mail->CharSet = 'UTF-8';
-            $mail->SMTPDebug = 0; // set to 0 to prevent raw debug output from breaking HTTP redirects
+            $mail->SMTPDebug = 0;
             $mail->Timeout = 5;
 
             $mail->Host       = $this->host;
             $mail->SMTPAuth   = true;
             $mail->Username   = $this->username;
             $mail->Password   = $this->password;
-            $mail->SMTPSecure = 'ssl';
+            $mail->SMTPSecure = isset($this->secure) ? $this->secure : 'ssl';
             $mail->Port       = $this->port;
 
-            // Sender & receiver
             $mail->setFrom('no-reply@dpremiumhomes.com', 'TPHL ERP');
             $mail->addAddress($email);
 
-            // Email content
             $mail->isHTML(true);
             $mail->Subject = $title;
 
             $mail->Body = $this->buildTemplate($title, $link, $assignedBy);
 
             $mail->send();
-
-            // echo "Email sent successfully to $email";
             return true;
         } catch (Exception $e) {
             $this->lastError = $mail->ErrorInfo;

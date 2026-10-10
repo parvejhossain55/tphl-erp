@@ -77,13 +77,10 @@ class ExpenseAnalyticsController extends Controller
         $officeBranchesList = $this->model->getOfficeBranchesList();
         $branchSummary      = $this->model->getOfficeBranchCostSummary($fromDate, $toDate, $branchId);
 
-        // 5. Detailed Expense Ledger Table
-        $ledgerRecords = $this->model->getExpenseLedgerRecords($filters);
-
-        // 6. Dropdown Projects List
+        // 5. Dropdown Projects List
         $projectsList = $this->model->getAllProjectsList();
 
-        // 7. ApexCharts Paid vs Due Data
+        // 6. ApexCharts Paid vs Due Data
         $chartData = $this->model->getChartPaidVsDueData($fromDate, $toDate, $projectId);
 
         $this->view("analytics/expense-analytics", [
@@ -95,10 +92,118 @@ class ExpenseAnalyticsController extends Controller
             "topProjectsData"    => $topProjectsData,
             "officeBranchesList" => $officeBranchesList,
             "branchSummary"      => $branchSummary,
-            "ledgerRecords"      => $ledgerRecords,
             "projectsList"       => $projectsList,
             "chartData"          => $chartData
         ]);
+    }
+
+    /**
+     * Server-side AJAX Data for Detailed Expense Ledger DataTable
+     */
+    public function getLedgerAjax()
+    {
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+
+        $draw   = isset($_REQUEST['draw']) ? (int)$_REQUEST['draw'] : 1;
+        $start  = isset($_REQUEST['start']) ? (int)$_REQUEST['start'] : 0;
+        $length = isset($_REQUEST['length']) ? (int)$_REQUEST['length'] : 25;
+        if ($length < 0) {
+            $length = 10000;
+        }
+        
+        $search = $_POST['search']['value'] ?? ($_GET['search'] ?? ($_REQUEST['search']['value'] ?? ''));
+
+        $projectId = $_REQUEST['project_id'] ?? '';
+        $branchId  = $_REQUEST['branch_id'] ?? '';
+        $fromDate  = $_REQUEST['from_date'] ?? '';
+        $toDate    = $_REQUEST['to_date'] ?? '';
+        $moduleKey = $_REQUEST['module'] ?? '';
+
+        $filters = [
+            'project_id' => $projectId,
+            'branch_id'  => $branchId,
+            'from_date'  => $fromDate,
+            'to_date'    => $toDate,
+            'module'     => $moduleKey,
+            'search'     => $search
+        ];
+
+        $result = $this->model->getExpenseLedgerPaginated($filters, $start, $length, $search);
+
+        $rows = [];
+        $sl = $start + 1;
+
+        foreach ($result['data'] as $r) {
+            $projName = !empty($r['project_name']) ? $r['project_name'] : 'Without Project / General';
+            $isWithoutProj = empty($r['project_name']) || empty($r['project_id']);
+            
+            $statusStr = strtolower($r['status'] ?? '');
+            $statusBadge = 'bg-secondary';
+            if (in_array($statusStr, ['approved', 'management_approved', 'qc_approved'])) $statusBadge = 'bg-primary';
+            elseif (in_array($statusStr, ['paid', 'fully_paid', 'labor_disbursed'])) $statusBadge = 'bg-success';
+            elseif (in_array($statusStr, ['partially_paid'])) $statusBadge = 'bg-info text-dark';
+            elseif (in_array($statusStr, ['pending', 'submitted', 'draft', 'pending_dept', 'pending_qc', 'pending_hr', 'pending_accounts', ''])) $statusBadge = 'bg-warning text-dark';
+            elseif (in_array($statusStr, ['rejected'])) $statusBadge = 'bg-danger';
+
+            $scopeHtml = '';
+            if ($isWithoutProj) {
+                $scopeHtml = '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle extra-small d-block mb-1">
+                                <i class="fa-solid fa-layer-group me-1"></i> Without Project / General
+                              </span>';
+                if (!empty($r['branch_name']) && $r['branch_name'] !== 'Unassigned / Central') {
+                    $scopeHtml .= '<span class="badge bg-info-subtle text-info border border-info-subtle extra-small fw-semibold d-inline-block">
+                                     <i class="fa-solid fa-location-dot me-1"></i> ' . htmlspecialchars($r['branch_name']) . '
+                                   </span>';
+                }
+            } else {
+                $scopeHtml = '<span class="badge bg-primary-subtle text-primary border border-primary-subtle extra-small fw-semibold">
+                                <i class="fa-solid fa-building me-1"></i> ' . htmlspecialchars($projName) . '
+                              </span>';
+            }
+
+            $dateFormatted = !empty($r['created_at']) ? date('d-m-Y', strtotime($r['created_at'])) : '-';
+
+            $payeeHtml = '<div class="fw-bold text-dark text-truncate" style="max-width: 180px;" title="' . htmlspecialchars($r['payee_name'] ?? '') . '">'
+                       . htmlspecialchars($r['payee_name'] ?? '-') . '</div>'
+                       . '<span class="extra-small text-muted">' . htmlspecialchars($r['payee_type'] ?? '-') . '</span>';
+
+            $purposeHtml = '<div class="text-truncate" style="max-width: 220px;" title="' . htmlspecialchars($r['purpose_title'] ?? '') . '">'
+                         . htmlspecialchars($r['purpose_title'] ?? '-') . '</div>';
+
+            $reqFormatted = '৳ ' . number_format((float)($r['req_amount'] ?? 0), 2);
+            $appFormatted = '৳ ' . number_format((float)($r['approved_amount'] ?? 0), 2);
+            $paidFormatted = '<span class="fw-bold text-success">৳ ' . number_format((float)($r['paid_amount'] ?? 0), 2) . '</span>';
+            $dueFormatted = '<span class="fw-bold text-danger">৳ ' . number_format((float)($r['due_amount'] ?? 0), 2) . '</span>';
+
+            $statusFormatted = '<span class="badge ' . $statusBadge . ' extra-small rounded-pill">'
+                             . htmlspecialchars(ucfirst(str_replace('_', ' ', $r['status'] ?? 'pending')))
+                             . '</span>';
+
+            $rows[] = [
+                '<span class="text-muted fw-semibold">' . $sl++ . '</span>',
+                '<span class="text-nowrap text-muted">' . $dateFormatted . '</span>',
+                '<span class="badge bg-light text-dark border extra-small">' . htmlspecialchars($r['module_name'] ?? '') . '</span>',
+                $scopeHtml,
+                $payeeHtml,
+                $purposeHtml,
+                '<div class="text-end fw-semibold text-dark text-nowrap">' . $reqFormatted . '</div>',
+                '<div class="text-end text-muted text-nowrap">' . $appFormatted . '</div>',
+                '<div class="text-end text-nowrap">' . $paidFormatted . '</div>',
+                '<div class="text-end text-nowrap">' . $dueFormatted . '</div>',
+                '<div class="text-center text-nowrap">' . $statusFormatted . '</div>'
+            ];
+        }
+
+        echo json_encode([
+            "draw"            => $draw,
+            "recordsTotal"    => $result['total'],
+            "recordsFiltered" => $result['filtered'],
+            "data"            => $rows
+        ]);
+        exit;
     }
 
     /**

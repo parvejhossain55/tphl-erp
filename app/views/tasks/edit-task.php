@@ -48,6 +48,55 @@
                                           </div>
                                       </div>
 
+                                      <?php
+                                      $selectedMentions = [];
+                                      if (!empty($task['mentioned_user_ids'])) {
+                                          $decoded = json_decode($task['mentioned_user_ids'], true);
+                                          $selectedMentions = is_array($decoded) ? $decoded : explode(',', $task['mentioned_user_ids']);
+                                      }
+                                      $selectedCcs = [];
+                                      if (!empty($task['cc_user_ids'])) {
+                                          $decoded = json_decode($task['cc_user_ids'], true);
+                                          $selectedCcs = is_array($decoded) ? $decoded : explode(',', $task['cc_user_ids']);
+                                      }
+                                      ?>
+
+                                      <!-- Mention Employees -->
+                                      <div class="col-lg-6">
+                                          <div class="from__input-box">
+                                              <div class="form__input-title">
+                                                  <label for="mention_user_ids"><i class="fa-solid fa-at text-primary me-1"></i> Mention Employees</label>
+                                              </div>
+                                              <div class="form__input">
+                                                  <select id="mention_user_ids" name="mention_user_ids[]" class="form-select select2" multiple data-placeholder="Select employees to mention...">
+                                                      <?php foreach ($users as $employee): ?>
+                                                          <option value="<?= $employee['id'] ?>" <?= in_array($employee['id'], $selectedMentions) ? 'selected' : '' ?>>
+                                                              <?= htmlspecialchars($employee['full_name']) ?><?php if (!empty($employee['employee_code'])): ?> (<?= htmlspecialchars($employee['employee_code']) ?>)<?php endif; ?>
+                                                          </option>
+                                                      <?php endforeach; ?>
+                                                  </select>
+                                              </div>
+                                          </div>
+                                      </div>
+
+                                      <!-- CC Employees -->
+                                      <div class="col-lg-6">
+                                          <div class="from__input-box">
+                                              <div class="form__input-title">
+                                                  <label for="cc_user_ids"><i class="fa-solid fa-envelope-open-text text-info me-1"></i> CC Employees</label>
+                                              </div>
+                                              <div class="form__input">
+                                                  <select id="cc_user_ids" name="cc_user_ids[]" class="form-select select2" multiple data-placeholder="Select employees for CC...">
+                                                      <?php foreach ($users as $employee): ?>
+                                                          <option value="<?= $employee['id'] ?>" <?= in_array($employee['id'], $selectedCcs) ? 'selected' : '' ?>>
+                                                              <?= htmlspecialchars($employee['full_name']) ?><?php if (!empty($employee['employee_code'])): ?> (<?= htmlspecialchars($employee['employee_code']) ?>)<?php endif; ?>
+                                                          </option>
+                                                      <?php endforeach; ?>
+                                                  </select>
+                                              </div>
+                                          </div>
+                                      </div>
+
                                       <!-- Start Date -->
                                       <div class="col-md-6">
                                           <div class="from__input-box">

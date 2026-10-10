@@ -20,23 +20,43 @@
         .module-card-col-5 { width: 100%; }
     }
 
+    /* Expense Card base & dark theme integration */
     .expense-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
+        background: var(--clr-bg-card, #ffffff);
+        border: 1px solid var(--clr-border-1, #e2e8f0);
         border-radius: 10px;
         transition: all 0.22s ease-in-out;
         position: relative;
         cursor: pointer;
+        color: var(--clr-text-body, #1e293b);
     }
     .expense-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.07);
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
         border-color: #cbd5e1;
     }
     .expense-card.active-module {
         border: 2px solid #3b82f6 !important;
-        background: #f8faff !important;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+        background: rgba(59, 130, 246, 0.08) !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18) !important;
+    }
+
+    /* Dark theme overrides for expense-card */
+    [bd-theme="bd-theme-dark"] .expense-card {
+        background: var(--clr-bg-card, #1f2937) !important;
+        border-color: var(--clr-border-1, #374151) !important;
+        color: var(--clr-text-body, #f9fafb) !important;
+        box-shadow: none;
+    }
+    [bd-theme="bd-theme-dark"] .expense-card:hover {
+        background: rgba(255, 255, 255, 0.04) !important;
+        border-color: #4b5563 !important;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35) !important;
+    }
+    [bd-theme="bd-theme-dark"] .expense-card.active-module {
+        border-color: #3b82f6 !important;
+        background: rgba(59, 130, 246, 0.18) !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3) !important;
     }
 
     .pulse-amber {
@@ -61,10 +81,16 @@
         letter-spacing: 0.3px;
         color: #64748b;
     }
+    [bd-theme="bd-theme-dark"] .stat-label {
+        color: #94a3b8;
+    }
     .stat-value {
         font-size: 13.5px;
         font-weight: 700;
         color: #1e293b;
+    }
+    [bd-theme="bd-theme-dark"] .stat-value {
+        color: #f8fafc;
     }
 
     .leaderboard-item {
@@ -75,15 +101,65 @@
     .leaderboard-item:hover {
         background: #f1f5f9;
     }
+    [bd-theme="bd-theme-dark"] .leaderboard-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
 
+    .preset-btn {
+        transition: all 0.15s ease;
+    }
     .preset-btn.active {
         background-color: #3b82f6 !important;
         color: #ffffff !important;
         border-color: #3b82f6 !important;
     }
+    [bd-theme="bd-theme-dark"] .preset-btn {
+        border-color: #374151;
+        color: #94a3b8;
+    }
+    [bd-theme="bd-theme-dark"] .preset-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: #f8fafc;
+    }
+
+    /* Sub-containers & cards inside dark mode */
+    .kpi-sub-box {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+    }
+    [bd-theme="bd-theme-dark"] .kpi-sub-box {
+        background-color: rgba(255, 255, 255, 0.03) !important;
+        border-color: var(--clr-border-1, #374151) !important;
+    }
+
+    .branch-paid-box-paid {
+        background-color: #ecfdf5;
+        border: 1px solid #a7f3d0;
+    }
+    [bd-theme="bd-theme-dark"] .branch-paid-box-paid {
+        background-color: rgba(16, 185, 129, 0.12) !important;
+        border-color: rgba(16, 185, 129, 0.25) !important;
+    }
+
+    .branch-paid-box-default {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+    }
+    [bd-theme="bd-theme-dark"] .branch-paid-box-default {
+        background-color: rgba(255, 255, 255, 0.03) !important;
+        border-color: var(--clr-border-1, #374151) !important;
+    }
+
+    [bd-theme="bd-theme-dark"] .card-header-clean {
+        border-color: var(--clr-border-1, #374151) !important;
+    }
+    [bd-theme="bd-theme-dark"] .card-footer-clean {
+        background-color: rgba(255, 255, 255, 0.02) !important;
+        border-color: var(--clr-border-1, #374151) !important;
+    }
 </style>
 
-<div class="container-fluid py-4">
+<div class="app__slide-wrapper">
     <!-- Header Section -->
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div>
@@ -122,163 +198,159 @@
     </div>
 
     <!-- Filter Toolbar Card (Strictly 1 Single Line on Desktop) -->
-    <div class="card border-0 shadow-sm rounded-3 mb-4">
-        <div class="card-body p-3">
-            <form method="GET" action="<?= $base_url ?>/expense-analytics" id="analyticsFilterForm">
-                <div class="d-flex align-items-end gap-2 flex-nowrap" style="overflow-x: auto; padding-bottom: 2px;">
-                    <!-- Project Filter -->
-                    <div style="flex: 1.2; min-width: 140px;">
-                        <label class="form-label stat-label mb-1 text-nowrap extra-small text-uppercase fw-bold text-secondary">
-                            <i class="fa-solid fa-building text-primary me-1"></i> Project Scope
-                        </label>
-                        <select name="project_id" class="form-select form-select-sm" onchange="this.form.submit()" style="font-size: 12px; height: 34px;">
-                            <option value="">🏢 All Projects & General</option>
-                            <option value="without_project" <?= ($filters['project_id'] === 'without_project' || $filters['project_id'] === 'none') ? 'selected' : '' ?>>
-                                🚫 Without Project / General Overhead
+    <div class="card__wrapper mb-20 p-3">
+        <form method="GET" action="<?= $base_url ?>/expense-analytics" id="analyticsFilterForm">
+            <div class="d-flex align-items-end gap-2 flex-nowrap" style="overflow-x: auto; padding-bottom: 2px;">
+                <!-- Project Filter -->
+                <div style="flex: 1.2; min-width: 140px;">
+                    <label class="form-label stat-label mb-1 text-nowrap extra-small text-uppercase fw-bold text-secondary">
+                        <i class="fa-solid fa-building text-primary me-1"></i> Project Scope
+                    </label>
+                    <select name="project_id" class="form-select form-select-sm" onchange="this.form.submit()" style="font-size: 12px; height: 34px;">
+                        <option value=""> All Projects & General</option>
+                        <option value="without_project" <?= ($filters['project_id'] === 'without_project' || $filters['project_id'] === 'none') ? 'selected' : '' ?>>
+                             Without Project / General Overhead
+                        </option>
+                        <optgroup label="── Active Construction Projects ──">
+                            <?php foreach ($projectsList as $proj): ?>
+                                <option value="<?= $proj['id'] ?>" <?= ($filters['project_id'] == $proj['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($proj['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- Office Branch Filter (for non-project overhead) -->
+                <div style="flex: 1.1; min-width: 130px;">
+                    <label class="form-label stat-label mb-1 text-nowrap extra-small text-uppercase fw-bold text-secondary">
+                        <i class="fa-solid fa-location-dot text-primary me-1"></i> Office Branch
+                    </label>
+                    <select name="branch_id" class="form-select form-select-sm" onchange="this.form.submit()" style="font-size: 12px; height: 34px;">
+                        <option value="">All Office Branches</option>
+                        <?php foreach ($officeBranchesList ?? [] as $b): ?>
+                            <option value="<?= $b['id'] ?>" <?= ((string)($filters['branch_id'] ?? '') === (string)$b['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($b['name']) ?>
                             </option>
-                            <optgroup label="── Active Construction Projects ──">
-                                <?php foreach ($projectsList as $proj): ?>
-                                    <option value="<?= $proj['id'] ?>" <?= ($filters['project_id'] == $proj['id']) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($proj['name']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </optgroup>
-                        </select>
-                    </div>
-
-                    <!-- Office Branch Filter (for non-project overhead) -->
-                    <div style="flex: 1.1; min-width: 130px;">
-                        <label class="form-label stat-label mb-1 text-nowrap extra-small text-uppercase fw-bold text-secondary">
-                            <i class="fa-solid fa-location-dot text-primary me-1"></i> Office Branch
-                        </label>
-                        <select name="branch_id" class="form-select form-select-sm" onchange="this.form.submit()" style="font-size: 12px; height: 34px;">
-                            <option value="">🏢 All Office Branches</option>
-                            <?php foreach ($officeBranchesList ?? [] as $b): ?>
-                                <option value="<?= $b['id'] ?>" <?= ((string)($filters['branch_id'] ?? '') === (string)$b['id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($b['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <!-- Module Filter -->
-                    <div style="flex: 1.1; min-width: 130px;">
-                        <label class="form-label stat-label mb-1 text-nowrap extra-small text-uppercase fw-bold text-secondary">
-                            <i class="fa-solid fa-boxes-stacked text-primary me-1"></i> Expense Module
-                        </label>
-                        <select name="module" class="form-select form-select-sm" onchange="this.form.submit()" style="font-size: 12px; height: 34px;">
-                            <option value="">All 10 Modules</option>
-                            <?php foreach ($moduleCards as $mKey => $mDef): ?>
-                                <option value="<?= $mKey ?>" <?= ($filters['module'] === $mKey) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($mDef['name']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <!-- Date Range From -->
-                    <div style="flex: 0.85; min-width: 110px;">
-                        <label class="form-label stat-label mb-1 text-nowrap extra-small text-uppercase fw-bold text-secondary">
-                            <i class="fa-regular fa-calendar text-muted me-1"></i> From Date
-                        </label>
-                        <input type="date" name="from_date" id="filterFromDate" class="form-control form-control-sm" 
-                               value="<?= htmlspecialchars($filters['from_date']) ?>" style="font-size: 12px; height: 34px;">
-                    </div>
-
-                    <!-- Date Range To -->
-                    <div style="flex: 0.85; min-width: 110px;">
-                        <label class="form-label stat-label mb-1 text-nowrap extra-small text-uppercase fw-bold text-secondary">
-                            <i class="fa-regular fa-calendar-check text-muted me-1"></i> To Date
-                        </label>
-                        <input type="date" name="to_date" id="filterToDate" class="form-control form-control-sm" 
-                               value="<?= htmlspecialchars($filters['to_date']) ?>" style="font-size: 12px; height: 34px;">
-                    </div>
-
-                    <!-- Search Input -->
-                    <div style="flex: 1.25; min-width: 135px;">
-                        <label class="form-label stat-label mb-1 text-nowrap extra-small text-uppercase fw-bold text-secondary">
-                            <i class="fa-solid fa-magnifying-glass text-muted me-1"></i> Payee / Vendor / Branch
-                        </label>
-                        <input type="text" name="search" class="form-control form-control-sm" 
-                               placeholder="Search payee, branch..." value="<?= htmlspecialchars($filters['search']) ?>" style="font-size: 12px; height: 34px;">
-                    </div>
-
-                    <!-- Submit & Reset Action Buttons -->
-                    <div class="d-flex align-items-center gap-1" style="flex: 0 0 auto;">
-                        <button type="submit" class="btn btn-primary btn-sm px-3 shadow-sm fw-semibold text-nowrap" style="height: 34px;">
-                            <i class="fa-solid fa-filter me-1"></i> Filter
-                        </button>
-                        <?php if (!empty($filters['project_id']) || !empty($filters['branch_id']) || !empty($filters['module']) || !empty($filters['from_date']) || !empty($filters['to_date']) || !empty($filters['search'])): ?>
-                            <a href="<?= $base_url ?>/expense-analytics" class="btn btn-outline-secondary btn-sm px-2 text-nowrap" title="Reset Filters" style="height: 34px;">
-                                <i class="fa-solid fa-arrows-rotate"></i>
-                            </a>
-                        <?php endif; ?>
-                    </div>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
 
-                <!-- Quick Date Presets -->
-                <div class="d-flex align-items-center gap-1 mt-2 pt-2 border-top">
-                    <span class="text-muted extra-small me-2"><i class="fa-solid fa-clock-rotate-left me-1"></i>Quick Date:</span>
-                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0 preset-btn" onclick="setDatePreset('all')">All Time</button>
-                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0 preset-btn" onclick="setDatePreset('this_month')">This Month</button>
-                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0 preset-btn" onclick="setDatePreset('last_month')">Last Month</button>
-                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0 preset-btn" onclick="setDatePreset('this_year')">This Year</button>
+                <!-- Module Filter -->
+                <div style="flex: 1.1; min-width: 130px;">
+                    <label class="form-label stat-label mb-1 text-nowrap extra-small text-uppercase fw-bold text-secondary">
+                        <i class="fa-solid fa-boxes-stacked text-primary me-1"></i> Expense Module
+                    </label>
+                    <select name="module" class="form-select form-select-sm" onchange="this.form.submit()" style="font-size: 12px; height: 34px;">
+                        <option value="">All 10 Modules</option>
+                        <?php foreach ($moduleCards as $mKey => $mDef): ?>
+                            <option value="<?= $mKey ?>" <?= ($filters['module'] === $mKey) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($mDef['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
-            </form>
-        </div>
+
+                <!-- Date Range From -->
+                <div style="flex: 0.85; min-width: 110px;">
+                    <label class="form-label stat-label mb-1 text-nowrap extra-small text-uppercase fw-bold text-secondary">
+                        <i class="fa-regular fa-calendar text-muted me-1"></i> From Date
+                    </label>
+                    <input type="date" name="from_date" id="filterFromDate" class="form-control form-control-sm" 
+                           value="<?= htmlspecialchars($filters['from_date']) ?>" style="font-size: 12px; height: 34px;">
+                </div>
+
+                <!-- Date Range To -->
+                <div style="flex: 0.85; min-width: 110px;">
+                    <label class="form-label stat-label mb-1 text-nowrap extra-small text-uppercase fw-bold text-secondary">
+                        <i class="fa-regular fa-calendar-check text-muted me-1"></i> To Date
+                    </label>
+                    <input type="date" name="to_date" id="filterToDate" class="form-control form-control-sm" 
+                           value="<?= htmlspecialchars($filters['to_date']) ?>" style="font-size: 12px; height: 34px;">
+                </div>
+
+                <!-- Search Input -->
+                <div style="flex: 1.25; min-width: 135px;">
+                    <label class="form-label stat-label mb-1 text-nowrap extra-small text-uppercase fw-bold text-secondary">
+                        <i class="fa-solid fa-magnifying-glass text-muted me-1"></i> Payee / Vendor / Branch
+                    </label>
+                    <input type="text" name="search" class="form-control form-control-sm" 
+                           placeholder="Search payee, branch..." value="<?= htmlspecialchars($filters['search']) ?>" style="font-size: 12px; height: 34px;">
+                </div>
+
+                <!-- Submit & Reset Action Buttons -->
+                <div class="d-flex align-items-center gap-1" style="flex: 0 0 auto;">
+                    <button type="submit" class="btn btn-primary btn-sm px-3 shadow-sm fw-semibold text-nowrap" style="height: 34px;">
+                        <i class="fa-solid fa-filter me-1"></i> Filter
+                    </button>
+                    <?php if (!empty($filters['project_id']) || !empty($filters['branch_id']) || !empty($filters['module']) || !empty($filters['from_date']) || !empty($filters['to_date']) || !empty($filters['search'])): ?>
+                        <a href="<?= $base_url ?>/expense-analytics" class="btn btn-outline-secondary btn-sm px-2 text-nowrap" title="Reset Filters" style="height: 34px;">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Quick Date Presets -->
+            <div class="d-flex align-items-center gap-1 mt-2 pt-2 border-top">
+                <span class="text-muted extra-small me-2"><i class="fa-solid fa-clock-rotate-left me-1"></i>Quick Date:</span>
+                <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0 preset-btn" onclick="setDatePreset('all')">All Time</button>
+                <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0 preset-btn" onclick="setDatePreset('this_month')">This Month</button>
+                <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0 preset-btn" onclick="setDatePreset('last_month')">Last Month</button>
+                <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0 preset-btn" onclick="setDatePreset('this_year')">This Year</button>
+            </div>
+        </form>
     </div>
 
     <!-- Project Insights & Scope Summary Row -->
     <div class="row  mb-4">
         <!-- Selected Scope KPI Summary -->
         <div class="col-xl-7 col-lg-6">
-            <div class="card border-0 shadow-sm rounded-3 h-100 bg-white">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="avatar avatar-xs bg-primary-subtle text-primary rounded-2">
-                                <i class="fa-solid fa-layer-group"></i>
-                            </div>
-                            <div>
-                                <h6 class="fw-bold mb-0 text-dark"><?= htmlspecialchars($projectSummary['project_name']) ?></h6>
-                                <span class="text-muted extra-small">Filtered Expense Scope & Requisition Totals</span>
-                            </div>
+            <div class="card__wrapper h-100 p-3">
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar avatar-xs bg-primary-subtle text-primary rounded-2">
+                            <i class="fa-solid fa-layer-group"></i>
                         </div>
-                        <?php if (!empty($filters['project_id'])): ?>
-                            <span class="badge bg-primary rounded-pill px-2 py-1 extra-small">Filtered Project</span>
-                        <?php else: ?>
-                            <span class="badge bg-light text-muted border rounded-pill px-2 py-1 extra-small">Company-Wide</span>
-                        <?php endif; ?>
+                        <div>
+                            <h6 class="fw-bold mb-0 text-dark"><?= htmlspecialchars($projectSummary['project_name']) ?></h6>
+                            <span class="text-muted extra-small">Filtered Expense Scope & Requisition Totals</span>
+                        </div>
                     </div>
+                    <?php if (!empty($filters['project_id'])): ?>
+                        <span class="badge bg-primary rounded-pill px-2 py-1 extra-small">Filtered Project</span>
+                    <?php else: ?>
+                        <span class="badge bg-light text-muted border rounded-pill px-2 py-1 extra-small">Company-Wide</span>
+                    <?php endif; ?>
+                </div>
 
-                    <div class="row g-2 text-center">
-                        <div class="col-sm-3 col-6">
-                            <div class="p-2 bg-light rounded-2 border">
-                                <span class="stat-label d-block text-truncate">Total Requisitions</span>
-                                <h5 class="fw-bold text-dark mb-0">৳ <?= number_format($projectSummary['total_amount'], 0) ?></h5>
-                                <span class="extra-small text-muted"><?= number_format($projectSummary['total_requests']) ?> Requests</span>
-                            </div>
+                <div class="row g-2 text-center">
+                    <div class="col-sm-3 col-6">
+                        <div class="p-2 kpi-sub-box rounded-2">
+                            <span class="stat-label d-block text-truncate">Total Requisitions</span>
+                            <h5 class="fw-bold text-dark mb-0">৳ <?= number_format($projectSummary['total_amount'], 0) ?></h5>
+                            <span class="extra-small text-muted"><?= number_format($projectSummary['total_requests']) ?> Requests</span>
                         </div>
-                        <div class="col-sm-3 col-6">
-                            <div class="p-2 bg-warning-subtle rounded-2 border border-warning-subtle">
-                                <span class="stat-label d-block text-truncate text-warning">Pending Approval</span>
-                                <h5 class="fw-bold text-warning mb-0">৳ <?= number_format($projectSummary['pending_amount'], 0) ?></h5>
-                                <span class="extra-small text-warning fw-semibold"><?= number_format($projectSummary['pending_count']) ?> Pending</span>
-                            </div>
+                    </div>
+                    <div class="col-sm-3 col-6">
+                        <div class="p-2 bg-warning-subtle rounded-2 border border-warning-subtle">
+                            <span class="stat-label d-block text-truncate text-warning">Pending Approval</span>
+                            <h5 class="fw-bold text-warning mb-0">৳ <?= number_format($projectSummary['pending_amount'], 0) ?></h5>
+                            <span class="extra-small text-warning fw-semibold"><?= number_format($projectSummary['pending_count']) ?> Pending</span>
                         </div>
-                        <div class="col-sm-3 col-6">
-                            <div class="p-2 bg-success-subtle rounded-2 border border-success-subtle">
-                                <span class="stat-label d-block text-truncate text-success">Total Paid</span>
-                                <h5 class="fw-bold text-success mb-0">৳ <?= number_format($projectSummary['total_paid'], 0) ?></h5>
-                                <span class="extra-small text-success">Disbursed (Cash/Bank)</span>
-                            </div>
+                    </div>
+                    <div class="col-sm-3 col-6">
+                        <div class="p-2 bg-success-subtle rounded-2 border border-success-subtle">
+                            <span class="stat-label d-block text-truncate text-success">Total Paid</span>
+                            <h5 class="fw-bold text-success mb-0">৳ <?= number_format($projectSummary['total_paid'], 0) ?></h5>
+                            <span class="extra-small text-success">Disbursed (Cash/Bank)</span>
                         </div>
-                        <div class="col-sm-3 col-6">
-                            <div class="p-2 bg-danger-subtle rounded-2 border border-danger-subtle">
-                                <span class="stat-label d-block text-truncate text-danger">Total Due</span>
-                                <h5 class="fw-bold text-danger mb-0">৳ <?= number_format($projectSummary['total_due'], 0) ?></h5>
-                                <span class="extra-small text-danger">Payable Balance</span>
-                            </div>
+                    </div>
+                    <div class="col-sm-3 col-6">
+                        <div class="p-2 bg-danger-subtle rounded-2 border border-danger-subtle">
+                            <span class="stat-label d-block text-truncate text-danger">Total Due</span>
+                            <h5 class="fw-bold text-danger mb-0">৳ <?= number_format($projectSummary['total_due'], 0) ?></h5>
+                            <span class="extra-small text-danger">Payable Balance</span>
                         </div>
                     </div>
                 </div>
@@ -287,60 +359,58 @@
 
         <!-- Highest Cost Project Highlight & Top 5 Leaderboard -->
         <div class="col-xl-5 col-lg-6">
-            <div class="card border-0 shadow-sm rounded-3 h-100 bg-white border-start border-4 border-warning">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="fa-solid fa-crown text-warning fs-5"></i>
-                            <h6 class="fw-bold mb-0 text-dark">Highest Cost Project Leaderboard</h6>
+            <div class="card__wrapper h-100 p-3 border-start border-4 border-warning">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-crown text-warning fs-5"></i>
+                        <h6 class="fw-bold mb-0 text-dark">Highest Cost Project Leaderboard</h6>
+                    </div>
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill extra-small">Top Spender</span>
+                </div>
+
+                <?php if (!empty($topProjectsData['highest'])): 
+                    $top = $topProjectsData['highest'];
+                ?>
+                    <div class="kpi-sub-box p-2 rounded-2 mb-2 d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2 text-truncate me-2">
+                            <span class="badge bg-warning text-dark rounded-circle px-2 py-1 fw-bold">#1</span>
+                            <div class="text-truncate">
+                                <span class="fw-bold text-dark text-truncate d-block" style="font-size: 13px;" title="<?= htmlspecialchars($top['project_name']) ?>">
+                                    <?= htmlspecialchars($top['project_name']) ?>
+                                </span>
+                                <span class="text-muted extra-small">
+                                    <?= number_format($top['total_records']) ?> records &bull; Paid: ৳<?= number_format($top['total_paid_amount'], 0) ?>
+                                </span>
+                            </div>
                         </div>
-                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill extra-small">Top Spender</span>
+                        <div class="text-end flex-shrink-0">
+                            <span class="fw-bold text-dark d-block" style="font-size: 13px;">৳ <?= number_format($top['total_req_amount'], 0) ?></span>
+                            <span class="badge bg-warning text-dark extra-small rounded-pill"><?= $top['percentage'] ?>% of Top 5</span>
+                        </div>
                     </div>
 
-                    <?php if (!empty($topProjectsData['highest'])): 
-                        $top = $topProjectsData['highest'];
-                    ?>
-                        <div class="bg-light p-2 rounded-2 mb-2 d-flex align-items-center justify-content-between border">
-                            <div class="d-flex align-items-center gap-2 text-truncate me-2">
-                                <span class="badge bg-warning text-dark rounded-circle px-2 py-1 fw-bold">#1</span>
-                                <div class="text-truncate">
-                                    <span class="fw-bold text-dark text-truncate d-block" style="font-size: 13px;" title="<?= htmlspecialchars($top['project_name']) ?>">
-                                        <?= htmlspecialchars($top['project_name']) ?>
-                                    </span>
-                                    <span class="text-muted extra-small">
-                                        <?= number_format($top['total_records']) ?> records &bull; Paid: ৳<?= number_format($top['total_paid_amount'], 0) ?>
+                    <!-- Top 5 Ranked Projects List -->
+                    <div class="space-y-1">
+                        <?php foreach ($topProjectsData['leaderboard'] as $idx => $pRow): 
+                            if ($idx === 0) continue; // Skip #1 already highlighted
+                        ?>
+                            <div class="leaderboard-item d-flex align-items-center justify-content-between py-1 border-bottom extra-small">
+                                <div class="d-flex align-items-center gap-2 text-truncate me-2">
+                                    <span class="text-muted fw-bold">#<?= $idx + 1 ?></span>
+                                    <span class="text-truncate fw-semibold text-dark" title="<?= htmlspecialchars($pRow['project_name']) ?>">
+                                        <?= htmlspecialchars($pRow['project_name']) ?>
                                     </span>
                                 </div>
-                            </div>
-                            <div class="text-end flex-shrink-0">
-                                <span class="fw-bold text-dark d-block" style="font-size: 13px;">৳ <?= number_format($top['total_req_amount'], 0) ?></span>
-                                <span class="badge bg-warning text-dark extra-small rounded-pill"><?= $top['percentage'] ?>% of Top 5</span>
-                            </div>
-                        </div>
-
-                        <!-- Top 5 Ranked Projects List -->
-                        <div class="space-y-1">
-                            <?php foreach ($topProjectsData['leaderboard'] as $idx => $pRow): 
-                                if ($idx === 0) continue; // Skip #1 already highlighted
-                            ?>
-                                <div class="leaderboard-item d-flex align-items-center justify-content-between py-1 border-bottom extra-small">
-                                    <div class="d-flex align-items-center gap-2 text-truncate me-2">
-                                        <span class="text-muted fw-bold">#<?= $idx + 1 ?></span>
-                                        <span class="text-truncate fw-semibold text-dark" title="<?= htmlspecialchars($pRow['project_name']) ?>">
-                                            <?= htmlspecialchars($pRow['project_name']) ?>
-                                        </span>
-                                    </div>
-                                    <div class="text-end flex-shrink-0">
-                                        <span class="fw-bold text-dark me-2">৳ <?= number_format($pRow['total_req_amount'], 0) ?></span>
-                                        <span class="text-muted"><?= $pRow['percentage'] ?>%</span>
-                                    </div>
+                                <div class="text-end flex-shrink-0">
+                                    <span class="fw-bold text-dark me-2">৳ <?= number_format($pRow['total_req_amount'], 0) ?></span>
+                                    <span class="text-muted"><?= $pRow['percentage'] ?>%</span>
                                 </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php else: ?>
-                        <p class="text-muted small mb-0">No expense project data found for current filters.</p>
-                    <?php endif; ?>
-                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <p class="text-muted small mb-0">No expense project data found for current filters.</p>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -392,7 +462,7 @@
                 $iconMeta = $branchIcons[$b['branch_id']] ?? ['icon' => 'fa-solid fa-building', 'color' => '#64748b', 'bg' => '#f1f5f9'];
             ?>
                 <div class="col-xl-3 col-md-6">
-                    <div class="expense-card p-3 h-100 <?= $isBranchActive ? 'active-module' : '' ?>" 
+                    <div class="card__wrapper expense-card p-3 h-100 <?= $isBranchActive ? 'active-module' : '' ?>" 
                          onclick="window.location.href='<?= $bFilterUrl ?>'"
                          title="Click to <?= $isBranchActive ? 'clear filter' : 'filter by ' . htmlspecialchars($b['branch_name']) ?>"
                          style="border-top: 3px solid <?= $iconMeta['color'] ?>;">
@@ -419,7 +489,7 @@
                         </div>
 
                         <!-- Highlighted Total Paid & Due Box -->
-                        <div class="p-2 mb-2 rounded-2 d-flex align-items-center justify-content-between <?= $b['total_paid'] > 0 ? 'bg-success-subtle border border-success-subtle' : 'bg-light border' ?>">
+                        <div class="p-2 mb-2 rounded-2 d-flex align-items-center justify-content-between <?= $b['total_paid'] > 0 ? 'branch-paid-box-paid' : 'branch-paid-box-default' ?>">
                             <div>
                                 <span class="d-block text-uppercase fw-bold text-success" style="font-size: 9.5px; letter-spacing: 0.5px;">
                                     <i class="fa-solid fa-circle-check me-1"></i>Total Paid
@@ -475,7 +545,7 @@
                     : $base_url . '/expense-analytics?' . http_build_query(array_merge($filters, ['module' => $modKey])) . '#ledgerTable';
             ?>
                 <div class="module-card-col-5">
-                    <div class="expense-card p-3 h-100 <?= $isActive ? 'active-module' : '' ?>" 
+                    <div class="card__wrapper expense-card p-3 h-100 <?= $isActive ? 'active-module' : '' ?>" 
                          onclick="window.location.href='<?= $filterUrl ?>'"
                          title="Click to <?= $isActive ? 'clear filter' : 'filter by ' . htmlspecialchars($mod['name']) ?>">
                         
@@ -542,8 +612,8 @@
     </div>
 
     <!-- Detailed Expense Ledger Table Card -->
-    <div class="card border-0 shadow-sm rounded-3 mb-4" id="ledgerTable">
-        <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <div class="card__wrapper mb-20 p-0 overflow-hidden" id="ledgerTable">
+        <div class="card-header-clean p-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
             <div>
                 <h6 class="fw-bold mb-0 text-dark d-flex align-items-center">
                     <i class="fa-solid fa-list-check text-primary me-2"></i> Detailed Expense & Requisition Ledger
@@ -551,8 +621,8 @@
                 <span class="text-muted extra-small">Searchable statement of all expenses with payee, project, requisition, approved, paid and due amounts.</span>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-light text-dark border extra-small rounded-pill px-3 py-1">
-                    <?= count($ledgerRecords) ?> records displayed
+                <span class="badge bg-light text-dark border extra-small rounded-pill px-3 py-1" id="ledgerCountBadge">
+                    <i class="fa-solid fa-bolt text-primary me-1"></i> Live Paginated
                 </span>
                 <?php if (!empty($filters['module'])): ?>
                     <a href="<?= $base_url ?>/expense-analytics?<?= http_build_query(array_merge($filters, ['module' => ''])) ?>" 
@@ -563,10 +633,10 @@
             </div>
         </div>
 
-        <div class="card-body p-0">
+        <div class="p-0">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0" id="expenseLedgerDataTable" style="width: 100%;">
-                    <thead class="bg-light table-light">
+                    <thead class="table-light">
                         <tr class="extra-small text-muted text-uppercase fw-bold">
                             <th style="width: 40px;" class="text-center">#</th>
                             <th style="width: 90px;">Date</th>
@@ -582,83 +652,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (!empty($ledgerRecords)): 
-                            $sl = 1;
-                            foreach ($ledgerRecords as $r): 
-                                $projName = !empty($r['project_name']) ? $r['project_name'] : 'Without Project / General';
-                                $isWithoutProj = empty($r['project_name']) || empty($r['project_id']);
-                                $statusStr = strtolower($r['status'] ?? '');
-                                $statusBadge = 'bg-secondary';
-                                if (in_array($statusStr, ['approved', 'management_approved', 'qc_approved'])) $statusBadge = 'bg-primary';
-                                elseif (in_array($statusStr, ['paid', 'fully_paid', 'labor_disbursed'])) $statusBadge = 'bg-success';
-                                elseif (in_array($statusStr, ['partially_paid'])) $statusBadge = 'bg-info text-dark';
-                                elseif (in_array($statusStr, ['pending', 'submitted', 'draft', ''])) $statusBadge = 'bg-warning text-dark';
-                                elseif (in_array($statusStr, ['rejected'])) $statusBadge = 'bg-danger';
-                        ?>
-                            <tr style="font-size: 12px;">
-                                <td class="text-center text-muted fw-semibold"><?= $sl++ ?></td>
-                                <td class="text-nowrap text-muted">
-                                    <?= !empty($r['created_at']) ? date('d-m-Y', strtotime($r['created_at'])) : '-' ?>
-                                </td>
-                                <td>
-                                    <span class="badge bg-light text-dark border extra-small">
-                                        <?= htmlspecialchars($r['module_name']) ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <?php if ($isWithoutProj): ?>
-                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle extra-small d-block mb-1">
-                                            <i class="fa-solid fa-layer-group me-1"></i> Without Project / General
-                                        </span>
-                                        <?php if (!empty($r['branch_name']) && $r['branch_name'] !== 'Unassigned / Central'): ?>
-                                            <span class="badge bg-info-subtle text-info border border-info-subtle extra-small fw-semibold d-inline-block">
-                                                <i class="fa-solid fa-location-dot me-1"></i> <?= htmlspecialchars($r['branch_name']) ?>
-                                            </span>
-                                        <?php endif; ?>
-                                    <?php else: ?>
-                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle extra-small fw-semibold">
-                                            <i class="fa-solid fa-building me-1"></i> <?= htmlspecialchars($projName) ?>
-                                        </span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <div class="fw-bold text-dark text-truncate" style="max-width: 180px;" title="<?= htmlspecialchars($r['payee_name']) ?>">
-                                        <?= htmlspecialchars($r['payee_name']) ?>
-                                    </div>
-                                    <span class="extra-small text-muted"><?= htmlspecialchars($r['payee_type']) ?></span>
-                                </td>
-                                <td>
-                                    <div class="text-truncate" style="max-width: 220px;" title="<?= htmlspecialchars($r['purpose_title']) ?>">
-                                        <?= htmlspecialchars($r['purpose_title']) ?>
-                                    </div>
-                                </td>
-                                <td class="text-end fw-semibold text-dark text-nowrap">
-                                    ৳ <?= number_format($r['req_amount'], 2) ?>
-                                </td>
-                                <td class="text-end text-muted text-nowrap">
-                                    ৳ <?= number_format($r['approved_amount'], 2) ?>
-                                </td>
-                                <td class="text-end fw-bold text-success text-nowrap">
-                                    ৳ <?= number_format($r['paid_amount'], 2) ?>
-                                </td>
-                                <td class="text-end fw-bold text-danger text-nowrap">
-                                    ৳ <?= number_format($r['due_amount'], 2) ?>
-                                </td>
-                                <td class="text-center text-nowrap">
-                                    <span class="badge <?= $statusBadge ?> extra-small rounded-pill">
-                                        <?= htmlspecialchars(ucfirst(str_replace('_', ' ', $r['status'] ?? 'pending'))) ?>
-                                    </span>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="11" class="text-center py-4 text-muted">
-                                    <i class="fa-solid fa-box-open fs-3 d-block mb-2 text-secondary"></i>
-                                    No expense records found matching your filters.
-                                </td>
-                            </tr>
-                        <?php endif; ?>
+                        <!-- Populated asynchronously via Server-Side AJAX DataTables -->
                     </tbody>
                 </table>
             </div>
@@ -666,11 +660,11 @@
     </div>
 
     <!-- Visual Analytics: Interactive ApexCharts Expense Distribution & Comparison -->
-    <div class="row g-4 mb-4">
+    <div class="row  mb-4">
         <!-- Donut Chart: Expense Distribution (Sales Dashboard Style) -->
         <div class="col-xl-6 col-lg-12">
-            <div class="card border-0 shadow-sm rounded-3 h-100 bg-white">
-                <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="card__wrapper h-100 p-3">
+                <div class="card-header-clean pb-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <div>
                         <h6 class="fw-bold mb-0 text-dark d-flex align-items-center">
                             <i class="fa-solid fa-chart-pie text-primary me-2"></i> Expense Breakdown Analytics
@@ -701,11 +695,11 @@
                     </div>
                 </div>
 
-                <div class="card-body p-3 d-flex align-items-center justify-content-center">
+                <div class="p-3 d-flex align-items-center justify-content-center">
                     <div id="apexExpenseDonutChart" style="width: 100%; min-height: 320px;"></div>
                 </div>
 
-                <div class="card-footer bg-light-subtle py-2 px-3 border-top d-flex align-items-center justify-content-between extra-small text-muted">
+                <div class="card-footer-clean pt-2 border-top d-flex align-items-center justify-content-between extra-small text-muted">
                     <span id="donutFooterDescription"><i class="fa-solid fa-chart-pie text-primary me-1"></i> Showing module-wise expense distribution</span>
                     <span class="fw-bold text-dark" id="donutFooterTotal">Total: ৳ <?= number_format($chartData['total_expense'], 0) ?></span>
                 </div>
@@ -714,8 +708,8 @@
 
         <!-- Column Chart: Module-Wise Paid vs Due Comparison -->
         <div class="col-xl-6 col-lg-12">
-            <div class="card border-0 shadow-sm rounded-3 h-100 bg-white">
-                <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="card__wrapper h-100 p-3">
+                <div class="card-header-clean pb-3 border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <div>
                         <h6 class="fw-bold mb-0 text-dark d-flex align-items-center">
                             <i class="fa-solid fa-chart-column text-success me-2"></i> Module-Wise Paid vs Due Comparison
@@ -732,11 +726,11 @@
                     </div>
                 </div>
 
-                <div class="card-body p-3">
+                <div class="p-3">
                     <div id="apexModuleComparativeBarChart" style="width: 100%; min-height: 320px;"></div>
                 </div>
 
-                <div class="card-footer bg-light-subtle py-2 px-3 border-top d-flex align-items-center justify-content-between extra-small text-muted">
+                <div class="card-footer-clean pt-2 border-top d-flex align-items-center justify-content-between extra-small text-muted">
                     <span><i class="fa-solid fa-arrow-trend-up text-success me-1"></i> Visualizing payment completion status across modules</span>
                     <span class="fw-semibold text-muted">10 Expense Modules</span>
                 </div>
@@ -749,6 +743,7 @@
 <script>
     // Global chart instance & state for Donut Chart
     let expenseDonutChartInstance = null;
+    let expenseBarChartInstance = null;
     let currentDonutMode = 'module';   // 'module', 'project', or 'branch'
     let currentDonutMetric = 'amount'; // 'amount' or 'count'
 
@@ -787,19 +782,22 @@
     // Switch Donut Mode: 'module' vs 'project' vs 'branch'
     function switchDonutMode(mode) {
         currentDonutMode = mode;
-        document.getElementById('btnDonutModeModule').classList.toggle('active', mode === 'module');
-        document.getElementById('btnDonutModeProject').classList.toggle('active', mode === 'project');
-        if (document.getElementById('btnDonutModeBranch')) {
-            document.getElementById('btnDonutModeBranch').classList.toggle('active', mode === 'branch');
-        }
+        const btnMod = document.getElementById('btnDonutModeModule');
+        const btnProj = document.getElementById('btnDonutModeProject');
+        const btnBr = document.getElementById('btnDonutModeBranch');
+        if (btnMod) btnMod.classList.toggle('active', mode === 'module');
+        if (btnProj) btnProj.classList.toggle('active', mode === 'project');
+        if (btnBr) btnBr.classList.toggle('active', mode === 'branch');
         updateDonutChart();
     }
 
     // Switch Donut Metric: 'amount' vs 'count'
     function switchDonutMetric(metric) {
         currentDonutMetric = metric;
-        document.getElementById('btnDonutMetricAmount').classList.toggle('active', metric === 'amount');
-        document.getElementById('btnDonutMetricCount').classList.toggle('active', metric === 'count');
+        const btnAmt = document.getElementById('btnDonutMetricAmount');
+        const btnCnt = document.getElementById('btnDonutMetricCount');
+        if (btnAmt) btnAmt.classList.toggle('active', metric === 'amount');
+        if (btnCnt) btnCnt.classList.toggle('active', metric === 'count');
         updateDonutChart();
     }
 
@@ -821,248 +819,355 @@
         const totalFooter = document.getElementById('donutFooterTotal');
         const descFooter = document.getElementById('donutFooterDescription');
 
-        if (currentDonutMetric === 'amount') {
-            totalFooter.innerHTML = 'Total: ৳ ' + Number(total).toLocaleString('en-IN', { maximumFractionDigits: 0 });
-        } else {
-            totalFooter.innerHTML = 'Total: ' + Number(total).toLocaleString() + ' Requests';
+        if (totalFooter) {
+            if (currentDonutMetric === 'amount') {
+                totalFooter.innerHTML = 'Total: ৳ ' + Number(total).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+            } else {
+                totalFooter.innerHTML = 'Total: ' + Number(total).toLocaleString() + ' Requests';
+            }
         }
 
-        if (currentDonutMode === 'module') {
-            descFooter.innerHTML = '<i class="fa-solid fa-boxes-stacked text-primary me-1"></i> Showing module-wise expense volume breakdown';
-        } else if (currentDonutMode === 'branch') {
-            descFooter.innerHTML = '<i class="fa-solid fa-location-dot text-primary me-1"></i> Showing office branch overhead expense distribution';
-        } else {
-            descFooter.innerHTML = '<i class="fa-solid fa-building text-primary me-1"></i> Showing project-wise expense distribution';
+        if (descFooter) {
+            if (currentDonutMode === 'module') {
+                descFooter.innerHTML = '<i class="fa-solid fa-boxes-stacked text-primary me-1"></i> Showing module-wise expense volume breakdown';
+            } else if (currentDonutMode === 'branch') {
+                descFooter.innerHTML = '<i class="fa-solid fa-location-dot text-primary me-1"></i> Showing office branch overhead expense distribution';
+            } else {
+                descFooter.innerHTML = '<i class="fa-solid fa-building text-primary me-1"></i> Showing project-wise expense distribution';
+            }
         }
     }
 
-    document.addEventListener("DOMContentLoaded", function () {
-        // 1. Initialize DataTables
-        if (typeof $ !== 'undefined' && $.fn.DataTable) {
-            $('#expenseLedgerDataTable').DataTable({
-                pageLength: 25,
-                lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
-                ordering: true,
-                order: [[1, 'desc']],
-                language: {
-                    search: "_INPUT_",
-                    searchPlaceholder: "Search ledger table..."
+    // Safe Module Initializer as per conventions
+    (function() {
+        function initModuleScripts() {
+            if (typeof jQuery === 'undefined' || typeof ApexCharts === 'undefined') {
+                setTimeout(initModuleScripts, 50);
+                return;
+            }
+
+            jQuery(function($) {
+                // 1. Initialize DataTables (Server-Side AJAX Pagination)
+                if ($.fn.DataTable && $('#expenseLedgerDataTable').length) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const baseUrl   = window.base_url || '<?= $GLOBALS['base_url'] ?>';
+                    const ajaxUrl   = baseUrl + '/expense-analytics/ajax-ledger?' + urlParams.toString();
+
+                    $('#expenseLedgerDataTable').DataTable({
+                        serverSide   : true,
+                        processing   : true,
+                        ajax         : {
+                            url: ajaxUrl,
+                            type: 'POST',
+                            error: function (xhr, error, thrown) {
+                                console.error('DataTables Ledger AJAX error:', error, thrown, xhr.responseText);
+                            }
+                        },
+                        pageLength   : 25,
+                        lengthMenu   : [[10, 25, 50, 100, 200], [10, 25, 50, 100, 200]],
+                        order        : [],
+                        columnDefs   : [
+                            { targets: '_all', orderable: false }
+                        ],
+                        language     : {
+                            search: "_INPUT_",
+                            searchPlaceholder: "Search payee, project, module, status...",
+                            processing: '<div class="p-2 text-center text-primary"><div class="spinner-border spinner-border-sm me-2" role="status"></div> Loading records...</div>'
+                        },
+                        drawCallback : function (settings) {
+                            const total = (settings.json && typeof settings.json.recordsFiltered !== 'undefined') ? settings.json.recordsFiltered : 0;
+                            const countBadge = document.getElementById('ledgerCountBadge');
+                            if (countBadge) {
+                                countBadge.innerHTML = `<i class="fa-solid fa-list me-1 text-primary"></i> ${Number(total).toLocaleString()} records found`;
+                            }
+                        }
+                    });
                 }
-            });
-        }
 
-        // 2. Initialize ApexCharts Donut Chart (Sales-Dashboard Radial Gradient Style)
-        const initialDataset = donutDataSets[currentDonutMode];
-        const initialSeries = (currentDonutMetric === 'amount') ? initialDataset.amounts : initialDataset.counts;
-        const initialLabels = initialDataset.labels;
+                // Check Dark Mode
+                function checkIsDarkMode() {
+                    return document.documentElement.getAttribute('bd-theme') === 'bd-theme-dark' ||
+                           document.body.getAttribute('bd-theme') === 'bd-theme-dark' ||
+                           document.querySelector('[bd-theme="bd-theme-dark"]') !== null;
+                }
 
-        const donutOptions = {
-            series: initialSeries,
-            labels: initialLabels,
-            chart: {
-                type: 'donut',
-                height: 320,
-                fontFamily: 'inherit'
-            },
-            plotOptions: {
-                pie: {
-                    donut: {
-                        size: '68%',
-                        labels: {
-                            show: true,
-                            name: {
-                                show: true,
-                                fontSize: '12px',
-                                offsetY: -6,
-                                color: '#63666b'
-                            },
-                            value: {
-                                show: true,
-                                fontSize: '15px',
-                                fontWeight: 700,
-                                offsetY: 6,
-                                color: '#1e293b',
-                                formatter: function(val) {
-                                    return currentDonutMetric === 'amount'
-                                        ? '৳ ' + formatShortBdt(val)
-                                        : Number(val).toLocaleString() + ' Reqs';
-                                }
-                            },
-                            total: {
-                                show: true,
-                                label: 'Total',
-                                fontSize: '13px',
-                                color: '#7c7f85',
-                                formatter: function(w) {
-                                    const total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
-                                    return currentDonutMetric === 'amount'
-                                        ? '৳ ' + formatShortBdt(total)
-                                        : Number(total).toLocaleString();
+                const isDark = checkIsDarkMode();
+
+                // 2. Initialize ApexCharts Donut Chart (Sales-Dashboard Radial Gradient Style)
+                const initialDataset = donutDataSets[currentDonutMode];
+                const initialSeries = (currentDonutMetric === 'amount') ? initialDataset.amounts : initialDataset.counts;
+                const initialLabels = initialDataset.labels;
+
+                const donutOptions = {
+                    series: initialSeries,
+                    labels: initialLabels,
+                    chart: {
+                        type: 'donut',
+                        height: 320,
+                        fontFamily: 'inherit',
+                        background: 'transparent'
+                    },
+                    theme: {
+                        mode: isDark ? 'dark' : 'light'
+                    },
+                    plotOptions: {
+                        pie: {
+                            donut: {
+                                size: '68%',
+                                labels: {
+                                    show: true,
+                                    name: {
+                                        show: true,
+                                        fontSize: '12px',
+                                        offsetY: -6,
+                                        color: isDark ? '#94a3b8' : '#63666b'
+                                    },
+                                    value: {
+                                        show: true,
+                                        fontSize: '15px',
+                                        fontWeight: 700,
+                                        offsetY: 6,
+                                        color: isDark ? '#f8fafc' : '#1e293b',
+                                        formatter: function(val) {
+                                            return currentDonutMetric === 'amount'
+                                                ? '৳ ' + formatShortBdt(val)
+                                                : Number(val).toLocaleString() + ' Reqs';
+                                        }
+                                    },
+                                    total: {
+                                        show: true,
+                                        label: 'Total',
+                                        fontSize: '13px',
+                                        color: isDark ? '#cbd5e1' : '#7c7f85',
+                                        formatter: function(w) {
+                                            const total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                                            return currentDonutMetric === 'amount'
+                                                ? '৳ ' + formatShortBdt(total)
+                                                : Number(total).toLocaleString();
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
-                }
-            },
-            stroke: {
-                width: 2,
-                colors: ['#fff']
-            },
-            fill: {
-                type: 'gradient',
-                gradient: {
-                    shade: 'light',
-                    type: 'radial',
-                    shadeIntensity: 0.4,
-                    gradientToColors: [
-                        '#9f00fb',
-                        '#13684a',
-                        '#da950c',
-                        '#FF4560',
-                        '#775DD0',
+                    },
+                    stroke: {
+                        width: 2,
+                        colors: isDark ? ['#1f2937'] : ['#fff']
+                    },
+                    fill: {
+                        type: 'gradient',
+                        gradient: {
+                            shade: isDark ? 'dark' : 'light',
+                            type: 'radial',
+                            shadeIntensity: 0.4,
+                            gradientToColors: [
+                                '#9f00fb',
+                                '#13684a',
+                                '#da950c',
+                                '#FF4560',
+                                '#775DD0',
+                                '#00E396',
+                                '#008FFB',
+                                '#FEB019',
+                                '#FF8698',
+                                '#A796E0'
+                            ],
+                            opacityFrom: 1,
+                            opacityTo: 1,
+                            stops: [70, 100]
+                        }
+                    },
+                    colors: [
+                        'rgb(252, 72, 171)',
+                        '#12976b',
+                        '#fecc6a',
+                        '#ff8698',
+                        '#a796e0',
                         '#00E396',
                         '#008FFB',
                         '#FEB019',
-                        '#FF8698',
-                        '#A796E0'
+                        '#6366F1',
+                        '#F59E0B'
                     ],
-                    opacityFrom: 1,
-                    opacityTo: 1,
-                    stops: [70, 100]
+                    legend: {
+                        position: 'right',
+                        offsetY: 10,
+                        labels: {
+                            colors: isDark ? '#94a3b8' : '#707174'
+                        },
+                        itemMargin: {
+                            horizontal: 4,
+                            vertical: 3
+                        },
+                        formatter: function(seriesName, opts) {
+                            const val = opts.w.globals.series[opts.seriesIndex];
+                            if (currentDonutMetric === 'amount') {
+                                return `${seriesName} (৳ ${formatShortBdt(val)})`;
+                            } else {
+                                return `${seriesName} (${Number(val).toLocaleString()})`;
+                            }
+                        }
+                    },
+                    tooltip: {
+                        theme: isDark ? 'dark' : 'light',
+                        y: {
+                            formatter: function(val, opts) {
+                                const total = opts.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                                const pct = total > 0 ? ((val / total) * 100).toFixed(1) + '%' : '0%';
+                                if (currentDonutMetric === 'amount') {
+                                    return '৳ ' + Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' (' + pct + ')';
+                                } else {
+                                    return Number(val).toLocaleString() + ' requests (' + pct + ')';
+                                }
+                            }
+                        }
+                    },
+                    dataLabels: {
+                        enabled: true,
+                        formatter: function (val) {
+                            return val >= 4 ? val.toFixed(1) + '%' : '';
+                        }
+                    },
+                    responsive: [
+                        {
+                            breakpoint: 1300,
+                            options: {
+                                chart: { height: 300 },
+                                legend: { position: 'right', fontSize: '11px' }
+                            }
+                        },
+                        {
+                            breakpoint: 768,
+                            options: {
+                                chart: { height: 320 },
+                                legend: { position: 'bottom' }
+                            }
+                        }
+                    ]
+                };
+
+                const donutEl = document.querySelector("#apexExpenseDonutChart");
+                if (donutEl) {
+                    expenseDonutChartInstance = new ApexCharts(donutEl, donutOptions);
+                    expenseDonutChartInstance.render();
                 }
-            },
-            colors: [
-                'rgb(252, 72, 171)',
-                '#12976b',
-                '#fecc6a',
-                '#ff8698',
-                '#a796e0',
-                '#00E396',
-                '#008FFB',
-                '#FEB019',
-                '#6366F1',
-                '#F59E0B'
-            ],
-            legend: {
-                position: 'right',
-                offsetY: 10,
-                labels: {
-                    colors: '#707174'
-                },
-                itemMargin: {
-                    horizontal: 4,
-                    vertical: 3
-                },
-                formatter: function(seriesName, opts) {
-                    const val = opts.w.globals.series[opts.seriesIndex];
-                    if (currentDonutMetric === 'amount') {
-                        return `${seriesName} (৳ ${formatShortBdt(val)})`;
-                    } else {
-                        return `${seriesName} (${Number(val).toLocaleString()})`;
-                    }
-                }
-            },
-            tooltip: {
-                y: {
-                    formatter: function(val, opts) {
-                        const total = opts.globals.seriesTotals.reduce((a, b) => a + b, 0);
-                        const pct = total > 0 ? ((val / total) * 100).toFixed(1) + '%' : '0%';
-                        if (currentDonutMetric === 'amount') {
-                            return '৳ ' + Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' (' + pct + ')';
-                        } else {
-                            return Number(val).toLocaleString() + ' requests (' + pct + ')';
+
+                // 3. Initialize ApexCharts Comparative Bar Chart (Per Module Paid vs Due)
+                const modLabels = <?= json_encode($chartData['labels']) ?>;
+                const paidSeries = <?= json_encode($chartData['paid_series']) ?>;
+                const dueSeries = <?= json_encode($chartData['due_series']) ?>;
+
+                const barOptions = {
+                    series: [
+                        { name: 'Paid Amount (৳)', data: paidSeries },
+                        { name: 'Due Amount (৳)', data: dueSeries }
+                    ],
+                    chart: {
+                        type: 'bar',
+                        height: 320,
+                        fontFamily: 'inherit',
+                        background: 'transparent',
+                        toolbar: { show: false }
+                    },
+                    theme: {
+                        mode: isDark ? 'dark' : 'light'
+                    },
+                    colors: ['#10b981', '#ef4444'],
+                    plotOptions: {
+                        bar: {
+                            horizontal: false,
+                            columnWidth: '55%',
+                            borderRadius: 4
+                        }
+                    },
+                    dataLabels: { enabled: false },
+                    stroke: { show: true, width: 2, colors: ['transparent'] },
+                    xaxis: {
+                        categories: modLabels,
+                        labels: {
+                            rotate: -25,
+                            style: { 
+                                fontSize: '10.5px',
+                                colors: isDark ? '#94a3b8' : '#64748b'
+                            }
+                        }
+                    },
+                    yaxis: {
+                        labels: {
+                            style: {
+                                colors: isDark ? '#94a3b8' : '#64748b'
+                            },
+                            formatter: function (val) {
+                                if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+                                if (val >= 1000) return (val / 1000).toFixed(0) + 'K';
+                                return val;
+                            }
+                        }
+                    },
+                    grid: {
+                        borderColor: isDark ? '#374151' : '#e2e8f0'
+                    },
+                    fill: { opacity: 1 },
+                    tooltip: {
+                        theme: isDark ? 'dark' : 'light',
+                        y: {
+                            formatter: function (val) {
+                                return '৳ ' + Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            }
+                        }
+                    },
+                    legend: { 
+                        position: 'top', 
+                        horizontalAlign: 'right', 
+                        fontSize: '11px',
+                        labels: {
+                            colors: isDark ? '#cbd5e1' : '#475569'
                         }
                     }
-                }
-            },
-            dataLabels: {
-                enabled: true,
-                formatter: function (val) {
-                    return val >= 4 ? val.toFixed(1) + '%' : '';
-                }
-            },
-            responsive: [
-                {
-                    breakpoint: 1300,
-                    options: {
-                        chart: { height: 300 },
-                        legend: { position: 'right', fontSize: '11px' }
-                    }
-                },
-                {
-                    breakpoint: 768,
-                    options: {
-                        chart: { height: 320 },
-                        legend: { position: 'bottom' }
-                    }
-                }
-            ]
-        };
+                };
 
-        const donutEl = document.querySelector("#apexExpenseDonutChart");
-        if (donutEl && typeof ApexCharts !== 'undefined') {
-            expenseDonutChartInstance = new ApexCharts(donutEl, donutOptions);
-            expenseDonutChartInstance.render();
+                const barEl = document.querySelector("#apexModuleComparativeBarChart");
+                if (barEl) {
+                    expenseBarChartInstance = new ApexCharts(barEl, barOptions);
+                    expenseBarChartInstance.render();
+                }
+
+                // Listen for theme changes dynamically if user switches theme via toggle
+                const themeObserver = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.type === 'attributes' && (mutation.attributeName === 'bd-theme' || mutation.attributeName === 'class')) {
+                            const updatedDark = checkIsDarkMode();
+                            if (expenseDonutChartInstance) {
+                                expenseDonutChartInstance.updateOptions({
+                                    theme: { mode: updatedDark ? 'dark' : 'light' },
+                                    stroke: { colors: updatedDark ? ['#1f2937'] : ['#fff'] },
+                                    legend: { labels: { colors: updatedDark ? '#94a3b8' : '#707174' } }
+                                });
+                            }
+                            if (expenseBarChartInstance) {
+                                expenseBarChartInstance.updateOptions({
+                                    theme: { mode: updatedDark ? 'dark' : 'light' },
+                                    xaxis: { labels: { style: { colors: updatedDark ? '#94a3b8' : '#64748b' } } },
+                                    yaxis: { labels: { style: { colors: updatedDark ? '#94a3b8' : '#64748b' } } },
+                                    grid: { borderColor: updatedDark ? '#374151' : '#e2e8f0' },
+                                    legend: { labels: { colors: updatedDark ? '#cbd5e1' : '#475569' } }
+                                });
+                            }
+                        }
+                    });
+                });
+
+                themeObserver.observe(document.documentElement, { attributes: true });
+                themeObserver.observe(document.body, { attributes: true });
+            });
         }
 
-        // 3. Initialize ApexCharts Comparative Bar Chart (Per Module Paid vs Due)
-        const modLabels = <?= json_encode($chartData['labels']) ?>;
-        const paidSeries = <?= json_encode($chartData['paid_series']) ?>;
-        const dueSeries = <?= json_encode($chartData['due_series']) ?>;
-
-        const barOptions = {
-            series: [
-                { name: 'Paid Amount (৳)', data: paidSeries },
-                { name: 'Due Amount (৳)', data: dueSeries }
-            ],
-            chart: {
-                type: 'bar',
-                height: 320,
-                fontFamily: 'inherit',
-                toolbar: { show: false }
-            },
-            colors: ['#10b981', '#ef4444'],
-            plotOptions: {
-                bar: {
-                    horizontal: false,
-                    columnWidth: '55%',
-                    borderRadius: 4
-                }
-            },
-            dataLabels: { enabled: false },
-            stroke: { show: true, width: 2, colors: ['transparent'] },
-            xaxis: {
-                categories: modLabels,
-                labels: {
-                    rotate: -25,
-                    style: { fontSize: '10.5px' }
-                }
-            },
-            yaxis: {
-                labels: {
-                    formatter: function (val) {
-                        if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
-                        if (val >= 1000) return (val / 1000).toFixed(0) + 'K';
-                        return val;
-                    }
-                }
-            },
-            fill: { opacity: 1 },
-            tooltip: {
-                y: {
-                    formatter: function (val) {
-                        return '৳ ' + Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                    }
-                }
-            },
-            legend: { position: 'top', horizontalAlign: 'right', fontSize: '11px' }
-        };
-
-        const barEl = document.querySelector("#apexModuleComparativeBarChart");
-        if (barEl && typeof ApexCharts !== 'undefined') {
-            new ApexCharts(barEl, barOptions).render();
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initModuleScripts);
+        } else {
+            initModuleScripts();
         }
-    });
+    })();
 
     // Quick Date Range Preset Helper
     function setDatePreset(type) {

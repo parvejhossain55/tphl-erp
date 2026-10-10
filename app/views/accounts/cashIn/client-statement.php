@@ -2,14 +2,33 @@
 // Disable layout for this page
 $disable_layout = true;
 
-// Filter out failed, pending, AND rejected (verification_status) transactions
+// Filter out failed, unverified pending, AND rejected (verification_status) transactions
 $validTransactions = array_values(array_filter($transactions, function ($t) {
     $payStatus = strtolower($t['payment_status'] ?? '');
     $verStatus = strtolower($t['verification_status'] ?? 'pending');
-    if (in_array($payStatus, ['failed', 'pending'], true)) return false;
-    if ($verStatus === 'rejected') return false;
-    return true;
+    
+    // Exclude rejected verification or failed payments
+    if ($verStatus === 'rejected' || $payStatus === 'failed') {
+        return false;
+    }
+    
+    // Include if verified by accounts OR payment status is paid/partially_paid
+    if ($verStatus === 'verified' || in_array($payStatus, ['paid', 'partially_paid'], true)) {
+        return true;
+    }
+    
+    return false;
 }));
+
+// Ensure transactions are sorted chronologically by payment_date ASC, id ASC
+usort($validTransactions, function ($a, $b) {
+    $dateA = $a['payment_date'] ?? '';
+    $dateB = $b['payment_date'] ?? '';
+    if ($dateA === $dateB) {
+        return ((int)($a['id'] ?? 0)) <=> ((int)($b['id'] ?? 0));
+    }
+    return strcmp($dateA, $dateB);
+});
 
 // Compute totals
 $totalPrice       = (float)($paymentSummary['total_price'] ?? 0);
@@ -19,13 +38,10 @@ $totalDiscounts   = $bookingDiscount + $bulkEmiDiscount;
 $agreementValue   = (float)($paymentSummary['agreement_value'] ?? $totalPrice);
 $remainingBalance = (float)($paymentSummary['total_due'] ?? 0);
 
-// Calculate actual paid
+// Calculate actual paid from verified/valid transactions
 $actualPaid = 0;
 foreach ($validTransactions as $t) {
-    $st = strtolower($t['payment_status'] ?? '');
-    if (in_array($st, ['failed','pending'], true)) continue;
     $amt = (float)($t['amount'] ?? 0);
-    $due = (float)($t['due_emi_amount'] ?? 0);
     $actualPaid += $amt;
 }
 ?>

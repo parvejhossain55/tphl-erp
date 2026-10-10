@@ -260,6 +260,7 @@ return [
     // Controller: ExpenseAnalyticsController (Company Expense Analytics Dashboard)
     // =========================================================================
     'expense-analytics' => ['controller' => 'ExpenseAnalyticsController', 'method' => 'index'],
+    'expense-analytics/ajax-ledger' => ['controller' => 'ExpenseAnalyticsController', 'method' => 'getLedgerAjax'],
     'expense-analytics/export' => ['controller' => 'ExpenseAnalyticsController', 'method' => 'exportExcel'],
 ];
 

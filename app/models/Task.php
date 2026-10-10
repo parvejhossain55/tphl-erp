@@ -148,13 +148,15 @@ LEFT JOIN designations AS desig ON u.designation_id = desig.id
     {
         $stmt = $this->db->prepare(
             "INSERT INTO tasks
-        (title, user_id, description, start_date, deadline, employee_accept, status, progress, priority,assigned_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)"
+        (title, user_id, mentioned_user_ids, cc_user_ids, description, start_date, deadline, employee_accept, status, progress, priority, assigned_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->bind_param(
-            "sisssisssi",
+            "sisssssisssi",
             $data['title'],
             $data['user_id'],
+            $data['mentioned_user_ids'],
+            $data['cc_user_ids'],
             $data['description'],
             $data['start_date'],
             $data['deadline'],
@@ -195,7 +197,6 @@ LEFT JOIN designations AS desig ON u.designation_id = desig.id
             COALESCE(emp_by.employee_id, CONCAT('USR-', u.id)) AS assigned_by_emp_code
 
         FROM tasks t
-
         LEFT JOIN users e 
             ON t.user_id = e.id
         LEFT JOIN employees emp_to
@@ -250,12 +251,14 @@ LEFT JOIN designations AS desig ON u.designation_id = desig.id
                     priority = ?, 
                     progress = ?, 
                     status = ?,
-                    user_id = ?
+                    user_id = ?,
+                    mentioned_user_ids = ?,
+                    cc_user_ids = ?
                 WHERE id = ?";
 
             $stmt = $this->db->prepare($sql);
             $stmt->bind_param(
-                "sssssisii",
+                "sssssissssi",
                 $data['title'],
                 $data['description'],
                 $data['start_date'],
@@ -264,6 +267,8 @@ LEFT JOIN designations AS desig ON u.designation_id = desig.id
                 $data['progress'],
                 $data['status'],
                 $newEmployeeId,
+                $data['mentioned_user_ids'],
+                $data['cc_user_ids'],
                 $id
             );
 

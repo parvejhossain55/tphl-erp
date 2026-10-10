@@ -778,14 +778,16 @@ class ExpenseAnalytics
     /**
      * Get Unified Expense Ledger Records across all modules with filters
      */
-    public function getExpenseLedgerRecords($filters = [])
+    /**
+     * Build unified SQL queries array for Expense Ledger across all active modules
+     */
+    public function buildExpenseLedgerQueries($filters = [])
     {
         $projectId = $filters['project_id'] ?? '';
         $branchId  = $filters['branch_id'] ?? '';
         $dateFrom  = $filters['from_date'] ?? '';
         $dateTo    = $filters['to_date'] ?? '';
         $moduleKey = $filters['module'] ?? '';
-        $search    = strtolower(trim($filters['search'] ?? ''));
 
         $makeDateFilter = function($col = 'created_at') use ($dateFrom, $dateTo) {
             if (!empty($dateFrom) && !empty($dateTo)) {
@@ -1133,10 +1135,90 @@ class ExpenseAnalytics
             ";
         }
 
+        return $queries;
+    }
+
+    /**
+     * Get Server-Side Paginated Expense Ledger Records for DataTables AJAX
+     */
+    public function getExpenseLedgerPaginated($filters = [], $start = 0, $length = 25, $search = '')
+    {
+        $queries = $this->buildExpenseLedgerQueries($filters);
+        if (empty($queries)) {
+            return [
+                'total'    => 0,
+                'filtered' => 0,
+                'data'     => []
+            ];
+        }
+
+        $allRecords = [];
+        foreach ($queries as $q) {
+            $res = $this->db->query($q);
+            if ($res) {
+                while ($row = $res->fetch_assoc()) {
+                    $allRecords[] = $row;
+                }
+            }
+        }
+
+        $totalRecords = count($allRecords);
+        $search = strtolower(trim($search));
+
+        // Filter if search keyword exists
+        if (!empty($search)) {
+            $filteredRecords = [];
+            foreach ($allRecords as $r) {
+                $haystack = strtolower(
+                    ($r['payee_name'] ?? '') . ' ' .
+                    ($r['payee_type'] ?? '') . ' ' .
+                    ($r['project_name'] ?? '') . ' ' .
+                    ($r['branch_name'] ?? '') . ' ' .
+                    ($r['purpose_title'] ?? '') . ' ' .
+                    ($r['module_name'] ?? '') . ' ' .
+                    ($r['status'] ?? '') . ' ' .
+                    ($r['req_amount'] ?? '') . ' ' .
+                    ($r['paid_amount'] ?? '') . ' ' .
+                    ($r['due_amount'] ?? '')
+                );
+                if (strpos($haystack, $search) !== false) {
+                    $filteredRecords[] = $r;
+                }
+            }
+        } else {
+            $filteredRecords = $allRecords;
+        }
+
+        $totalFiltered = count($filteredRecords);
+
+        // Sort descending by creation date
+        usort($filteredRecords, function($a, $b) {
+            return strcmp($b['created_at'] ?? '', $a['created_at'] ?? '');
+        });
+
+        // Slice requested page
+        $start = max(0, (int)$start);
+        $length = ($length > 0) ? (int)$length : 25;
+        $pageData = array_slice($filteredRecords, $start, $length);
+
+        return [
+            'total'    => $totalRecords,
+            'filtered' => $totalFiltered,
+            'data'     => $pageData
+        ];
+    }
+
+    /**
+     * Get Unified Expense Ledger Records across all modules with filters (Used by Excel Export)
+     */
+    public function getExpenseLedgerRecords($filters = [])
+    {
+        $queries = $this->buildExpenseLedgerQueries($filters);
         if (empty($queries)) {
             return [];
         }
 
+        $search = strtolower(trim($filters['search'] ?? ''));
         $records = [];
         foreach ($queries as $q) {
             $res = $this->db->query($q);
@@ -1146,6 +1228,7 @@ class ExpenseAnalytics
                         $haystack = strtolower(
                             ($row['payee_name'] ?? '') . ' ' .
                             ($row['project_name'] ?? '') . ' ' .
+                            ($row['branch_name'] ?? '') . ' ' .
                             ($row['purpose_title'] ?? '') . ' ' .
                             ($row['module_name'] ?? '') . ' ' .
                             ($row['status'] ?? '')
@@ -1163,11 +1246,6 @@ class ExpenseAnalytics
         usort($records, function($a, $b) {
             return strcmp($b['created_at'] ?? '', $a['created_at'] ?? '');
         });
-
-        // Limit to 1000 records for fast browser rendering
-        if (count($records) > 1000) {
-            $records = array_slice($records, 0, 1000);
-        }
 
         return $records;
     }

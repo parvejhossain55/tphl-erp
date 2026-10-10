@@ -192,16 +192,14 @@
 }
 
 [bd-theme="bd-theme-dark"] h1,
+[bd-theme="bd-theme-dark"] h1,
 [bd-theme="bd-theme-dark"] h2,
 [bd-theme="bd-theme-dark"] h3,
 [bd-theme="bd-theme-dark"] h4,
 [bd-theme="bd-theme-dark"] h5,
 [bd-theme="bd-theme-dark"] h6,
 [bd-theme="bd-theme-dark"] .page-title,
-[bd-theme="bd-theme-dark"] .card-title,
-[bd-theme="bd-theme-dark"] strong,
-[bd-theme="bd-theme-dark"] .fw-semibold,
-[bd-theme="bd-theme-dark"] .fw-bold {
+[bd-theme="bd-theme-dark"] .card-title {
     color: var(--clr-text-body, #f9fafb) !important;
 }
 
@@ -211,6 +209,67 @@
 
 [bd-theme="bd-theme-dark"] .text-dark {
     color: var(--clr-text-body, #f9fafb) !important;
+}
+
+/* Specific text utilities for dark mode (preserving intent) */
+[bd-theme="bd-theme-dark"] .text-primary { color: #38bdf8 !important; }
+[bd-theme="bd-theme-dark"] .text-success { color: #34d399 !important; }
+[bd-theme="bd-theme-dark"] .text-danger  { color: #f87171 !important; }
+[bd-theme="bd-theme-dark"] .text-warning { color: #fbbf24 !important; }
+[bd-theme="bd-theme-dark"] .text-info    { color: #38bdf8 !important; }
+[bd-theme="bd-theme-dark"] .text-secondary { color: #9ca3af !important; }
+
+/* Bootstrap Subtle Badges in Dark Mode (High Contrast & Modern Glow) */
+[bd-theme="bd-theme-dark"] .bg-primary-subtle {
+    background-color: rgba(56, 189, 248, 0.15) !important;
+    border-color: rgba(56, 189, 248, 0.25) !important;
+    color: #38bdf8 !important;
+}
+[bd-theme="bd-theme-dark"] .bg-success-subtle {
+    background-color: rgba(52, 211, 153, 0.15) !important;
+    border-color: rgba(52, 211, 153, 0.25) !important;
+    color: #34d399 !important;
+}
+[bd-theme="bd-theme-dark"] .bg-danger-subtle {
+    background-color: rgba(248, 113, 113, 0.15) !important;
+    border-color: rgba(248, 113, 113, 0.25) !important;
+    color: #f87171 !important;
+}
+[bd-theme="bd-theme-dark"] .bg-warning-subtle {
+    background-color: rgba(251, 191, 36, 0.15) !important;
+    border-color: rgba(251, 191, 36, 0.25) !important;
+    color: #fbbf24 !important;
+}
+[bd-theme="bd-theme-dark"] .bg-info-subtle {
+    background-color: rgba(56, 189, 248, 0.15) !important;
+    border-color: rgba(56, 189, 248, 0.25) !important;
+    color: #38bdf8 !important;
+}
+[bd-theme="bd-theme-dark"] .bg-secondary-subtle {
+    background-color: rgba(156, 163, 175, 0.15) !important;
+    border-color: rgba(156, 163, 175, 0.25) !important;
+    color: #d1d5db !important;
+}
+
+/* Template Settings Panel Dark Mode Fix */
+[bd-theme="bd-theme-dark"] .ts-panel {
+    background-color: var(--clr-bg-card, #1f2937) !important;
+    border-color: var(--clr-border-1, #374151) !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}
+[bd-theme="bd-theme-dark"] .ts-panel .ts-title,
+[bd-theme="bd-theme-dark"] .ts-panel .ts-switch span {
+    color: var(--clr-text-body, #f9fafb) !important;
+}
+[bd-theme="bd-theme-dark"] .ts-toggle-btn {
+    background-color: var(--clr-bg-card, #1f2937) !important;
+    border-color: var(--clr-border-1, #374151) !important;
+}
+[bd-theme="bd-theme-dark"] .ts-toggle-btn i {
+    color: #fbbf24 !important;
+}
+[bd-theme="bd-theme-dark"] .ts-slider {
+    background-color: #4b5563 !important;
 }
 
 [bd-theme="bd-theme-dark"] .table {
@@ -282,11 +341,183 @@
     border-color: var(--clr-border-1, #374151) !important;
 }
 
+/* Select2 Dark Mode Global Compatibility */
+[bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--single,
+[bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--multiple {
+    background-color: var(--clr-bg-card, #1f2937) !important;
+    border-color: var(--clr-border-1, #374151) !important;
+    color: var(--clr-text-body, #f9fafb) !important;
+    min-height: 38px;
+}
+
+[bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: var(--clr-text-body, #f9fafb) !important;
+    line-height: 36px;
+}
+
+[bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--single .select2-selection__arrow b {
+    border-color: #9ca3af transparent transparent transparent !important;
+}
+
+[bd-theme="bd-theme-dark"] .select2-dropdown {
+    background-color: var(--clr-bg-card, #1f2937) !important;
+    border-color: var(--clr-border-1, #374151) !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}
+
+[bd-theme="bd-theme-dark"] .select2-search--dropdown .select2-search__field {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: var(--clr-border-1, #374151) !important;
+    color: var(--clr-text-body, #f9fafb) !important;
+}
+
+[bd-theme="bd-theme-dark"] .select2-results__option {
+    background-color: transparent !important;
+    color: var(--clr-text-body, #f9fafb) !important;
+    padding: 8px 14px !important;
+}
+
+[bd-theme="bd-theme-dark"] .select2-container--default .select2-results__option--highlighted[aria-selected],
+[bd-theme="bd-theme-dark"] .select2-container--default .select2-results__option--highlighted {
+    background-color: var(--clr-theme-primary, #198754) !important;
+    color: #ffffff !important;
+}
+
+[bd-theme="bd-theme-dark"] .select2-container--default .select2-results__option[aria-selected=true] {
+    background-color: rgba(25, 135, 84, 0.2) !important;
+    color: #34d399 !important;
+}
+
 /* Guarantee a minimum height for TinyMCE editor container on mobile */
 @media (max-width: 767.98px) {
     .tox-tinymce {
         min-height: 380px !important;
     }
+}
+
+/* Enable vertical resize for all textareas globally */
+/* Select2 Multiple Global & Form Alignment */
+.select2-container--default .select2-selection--multiple {
+    background-color: #ffffff !important;
+    border: 1px solid var(--clr-border-1, #dee2e6) !important;
+    border-radius: 6px !important;
+    min-height: 48px !important;
+    padding: 4px 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    box-sizing: border-box !important;
+}
+
+.select2-container--default.select2-container--focus .select2-selection--multiple {
+    border-color: var(--clr-theme-primary, #198754) !important;
+    box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.15) !important;
+    outline: 0 !important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__rendered {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    list-style: none !important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-search--inline {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex-grow: 1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-search--inline .select2-search__field {
+    margin: 0 !important;
+    padding: 4px 6px !important;
+    height: 34px !important;
+    line-height: 34px !important;
+    font-size: 14px !important;
+    color: var(--clr-text-body, #333333) !important;
+    width: 100% !important;
+    min-width: 200px !important;
+    border: none !important;
+    outline: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    box-sizing: border-box !important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-search--inline .select2-search__field::placeholder {
+    color: #6c757d !important;
+    font-size: 14px !important;
+    line-height: 34px !important;
+    opacity: 0.8 !important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: rgba(25, 135, 84, 0.12) !important;
+    border: 1px solid rgba(25, 135, 84, 0.3) !important;
+    border-radius: 4px !important;
+    color: #198754 !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    padding: 4px 10px 4px 24px !important;
+    margin: 2px 4px 2px 0 !important;
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    position: absolute !important;
+    left: 6px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    border: none !important;
+    background: transparent !important;
+    color: #198754 !important;
+    font-size: 14px !important;
+    font-weight: bold !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+    color: #dc2626 !important;
+    background: transparent !important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__display {
+    padding-left: 2px !important;
+    padding-right: 0 !important;
+}
+
+/* Dark Mode Multi Select */
+[bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--multiple {
+    background-color: var(--clr-bg-card, #1f2937) !important;
+    border-color: var(--clr-border-1, #374151) !important;
+}
+
+[bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--multiple .select2-search--inline .select2-search__field {
+    color: var(--clr-text-body, #f9fafb) !important;
+}
+
+[bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--multiple .select2-search--inline .select2-search__field::placeholder {
+    color: #9ca3af !important;
+}
+
+[bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: rgba(25, 135, 84, 0.25) !important;
+    border-color: rgba(25, 135, 84, 0.45) !important;
+    color: #86efac !important;
+}
+
+[bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    color: #86efac !important;
 }
 
 /* Enable vertical resize for all textareas globally */
@@ -300,4 +531,5 @@ textarea {
         height: 480px !important;
     }
 }
+
 
