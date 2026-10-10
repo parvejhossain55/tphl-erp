@@ -461,19 +461,19 @@
                         <input type="hidden" name="todo_project_id" value="<?php echo $inboxId; ?>">
                         
                         <div class="mb-3">
-                            <input type="text" name="title" class="task-title-input" placeholder="Task name / শিরোনাম..." required autocomplete="off">
-                            <input type="text" name="description" class="task-desc-input" placeholder="Add description / বিস্তারিত বিবরণ (optional)..." autocomplete="off">
+                            <input type="text" name="title" class="task-title-input" placeholder="Task name..." required autocomplete="off">
+                            <input type="text" name="description" class="task-desc-input" placeholder="Add description (optional)..." autocomplete="off">
                         </div>
                         
                         <!-- Core Controls Row: Strictly 1 Single Row (4 Columns) -->
                         <div class="todo-row-4-col mb-3">
                             <div>
-                                <label class="form-field-label"><i class="far fa-calendar text-danger me-1"></i> Due / Start Date (শুরুর তারিখ)</label>
+                                <label class="form-field-label"><i class="far fa-calendar text-danger me-1"></i> Due / Start Date</label>
                                 <input type="date" name="due_date" class="form-control form-control-sm w-100" title="Due / Start Date">
                             </div>
                             
                             <div>
-                                <label class="form-field-label"><i class="fas fa-flag text-warning me-1"></i> Priority (অগ্রাধিকার)</label>
+                                <label class="form-field-label"><i class="fas fa-flag text-warning me-1"></i> Priority</label>
                                 <select name="priority" class="form-select form-select-sm w-100">
                                     <option value="4">Priority 4 (Normal)</option>
                                     <option value="3">Priority 3 (Medium)</option>
@@ -483,12 +483,12 @@
                             </div>
 
                             <div>
-                                <label class="form-field-label"><i class="fas fa-map-marker-alt text-primary me-1"></i> Location / Tag (ঐচ্ছিক)</label>
+                                <label class="form-field-label"><i class="fas fa-map-marker-alt text-primary me-1"></i> Location / Tag</label>
                                 <input type="text" name="location" class="form-control form-control-sm w-100" placeholder="e.g. Office, Site, Online">
                             </div>
                             
                             <div>
-                                <label class="form-field-label"><i class="fas fa-paperclip text-info me-1"></i> Attachment File (ফাইল)</label>
+                                <label class="form-field-label"><i class="fas fa-paperclip text-info me-1"></i> Attachment File</label>
                                 <input type="file" name="attachment" class="form-control form-control-sm w-100" style="font-size: 12px;">
                             </div>
                         </div>
@@ -504,17 +504,17 @@
                             
                             <div class="todo-row-4-col">
                                 <div>
-                                    <label class="form-field-label">Repeat Mode (পুনরাবৃত্তি)</label>
+                                    <label class="form-field-label">Repeat Mode</label>
                                     <select name="repeat_type" id="add_repeat_type" class="form-select form-select-sm w-100" onchange="toggleRepeatUntil(this.value, 'add_repeat_until_input')">
-                                        <option value="">Do not repeat (একবার)</option>
-                                        <option value="daily">Daily (প্রতিদিন)</option>
-                                        <option value="weekly">Weekly (প্রতি সপ্তাহে)</option>
-                                        <option value="monthly">Monthly (প্রতি মাসে)</option>
-                                        <option value="custom">Custom Date Range (নির্দিষ্ট তারিখ পর্যন্ত)</option>
+                                        <option value="">Do not repeat</option>
+                                        <option value="daily">Daily</option>
+                                        <option value="weekly">Weekly</option>
+                                        <option value="monthly">Monthly</option>
+                                        <option value="custom">Custom Date Range</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="form-field-label text-primary">Repeat Until (To Date / শেষ তারিখ)</label>
+                                    <label class="form-field-label text-primary">Repeat Until (To Date)</label>
                                     <input type="date" name="repeat_until" id="add_repeat_until_input" class="form-control form-control-sm bg-white border-primary-subtle w-100" placeholder="To Date" disabled>
                                 </div>
                                 <div>
@@ -522,7 +522,7 @@
                                     <input type="datetime-local" name="reminder_date_time" class="form-control form-control-sm bg-white w-100" title="Select specific date and time for reminder">
                                 </div>
                                 <div>
-                                    <label class="form-field-label">Email Reminder Count (ইমেইল)</label>
+                                    <label class="form-field-label">Email Reminder Count</label>
                                     <div class="input-group input-group-sm w-100">
                                         <span class="input-group-text bg-white">Send Max</span>
                                         <input type="number" name="max_reminders" class="form-control bg-white text-center" value="1" min="0" placeholder="e.g. 2">
@@ -612,11 +612,11 @@
                     <input type="hidden" name="redirect_view" value="<?php echo htmlspecialchars($viewType); ?>">
                     
                     <div class="mb-3">
-                        <label class="form-field-label">Task Title (শিরোনাম)</label>
+                        <label class="form-field-label">Task Title</label>
                         <input type="text" name="title" id="edit_title" class="form-control fw-bold" style="font-size: 16px; padding: 10px 14px;" placeholder="Task name" required autocomplete="off">
                     </div>
                     <div class="mb-3">
-                        <label class="form-field-label">Task Description (বিবরণ - ঐচ্ছিক)</label>
+                        <label class="form-field-label">Task Description (Optional)</label>
                         <input type="text" name="description" id="edit_description" class="form-control" style="font-size: 14px; padding: 9px 14px;" placeholder="Description (optional)" autocomplete="off">
                     </div>
                     
@@ -661,14 +661,14 @@
                                 <label class="form-field-label">Repeat Task Mode</label>
                                 <select name="repeat_type" id="edit_repeat_type" class="form-select form-select-sm bg-white w-100" onchange="toggleRepeatUntil(this.value, 'edit_repeat_until_input')">
                                     <option value="">Do not repeat</option>
-                                    <option value="daily">Daily (প্রতিদিন)</option>
-                                    <option value="weekly">Weekly (প্রতি সপ্তাহে)</option>
-                                    <option value="monthly">Monthly (প্রতি মাসে)</option>
-                                    <option value="custom">Custom Date Range (নির্দিষ্ট তারিখ পর্যন্ত)</option>
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                    <option value="custom">Custom Date Range</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="form-field-label text-primary">Repeat Until (To Date / শেষ তারিখ)</label>
+                                <label class="form-field-label text-primary">Repeat Until (To Date)</label>
                                 <input type="date" name="repeat_until" id="edit_repeat_until_input" class="form-control form-control-sm bg-white border-primary-subtle w-100" disabled>
                             </div>
                             <div>

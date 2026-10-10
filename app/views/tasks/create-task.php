@@ -47,10 +47,10 @@
                                        <div class="col-lg-6">
                                            <div class="from__input-box">
                                                <div class="form__input-title">
-                                                   <label for="mention_user_ids" class="form-label"><i class="fa-solid fa-at text-primary me-1"></i> Mention Employees</label>
+                                                   <label for="mention_user_ids" class="form-label"><i class="fa-solid fa-at text-primary me-1"></i> Mention Team Mate</label>
                                                </div>
                                                <div class="form__input">
-                                                   <select id="mention_user_ids" name="mention_user_ids[]" class="form-select select2" multiple data-placeholder="Select employees to mention...">
+                                                   <select id="mention_user_ids" name="mention_user_ids[]" class="form-select select2" multiple data-placeholder="Select team mate to mention...">
                                                        <?php foreach ($users as $user): ?>
                                                            <option value="<?= $user['id'] ?>"><?= htmlspecialchars($user['full_name']) ?><?php if (!empty($user['employee_code'])): ?> (<?= htmlspecialchars($user['employee_code']) ?>)<?php endif; ?></option>
                                                        <?php endforeach; ?>
@@ -62,10 +62,10 @@
                                        <div class="col-lg-6">
                                            <div class="from__input-box">
                                                <div class="form__input-title">
-                                                   <label for="cc_user_ids" class="form-label"><i class="fa-solid fa-envelope-open-text text-info me-1"></i> CC Employees</label>
+                                                   <label for="cc_user_ids" class="form-label"><i class="fa-solid fa-envelope-open-text text-info me-1"></i> CC User</label>
                                                </div>
                                                <div class="form__input">
-                                                   <select id="cc_user_ids" name="cc_user_ids[]" class="form-select select2" multiple data-placeholder="Select employees for CC...">
+                                                   <select id="cc_user_ids" name="cc_user_ids[]" class="form-select select2" multiple data-placeholder="Select users for CC...">
                                                        <?php foreach ($users as $user): ?>
                                                            <option value="<?= $user['id'] ?>"><?= htmlspecialchars($user['full_name']) ?><?php if (!empty($user['employee_code'])): ?> (<?= htmlspecialchars($user['employee_code']) ?>)<?php endif; ?></option>
                                                        <?php endforeach; ?>

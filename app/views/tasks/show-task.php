@@ -168,7 +168,7 @@
                     <?php if (!empty($mentionUsers)): ?>
                     <div class="card__wrapper">
                         <div class="card__title-wrap mb-20 d-flex align-items-center justify-content-between">
-                            <h5 class="card__heading-title mb-0">Mentioned Team</h5>
+                            <h5 class="card__heading-title mb-0">Mentioned Team Mate</h5>
                             <span class="badge bg-primary bg-opacity-10 text-primary fw-semibold"><?= count($mentionUsers) ?> Mentioned</span>
                         </div>
                         <div class="card__body">
@@ -192,7 +192,7 @@
                     <?php if (!empty($ccUsers)): ?>
                     <div class="card__wrapper">
                         <div class="card__title-wrap mb-20 d-flex align-items-center justify-content-between">
-                            <h5 class="card__heading-title mb-0">CC Team</h5>
+                            <h5 class="card__heading-title mb-0">CC Users</h5>
                             <span class="badge bg-secondary bg-opacity-10 text-secondary fw-semibold"><?= count($ccUsers) ?> in CC</span>
                         </div>
                         <div class="card__body">
