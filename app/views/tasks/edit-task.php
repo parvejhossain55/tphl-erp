@@ -83,7 +83,7 @@
                                       <div class="col-lg-6">
                                           <div class="from__input-box">
                                               <div class="form__input-title">
-                                                  <label for="cc_user_ids"><i class="fa-solid fa-envelope-open-text text-info me-1"></i> CC User</label>
+                                                  <label for="cc_user_ids"><i class="fa-solid fa-envelope-open-text text-info me-1"></i> CC User (Optional)</label>
                                               </div>
                                               <div class="form__input">
                                                   <select id="cc_user_ids" name="cc_user_ids[]" class="form-select select2" multiple data-placeholder="Select users for CC...">
