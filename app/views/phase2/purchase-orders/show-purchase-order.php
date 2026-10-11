@@ -174,6 +174,11 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
             </a>
           <?php endif; ?>
           <a href="<?= $base_url ?>/con-purchase-orders" class="po-btn-w"><i class="fal fa-arrow-left"></i>Back</a>
+          <?php if ($canDeletePO ?? false): ?>
+            <button type="button" class="po-btn-w" style="background:rgba(239,68,68,0.25);border-color:rgba(239,68,68,0.55);color:#fff" data-bs-toggle="modal" data-bs-target="#deletePoModal">
+              <i class="fal fa-trash-alt text-danger"></i> Delete PO
+            </button>
+          <?php endif; ?>
         </div>
       </div>
       <div style="text-align:right">
@@ -1325,6 +1330,33 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
                 <div class="modal-footer border-0 pt-0">
                   <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600">Cancel</button>
                   <button type="submit" class="btn btn-danger" style="border-radius:10px;font-weight:600"><i class="fal fa-times-circle me-1"></i> Confirm Rejection</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      <?php endif; ?>
+
+      <!-- Delete Modal -->
+      <?php if ($canDeletePO ?? false): ?>
+        <div class="modal fade" id="deletePoModal" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15)">
+              <form action="<?= $base_url ?>/con-purchase-order-delete/<?= $po['id'] ?>" method="POST">
+                <div class="modal-header border-0 pb-0">
+                  <h5 class="modal-title text-danger fw-bold"><i class="fal fa-trash-alt me-2"></i>Delete Purchase Order</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="alert alert-danger mb-0" style="border-radius:10px">
+                    <strong>Are you sure?</strong><br>
+                    You are about to permanently delete <strong>PO-<?= $po['id'] ?></strong>. This action cannot be undone. 
+                    If no other PO exists for this request, the original Purchase Request status will revert back to 'Approved' so you can re-generate the PO.
+                  </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 mt-3">
+                  <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600">Cancel</button>
+                  <button type="submit" class="btn btn-danger" style="border-radius:10px;font-weight:600"><i class="fal fa-trash-alt me-1"></i> Confirm Deletion</button>
                 </div>
               </form>
             </div>

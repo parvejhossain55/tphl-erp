@@ -148,6 +148,19 @@ class Con_QuotationController extends Controller
 
         $comparison = $this->quotModel->buildComparison($requestId);
 
+        // Check if active POs exist for this PR
+        $poCheck = $this->db->query("SELECT id FROM purchase_orders WHERE request_id = {$requestId} AND status != 'Cancelled'");
+        $hasActivePOs = ($poCheck && $poCheck->num_rows > 0);
+
+        // Fetch existing selections if any
+        $existingSelections = $this->quotModel->getWinningSelections($requestId);
+        $savedSelectionsMap = [];
+        if (!empty($existingSelections)) {
+            foreach ($existingSelections as $sel) {
+                $savedSelectionsMap[$sel['material_id']] = $sel['vendor_id'];
+            }
+        }
+
         // Fetch Negotiation Notes for this PR
         $notesQuery = $this->db->prepare("
             SELECT n.*, u.full_name AS author_name, u.role_id AS author_role
@@ -165,7 +178,9 @@ class Con_QuotationController extends Controller
             'page_title'    => 'Comparative Statement — PR #' . $requestId,
             'pr'            => $pr,
             'comparison'    => $comparison,
+            'savedSelectionsMap' => $savedSelectionsMap,
             'negotiationNotes' => $negotiationNotes,
+            'hasActivePOs'  => $hasActivePOs,
         ]);
     }
 
@@ -179,6 +194,13 @@ class Con_QuotationController extends Controller
 
         $requestId = (int)($_POST['request_id'] ?? 0);
         $userId    = (int)($_SESSION['user']['id'] ?? 0);
+
+        // Check if active POs exist for this PR
+        $poCheck = $this->db->query("SELECT id FROM purchase_orders WHERE request_id = {$requestId} AND status != 'Cancelled'");
+        if ($poCheck && $poCheck->num_rows > 0) {
+            setError('Warning: Active Purchase Orders already exist for this Request. Your CST changes will NOT modify existing POs. Please cancel existing POs if you want to regenerate them.');
+            // We allow saving, but give a warning so they know why POs didn't change
+        }
 
         $selectedVendors  = $_POST['selected_vendor'] ?? [];
         $materialIds      = $_POST['sel_material_id'] ?? [];

@@ -1,6 +1,6 @@
   <?php
     $page_title = "Create Project";
-    $page = 'Project Create';
+    $page = 'Task Create';
     $show_breadcrumb = true;
     ?>
 
@@ -62,7 +62,7 @@
                                        <div class="col-lg-6">
                                            <div class="from__input-box">
                                                <div class="form__input-title">
-                                                   <label for="cc_user_ids" class="form-label"><i class="fa-solid fa-envelope-open-text text-info me-1"></i> CC User</label>
+                                                   <label for="cc_user_ids" class="form-label"><i class="fa-solid fa-envelope-open-text text-info me-1"></i> CC User (Optional)</label>
                                                </div>
                                                <div class="form__input">
                                                    <select id="cc_user_ids" name="cc_user_ids[]" class="form-select select2" multiple data-placeholder="Select users for CC...">
@@ -106,7 +106,10 @@
                                                       <option value="high" selected>High</option>
                                                       <option value="urgent">Urgent</option>
                                                   </select>
-
+1. in every profile of every client against flats/units-- have to add a plus button that will allow CED Team to enter multiple owner information against every unit/flat.
+2. by clicking on the plus button on there, they will be able to add another owner information-- 1. Name, Phone, Email etc. 
+3. For every client have to add an alternate email field and every transaction to be sent there (if any client have two email on erp profile, will receive same message to both email.).
+4. there is a field to add address of a client but every client has a permanent and present address, current address field will be present address and add permanent address option too. 
                                               </div>
                                           </div>
                                       </div>

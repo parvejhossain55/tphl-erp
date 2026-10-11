@@ -65,6 +65,7 @@ $page = "View Lead";
         margin-bottom: 1.5rem;
         overflow: hidden;
         border: 1px solid #eef2f5;
+        height: calc(100% - 1.5rem);
     }
 
     .info-card-header {
@@ -288,6 +289,12 @@ $page = "View Lead";
                             <div class="info-value"><?= htmlspecialchars($leadData['email'] ?: '-') ?></div>
                         </div>
                         <div class="info-row">
+                            <div class="info-label">Alternate Email Address</div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['alt_email'] ?: '-') ?></div>
+                        </div>
+                        
+
+                        <div class="info-row">
                             <div class="info-label">Present Address (ENG)</div>
                             <div class="info-value"><?= htmlspecialchars($leadData['address'] ?: '-') ?></div>
                         </div>
@@ -310,6 +317,41 @@ $page = "View Lead";
                     </div>
                 </div>
             </div>
+
+            <!-- 2nd Owner Information Card -->
+            <?php if (!empty($leadData['2nd_lead_owner_name'])): ?>
+            <div class="col-lg-6 mb-3">
+                <div class="info-card">
+                    <div class="info-card-header bg-secondary text-white">
+                        <i class="fa-solid fa-user-plus me-2"></i> 2nd Owner Details
+                    </div>
+                    <div class="info-card-body">
+                        <div class="info-row">
+                            <div class="info-label">Name</div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['2nd_lead_owner_name'] ?: '-') ?></div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Phone</div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['2nd_owner_phone'] ?: '-') ?></div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Email</div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['2nd_owner_email'] ?: '-') ?></div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Address</div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['2nd_owner_address'] ?: '-') ?></div>
+                        </div>
+                        <?php if (!empty($leadData['2nd_owner_other_details'])): ?>
+                        <div class="info-row">
+                            <div class="info-label">Other Details</div>
+                            <div class="info-value"><?= htmlspecialchars($leadData['2nd_owner_other_details'] ?: '-') ?></div>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <!-- 3. Professional Information Card -->
             <div class="col-lg-6">

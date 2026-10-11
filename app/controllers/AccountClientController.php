@@ -1747,6 +1747,7 @@ public function addCedTransaction()
             'online_type'       => $_POST['online_type'] ?? null,
         'attachment_paths'   => $uploadedPaths ?: null,
         'bulk_emi_discount' => isset($_POST['bulk_emi_discount']) ? (float)$_POST['bulk_emi_discount'] : 0,
+        'is_emi_discount'    => !empty($_POST['apply_emi_discount']) ? 1 : 0,
         'due_emi_amount'     => isset($_POST['due_emi_amount']) ? (float)$_POST['due_emi_amount'] : 0,
         'parent_payment_id'  => !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : null,
         'settlement_type'    => !empty($_POST['settlement_type']) ? $_POST['settlement_type'] : null,
@@ -1823,7 +1824,7 @@ public function addCedTransaction()
         // EMAIL SENDING LOGIC
         if (!$isTestingMode) {
             $leadInfoQuery = $this->db->query("
-                SELECT l.full_name, l.email, p.name AS project_name, f.flat_name
+                SELECT l.full_name, l.email, l.alt_email, l.2nd_owner_email, p.name AS project_name, f.flat_name
                 FROM lead_bookings lb
                 LEFT JOIN leads l ON lb.lead_id = l.id
                 LEFT JOIN flats f ON lb.flat_id = f.id
@@ -1832,22 +1833,40 @@ public function addCedTransaction()
             ");
             if ($leadInfoQuery && $leadInfoQuery->num_rows > 0) {
                 $leadInfo = $leadInfoQuery->fetch_assoc();
+                
+                require_once dirname(__DIR__) . '/core/MailServiceForPHPMailer.php';
+                $mailService = new MailService();
+                $mailData = [
+                    'client_name' => $leadInfo['full_name'],
+                    'amount' => (float)($transactionData['amount'] ?? 0),
+                    'project_name' => $leadInfo['project_name'],
+                    'flat_name' => $leadInfo['flat_name'],
+                    'payment_date' => $transactionData['payment_date'] ?? date('Y-m-d')
+                ];
+
+                $emailSentCount = 0;
+                
                 if (!empty($leadInfo['email']) && filter_var($leadInfo['email'], FILTER_VALIDATE_EMAIL)) {
-                    require_once dirname(__DIR__) . '/core/MailServiceForPHPMailer.php';
-                    $mailService = new MailService();
-                    $mailData = [
-                        'client_name' => $leadInfo['full_name'],
-                        'amount' => (float)($transactionData['amount'] ?? 0),
-                        'project_name' => $leadInfo['project_name'],
-                        'flat_name' => $leadInfo['flat_name'],
-                        'payment_date' => $transactionData['payment_date'] ?? date('Y-m-d')
-                    ];
-                    $mailSent = $mailService->sendPaymentSuccessMail($leadInfo['email'], $mailData);
-                    if ($mailSent) {
-                        $smsMsg .= " & Email sent!";
-                    } else {
-                        $smsMsg .= " (Warning: Email dispatch failed)";
+                    if ($mailService->sendPaymentSuccessMail($leadInfo['email'], $mailData)) {
+                        $emailSentCount++;
                     }
+                }
+                if (!empty($leadInfo['alt_email']) && filter_var($leadInfo['alt_email'], FILTER_VALIDATE_EMAIL)) {
+                    if ($mailService->sendPaymentSuccessMail($leadInfo['alt_email'], $mailData)) {
+                        $emailSentCount++;
+                    }
+                }
+
+                if (!empty($leadInfo['2nd_owner_email']) && filter_var($leadInfo['2nd_owner_email'], FILTER_VALIDATE_EMAIL)) {
+                    if ($mailService->sendPaymentSuccessMail($leadInfo['2nd_owner_email'], $mailData)) {
+                        $emailSentCount++;
+                    }
+                }
+
+                if ($emailSentCount > 0) {
+                    $smsMsg .= " & Email sent!";
+                } else {
+                    $smsMsg .= " (Warning: Email dispatch failed or skipped)";
                 }
             }
         }
@@ -2082,6 +2101,7 @@ public function addTransaction()
             'parent_payment_id'=> !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : null,
             'settlement_type'  => ($paymentType === 'emi_due_settlement') ? 'emi_due_settlement' : null,
             'bulk_emi_discount'=> isset($_POST['bulk_emi_discount']) ? (float)$_POST['bulk_emi_discount'] : 0,
+            'is_emi_discount'  => !empty($_POST['apply_emi_discount']) ? 1 : 0,
             'handover_to'      => !empty($_POST['handover_to']) ? (int)$_POST['handover_to'] : null,
             'created_by'       => $_SESSION['user']['id'] ?? 1
         ];
@@ -2141,7 +2161,7 @@ public function addTransaction()
             // EMAIL SENDING LOGIC
             if (!$isTestingMode) {
                 $leadInfoQuery = $this->db->query("
-                    SELECT l.full_name, l.email, p.name AS project_name, f.flat_name
+                    SELECT l.full_name, l.email, l.alt_email, l.2nd_owner_email, p.name AS project_name, f.flat_name
                     FROM lead_bookings lb
                     LEFT JOIN leads l ON lb.lead_id = l.id
                     LEFT JOIN flats f ON lb.flat_id = f.id
@@ -2150,22 +2170,40 @@ public function addTransaction()
                 ");
                 if ($leadInfoQuery && $leadInfoQuery->num_rows > 0) {
                     $leadInfo = $leadInfoQuery->fetch_assoc();
+
+                    require_once dirname(__DIR__) . '/core/MailServiceForPHPMailer.php';
+                    $mailService = new MailService();
+                    $mailData = [
+                        'client_name' => $leadInfo['full_name'],
+                        'amount' => (float)($transactionData['amount'] ?? 0),
+                        'project_name' => $leadInfo['project_name'],
+                        'flat_name' => $leadInfo['flat_name'],
+                        'payment_date' => $transactionData['payment_date'] ?? date('Y-m-d')
+                    ];
+
+                    $emailSentCount = 0;
+
                     if (!empty($leadInfo['email']) && filter_var($leadInfo['email'], FILTER_VALIDATE_EMAIL)) {
-                        require_once dirname(__DIR__) . '/core/MailServiceForPHPMailer.php';
-                        $mailService = new MailService();
-                        $mailData = [
-                            'client_name' => $leadInfo['full_name'],
-                            'amount' => (float)($transactionData['amount'] ?? 0),
-                            'project_name' => $leadInfo['project_name'],
-                            'flat_name' => $leadInfo['flat_name'],
-                            'payment_date' => $transactionData['payment_date'] ?? date('Y-m-d')
-                        ];
-                        $mailSent = $mailService->sendPaymentSuccessMail($leadInfo['email'], $mailData);
-                        if ($mailSent) {
-                            $smsMsg .= " & Email sent!";
-                        } else {
-                            $smsMsg .= " (Warning: Email dispatch failed)";
+                        if ($mailService->sendPaymentSuccessMail($leadInfo['email'], $mailData)) {
+                            $emailSentCount++;
                         }
+                    }
+                    if (!empty($leadInfo['alt_email']) && filter_var($leadInfo['alt_email'], FILTER_VALIDATE_EMAIL)) {
+                        if ($mailService->sendPaymentSuccessMail($leadInfo['alt_email'], $mailData)) {
+                            $emailSentCount++;
+                        }
+                    }
+
+                    if (!empty($leadInfo['2nd_owner_email']) && filter_var($leadInfo['2nd_owner_email'], FILTER_VALIDATE_EMAIL)) {
+                        if ($mailService->sendPaymentSuccessMail($leadInfo['2nd_owner_email'], $mailData)) {
+                            $emailSentCount++;
+                        }
+                    }
+
+                    if ($emailSentCount > 0) {
+                        $smsMsg .= " & Email sent!";
+                    } else {
+                        $smsMsg .= " (Warning: Email dispatch failed or skipped)";
                     }
                 }
             }

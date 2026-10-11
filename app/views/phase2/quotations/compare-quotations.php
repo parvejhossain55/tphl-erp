@@ -21,6 +21,8 @@ $vendors   = $comparison['vendors']   ?? [];
 $matrix    = $comparison['matrix']    ?? [];
 $totals    = $comparison['totals']    ?? [];
 $vendorIds = array_keys($vendors);
+$savedSelectionsMap = $savedSelectionsMap ?? [];
+$hasSavedSelections = !empty($savedSelectionsMap);
 ?>
 
 <section class="section">
@@ -56,6 +58,16 @@ $vendorIds = array_keys($vendors);
                             <a href="<?= $base_url ?>/con-quotation-create/<?= $pr['id'] ?>" class="ms-2">Add Quotation →</a>
                         </div>
                     <?php else: ?>
+
+                    <?php if (!empty($hasActivePOs)): ?>
+                        <div class="alert alert-warning py-2 px-3 mb-3 d-flex align-items-center shadow-sm" style="border-radius:10px;">
+                            <i class="bi bi-exclamation-triangle-fill fs-4 me-3 text-warning"></i>
+                            <div>
+                                <strong class="text-dark">Active Purchase Orders exist for this Request.</strong><br>
+                                <span style="font-size: 0.9rem;" class="text-dark">Modifying the CST selections now will <b>NOT</b> update the existing Purchase Orders. If you want to regenerate POs with new selections, you must cancel the existing POs first.</span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
 
                     <form action="<?= $base_url ?>/con-quotation-select" method="POST" id="cstForm">
                         <input type="hidden" name="request_id" value="<?= $pr['id'] ?>">
@@ -119,7 +131,12 @@ $vendorIds = array_keys($vendors);
                                         <?php foreach ($vendorIds as $vid): ?>
                                             <?php
                                             $cell = $matrix[$mid][$vid] ?? null;
-                                            $isLowest = ($vid === $lowestVendor && $cell);
+                                            if ($hasSavedSelections) {
+                                                $isLowest = (isset($savedSelectionsMap[$mid]) && $savedSelectionsMap[$mid] == $vid && $cell);
+                                            } else {
+                                                $isLowest = ($vid === $lowestVendor && $cell);
+                                            }
+                                            $isSelectedVal = $isLowest ? 1 : 0;
                                             ?>
                                             <td class="<?= $isLowest ? 'table-success fw-bold' : '' ?>">
                                                 <?php if ($cell): ?>
@@ -138,17 +155,33 @@ $vendorIds = array_keys($vendors);
                                                 <option value="">Select</option>
                                                 <?php foreach ($vendorIds as $vid): ?>
                                                     <?php if (isset($matrix[$mid][$vid])): ?>
+                                                        <?php
+                                                        if ($hasSavedSelections) {
+                                                            $isSelected = (isset($savedSelectionsMap[$mid]) && $savedSelectionsMap[$mid] == $vid);
+                                                        } else {
+                                                            $isSelected = ($vid === $lowestVendor);
+                                                        }
+                                                        ?>
                                                         <option value="<?= $vid ?>"
                                                                 data-price="<?= $matrix[$mid][$vid]['unit_price'] ?>"
-                                                                <?= ($vid === $lowestVendor) ? 'selected' : '' ?>>
+                                                                <?= $isSelected ? 'selected' : '' ?>>
                                                             <?= htmlspecialchars($vendors[$vid]) ?>
                                                         </option>
                                                     <?php endif; ?>
                                                 <?php endforeach; ?>
                                             </select>
+                                            <?php
+                                            $defaultPrice = 0;
+                                            if ($hasSavedSelections && isset($savedSelectionsMap[$mid])) {
+                                                $sVid = $savedSelectionsMap[$mid];
+                                                $defaultPrice = isset($matrix[$mid][$sVid]) ? $matrix[$mid][$sVid]['unit_price'] : 0;
+                                            } else {
+                                                $defaultPrice = ($lowestVendor && isset($matrix[$mid][$lowestVendor])) ? $matrix[$mid][$lowestVendor]['unit_price'] : 0;
+                                            }
+                                            ?>
                                             <input type="hidden" name="sel_unit_price[]"
                                                    class="cst-selected-price"
-                                                   value="<?= ($lowestVendor && isset($matrix[$mid][$lowestVendor])) ? $matrix[$mid][$lowestVendor]['unit_price'] : 0 ?>">
+                                                   value="<?= $defaultPrice ?>">
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -159,6 +192,13 @@ $vendorIds = array_keys($vendors);
                                         <?php foreach ($vendorIds as $vid): ?>
                                             <td>৳ <?= number_format($totals[$vid] ?? 0, 2) ?></td>
                                         <?php endforeach; ?>
+                                        <td></td>
+                                    </tr>
+                                    <tr class="fw-bold table-info">
+                                        <td colspan="5" class="text-end">Selected Items Total:</td>
+                                        <td colspan="<?= count($vendorIds) ?>" class="text-center">
+                                            <span id="grandSelectedTotal" style="font-size: 1.1rem; color: #0f5132;">৳ 0.00</span>
+                                        </td>
                                         <td></td>
                                     </tr>
                                 </tfoot>
@@ -208,14 +248,33 @@ $vendorIds = array_keys($vendors);
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    function updateSelectedTotal() {
+        var total = 0;
+        document.querySelectorAll('.cst-selected-price').forEach(function(input) {
+            var tr = input.closest('tr');
+            var qtyText = tr.querySelector('td:nth-child(3)').innerText.replace(/,/g, '');
+            var qty = parseFloat(qtyText) || 0;
+            var price = parseFloat(input.value) || 0;
+            total += (qty * price);
+        });
+        var totalEl = document.getElementById('grandSelectedTotal');
+        if (totalEl) {
+            totalEl.innerText = '৳ ' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+    }
+
     // When vendor selection changes, update the hidden price field
     document.querySelectorAll('.cst-vendor-select').forEach(function (sel) {
         sel.addEventListener('change', function () {
             var opt   = this.options[this.selectedIndex];
-            var price = opt.getAttribute('data-price') || 0;
+            var price = opt ? (opt.getAttribute('data-price') || 0) : 0;
             this.closest('td').querySelector('.cst-selected-price').value = price;
+            updateSelectedTotal();
         });
     });
+
+    // Initial calculation
+    updateSelectedTotal();
 
     // SweetAlert confirmation for CST form
     var confirmBtn = document.getElementById('btnConfirmCST');
