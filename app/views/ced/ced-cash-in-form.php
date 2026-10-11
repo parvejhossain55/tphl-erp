@@ -32,7 +32,7 @@ $getOrdinal = function($num) {
     return $num . 'th';
 };
 
-$nextEmiNum = ($paymentSummary['completed_emi'] ?? 0) + 1;
+$nextEmiNum = ($paymentSummary['completed_emi'] ?? 0) + ($paymentSummary['unverified_emi_count'] ?? 0) + 1;
 $nextEmiStr = $getOrdinal($nextEmiNum);
 
 $dueEmiStr = '';
@@ -236,28 +236,33 @@ if (!empty($virtualEmiSchedule)) {
                                 </div>
                                 <input type="hidden" name="due_emi_amount" id="dueEmiAmount" value="0">
 
-                                <!-- Bulk EMI Discount (shown when >= 2 EMIs) -->
-                                <div id="bulkDiscountSection" class="mt-3 p-3" style="display:none;background:rgba(108,95,252,0.07);border-radius:8px;border:1px solid rgba(108,95,252,0.2);">
-                                    <label class="form__input-title" style="color:#6c5ffc;">
-                                        <i class="fa-light fa-tags me-1"></i>Bulk EMI Discount (Optional)
-                                    </label>
-                                    <div class="row align-items-end">
-                                        <div class="col-md-6">
-                                            <input type="number" name="bulk_emi_discount" id="bulkEmiDiscount"
-                                                   class="form-control" step="1" min="0" value="0"
-                                                   placeholder="Enter discount amount">
-                                        </div>
-                                        <div class="col-md-6">
-                                            <small class="text-muted">
-                                                Remaining CF after payment: <strong id="remainingCFAfterPayment">—</strong><br>
-                                                Max discount: <strong id="maxBulkDiscount">—</strong>
-                                            </small>
-                                        </div>
+                                <!-- EMI Discount Toggle -->
+                                <div class="mt-3 p-3" style="background:rgba(108,95,252,0.07);border-radius:8px;border:1px solid rgba(108,95,252,0.2);">
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="applyEmiDiscount" name="apply_emi_discount" value="1">
+                                        <label class="form-check-label" for="applyEmiDiscount" style="color:#6c5ffc; font-weight:600;">
+                                            <i class="fa-light fa-tags me-1"></i>Apply EMI Discount?
+                                        </label>
                                     </div>
-                                    <small class="text-muted d-block mt-1">
-                                        <i class="fa-light fa-info-circle me-1"></i>
-                                        This discount reduces the <strong>total construction fee</strong> (separate from booking discount). Applied after verification.
-                                    </small>
+                                    <div id="emiDiscountSection" style="display:none;">
+                                        <div class="row align-items-end">
+                                            <div class="col-md-6">
+                                                <input type="number" name="bulk_emi_discount" id="bulkEmiDiscount"
+                                                       class="form-control" step="1" min="0" value="0"
+                                                       placeholder="Enter discount amount">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted">
+                                                    Remaining CF after payment: <strong id="remainingCFAfterPayment">—</strong><br>
+                                                    Max discount: <strong id="maxBulkDiscount">—</strong>
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted d-block mt-1">
+                                            <i class="fa-light fa-info-circle me-1"></i>
+                                            This discount will be recorded as a virtual payment (Discount EMI) and will not affect the cash balance.
+                                        </small>
+                                    </div>
                                 </div>
 
                                 <!-- Late Payment Penalty & Waiver Section -->
@@ -542,7 +547,8 @@ if (!empty($virtualEmiSchedule)) {
         const onlineFields = document.querySelectorAll('.online-fields');
 
         // Bulk discount elements
-        const bulkDiscountSection  = document.getElementById('bulkDiscountSection');
+        const applyEmiDiscount     = document.getElementById('applyEmiDiscount');
+        const emiDiscountSection   = document.getElementById('emiDiscountSection');
         const bulkDiscountInput    = document.getElementById('bulkEmiDiscount');
         const remainingCFDisplay   = document.getElementById('remainingCFAfterPayment');
         const maxDiscountDisplay   = document.getElementById('maxBulkDiscount');
@@ -642,15 +648,47 @@ if (!empty($virtualEmiSchedule)) {
             }
         }
 
+        if (applyEmiDiscount && emiDiscountSection) {
+            applyEmiDiscount.addEventListener('change', function() {
+                emiDiscountSection.style.display = this.checked ? 'block' : 'none';
+                if (!this.checked && bulkDiscountInput) bulkDiscountInput.value = '0';
+                
+                // Allow 0 amount if applying EMI discount (e.g., adding only a discount retrospectively)
+                if (this.checked) {
+                    if (amountField) {
+                        amountField.min = "0";
+                        amountField.required = false;
+                        if (!amountField.value) amountField.value = "0";
+                    }
+                    // Update label to clarify it won't consume the next EMI slot if just a discount
+                    const emiOption = document.querySelector('#paymentType option[value="emi"]');
+                    if (emiOption) {
+                        if (!emiOption.dataset.originalText) emiOption.dataset.originalText = emiOption.text;
+                        emiOption.text = "EMI / Past EMI Discount (Cons. Fee)";
+                    }
+                } else {
+                    if (amountField) {
+                        amountField.min = "1";
+                        amountField.required = true;
+                        if (parseFloat(amountField.value) === 0) amountField.value = "";
+                    }
+                    // Restore label
+                    const emiOption = document.querySelector('#paymentType option[value="emi"]');
+                    if (emiOption && emiOption.dataset.originalText) {
+                        emiOption.text = emiOption.dataset.originalText;
+                    }
+                }
+            });
+        }
+
         // Update bulk discount section visibility and limits
         function updateBulkDiscount() {
-            if (!bulkDiscountSection) return;
+            if (!applyEmiDiscount) return;
             const amount = parseFloat(amountField?.value) || 0;
             const isEmi = paymentType && paymentType.value === 'emi';
-            const coversMultiple = perEmiAmountVal > 0 && amount >= (perEmiAmountVal * 2);
 
-            if (isEmi && coversMultiple) {
-                bulkDiscountSection.style.display = 'block';
+            if (isEmi) {
+                applyEmiDiscount.closest('.mt-3').style.display = 'block';
                 const remainingAfter = Math.max(0, effectiveCF - emiPaidSoFar - amount);
                 const maxDiscount = remainingAfter;
                 if (remainingCFDisplay) remainingCFDisplay.textContent = 'TK.' + remainingAfter.toLocaleString('en-IN', {minimumFractionDigits:2});
@@ -662,7 +700,9 @@ if (!empty($virtualEmiSchedule)) {
                     }
                 }
             } else {
-                bulkDiscountSection.style.display = 'none';
+                applyEmiDiscount.closest('.mt-3').style.display = 'none';
+                applyEmiDiscount.checked = false;
+                if (emiDiscountSection) emiDiscountSection.style.display = 'none';
                 if (bulkDiscountInput) bulkDiscountInput.value = '0';
             }
         }

@@ -31,7 +31,8 @@ GEMINI.md
 AGENTS.md
 
 # Custom DB Migration
-schema/custom-migration/tphl_db.sql
+/schema/custom-migration/tphl_db.sql
+/schema/custom-migration/tphl_db_fixed.sql
 # Onboard Clients Generated CSV & Audit files
 *.csv
 ONBOARD_CLIENTS_AUDIT_REPORT.md

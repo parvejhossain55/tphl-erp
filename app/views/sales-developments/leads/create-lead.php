@@ -152,8 +152,51 @@ $page = "create Lead"
                 <!-- Email -->
                 <div class="col-md-6">
                     <div class="from__input-box">
-                        <label class="form__input-title" for="emailAddress">Email* <span class="text-danger">Optional</span></label>
+                        <label class="form__input-title" for="emailAddress">Email <span class="text-danger">Optional</span></label>
                         <input class="form-control" name="email" id="emailAddress" type="email">
+                    </div>
+                </div>
+
+                <!-- Alt Email -->
+                <div class="col-md-6">
+                    <div class="from__input-box">
+                        <label class="form__input-title" for="altEmailAddress">Alt Email <span class="text-danger">Optional</span></label>
+                        <input class="form-control" name="alt_email" id="altEmailAddress" type="email">
+                    </div>
+                </div>
+
+                <!-- 2nd Owner Section Toggle -->
+                <div class="col-12 mt-3 mb-2">
+                    <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#secondOwnerSection" aria-expanded="false" aria-controls="secondOwnerSection">
+                        <i class="fa-solid fa-plus me-1"></i> Add 2nd Owner Information
+                    </button>
+                </div>
+
+                <div class="collapse col-12" id="secondOwnerSection">
+                    <div class="row bg-light p-3 border rounded">
+                        <div class="col-12 mb-3">
+                            <h6 class="fw-bold"><i class="fa-solid fa-user-plus me-2"></i>2nd Owner Details</h6>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form__input-title">2nd Owner Name</label>
+                            <input class="form-control" name="2nd_lead_owner_name" type="text">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form__input-title">2nd Owner Phone</label>
+                            <input class="form-control" name="2nd_owner_phone" type="text">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form__input-title">2nd Owner Email</label>
+                            <input class="form-control" name="2nd_owner_email" type="email">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form__input-title">2nd Owner Address</label>
+                            <input class="form-control" name="2nd_owner_address" type="text">
+                        </div>
+                        <div class="col-12">
+                            <label class="form__input-title">Other Details</label>
+                            <textarea class="form-control" name="2nd_owner_other_details" rows="2"></textarea>
+                        </div>
                     </div>
                 </div>
 
@@ -171,8 +214,6 @@ $page = "create Lead"
                             style="height: 38px; display:flex; align-items:center; padding:0 12px;">
                             + Source
                         </button>
-
-
                     </div>
                 </div>
 

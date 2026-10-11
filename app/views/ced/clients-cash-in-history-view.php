@@ -490,15 +490,42 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
         </div>
 
         <!-- ROW 4: CF Remaining & EMI Status -->
-        <!-- 13. Remaining Construction Fee -->
+        <!-- 13a. Approved EMI Discount -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
                     <div class="card__icon">
-                        <span style="color:#e74c3c;"><i class="fa-light fa-hourglass-half"></i></span>
+                        <span style="color:#6c5ffc;"><i class="fa-light fa-tags"></i></span>
                     </div>
                     <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Remaining Construction Fee</h6>
+                        <h6 class="card__sub-title mb-10">Approved EMI Discount</h6>
+                        <div class="d-flex flex-wrap align-items-end gap-10">
+                            <div class="d-flex flex-column align-items-start">
+                                <h4 class="card__title text-primary">
+                                    TK.<?= number_format($paymentSummary['total_bulk_emi_discount'] ?? 0, 2) ?>
+                                </h4>
+                                <?php if (!empty($paymentSummary['unverified_bulk_emi_discount']) && $paymentSummary['unverified_bulk_emi_discount'] > 0): ?>
+                                    <div style="margin-top: 4px;">
+                                        <span class="badge bg-warning text-dark" style="font-size:11px; font-weight:600; padding:4px 8px;" title="Uploaded EMI discounts awaiting verification">
+                                            <i class="fa-light fa-clock"></i> +TK.<?= number_format($paymentSummary['unverified_bulk_emi_discount'], 2) ?> Pending Verification
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 13b. After EMI Discount Remaining Cons Fee -->
+        <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
+            <div class="card__wrapper">
+                <div class="d-flex align-items-center gap-1">
+                    <div class="card__icon">
+                        <span style="color:#e74c3c;"><i class="fa-light fa-hourglass-end"></i></span>
+                    </div>
+                    <div class="card__title-wrap">
+                        <h6 class="card__sub-title mb-10">After EMI Discount Remaining Cons Fee</h6>
                         <div class="d-flex flex-wrap align-items-end gap-10">
                             <h4 class="card__title" style="color:<?= ($paymentSummary['remaining_construction_fee'] ?? 0) <= 0 ? '#27ae60' : '#e74c3c' ?>;">
                                 <?php if (($paymentSummary['remaining_construction_fee'] ?? 0) <= 0): ?>

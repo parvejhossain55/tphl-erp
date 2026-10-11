@@ -202,7 +202,13 @@ $displayBank = !empty($payment['company_bank_name'])
 
 // Client and Property info
 $clientName = !empty($clientDetails['client_name']) ? $clientDetails['client_name'] : (!empty($payment['client_name']) ? $payment['client_name'] : 'N/A');
+if (!empty($clientDetails['2nd_lead_owner_name'])) {
+    $clientName .= ' & ' . trim($clientDetails['2nd_lead_owner_name']);
+}
 $clientPhone = !empty($clientDetails['phone']) ? $clientDetails['phone'] : (!empty($clientDetails['phone_number']) ? $clientDetails['phone_number'] : 'N/A');
+if (!empty($clientDetails['2nd_owner_phone'])) {
+    $clientPhone .= ', ' . trim($clientDetails['2nd_owner_phone']);
+}
 if ($clientPhone !== 'N/A' && strlen($clientPhone) === 10 && substr($clientPhone, 0, 1) === '1') {
     $clientPhone = '0' . $clientPhone;
 }

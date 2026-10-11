@@ -2046,6 +2046,7 @@ class Lead extends Model
         phone_number,
         alt_phone_number,
         email,
+        alt_email,
         source_type_id,
         assigned_id,
         address,
@@ -2064,7 +2065,12 @@ class Lead extends Model
         company_name,
         team_id,
         created_by,
-        country ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        country,
+        2nd_lead_owner_name,
+        2nd_owner_phone,
+        2nd_owner_email,
+        2nd_owner_address,
+        2nd_owner_other_details ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         if (!$stmt) {
             setError("Prepare failed: " . $this->db->error);
@@ -2094,6 +2100,7 @@ class Lead extends Model
         $phone_number = $data['phone_number'] ?? null;
         $alt_phone_number = $data['alt_phone_number'] ?? null;
         $email = $data['email'] ?? null;
+        $alt_email = $data['alt_email'] ?? null;
         $source_type_id = $data['source_type_id'] ?? null;
         $assigned_id = $data['assigned_id'] ?? null;
         $address = $data['address'] ?? null;
@@ -2116,10 +2123,15 @@ class Lead extends Model
         $team_id = $data['team_id'] ?? null;
         $created_by = $data['created_by'] ?? null;
         $country = $data['country'] ?? null;
+        $second_lead_owner_name = $data['2nd_lead_owner_name'] ?? null;
+        $second_owner_phone = $data['2nd_owner_phone'] ?? null;
+        $second_owner_email = $data['2nd_owner_email'] ?? null;
+        $second_owner_address = $data['2nd_owner_address'] ?? null;
+        $second_owner_other_details = $data['2nd_owner_other_details'] ?? null;
 
         // Bind parameters (CSV first, then existing)
         $stmt->bind_param(
-            "ssssssssssssssssssiisisiisssssssssiis",
+            "sssssssssssssssssssiisisiisssssssssiissssss",
             $campaign_name,
             $platform,
             $which_apartment_size_are_you_interested_in,
@@ -2138,6 +2150,7 @@ class Lead extends Model
             $phone_number,
             $alt_phone_number,
             $email,
+            $alt_email,
             $source_type_id,
             $assigned_id,
             $address,
@@ -2156,7 +2169,12 @@ class Lead extends Model
             $company_name,
             $team_id,
             $created_by,
-            $country
+            $country,
+            $second_lead_owner_name,
+            $second_owner_phone,
+            $second_owner_email,
+            $second_owner_address,
+            $second_owner_other_details
         );
 
         if ($stmt->execute()) {
@@ -2360,6 +2378,7 @@ class Lead extends Model
         $phone_number         = $phone;
         $alt_phone_number     = $nn('alt_phone_number');
         $email                = $nn('email');
+        $alt_email            = $nn('alt_email');
         $address              = $nn('address');
         $present_add_bn       = $nn('present_add_bn');
         $permanent_address    = $nn('permanent_address');
@@ -2525,6 +2544,7 @@ class Lead extends Model
             'phone_number' => $phone_number,
             'alt_phone_number' => $alt_phone_number,
             'email' => $email,
+            'alt_email' => $alt_email,
             'designation' => $designation,
             'profession_bn' => $profession_bn,
             'job_title' => $job_title,
@@ -2587,6 +2607,11 @@ class Lead extends Model
             '2nd_nomi_present_add' => $nomi_present_add_2,
             '2nd_nomi_permanent_address' => $nomi_permanent_address_2,
             '2nd_nomi_image' => $nomi_image_2,
+            '2nd_lead_owner_name' => $nn('2nd_lead_owner_name'),
+            '2nd_owner_phone' => $nn('2nd_owner_phone'),
+            '2nd_owner_email' => $nn('2nd_owner_email'),
+            '2nd_owner_address' => $nn('2nd_owner_address'),
+            '2nd_owner_other_details' => $nn('2nd_owner_other_details'),
             'updated_at' => date('Y-m-d H:i:s')
         ];
 

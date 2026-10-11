@@ -1321,6 +1321,11 @@ class LeadController extends Controller
             'lead_quality' => $_POST['lead_quality'] ?? 'Pending',
             'created_by' => $_SESSION['user']['id'] ?? null,
             'team_id' => $_POST['team_id'] ?? null,
+            '2nd_lead_owner_name' => $_POST['2nd_lead_owner_name'] ?? null,
+            '2nd_owner_phone' => $_POST['2nd_owner_phone'] ?? null,
+            '2nd_owner_email' => $_POST['2nd_owner_email'] ?? null,
+            '2nd_owner_address' => $_POST['2nd_owner_address'] ?? null,
+            '2nd_owner_other_details' => $_POST['2nd_owner_other_details'] ?? null,
         ];
 
 

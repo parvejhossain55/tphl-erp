@@ -186,6 +186,12 @@ class Con_PurchaseOrderController extends Controller
         $mgmtApproved   = $opApproved;
         $canApproveMgmt = $canApproveOP;
 
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+        $isCreator = ($currentUserId == $createdBy);
+        $isManagement = (strpos($roleName, 'management') !== false || strpos($roleName, 'admin') !== false || in_array($currentRoleId, [1, 3, 6, 30]));
+        $isNotApproved = empty($po['purchase_head_approved_by_id']) && empty($po['qc_approved_by_id']) && empty($po['op_head_approved_by_id']);
+        $canDeletePO = ($isCreator || $isManagement) && $isNotApproved && $po['status'] !== 'Cancelled';
+
         $items        = $this->poModel->getItems($id);
         $pendingItems = $this->poModel->getPendingItems($id);
 
@@ -367,6 +373,7 @@ class Con_PurchaseOrderController extends Controller
             'canApproveOP'        => $canApproveOP,
             'mgmtApproved'        => $mgmtApproved,
             'canApproveMgmt'      => $canApproveMgmt,
+            'canDeletePO'         => $canDeletePO,
             'currentRoleId'       => $currentRoleId,
             'linkedBoq'           => $linkedBoq,
             'hasReceiving'        => $hasReceiving,
@@ -789,6 +796,64 @@ class Con_PurchaseOrderController extends Controller
         }
 
         header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");
+        exit;
+    }
+
+    // =========================================================================
+    // DELETE PO
+    // =========================================================================
+
+    public function delete($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $roleName = strtolower($_SESSION['user']['role_name'] ?? '');
+
+        $po = $this->poModel->find($id);
+        if (!$po) {
+            setError('Purchase Order not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-orders");
+            exit;
+        }
+
+        $isCreator = ($po['created_by'] == $userId);
+        $isManagement = (strpos($roleName, 'management') !== false || strpos($roleName, 'admin') !== false || in_array($roleId, [1, 3, 6, 30]));
+
+        if (!$isCreator && !$isManagement) {
+            setError('You do not have permission to delete this Purchase Order.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
+            exit;
+        }
+
+        if (!empty($po['purchase_head_approved_by_id']) || !empty($po['qc_approved_by_id']) || !empty($po['op_head_approved_by_id'])) {
+            setError('This Purchase Order has already been approved and cannot be deleted.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
+            exit;
+        }
+
+        $requestId = (int)$po['request_id'];
+
+        $this->db->begin_transaction();
+        try {
+            $this->db->query("DELETE FROM purchase_order_items WHERE purchase_order_id = {$id}");
+            $this->db->query("DELETE FROM po_negotiation_notes WHERE purchase_order_id = {$id}");
+            $this->db->query("DELETE FROM purchase_orders WHERE id = {$id}");
+
+            // Reset PR status to Approved if no other PO exists for this PR
+            $poCountCheck = $this->db->query("SELECT COUNT(*) as count FROM purchase_orders WHERE request_id = {$requestId}");
+            if ($poCountCheck && $poCountCheck->fetch_assoc()['count'] == 0) {
+                $this->db->query("UPDATE purchase_requests SET status = 'Approved' WHERE id = {$requestId}");
+            }
+
+            $this->db->commit();
+            setSuccess('Purchase Order deleted successfully.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-orders");
+        } catch (\Exception $e) {
+            $this->db->rollback();
+            setError('Failed to delete Purchase Order: ' . $e->getMessage());
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
+        }
         exit;
     }
 }

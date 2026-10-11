@@ -217,7 +217,11 @@ class Con_PurchaseOrder extends Model
             $prItems = $prModel->getItems($requestId);
             $prQtyMap = [];
             foreach ($prItems as $pri) {
-                $prQtyMap[$pri['material_id']] = $pri['quantity'];
+                if (!isset($prQtyMap[$pri['material_id']])) {
+                    $prQtyMap[$pri['material_id']] = (float)$pri['quantity'];
+                } else {
+                    $prQtyMap[$pri['material_id']] += (float)$pri['quantity'];
+                }
             }
 
             // Prepared statements

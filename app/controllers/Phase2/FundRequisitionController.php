@@ -959,11 +959,10 @@ class FundRequisitionController extends Controller {
 
                 if ($status === 'approved') {
                     $evalAmt = $qc_approved_amount ?? (float)($req['amount'] ?? 0);
-                    // Filter down to actual management decision-makers (excluding dozens of field site operators)
                     if ($evalAmt <= 100000) {
-                        $mgmtSql = "SELECT DISTINCT full_name, email FROM users WHERE (role_id IN (1, 3, 33) OR id = 200 OR role_id = 32) AND email != '' AND email IS NOT NULL";
+                        $mgmtSql = "SELECT DISTINCT full_name, email FROM users WHERE role_id IN (1, 3) AND email != '' AND email IS NOT NULL";
                     } else {
-                        $mgmtSql = "SELECT DISTINCT full_name, email FROM users WHERE role_id IN (1, 3, 33) AND email != '' AND email IS NOT NULL";
+                        $mgmtSql = "SELECT DISTINCT full_name, email FROM users WHERE role_id IN (1, 3) AND email != '' AND email IS NOT NULL";
                     }
                     $mgmtRes = $this->db->query($mgmtSql);
                     $recipients = [];
@@ -1123,7 +1122,7 @@ class FundRequisitionController extends Controller {
 
             $emailSent = false;
             if ($status === 'approved' || $status === 'partially_approved') {
-                $accRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id IN (4, 10)");
+                $accRes = $this->db->query("SELECT full_name, email FROM users WHERE role_id IN (6, 30)");
                 if ($accRes) {
                     while ($acc = $accRes->fetch_assoc()) {
                         if (!empty($acc['email'])) {

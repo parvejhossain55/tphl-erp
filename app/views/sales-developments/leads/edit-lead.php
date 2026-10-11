@@ -142,6 +142,46 @@ $selectedTeamId     = $_SESSION['old']['team_id']          ?? $leadData['team_id
                         <input type="email" class="form-control" name="email" value="<?= htmlspecialchars($leadData['email'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
                     </div>
 
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Alternate Email Address</label>
+                        <input type="email" class="form-control" name="alt_email" value="<?= htmlspecialchars($leadData['alt_email'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+
+                    <!-- 2nd Owner Information Toggle -->
+                    <div class="col-12 mt-3 mb-2">
+                        <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#secondOwnerSection" aria-expanded="<?= !empty($leadData['2nd_lead_owner_name']) ? 'true' : 'false' ?>" aria-controls="secondOwnerSection">
+                            <i class="fa-solid fa-plus me-1"></i> Add / View 2nd Owner Information
+                        </button>
+                    </div>
+
+                    <div class="collapse col-12 <?= !empty($leadData['2nd_lead_owner_name']) ? 'show' : '' ?>" id="secondOwnerSection">
+                        <div class="row bg-light p-3 border rounded">
+                            <div class="col-12 mb-3">
+                                <h6 class="fw-bold"><i class="fa-solid fa-user-plus me-2"></i>2nd Owner Details</h6>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">2nd Owner Name</label>
+                                <input type="text" class="form-control" name="2nd_lead_owner_name" value="<?= htmlspecialchars($leadData['2nd_lead_owner_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">2nd Owner Phone</label>
+                                <input type="text" class="form-control" name="2nd_owner_phone" value="<?= htmlspecialchars($leadData['2nd_owner_phone'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">2nd Owner Email</label>
+                                <input type="email" class="form-control" name="2nd_owner_email" value="<?= htmlspecialchars($leadData['2nd_owner_email'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold">2nd Owner Address</label>
+                                <input type="text" class="form-control" name="2nd_owner_address" value="<?= htmlspecialchars($leadData['2nd_owner_address'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label fw-semibold">Other Details</label>
+                                <textarea class="form-control" name="2nd_owner_other_details" rows="2"><?= htmlspecialchars($leadData['2nd_owner_other_details'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Present Address (English)</label>
                         <textarea class="form-control" name="address" rows="2"><?= htmlspecialchars($leadData['address'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>

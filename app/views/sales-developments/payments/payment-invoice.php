@@ -1,3 +1,11 @@
+<?php
+if (!empty($invoice['2nd_lead_owner_name'])) {
+    $invoice['full_name'] .= ' & ' . trim($invoice['2nd_lead_owner_name']);
+}
+if (!empty($invoice['2nd_owner_phone'])) {
+    $invoice['phone'] .= ', ' . trim($invoice['2nd_owner_phone']);
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 
