@@ -3567,25 +3567,23 @@ class AccountClient extends Model
                 }
 
                 // Insert emi_schedule row
-                if (!$isDiscountItem) {
-                    $schedStmt = $this->db->prepare("
-                        INSERT INTO emi_schedules (
-                            lead_booking_id, emi_no, emi_amount, service_fee,
-                            due_emi_amount, due_date, status, lead_payment_id
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ");
-                    if (!$schedStmt) throw new Exception("EMI schedule prepare failed: " . $this->db->error);
+                $schedStmt = $this->db->prepare("
+                    INSERT INTO emi_schedules (
+                        lead_booking_id, emi_no, emi_amount, service_fee,
+                        due_emi_amount, due_date, status, lead_payment_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                if (!$schedStmt) throw new Exception("EMI schedule prepare failed: " . $this->db->error);
 
-                    $schedStatus = ($thisDue > 0) ? 'paid' : 'paid'; // schedule row always 'paid' (payment was recorded)
+                $schedStatus = ($thisDue > 0) ? 'paid' : 'paid'; // schedule row always 'paid' (payment was recorded)
 
-                    $schedStmt->bind_param(
-                        "iidddssi",
-                        $bookingId, $nextEmiNo, $thisEmi, $thisSvcFee,
-                        $thisDue, $paymentDate, $schedStatus, $paymentId
-                    );
+                $schedStmt->bind_param(
+                    "iidddssi",
+                    $bookingId, $nextEmiNo, $thisEmi, $thisSvcFee,
+                    $thisDue, $paymentDate, $schedStatus, $paymentId
+                );
 
-                    if (!$schedStmt->execute()) throw new Exception("EMI schedule insert failed: " . $schedStmt->error);
-                }
+                if (!$schedStmt->execute()) throw new Exception("EMI schedule insert failed: " . $schedStmt->error);
 
                 $pool -= $thisEmi;
                 $totalAllocated += $thisEmi;
