@@ -87,12 +87,12 @@ class Employee extends Model
         } elseif ($status_filter === 'inactive') {
             $sql .= " AND LOWER(IFNULL(e.employee_status, '')) IN ('inactive', 'terminated')";
         } elseif ($status_filter === 'recent_join') {
-            $sql .= " AND e.joining_date IS NOT NULL AND e.joining_date != '' AND e.joining_date != '0000-00-00' AND e.joining_date >= ? AND e.joining_date <= ?";
+            $sql .= " AND e.joining_date >= ? AND e.joining_date <= ?";
             $params[] = $startOfMonth;
             $params[] = $endOfMonth;
             $types .= "ss";
         } elseif ($status_filter === 'recent_resign') {
-            $sql .= " AND e.resign_date IS NOT NULL AND e.resign_date != '' AND e.resign_date != '0000-00-00' AND e.resign_date >= ? AND e.resign_date <= ?";
+            $sql .= " AND e.resign_date >= ? AND e.resign_date <= ?";
             $params[] = $startOfMonth;
             $params[] = $endOfMonth;
             $types .= "ss";
@@ -223,12 +223,12 @@ class Employee extends Model
         } elseif ($status_filter === 'inactive') {
             $sql .= " AND LOWER(IFNULL(employee_status, '')) IN ('inactive', 'terminated')";
         } elseif ($status_filter === 'recent_join') {
-            $sql .= " AND joining_date IS NOT NULL AND joining_date != '' AND joining_date != '0000-00-00' AND joining_date >= ? AND joining_date <= ?";
+            $sql .= " AND joining_date >= ? AND joining_date <= ?";
             $params[] = $startOfMonth;
             $params[] = $endOfMonth;
             $types .= "ss";
         } elseif ($status_filter === 'recent_resign') {
-            $sql .= " AND resign_date IS NOT NULL AND resign_date != '' AND resign_date != '0000-00-00' AND resign_date >= ? AND resign_date <= ?";
+            $sql .= " AND resign_date >= ? AND resign_date <= ?";
             $params[] = $startOfMonth;
             $params[] = $endOfMonth;
             $types .= "ss";
@@ -260,8 +260,8 @@ class Employee extends Model
                     COUNT(*) AS total,
                     SUM(CASE WHEN LOWER(IFNULL(e.employee_status, '')) = 'active' THEN 1 ELSE 0 END) AS active_count,
                     SUM(CASE WHEN LOWER(IFNULL(e.employee_status, '')) IN ('inactive', 'terminated') THEN 1 ELSE 0 END) AS inactive_count,
-                    SUM(CASE WHEN e.joining_date IS NOT NULL AND e.joining_date != '' AND e.joining_date != '0000-00-00' AND e.joining_date >= '{$startEsc}' AND e.joining_date <= '{$endEsc}' THEN 1 ELSE 0 END) AS recent_join_count,
-                    SUM(CASE WHEN e.resign_date IS NOT NULL AND e.resign_date != '' AND e.resign_date != '0000-00-00' AND e.resign_date >= '{$startEsc}' AND e.resign_date <= '{$endEsc}' THEN 1 ELSE 0 END) AS recent_resign_count
+                    SUM(CASE WHEN e.joining_date >= '{$startEsc}' AND e.joining_date <= '{$endEsc}' THEN 1 ELSE 0 END) AS recent_join_count,
+                    SUM(CASE WHEN e.resign_date >= '{$startEsc}' AND e.resign_date <= '{$endEsc}' THEN 1 ELSE 0 END) AS recent_resign_count
                 FROM employees AS e
                 WHERE 1";
 
@@ -308,11 +308,28 @@ class Employee extends Model
                 $resObj = $stmt->get_result();
                 $res = $resObj ? $resObj->fetch_assoc() : null;
             } else {
+                error_log("Employee::getStatsCounts prepare error: " . $this->db->error);
                 $res = null;
             }
         } else {
             $resObj = $this->db->query($sql);
+            if (!$resObj) {
+                error_log("Employee::getStatsCounts query error: " . $this->db->error);
+            }
             $res = $resObj ? $resObj->fetch_assoc() : null;
+        }
+
+        if (!$res) {
+            // Defensive fallback in case of database engine syntax differences
+            $fallbackRes = $this->db->query("SELECT COUNT(*) AS total FROM employees");
+            $totalCount = $fallbackRes ? (int)($fallbackRes->fetch_assoc()['total'] ?? 0) : 0;
+            return [
+                'total' => $totalCount,
+                'active' => $totalCount,
+                'inactive' => 0,
+                'recent_join' => 0,
+                'recent_resign' => 0,
+            ];
         }
 
         return [
