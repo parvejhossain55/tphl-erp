@@ -41,6 +41,9 @@ $remainingBalance = (float)($paymentSummary['total_due'] ?? 0);
 // Calculate actual paid from verified/valid transactions
 $actualPaid = 0;
 foreach ($validTransactions as $t) {
+    if (!empty($t['is_emi_discount']) && $t['is_emi_discount'] == 1) {
+        continue; // Exclude EMI discount from actual paid
+    }
     $amt = (float)($t['amount'] ?? 0);
     $actualPaid += $amt;
 }
@@ -509,8 +512,6 @@ foreach ($validTransactions as $t) {
                             } elseif ($paymentType === 'emi' || $paymentType === 'emi_due_settlement') {
                                 if (!empty($txn['settlement_type']) && $txn['settlement_type'] === 'emi_due_settlement') {
                                     $term = $txn['installment_label'] ?? $term;
-                                } elseif (!empty($txn['installment_label']) && $txn['installment_label'] === 'Installment Advance') {
-                                    $term = 'Installment Advance';
                                 } elseif ($emiNo) {
                                     $term = 'Installment ' . $emiNo;
                                 }
@@ -519,6 +520,20 @@ foreach ($validTransactions as $t) {
                             } elseif ($paymentType === 'shop_service_charge') {
                                 $term = 'Shop Svc Charge';
                                 $colServiceFee = $amount;
+                            }
+
+                            // Payment type display
+                            $payTypeDisplay = $payMethod;
+                            if (!empty($bankName)) {
+                                $payTypeDisplay = 'Bank Transfer';
+                            }
+                            
+                            $isEmiDiscount = !empty($txn['is_emi_discount']) && $txn['is_emi_discount'] == 1;
+                            if ($isEmiDiscount) {
+                                $discount = $amount;
+                                $amount = 0;
+                                $payTypeDisplay = '<span style="background:#f59e0b; color:#fff; padding:3px 6px; border-radius:4px; font-size:9px; white-space:nowrap;">Discount Paid</span>';
+                                $bankName = '-';
                             }
 
                             // Accumulate column totals
@@ -532,6 +547,7 @@ foreach ($validTransactions as $t) {
 
                             // Cheque/Transaction ID
                             $chequeOrRef = !empty($chequeNo) ? $chequeNo : $transRef;
+                            if ($isEmiDiscount) $chequeOrRef = '-';
                             
                             // Money Receipt No
                             $receiptNo = 'REC-' . str_pad($txn['id'] ?? '0', 6, '0', STR_PAD_LEFT);
@@ -539,12 +555,6 @@ foreach ($validTransactions as $t) {
                             // Running balance
                             $runningBalance -= ($amount + $discount);
                             if ($runningBalance < 0) $runningBalance = 0;
-
-                            // Payment type display
-                            $payTypeDisplay = $payMethod;
-                            if (!empty($bankName)) {
-                                $payTypeDisplay = 'Bank Transfer';
-                            }
                         ?>
                         <tr>
                             <td class="center"><?= $sl ?></td>

@@ -149,7 +149,9 @@ if ($isVerified) {
 
 // Payment Type Label
 $paymentTypeRaw = strtolower($payment['payment_type'] ?? '');
-if ($paymentTypeRaw === 'emi') {
+if (!empty($payment['is_emi_discount']) && $payment['is_emi_discount'] == 1) {
+    $paymentTypeLabel = 'APPLY PREVIOUS DISCOUNT';
+} elseif ($paymentTypeRaw === 'emi') {
     $paymentTypeLabel = !empty($payment['installment_label']) ? strtoupper($payment['installment_label']) : 'EMI INSTALLMENT';
 } elseif ($paymentTypeRaw === 'booking_money') {
     $paymentTypeLabel = 'BOOKING MONEY';

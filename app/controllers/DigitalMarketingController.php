@@ -815,7 +815,7 @@ public function deleteBudget($id)
                 'checkbox'      => '<input type="checkbox" class="rowCheckbox" value="' . $lead['id'] . '">',
                 'name'          => '<div class="fw-bold text-dark">' . htmlspecialchars($lead['full_name'] ?? 'N/A') . '</div>' . $jobCompanyStr,
                 'best_time_to_contact' => '<span class="text-muted small">' . $bestTimeFormatted . '</span>',
-                'contact'       => '<div class="d-flex flex-column"><span><i class="bi bi-telephone text-muted me-2"></i>' . $phoneHtml . '</span><small class="text-muted"><i class="bi bi-envelope me-2"></i>' . htmlspecialchars($lead['email'] ?? 'N/A') . '</small></div>',
+                'contact'       => '<div class="d-flex flex-column"><span><i class="bi bi-telephone text-muted me-2"></i>' . $phoneHtml . '</span><small class="text-muted"><i class="bi bi-envelope me-2"></i>' . htmlspecialchars(!empty($lead['email']) ? $lead['email'] : 'N/A') . '</small></div>',
                 'country_address' => '<div class="text-muted" style="font-size: .8rem;">' . $countryAddressStr . '</div>',
                 'follow_up'     => $fuBadge,
                 'contact_status'=> $csBadge,

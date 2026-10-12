@@ -1631,9 +1631,20 @@ class LeadController extends Controller
 
         if (($handle = fopen($tempPath, "r")) !== false) {
             //  HEADER read + encoding fix
-            $header = fgetcsv($handle);
+            // Clean BOM from first header if present
+            $header[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $header[0]);
             $header = array_map(function ($value) {
-                return $this->cleanCsvValueEncoding($value);
+                $cleaned = strtolower(trim($this->cleanCsvValueEncoding($value)));
+                if (in_array($cleaned, ['phone_num', 'phone'])) return 'phone_number';
+                if (in_array($cleaned, ['campaign_n', 'campaign'])) return 'campaign_name';
+                if (in_array($cleaned, ['company_n', 'company'])) return 'company_name';
+                if (in_array($cleaned, ['which_apar'])) return 'which_apartment';
+                if (in_array($cleaned, ['which_floo'])) return 'which_floor';
+                if (in_array($cleaned, ['when_are_'])) return 'when_are_you';
+                if (in_array($cleaned, ['would_you'])) return 'would_you_like';
+                if (in_array($cleaned, ['when_is_th'])) return 'when_is_the_best';
+                if (in_array($cleaned, ['email address', 'mail'])) return 'email';
+                return $cleaned;
             }, $header);
 
             // length 0 = no line length limit (long text fields were getting split at 1000 chars)
@@ -1645,10 +1656,13 @@ class LeadController extends Controller
                     continue;
                 }
 
-                // header mismatch safe check
+                // Fix column count mismatch by padding or slicing the row
                 if (count($header) !== count($row)) {
-                    $issues[] = "Row {$rowIndex}: Column count mismatch with header.";
-                    continue;
+                    if (count($row) < count($header)) {
+                        $row = array_pad($row, count($header), '');
+                    } else {
+                        $row = array_slice($row, 0, count($header));
+                    }
                 }
 
                 //  ROW encoding fix
@@ -1732,8 +1746,20 @@ class LeadController extends Controller
 
         if (($handle = fopen($filePath, "r")) !== false) {
             $header = fgetcsv($handle);
+            // Clean BOM from first header if present
+            $header[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $header[0]);
             $header = array_map(function ($value) {
-                return $this->cleanCsvValueEncoding($value);
+                $cleaned = strtolower(trim($this->cleanCsvValueEncoding($value)));
+                if (in_array($cleaned, ['phone_num', 'phone'])) return 'phone_number';
+                if (in_array($cleaned, ['campaign_n', 'campaign'])) return 'campaign_name';
+                if (in_array($cleaned, ['company_n', 'company'])) return 'company_name';
+                if (in_array($cleaned, ['which_apar'])) return 'which_apartment';
+                if (in_array($cleaned, ['which_floo'])) return 'which_floor';
+                if (in_array($cleaned, ['when_are_'])) return 'when_are_you';
+                if (in_array($cleaned, ['would_you'])) return 'would_you_like';
+                if (in_array($cleaned, ['when_is_th'])) return 'when_is_the_best';
+                if (in_array($cleaned, ['email address', 'mail'])) return 'email';
+                return $cleaned;
             }, $header);
 
             $rowIndex = 1;
@@ -1744,9 +1770,13 @@ class LeadController extends Controller
                 }, $row);
 
                 if (count(array_filter($row)) === 0) continue;
+                // Fix column count mismatch by padding or slicing the row
                 if (count($header) !== count($row)) {
-                    $result['skipped'][] = "Row {$rowIndex}: column count mismatch";
-                    continue;
+                    if (count($row) < count($header)) {
+                        $row = array_pad($row, count($header), '');
+                    } else {
+                        $row = array_slice($row, 0, count($header));
+                    }
                 }
 
                 $data = array_combine($header, $row);

@@ -850,6 +850,7 @@ class ApiController extends Controller
             'email'           => $email,
             'name'            => $name,
             'phone'           => $phone,
+            'type'            => $onboard['type'] ?? '',
             'savedProperties' => $savedProperties,
             'lastUpdated'     => date('Y-m-d')
         ];
