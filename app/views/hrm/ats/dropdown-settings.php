@@ -136,16 +136,25 @@ $categories = [
                                                         <?php endif; ?>
                                                     </td>
                                                     <td class="text-end px-3">
-                                                        <button type="button" 
-                                                                class="btn btn-sm <?= $opt['is_active'] ? 'btn-outline-danger' : 'btn-outline-success' ?> py-0 px-2"
-                                                                style="font-size: 0.75rem;"
-                                                                onclick="toggleOptionStatus(<?= $opt['id'] ?>)">
-                                                            <?php if ($opt['is_active']): ?>
-                                                                <i class="fa-solid fa-eye-slash me-1"></i> Retire
-                                                            <?php else: ?>
-                                                                <i class="fa-solid fa-eye me-1"></i> Activate
-                                                            <?php endif; ?>
-                                                        </button>
+                                                        <div class="btn-group btn-group-sm">
+                                                            <button type="button" 
+                                                                    class="btn btn-sm <?= $opt['is_active'] ? 'btn-outline-secondary' : 'btn-outline-success' ?> py-0 px-2"
+                                                                    style="font-size: 0.75rem;"
+                                                                    onclick="toggleOptionStatus(<?= $opt['id'] ?>)">
+                                                                <?php if ($opt['is_active']): ?>
+                                                                    <i class="fa-solid fa-eye-slash me-1"></i> Retire
+                                                                <?php else: ?>
+                                                                    <i class="fa-solid fa-eye me-1"></i> Activate
+                                                                <?php endif; ?>
+                                                            </button>
+                                                            <button type="button" 
+                                                                    class="btn btn-sm btn-outline-danger py-0 px-2"
+                                                                    style="font-size: 0.75rem;"
+                                                                    onclick="deleteOption(<?= $opt['id'] ?>, '<?= htmlspecialchars(addslashes($opt['option_value'])) ?>')"
+                                                                    title="Delete Option Permanently">
+                                                                <i class="fa-regular fa-trash-can"></i>
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>
@@ -252,4 +261,66 @@ function toggleOptionStatus(id) {
         Swal.fire('Error', err.message || 'Network connection issue', 'error');
     });
 }
+
+function deleteOption(id, name) {
+    Swal.fire({
+        title: 'Delete Dropdown Option?',
+        text: `Are you sure you want to permanently delete "${name}"? This cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: '<i class="fa-regular fa-trash-can me-1"></i> Yes, Delete',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const formData = new FormData();
+            formData.append('id', id);
+
+            fetch('<?= $baseUrl ?>/api/ats/dropdown-delete', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Deleted!',
+                        text: data.message,
+                        timer: 1200,
+                        showConfirmButton: false
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.message || 'Could not delete option', 'error');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                Swal.fire('Error', 'Network connection issue', 'error');
+            });
+        }
+    });
+}
+
+// Remember active tab on reload
+document.addEventListener('DOMContentLoaded', () => {
+    const activeTab = localStorage.getItem('ats_active_dropdown_tab');
+    if (activeTab) {
+        const tabBtn = document.querySelector(`button[data-bs-target="${activeTab}"]`);
+        if (tabBtn) {
+            new bootstrap.Tab(tabBtn).show();
+        }
+    }
+    document.querySelectorAll('#dropdownTabs button[data-bs-toggle="pill"]').forEach(btn => {
+        btn.addEventListener('shown.bs.tab', (e) => {
+            localStorage.setItem('ats_active_dropdown_tab', e.target.getAttribute('data-bs-target'));
+        });
+    });
+});
 </script>

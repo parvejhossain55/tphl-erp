@@ -411,6 +411,7 @@ return [
     'ats-candidate-store' => ['controller' => 'AtsController', 'method' => 'store'],
     'api/ats/candidate-details/(\d+)' => ['controller' => 'AtsController', 'method' => 'getDetails'],
     'ats-candidate-update/(\d+)' => ['controller' => 'AtsController', 'method' => 'update'],
+    'api/ats/candidate-delete' => ['controller' => 'AtsController', 'method' => 'delete'],
     'api/ats/quick-update' => ['controller' => 'AtsController', 'method' => 'quickUpdate'],
     'api/ats/bulk-update' => ['controller' => 'AtsController', 'method' => 'bulkUpdate'],
     'ats-csv-upload' => ['controller' => 'AtsController', 'method' => 'csvUpload'],
@@ -418,6 +419,7 @@ return [
     'ats-dropdown-settings' => ['controller' => 'AtsController', 'method' => 'dropdownSettings'],
     'api/ats/dropdown-save' => ['controller' => 'AtsController', 'method' => 'saveDropdownOption'],
     'api/ats/dropdown-toggle' => ['controller' => 'AtsController', 'method' => 'toggleDropdownStatus'],
+    'api/ats/dropdown-delete' => ['controller' => 'AtsController', 'method' => 'deleteDropdownOption'],
     'ats-dashboard' => ['controller' => 'AtsController', 'method' => 'dashboard'],
 ];
 

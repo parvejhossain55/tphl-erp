@@ -146,6 +146,17 @@ class AtsDropdownOption extends Model
     }
 
     /**
+     * Permanently delete a dropdown option
+     */
+    public function delete(int $id): bool
+    {
+        $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = ?");
+        if (!$stmt) return false;
+        $stmt->bind_param("i", $id);
+        return $stmt->execute();
+    }
+
+    /**
      * If user selects 'Other' and enters a custom text, automatically ensure it exists in options
      */
     public function ensureOptionExists(string $category, string $optionValue, ?int $createdBy = null): void

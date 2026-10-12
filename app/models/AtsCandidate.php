@@ -422,6 +422,18 @@ class AtsCandidate extends Model
             $types .= "s";
         }
 
+        if (isset($updates['email_sent'])) {
+            $setClauses[] = "email_sent = ?";
+            $params[] = !empty($updates['email_sent']) ? 1 : 0;
+            $types .= "i";
+        }
+
+        if (isset($updates['sms_sent'])) {
+            $setClauses[] = "sms_sent = ?";
+            $params[] = !empty($updates['sms_sent']) ? 1 : 0;
+            $types .= "i";
+        }
+
         if (empty($setClauses)) return 0;
 
         $idPlaceholders = implode(',', array_fill(0, count($validIds), '?'));
@@ -449,6 +461,24 @@ class AtsCandidate extends Model
         if (!$stmt) return false;
         $stmt->bind_param("i", $id);
         return $stmt->execute();
+    }
+
+    /**
+     * Bulk delete candidates by IDs
+     */
+    public function bulkDelete(array $ids): int
+    {
+        $validIds = array_filter(array_map('intval', $ids));
+        if (empty($validIds)) return 0;
+
+        $idPlaceholders = implode(',', array_fill(0, count($validIds), '?'));
+        $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id IN ({$idPlaceholders})");
+        if (!$stmt) return 0;
+
+        $types = str_repeat("i", count($validIds));
+        $stmt->bind_param($types, ...$validIds);
+        $stmt->execute();
+        return $stmt->affected_rows;
     }
 
     /**
