@@ -27,9 +27,13 @@ class Employee extends Model
         }
     }
 
-    public function getPaginated($limit, $offset, $search = '', $department_id = '', $team_id = '', $workplace = '')
+    public function getPaginated($limit, $offset, $search = '', $department_id = '', $team_id = '', $workplace = '', $status_filter = '', $selected_month = '')
     {
         $this->ensureOfficeBranchSchema();
+        $targetMonth = (!empty($selected_month) && preg_match('/^\d{4}-\d{2}$/', $selected_month)) ? $selected_month : date('Y-m');
+        $startOfMonth = date('Y-m-01', strtotime($targetMonth . '-01'));
+        $endOfMonth = date('Y-m-t', strtotime($targetMonth . '-01'));
+
         $sql = "SELECT e.*, 
                    desg.name AS designation_name, 
                    dept.name AS department_name ,
@@ -78,17 +82,36 @@ class Employee extends Model
             $types .= "s";
         }
 
+        if ($status_filter === 'active') {
+            $sql .= " AND LOWER(IFNULL(e.employee_status, '')) = 'active'";
+        } elseif ($status_filter === 'inactive') {
+            $sql .= " AND LOWER(IFNULL(e.employee_status, '')) IN ('inactive', 'terminated')";
+        } elseif ($status_filter === 'recent_join') {
+            $sql .= " AND e.joining_date IS NOT NULL AND e.joining_date != '' AND e.joining_date >= ? AND e.joining_date <= ?";
+            $params[] = $startOfMonth;
+            $params[] = $endOfMonth;
+            $types .= "ss";
+        } elseif ($status_filter === 'recent_resign') {
+            $sql .= " AND e.resign_date IS NOT NULL AND e.resign_date != '' AND e.resign_date >= ? AND e.resign_date <= ?";
+            $params[] = $startOfMonth;
+            $params[] = $endOfMonth;
+            $types .= "ss";
+        }
+
         $sql .= " ORDER BY e.id DESC LIMIT ? OFFSET ?";
         $params[] = $limit;
         $params[] = $offset;
         $types .= "ii";
 
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
         $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $result = $stmt->get_result();
 
-        return $result->fetch_all(MYSQLI_ASSOC);
+        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
     }
 
     public function getAll()
@@ -157,8 +180,12 @@ class Employee extends Model
     }
 
 
-    public function countAll($search = '', $department_id = '', $team_id = '', $workplace = '')
+    public function countAll($search = '', $department_id = '', $team_id = '', $workplace = '', $status_filter = '', $selected_month = '')
     {
+        $targetMonth = (!empty($selected_month) && preg_match('/^\d{4}-\d{2}$/', $selected_month)) ? $selected_month : date('Y-m');
+        $startOfMonth = date('Y-m-01', strtotime($targetMonth . '-01'));
+        $endOfMonth = date('Y-m-t', strtotime($targetMonth . '-01'));
+
         $sql = "SELECT COUNT(*) as total FROM employees WHERE 1";
         $params = [];
         $types = "";
@@ -192,13 +219,109 @@ class Employee extends Model
             $types .= "s";
         }
 
+        if ($status_filter === 'active') {
+            $sql .= " AND LOWER(IFNULL(employee_status, '')) = 'active'";
+        } elseif ($status_filter === 'inactive') {
+            $sql .= " AND LOWER(IFNULL(employee_status, '')) IN ('inactive', 'terminated')";
+        } elseif ($status_filter === 'recent_join') {
+            $sql .= " AND joining_date IS NOT NULL AND joining_date != '' AND joining_date >= ? AND joining_date <= ?";
+            $params[] = $startOfMonth;
+            $params[] = $endOfMonth;
+            $types .= "ss";
+        } elseif ($status_filter === 'recent_resign') {
+            $sql .= " AND resign_date IS NOT NULL AND resign_date != '' AND resign_date >= ? AND resign_date <= ?";
+            $params[] = $startOfMonth;
+            $params[] = $endOfMonth;
+            $types .= "ss";
+        }
+
         $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return 0;
+        }
         if ($params) {
             $stmt->bind_param($types, ...$params);
         }
         $stmt->execute();
-        $result = $stmt->get_result()->fetch_assoc();
-        return $result['total'];
+        $res = $stmt->get_result();
+        $result = $res ? $res->fetch_assoc() : null;
+        return (int) ($result['total'] ?? 0);
+    }
+
+    public function getStatsCounts($search = '', $department_id = '', $team_id = '', $workplace = '', $selected_month = '')
+    {
+        $targetMonth = (!empty($selected_month) && preg_match('/^\d{4}-\d{2}$/', $selected_month)) ? $selected_month : date('Y-m');
+        $startOfMonth = date('Y-m-01', strtotime($targetMonth . '-01'));
+        $endOfMonth = date('Y-m-t', strtotime($targetMonth . '-01'));
+
+        $sql = "SELECT 
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN LOWER(IFNULL(e.employee_status, '')) = 'active' THEN 1 ELSE 0 END) AS active_count,
+                    SUM(CASE WHEN LOWER(IFNULL(e.employee_status, '')) IN ('inactive', 'terminated') THEN 1 ELSE 0 END) AS inactive_count,
+                    SUM(CASE WHEN e.joining_date IS NOT NULL AND e.joining_date != '' AND e.joining_date != '0000-00-00' AND e.joining_date >= ? AND e.joining_date <= ? THEN 1 ELSE 0 END) AS recent_join_count,
+                    SUM(CASE WHEN e.resign_date IS NOT NULL AND e.resign_date != '' AND e.resign_date != '0000-00-00' AND e.resign_date >= ? AND e.resign_date <= ? THEN 1 ELSE 0 END) AS recent_resign_count
+                FROM employees AS e
+                WHERE 1";
+
+        $params = [$startOfMonth, $endOfMonth, $startOfMonth, $endOfMonth];
+        $types = "ssss";
+
+        if ($search) {
+            $sql .= " AND (e.full_name LIKE ? 
+                    OR e.phone LIKE ? 
+                    OR e.email LIKE ? 
+                    OR e.username LIKE ?
+                    OR e.employee_id LIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $types .= "sssss";
+        }
+
+        if ($department_id) {
+            $sql .= " AND e.department_id = ?";
+            $params[] = $department_id;
+            $types .= "i";
+        }
+
+        if ($team_id) {
+            $sql .= " AND e.team_id = ?";
+            $params[] = $team_id;
+            $types .= "i";
+        }
+
+        if ($workplace) {
+            $sql .= " AND e.workplace = ?";
+            $params[] = $workplace;
+            $types .= "s";
+        }
+
+        $stmt = $this->db->prepare($sql);
+        if (!$stmt) {
+            return [
+                'total' => 0,
+                'active' => 0,
+                'inactive' => 0,
+                'recent_join' => 0,
+                'recent_resign' => 0,
+            ];
+        }
+        if ($params) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $resObj = $stmt->get_result();
+        $res = $resObj ? $resObj->fetch_assoc() : null;
+
+        return [
+            'total' => (int) ($res['total'] ?? 0),
+            'active' => (int) ($res['active_count'] ?? 0),
+            'inactive' => (int) ($res['inactive_count'] ?? 0),
+            'recent_join' => (int) ($res['recent_join_count'] ?? 0),
+            'recent_resign' => (int) ($res['recent_resign_count'] ?? 0),
+        ];
     }
 
     public function getUniqueWorkplaces()

@@ -34,12 +34,26 @@ class EmployeeController extends Controller
         $departmentFilter = $_GET['department_id'] ?? '';
         $teamFilter = $_GET['team_id'] ?? '';
         $workplaceFilter = $_GET['workplace'] ?? '';
+        $statusFilter = trim($_GET['status_filter'] ?? '');
+        $allowedStatuses = ['active', 'inactive', 'recent_join', 'recent_resign'];
+        if (!in_array($statusFilter, $allowedStatuses, true)) {
+            $statusFilter = '';
+        }
+
+        $monthFilter = trim($_GET['month'] ?? '');
+        if (!empty($monthFilter) && !preg_match('/^\d{4}-\d{2}$/', $monthFilter)) {
+            $monthFilter = '';
+        }
+        $displayMonth = !empty($monthFilter) ? $monthFilter : date('Y-m');
+
+        // Fetch dynamic stats for top cards based on search/dept/team/workplace/month filters
+        $stats = $this->employeeModel->getStatsCounts($searchTerm, $departmentFilter, $teamFilter, $workplaceFilter, $monthFilter);
 
         $currentPage = max(1, isset($_GET['page']) ? intval($_GET['page']) : 1);
         $perPage = 10;
 
         // Total employee count with filters
-        $totalEmployees = (int) $this->employeeModel->countAll($searchTerm, $departmentFilter, $teamFilter, $workplaceFilter);
+        $totalEmployees = (int) $this->employeeModel->countAll($searchTerm, $departmentFilter, $teamFilter, $workplaceFilter, $statusFilter, $monthFilter);
         $totalPages = ceil($totalEmployees / $perPage);
 
         // Reset to last available page if current page exceeds total pages after filtering
@@ -49,7 +63,7 @@ class EmployeeController extends Controller
         $offset = ($currentPage - 1) * $perPage;
 
         // Get paginated employees with search & department filter
-        $employees = $this->employeeModel->getPaginated($perPage, $offset, $searchTerm, $departmentFilter, $teamFilter, $workplaceFilter);
+        $employees = $this->employeeModel->getPaginated($perPage, $offset, $searchTerm, $departmentFilter, $teamFilter, $workplaceFilter, $statusFilter, $monthFilter);
 
         // Departments for filter dropdown
         $departments = $this->departmentModel->getAll();
@@ -84,6 +98,10 @@ class EmployeeController extends Controller
             "selectedDepartment" => $departmentFilter,
             "selectedTeam" => $teamFilter,
             "selectedWorkplace" => $workplaceFilter,
+            "statusFilter" => $statusFilter,
+            "selectedMonth" => $monthFilter,
+            "displayMonth" => $displayMonth,
+            "stats" => $stats,
             "paginationRoute" => $paginationRoute
         ]);
     }
