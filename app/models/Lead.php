@@ -32,7 +32,7 @@ class Lead extends Model
         LEFT JOIN users AS u ON l.assigned_id = u.id
         LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
         WHERE l.deleted_at IS NULL
-          AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+          /* employee_status filter removed */
     ";
 
         $params = [];
@@ -138,7 +138,7 @@ class Lead extends Model
             FROM leads AS l
             LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
             WHERE l.deleted_at IS NULL
-              AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+              /* employee_status filter removed */
         ";
         
         $params = [];
@@ -346,7 +346,7 @@ class Lead extends Model
         $sql = "SELECT COUNT(l.id) AS total_count FROM leads AS l 
                 LEFT JOIN employees AS emp ON emp.user_id = l.assigned_id
                 WHERE l.deleted_at IS NULL
-                  AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+                  /* employee_status filter removed */";
 
         $params = [];
         $types  = "";
@@ -363,10 +363,11 @@ class Lead extends Model
         if (!empty($teamId)) {
             if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
                 $loggedInUserId = $_SESSION['user']['id'] ?? 0;
-                $sql .= " AND (l.team_id = ? OR l.assigned_id = ?)";
+                $sql .= " AND (l.team_id = ? OR l.assigned_id = ? OR l.created_by = ?)";
                 $params[] = $teamId;
                 $params[] = $loggedInUserId;
-                $types .= "ii";
+                $params[] = $loggedInUserId;
+                $types .= "iii";
             } else {
                 $sql .= " AND l.team_id = ?";
                 $params[] = $teamId;
@@ -659,7 +660,7 @@ class Lead extends Model
     LEFT JOIN projects AS lp ON l.project_id = lp.id
     LEFT JOIN project_categories AS lpc ON l.project_category_id = lpc.id
     WHERE l.deleted_at IS NULL
-      AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+      /* employee_status filter removed */
     ";
 
         //  IMPORTANT: declare first
@@ -678,10 +679,11 @@ class Lead extends Model
         if (!empty($teamId)) {
             if (isset($_SESSION['user']['role_id']) && !in_array($_SESSION['user']['role_id'], [1, 3, 9, 32, 33, 34, 35])) {
                 $loggedInUserId = $_SESSION['user']['id'] ?? 0;
-                $sql .= " AND (l.team_id = ? OR l.assigned_id = ?)";
+                $sql .= " AND (l.team_id = ? OR l.assigned_id = ? OR l.created_by = ?)";
                 $params[] = $teamId;
                 $params[] = $loggedInUserId;
-                $types .= "ii";
+                $params[] = $loggedInUserId;
+                $types .= "iii";
             } else {
                 $sql .= " AND l.team_id = ?";
                 $params[] = $teamId;
@@ -997,7 +999,7 @@ class Lead extends Model
         $sql = "SELECT COUNT(DISTINCT l.id) AS total_hot FROM leads l
                 LEFT JOIN employees emp ON emp.user_id = l.assigned_id
                 WHERE l.deleted_at IS NULL AND l.status = 'active' AND l.last_lead_action != 'cancel' AND l.lead_type = 'Hot'
-                  AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))";
+                  /* employee_status filter removed */";
         if (!empty($assignedUserId)) {
             $sql .= " AND l.assigned_id = " . (int)$assignedUserId;
         }
@@ -1013,7 +1015,7 @@ class Lead extends Model
                 FROM leads l
                 LEFT JOIN employees emp ON emp.user_id = l.assigned_id
                 WHERE l.deleted_at IS NULL 
-                  AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+                  /* employee_status filter removed */
                   AND (
                       l.last_lead_action IN ('contacted', 'follow up', 'booked', 'visited')
                       OR EXISTS (
@@ -1037,7 +1039,7 @@ class Lead extends Model
                 FROM leads l
                 LEFT JOIN employees emp ON emp.user_id = l.assigned_id
                 WHERE l.deleted_at IS NULL 
-                  AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+                  /* employee_status filter removed */
                   AND (l.last_lead_action IS NULL OR l.last_lead_action NOT IN ('contacted', 'follow up', 'booked', 'visited'))
                   AND NOT EXISTS (
                       SELECT 1 FROM lead_follow_ups lf 
@@ -1059,7 +1061,7 @@ class Lead extends Model
                 FROM leads l
                 LEFT JOIN employees emp ON emp.user_id = l.assigned_id
                 WHERE l.deleted_at IS NULL 
-                  AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+                  /* employee_status filter removed */
                   AND l.assigned_id IS NOT NULL AND l.assigned_id > 0";
         if (!empty($assignedUserId)) {
             $sql .= " AND l.assigned_id = " . (int)$assignedUserId;
@@ -1080,7 +1082,7 @@ class Lead extends Model
                 FROM leads l
                 LEFT JOIN employees emp ON emp.user_id = l.assigned_id
                 WHERE l.deleted_at IS NULL 
-                  AND (emp.employee_status IS NULL OR emp.employee_status NOT IN ('resigned', 'inactive', 'terminated'))
+                  /* employee_status filter removed */
                   AND (l.assigned_id IS NULL OR l.assigned_id = 0)";
         if (!empty($teamId)) {
             $sql .= " AND l.team_id = " . (int)$teamId;

@@ -1748,6 +1748,7 @@ public function addCedTransaction()
         'attachment_paths'   => $uploadedPaths ?: null,
         'bulk_emi_discount' => isset($_POST['bulk_emi_discount']) ? (float)$_POST['bulk_emi_discount'] : 0,
         'is_emi_discount'    => !empty($_POST['apply_emi_discount']) ? 1 : 0,
+        'is_previous_emi_discount' => !empty($_POST['is_previous_emi_discount']) ? 1 : 0,
         'due_emi_amount'     => isset($_POST['due_emi_amount']) ? (float)$_POST['due_emi_amount'] : 0,
         'parent_payment_id'  => !empty($_POST['parent_payment_id']) ? (int)$_POST['parent_payment_id'] : null,
         'settlement_type'    => !empty($_POST['settlement_type']) ? $_POST['settlement_type'] : null,
@@ -2103,6 +2104,7 @@ public function addTransaction()
             'bulk_emi_discount'=> isset($_POST['bulk_emi_discount']) ? (float)$_POST['bulk_emi_discount'] : 0,
             'is_emi_discount'  => !empty($_POST['apply_emi_discount']) ? 1 : 0,
             'handover_to'      => !empty($_POST['handover_to']) ? (int)$_POST['handover_to'] : null,
+            'is_previous_emi_discount' => !empty($_POST['is_previous_emi_discount']) ? 1 : 0,
             'created_by'       => $_SESSION['user']['id'] ?? 1
         ];
 

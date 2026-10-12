@@ -854,6 +854,9 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                         <a href="<?= $GLOBALS['base_url'] ?>/ced-add-transaction-form?booking_id=<?= $clientDetails['booking_id'] ?>" class="btn btn-primary mb-3">
                             <i class="fa-light fa-plus me-2"></i> Add Transaction
                         </a>
+                        <button type="button" class="btn btn-info text-white mb-3" data-bs-toggle="modal" data-bs-target="#applyPreviousDiscountModal">
+                            <i class="fa-solid fa-tags me-1"></i> Apply Previous Discount
+                        </button>
                     <?php endif; ?>
                     <a href="<?= $GLOBALS['base_url'] ?>/client-statement/<?= $clientDetails['booking_id'] ?>" target="_blank" class="btn btn-primary mb-3">
                         <i class="fa-light fa-file-invoice me-2"></i> Get Statement
@@ -2419,3 +2422,57 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+<!-- Apply Previous Discount Modal -->
+<div class="modal fade" id="applyPreviousDiscountModal" tabindex="-1" aria-labelledby="applyPreviousDiscountModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header" style="background: linear-gradient(135deg, #17a2b8, #117a8b);">
+                <h5 class="modal-title text-white" id="applyPreviousDiscountModalLabel">
+                    <i class="fa-solid fa-tags me-2"></i>Apply Previous EMI Discount
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="<?= $GLOBALS['base_url'] ?>/ced-add-transaction" method="POST">
+                <div class="modal-body p-4 bg-light">
+                    <!-- Hidden inputs for creating the zero-amount transaction -->
+                    <input type="hidden" name="booking_id" value="<?= $clientDetails['booking_id'] ?>">
+                    <input type="hidden" name="payment_type" value="emi">
+                    <input type="hidden" name="apply_emi_discount" value="1">
+                    <input type="hidden" name="is_previous_emi_discount" value="1">
+                    <input type="hidden" name="amount" value="0">
+                    <input type="hidden" name="payment_method" value="cash">
+
+                    <div class="alert alert-info border-info" style="font-size:13px;">
+                        <i class="fa-solid fa-circle-info me-1"></i> This feature creates an EMI discount that <strong>will reduce</strong> the remaining number of EMIs based on the discount amount. It's meant for backdating discounts on previous EMIs.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Discount Amount (TK) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white text-muted">TK</span>
+                            <input type="number" 
+                                   class="form-control fw-semibold" 
+                                   name="bulk_emi_discount" 
+                                   required 
+                                   min="1"
+                                   placeholder="Enter discount amount">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Reference Number (Optional)</label>
+                        <input type="text" class="form-control" name="transaction_ref" placeholder="Enter Ref Number or Previous Trx ID">
+                    </div>
+                </div>
+                
+                <div class="modal-footer bg-light border-top-0 pt-0 pb-4 pe-4">
+                    <button type="button" class="btn btn-outline-secondary px-4 fw-medium" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-info px-4 fw-bold text-white shadow-sm">
+                        <i class="fa-solid fa-check-circle me-1"></i> Apply Discount
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

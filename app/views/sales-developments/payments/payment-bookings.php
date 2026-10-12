@@ -44,11 +44,7 @@ foreach ($payments as $p) {
 $remaining = $finalAmount - $booking_pending_and_paid;
 $is_booking_fully_paid = ($remaining <= 0);
 
-$totalRegistrationAmount = (float)($booking['registration_money'] ?? 0);
-if ($totalRegistrationAmount <= 0) {
-    // fallback if registration_money is not set in flat table
-    $totalRegistrationAmount = abs((float)($booking['land_share_value'] ?? 0) - (float)($booking['agreement_value'] ?? 0));
-}
+$totalRegistrationAmount = abs((float)($booking['land_share_value'] ?? 0) - (float)($booking['agreement_value'] ?? 0));
 $registrationRemaining = $totalRegistrationAmount - $registration_pending_and_paid;
 $is_registration_fully_paid = ($registrationRemaining <= 0);
 

@@ -1170,19 +1170,23 @@ class AccountClient extends Model
                     0
                 ) as total_emi_due,
                 COALESCE(
-                    (SELECT SUM(lp.bulk_emi_discount)
+                    (SELECT SUM(
+                        CASE WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN lp.amount ELSE lp.bulk_emi_discount END
+                    )
                      FROM lead_payments lp
                      WHERE {$lpTrash}lp.booking_id = lb.id
                      AND lp.verification_status = 'verified'
-                     AND lp.bulk_emi_discount > 0),
+                     AND (lp.bulk_emi_discount > 0 OR COALESCE(lp.is_emi_discount, 0) = 1)),
                     0
                 ) as total_bulk_emi_discount,
                 COALESCE(
-                    (SELECT SUM(lp.bulk_emi_discount)
+                    (SELECT SUM(
+                        CASE WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN lp.amount ELSE lp.bulk_emi_discount END
+                    )
                      FROM lead_payments lp
                      WHERE {$lpTrash}lp.booking_id = lb.id
-                     AND lp.verification_status IN ('pending', 'under_review')
-                     AND lp.bulk_emi_discount > 0),
+                     AND lp.verification_status IN ('pending', 'under_review', 'unverified')
+                     AND (lp.bulk_emi_discount > 0 OR COALESCE(lp.is_emi_discount, 0) = 1)),
                     0
                 ) as unverified_bulk_emi_discount,
                 COALESCE(
@@ -2400,18 +2404,15 @@ class AccountClient extends Model
                         END, ' Installment(Settlement)')
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI SETTLEMENT'
                     WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
-                    THEN CASE 
-                        WHEN lp.due_emi_amount > 0.01 OR EXISTS (SELECT 1 FROM lead_payments child WHERE child.parent_payment_id = lp.id AND child.settlement_type = 'emi_due_settlement') THEN 'Installment Advance'
-                        ELSE CONCAT(es.emi_no, 
-                            CASE 
-                                WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
-                                WHEN es.emi_no % 10 = 1 THEN 'st'
-                                WHEN es.emi_no % 10 = 2 THEN 'nd'
-                                WHEN es.emi_no % 10 = 3 THEN 'rd'
-                                ELSE 'th'
-                            END, ' Installment'
-                        )
-                    END
+                    THEN CONCAT(es.emi_no, 
+                        CASE 
+                            WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
+                            WHEN es.emi_no % 10 = 1 THEN 'st'
+                            WHEN es.emi_no % 10 = 2 THEN 'nd'
+                            WHEN es.emi_no % 10 = 3 THEN 'rd'
+                            ELSE 'th'
+                        END, ' Installment'
+                    )
                     WHEN lp.payment_type = 'registration' THEN 'REGISTRATION'
                     WHEN lp.payment_type = 'booking_money' THEN 'BOOKING'
                     WHEN lp.payment_type = 'land_share' THEN 'LAND SHARE'
@@ -2432,6 +2433,9 @@ class AccountClient extends Model
                             ELSE 'th'
                         END, ' Installment')
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI Due Settlement'
+                    WHEN COALESCE(lp.is_emi_discount, 0) = 1 AND lp.payment_status = 'partially_paid' THEN 'Advance Installment'
+                    WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN 'EMI Discount'
+                    WHEN lp.payment_type = 'emi' AND lp.payment_status = 'partially_paid' THEN 'Advance Installment'
                     WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
                     WHEN lp.payment_type = 'registration' THEN 'Registration Money'
                     WHEN lp.payment_type = 'mutation_cost' THEN 'Mutation Cost'
@@ -2562,18 +2566,15 @@ class AccountClient extends Model
                         END, ' Installment(Settlement)')
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI SETTLEMENT'
                     WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
-                    THEN CASE 
-                        WHEN lp.due_emi_amount > 0.01 OR EXISTS (SELECT 1 FROM lead_payments child WHERE child.parent_payment_id = lp.id AND child.settlement_type = 'emi_due_settlement') THEN 'Installment Advance'
-                        ELSE CONCAT(es.emi_no, 
-                            CASE 
-                                WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
-                                WHEN es.emi_no % 10 = 1 THEN 'st'
-                                WHEN es.emi_no % 10 = 2 THEN 'nd'
-                                WHEN es.emi_no % 10 = 3 THEN 'rd'
-                                ELSE 'th'
-                            END, ' Installment'
-                        )
-                    END
+                    THEN CONCAT(es.emi_no, 
+                        CASE 
+                            WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
+                            WHEN es.emi_no % 10 = 1 THEN 'st'
+                            WHEN es.emi_no % 10 = 2 THEN 'nd'
+                            WHEN es.emi_no % 10 = 3 THEN 'rd'
+                            ELSE 'th'
+                        END, ' Installment'
+                    )
                     WHEN lp.payment_type = 'registration' THEN 'REGISTRATION'
                     WHEN lp.payment_type = 'booking_money' THEN 'BOOKING'
                     WHEN lp.payment_type = 'land_share' THEN 'LAND SHARE'
@@ -2593,6 +2594,7 @@ class AccountClient extends Model
                             ELSE 'th'
                         END, ' Installment')
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI Due Settlement'
+                    WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN 'EMI Discount'
                     WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
                     WHEN lp.payment_type = 'registration' THEN 'Registration Money'
                     WHEN lp.payment_type = 'mutation_cost' THEN 'Mutation Cost'
@@ -2929,19 +2931,16 @@ class AccountClient extends Model
                                WHEN parent_es.emi_no % 10 = 3 THEN 'rd'
                                ELSE 'th'
                            END, ' Installment(Settlement)')
-                       WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL THEN CASE 
-                           WHEN lp.due_emi_amount > 0.01 OR EXISTS (SELECT 1 FROM lead_payments child WHERE child.parent_payment_id = lp.id AND child.settlement_type = 'emi_due_settlement') THEN 'Installment Advance'
-                           ELSE CONCAT(
-                               es.emi_no, 
-                               CASE 
-                                   WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
-                                   WHEN es.emi_no % 10 = 1 THEN 'st'
-                                   WHEN es.emi_no % 10 = 2 THEN 'nd'
-                                   WHEN es.emi_no % 10 = 3 THEN 'rd'
-                                   ELSE 'th'
-                               END, ' Installment'
-                           )
-                       END
+                       WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL THEN CONCAT(
+                           es.emi_no, 
+                           CASE 
+                               WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
+                               WHEN es.emi_no % 10 = 1 THEN 'st'
+                               WHEN es.emi_no % 10 = 2 THEN 'nd'
+                               WHEN es.emi_no % 10 = 3 THEN 'rd'
+                               ELSE 'th'
+                           END, ' Installment'
+                       )
                        WHEN lp.payment_type = 'registration' THEN 'REGISTRATION'
                        WHEN lp.payment_type = 'booking_money' THEN 'BOOKING'
                        WHEN lp.payment_type = 'land_share' THEN 'LAND SHARE'
@@ -2960,7 +2959,8 @@ class AccountClient extends Model
                                WHEN parent_es.emi_no % 10 = 2 THEN 'nd'
                                WHEN parent_es.emi_no % 10 = 3 THEN 'rd'
                                ELSE 'th'
-                           END, ' Installment')
+                       END, ' Installment')
+                       WHEN COALESCE(lp.is_emi_discount, 0) = 1 THEN 'EMI Discount'
                        WHEN lp.payment_type = 'emi' THEN 'EMI Payment'
                        WHEN lp.payment_type = 'registration' THEN 'Registration Money'
                        WHEN lp.payment_type = 'booking_money' THEN 'Booking Money'
@@ -3566,24 +3566,27 @@ class AccountClient extends Model
                     }
                 }
 
-                // Insert emi_schedule row
-                $schedStmt = $this->db->prepare("
-                    INSERT INTO emi_schedules (
-                        lead_booking_id, emi_no, emi_amount, service_fee,
-                        due_emi_amount, due_date, status, lead_payment_id
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ");
-                if (!$schedStmt) throw new Exception("EMI schedule prepare failed: " . $this->db->error);
+                $isPreviousEmiDiscount = !empty($transactionData['is_previous_emi_discount']);
+                if (!$isDiscountItem || $isPreviousEmiDiscount) {
+                    // Insert emi_schedule row
+                    $schedStmt = $this->db->prepare("
+                        INSERT INTO emi_schedules (
+                            lead_booking_id, emi_no, emi_amount, service_fee,
+                            due_emi_amount, due_date, status, lead_payment_id
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    if (!$schedStmt) throw new Exception("EMI schedule prepare failed: " . $this->db->error);
 
-                $schedStatus = ($thisDue > 0) ? 'paid' : 'paid'; // schedule row always 'paid' (payment was recorded)
+                    $schedStatus = ($thisDue > 0) ? 'paid' : 'paid'; // schedule row always 'paid' (payment was recorded)
 
-                $schedStmt->bind_param(
-                    "iidddssi",
-                    $bookingId, $nextEmiNo, $thisEmi, $thisSvcFee,
-                    $thisDue, $paymentDate, $schedStatus, $paymentId
-                );
+                    $schedStmt->bind_param(
+                        "iidddssi",
+                        $bookingId, $nextEmiNo, $thisEmi, $thisSvcFee,
+                        $thisDue, $paymentDate, $schedStatus, $paymentId
+                    );
 
-                if (!$schedStmt->execute()) throw new Exception("EMI schedule insert failed: " . $schedStmt->error);
+                    if (!$schedStmt->execute()) throw new Exception("EMI schedule insert failed: " . $schedStmt->error);
+                }
 
                 $pool -= $thisEmi;
                 $totalAllocated += $thisEmi;
