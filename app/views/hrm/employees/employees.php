@@ -40,21 +40,7 @@ $buildStatUrl = function($targetFilter) use ($statusFilter) {
 .stat-kpi-card.is-active {
     border: 2px solid #0d6efd;
     box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
-    background: #f8fbff;
-}
-.stat-kpi-card.is-active::after {
-    content: "Active";
-    position: absolute;
-    top: 7px;
-    right: 8px;
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-    background: #0d6efd;
-    color: #fff;
-    padding: 2px 7px;
-    border-radius: 20px;
-    letter-spacing: 0.5px;
+    background: #f0f7ff;
 }
 .stat-kpi-icon {
     width: 46px;
@@ -389,15 +375,11 @@ $listReturnUrl = $GLOBALS['base_url'] . '/employee-lists' . $currentQuery;
                             </a>
                             <a href="tel:<?= htmlspecialchars($employee['phone']) ?>" title="Call">
                                 <i class="fa-solid fa-phone"></i>
-
                             </a>
-
                         </div>
                         <div class="employee__btn">
                             <div class="d-flex align-items-center justify-content-center gap-10">
-
                                 <a class="btn btn-outline-theme-border" href="<?= $GLOBALS['base_url'] ?>/employee-profile/<?= $employee['id'] ?>">View</a>
-                                <!-- <a href="< $GLOBALS['base_url'] ?>/edit-employee?id=< $employee['id'] ?>">Edit</a> -->
                                 <a class="btn btn-outline-theme-border" href="<?= $GLOBALS['base_url'] ?>/edit-employee/<?= $employee['id'] ?>?return_url=<?= urlencode($listReturnUrl) ?>">Edit</a>
                                 <button class="removeBtnCust btn btn-outline-theme-border delete"
                                     data-id="<?= $employee['id'] ?>"
@@ -486,7 +468,7 @@ $listReturnUrl = $GLOBALS['base_url'] . '/employee-lists' . $currentQuery;
                                     e.preventDefault();
                                     searchInput.value = emp.full_name;
                                     suggestionsBox.style.display = 'none';
-                                    searchInput.closest('form').submit(); // optional: auto-submit on click
+                                    searchInput.closest('form').submit();
                                 });
                                 suggestionsBox.appendChild(item);
                             });

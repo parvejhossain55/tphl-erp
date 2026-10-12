@@ -66,13 +66,13 @@ class Employee extends Model
 
         if ($department_id) {
             $sql .= " AND e.department_id = ?";
-            $params[] = $department_id;
+            $params[] = (int) $department_id;
             $types .= "i";
         }
 
         if ($team_id) {
             $sql .= " AND e.team_id = ?";
-            $params[] = $team_id;
+            $params[] = (int) $team_id;
             $types .= "i";
         }
 
@@ -87,20 +87,20 @@ class Employee extends Model
         } elseif ($status_filter === 'inactive') {
             $sql .= " AND LOWER(IFNULL(e.employee_status, '')) IN ('inactive', 'terminated')";
         } elseif ($status_filter === 'recent_join') {
-            $sql .= " AND e.joining_date IS NOT NULL AND e.joining_date != '' AND e.joining_date >= ? AND e.joining_date <= ?";
+            $sql .= " AND e.joining_date IS NOT NULL AND e.joining_date != '' AND e.joining_date != '0000-00-00' AND e.joining_date >= ? AND e.joining_date <= ?";
             $params[] = $startOfMonth;
             $params[] = $endOfMonth;
             $types .= "ss";
         } elseif ($status_filter === 'recent_resign') {
-            $sql .= " AND e.resign_date IS NOT NULL AND e.resign_date != '' AND e.resign_date >= ? AND e.resign_date <= ?";
+            $sql .= " AND e.resign_date IS NOT NULL AND e.resign_date != '' AND e.resign_date != '0000-00-00' AND e.resign_date >= ? AND e.resign_date <= ?";
             $params[] = $startOfMonth;
             $params[] = $endOfMonth;
             $types .= "ss";
         }
 
         $sql .= " ORDER BY e.id DESC LIMIT ? OFFSET ?";
-        $params[] = $limit;
-        $params[] = $offset;
+        $params[] = (int) $limit;
+        $params[] = (int) $offset;
         $types .= "ii";
 
         $stmt = $this->db->prepare($sql);
@@ -196,20 +196,19 @@ class Employee extends Model
             $params[] = "%$search%";
             $params[] = "%$search%";
             $params[] = "%$search%";
-
             $params[] = "%$search%";
             $types .= "sssss";
         }
 
         if ($department_id) {
             $sql .= " AND department_id = ?";
-            $params[] = $department_id;
+            $params[] = (int) $department_id;
             $types .= "i";
         }
 
         if ($team_id) {
             $sql .= " AND team_id = ?";
-            $params[] = $team_id;
+            $params[] = (int) $team_id;
             $types .= "i";
         }
 
@@ -224,12 +223,12 @@ class Employee extends Model
         } elseif ($status_filter === 'inactive') {
             $sql .= " AND LOWER(IFNULL(employee_status, '')) IN ('inactive', 'terminated')";
         } elseif ($status_filter === 'recent_join') {
-            $sql .= " AND joining_date IS NOT NULL AND joining_date != '' AND joining_date >= ? AND joining_date <= ?";
+            $sql .= " AND joining_date IS NOT NULL AND joining_date != '' AND joining_date != '0000-00-00' AND joining_date >= ? AND joining_date <= ?";
             $params[] = $startOfMonth;
             $params[] = $endOfMonth;
             $types .= "ss";
         } elseif ($status_filter === 'recent_resign') {
-            $sql .= " AND resign_date IS NOT NULL AND resign_date != '' AND resign_date >= ? AND resign_date <= ?";
+            $sql .= " AND resign_date IS NOT NULL AND resign_date != '' AND resign_date != '0000-00-00' AND resign_date >= ? AND resign_date <= ?";
             $params[] = $startOfMonth;
             $params[] = $endOfMonth;
             $types .= "ss";
@@ -254,17 +253,20 @@ class Employee extends Model
         $startOfMonth = date('Y-m-01', strtotime($targetMonth . '-01'));
         $endOfMonth = date('Y-m-t', strtotime($targetMonth . '-01'));
 
+        $startEsc = $this->db->real_escape_string($startOfMonth);
+        $endEsc = $this->db->real_escape_string($endOfMonth);
+
         $sql = "SELECT 
                     COUNT(*) AS total,
                     SUM(CASE WHEN LOWER(IFNULL(e.employee_status, '')) = 'active' THEN 1 ELSE 0 END) AS active_count,
                     SUM(CASE WHEN LOWER(IFNULL(e.employee_status, '')) IN ('inactive', 'terminated') THEN 1 ELSE 0 END) AS inactive_count,
-                    SUM(CASE WHEN e.joining_date IS NOT NULL AND e.joining_date != '' AND e.joining_date != '0000-00-00' AND e.joining_date >= ? AND e.joining_date <= ? THEN 1 ELSE 0 END) AS recent_join_count,
-                    SUM(CASE WHEN e.resign_date IS NOT NULL AND e.resign_date != '' AND e.resign_date != '0000-00-00' AND e.resign_date >= ? AND e.resign_date <= ? THEN 1 ELSE 0 END) AS recent_resign_count
+                    SUM(CASE WHEN e.joining_date IS NOT NULL AND e.joining_date != '' AND e.joining_date != '0000-00-00' AND e.joining_date >= '{$startEsc}' AND e.joining_date <= '{$endEsc}' THEN 1 ELSE 0 END) AS recent_join_count,
+                    SUM(CASE WHEN e.resign_date IS NOT NULL AND e.resign_date != '' AND e.resign_date != '0000-00-00' AND e.resign_date >= '{$startEsc}' AND e.resign_date <= '{$endEsc}' THEN 1 ELSE 0 END) AS recent_resign_count
                 FROM employees AS e
                 WHERE 1";
 
-        $params = [$startOfMonth, $endOfMonth, $startOfMonth, $endOfMonth];
-        $types = "ssss";
+        $params = [];
+        $types = "";
 
         if ($search) {
             $sql .= " AND (e.full_name LIKE ? 
@@ -282,13 +284,13 @@ class Employee extends Model
 
         if ($department_id) {
             $sql .= " AND e.department_id = ?";
-            $params[] = $department_id;
+            $params[] = (int) $department_id;
             $types .= "i";
         }
 
         if ($team_id) {
             $sql .= " AND e.team_id = ?";
-            $params[] = $team_id;
+            $params[] = (int) $team_id;
             $types .= "i";
         }
 
@@ -298,22 +300,20 @@ class Employee extends Model
             $types .= "s";
         }
 
-        $stmt = $this->db->prepare($sql);
-        if (!$stmt) {
-            return [
-                'total' => 0,
-                'active' => 0,
-                'inactive' => 0,
-                'recent_join' => 0,
-                'recent_resign' => 0,
-            ];
+        if (!empty($params)) {
+            $stmt = $this->db->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param($types, ...$params);
+                $stmt->execute();
+                $resObj = $stmt->get_result();
+                $res = $resObj ? $resObj->fetch_assoc() : null;
+            } else {
+                $res = null;
+            }
+        } else {
+            $resObj = $this->db->query($sql);
+            $res = $resObj ? $resObj->fetch_assoc() : null;
         }
-        if ($params) {
-            $stmt->bind_param($types, ...$params);
-        }
-        $stmt->execute();
-        $resObj = $stmt->get_result();
-        $res = $resObj ? $resObj->fetch_assoc() : null;
 
         return [
             'total' => (int) ($res['total'] ?? 0),
