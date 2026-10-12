@@ -28,6 +28,7 @@ class TrackerMailService
         $smtpSecure = $config['smtp_secure'] ?? 'ssl';
 
         $mail = new PHPMailer(true);
+        $mail->CharSet = 'UTF-8';
         $mail->isSMTP();
         $mail->Host = $smtpHost;
         $mail->Port = $smtpPort;

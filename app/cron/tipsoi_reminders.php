@@ -260,6 +260,7 @@ foreach ($pendingByApprover as $email => $data) {
 
     // Send Mail
     $mail = new PHPMailer(true);
+    $mail->CharSet = 'UTF-8';
     $status = 'Failed';
     $errorMsg = '';
     

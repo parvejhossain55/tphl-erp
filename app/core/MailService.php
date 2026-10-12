@@ -18,6 +18,7 @@ class MailService
         $senderName = 'TPHL ERP Notification';
 
         $mail = new PHPMailer(true);
+        $mail->CharSet = 'UTF-8';
         // SMTP setup
         $mail->isSMTP();
         $mail->Host = $smtpHost;

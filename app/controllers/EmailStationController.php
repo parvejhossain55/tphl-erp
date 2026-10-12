@@ -192,6 +192,7 @@ class EmailStationController extends Controller
         }
 
         $mail = new PHPMailer(true);
+        $mail->CharSet = 'UTF-8';
 
         try {
             // SMTP Configuration
