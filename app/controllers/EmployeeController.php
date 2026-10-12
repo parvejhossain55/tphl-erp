@@ -401,9 +401,10 @@ class EmployeeController extends Controller
         if ($submittedEmail) {
             $matchedUserByEmail = $this->userModel->getByEmail($submittedEmail);
             if ($matchedUserByEmail && (int)$matchedUserByEmail['id'] !== $existingUserId) {
-                $existingUserId = (int) $matchedUserByEmail['id'];
-                $this->db->query("UPDATE employees SET user_id = $existingUserId, make_user = 1 WHERE id = $id");
-                $this->db->query("UPDATE users SET employee_id = $id WHERE id = $existingUserId");
+                setError("This email is already associated with another user account!");
+                $redirectUrl = !empty($_POST['return_url']) ? $_POST['return_url'] : "{$GLOBALS['base_url']}/edit-employee/$id";
+                header("Location: {$redirectUrl}");
+                exit;
             }
         }
 

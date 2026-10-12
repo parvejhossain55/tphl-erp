@@ -11,6 +11,15 @@ return [
     // Controller: TaskController
     // =========================================================================
     'task-lists' => ['controller' => 'TaskController', 'method' => 'index'],
+    'my-created-tasks' => ['controller' => 'TaskController', 'method' => 'myCreatedTasks'],
+    'my-created-tasks/store' => ['controller' => 'TaskController', 'method' => 'storeMyCreatedTask'],
+    'my-created-tasks/create-project' => ['controller' => 'TaskController', 'method' => 'createTodoProject'],
+    'my-created-tasks/update-progress' => ['controller' => 'TaskController', 'method' => 'updateMyCreatedTaskProgress'],
+    'my-created-tasks/complete/(\d+)' => ['controller' => 'TaskController', 'method' => 'completeMyCreatedTask'],
+    'my-created-tasks/delete/(\d+)' => ['controller' => 'TaskController', 'method' => 'deleteMyCreatedTask'],
+    'team-performance' => ['controller' => 'TaskController', 'method' => 'teamPerformance'],
+    'team-performance/member/(\d+)' => ['controller' => 'TaskController', 'method' => 'teamMemberTasks'],
+    'team-performance/assign-task' => ['controller' => 'TaskController', 'method' => 'assignTeamTask'],
     'create-task' => ['controller' => 'TaskController', 'method' => 'create'],
     'store-task' => ['controller' => 'TaskController', 'method' => 'store'],
     'task-dashboard' => ['controller' => 'TaskController', 'method' => 'taskDashboard'],

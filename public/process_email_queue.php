@@ -41,6 +41,7 @@ if ($result && $result->num_rows > 0) {
 
         try {
             $mail = new PHPMailer(true);
+            $mail->CharSet = 'UTF-8';
             $mail->isSMTP();
             $mail->Host       = $smtpHost;
             $mail->Port       = $smtpPort;

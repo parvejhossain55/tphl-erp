@@ -72,6 +72,7 @@ class PayrollMailService
 
             // 4. Initialize PHPMailer
             $mail = new PHPMailer(true);
+            $mail->CharSet = 'UTF-8';
             $mail->isSMTP();
             $mail->SMTPDebug = 0;
 
