@@ -331,7 +331,17 @@ class AtsController extends Controller
         $action = trim($_POST['action'] ?? '');
         $updates = [];
 
-        if ($action === 'invitation_status' && !empty($_POST['invitation_status'])) {
+        if ($action === 'delete') {
+            $affected = $this->candidateModel->bulkDelete($ids);
+            echo json_encode([
+                'success' => true,
+                'message' => "Successfully deleted {$affected} candidate(s)."
+            ]);
+            exit;
+        } elseif ($action === 'communication') {
+            if (isset($_POST['email_sent'])) $updates['email_sent'] = (int)$_POST['email_sent'];
+            if (isset($_POST['sms_sent'])) $updates['sms_sent'] = (int)$_POST['sms_sent'];
+        } elseif ($action === 'invitation_status' && !empty($_POST['invitation_status'])) {
             $updates['invitation_status'] = $_POST['invitation_status'];
         } elseif ($action === 'interview_attendance' && !empty($_POST['interview_attendance'])) {
             $updates['interview_attendance'] = $_POST['interview_attendance'];
@@ -353,6 +363,44 @@ class AtsController extends Controller
             'success' => true,
             'message' => "Successfully updated {$affected} candidate(s)."
         ]);
+        exit;
+    }
+
+    /**
+     * Delete Candidate (AJAX / POST)
+     */
+    public function delete()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        $id = (int)($_POST['id'] ?? 0);
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'Invalid candidate ID']);
+            exit;
+        }
+
+        $candidate = $this->candidateModel->getById($id);
+        if (!$candidate) {
+            echo json_encode(['success' => false, 'message' => 'Candidate not found']);
+            exit;
+        }
+
+        // Clean up uploaded CV file if exists
+        if (!empty($candidate['cv_file_path'])) {
+            $filePath = BASE_PATH . '/public/' . $candidate['cv_file_path'];
+            if (file_exists($filePath)) {
+                @unlink($filePath);
+            }
+        }
+
+        $deleted = $this->candidateModel->delete($id);
+
+        if ($deleted) {
+            echo json_encode(['success' => true, 'message' => "Candidate '{$candidate['name']}' deleted successfully."]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to delete candidate.']);
+        }
         exit;
     }
 
@@ -539,6 +587,30 @@ class AtsController extends Controller
             echo json_encode(['success' => true, 'message' => 'Option status updated.']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to update status.']);
+        }
+        exit;
+    }
+
+    /**
+     * Permanently Delete Dropdown Option (AJAX)
+     */
+    public function deleteDropdownOption()
+    {
+        $this->checkAuth();
+        header('Content-Type: application/json');
+
+        $id = (int)($_POST['id'] ?? 0);
+        if (!$id) {
+            echo json_encode(['success' => false, 'message' => 'Invalid option ID']);
+            exit;
+        }
+
+        $res = $this->dropdownModel->delete($id);
+
+        if ($res) {
+            echo json_encode(['success' => true, 'message' => 'Option deleted permanently.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to delete option.']);
         }
         exit;
     }

@@ -253,6 +253,12 @@ $baseUrl = $GLOBALS['base_url'];
             <button type="button" class="btn btn-outline-dark btn-sm py-1" onclick="openBulkUpdateModal('hired')">
                 <i class="fa-solid fa-briefcase me-1"></i> Change Hired Status
             </button>
+            <button type="button" class="btn btn-outline-success btn-sm py-1" onclick="openBulkUpdateModal('communication')">
+                <i class="fa-solid fa-paper-plane me-1"></i> Email / SMS Status
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm py-1 ms-auto" onclick="executeBulkDelete()">
+                <i class="fa-regular fa-trash-can me-1"></i> Delete Selected
+            </button>
         </div>
     </div>
 
@@ -272,6 +278,7 @@ $baseUrl = $GLOBALS['base_url'];
                         <th style="min-width: 180px;">Interview Schedule</th>
                         <th style="min-width: 130px;">Attendance</th>
                         <th style="min-width: 120px;">Hired / Status</th>
+                        <th style="min-width: 130px;">Email & SMS</th>
                         <th style="min-width: 110px;">CV / File</th>
                         <th class="text-end px-3" style="width: 90px;">Actions</th>
                     </tr>
@@ -279,7 +286,7 @@ $baseUrl = $GLOBALS['base_url'];
                 <tbody>
                     <?php if (empty($candidates)): ?>
                         <tr>
-                            <td colspan="10" class="text-center py-5 text-muted">
+                            <td colspan="11" class="text-center py-5 text-muted">
                                 <i class="fa-regular fa-folder-open fs-1 d-block mb-2 text-secondary opacity-50"></i>
                                 No candidates found matching your criteria.
                                 <div class="mt-2">
@@ -408,6 +415,34 @@ $baseUrl = $GLOBALS['base_url'];
                                     <?php endif; ?>
                                 </td>
 
+                                <!-- Email & SMS Quick Toggle -->
+                                <td>
+                                    <div class="d-flex flex-column gap-1">
+                                        <!-- Email Toggle -->
+                                        <?php $emailActive = (!empty($c['email_sent']) && ((int)$c['email_sent'] === 1 || $c['email_sent'] === '1')); ?>
+                                        <button type="button" 
+                                                id="emailBtn_<?= $c['id'] ?>"
+                                                class="btn btn-xs d-inline-flex align-items-center justify-content-between px-2 py-0 border <?= $emailActive ? 'btn-success text-white' : 'btn-light text-muted' ?>"
+                                                style="font-size: 0.72rem; height: 22px; width: 105px;"
+                                                onclick="toggleComms(<?= $c['id'] ?>, 'email_sent', <?= $emailActive ? 0 : 1 ?>, this)"
+                                                title="Click to toggle Email Sent status">
+                                            <span><i class="fa-solid fa-envelope me-1"></i>Email</span>
+                                            <i class="fa-solid <?= $emailActive ? 'fa-check' : 'fa-xmark opacity-50' ?>"></i>
+                                        </button>
+                                        <!-- SMS Toggle -->
+                                        <?php $smsActive = (!empty($c['sms_sent']) && ((int)$c['sms_sent'] === 1 || $c['sms_sent'] === '1')); ?>
+                                        <button type="button" 
+                                                id="smsBtn_<?= $c['id'] ?>"
+                                                class="btn btn-xs d-inline-flex align-items-center justify-content-between px-2 py-0 border <?= $smsActive ? 'btn-primary text-white' : 'btn-light text-muted' ?>"
+                                                style="font-size: 0.72rem; height: 22px; width: 105px;"
+                                                onclick="toggleComms(<?= $c['id'] ?>, 'sms_sent', <?= $smsActive ? 0 : 1 ?>, this)"
+                                                title="Click to toggle SMS Sent status">
+                                            <span><i class="fa-solid fa-comment-sms me-1"></i>SMS</span>
+                                            <i class="fa-solid <?= $smsActive ? 'fa-check' : 'fa-xmark opacity-50' ?>"></i>
+                                        </button>
+                                    </div>
+                                </td>
+
                                 <!-- CV Document -->
                                 <td>
                                     <?php if ($c['cv_source'] === 'file' && !empty($c['cv_file_path'])): ?>
@@ -428,6 +463,9 @@ $baseUrl = $GLOBALS['base_url'];
                                     <div class="btn-group btn-group-sm">
                                         <button type="button" class="btn btn-light btn-sm text-primary" onclick="openEditModal(<?= $c['id'] ?>)" title="Edit Candidate">
                                             <i class="fa-regular fa-pen-to-square"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-light btn-sm text-danger" onclick="deleteCandidate(<?= $c['id'] ?>, '<?= htmlspecialchars(addslashes($c['name'])) ?>')" title="Delete Candidate">
+                                            <i class="fa-regular fa-trash-can"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -607,6 +645,24 @@ $baseUrl = $GLOBALS['base_url'];
                                 <label class="form-label small fw-semibold">Remarks / Notes</label>
                                 <input type="text" name="remarks" id="cRemarks" class="form-control form-control-sm" placeholder="Free-form interview notes">
                             </div>
+                            <!-- Communication Status Switches -->
+                            <div class="col-12 mt-3 pt-2 border-top">
+                                <div class="d-flex flex-wrap align-items-center gap-4">
+                                    <span class="small fw-bold text-secondary"><i class="fa-solid fa-paper-plane me-1"></i>Notification Tracking:</span>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" name="email_sent" id="cEmailSent" value="1">
+                                        <label class="form-check-label small fw-semibold text-dark" for="cEmailSent">
+                                            <i class="fa-solid fa-envelope text-success me-1"></i> Email Invitation Sent
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" name="sms_sent" id="cSmsSent" value="1">
+                                        <label class="form-check-label small fw-semibold text-dark" for="cSmsSent">
+                                            <i class="fa-solid fa-comment-sms text-primary me-1"></i> SMS Notification Sent
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -775,6 +831,27 @@ $baseUrl = $GLOBALS['base_url'];
                         <option value="pending">Pending</option>
                     </select>
                 </div>
+
+                <!-- Communication (Email / SMS) Options -->
+                <div id="bulkCommunicationSection" class="d-none">
+                    <label class="form-label small fw-semibold mb-2">Update Notification Delivery Status</label>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Email Invitation Status:</label>
+                        <select id="bulkEmailSentValue" class="form-select form-select-sm">
+                            <option value="">-- No Change to Email Status --</option>
+                            <option value="1">Mark Email as SENT</option>
+                            <option value="0">Mark Email as NOT SENT</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label small text-muted">SMS Notification Status:</label>
+                        <select id="bulkSmsSentValue" class="form-select form-select-sm">
+                            <option value="">-- No Change to SMS Status --</option>
+                            <option value="1">Mark SMS as SENT</option>
+                            <option value="0">Mark SMS as NOT SENT</option>
+                        </select>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer bg-light py-2">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
@@ -849,6 +926,8 @@ function openAddModal() {
     document.getElementById('cPositionOther').classList.add('d-none');
     document.getElementById('cSourceOther').classList.add('d-none');
     document.getElementById('cLocationOther').classList.add('d-none');
+    document.getElementById('cEmailSent').checked = false;
+    document.getElementById('cSmsSent').checked = false;
     toggleCvSource();
 
     new bootstrap.Modal(document.getElementById('candidateFormModal')).show();
@@ -885,6 +964,8 @@ function openEditModal(id) {
             document.getElementById('cInterviewTime').value = c.interview_time || '';
             document.getElementById('cAttendance').value = c.interview_attendance || 'pending';
             document.getElementById('cRemarks').value = c.remarks || '';
+            document.getElementById('cEmailSent').checked = (c.email_sent == 1 || c.email_sent === '1');
+            document.getElementById('cSmsSent').checked = (c.sms_sent == 1 || c.sms_sent === '1');
 
             document.getElementById('cCvSource').value = c.cv_source || 'file';
             document.getElementById('cCvDriveLink').value = c.cv_drive_link || '';
@@ -980,8 +1061,137 @@ function quickUpdateField(id, field, value, element = null) {
         }
     })
     .catch(err => {
-        console.error('Quick update error:', err);
-        Swal.fire('Error', err.message || 'Network connection issue', 'error');
+        console.error('Quick update error:', err);            Swal.fire('Error', err.message || 'Network connection issue', 'error');
+    });
+}
+
+// 1-Click Fast Toggle for Email & SMS Status
+function toggleComms(id, field, nextValue, btn) {
+    const formData = new FormData();
+    formData.append('id', id);
+    formData.append('field', field);
+    formData.append('value', nextValue);
+
+    fetch('<?= $baseUrl ?>/api/ats/quick-update', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            const isSent = (parseInt(nextValue) === 1);
+            if (field === 'email_sent') {
+                btn.className = `btn btn-xs d-inline-flex align-items-center justify-content-between px-2 py-0 border ${isSent ? 'btn-success text-white' : 'btn-light text-muted'}`;
+                btn.setAttribute('onclick', `toggleComms(${id}, 'email_sent', ${isSent ? 0 : 1}, this)`);
+                btn.innerHTML = `<span><i class="fa-solid fa-envelope me-1"></i>Email</span><i class="fa-solid ${isSent ? 'fa-check' : 'fa-xmark opacity-50'}"></i>`;
+                atsShowToast(isSent ? 'Email marked as SENT' : 'Email marked as NOT SENT');
+            } else if (field === 'sms_sent') {
+                btn.className = `btn btn-xs d-inline-flex align-items-center justify-content-between px-2 py-0 border ${isSent ? 'btn-primary text-white' : 'btn-light text-muted'}`;
+                btn.setAttribute('onclick', `toggleComms(${id}, 'sms_sent', ${isSent ? 0 : 1}, this)`);
+                btn.innerHTML = `<span><i class="fa-solid fa-comment-sms me-1"></i>SMS</span><i class="fa-solid ${isSent ? 'fa-check' : 'fa-xmark opacity-50'}"></i>`;
+                atsShowToast(isSent ? 'SMS marked as SENT' : 'SMS marked as NOT SENT');
+            }
+        } else {
+            Swal.fire('Update Failed', data.message || 'Could not update status', 'error');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        Swal.fire('Error', 'Network connection issue', 'error');
+    });
+}
+
+// Single Candidate Delete
+function deleteCandidate(id, name) {
+    Swal.fire({
+        title: 'Delete Candidate?',
+        text: `Are you sure you want to delete candidate "${name}"? This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: '<i class="fa-regular fa-trash-can me-1"></i> Yes, Delete',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const formData = new FormData();
+            formData.append('id', id);
+
+            fetch('<?= $baseUrl ?>/api/ats/candidate-delete', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.success) {
+                    const row = document.getElementById(`candidateRow_${id}`);
+                    if (row) {
+                        row.style.transition = 'all 0.3s ease';
+                        row.style.opacity = '0';
+                        setTimeout(() => row.remove(), 300);
+                    }
+                    atsShowToast(res.message || 'Candidate deleted');
+                } else {
+                    Swal.fire('Error', res.message || 'Failed to delete candidate', 'error');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                Swal.fire('Error', 'Network connection issue', 'error');
+            });
+        }
+    });
+}
+
+// Bulk Delete Candidates
+function executeBulkDelete() {
+    const ids = getSelectedIds();
+    if (ids.length === 0) {
+        Swal.fire('No Selection', 'Please select at least one candidate.', 'warning');
+        return;
+    }
+
+    Swal.fire({
+        title: `Delete ${ids.length} Candidate(s)?`,
+        text: 'This will permanently remove the selected candidates. This action cannot be undone.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: `<i class="fa-regular fa-trash-can me-1"></i> Yes, Delete All Selected`,
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const formData = new FormData();
+            formData.append('action', 'delete');
+            formData.append('ids', ids.join(','));
+
+            fetch('<?= $baseUrl ?>/api/ats/bulk-update', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Deleted!',
+                        text: res.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire('Error', res.message || 'Failed to delete candidates', 'error');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                Swal.fire('Error', 'Network connection issue', 'error');
+            });
+        }
     });
 }
 
@@ -1032,6 +1242,7 @@ function openBulkUpdateModal(actionType) {
     document.getElementById('bulkAttendanceSection').classList.add('d-none');
     document.getElementById('bulkScheduleSection').classList.add('d-none');
     document.getElementById('bulkHiredSection').classList.add('d-none');
+    document.getElementById('bulkCommunicationSection').classList.add('d-none');
 
     if (actionType === 'invitation_status') {
         document.getElementById('bulkActionTitle').textContent = `Bulk Call Status (${ids.length} candidates)`;
@@ -1045,6 +1256,9 @@ function openBulkUpdateModal(actionType) {
     } else if (actionType === 'hired') {
         document.getElementById('bulkActionTitle').textContent = `Bulk Hired Decision (${ids.length} candidates)`;
         document.getElementById('bulkHiredSection').classList.remove('d-none');
+    } else if (actionType === 'communication') {
+        document.getElementById('bulkActionTitle').textContent = `Bulk Email & SMS Status (${ids.length} candidates)`;
+        document.getElementById('bulkCommunicationSection').classList.remove('d-none');
     }
 
     new bootstrap.Modal(document.getElementById('bulkActionModal')).show();
@@ -1066,6 +1280,11 @@ function executeBulkUpdate() {
         formData.append('interview_location', document.getElementById('bulkInterviewLocation').value);
     } else if (actionType === 'hired') {
         formData.append('hired', document.getElementById('bulkHiredValue').value);
+    } else if (actionType === 'communication') {
+        const emailVal = document.getElementById('bulkEmailSentValue').value;
+        const smsVal = document.getElementById('bulkSmsSentValue').value;
+        if (emailVal !== '') formData.append('email_sent', emailVal);
+        if (smsVal !== '') formData.append('sms_sent', smsVal);
     }
 
     fetch('<?= $baseUrl ?>/api/ats/bulk-update', {
