@@ -227,7 +227,10 @@ class AtsCandidate extends Model
             )
         ");
 
-        if (!$stmt) return false;
+        if (!$stmt) {
+            error_log("[AtsCandidate::create] Prepare failed: " . $this->db->error);
+            return false;
+        }
 
         $name = trim($data['name']);
         $phone = trim($data['phone']);
@@ -259,7 +262,7 @@ class AtsCandidate extends Model
         $createdBy = !empty($data['created_by']) ? (int) $data['created_by'] : null;
 
         $stmt->bind_param(
-            "sssssssssssssiisssssdsis",
+            "sssssssssssssiissssssdsi",
             $name, $phone, $email, $position, $department, $source,
             $invitationStatus, $referredBy, $remarks,
             $interviewCallDate, $interviewDate, $interviewTime, $interviewLocation,
@@ -271,6 +274,8 @@ class AtsCandidate extends Model
         if ($stmt->execute()) {
             return $this->db->insert_id;
         }
+
+        error_log("[AtsCandidate::create] Execute failed: " . $stmt->error);
         return false;
     }
 
@@ -290,7 +295,10 @@ class AtsCandidate extends Model
             WHERE id = ?
         ");
 
-        if (!$stmt) return false;
+        if (!$stmt) {
+            error_log("[AtsCandidate::update] Prepare failed: " . $this->db->error);
+            return false;
+        }
 
         $name = trim($data['name']);
         $phone = trim($data['phone']);
@@ -320,7 +328,7 @@ class AtsCandidate extends Model
         $onboardingSalary = !empty($data['onboarding_salary']) ? (float) $data['onboarding_salary'] : null;
 
         $stmt->bind_param(
-            "sssssssssssssiisssssdsi",
+            "sssssssssssssiissssssdi",
             $name, $phone, $email, $position, $department, $source,
             $invitationStatus, $referredBy, $remarks,
             $interviewCallDate, $interviewDate, $interviewTime, $interviewLocation,
@@ -329,7 +337,12 @@ class AtsCandidate extends Model
             $hired, $joiningDate, $onboardingSalary, $id
         );
 
-        return $stmt->execute();
+        if ($stmt->execute()) {
+            return true;
+        }
+
+        error_log("[AtsCandidate::update] Execute failed: " . $stmt->error);
+        return false;
     }
 
     /**
