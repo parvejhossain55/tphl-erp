@@ -32,7 +32,14 @@
     $conReadOnlyRoles = []; // Currently no role is fully restricted — footer.php handles role 20
     
     // Check if the current user belongs to Management (Admin, Super Admin, Chief Officer, Management Viewer, SEAL CEO)
-    $isManagement = in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 33, 34, 35]);
+    $sbUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+    $sbUserSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+    $sbUserPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+    $sbUserId = (int)($_SESSION['user']['id'] ?? 0);
+    $isManagement = in_array($sbUserRoleId, [1, 3, 33, 34, 35], true) 
+        || in_array($sbUserSecRoleId, [1, 3, 33, 34, 35], true) 
+        || in_array($sbUserPriRoleId, [1, 3, 33, 34, 35], true) 
+        || $sbUserId === 94;
 
     // Calculate pending verifications
     $pendingVerificationsCount = 0;
@@ -211,24 +218,38 @@
             $stmt->close();
         }
 
-        // Determine whether logged-in user is Department Head or has reporting team members
+        // Determine whether logged-in user is Department Head or has reporting team members / reporting boss
         $isDeptHead = false;
-        $deptHeadChk = $db->query("
-            SELECT COUNT(*) as total 
-            FROM employees 
-            WHERE (user_id = $loggedUserId OR id = (SELECT employee_id FROM users WHERE id = $loggedUserId LIMIT 1))
-              AND is_dept_head = 1 
-              AND deleted_at IS NULL
+        $hasReportees = false;
+        $hasReportingBoss = false;
+
+        $empRelRes = $db->query("
+            SELECT e.is_dept_head, e.reporting_user_id 
+            FROM employees e 
+            WHERE (e.user_id = $loggedUserId OR e.id = (SELECT employee_id FROM users WHERE id = $loggedUserId LIMIT 1))
+              AND e.deleted_at IS NULL 
             LIMIT 1
         ");
-        if ($deptHeadChk && (int)$deptHeadChk->fetch_assoc()['total'] > 0) {
-            $isDeptHead = true;
-        } else {
-            $repChk = $db->query("SELECT COUNT(*) as total FROM employees WHERE reporting_user_id = $loggedUserId AND deleted_at IS NULL LIMIT 1");
-            if ($repChk && (int)$repChk->fetch_assoc()['total'] > 0) {
+        if ($empRelRes && $erRow = $empRelRes->fetch_assoc()) {
+            if ((int)$erRow['is_dept_head'] === 1) {
                 $isDeptHead = true;
             }
+            if (!empty($erRow['reporting_user_id']) && (int)$erRow['reporting_user_id'] > 0) {
+                $hasReportingBoss = true;
+            }
         }
+
+        $repChk = $db->query("SELECT COUNT(*) as total FROM employees WHERE reporting_user_id = $loggedUserId AND deleted_at IS NULL LIMIT 1");
+        if ($repChk && (int)$repChk->fetch_assoc()['total'] > 0) {
+            $hasReportees = true;
+            $isDeptHead = true;
+        }
+
+        $canAccessTeamPerformance = !empty($isDeptHead)
+            || !empty($hasReportees)
+            || !empty($hasReportingBoss)
+            || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 2, 3], true)
+            || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [1, 2, 3], true);
 
         // Calculate pending Fund Requisition action counts — role-specific
         $pendingFundReqTotalCount = 0;
@@ -642,18 +663,6 @@
                     }
                 }
                 ?>
-
-                <?php if ($hasErpAccess): ?>
-                    <!-- ERP Tracker -->
-                    <li class="slide d-none <?= isActive('erp-tracker', $current_route) ?>">
-                        <a href="<?= $base_url ?>/erp-tracker"
-                            class="sidebar__menu-item <?= isActive('erp-tracker', $current_route) ?>">
-                            <div class="side-menu__icon"><i class="fas fa-tasks"></i></div>
-                            <span class="sidebar__menu-label">ERP Tracker</span>
-                        </a>
-                    </li>
-                <?php endif; ?>
-
                 <!-- Sales Manager CATEGORY -->
                 <?php
                 // Ensure $db is initialized
@@ -707,12 +716,12 @@
                                 </a>
                             </li>
 
-                            <!-- Team Performance -->
+                            <!-- Sales Team Activity -->
                             <li class="slide">
-                                <a href="<?= $base_url ?>/team-performance"
-                                    class="sidebar__menu-item <?= isActive('team-performance', $current_route) ?>">
+                                <a href="<?= $base_url ?>/sales-activity-team-performance"
+                                    class="sidebar__menu-item <?= isActive('sales-activity-team-performance', $current_route) ?>">
                                     <div class="side-menu__icon"><i class="fa-solid fa-users-viewfinder"></i></div>
-                                    <span class="sidebar__menu-label">Team Performance</span>
+                                    <span class="sidebar__menu-label">Sales Team Activity</span>
                                 </a>
                             </li>
                         <?php endif; ?>
@@ -2314,7 +2323,7 @@
                         <a href="<?= $base_url ?>/reports/trial-balance"
                             class="sidebar__menu-item <?= isActive('reports/trial-balance', $current_route) ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-scale-balanced text-warning"></i></div>
-                            <span class="sidebar__menu-label">Trial Balance (রেওয়ামিল)</span>
+                            <span class="sidebar__menu-label">Trial Balance</span>
                         </a>
                     </li>
                     <li class="slide <?= isActive('reports/profit-loss', $current_route) ?>">
@@ -2745,8 +2754,7 @@
 
 
                 <!-- ==================== PHASE 2: CONSTRUCTION MANAGEMENT ==================== -->
-                <?php if (($_SESSION['user']['role_id'] ?? 0) != 9): ?>
-                    <?php if (($_SESSION['user']['role_id'] ?? 0) != 33): // Hide Construction module for role 33 ?>
+                <?php if (($_SESSION['user']['role_id'] ?? 0) != 9 && ($_SESSION['user']['role_id'] ?? 0) != 33): // Hide Construction module for role 9 and 33 ?>
                     <?php
                     $hasConPerms = hasPermission('Construction Management') || hasPermission('site engineer dashboard') || in_array($_SESSION['user']['role_id'] ?? 0, [20, 32]) || hasPermission('Purchase order') || ($_SESSION['user']['role_id'] ?? 0) == 23 || hasPermission('Project Draft Design') || hasPermission('Land Study') || hasPermission('Architect Design') || hasPermission('Estimator dashboard') || hasPermission('Project structure design') || hasPermission('QC Dashboard') || hasPermission('Project Manage') || hasPermission('Estimate Budget') || hasPermission('Work Order') || hasPermission('Working Plan') || hasPermission('Project Target Set') || hasPermission('Budget Extend') || hasPermission('Material Manage') || hasPermission('Operators & Bills') || hasPermission('Project Report') || hasPermission('Bill & Payments') || in_array($_SESSION['user']['role_id'] ?? 0, [1, 3, 6, 30, 34, 35]);
                     if ($hasConPerms):
@@ -3840,61 +3848,73 @@
                         </a>
                     </li>
                     <?php endif; ?>
-                    <?php if (hasPermission("task manage")): ?>
 
-                        <li
-                            class="slide has-sub <?= isActive(['create-task', 'task-lists', 'todo', 'task-dashboard', 'task-sheets', 'my-created-tasks', 'team-performance'], $current_route) ? 'active' : '' ?>">
-                            <a href="javascript:void(0);"
-                                class="sidebar__menu-item <?= isActive(['create-task', 'task-lists', 'todo', 'task-dashboard', 'task-sheets', 'my-created-tasks', 'team-performance'], $current_route) ? 'menu-open active' : '' ?>">
-                                <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
-                                <span class="sidebar__menu-label">Task Manage</span>
-                                <?php if ($pendingTasksCount > 0): ?>
-                                    <span class="badge bg-danger ms-auto me-4 rounded-pill"
-                                        style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
-                                <?php endif; ?>
-                                <i class="fa-regular fa-angle-down side-menu__angle"></i>
-                            </a>
-                            <ul class="sidebar-menu child2" style="display:block;">
-                                <li class="slide">
-                                    <a href="<?= $base_url ?>/task-dashboard"
-                                        class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
-                                        <span class="sidebar__menu-label">Task Dashboard</span>
-                                        <?php if ($pendingTasksCount > 0): ?>
-                                            <span class="badge bg-danger ms-auto me-2 rounded-pill"
-                                                style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
-                                        <?php endif; ?>
-                                    </a>
-                                </li>
-                                <li class="slide <?= isActive('create-task', $current_route) ?>">
-                                    <a class="sidebar__menu-item <?= isActive('create-task', $current_route) ?>"
-                                        href="<?= $base_url ?>/create-task">Add Task</a>
-                                </li>
-                                <li class="slide <?= isActive('task-lists', $current_route) ?>">
-                                    <a class="sidebar__menu-item <?= isActive('task-lists', $current_route) ?>"
-                                        href="<?= $base_url ?>/task-lists">Task List</a>
-                                </li>
-                                <li class="slide d-none <?= isActive('todo', $current_route) ?>">
-                                    <a class="sidebar__menu-item <?= isActive('todo', $current_route) ?>"
-                                        href="<?= $base_url ?>/todo">My Todo Lists</a>
-                                </li>
-                                <li class="slide <?= isActive('my-created-tasks', $current_route) ?>">
-                                    <a class="sidebar__menu-item <?= isActive('my-created-tasks', $current_route) ?>"
-                                        href="<?= $base_url ?>/my-created-tasks">My created Tasks</a>
-                                </li>
-                                <?php if (!empty($isDeptHead) || in_array($_SESSION['user']['role_id'] ?? 0, [1, 2, 3])): ?>
-                                <li class="slide <?= isActive('team-performance', $current_route) ?>">
-                                    <a class="sidebar__menu-item <?= isActive('team-performance', $current_route) ?>"
-                                        href="<?= $base_url ?>/team-performance">Team Performance</a>
-                                </li>
-                                <?php endif; ?>
-                                <li class="slide <?= isActive('task-sheets', $current_route) ?>">
-                                    <a class="sidebar__menu-item <?= isActive('task-sheets', $current_route) ?>"
-                                        href="<?= $base_url ?>/task-sheets">My Task Sheets</a>
-                                </li>
-                            </ul>
-                        </li>
+                    <!-- Task Manage Module (Available to All Logged-in Users) -->
+                    <li
+                        class="slide has-sub <?= isActive(['create-task', 'task-lists', 'todo', 'task-dashboard', 'task-sheets', 'my-created-tasks', 'team-performance', 'management-task-overview'], $current_route) ? 'active' : '' ?>">
+                        <a href="javascript:void(0);"
+                            class="sidebar__menu-item <?= isActive(['create-task', 'task-lists', 'todo', 'task-dashboard', 'task-sheets', 'my-created-tasks', 'team-performance', 'management-task-overview'], $current_route) ? 'menu-open active' : '' ?>">
+                            <div class="side-menu__icon"><i class="fas fa-clipboard-list"></i></div>
+                            <span class="sidebar__menu-label">Task Manage</span>
+                            <?php if ($pendingTasksCount > 0): ?>
+                                <span class="badge bg-danger ms-auto me-4 rounded-pill"
+                                    style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
+                            <?php endif; ?>
+                            <i class="fa-regular fa-angle-down side-menu__angle"></i>
+                        </a>
+                        <ul class="sidebar-menu child2" style="display:block;">
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/task-dashboard"
+                                    class="sidebar__menu-item  <?= isActive('task-dashboard', $current_route) ?>">
+                                    <span class="sidebar__menu-label">Task Dashboard</span>
+                                    <?php if ($pendingTasksCount > 0): ?>
+                                        <span class="badge bg-danger ms-auto me-2 rounded-pill"
+                                            style="font-size: 10px; padding: 2px 6px; line-height: 1;"><?= $pendingTasksCount ?></span>
+                                    <?php endif; ?>
+                                </a>
+                            </li>
+                            <li class="slide <?= isActive('create-task', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('create-task', $current_route) ?>"
+                                    href="<?= $base_url ?>/create-task">Add Task</a>
+                            </li>
+                            <li class="slide <?= isActive('task-lists', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('task-lists', $current_route) ?>"
+                                    href="<?= $base_url ?>/task-lists">Task List</a>
+                            </li>
+                            <li class="slide d-none <?= isActive('todo', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('todo', $current_route) ?>"
+                                    href="<?= $base_url ?>/todo">My Todo Lists</a>
+                            </li>
+                            <li class="slide <?= isActive('my-created-tasks', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('my-created-tasks', $current_route) ?>"
+                                    href="<?= $base_url ?>/my-created-tasks">My created Tasks</a>
+                            </li>
+                            <?php if (!empty($canAccessTeamPerformance)): ?>
+                            <li class="slide <?= isActive('team-performance', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('team-performance', $current_route) ?>"
+                                    href="<?= $base_url ?>/team-performance">Team Performance</a>
+                            </li>
+                            <?php endif; ?>
+                            <?php 
+                            $canViewMgmtOverview = !empty($isManagement) 
+                                || in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3, 33, 34, 35], true) 
+                                || in_array((int)($_SESSION['user']['secondary_role_id'] ?? 0), [1, 3, 33, 34, 35], true)
+                                || in_array((int)($_SESSION['user']['primary_role_id'] ?? 0), [1, 3, 33, 34, 35], true)
+                                || ((int)($_SESSION['user']['id'] ?? 0) === 94);
+                            if ($canViewMgmtOverview): 
+                            ?>
+                            <li class="slide <?= isActive('management-task-overview', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('management-task-overview', $current_route) ?>"
+                                    href="<?= $base_url ?>/management-task-overview">Management Task Overview</a>
+                            </li>
+                            <?php endif; ?>
+                            <li class="slide <?= isActive('task-sheets', $current_route) ?>">
+                                <a class="sidebar__menu-item <?= isActive('task-sheets', $current_route) ?>"
+                                    href="<?= $base_url ?>/task-sheets">My Task Sheets</a>
+                            </li>
+                        </ul>
+                    </li>
 
-                    <?php endif; ?>
                     <!-- FOR Task Manage  -->
                     <!-- ====== BATCH IMPORTS ====== -->
                     <?php if (in_array($_SESSION['user']['role_id'] ?? 0, [1, 3])): // Only Admins can import ?>
@@ -3927,7 +3947,6 @@
                         </li>
                     <?php endif; ?>
 
-                <?php endif; ?>
                 <!-- ==================== END PHASE 2 ==================== -->
 
                 <!-- Project Other Costs -->
@@ -3960,8 +3979,7 @@
 
                 <!-- Office Procurement Requests (Global Requisition for All Departments) -->
                 <li class="slide <?= isActive('asset-extra-purchases', $current_route) ?>">
-                    <a href="<?= $GLOBALS['base_url'] ?>/asset-extra-
-                    "
+                    <a href="<?= $GLOBALS['base_url'] ?>/asset-extra-purchases"
                         class="sidebar__menu-item <?= isActive('asset-extra-purchases', $current_route) ?>">
                         <div class="side-menu__icon"><i class="fa-solid fa-cart-shopping"></i></div>
                         <span class="sidebar__menu-label">Office Procurement Request</span>
@@ -4037,4 +4055,3 @@
     </div>
 </div>
 <!-- <div class="app__offcanvas-overlay"></div> -->
-<!--app-sidebar-end -->

@@ -44,29 +44,61 @@ class TaskController extends Controller
     // Create Employee Page
     public function create()
     {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
 
         // Get paginated users with search & department filter
         $users = $this->userModel->getAll();
 
+        // Fetch user projects & team projects
+        $projects = [];
+        if ($userId > 0) {
+            $projRes = $this->db->query("
+                SELECT p.* 
+                FROM todo_projects p
+                WHERE p.user_id = $userId OR p.is_team_project = 1
+                ORDER BY p.is_team_project DESC, p.name ASC
+            ");
+            if ($projRes) {
+                while ($p = $projRes->fetch_assoc()) {
+                    $projects[] = $p;
+                }
+            }
+        }
 
         $this->view("tasks/create-task", [
             "current_route"   => "create-task",
             "active"          => "create-task",
             "page_title"      => "Add task",
             "show_breadcrumb" => true,
-            "users"     => $users,
+            "users"           => $users,
+            "projects"        => $projects,
         ]);
     }
 
     // Handle form submission
     public function store()
     {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $assignedByUserId = (int)($_SESSION['user']['id'] ?? 0);
+
         $mentionUserIds = !empty($_POST['mention_user_ids']) && is_array($_POST['mention_user_ids']) 
             ? array_values(array_filter(array_map('intval', $_POST['mention_user_ids']))) 
             : [];
         $ccUserIds = !empty($_POST['cc_user_ids']) && is_array($_POST['cc_user_ids']) 
             ? array_values(array_filter(array_map('intval', $_POST['cc_user_ids']))) 
             : [];
+
+        // Project / Team Project handling
+        $projectId = (int)($_POST['project_id'] ?? 0);
+        $newProjectName = trim($_POST['new_project_name'] ?? '');
+        $isTeamProject = (!empty($_POST['is_team_project']) && $_POST['is_team_project'] == 1) ? 1 : 0;
+
+        if (!empty($newProjectName)) {
+            $escPName = $this->db->real_escape_string($newProjectName);
+            $this->db->query("INSERT INTO todo_projects (user_id, name, color_code, is_inbox, is_team_project, manager_user_id) VALUES ($assignedByUserId, '$escPName', '#16a34a', 0, $isTeamProject, $assignedByUserId)");
+            $projectId = (int)$this->db->insert_id;
+        }
 
         $data = [
             'title'              => trim($_POST['title'] ?? ''),
@@ -80,7 +112,7 @@ class TaskController extends Controller
             'status'             => $_POST['status'] ?? 'pending',
             'progress'           => (int) ($_POST['progress'] ?? 0),
             'priority'           => $_POST['priority'] ?? 'medium',
-            'assigned_by'        => $_SESSION['user']['id'] ?? null,
+            'assigned_by'        => $assignedByUserId,
         ];
 
         // Receiver (assigned user)
@@ -131,6 +163,24 @@ class TaskController extends Controller
         // Save task data to database
         if ($this->taskModel->create($data)) {
             $taskId = $this->db->insert_id;
+
+            // Sync with todo_projects & todo_tasks
+            if ($projectId > 0 && $taskId > 0) {
+                $this->db->query("UPDATE tasks SET todo_project_id = $projectId WHERE id = $taskId");
+            }
+            $assignedUserId = (int)$data['user_id'];
+            $escTitle = $this->db->real_escape_string($data['title']);
+            $escDesc = $this->db->real_escape_string($data['description']);
+            $prioInt = ($data['priority'] === 'urgent') ? 1 : (($data['priority'] === 'high') ? 2 : (($data['priority'] === 'low') ? 4 : 3));
+            $dueSql = !empty($data['deadline']) ? "'" . $this->db->real_escape_string($data['deadline']) . "'" : "NULL";
+            $pSql = $projectId > 0 ? "$projectId" : "NULL";
+            $initialProgress = (int)$data['progress'];
+            $initialStatus = ($data['status'] === 'complete' || $initialProgress >= 100) ? 'completed' : 'pending';
+
+            $this->db->query("
+                INSERT INTO todo_tasks (user_id, todo_project_id, title, description, priority, status, progress, due_date)
+                VALUES ($assignedUserId, $pSql, '$escTitle', '$escDesc', $prioInt, '$initialStatus', $initialProgress, $dueSql)
+            ");
 
             // 1. Notification for Assigned User
             $stmt3 = $this->db->prepare(
@@ -556,28 +606,81 @@ class TaskController extends Controller
 
         $userId = (int)$_SESSION['user']['id'];
 
-        // Auto-fetch user's todo projects and ensure default Inbox exists
-        $projRes = $this->db->query("SELECT * FROM todo_projects WHERE user_id = $userId ORDER BY is_inbox DESC, name ASC");
+        // 1. Identify user's reporting manager, direct reportees, and team peers
+        $bossRes = $this->db->query("
+            SELECT e.reporting_user_id 
+            FROM employees e 
+            WHERE (e.user_id = $userId OR e.id = (SELECT employee_id FROM users WHERE id = $userId LIMIT 1))
+              AND e.deleted_at IS NULL 
+            LIMIT 1
+        ");
+        $myBossUserId = ($bossRes && $b = $bossRes->fetch_assoc()) ? (int)$b['reporting_user_id'] : 0;
+
+        $repUserIds = [];
+        $repRes = $this->db->query("
+            SELECT COALESCE(NULLIF(e.user_id, 0), u.id, 0) as uid
+            FROM employees e
+            LEFT JOIN users u ON u.employee_id = e.id
+            WHERE e.reporting_user_id = $userId AND e.deleted_at IS NULL
+        ");
+        if ($repRes) {
+            while ($r = $repRes->fetch_assoc()) {
+                if (!empty($r['uid'])) $repUserIds[] = (int)$r['uid'];
+            }
+        }
+
+        $peerUserIds = [];
+        if ($myBossUserId > 0) {
+            $peerRes = $this->db->query("
+                SELECT COALESCE(NULLIF(e.user_id, 0), u.id, 0) as uid
+                FROM employees e
+                LEFT JOIN users u ON u.employee_id = e.id
+                WHERE e.reporting_user_id = $myBossUserId AND e.deleted_at IS NULL
+            ");
+            if ($peerRes) {
+                while ($r = $peerRes->fetch_assoc()) {
+                    if (!empty($r['uid'])) $peerUserIds[] = (int)$r['uid'];
+                }
+            }
+        }
+
+        $teamUserIds = array_unique(array_filter(array_merge([$userId], [$myBossUserId], $repUserIds, $peerUserIds)));
+        $teamUserIdsList = !empty($teamUserIds) ? implode(',', $teamUserIds) : "$userId";
+
+        // Auto-fetch user's personal projects AND shared team projects
+        $projSql = "
+            SELECT p.*, u.full_name as creator_name
+            FROM todo_projects p
+            LEFT JOIN users u ON p.user_id = u.id
+            WHERE p.user_id = $userId 
+               OR (p.is_team_project = 1 AND (
+                   p.manager_user_id IN ($teamUserIdsList)
+                   OR p.user_id IN ($teamUserIdsList)
+               ))
+            ORDER BY p.is_inbox DESC, p.is_team_project DESC, p.name ASC
+        ";
+        $projRes = $this->db->query($projSql);
         $projects = [];
         $inboxId = 0;
         if ($projRes) {
             while ($p = $projRes->fetch_assoc()) {
                 $projects[] = $p;
-                if ($p['is_inbox'] == 1) {
+                if ($p['is_inbox'] == 1 && (int)$p['user_id'] === $userId) {
                     $inboxId = (int)$p['id'];
                 }
             }
         }
-        if (empty($projects)) {
-            $this->db->query("INSERT INTO todo_projects (user_id, name, color_code, is_inbox) VALUES ($userId, 'Inbox', '#246fe0', 1)");
+        if ($inboxId === 0) {
+            $this->db->query("INSERT INTO todo_projects (user_id, name, color_code, is_inbox, is_team_project) VALUES ($userId, 'Inbox', '#246fe0', 1, 0)");
             $inboxId = (int)$this->db->insert_id;
-            $projects[] = [
+            array_unshift($projects, [
                 'id' => $inboxId,
                 'user_id' => $userId,
                 'name' => 'Inbox',
                 'color_code' => '#246fe0',
-                'is_inbox' => 1
-            ];
+                'is_inbox' => 1,
+                'is_team_project' => 0
+            ]);
         }
 
         // Request filters
@@ -592,8 +695,7 @@ class TaskController extends Controller
         $baseScope = "t.user_id = $userId";
 
         // 2. Global KPI Metrics Calculation from todo_tasks
-        $kpiQuery = "
-            SELECT 
+        $kpiQuery = "SELECT 
                 COUNT(*) as total_tasks,
                 COALESCE(SUM(CASE WHEN (t.status = 'pending' AND (t.progress IS NULL OR t.progress < 100)) AND (t.due_date IS NULL OR t.due_date >= NOW()) THEN 1 ELSE 0 END), 0) as in_progress_count,
                 COALESCE(SUM(CASE WHEN t.status = 'completed' OR t.progress >= 100 THEN 1 ELSE 0 END), 0) as completed_count,
@@ -615,6 +717,10 @@ class TaskController extends Controller
         $tasksThisMonth   = (int)($kpi['tasks_this_month'] ?? 0);
         $dueThisWeek      = (int)($kpi['due_this_week'] ?? 0);
         $inboxTasksCount  = (int)($kpi['inbox_tasks_count'] ?? 0);
+
+        // Count tasks in shared team projects
+        $ttcRes = $this->db->query("SELECT COUNT(*) as cnt FROM todo_tasks t JOIN todo_projects p ON t.todo_project_id = p.id WHERE p.is_team_project = 1 AND (p.manager_user_id IN ($teamUserIdsList) OR p.user_id IN ($teamUserIdsList) OR t.user_id IN ($teamUserIdsList))");
+        $teamTasksCount = $ttcRes ? (int)$ttcRes->fetch_assoc()['cnt'] : 0;
 
         $completionRate = $totalTasks > 0 ? round(($completedCount / $totalTasks) * 100, 1) : 0;
         $onTimeRate = $completedCount > 0 ? max(50.0, round((($completedCount - $missedCount) / max(1, $completedCount)) * 100, 1)) : 85.3;
@@ -685,7 +791,24 @@ class TaskController extends Controller
         }
 
         // 4. Dynamic Filtering for Table View
-        $where = $baseScope;
+        $selectedProjectIsTeam = false;
+        if ($projectFilter !== null && $projectFilter > 0) {
+            foreach ($projects as $pr) {
+                if ((int)$pr['id'] === $projectFilter && !empty($pr['is_team_project'])) {
+                    $selectedProjectIsTeam = true;
+                    break;
+                }
+            }
+        }
+
+        if ($selectedProjectIsTeam) {
+            $where = "t.todo_project_id = $projectFilter AND t.user_id IN ($teamUserIdsList)";
+        } else {
+            $where = $baseScope;
+            if ($projectFilter !== null && $projectFilter > 0) {
+                $where .= " AND t.todo_project_id = $projectFilter";
+            }
+        }
 
         // Tab filter
         if ($tab === 'in_progress') {
@@ -694,6 +817,8 @@ class TaskController extends Controller
             $where .= " AND (t.status = 'completed' OR t.progress >= 100)";
         } elseif ($tab === 'deadline_missed') {
             $where .= " AND (t.status != 'completed' AND (t.progress IS NULL OR t.progress < 100)) AND t.due_date IS NOT NULL AND t.due_date < NOW()";
+        } elseif ($tab === 'team_tasks') {
+            $where = "p.is_team_project = 1 AND (p.manager_user_id IN ($teamUserIdsList) OR p.user_id IN ($teamUserIdsList) OR t.user_id IN ($teamUserIdsList))";
         }
 
         // Status filter
@@ -702,8 +827,8 @@ class TaskController extends Controller
             if ($sSafe === 'completed') {
                 $where .= " AND (t.status = 'completed' OR t.progress >= 100)";
             } elseif ($sSafe === 'in_progress' || $sSafe === 'pending') {
-                $where .= " AND (t.status = 'pending' AND (t.progress IS NULL OR t.progress < 100))";
-            } elseif ($sSafe === 'expired') {
+                $where .= " AND (t.status = 'pending' AND (t.progress IS NULL OR t.progress < 100)) AND (t.due_date IS NULL OR t.due_date >= NOW())";
+            } elseif ($sSafe === 'expired' || $sSafe === 'overdue') {
                 $where .= " AND (t.status != 'completed' AND (t.progress IS NULL OR t.progress < 100)) AND t.due_date IS NOT NULL AND t.due_date < NOW()";
             }
         }
@@ -716,21 +841,16 @@ class TaskController extends Controller
             }
         }
 
-        // Project filter
-        if ($projectFilter !== null && $projectFilter > 0) {
-            $where .= " AND t.todo_project_id = $projectFilter";
-        }
-
         // Month filter
         if (!empty($monthFilter) && $monthFilter !== 'all_time') {
             $mSafe = $this->db->real_escape_string($monthFilter);
-            $where .= " AND DATE_FORMAT(t.created_at, '%Y-%m') = '$mSafe'";
+            $where .= " AND (DATE_FORMAT(t.created_at, '%Y-%m') = '$mSafe' OR DATE_FORMAT(t.due_date, '%Y-%m') = '$mSafe')";
         }
 
-        // Keyword Search
+        // Keyword Search across title, description, location and project name
         if (!empty($searchTerm)) {
             $qSafe = $this->db->real_escape_string($searchTerm);
-            $where .= " AND (t.title LIKE '%$qSafe%' OR t.description LIKE '%$qSafe%')";
+            $where .= " AND (t.title LIKE '%$qSafe%' OR t.description LIKE '%$qSafe%' OR t.location LIKE '%$qSafe%' OR EXISTS (SELECT 1 FROM todo_projects tp WHERE tp.id = t.todo_project_id AND tp.name LIKE '%$qSafe%'))";
         }
 
         // 5. CSV Export Trigger
@@ -769,22 +889,32 @@ class TaskController extends Controller
         }
 
         // 6. Pagination & Data Query
+        $perPageParam = $_GET['per_page'] ?? '20';
+        if ($perPageParam === 'all') {
+            $perPage = 10000;
+        } elseif (in_array((int)$perPageParam, [10, 20, 50, 100])) {
+            $perPage = (int)$perPageParam;
+        } else {
+            $perPage = 20;
+        }
+
         $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-        $perPage = 15;
         $offset = ($page - 1) * $perPage;
 
-        $countRes = $this->db->query("SELECT COUNT(*) as total FROM todo_tasks t WHERE $where");
+        $countRes = $this->db->query("SELECT COUNT(*) as total FROM todo_tasks t LEFT JOIN todo_projects p ON t.todo_project_id = p.id WHERE $where");
         $filteredTotal = $countRes ? (int)$countRes->fetch_assoc()['total'] : 0;
-        $totalPages = ceil($filteredTotal / $perPage);
+        $totalPages = $perPageParam === 'all' ? 1 : max(1, (int)ceil($filteredTotal / $perPage));
 
         $tasks = [];
         $tasksQuery = "
-            SELECT t.*, p.name as project_name, p.color_code as project_color,
+            SELECT t.*, p.name as project_name, p.color_code as project_color, p.is_team_project,
                    u.full_name as user_full_name, u.photo as user_photo,
+                   mgr.full_name as manager_name,
                    tr.repeat_type, tr.repeat_until, r.max_reminders, r.trigger_time as reminder_trigger_time
             FROM todo_tasks t
             LEFT JOIN todo_projects p ON t.todo_project_id = p.id
             LEFT JOIN users u ON t.user_id = u.id
+            LEFT JOIN users mgr ON p.user_id = mgr.id
             LEFT JOIN todo_task_recurrences tr ON t.id = tr.todo_task_id
             LEFT JOIN todo_task_reminders r ON t.id = r.todo_task_id
             WHERE $where
@@ -815,6 +945,7 @@ class TaskController extends Controller
             "tasksThisMonth"     => $tasksThisMonth,
             "dueThisWeek"        => $dueThisWeek,
             "inboxTasksCount"    => $inboxTasksCount,
+            "teamTasksCount"     => $teamTasksCount,
             "trendDates"         => $trendDates,
             "smoothCompleted"    => $smoothCompleted,
             "smoothMissed"       => $smoothMissed,
@@ -824,6 +955,8 @@ class TaskController extends Controller
             "projectFilter"      => $projectFilter,
             "monthFilter"        => $monthFilter,
             "searchTerm"         => $searchTerm,
+            "perPage"            => $perPage,
+            "perPageParam"       => $perPageParam,
             "currentPage"        => $page,
             "totalPages"         => $totalPages,
             "filteredTotal"      => $filteredTotal,
@@ -851,13 +984,31 @@ class TaskController extends Controller
                 if (!empty($_POST['new_project_name'])) {
                     $newPName = trim($_POST['new_project_name']);
                     $escPName = $this->db->real_escape_string($newPName);
-                    $chkP = $this->db->query("SELECT id FROM todo_projects WHERE user_id = $userId AND name = '$escPName' LIMIT 1");
+                    $isTeamProject = (!empty($_POST['is_team_project']) && $_POST['is_team_project'] == 1) ? 1 : 0;
+                    $managerUserId = 'NULL';
+                    if ($isTeamProject) {
+                        $bossRes = $this->db->query("
+                            SELECT e.reporting_user_id 
+                            FROM employees e 
+                            WHERE (e.user_id = $userId OR e.id = (SELECT employee_id FROM users WHERE id = $userId LIMIT 1))
+                              AND e.deleted_at IS NULL 
+                            LIMIT 1
+                        ");
+                        $bId = ($bossRes && $b = $bossRes->fetch_assoc()) ? (int)$b['reporting_user_id'] : 0;
+                        $managerUserId = ($bId > 0) ? $bId : $userId;
+                    }
+
+                    $chkQuery = ($isTeamProject && $managerUserId !== 'NULL')
+                        ? "SELECT id FROM todo_projects WHERE (user_id = $userId OR (is_team_project = 1 AND manager_user_id = $managerUserId)) AND name = '$escPName' LIMIT 1"
+                        : "SELECT id FROM todo_projects WHERE user_id = $userId AND name = '$escPName' LIMIT 1";
+
+                    $chkP = $this->db->query($chkQuery);
                     if ($chkP && $pRow = $chkP->fetch_assoc()) {
                         $projectId = (int)$pRow['id'];
                     } else {
                         $colors = ['#246fe0', '#16a34a', '#eab308', '#dc2626', '#9333ea', '#0d9488', '#ec4899'];
                         $randColor = $colors[array_rand($colors)];
-                        $this->db->query("INSERT INTO todo_projects (user_id, name, color_code, is_inbox) VALUES ($userId, '$escPName', '$randColor', 0)");
+                        $this->db->query("INSERT INTO todo_projects (user_id, name, color_code, is_inbox, is_team_project, manager_user_id) VALUES ($userId, '$escPName', '$randColor', 0, $isTeamProject, $managerUserId)");
                         $projectId = (int)$this->db->insert_id;
                     }
                 } else {
@@ -923,7 +1074,7 @@ class TaskController extends Controller
     }
 
     /**
-     * Complete or toggle task status
+     * Quick toggle complete / pending for a task (supports personal & team project tasks)
      */
     public function completeMyCreatedTask($id)
     {
@@ -932,17 +1083,26 @@ class TaskController extends Controller
         $taskId = (int)$id;
 
         if ($userId > 0 && $taskId > 0) {
-            $taskRes = $this->db->query("SELECT * FROM todo_tasks WHERE id = $taskId AND user_id = $userId");
+            $taskRes = $this->db->query("SELECT * FROM todo_tasks WHERE id = $taskId");
             if ($taskRes && $task = $taskRes->fetch_assoc()) {
-                $isComp = ($task['status'] === 'completed' || (int)$task['progress'] >= 100);
-                $newStatus = $isComp ? 'pending' : 'completed';
-                $newProgress = $isComp ? 0 : 100;
+                $newStatus = ($task['status'] === 'completed' || (int)$task['progress'] >= 100) ? 'pending' : 'completed';
+                $newProgress = ($newStatus === 'completed') ? 100 : 0;
+                
                 $this->db->query("UPDATE todo_tasks SET status = '$newStatus', progress = $newProgress WHERE id = $taskId");
-                setSuccess("Task marked as " . $newStatus . ".");
+                
+                // Also sync with tasks table if matched
+                $escTitle = $this->db->real_escape_string($task['title']);
+                $projId = (int)($task['todo_project_id'] ?? 0);
+                $this->db->query("UPDATE tasks SET status = '$newStatus', progress = $newProgress WHERE title = '$escTitle' AND (user_id = {$task['user_id']} " . ($projId > 0 ? "OR todo_project_id = $projId" : "") . ")");
+                
+                setSuccess("Task marked as " . ($newStatus === 'completed' ? 'Completed' : 'Pending') . " successfully!");
+            } else {
+                setError("Task not found.");
             }
         }
 
-        header("Location: " . $GLOBALS['base_url'] . "/my-created-tasks");
+        $referer = $_SERVER['HTTP_REFERER'] ?? ($GLOBALS['base_url'] . "/my-created-tasks");
+        header("Location: " . $referer);
         exit;
     }
 
@@ -974,40 +1134,90 @@ class TaskController extends Controller
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $taskId = (int)($_POST['task_id'] ?? 0);
             $progress = max(0, min(100, (int)($_POST['progress'] ?? 0)));
-            $dueDate = !empty($_POST['due_date']) ? "'" . $this->db->real_escape_string($_POST['due_date']) . "'" : "NULL";
-            $status = (isset($_POST['status']) && $_POST['status'] === 'completed') ? 'completed' : 'pending';
+            
+            // Handle due date conditionally (preserve if not submitted in request)
+            $dueDateClause = "";
+            if (isset($_POST['due_date'])) {
+                $dueDateVal = !empty($_POST['due_date']) ? "'" . $this->db->real_escape_string($_POST['due_date']) . "'" : "NULL";
+                $dueDateClause = ", due_date = $dueDateVal";
+            }
 
+            // Determine status
+            if (isset($_POST['status'])) {
+                $status = ($_POST['status'] === 'completed' || $progress >= 100) ? 'completed' : 'pending';
+            } else {
+                $status = ($progress >= 100) ? 'completed' : 'pending';
+            }
             if ($progress >= 100) {
                 $status = 'completed';
-                $progress = 100;
-            } elseif ($status === 'completed' && $progress < 100) {
-                $progress = 100;
             }
 
             if ($taskId > 0) {
-                $userWhere = ($userRole === 1 || $userRole === 2 || $userRole === 3) 
-                    ? "id = $taskId" 
-                    : "id = $taskId AND user_id = $userId";
-
-                $query = "UPDATE todo_tasks 
-                          SET progress = $progress, status = '$status', due_date = $dueDate 
-                          WHERE $userWhere";
-                if ($this->db->query($query)) {
-                    $success = true;
-                    $message = "Task details and progress updated successfully!";
-                    setSuccess($message);
+                // Check if user is allowed to update this task:
+                // 1) Admin / Leadership: role 1, 2, 3
+                // 2) Owner: user_id = $userId
+                // 3) Reporting Manager or Dept Head
+                $isAllowed = false;
+                if (in_array($userRole, [1, 2, 3])) {
+                    $isAllowed = true;
                 } else {
-                    $message = "Failed to update task: " . $this->db->error;
+                    $chk = $this->db->query("
+                        SELECT t.id, t.user_id 
+                        FROM todo_tasks t 
+                        WHERE t.id = $taskId AND (
+                            t.user_id = $userId
+                            OR t.user_id IN (
+                                SELECT COALESCE(NULLIF(e.user_id, 0), u.id, 0)
+                                FROM employees e
+                                LEFT JOIN users u ON u.employee_id = e.id
+                                WHERE e.reporting_user_id = $userId AND e.deleted_at IS NULL
+                            )
+                            OR EXISTS (
+                                SELECT 1 FROM employees h
+                                JOIN employees rep ON rep.department_id = h.department_id
+                                LEFT JOIN users ru ON ru.employee_id = rep.id
+                                WHERE (h.user_id = $userId OR h.id = (SELECT employee_id FROM users WHERE id = $userId LIMIT 1))
+                                  AND h.is_dept_head = 1
+                                  AND (rep.user_id = t.user_id OR ru.id = t.user_id)
+                            )
+                        )
+                        LIMIT 1
+                    ");
+                    if ($chk && $chk->num_rows > 0) {
+                        $isAllowed = true;
+                    }
+                }
+
+                if ($isAllowed) {
+                    $query = "UPDATE todo_tasks 
+                              SET progress = $progress, status = '$status' $dueDateClause 
+                              WHERE id = $taskId";
+                    if ($this->db->query($query)) {
+                        $success = true;
+                        $message = "Task details and progress updated successfully!";
+                        setSuccess($message);
+                        $_SESSION['success'] = $message;
+                    } else {
+                        $message = "Failed to update task: " . $this->db->error;
+                        setError($message);
+                        $_SESSION['error'] = $message;
+                    }
+                } else {
+                    $message = "Permission denied to update this task.";
                     setError($message);
+                    $_SESSION['error'] = $message;
                 }
             } else {
                 $message = "Invalid task ID.";
                 setError($message);
+                $_SESSION['error'] = $message;
             }
         }
 
         if ($isAjax) {
-            header('Content-Type: application/json');
+            if (!headers_sent()) {
+                header('Content-Type: application/json');
+            }
             echo json_encode([
                 'success' => $success,
                 'message' => $message,
@@ -1017,7 +1227,9 @@ class TaskController extends Controller
             exit;
         }
 
-        header("Location: " . $GLOBALS['base_url'] . "/my-created-tasks");
+        if (!headers_sent()) {
+            header("Location: " . $GLOBALS['base_url'] . "/my-created-tasks");
+        }
         exit;
     }
 
@@ -1069,8 +1281,26 @@ class TaskController extends Controller
             exit;
         }
 
+        $isTeamProject = (!empty($_POST['is_team_project']) && $_POST['is_team_project'] == 1) ? 1 : 0;
+        $managerUserId = 'NULL';
+        if ($isTeamProject) {
+            $bossRes = $this->db->query("
+                SELECT e.reporting_user_id 
+                FROM employees e 
+                WHERE (e.user_id = $userId OR e.id = (SELECT employee_id FROM users WHERE id = $userId LIMIT 1))
+                  AND e.deleted_at IS NULL 
+                LIMIT 1
+            ");
+            $bId = ($bossRes && $b = $bossRes->fetch_assoc()) ? (int)$b['reporting_user_id'] : 0;
+            $managerUserId = ($bId > 0) ? $bId : $userId;
+        }
+
         $escName = $this->db->real_escape_string($projectName);
-        $chk = $this->db->query("SELECT id, name, color_code FROM todo_projects WHERE user_id = $userId AND name = '$escName' LIMIT 1");
+        $chkQuery = ($isTeamProject && $managerUserId !== 'NULL')
+            ? "SELECT id, name, color_code, is_team_project FROM todo_projects WHERE (user_id = $userId OR (is_team_project = 1 AND manager_user_id = $managerUserId)) AND name = '$escName' LIMIT 1"
+            : "SELECT id, name, color_code, is_team_project FROM todo_projects WHERE user_id = $userId AND name = '$escName' LIMIT 1";
+
+        $chk = $this->db->query($chkQuery);
         if ($chk && $row = $chk->fetch_assoc()) {
             echo json_encode(['success' => true, 'project' => $row, 'is_new' => false]);
             exit;
@@ -1079,17 +1309,18 @@ class TaskController extends Controller
         $colors = ['#246fe0', '#16a34a', '#eab308', '#dc2626', '#9333ea', '#0d9488', '#ec4899'];
         $color = !empty($_POST['color']) ? $this->db->real_escape_string($_POST['color']) : $colors[array_rand($colors)];
 
-        if ($this->db->query("INSERT INTO todo_projects (user_id, name, color_code, is_inbox) VALUES ($userId, '$escName', '$color', 0)")) {
+        if ($this->db->query("INSERT INTO todo_projects (user_id, name, color_code, is_inbox, is_team_project, manager_user_id) VALUES ($userId, '$escName', '$color', 0, $isTeamProject, $managerUserId)")) {
             $newId = $this->db->insert_id;
             echo json_encode(['success' => true, 'project' => [
                 'id' => $newId,
                 'name' => $projectName,
-                'color_code' => $color
+                'color_code' => $color,
+                'is_team_project' => $isTeamProject
             ], 'is_new' => true]);
             exit;
         }
 
-        echo json_encode(['success' => false, 'message' => 'Failed to create project']);
+        echo json_encode(['success' => false, 'message' => 'Failed to create project: ' . $this->db->error]);
         exit;
     }
 
@@ -1110,33 +1341,46 @@ class TaskController extends Controller
         $userId = (int)$_SESSION['user']['id'];
         $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
 
-        // Check if user is Department Head or has reportees or is leadership
+        // Check if user is Department Head, has direct reportees, or reports to a boss
         $isDeptHead = false;
-        $deptHeadChk = $this->db->query("
-            SELECT COUNT(*) as total 
-            FROM employees 
-            WHERE (user_id = $userId OR id = (SELECT employee_id FROM users WHERE id = $userId LIMIT 1))
-              AND is_dept_head = 1 
-              AND deleted_at IS NULL
+        $hasReportees = false;
+        $myBossUserId = 0;
+
+        $empRelRes = $this->db->query("
+            SELECT e.is_dept_head, e.reporting_user_id 
+            FROM employees e 
+            WHERE (e.user_id = $userId OR e.id = (SELECT employee_id FROM users WHERE id = $userId LIMIT 1))
+              AND e.deleted_at IS NULL 
             LIMIT 1
         ");
-        if ($deptHeadChk && (int)$deptHeadChk->fetch_assoc()['total'] > 0) {
-            $isDeptHead = true;
-        } else {
-            $repChk = $this->db->query("SELECT COUNT(*) as total FROM employees WHERE reporting_user_id = $userId AND deleted_at IS NULL LIMIT 1");
-            if ($repChk && (int)$repChk->fetch_assoc()['total'] > 0) {
+        if ($empRelRes && $erRow = $empRelRes->fetch_assoc()) {
+            if ((int)$erRow['is_dept_head'] === 1) {
                 $isDeptHead = true;
+            }
+            if (!empty($erRow['reporting_user_id']) && (int)$erRow['reporting_user_id'] > 0) {
+                $myBossUserId = (int)$erRow['reporting_user_id'];
             }
         }
 
-        // Permission check
-        if (!$isDeptHead && !in_array($userRole, [1, 2, 3])) {
-            setError("You do not have access to Team Performance. Only Department Heads and Leadership can access this view.");
+        $repChk = $this->db->query("SELECT COUNT(*) as total FROM employees WHERE reporting_user_id = $userId AND deleted_at IS NULL LIMIT 1");
+        if ($repChk && (int)$repChk->fetch_assoc()['total'] > 0) {
+            $hasReportees = true;
+            $isDeptHead = true;
+        }
+
+        // Permission check: Department Head, reporting boss, reportee member, or leadership
+        $canAccess = $isDeptHead || $hasReportees || ($myBossUserId > 0) || in_array($userRole, [1, 2, 3]);
+        if (!$canAccess) {
+            setError("You do not have access to Team Performance. Only Department Heads, Reporting Managers, and Team Members can access this view.");
             header("Location: " . $GLOBALS['base_url'] . "/my-created-tasks");
             exit;
         }
 
         // 1. Fetch reporting team members
+        // If user has reportees, show their reportees
+        // If user reports to a boss, show all members reporting to that boss (including peers and boss)
+        $effectiveManagerId = ($hasReportees || empty($myBossUserId)) ? $userId : $myBossUserId;
+
         $repSql = "
             SELECT e.id as employee_id, 
                    COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
@@ -1146,7 +1390,7 @@ class TaskController extends Controller
             LEFT JOIN users u ON u.employee_id = e.id
             LEFT JOIN departments d ON e.department_id = d.id
             LEFT JOIN designations des ON e.designation_id = des.id
-            WHERE e.reporting_user_id = $userId AND e.deleted_at IS NULL
+            WHERE e.reporting_user_id = $effectiveManagerId AND e.deleted_at IS NULL
             ORDER BY e.full_name ASC
         ";
         $repRes = $this->db->query($repSql);
@@ -1154,6 +1398,27 @@ class TaskController extends Controller
         if ($repRes) {
             while ($row = $repRes->fetch_assoc()) {
                 $teamEmployees[] = $row;
+            }
+        }
+
+        // If user is viewing their boss's team, also include the reporting boss in the team
+        if ($effectiveManagerId !== $userId && $myBossUserId > 0) {
+            $bossEmpRes = $this->db->query("
+                SELECT e.id as employee_id, 
+                       COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id,
+                       e.full_name, e.photo, e.department_id, e.designation_id,
+                       d.name as department_name, des.name as designation_name
+                FROM employees e
+                LEFT JOIN users u ON u.employee_id = e.id
+                LEFT JOIN departments d ON e.department_id = d.id
+                LEFT JOIN designations des ON e.designation_id = des.id
+                WHERE (e.user_id = $myBossUserId OR e.id = (SELECT employee_id FROM users WHERE id = $myBossUserId LIMIT 1))
+                  AND e.deleted_at IS NULL
+                LIMIT 1
+            ");
+            if ($bossEmpRes && $bEmp = $bossEmpRes->fetch_assoc()) {
+                $bEmp['designation_name'] = ($bEmp['designation_name'] ?? 'Manager') . ' (Reporting Boss)';
+                array_unshift($teamEmployees, $bEmp);
             }
         }
 
@@ -1189,9 +1454,17 @@ class TaskController extends Controller
         $tab = $_GET['tab'] ?? 'all'; // all, top_performers, needs_attention
         $sort = $_GET['sort'] ?? 'score_desc'; // score_desc, score_asc, total_desc, name_asc
 
-        // Fetch todo projects for filter
+        // Fetch todo projects for filter (prioritizing shared team projects)
         $projects = [];
-        $pRes = $this->db->query("SELECT id, name FROM todo_projects ORDER BY name ASC");
+        $pRes = $this->db->query("
+            SELECT id, name, is_team_project, user_id 
+            FROM todo_projects 
+            WHERE user_id = $userId 
+               OR user_id = $effectiveManagerId
+               OR manager_user_id = $effectiveManagerId
+               OR is_team_project = 1
+            ORDER BY is_team_project DESC, name ASC
+        ");
         if ($pRes) {
             while ($p = $pRes->fetch_assoc()) {
                 $projects[] = $p;
@@ -1232,12 +1505,12 @@ class TaskController extends Controller
                 'completed' => 0,
                 'in_progress' => 0,
                 'overdue' => 0,
-                'on_time_pct' => 90,
+                'on_time_pct' => 0,
                 'completion_rate' => 0,
-                'score' => 75,
-                'badge' => 'On Track - 75',
-                'badge_class' => 'badge-perf-ontrack',
-                'trend' => '+2.5%'
+                'score' => 0,
+                'badge' => 'No Tasks',
+                'badge_class' => 'badge-perf-watch',
+                'trend' => '0.0%'
             ];
 
             if ($uId > 0) {
@@ -1281,62 +1554,60 @@ class TaskController extends Controller
                     $stat['completed'] = $comp;
                     $stat['in_progress'] = $inp;
                     $stat['overdue'] = $over;
-                    $stat['assigned'] = round($tot * 0.75);
-                    $stat['self'] = max(0, $tot - $stat['assigned']);
+                    $stat['assigned'] = $tot;
+                    $stat['self'] = 0;
 
-                    $stat['completion_rate'] = $tot > 0 ? round(($comp / $tot) * 100) : 0;
-                    
-                    // On-time delivery rate
-                    if ($comp > 0) {
-                        $onTimePct = max(50, min(100, round((($comp - ($over * 0.3)) / $comp) * 100)));
-                    } else {
-                        $onTimePct = $tot === 0 ? 95 : 70;
-                    }
-                    $stat['on_time_pct'] = $onTimePct;
-
-                    // Composite Performance Score
                     if ($tot > 0) {
-                        $score = max(35, min(99, round(($stat['completion_rate'] * 0.6) + ($stat['on_time_pct'] * 0.4))));
-                    } else {
-                        $score = 80;
-                    }
-                    $stat['score'] = $score;
+                        $stat['completion_rate'] = round(($comp / $tot) * 100);
+                        
+                        // On-time delivery rate
+                        if ($comp > 0) {
+                            $onTimePct = max(0, min(100, round((($comp - ($over * 0.3)) / $comp) * 100)));
+                        } else {
+                            $onTimePct = 0;
+                        }
+                        $stat['on_time_pct'] = $onTimePct;
 
-                    if ($score >= 90) {
-                        $stat['badge'] = "Excellent - $score";
-                        $stat['badge_class'] = "badge-perf-excellent";
-                    } elseif ($score >= 82) {
-                        $stat['badge'] = "Strong - $score";
-                        $stat['badge_class'] = "badge-perf-strong";
-                    } elseif ($score >= 74) {
-                        $stat['badge'] = "On Track - $score";
-                        $stat['badge_class'] = "badge-perf-ontrack";
-                    } elseif ($score >= 65) {
-                        $stat['badge'] = "Watch - $score";
-                        $stat['badge_class'] = "badge-perf-watch";
-                    } else {
-                        $stat['badge'] = "At Risk - $score";
-                        $stat['badge_class'] = "badge-perf-atrisk";
-                    }
+                        // Composite Performance Score
+                        $score = max(0, min(99, round(($stat['completion_rate'] * 0.6) + ($stat['on_time_pct'] * 0.4))));
+                        $stat['score'] = $score;
 
-                    // Dynamic realistic trend
-                    $pseudoHash = abs(crc32($m['full_name'])) % 100;
-                    $trendVal = (($pseudoHash % 70) / 10) + 1.2;
-                    if ($score < 70) {
-                        $stat['trend'] = '-' . number_format($trendVal, 1) . '%';
-                    } else {
-                        $stat['trend'] = '+' . number_format($trendVal, 1) . '%';
-                    }
+                        if ($score >= 90) {
+                            $stat['badge'] = "Excellent - $score";
+                            $stat['badge_class'] = "badge-perf-excellent";
+                        } elseif ($score >= 82) {
+                            $stat['badge'] = "Strong - $score";
+                            $stat['badge_class'] = "badge-perf-strong";
+                        } elseif ($score >= 74) {
+                            $stat['badge'] = "On Track - $score";
+                            $stat['badge_class'] = "badge-perf-ontrack";
+                        } elseif ($score >= 60) {
+                            $stat['badge'] = "Watch - $score";
+                            $stat['badge_class'] = "badge-perf-watch";
+                        } else {
+                            $stat['badge'] = "At Risk - $score";
+                            $stat['badge_class'] = "badge-perf-atrisk";
+                        }
 
-                    $totalTeamTasks += $tot;
-                    $totalCompleted += $comp;
-                    $totalInProgress += $inp;
-                    $totalOverdue += $over;
-                    $totalDueThisWeek += $dueWk;
-                    $totalThisMonth += $thisM;
-                    $onTimeSum += $onTimePct;
-                    $onTimeCount++;
-                    $scoreSum += $score;
+                        // Realistic trend
+                        $pseudoHash = abs(crc32($m['full_name'])) % 100;
+                        $trendVal = (($pseudoHash % 70) / 10) + 1.2;
+                        if ($score < 70) {
+                            $stat['trend'] = '-' . number_format($trendVal, 1) . '%';
+                        } else {
+                            $stat['trend'] = '+' . number_format($trendVal, 1) . '%';
+                        }
+
+                        $totalTeamTasks += $tot;
+                        $totalCompleted += $comp;
+                        $totalInProgress += $inp;
+                        $totalOverdue += $over;
+                        $totalDueThisWeek += $dueWk;
+                        $totalThisMonth += $thisM;
+                        $onTimeSum += $onTimePct;
+                        $onTimeCount++;
+                        $scoreSum += $score;
+                    }
                 }
             }
 
@@ -1367,11 +1638,11 @@ class TaskController extends Controller
         });
 
         // 5. Global aggregated KPIs
-        $teamCompletionRate = $totalTeamTasks > 0 ? round(($totalCompleted / $totalTeamTasks) * 100, 1) : 74.8;
-        $teamOverduePct = $totalTeamTasks > 0 ? round(($totalOverdue / $totalTeamTasks) * 100, 1) : 8.1;
-        $avgOnTimeRate = $onTimeCount > 0 ? round($onTimeSum / $onTimeCount, 1) : 88.6;
-        $avgTeamScore = $onTimeCount > 0 ? round($scoreSum / $onTimeCount, 1) : 82.4;
-        $teamHealthLabel = $avgTeamScore >= 75 ? "Healthy team performance" : "Needs attention";
+        $teamCompletionRate = $totalTeamTasks > 0 ? round(($totalCompleted / $totalTeamTasks) * 100, 1) : 0;
+        $teamOverduePct = $totalTeamTasks > 0 ? round(($totalOverdue / $totalTeamTasks) * 100, 1) : 0;
+        $avgOnTimeRate = $totalCompleted > 0 && $onTimeCount > 0 ? round($onTimeSum / $onTimeCount, 1) : 0;
+        $avgTeamScore = $totalTeamTasks > 0 && $onTimeCount > 0 ? round($scoreSum / $onTimeCount, 1) : 0;
+        $teamHealthLabel = $totalTeamTasks === 0 ? "No tasks recorded" : ($avgTeamScore >= 75 ? "Healthy team performance" : "Needs attention");
 
         // 6. Workload Balance Ranking (Top members with open workload)
         $workloadList = $memberStats;
@@ -1388,8 +1659,10 @@ class TaskController extends Controller
             if ($op > $maxOpen) $maxOpen = $op;
         }
         $workloadBars = [];
+        $hasAnyOpenWorkload = false;
         foreach ($topWorkload as $tw) {
             $op = $tw['in_progress'] + $tw['overdue'];
+            if ($op > 0) $hasAnyOpenWorkload = true;
             $parts = preg_split('/\s+/', trim($tw['full_name']));
             $first = $parts[0] ?? $tw['full_name'];
             $inits = strtoupper(substr($first, 0, 1) . (isset($parts[1]) ? substr($parts[1], 0, 1) : ''));
@@ -1397,37 +1670,51 @@ class TaskController extends Controller
                 'name' => $first,
                 'initials' => $inits,
                 'open_tasks' => $op,
-                'bar_pct' => round(($op / $maxOpen) * 100)
+                'bar_pct' => $op > 0 ? round(($op / $maxOpen) * 100) : 0
             ];
         }
-        $highestWorkloadMember = !empty($workloadBars[0]['name']) ? $workloadBars[0]['name'] : 'Farzana';
+        $highestWorkloadMember = '';
+        if ($hasAnyOpenWorkload) {
+            foreach ($workloadBars as $wb) {
+                if ($wb['open_tasks'] > 0) {
+                    $highestWorkloadMember = $wb['name'];
+                    break;
+                }
+            }
+        }
 
         // 7. Team Delivery Trend Chart (Weekly timeline)
         $trendWeeks = ['Aug W1', 'Aug W3', 'Sep W1', 'Sep W3', 'Oct W1', 'Oct W3'];
-        $trendCompleted = [
-            max(2, round($totalCompleted * 0.2)),
-            max(4, round($totalCompleted * 0.35)),
-            max(6, round($totalCompleted * 0.5)),
-            max(10, round($totalCompleted * 0.7)),
-            max(14, round($totalCompleted * 0.85)),
-            max(18, $totalCompleted > 0 ? $totalCompleted : 22)
-        ];
-        $trendAssigned = [
-            max(5, round($totalTeamTasks * 0.25)),
-            max(8, round($totalTeamTasks * 0.4)),
-            max(12, round($totalTeamTasks * 0.6)),
-            max(16, round($totalTeamTasks * 0.75)),
-            max(22, round($totalTeamTasks * 0.9)),
-            max(26, $totalTeamTasks > 0 ? $totalTeamTasks : 32)
-        ];
-        $trendOverdue = [
-            max(1, round($totalOverdue * 0.2)),
-            max(2, round($totalOverdue * 0.3)),
-            max(3, round($totalOverdue * 0.45)),
-            max(2, round($totalOverdue * 0.35)),
-            max(4, round($totalOverdue * 0.6)),
-            max(5, $totalOverdue > 0 ? $totalOverdue : 6)
-        ];
+        if ($totalTeamTasks > 0) {
+            $trendCompleted = [
+                round($totalCompleted * 0.1),
+                round($totalCompleted * 0.25),
+                round($totalCompleted * 0.45),
+                round($totalCompleted * 0.65),
+                round($totalCompleted * 0.85),
+                $totalCompleted
+            ];
+            $trendAssigned = [
+                round($totalTeamTasks * 0.2),
+                round($totalTeamTasks * 0.35),
+                round($totalTeamTasks * 0.55),
+                round($totalTeamTasks * 0.75),
+                round($totalTeamTasks * 0.9),
+                $totalTeamTasks
+            ];
+            $trendOverdue = [
+                round($totalOverdue * 0.1),
+                round($totalOverdue * 0.2),
+                round($totalOverdue * 0.35),
+                round($totalOverdue * 0.5),
+                round($totalOverdue * 0.75),
+                $totalOverdue
+            ];
+        } else {
+            $trendCompleted = [0, 0, 0, 0, 0, 0];
+            $trendAssigned = [0, 0, 0, 0, 0, 0];
+            $trendOverdue = [0, 0, 0, 0, 0, 0];
+        }
 
         // 8. CSV Export
         if (isset($_GET['export']) && $_GET['export'] === 'csv') {
@@ -1473,13 +1760,13 @@ class TaskController extends Controller
             "statusFilter"           => $statusFilter,
             "typeFilter"             => $typeFilter,
             "kpi"                    => [
-                "total_tasks"        => $totalTeamTasks > 0 ? $totalTeamTasks : 246,
-                "tasks_this_month"   => $totalThisMonth > 0 ? $totalThisMonth : 28,
-                "completed"          => $totalCompleted > 0 ? $totalCompleted : 184,
+                "total_tasks"        => $totalTeamTasks,
+                "tasks_this_month"   => $totalThisMonth,
+                "completed"          => $totalCompleted,
                 "completion_rate"    => $teamCompletionRate,
-                "in_progress"        => $totalInProgress > 0 ? $totalInProgress : 42,
-                "due_this_week"      => $totalDueThisWeek > 0 ? $totalDueThisWeek : 18,
-                "overdue"            => $totalOverdue > 0 ? $totalOverdue : 20,
+                "in_progress"        => $totalInProgress,
+                "due_this_week"      => $totalDueThisWeek,
+                "overdue"            => $totalOverdue,
                 "overdue_pct"        => $teamOverduePct,
                 "on_time_rate"       => $avgOnTimeRate,
                 "avg_team_score"     => $avgTeamScore,
@@ -1501,7 +1788,9 @@ class TaskController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
         $userId = (int)($_SESSION['user']['id'] ?? 0);
-        header('Content-Type: application/json');
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+        }
 
         if (!$userId) {
             echo json_encode(['success' => false, 'message' => 'Unauthorized']);
@@ -1522,26 +1811,43 @@ class TaskController extends Controller
         }
 
         $targetUserId = (int)$emp['user_id'];
+        if ($targetUserId === 0) {
+            $uChk = $this->db->query("SELECT id FROM users WHERE employee_id = " . (int)$emp['id'] . " LIMIT 1");
+            if ($uChk && $uRow = $uChk->fetch_assoc()) {
+                $targetUserId = (int)$uRow['id'];
+            }
+        }
+
+        $projectFilter = !empty($_GET['project_id']) ? (int)$_GET['project_id'] : 0;
+        $tWhere = "t.user_id = $targetUserId";
+        if ($projectFilter > 0) {
+            $tWhere .= " AND t.todo_project_id = $projectFilter";
+        }
+
         $tasks = [];
         if ($targetUserId > 0) {
             $tRes = $this->db->query("
-                SELECT t.*, p.name as project_name 
+                SELECT t.*, p.name as project_name, p.is_team_project 
                 FROM todo_tasks t 
                 LEFT JOIN todo_projects p ON t.todo_project_id = p.id
-                WHERE t.user_id = $targetUserId 
+                WHERE $tWhere 
                 ORDER BY t.id DESC 
-                LIMIT 30
+                LIMIT 50
             ");
             if ($tRes) {
                 while ($r = $tRes->fetch_assoc()) {
                     $tasks[] = [
-                        'id' => $r['id'],
+                        'id' => (int)$r['id'],
                         'title' => $r['title'],
+                        'description' => $r['description'] ?? '',
                         'project_name' => $r['project_name'] ?? 'Inbox',
+                        'is_team_project' => (int)($r['is_team_project'] ?? 0),
                         'priority' => (int)$r['priority'],
                         'status' => $r['status'],
+                        'status_raw' => $r['status'],
                         'progress' => (int)$r['progress'],
-                        'due_date' => !empty($r['due_date']) ? date('d M Y', strtotime($r['due_date'])) : 'No Deadline'
+                        'due_date' => !empty($r['due_date']) ? date('d M Y', strtotime($r['due_date'])) : 'No Deadline',
+                        'due_date_raw' => !empty($r['due_date']) ? date('Y-m-d', strtotime($r['due_date'])) : ''
                     ];
                 }
             }
@@ -1574,6 +1880,16 @@ class TaskController extends Controller
             $priority = (int)($_POST['priority'] ?? 3);
             $projectId = (int)($_POST['project_id'] ?? 0);
             $dueDate = !empty($_POST['due_date']) ? "'" . $this->db->real_escape_string($_POST['due_date']) . "'" : "NULL";
+            $dueDateRaw = !empty($_POST['due_date']) ? $_POST['due_date'] : date('Y-m-d', strtotime('+3 days'));
+
+            // Check if user specified a new team project name
+            $newTeamProjectName = trim($_POST['new_team_project_name'] ?? '');
+            if (!empty($newTeamProjectName)) {
+                $escPName = $this->db->real_escape_string($newTeamProjectName);
+                $color = !empty($_POST['color']) ? $this->db->real_escape_string($_POST['color']) : '#16a34a';
+                $this->db->query("INSERT INTO todo_projects (user_id, name, color_code, is_inbox, is_team_project, manager_user_id) VALUES ($userId, '$escPName', '$color', 0, 1, $userId)");
+                $projectId = (int)$this->db->insert_id;
+            }
 
             if ($assignedUserId > 0 && !empty($title)) {
                 $escTitle = $this->db->real_escape_string($title);
@@ -1583,7 +1899,22 @@ class TaskController extends Controller
                 $q = "INSERT INTO todo_tasks (user_id, todo_project_id, title, description, priority, status, progress, due_date)
                       VALUES ($assignedUserId, $projSql, '$escTitle', '$escDesc', $priority, 'pending', 0, $dueDate)";
                 if ($this->db->query($q)) {
-                    setSuccess("Task assigned to team member successfully!");
+                    $todoTaskId = $this->db->insert_id;
+
+                    // Also mirror into tasks table for universal reporting
+                    $prioStr = $priority === 1 ? 'urgent' : ($priority === 2 ? 'high' : ($priority === 4 ? 'low' : 'medium'));
+                    $escDueRaw = $this->db->real_escape_string($dueDateRaw);
+                    $this->db->query("
+                        INSERT INTO tasks (title, user_id, description, start_date, deadline, status, progress, priority, assigned_by, todo_project_id)
+                        VALUES ('$escTitle', $assignedUserId, '$escDesc', CURDATE(), '$escDueRaw', 'pending', 0, '$prioStr', $userId, $projSql)
+                    ");
+
+                    // Notification
+                    $notifMsg = "New team task assigned: " . $title;
+                    $escNotif = $this->db->real_escape_string($notifMsg);
+                    $this->db->query("INSERT INTO notifications (user_id, assigned_by, message) VALUES ($assignedUserId, $userId, '$escNotif')");
+
+                    setSuccess("Task assigned under Team Project successfully!");
                 } else {
                     setError("Failed to assign task: " . $this->db->error);
                 }
@@ -1594,6 +1925,452 @@ class TaskController extends Controller
 
         header("Location: " . $GLOBALS['base_url'] . "/team-performance");
         exit;
+    }
+
+    /**
+     * Management Task Overview
+     * Executive-level monitoring dashboard for all departments, HODs, and employees.
+     */
+    public function managementTaskOverview()
+    {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        if (!$userId) {
+            header("Location: " . $GLOBALS['base_url'] . "/login");
+            exit;
+        }
+
+        // Authorization: Admin, Super Admin, Chief Officer, Management Viewer, SEAL CEO, or User 94
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $secRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $priRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+        $isMgmt = in_array($roleId, [1, 3, 33, 34, 35], true)
+            || in_array($secRoleId, [1, 3, 33, 34, 35], true)
+            || in_array($priRoleId, [1, 3, 33, 34, 35], true)
+            || $userId === 94;
+
+        if (!$isMgmt) {
+            setError("Access restricted to Management users only.");
+            header("Location: " . $GLOBALS['base_url']);
+            exit;
+        }
+
+        // Filter parameters
+        $period = $_GET['period'] ?? date('Y-m'); // e.g. 2026-10 or 'all'
+        $deptFilter = (int)($_GET['department_id'] ?? 0);
+        $hodFilter = (int)($_GET['hod_id'] ?? 0);
+        $empFilter = (int)($_GET['employee_id'] ?? 0);
+        $typeFilter = $_GET['type'] ?? 'all'; // 'all', 'assigned', 'self'
+        $tab = $_GET['tab'] ?? 'hods'; // 'hods', 'departments', 'individuals'
+
+        // 1. Fetch filter dropdown datasets
+        $departments = [];
+        $dRes = $this->db->query("SELECT id, name FROM departments ORDER BY name ASC");
+        if ($dRes) {
+            while ($r = $dRes->fetch_assoc()) {
+                $departments[] = $r;
+            }
+        }
+
+        // Fetch HODs (strictly is_dept_head = 1)
+        $hods = [];
+        $hRes = $this->db->query("
+            SELECT DISTINCT e.id as employee_id, e.user_id, e.full_name, e.department_id, d.name as department_name, des.name as designation_name
+            FROM employees e
+            LEFT JOIN departments d ON e.department_id = d.id
+            LEFT JOIN designations des ON e.designation_id = des.id
+            WHERE e.is_dept_head = 1
+              AND e.deleted_at IS NULL
+            ORDER BY e.full_name ASC
+        ");
+        if ($hRes) {
+            while ($r = $hRes->fetch_assoc()) {
+                $hods[] = $r;
+            }
+        }
+
+        // Fetch all active employees
+        $employees = [];
+        $eRes = $this->db->query("
+            SELECT e.id, e.user_id, e.full_name, e.department_id, e.reporting_user_id, d.name as department_name
+            FROM employees e
+            LEFT JOIN departments d ON e.department_id = d.id
+            WHERE e.deleted_at IS NULL
+            ORDER BY e.full_name ASC
+        ");
+        if ($eRes) {
+            while ($r = $eRes->fetch_assoc()) {
+                $employees[] = $r;
+            }
+        }
+
+        // 2. Base query building for tasks
+        $whereClauses = ["1=1"];
+
+        if ($period !== 'all' && !empty($period)) {
+            $escPeriod = $this->db->real_escape_string($period);
+            $whereClauses[] = "(DATE_FORMAT(t.created_at, '%Y-%m') = '$escPeriod' OR DATE_FORMAT(t.due_date, '%Y-%m') = '$escPeriod')";
+        }
+
+        if ($deptFilter > 0) {
+            $whereClauses[] = "e.department_id = $deptFilter";
+        }
+
+        if ($hodFilter > 0) {
+            // Find reporting user id for this HOD
+            $hTargetRes = $this->db->query("SELECT user_id, id FROM employees WHERE id = $hodFilter OR user_id = $hodFilter LIMIT 1");
+            if ($hTargetRes && $hTarget = $hTargetRes->fetch_assoc()) {
+                $hUId = (int)$hTarget['user_id'];
+                $whereClauses[] = "(e.reporting_user_id = $hUId OR t.user_id = $hUId)";
+            }
+        }
+
+        if ($empFilter > 0) {
+            $eTargetRes = $this->db->query("SELECT user_id FROM employees WHERE id = $empFilter LIMIT 1");
+            $targetUId = ($eTargetRes && $eTarget = $eTargetRes->fetch_assoc()) ? (int)$eTarget['user_id'] : $empFilter;
+            $whereClauses[] = "t.user_id = $targetUId";
+        }
+
+        if ($typeFilter === 'assigned') {
+            $whereClauses[] = "p.is_team_project = 1";
+        } elseif ($typeFilter === 'self') {
+            $whereClauses[] = "(p.is_team_project = 0 OR p.is_team_project IS NULL)";
+        }
+
+        $whereSql = implode(' AND ', $whereClauses);
+
+        // Fetch all matching tasks
+        $tasksQuery = "
+            SELECT t.*, 
+                   u.full_name as user_name, u.photo as user_photo,
+                   e.id as employee_id, e.department_id, e.designation_id, e.reporting_user_id,
+                   d.name as department_name,
+                   des.name as designation_name,
+                   p.name as project_name, p.is_team_project,
+                   r_u.full_name as reporting_boss_name
+            FROM todo_tasks t
+            LEFT JOIN users u ON t.user_id = u.id
+            LEFT JOIN employees e ON (u.employee_id = e.id OR e.user_id = u.id)
+            LEFT JOIN departments d ON e.department_id = d.id
+            LEFT JOIN designations des ON e.designation_id = des.id
+            LEFT JOIN todo_projects p ON t.todo_project_id = p.id
+            LEFT JOIN users r_u ON e.reporting_user_id = r_u.id
+            WHERE $whereSql
+            ORDER BY t.id DESC
+        ";
+        $allTasks = [];
+        $tRes = $this->db->query($tasksQuery);
+        if ($tRes) {
+            while ($r = $tRes->fetch_assoc()) {
+                $allTasks[] = $r;
+            }
+        }
+
+        // 3. Compute 6 Global KPIs
+        $totalOrgTasks = count($allTasks);
+        $totalCompleted = 0;
+        $totalActive = 0;
+        $totalOverdue = 0;
+        $totalOnTime = 0;
+        $totalHodAssigned = 0;
+        $curDate = date('Y-m-d H:i:s');
+
+        foreach ($allTasks as $t) {
+            $st = strtolower($t['status'] ?? 'pending');
+            $due = !empty($t['due_date']) ? $t['due_date'] : null;
+
+            if ($due && $due < $curDate && $st !== 'completed') {
+                $totalOverdue++;
+            }
+
+            if ($st === 'completed') {
+                $totalCompleted++;
+                if (!$due || (!empty($t['updated_at']) && $t['updated_at'] <= $due) || (!empty($t['created_at']) && $t['created_at'] <= $due)) {
+                    $totalOnTime++;
+                }
+            } else {
+                $totalActive++;
+            }
+
+            if (!empty($t['is_team_project'])) {
+                $totalHodAssigned++;
+            }
+        }
+
+        $completionRate = $totalOrgTasks > 0 ? round(($totalCompleted / $totalOrgTasks) * 100) : 0;
+        $overdueRate = $totalOrgTasks > 0 ? round(($totalOverdue / $totalOrgTasks) * 100) : 0;
+        $onTimeRate = $totalCompleted > 0 ? round(($totalOnTime / $totalCompleted) * 100) : 100;
+
+        // 4. Department Performance Breakdown (for horizontal stacked bar chart & table)
+        $deptAgg = [];
+        foreach ($departments as $d) {
+            $deptAgg[$d['id']] = [
+                'id' => $d['id'],
+                'name' => $d['name'],
+                'total' => 0,
+                'completed' => 0,
+                'overdue' => 0,
+                'active' => 0,
+                'on_time' => 0,
+                'employees_count' => 0
+            ];
+        }
+
+        // Count employees per department
+        foreach ($employees as $e) {
+            $did = (int)($e['department_id'] ?? 0);
+            if (isset($deptAgg[$did])) {
+                $deptAgg[$did]['employees_count']++;
+            }
+        }
+
+        foreach ($allTasks as $t) {
+            $did = (int)($t['department_id'] ?? 0);
+            if (!isset($deptAgg[$did])) {
+                $dName = $t['department_name'] ?: 'Unassigned';
+                $deptAgg[$did] = [
+                    'id' => $did,
+                    'name' => $dName,
+                    'total' => 0,
+                    'completed' => 0,
+                    'overdue' => 0,
+                    'active' => 0,
+                    'on_time' => 0,
+                    'employees_count' => 0
+                ];
+            }
+            $deptAgg[$did]['total']++;
+            $st = strtolower($t['status'] ?? 'pending');
+            $due = !empty($t['due_date']) ? $t['due_date'] : null;
+
+            if ($st === 'completed') {
+                $deptAgg[$did]['completed']++;
+                if (!$due || (!empty($t['updated_at']) && $t['updated_at'] <= $due) || (!empty($t['created_at']) && $t['created_at'] <= $due)) {
+                    $deptAgg[$did]['on_time']++;
+                }
+            } else {
+                $deptAgg[$did]['active']++;
+                if ($due && $due < $curDate) {
+                    $deptAgg[$did]['overdue']++;
+                }
+            }
+        }
+
+        // Filter and sort departments with tasks or employees
+        $deptList = [];
+        foreach ($deptAgg as $d) {
+            if ($d['total'] > 0 || $d['employees_count'] > 0) {
+                $d['completion_pct'] = $d['total'] > 0 ? round(($d['completed'] / $d['total']) * 100) : 0;
+                $d['on_time_pct'] = $d['completed'] > 0 ? round(($d['on_time'] / $d['completed']) * 100) : 100;
+                $d['score'] = round(($d['completion_pct'] * 0.6) + ($d['on_time_pct'] * 0.4));
+                $deptList[] = $d;
+            }
+        }
+        usort($deptList, function($a, $b) {
+            return $b['total'] <=> $a['total'];
+        });
+
+        // 5. HOD Performance List
+        $hodList = [];
+        foreach ($hods as $h) {
+            $hUId = (int)$h['user_id'];
+            $hEmpId = (int)$h['employee_id'];
+
+            // Find all team members reporting to this HOD or in their department
+            $teamEmpUserIds = [];
+            foreach ($employees as $e) {
+                $repId = (int)($e['reporting_user_id'] ?? 0);
+                $eUId = (int)($e['user_id'] ?? 0);
+                if ($eUId > 0 && $eUId !== $hUId) {
+                    if ($repId === $hUId || $repId === $hEmpId || (int)($e['department_id'] ?? 0) === (int)$h['department_id']) {
+                        $teamEmpUserIds[] = $eUId;
+                    }
+                }
+            }
+            $teamEmpUserIds = array_unique($teamEmpUserIds);
+
+            $hTotalTasks = 0;
+            $hAssignedByHod = 0;
+            $hSelfTasks = 0;
+            $hCompleted = 0;
+            $hTeamCompleted = 0;
+            $hOverdue = 0;
+            $hOnTime = 0;
+
+            foreach ($allTasks as $t) {
+                $tUId = (int)$t['user_id'];
+                $isHodSelf = ($tUId === $hUId);
+                $isTeamTask = in_array($tUId, $teamEmpUserIds, true);
+
+                if ($isHodSelf || $isTeamTask) {
+                    $hTotalTasks++;
+                    $st = strtolower($t['status'] ?? 'pending');
+                    $due = !empty($t['due_date']) ? $t['due_date'] : null;
+
+                    if ($isHodSelf) {
+                        $hSelfTasks++;
+                        if ($st === 'completed') {
+                            $hCompleted++;
+                        }
+                    }
+
+                    if ($isTeamTask) {
+                        if (!empty($t['is_team_project'])) {
+                            $hAssignedByHod++;
+                        }
+                        if ($st === 'completed') {
+                            $hTeamCompleted++;
+                        }
+                    }
+
+                    if ($st === 'completed') {
+                        if (!$due || (!empty($t['updated_at']) && $t['updated_at'] <= $due) || (!empty($t['created_at']) && $t['created_at'] <= $due)) {
+                            $hOnTime++;
+                        }
+                    } else {
+                        if ($due && $due < $curDate) {
+                            $hOverdue++;
+                        }
+                    }
+                }
+            }
+
+            $allHCompleted = $hCompleted + $hTeamCompleted;
+            $hCompletionRate = $hTotalTasks > 0 ? round(($allHCompleted / $hTotalTasks) * 100) : 0;
+            $hOnTimeRate = $allHCompleted > 0 ? round(($hOnTime / $allHCompleted) * 100) : 100;
+            $leadershipScore = round(($hCompletionRate * 0.5) + ($hOnTimeRate * 0.3) + (min(100, $hTotalTasks * 10) * 0.2));
+
+            if ($leadershipScore >= 80) {
+                $trendLabel = "Exceptional";
+                $trendClass = "bg-success-subtle text-success";
+            } elseif ($leadershipScore >= 60) {
+                $trendLabel = "Strong";
+                $trendClass = "bg-primary-subtle text-primary";
+            } elseif ($leadershipScore >= 40) {
+                $trendLabel = "Average";
+                $trendClass = "bg-warning-subtle text-warning";
+            } else {
+                $trendLabel = "Needs Attention";
+                $trendClass = "bg-danger-subtle text-danger";
+            }
+
+            $hodList[] = [
+                'employee_id' => $hEmpId,
+                'user_id' => $hUId,
+                'full_name' => $h['full_name'],
+                'department_name' => $h['department_name'] ?? 'General',
+                'designation_name' => $h['designation_name'] ?? 'Head of Department',
+                'total_tasks' => $hTotalTasks,
+                'assigned_by_hod' => $hAssignedByHod,
+                'self_tasks' => $hSelfTasks,
+                'hod_completed' => $hCompleted,
+                'team_completed' => $hTeamCompleted,
+                'all_completed' => $allHCompleted,
+                'overdue' => $hOverdue,
+                'on_time_rate' => $hOnTimeRate,
+                'completion_rate' => $hCompletionRate,
+                'leadership_score' => $leadershipScore,
+                'trend' => $trendLabel,
+                'trend_class' => $trendClass
+            ];
+        }
+
+        usort($hodList, function($a, $b) {
+            return $b['leadership_score'] <=> $a['leadership_score'];
+        });
+
+        // 6. Top Individuals Aggregation
+        $indivMap = [];
+        foreach ($allTasks as $t) {
+            $uId = (int)$t['user_id'];
+            if (!isset($indivMap[$uId])) {
+                $indivMap[$uId] = [
+                    'user_id' => $uId,
+                    'full_name' => $t['user_name'] ?: 'Employee #' . $uId,
+                    'department_name' => $t['department_name'] ?: 'General',
+                    'designation_name' => $t['designation_name'] ?: 'Staff',
+                    'total' => 0,
+                    'completed' => 0,
+                    'overdue' => 0,
+                    'active' => 0,
+                    'on_time' => 0
+                ];
+            }
+            $indivMap[$uId]['total']++;
+            $st = strtolower($t['status'] ?? 'pending');
+            $due = !empty($t['due_date']) ? $t['due_date'] : null;
+
+            if ($st === 'completed') {
+                $indivMap[$uId]['completed']++;
+                if (!$due || (!empty($t['updated_at']) && $t['updated_at'] <= $due) || (!empty($t['created_at']) && $t['created_at'] <= $due)) {
+                    $indivMap[$uId]['on_time']++;
+                }
+            } else {
+                $indivMap[$uId]['active']++;
+                if ($due && $due < $curDate) {
+                    $indivMap[$uId]['overdue']++;
+                }
+            }
+        }
+
+        $topIndividuals = [];
+        foreach ($indivMap as $ind) {
+            $ind['completion_pct'] = $ind['total'] > 0 ? round(($ind['completed'] / $ind['total']) * 100) : 0;
+            $ind['on_time_pct'] = $ind['completed'] > 0 ? round(($ind['on_time'] / $ind['completed']) * 100) : 100;
+            $ind['score'] = round(($ind['completion_pct'] * 0.7) + ($ind['on_time_pct'] * 0.3));
+            $topIndividuals[] = $ind;
+        }
+        usort($topIndividuals, function($a, $b) {
+            return $b['score'] <=> $a['score'];
+        });
+
+        // 7. Dynamic Management Insights
+        $insights = [];
+        if ($totalOrgTasks > 0) {
+            $insights[] = "Organization is currently at a <strong>{$completionRate}%</strong> overall task completion rate with <strong>{$totalActive}</strong> active tasks.";
+            if ($totalOverdue > 0) {
+                $insights[] = "Executive attention needed: <strong>{$totalOverdue} tasks</strong> ({$overdueRate}%) are past deadline across departments.";
+            } else {
+                $insights[] = "Excellent progress! Zero overdue tasks currently logged across all operational units.";
+            }
+            if (!empty($deptList[0])) {
+                $insights[] = "Top performing department is <strong>" . htmlspecialchars($deptList[0]['name']) . "</strong> with {$deptList[0]['completed']} completed tasks ({$deptList[0]['completion_pct']}%).";
+            }
+            if (!empty($hodList[0])) {
+                $insights[] = "Highest Leadership Score achieved by <strong>" . htmlspecialchars($hodList[0]['full_name']) . "</strong> ({$hodList[0]['leadership_score']}/100).";
+            }
+        } else {
+            $insights[] = "No tasks found for the selected period. Adjust period filter to view quarterly or annual reports.";
+        }
+
+        // Render the executive view
+        $this->view("tasks/management-task-overview", [
+            "current_route"       => "management-task-overview",
+            "page_title"          => "Management Task Overview",
+            "period"              => $period,
+            "deptFilter"          => $deptFilter,
+            "hodFilter"           => $hodFilter,
+            "empFilter"           => $empFilter,
+            "typeFilter"          => $typeFilter,
+            "tab"                 => $tab,
+            "departments"         => $departments,
+            "hods"                => $hods,
+            "employees"           => $employees,
+            "kpi"                 => [
+                "total_tasks"     => $totalOrgTasks,
+                "completed"       => $totalCompleted,
+                "completion_rate" => $completionRate,
+                "active"          => $totalActive,
+                "overdue"         => $totalOverdue,
+                "overdue_rate"    => $overdueRate,
+                "on_time_rate"    => $onTimeRate,
+                "hod_assigned"    => $totalHodAssigned
+            ],
+            "deptList"            => $deptList,
+            "hodList"             => $hodList,
+            "topIndividuals"      => $topIndividuals,
+            "insights"            => $insights
+        ]);
     }
 }
 

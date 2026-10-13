@@ -3336,7 +3336,7 @@ class AccountClient extends Model
                 if ($pool <= 0) continue;
                 $isDiscountItem = $pProcess['is_discount'];
                 
-                $currentPaymentMethod = $isDiscountItem ? 'Discount EMI' : ($transactionData['payment_method'] ?? 'cash');
+                $currentPaymentMethod = $isDiscountItem ? 'cash' : ($transactionData['payment_method'] ?? 'cash');
                 $currentServiceFee = (!$isDiscountItem && $serviceChargeRate > 0) ? round($pool * ($serviceChargeRate / 100)) : 0;
                 $totalServiceFee += $currentServiceFee;
 
