@@ -650,13 +650,27 @@ if (!empty($ahInfo['has_request'])) {
                                         </div>
 
                                         <?php if ($canMgmtApprove): ?>
+                                            <?php
+                                            $adjAmtToCheck = (float)($adj['approved_amount'] ?: $adj['amount']);
+                                            $isOver1LacAdj = ($adjAmtToCheck > 100000);
+                                            $isOpHeadApprovedAdj = (!empty($ahInfo['is_op_head_approved']) || ($ahInfo['op_head_status'] ?? '') === 'approved');
+                                            $isOpHeadUserAdj = (in_array((int)($_SESSION['user']['role_id'] ?? 0), [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
+                                            $isMgmtUserAdj = in_array((int)($_SESSION['user']['role_id'] ?? 0), [1, 3], true);
+                                            $isMgmtLockedAdj = ($isOver1LacAdj && !$isOpHeadApprovedAdj && $isMgmtUserAdj && !$isOpHeadUserAdj);
+                                            ?>
                                             <div class="p-3 bg-light rounded border mb-3">
                                                 <h6 class="fw-bold text-primary mb-2">
                                                     <i class="fa-light fa-stamp me-1"></i> Management Final Approval
                                                 </h6>
-                                                <p class="small text-muted mb-3">
-                                                    Review the QC recommendation and authorize final disbursement approval.
-                                                </p>
+                                                <?php if ($isMgmtLockedAdj): ?>
+                                                    <div class="alert alert-warning mb-3">
+                                                        <i class="fa-solid fa-lock me-2"></i><strong>Management Approval Locked (> ৳1,00,000):</strong> This expense adjustment exceeds ৳1,00,000 and must be verified and approved by <strong>Admin &amp; Operation Head (Role 20)</strong> before Management can authorize it.
+                                                    </div>
+                                                <?php else: ?>
+                                                    <p class="small text-muted mb-3">
+                                                        Review the QC recommendation and authorize final disbursement approval.
+                                                    </p>
+                                                <?php endif; ?>
                                                 <form action="<?= $GLOBALS['base_url'] ?>/expense-adjustments/approve" method="POST" class="mb-3">
                                                     <input type="hidden" name="id" value="<?= $adj['id'] ?>">
                                                     <div class="mb-3">
@@ -667,9 +681,19 @@ if (!empty($ahInfo['has_request'])) {
                                                         <label class="form-label small fw-bold">Management Note</label>
                                                         <textarea name="mgmt_note" class="form-control" rows="2" placeholder="Management approval remarks..."></textarea>
                                                     </div>
-                                                    <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">
-                                                        <i class="fa-light fa-check-circle me-1"></i> Final Approve & Forward to Accounts
-                                                    </button>
+                                                    <?php if ($isMgmtLockedAdj): ?>
+                                                        <button type="button" class="btn btn-secondary w-100 fw-bold shadow-sm disabled" title="Awaiting Admin & Operation Head approval">
+                                                            <i class="fa-solid fa-lock me-1"></i> Locked (> ৳1,00,000)
+                                                        </button>
+                                                    <?php elseif ($isOver1LacAdj && !$isOpHeadApprovedAdj && $isOpHeadUserAdj): ?>
+                                                        <button type="submit" class="btn btn-success w-100 fw-bold shadow-sm">
+                                                            <i class="fa-solid fa-check-double me-1"></i> Verify &amp; Approve (Op Head)
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">
+                                                            <i class="fa-light fa-check-circle me-1"></i> Final Approve &amp; Forward to Accounts
+                                                        </button>
+                                                    <?php endif; ?>
                                                 </form>
 
                                                 <div class="border-top pt-2">

@@ -397,7 +397,9 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                 $canApprove = false;
                                                 $step = '';
                                                 $reqTotal = (float)($r['total_price'] ?? 0);
-                                                $isRole20Eligible = ((int)$roleId === 32 && $reqTotal <= 100000);
+                                                $isOver1Lac = ($reqTotal > 100000);
+                                                $isOpHeadUser = (in_array((int)$roleId, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false);
+                                                $isOpHeadApproved = (!empty($r['op_head_status']) && $r['op_head_status'] === 'approved');
                                                 $rowDhStatus = $r['dept_head_status'] ?? 'not_required';
                                                 
                                                 if (!$isCreator) {
@@ -411,8 +413,22 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                         $canApprove = true; $step = 'purchase_head';
                                                     } elseif ($isQcAudit && $r['purchase_head_status'] === 'approved' && $r['qc_audit_status'] === 'pending') {
                                                         $canApprove = true; $step = 'qc_audit';
-                                                    } elseif (($isManagement || $isRole20Eligible) && $r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending') {
-                                                        $canApprove = true; $step = 'mgmt';
+                                                    } elseif ($r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending') {
+                                                        if ($isOver1Lac) {
+                                                            if (!$isOpHeadApproved) {
+                                                                if ($isOpHeadUser) {
+                                                                    $canApprove = true; $step = 'mgmt';
+                                                                }
+                                                            } else {
+                                                                if ($isManagement) {
+                                                                    $canApprove = true; $step = 'mgmt';
+                                                                }
+                                                            }
+                                                        } else {
+                                                            if ($isManagement || $isOpHeadUser) {
+                                                                $canApprove = true; $step = 'mgmt';
+                                                            }
+                                                        }
                                                     }
                                                 }
                                                 
@@ -459,6 +475,10 @@ $stepBadges = ['pending' => 'warning', 'approved' => 'success', 'rejected' => 'd
                                                         onclick="openApprovalModal(<?= $r['id'] ?>, 'rejected', '<?= $step ?>')">
                                                         <i class="fa-solid fa-xmark"></i>
                                                     </button>
+                                                <?php elseif ($isOver1Lac && !$isOpHeadApproved && $r['qc_audit_status'] === 'approved' && $r['mgmt_status'] === 'pending' && $isManagement): ?>
+                                                    <span class="badge bg-light text-muted border px-2 py-1 extra-small" title="Requests over ৳1,00,000 require Admin & Operation Head approval first">
+                                                        <i class="fa-solid fa-lock me-1 text-warning"></i> Awaiting Op Head (>1L)
+                                                    </span>
                                                 <?php elseif ($canApproveAh): ?>
                                                     <button type="button" class="btn btn-sm btn-primary" title="Approve as Accounts Head"
                                                         onclick="triggerAhApprove(<?= (int)$r['approval_request_id'] ?>)">

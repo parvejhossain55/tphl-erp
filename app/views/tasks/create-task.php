@@ -22,7 +22,47 @@
                                                   <label for="title">Task Title<span>*</span></label>
                                               </div>
                                               <div class="form__input">
-                                                  <input class="form-control" name="title" id="title" type="text">
+                                                  <input class="form-control" name="title" id="title" type="text" required>
+                                              </div>
+                                          </div>
+                                      </div>
+
+                                      <div class="col-lg-6">
+                                          <div class="from__input-box">
+                                              <div class="form__input-title">
+                                                  <label for="project_id" class="form-label"><i class="fa-solid fa-folder-tree text-success me-1"></i> Project / Team Project</label>
+                                              </div>
+                                              <div class="form__input">
+                                                  <select id="project_id" name="project_id" class="form-select select2" onchange="handleProjectChange(this.value)">
+                                                      <option value="">No Project (General Task)</option>
+                                                      <?php if (!empty($projects)): ?>
+                                                          <optgroup label="Shared Team Projects">
+                                                              <?php foreach ($projects as $pr): ?>
+                                                                  <?php if (!empty($pr['is_team_project'])): ?>
+                                                                      <option value="<?= $pr['id'] ?>">👥 [Team] <?= htmlspecialchars($pr['name']) ?></option>
+                                                                  <?php endif; ?>
+                                                              <?php endforeach; ?>
+                                                          </optgroup>
+                                                          <optgroup label="Personal / Other Projects">
+                                                              <?php foreach ($projects as $pr): ?>
+                                                                  <?php if (empty($pr['is_team_project'])): ?>
+                                                                      <option value="<?= $pr['id'] ?>">📁 <?= htmlspecialchars($pr['name']) ?></option>
+                                                                  <?php endif; ?>
+                                                              <?php endforeach; ?>
+                                                          </optgroup>
+                                                      <?php endif; ?>
+                                                      <option value="new">+ Create New Project / Team Project...</option>
+                                                  </select>
+                                              </div>
+                                              <div id="newProjectWrap" style="display: none;" class="mt-2 p-3 bg-light rounded-3 border">
+                                                  <label class="form-label small fw-bold text-dark mb-1">New Project Name</label>
+                                                  <input type="text" name="new_project_name" id="new_project_name" class="form-control mb-2" placeholder="e.g. Sales Campaign Q4, ERP Deployment">
+                                                  <div class="form-check">
+                                                      <input class="form-check-input" type="checkbox" name="is_team_project" id="is_team_project" value="1" checked>
+                                                      <label class="form-check-label small fw-semibold text-secondary" for="is_team_project">
+                                                          <i class="fa-solid fa-users text-primary me-1"></i> Share as Team Project (Visible to all members in department/team)
+                                                      </label>
+                                                  </div>
                                               </div>
                                           </div>
                                       </div>
@@ -106,10 +146,6 @@
                                                       <option value="high" selected>High</option>
                                                       <option value="urgent">Urgent</option>
                                                   </select>
-1. in every profile of every client against flats/units-- have to add a plus button that will allow CED Team to enter multiple owner information against every unit/flat.
-2. by clicking on the plus button on there, they will be able to add another owner information-- 1. Name, Phone, Email etc. 
-3. For every client have to add an alternate email field and every transaction to be sent there (if any client have two email on erp profile, will receive same message to both email.).
-4. there is a field to add address of a client but every client has a permanent and present address, current address field will be present address and add permanent address option too. 
                                               </div>
                                           </div>
                                       </div>
@@ -152,3 +188,22 @@
           </form>
       </div>
   </div>
+<script>
+function handleProjectChange(val) {
+    const wrap = document.getElementById('newProjectWrap');
+    if (wrap) {
+        wrap.style.display = (val === 'new') ? 'block' : 'none';
+        if (val === 'new') {
+            const input = document.getElementById('new_project_name');
+            if (input) input.focus();
+        }
+    }
+}
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof jQuery !== 'undefined') {
+        jQuery('#project_id').on('change', function() {
+            handleProjectChange(jQuery(this).val());
+        });
+    }
+});
+</script>

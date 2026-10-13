@@ -213,7 +213,60 @@ class IncentiveController extends Controller
             exit;
         }
 
+        $chkClaim = $this->db->query("SELECT id, incentive_amount FROM project_incentive_claims WHERE id = " . (int)$claimId . " LIMIT 1");
+        $claimRow = $chkClaim ? $chkClaim->fetch_assoc() : null;
+        if (!$claimRow) {
+            echo json_encode(['success' => false, 'message' => 'Claim not found']);
+            exit;
+        }
+
+        $amount = (float)($claimRow['incentive_amount'] ?? 0);
+        $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isOver1Lac = ($amount > 100000);
+        $isOpHeadUser = (in_array($userRole, [20, 32], true) || str_contains($roleName, 'operation head'));
+        $isMgmtUser = in_array($userRole, [1, 3], true);
+
+        // Fetch approval request record
+        $arCheck = $this->db->query("SELECT id, op_head_status FROM approval_requests WHERE source_table = 'project_incentive_claims' AND source_id = " . (int)$claimId . " ORDER BY id DESC LIMIT 1");
+        $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
+        $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
+
+        if ($isOver1Lac) {
+            if ($isOpHeadUser && !$isMgmtUser) {
+                $arId = (int)($arRow['id'] ?? 0);
+                $escNote = $this->db->real_escape_string('Verified and approved by Admin & Operation Head');
+                if (!class_exists('ApprovalRequest')) {
+                    require_once __DIR__ . '/../models/ApprovalRequest.php';
+                }
+                $approvalModel = new \ApprovalRequest($this->db);
+                if ($arId > 0) {
+                    $approvalModel->approveOperationHead($arId, $approvedBy, $escNote);
+                } else {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$approvedBy}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table = 'project_incentive_claims' AND source_id = " . (int)$claimId);
+                }
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Incentive claim verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for sign-off.'
+                ]);
+                exit;
+            }
+
+            if ($isMgmtUser) {
+                if ($opHeadStatus !== 'approved') {
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Access Denied: Incentive claims exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.'
+                    ]);
+                    exit;
+                }
+            }
+        }
+
         $result = $this->incentiveModel->approveClaim($approvedBy, $claimId);
+        if ($result && !empty($result['success'])) {
+            $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', approve_role = 'accounts_head', accounts_head_status = 'pending' WHERE source_table = 'project_incentive_claims' AND source_id = " . (int)$claimId);
+        }
         echo json_encode($result);
         exit;
     }

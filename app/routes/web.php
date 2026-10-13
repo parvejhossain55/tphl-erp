@@ -234,6 +234,10 @@ return [
     'batch-process-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'batchProcessApprovalRequests'],
     'approval-requests/approve-accounts-head' => ['controller' => 'ApprovalRequestController', 'method' => 'approveAccountsHead'],
     'approval-requests/reject-accounts-head' => ['controller' => 'ApprovalRequestController', 'method' => 'rejectAccountsHead'],
+    'approval-requests/approve-operation-head' => ['controller' => 'ApprovalRequestController', 'method' => 'approveOperationHead'],
+    'approval-requests/reject-operation-head' => ['controller' => 'ApprovalRequestController', 'method' => 'rejectOperationHead'],
+    'approval-requests/approve-management' => ['controller' => 'ApprovalRequestController', 'method' => 'approveManagement'],
+    'approval-requests/reject-management' => ['controller' => 'ApprovalRequestController', 'method' => 'rejectManagement'],
     'api/actionable-approval-alerts' => ['controller' => 'ApprovalRequestController', 'method' => 'getActionableAlerts'],
 
     // =========================================================================
@@ -252,7 +256,7 @@ return [
     // Controller: SalesActivityReportController
     // =========================================================================
     'sales-activity-report' => ['controller' => 'SalesActivityReportController', 'method' => 'index'],
-    'team-performance' => ['controller' => 'SalesActivityReportController', 'method' => 'teamPerformance'],
+    'sales-activity-team-performance' => ['controller' => 'SalesActivityReportController', 'method' => 'teamPerformance'],
     'team-performance-export' => ['controller' => 'SalesActivityReportController', 'method' => 'exportTeamPerformanceExcel'],
     'team-performance/export' => ['controller' => 'SalesActivityReportController', 'method' => 'exportTeamPerformanceExcel'],
 

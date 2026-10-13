@@ -5,8 +5,15 @@ $base          = $GLOBALS['base_url'];
 
 $isOwner    = ($req['requested_by'] == $sessionUserId);
 $isAccounts = in_array($sessionRoleId, [1, 6, 30]);
-$isAdmin    = in_array($sessionRoleId, [1, 3]);
-$canApprove = in_array($sessionRoleId, [1, 3]) || (in_array($sessionRoleId, [20, 32]) && (float)$req['amount'] <= 100000);
+require_once __DIR__ . '/../../../models/ApprovalRequest.php';
+$ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'fund_requisitions', (int)$req['id']);
+
+$isOver1Lac = ((float)$req['amount'] > 100000.01);
+$isOpHeadApproved = (!empty($ahInfo['is_op_head_approved']));
+
+$canOpHeadApprove = in_array($sessionRoleId, [20, 32]) && ($isOver1Lac ? !$isOpHeadApproved : true);
+$canMgmtApprove = in_array($sessionRoleId, [1, 3]) && ($isOver1Lac ? $isOpHeadApproved : true);
+$canApprove = $canOpHeadApprove || $canMgmtApprove;
 $isVerified = !empty($req['accounts_settlement_verified']);
 
 $effectiveApprovedAmount = (!empty($req['approved_amount']) && (float)$req['approved_amount'] > 0)
@@ -17,9 +24,6 @@ $effectiveApprovedAmount = (!empty($req['approved_amount']) && (float)$req['appr
 
 $balance = max(0, $effectiveApprovedAmount - (float)($totalSpent ?? 0));
 $dueToPay = max(0, $effectiveApprovedAmount - (float)($req['paid_amount'] ?? 0));
-
-require_once __DIR__ . '/../../../models/ApprovalRequest.php';
-$ahInfo = ApprovalRequest::getAccountsHeadApprovalInfo($GLOBALS['db'] ?? ($this->db ?? null), 'fund_requisitions', (int)$req['id']);
 
 $statusColors = [
     'pending_dept' => 'bg-warning text-dark',
@@ -629,9 +633,19 @@ $spentPercent = ($baseAmount > 0) ? min(100, round(((float)($totalSpent ?? 0) / 
                                     <?php endif; ?>
 
                                     <?php if ($canApprove && ($req['amount'] - ($req['approved_amount'] ?? 0)) > 0): ?>
-                                        <button class="btn btn-sm btn-primary mt-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#approveModal">
-                                            <i class="fa-solid fa-stamp me-1"></i> Management / Operation Head Approve
-                                        </button>
+                                        <?php if ($isOver1Lac && !$isOpHeadApproved && in_array($sessionRoleId, [20, 32])): ?>
+                                            <button class="btn btn-sm btn-primary mt-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#approveModal">
+                                                <i class="fa-solid fa-stamp me-1"></i> Approve as Operation Head (Role 20)
+                                            </button>
+                                        <?php else: ?>
+                                            <button class="btn btn-sm btn-primary mt-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#approveModal">
+                                                <i class="fa-solid fa-stamp me-1"></i> Management Approve
+                                            </button>
+                                        <?php endif; ?>
+                                    <?php elseif ($isOver1Lac && !$isOpHeadApproved && in_array($sessionRoleId, [1, 3])): ?>
+                                        <div class="alert alert-warning py-2 px-3 extra-small mt-2 mb-0">
+                                            <i class="fa-solid fa-lock me-1 text-warning"></i> Requests exceeding ৳1,00,000 require Admin &amp; Operation Head (Role 20) approval before Management can approve.
+                                        </div>
                                     <?php endif; ?>
                                 </div>
                             <?php else: ?>

@@ -116,10 +116,21 @@ class Con_PurchaseOrder extends Model
         $stmt = $this->db->prepare(
             "SELECT poi.*, m.name AS material_name, m.unit, v.name AS vendor_name, COALESCE(cat.name, 'Uncategorized') AS category_name,
                     COALESCE(pri.current_stock, 0) AS current_stock,
-                    (COALESCE(pri.month_1_forecast, 0) + COALESCE(pri.month_2_forecast, 0) + COALESCE(pri.month_3_forecast, 0)) AS next_3_months_requirement
+                    COALESCE(pri.pr_quantity, 0) AS pr_quantity,
+                    COALESCE(pri.next_3_months_requirement, 0) AS next_3_months_requirement,
+                    (SELECT COUNT(*) FROM po_item_qty_logs l WHERE l.purchase_order_item_id = poi.id) AS edit_count,
+                    (SELECT u.full_name FROM po_item_qty_logs l JOIN users u ON u.id = l.changed_by WHERE l.purchase_order_item_id = poi.id ORDER BY l.id DESC LIMIT 1) AS last_edited_by_name,
+                    (SELECT l.created_at FROM po_item_qty_logs l WHERE l.purchase_order_item_id = poi.id ORDER BY l.id DESC LIMIT 1) AS last_edited_at
              FROM {$this->itemTable} poi
              JOIN purchase_orders po ON po.id = poi.purchase_order_id
-             LEFT JOIN purchase_request_items pri ON pri.request_id = po.request_id AND pri.material_id = poi.material_id
+             LEFT JOIN (
+                 SELECT request_id, material_id,
+                        SUM(quantity) AS pr_quantity,
+                        MAX(current_stock) AS current_stock,
+                        SUM(COALESCE(month_1_forecast, 0) + COALESCE(month_2_forecast, 0) + COALESCE(month_3_forecast, 0)) AS next_3_months_requirement
+                 FROM purchase_request_items
+                 GROUP BY request_id, material_id
+             ) pri ON pri.request_id = po.request_id AND pri.material_id = poi.material_id
              JOIN con_materials m ON m.id = poi.material_id
              LEFT JOIN con_material_categories cat ON cat.id = m.category_id
              JOIN vendors v ON v.id = poi.selected_vendor_id
@@ -129,6 +140,115 @@ class Con_PurchaseOrder extends Model
         $stmt->bind_param('i', $poId);
         $stmt->execute();
         return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Get all quantity adjustment logs for a Purchase Order
+     */
+    public function getQtyLogs($poId)
+    {
+        $stmt = $this->db->prepare(
+            "SELECT l.*, u.full_name AS changed_by_name, r.name AS changed_by_role, m.name AS material_name, m.unit
+             FROM po_item_qty_logs l
+             LEFT JOIN users u ON u.id = l.changed_by
+             LEFT JOIN roles r ON r.id = u.role_id
+             LEFT JOIN con_materials m ON m.id = l.material_id
+             WHERE l.purchase_order_id = ?
+             ORDER BY l.id DESC"
+        );
+        $stmt->bind_param('i', $poId);
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    }
+
+    /**
+     * Update PO item quantity with CST calculation and audit trail
+     */
+    public function updateItemQuantity($poId, $itemId, $newQty, $userId, $reason = '')
+    {
+        $newQty = (float)$newQty;
+        if ($newQty <= 0) {
+            return ['success' => false, 'error' => 'Quantity must be greater than zero.'];
+        }
+
+        // Verify item exists for this PO
+        $stmt = $this->db->prepare("SELECT * FROM {$this->itemTable} WHERE id = ? AND purchase_order_id = ?");
+        $stmt->bind_param('ii', $itemId, $poId);
+        $stmt->execute();
+        $item = $stmt->get_result()->fetch_assoc();
+        if (!$item) {
+            return ['success' => false, 'error' => 'Purchase order item not found.'];
+        }
+
+        // Check already received quantity
+        $recvStmt = $this->db->prepare("
+            SELECT COALESCE(SUM(received_quantity), 0) AS received
+            FROM material_receiving_items
+            WHERE purchase_order_item_id = ? AND status IN ('Accepted', 'Partially Accepted')
+        ");
+        $recvStmt->bind_param('i', $itemId);
+        $recvStmt->execute();
+        $recvRow = $recvStmt->get_result()->fetch_assoc();
+        $receivedTotal = (float)($recvRow['received'] ?? 0);
+
+        if ($newQty < $receivedTotal) {
+            return [
+                'success' => false, 
+                'error' => "Cannot set quantity to " . number_format($newQty, 3) . " because " . number_format($receivedTotal, 3) . " units have already been received."
+            ];
+        }
+
+        $oldQty = (float)$item['quantity'];
+        if (abs($oldQty - $newQty) < 0.0001) {
+            return ['success' => false, 'error' => 'Quantity was not changed (same value entered).'];
+        }
+
+        $unitPrice = (float)$item['unit_price'];
+        $oldTotalPrice = (float)($item['total_price'] ?: ($oldQty * $unitPrice));
+        $newTotalPrice = round($newQty * $unitPrice, 4);
+        $materialId = (int)$item['material_id'];
+
+        $this->db->begin_transaction();
+        try {
+            // Update purchase_order_items
+            $upStmt = $this->db->prepare("UPDATE {$this->itemTable} SET quantity = ?, total_price = ? WHERE id = ?");
+            $upStmt->bind_param('ddi', $newQty, $newTotalPrice, $itemId);
+            $upStmt->execute();
+
+            // Insert audit record
+            $logStmt = $this->db->prepare("
+                INSERT INTO po_item_qty_logs 
+                (purchase_order_id, purchase_order_item_id, material_id, old_quantity, new_quantity, unit_price, old_total_price, new_total_price, changed_by, reason)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $logStmt->bind_param(
+                'iiidddddis',
+                $poId,
+                $itemId,
+                $materialId,
+                $oldQty,
+                $newQty,
+                $unitPrice,
+                $oldTotalPrice,
+                $newTotalPrice,
+                $userId,
+                $reason
+            );
+            $logStmt->execute();
+
+            $this->db->commit();
+            return [
+                'success'         => true,
+                'old_quantity'    => $oldQty,
+                'new_quantity'    => $newQty,
+                'unit_price'      => $unitPrice,
+                'new_total_price' => $newTotalPrice,
+                'error'           => ''
+            ];
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
     }
 
     /**

@@ -253,6 +253,16 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
 
             <!-- Approval Actions (Management & Role 20 only, pending status) -->
             <?php if ($canApproveReq && $isPending): ?>
+            <?php
+            $refundAmtToCheck = (float)$refund['refund_amount'];
+            $isOver1LacRefund = ($refundAmtToCheck > 100000);
+            $isOpHeadApprovedRefund = (!empty($ahInfo['is_op_head_approved']) || ($ahInfo['op_head_status'] ?? '') === 'approved');
+            $userRoleRefund = (int)($_SESSION['user']['role_id'] ?? 0);
+            $roleNameRefund = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+            $isOpHeadUserRefund = (in_array($userRoleRefund, [20, 32], true) || str_contains($roleNameRefund, 'operation head'));
+            $isMgmtUserRefund = in_array($userRoleRefund, [1, 3], true);
+            $isMgmtLockedRefund = ($isOver1LacRefund && !$isOpHeadApprovedRefund && $isMgmtUserRefund && !$isOpHeadUserRefund);
+            ?>
             <div class="card custom-card border-0 shadow-sm mb-3" style="border-left: 4px solid #ffc107 !important; background: #fffdf5;">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center mb-2.5">
@@ -272,6 +282,12 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                         • কোম্পানি রিটেনশন: ৳ <?= number_format($refund['retention_amount'], 2) ?>
                     </div>
 
+                    <?php if ($isMgmtLockedRefund): ?>
+                        <div class="alert alert-warning mb-2" style="font-size: 12px;">
+                            <i class="fa-solid fa-lock me-1 text-warning"></i><strong>ম্যানেজমেন্ট অনুমোদন লক (> ৳১,০০,০০০):</strong> এই রিফান্ড রিকোয়েস্টটি ৳১,০০,০০০ এর অধিক হওয়ায় ম্যানেজমেন্ট অনুমোদনের পূর্বে <strong>অ্যাডমিন ও অপারেশন হেড (Role 20)</strong> এর ভেরিফিকেশন ও অনুমোদন আবশ্যক।
+                        </div>
+                    <?php endif; ?>
+
                     <form action="<?= $base_url ?>/client-refund-approve/<?= $refund['id'] ?>" method="POST" class="mb-2" id="approveForm">
                         <div class="mb-2">
                             <label class="form-label fw-bold small mb-1 text-danger">Retention Amount (কোম্পানি কর্তন ৳)</label>
@@ -281,9 +297,19 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                             <label class="form-label fw-bold small mb-1 text-success">Approved Refund Amount (অনুমোদিত রিফান্ড ৳)</label>
                             <input type="number" step="0.01" name="approved_amount" id="app_approved_amount" class="form-control form-control-sm fw-bold border-success text-success" value="<?= htmlspecialchars($refund['refund_amount']) ?>" min="0" max="<?= htmlspecialchars($refund['total_paid']) ?>" required>
                         </div>
-                        <button type="button" class="btn btn-success w-100 fw-bold btn-sm py-2 shadow-sm" onclick="confirmApproval()">
-                            <i class="bi bi-check-circle me-1"></i> Approve Refund
-                        </button>
+                        <?php if ($isMgmtLockedRefund): ?>
+                            <button type="button" class="btn btn-secondary w-100 fw-bold btn-sm py-2 disabled" title="Awaiting Admin & Operation Head approval">
+                                <i class="fa-solid fa-lock me-1"></i> Locked (> ৳১,০০,০০০)
+                            </button>
+                        <?php elseif ($isOver1LacRefund && !$isOpHeadApprovedRefund && $isOpHeadUserRefund): ?>
+                            <button type="button" class="btn btn-success w-100 fw-bold btn-sm py-2 shadow-sm" onclick="confirmApproval()">
+                                <i class="fa-solid fa-check-double me-1"></i> Verify &amp; Approve (Op Head)
+                            </button>
+                        <?php else: ?>
+                            <button type="button" class="btn btn-success w-100 fw-bold btn-sm py-2 shadow-sm" onclick="confirmApproval()">
+                                <i class="bi bi-check-circle me-1"></i> Approve Refund
+                            </button>
+                        <?php endif; ?>
                     </form>
                     <form action="<?= $base_url ?>/client-refund-reject/<?= $refund['id'] ?>" method="POST" id="rejectForm">
                         <button type="button" class="btn btn-outline-danger w-100 btn-sm" onclick="confirmRejection()">

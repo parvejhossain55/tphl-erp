@@ -101,7 +101,7 @@ class AdvanceSalaryController extends Controller
             session_start();
         }
 
-        $stmt = $this->db->prepare("SELECT status FROM advance_salaries WHERE id = ?");
+        $stmt = $this->db->prepare("SELECT id, status, amount FROM advance_salaries WHERE id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $curr = $stmt->get_result()->fetch_assoc();
@@ -126,10 +126,58 @@ class AdvanceSalaryController extends Controller
                 $_SESSION['flash_error'] = "Failed to approve Advance Salary.";
             }
         } elseif ($step === 'mgmt' && $curr['status'] === 'pending_accounts') {
+            $userRole = (int)($_SESSION['user']['role_id'] ?? 0);
+            $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+            $userId = (int)($_SESSION['user']['id'] ?? 0);
+            $amount = (float)($curr['amount'] ?? 0);
+            $isOver1Lac = ($amount > 100000);
+            $isOpHeadUser = (in_array($userRole, [20, 32], true) || str_contains($roleName, 'operation head'));
+            $isMgmtUser = in_array($userRole, [1, 3], true);
+
+            // Fetch approval request record
+            $arCheck = $this->db->query("SELECT id, op_head_status FROM approval_requests WHERE source_table = 'advance_salaries' AND source_id = " . (int)$id . " ORDER BY id DESC LIMIT 1");
+            $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
+            $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
+
+            if ($isOver1Lac) {
+                if ($isOpHeadUser && !$isMgmtUser) {
+                    $arId = (int)($arRow['id'] ?? 0);
+                    $escNote = $this->db->real_escape_string('Verified and approved by Admin & Operation Head');
+                    if (!class_exists('ApprovalRequest')) {
+                        require_once __DIR__ . '/../models/ApprovalRequest.php';
+                    }
+                    $approvalModel = new \ApprovalRequest($this->db);
+                    if ($arId > 0) {
+                        $approvalModel->approveOperationHead($arId, $userId, $escNote);
+                    } else {
+                        $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table = 'advance_salaries' AND source_id = " . (int)$id);
+                    }
+                    $_SESSION['flash_success'] = "Advance Salary verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for sign-off.";
+                    if (!empty($_GET['redirect']) && $_GET['redirect'] === 'home') {
+                        header("Location: " . $GLOBALS['base_url'] . "/hrm-dashboard");
+                    } else {
+                        header("Location: " . $GLOBALS['base_url'] . "/advance-salary");
+                    }
+                    exit;
+                }
+
+                if ($isMgmtUser) {
+                    if ($opHeadStatus !== 'approved') {
+                        $_SESSION['flash_error'] = "Access Denied: Advance Salary exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.";
+                        if (!empty($_GET['redirect']) && $_GET['redirect'] === 'home') {
+                            header("Location: " . $GLOBALS['base_url'] . "/hrm-dashboard");
+                        } else {
+                            header("Location: " . $GLOBALS['base_url'] . "/advance-salary");
+                        }
+                        exit;
+                    }
+                }
+            }
+
             if ($this->model->updateStatus($id, 'approved')) {
                 // Also update the approval_requests table so the notification goes away
-                $this->db->query("UPDATE approval_requests SET status='approved' WHERE source_table='advance_salaries' AND source_id={$id} AND status='pending'");
-                $_SESSION['flash_success'] = "Advance Salary approved by Management. Ready for Payment.";
+                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', status='approved', approve_role='accounts_head', accounts_head_status='pending' WHERE source_table='advance_salaries' AND source_id={$id}");
+                $_SESSION['flash_success'] = "Advance Salary approved by Management. Ready for Accounts Head sign-off & Payment.";
             } else {
                 $_SESSION['flash_error'] = "Failed to approve by Accounts.";
             }

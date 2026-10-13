@@ -356,25 +356,31 @@ class ApiController extends Controller
                         ];
                     }
 
-                    if ($vStatus !== 'rejected') {
-                        $totalPaid += $amt;
+                    $isEmiDiscount = (!empty($p['is_emi_discount']) && (int)$p['is_emi_discount'] === 1);
 
-                        if ($ptype === 'booking_money') $bookingMoneyPaid += $amt;
-                        else if ($ptype === 'registration') $registrationPaid += $amt;
-                        else if ($ptype === 'mutation_cost') $mutationCostPaid += $amt;
-                        else if ($ptype === 'development_charge') $devChargePaid += $amt;
-                        else if (in_array($ptype, ['emi', 'emi_due_settlement'])) {
-                            $emiPaid += $amt;
-                            $totalServiceFee += (float)$p['service_fee'];
+                    if ($vStatus !== 'rejected') {
+                        if ($isEmiDiscount) {
+                            $bulkEmiDiscount += $amt;
+                        } else {
+                            $totalPaid += $amt;
+
+                            if ($ptype === 'booking_money') $bookingMoneyPaid += $amt;
+                            else if ($ptype === 'registration') $registrationPaid += $amt;
+                            else if ($ptype === 'mutation_cost') $mutationCostPaid += $amt;
+                            else if ($ptype === 'development_charge') $devChargePaid += $amt;
+                            else if (in_array($ptype, ['emi', 'emi_due_settlement'])) {
+                                $emiPaid += $amt;
+                                $totalServiceFee += (float)$p['service_fee'];
+                            }
+                            else if ($ptype === 'land_share') $additionalLandSharePaid += $amt;
                         }
-                        else if ($ptype === 'land_share') $additionalLandSharePaid += $amt;
 
                         $totalDueEmi += (float)$p['due_emi_amount'];
                         $bulkEmiDiscount += (float)$p['bulk_emi_discount'];
                         $penaltyCharged += (float)$p['penalty_amount'];
 
                         if ($vStatus !== 'verified') {
-                            if (in_array($ptype, ['emi', 'emi_due_settlement'])) {
+                            if (in_array($ptype, ['emi', 'emi_due_settlement']) && !$isEmiDiscount) {
                                 $unverifiedEmiPaid += $amt;
                             }
                         }
@@ -384,7 +390,7 @@ class ApiController extends Controller
                 }
             }
 
-            $totalDue = $totalPayable - $totalPaid;
+            $totalDue = max(0, $totalPayable - $totalPaid - $bulkEmiDiscount);
 
             $landShareTarget = $flat ? (float)$flat['land_share_value'] : 0;
             $devChargeTarget = $flat ? (float)$flat['development_charges'] : 0;
@@ -415,7 +421,7 @@ class ApiController extends Controller
             // EMI History Breakdown Query
             $emiHistory = [];
             $emiQuery = $this->db->query("
-                SELECT lp.id, lp.amount, lp.payment_date, lp.payment_type, lp.verification_status, 
+                SELECT lp.id, lp.amount, lp.payment_date, lp.payment_type, lp.verification_status, lp.is_emi_discount, 
                        es.emi_no, es.due_date, es.emi_amount as target_amount
                 FROM lead_payments lp 
                 LEFT JOIN emi_schedules es ON lp.id = es.lead_payment_id 
@@ -448,7 +454,77 @@ class ApiController extends Controller
                         "payment_date" => $row['payment_date'] ?: 'N/A',
                         "emi_number" => $row['emi_no'] ? (int)$row['emi_no'] : null,
                         "due_date" => $row['due_date'] ?: 'N/A',
-                        "verification_status" => $row['verification_status']
+                        "verification_status" => $row['verification_status'],
+                        "is_discount" => (!empty($row['is_emi_discount']) && (int)$row['is_emi_discount'] === 1)
+                    ];
+                }
+            }
+
+            // Check if discount entries already exist in history
+            $hasDiscountInHistory = false;
+            foreach ($emiHistory as $eh) {
+                if (!empty($eh['is_discount'])) {
+                    $hasDiscountInHistory = true;
+                    break;
+                }
+            }
+
+            // If discount exists (bulk_emi_discount) but not broken down into payment rows
+            if (!$hasDiscountInHistory && $bulkEmiDiscount > 0) {
+                $remDiscount = $bulkEmiDiscount;
+
+                // A. Settle outstanding due_amount on prior EMIs
+                foreach ($emiHistory as &$ehItem) {
+                    if ($remDiscount <= 0) break;
+                    if (!empty($ehItem['due_amount']) && (float)$ehItem['due_amount'] > 0) {
+                        $settleAmt = min($remDiscount, (float)$ehItem['due_amount']);
+                        $ehItem['due_amount'] = max(0, (float)$ehItem['due_amount'] - $settleAmt);
+                        $remDiscount -= $settleAmt;
+                        $totalDueEmi = max(0, $totalDueEmi - $settleAmt);
+
+                        $emiHistory[] = [
+                            "payment_id" => "disc_settle_" . $ehItem['payment_id'],
+                            "payment_type" => "emi_due_settlement",
+                            "target_amount" => 0,
+                            "amount_paid" => $settleAmt,
+                            "due_amount" => 0,
+                            "payment_date" => $ehItem['payment_date'],
+                            "emi_number" => $ehItem['emi_number'],
+                            "due_date" => $ehItem['due_date'],
+                            "verification_status" => "verified",
+                            "is_discount" => true
+                        ];
+                    }
+                }
+                unset($ehItem);
+
+                // B. Sequentially apply remaining discount to subsequent EMIs
+                while ($remDiscount > 0 && $perEmiAmount > 0) {
+                    $nextEmi = $completedEmiCount + 1;
+                    if ($remDiscount >= $perEmiAmount) {
+                        $paidThis = $perEmiAmount;
+                        $dueThis = 0;
+                        $remDiscount -= $perEmiAmount;
+                        $completedEmiCount++;
+                    } else {
+                        $paidThis = $remDiscount;
+                        $dueThis = $perEmiAmount - $paidThis;
+                        $totalDueEmi += $dueThis;
+                        $remDiscount = 0;
+                        $completedEmiCount++;
+                    }
+
+                    $emiHistory[] = [
+                        "payment_id" => "disc_emi_" . $nextEmi,
+                        "payment_type" => "emi",
+                        "target_amount" => $perEmiAmount,
+                        "amount_paid" => $paidThis,
+                        "due_amount" => $dueThis,
+                        "payment_date" => date('Y-m-d'),
+                        "emi_number" => $nextEmi,
+                        "due_date" => "N/A",
+                        "verification_status" => "verified",
+                        "is_discount" => true
                     ];
                 }
             }
@@ -475,6 +551,8 @@ class ApiController extends Controller
                     "total_price" => $totalPayable,
                     "total_paid" => $totalPaid,
                     "total_due" => $totalDue,
+                    "approved_emi_discount" => $bulkEmiDiscount,
+                    "total_emi_discount_amount" => $bulkEmiDiscount,
                     "land_share_info" => [
                         "total_land_share_amount" => $landShareTarget,
                         "booking_money_paid" => $bookingMoneyPaid,
@@ -504,6 +582,9 @@ class ApiController extends Controller
                         "verified_emi_amount_paid" => $emiPaid,
                         "unverified_emi_amount_paid" => $unverifiedEmiPaid,
                         "due_emi_amount" => $totalDueEmi,
+                        "approved_emi_discount" => $bulkEmiDiscount,
+                        "total_emi_discount_amount" => $bulkEmiDiscount,
+                        "remaining_construction_fee" => max(0, $constructionFee - $emiPaid - $bulkEmiDiscount),
                         "total_service_fee_paid" => $totalServiceFee,
                         
                         "penalty_info" => [
@@ -761,25 +842,34 @@ class ApiController extends Controller
             $devChargePaid = 0;
             $emiPaid = 0;
             $totalServiceFee = 0;
+            $bulkEmiDiscount = 0;
 
             $pRes = $this->db->query("SELECT * FROM lead_payments WHERE booking_id = $bookingId AND payment_status IN ('paid', 'partially_paid', 'pending') AND (verification_status != 'rejected' OR verification_status IS NULL)");
             if ($pRes) {
                 while ($p = $pRes->fetch_assoc()) {
                     $amt = (float)$p['amount'];
-                    $totalPaid += $amt;
-                    if ($p['payment_type'] === 'booking_money') $bookingMoneyPaid += $amt;
-                    if (in_array($p['payment_type'], ['booking_money', 'registration', 'mutation_cost', 'land_share'])) {
-                        $landSharePaid += $amt;
+                    $isDiscount = (!empty($p['is_emi_discount']) && (int)$p['is_emi_discount'] === 1);
+                    if ($isDiscount) {
+                        $bulkEmiDiscount += $amt;
+                    } else {
+                        $totalPaid += $amt;
+                        if ($p['payment_type'] === 'booking_money') $bookingMoneyPaid += $amt;
+                        if (in_array($p['payment_type'], ['booking_money', 'registration', 'mutation_cost', 'land_share'])) {
+                            $landSharePaid += $amt;
+                        }
+                        if ($p['payment_type'] === 'development_charge') $devChargePaid += $amt;
+                        if (in_array($p['payment_type'], ['emi', 'emi_due_settlement'])) {
+                            $emiPaid += $amt;
+                            $totalServiceFee += (float)($p['service_fee'] ?? 0);
+                        }
                     }
-                    if ($p['payment_type'] === 'development_charge') $devChargePaid += $amt;
-                    if (in_array($p['payment_type'], ['emi', 'emi_due_settlement'])) {
-                        $emiPaid += $amt;
-                        $totalServiceFee += (float)($p['service_fee'] ?? 0);
+                    if (!empty($p['bulk_emi_discount']) && (float)$p['bulk_emi_discount'] > 0) {
+                        $bulkEmiDiscount += (float)$p['bulk_emi_discount'];
                     }
                 }
             }
 
-            $totalDue = max(0, $totalPayable - $totalPaid);
+            $totalDue = max(0, $totalPayable - $totalPaid - $bulkEmiDiscount);
 
             // Project-wise camera resolution from cameras table
             $projectVideoLink1 = '';
@@ -824,6 +914,8 @@ class ApiController extends Controller
                 "partial_payment"      => number_format($totalPaid),
                 "due_payment"          => number_format($totalDue),
                 "discount"             => $discountAmount ? number_format($discountAmount) : '',
+                "approved_emi_discount"=> $bulkEmiDiscount ? number_format($bulkEmiDiscount) : '0',
+                "total_emi_discount_amount"=> $bulkEmiDiscount ? number_format($bulkEmiDiscount) : '0',
                 "emi_per_month"        => '',
                 "total_emi_paid"       => $emiPaid ? number_format($emiPaid) : '',
                 "remaining_emi"        => '',

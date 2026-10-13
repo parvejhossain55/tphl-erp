@@ -516,14 +516,36 @@ class CashoutRequestController extends Controller
         } else {
             // Management / Operation Head approval
             $reqAmount = (float)($request['amount'] ?? 0);
+            $isOver1Lac = ($reqAmount > 100000.01);
+            $approvalRequest = $this->cashoutModel->getApprovalRequest($requestId);
+
             if (!$this->canApproveOrReject($reqAmount)) {
-                if ($this->isSiteOperator() && $reqAmount > 100000) {
-                    setError("Access Denied: Amount exceeds ৳1,00,000 threshold. Full Management approval required.");
-                } else {
-                    setError("Access Denied: Only authorized approvers can approve requests.");
-                }
+                setError("Access Denied: Only authorized approvers can approve requests.");
                 header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
                 exit;
+            }
+
+            if ($isOver1Lac && $this->isSiteOperator() && !$this->isManagementUser()) {
+                // Operation Head is approving the > 1L prerequisite step
+                $approvalNote = trim($_POST['approval_note'] ?? 'Approved by Admin & Operation Head');
+                $arId = (int)($approvalRequest['id'] ?? 0);
+                if ($arId) {
+                    $this->approvalModel->approveOperationHead($arId, $this->userId, $approvalNote);
+                } else {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$this->db->real_escape_string($approvalNote)}', approve_role = 'management' WHERE source_table = 'cashout_requests' AND source_id = {$requestId}");
+                }
+                setSuccess("Request approved by Admin & Operation Head (Role 20). Forwarded to Management for final sign-off.");
+                header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
+                exit;
+            }
+
+            if ($isOver1Lac && $this->isManagementUser()) {
+                $opStatus = strtolower($approvalRequest['op_head_status'] ?? 'pending');
+                if ($opStatus !== 'approved') {
+                    setError("Access Denied: Requests exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+                    header("Location: {$GLOBALS['base_url']}/view-cashout-request?id=" . $requestId);
+                    exit;
+                }
             }
 
             if ($request['display_status'] === 'approved' || ($request['status'] ?? '') === 'approved') {
@@ -805,10 +827,7 @@ class CashoutRequestController extends Controller
         }
 
         if ($this->isSiteOperator()) {
-            if ($amount === null) {
-                return true;
-            }
-            return ((float) $amount <= 100000.01);
+            return true;
         }
 
         return false;

@@ -654,6 +654,15 @@ $show_breadcrumb = true;
                             </select>
                         </div>
 
+                        <div class="mb-3" id="modalFollowupCallStatusGroup">
+                            <label class="form-label fs-13 font-semibold text-muted">Call Status</label>
+                            <select id="modalFollowupCallStatus" class="form-select form-select-sm">
+                                <option value="">Select Call Status</option>
+                                <option value="Incoming">Incoming</option>
+                                <option value="Outgoing">Outgoing</option>
+                            </select>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label fs-13 font-semibold text-muted">Reason for Activity <span class="text-danger">*</span></label>
                             <select id="modalFollowupActivityReason" class="form-select form-select-sm">
@@ -1380,6 +1389,7 @@ $show_breadcrumb = true;
                                     <div class="mb-2" style="font-size:12px; color:#475569;">
                                         ${note.activity_date ? `<span><i class="fa-light fa-calendar me-1"></i>${escapeHtml(note.activity_date)}</span>` : ''}
                                         ${note.activity_mode ? `<span class="ms-3"><i class="fa-light fa-phone-volume me-1"></i>${escapeHtml(note.activity_mode)}</span>` : ''}
+                                        ${note.call_status ? `<span class="ms-2 badge ${note.call_status.toLowerCase() === 'incoming' ? 'bg-success text-white' : 'bg-primary text-white'}" style="font-size:10px;"><i class="fa-light ${note.call_status.toLowerCase() === 'incoming' ? 'fa-arrow-down-left' : 'fa-arrow-up-right'} me-1"></i>${escapeHtml(note.call_status)}</span>` : ''}
                                         ${note.activity_reason ? `<span class="ms-3"><i class="fa-light fa-bullseye me-1"></i>${escapeHtml(note.activity_reason)}</span>` : ''}
                                     </div>
                                     <p class="mb-2 text-dark fs-13 fw-medium">${escapeHtml(note.note || '')}</p>
@@ -1407,6 +1417,7 @@ $show_breadcrumb = true;
         const note = $('#modalFollowupNoteInput').val().trim();
         const activityDate = $('#modalFollowupActivityDate').val();
         const activityMode = $('#modalFollowupActivityMode').val();
+        const callStatus = $('#modalFollowupCallStatus').val() || '';
         const activityReason = $('#modalFollowupActivityReason').val();
         
         if (!note || !activityDate || !activityMode || !activityReason) {
@@ -1427,6 +1438,7 @@ $show_breadcrumb = true;
                 note: note,
                 activity_date: activityDate,
                 activity_mode: activityMode,
+                call_status: callStatus,
                 activity_reason: activityReason
             },
             dataType: 'json',
@@ -1440,6 +1452,7 @@ $show_breadcrumb = true;
                         showConfirmButton: false
                     });
                     $('#modalFollowupNoteInput').val('');
+                    $('#modalFollowupCallStatus').val('');
                     loadClientEmiFollowups(bookingId);
                     
                     // Update count badge in real-time

@@ -376,8 +376,43 @@ class Con_LaborRequisitionController extends Controller
         $approvedAmount = (float)($_POST['approved_amount'] ?? 0);
         $note = trim($_POST['management_note'] ?? '');
         $finalApprovedAmount = $approvedAmount > 0 ? $approvedAmount : $baseAmount;
+        $isOver1Lac = ($finalApprovedAmount > 100000);
+        $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
+        $isMgmtUser = in_array((int)$this->userRole, [1, 3], true);
+
+        // Fetch approval request record
+        $arCheck = $this->db->query("SELECT id, op_head_status FROM approval_requests WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id . " ORDER BY id DESC LIMIT 1");
+        $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
+        $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
+
+        if ($isOver1Lac) {
+            if ($isOpHeadUser && !$isMgmtUser) {
+                $arId = (int)($arRow['id'] ?? 0);
+                $escNote = $this->db->real_escape_string($note ?: 'Verified and approved by Admin & Operation Head');
+                if (!class_exists('ApprovalRequest')) {
+                    require_once __DIR__ . '/../../models/ApprovalRequest.php';
+                }
+                $approvalModel = new \ApprovalRequest($this->db);
+                if ($arId > 0) {
+                    $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
+                } else {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id);
+                }
+                $_SESSION['success'] = "Labor requisition verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for sign-off.";
+                $this->back($id);
+            }
+
+            if ($isMgmtUser) {
+                if ($opHeadStatus !== 'approved') {
+                    $_SESSION['error'] = "Access Denied: Labor requisitions exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.";
+                    $this->back($id);
+                }
+            }
+        }
+
         if ($this->model->managementApprove((int)$id, $this->userId, $finalApprovedAmount, $note)) {
             $this->syncToApprovalRequests((int)$id, 'approved', $finalApprovedAmount, $note);
+            $this->db->query("UPDATE approval_requests SET op_head_status = 'approved' WHERE source_table = 'con_labor_requisitions' AND source_id = " . (int)$id);
             $_SESSION['success'] = 'Labor requisition approved for ৳' . number_format($finalApprovedAmount, 2) . '. Ready for payment by Accounts.';
         } else {
             $_SESSION['error'] = 'Failed to approve labor requisition.';

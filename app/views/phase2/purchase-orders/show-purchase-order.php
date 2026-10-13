@@ -10,6 +10,8 @@ $canApproveQC   = $canApproveQC ?? false;
 $canApproveMgmt = $canApproveMgmt ?? false;
 $currentRoleId  = $currentRoleId ?? 0;
 $linkedBoq      = $linkedBoq ?? null;
+$canEditItemQty = $canEditItemQty ?? false;
+$qtyLogs        = $qtyLogs ?? [];
 
 $statusBadge = [
   'Issued'             => ['bg' => 'rgba(59,130,246,.15)',  'color' => '#2563eb', 'label' => 'Issued'],
@@ -285,38 +287,54 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
 
     <!-- Order Items -->
     <div class="po-panel">
-      <div class="po-panel-title">
-        <div class="po-dot" style="background:#3b82f6"></div>
-        Order Items
+      <div class="po-panel-title d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <div class="po-dot" style="background:#3b82f6"></div>
+          <span>Order Items</span>
+          <span class="badge bg-light text-muted border ms-1" style="font-size:10px;"><?= count($items) ?> item(s)</span>
+        </div>
+        <?php if ($canEditItemQty): ?>
+          <span style="font-size:11px; color:#64748b; font-weight:600;">
+            <i class="fal fa-info-circle text-primary me-1"></i>Approvers can adjust quantity directly per item below. Amount recalculates on CST rates.
+          </span>
+        <?php endif; ?>
       </div>
       <div class="table-responsive">
         <table class="table table-striped table-bordered align-middle mb-0">
           <thead class="table-dark">
             <tr>
-              <th>#</th>
+              <th style="width:30px;">#</th>
               <th>Material</th>
-              <th>Vendor</th>
+              <th>Vendor (CST Selected)</th>
               <th>Unit</th>
               <th class="text-end">Site Stock</th>
               <th class="text-end">3-Mo Req.</th>
-              <th class="text-end">Order Qty</th>
-              <th class="text-end">Unit Price</th>
-              <th class="text-end">Total</th>
+              <th class="text-end text-info-emphasis">PR Qty</th>
+              <th class="text-end text-warning-emphasis">PO Order Qty</th>
+              <th class="text-end">CST Unit Price</th>
+              <th class="text-end">Total Amount</th>
+              <?php if ($canEditItemQty): ?>
+                <th class="text-center" style="width:105px;">Action</th>
+              <?php endif; ?>
             </tr>
           </thead>
           <tbody>
             <?php $grandTotal = 0;
             foreach ($items as $i => $item):
               $lt = $item['quantity'] * $item['unit_price'];
-              $grandTotal += $lt; ?>
+              $grandTotal += $lt; 
+              $isQtyDifferent = (abs((float)$item['quantity'] - (float)($item['pr_quantity'] ?? 0)) > 0.0001);
+            ?>
               <tr>
                 <td><?= $i + 1 ?></td>
                 <td>
-                  <span class="fw-bold"><?= htmlspecialchars($item['material_name']) ?></span>
+                  <span class="fw-bold text-dark"><?= htmlspecialchars($item['material_name']) ?></span>
                   <br><small class="text-muted">[Category: <?= htmlspecialchars($item['category_name'] ?? 'Uncategorized') ?>]</small>
                 </td>
-                <td><?= htmlspecialchars($item['vendor_name']) ?></td>
-                <td><?= htmlspecialchars($item['unit']) ?></td>
+                <td>
+                  <span class="fw-semibold text-primary"><?= htmlspecialchars($item['vendor_name']) ?></span>
+                </td>
+                <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($item['unit']) ?></span></td>
                 <td class="text-end">
                   <span class="badge bg-light text-dark border">
                     <?= number_format((float)($item['current_stock'] ?? 0), 3) ?>
@@ -331,21 +349,110 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
                     <span class="text-muted">—</span>
                   <?php endif; ?>
                 </td>
-                <td class="text-end fw-bold"><?= number_format($item['quantity'], 3) ?></td>
+                <td class="text-end fw-semibold text-secondary">
+                  <?= number_format((float)($item['pr_quantity'] ?? 0), 3) ?>
+                </td>
+                <td class="text-end">
+                  <span class="fw-bold fs-6 <?= $isQtyDifferent ? 'text-primary' : 'text-dark' ?>">
+                    <?= number_format($item['quantity'], 3) ?>
+                  </span>
+                  <?php if (!empty($item['edit_count']) && $item['edit_count'] > 0): ?>
+                    <div class="mt-1">
+                      <span class="badge bg-warning-subtle text-dark border border-warning" style="font-size:9.5px; cursor:help;" title="Quantity was adjusted <?= $item['edit_count'] ?> time(s). Last edited by <?= htmlspecialchars($item['last_edited_by_name'] ?? 'Approver') ?> on <?= !empty($item['last_edited_at']) ? date('d M Y, h:i A', strtotime($item['last_edited_at'])) : '' ?>">
+                        <i class="fal fa-history me-1 text-warning"></i> Adjusted (<?= htmlspecialchars($item['last_edited_by_name'] ?? 'Approver') ?>)
+                      </span>
+                    </div>
+                  <?php endif; ?>
+                </td>
                 <td class="text-end">৳ <?= number_format($item['unit_price'], 2) ?></td>
-                <td class="text-end fw-bold">৳ <?= number_format($lt, 2) ?></td>
+                <td class="text-end fw-bold text-dark">৳ <?= number_format($lt, 2) ?></td>
+                <?php if ($canEditItemQty): ?>
+                  <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-outline-primary fw-bold btn-edit-qty"
+                            style="font-size:11px; border-radius:8px; padding:4px 10px;"
+                            data-item-id="<?= $item['id'] ?>"
+                            data-material-name="<?= htmlspecialchars($item['material_name']) ?>"
+                            data-unit="<?= htmlspecialchars($item['unit']) ?>"
+                            data-vendor-name="<?= htmlspecialchars($item['vendor_name']) ?>"
+                            data-pr-qty="<?= (float)($item['pr_quantity'] ?? 0) ?>"
+                            data-current-qty="<?= (float)$item['quantity'] ?>"
+                            data-unit-price="<?= (float)$item['unit_price'] ?>">
+                      <i class="fal fa-edit me-1"></i> Edit Qty
+                    </button>
+                  </td>
+                <?php endif; ?>
               </tr>
             <?php endforeach; ?>
           </tbody>
           <tfoot class="table-light">
             <tr>
-              <th colspan="8" class="text-end py-3">TOTAL ORDER VALUE:</th>
+              <th colspan="<?= $canEditItemQty ? '9' : '8' ?>" class="text-end py-3">TOTAL ORDER VALUE:</th>
               <th class="text-end py-3 fs-5 text-primary">৳ <?= number_format($grandTotal, 2) ?></th>
+              <?php if ($canEditItemQty): ?><th></th><?php endif; ?>
             </tr>
           </tfoot>
         </table>
       </div>
     </div>
+
+    <!-- Quantity Adjustment & Approver Audit Log Panel -->
+    <?php if (!empty($qtyLogs)): ?>
+    <div class="po-panel" style="border-left: 4px solid #f59e0b; background: rgba(245, 158, 11, .02);">
+      <div class="po-panel-title">
+        <div class="po-dot" style="background:#f59e0b"></div>
+        Quantity Adjustment & Approver Audit Log
+        <span class="badge bg-warning text-dark ms-auto" style="font-size:10px; font-weight:700;">
+          <?= count($qtyLogs) ?> Adjustment(s) Recorded
+        </span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-bordered align-middle mb-0" style="font-size:12px;">
+          <thead class="table-light">
+            <tr>
+              <th style="width:130px;">Date & Time</th>
+              <th>Adjusted By</th>
+              <th>Material</th>
+              <th class="text-end">Previous Qty</th>
+              <th class="text-end">New Qty</th>
+              <th class="text-center">Delta</th>
+              <th class="text-end">CST Unit Rate</th>
+              <th class="text-end">Old Total</th>
+              <th class="text-end">New Total</th>
+              <th>Reason / Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($qtyLogs as $log): 
+              $diff = (float)$log['new_quantity'] - (float)$log['old_quantity'];
+            ?>
+              <tr>
+                <td class="text-muted"><?= date('d M Y, h:i A', strtotime($log['created_at'])) ?></td>
+                <td>
+                  <span class="fw-bold text-dark"><i class="fal fa-user-edit me-1 text-primary"></i><?= htmlspecialchars($log['changed_by_name'] ?? 'User') ?></span>
+                  <br><span class="badge bg-light text-muted border" style="font-size:9.5px;"><?= htmlspecialchars($log['changed_by_role'] ?? 'Approver') ?></span>
+                </td>
+                <td>
+                  <span class="fw-bold"><?= htmlspecialchars($log['material_name'] ?? '—') ?></span>
+                  <span class="text-muted small">(<?= htmlspecialchars($log['unit'] ?? '') ?>)</span>
+                </td>
+                <td class="text-end text-muted"><?= number_format((float)$log['old_quantity'], 3) ?></td>
+                <td class="text-end fw-bold text-primary"><?= number_format((float)$log['new_quantity'], 3) ?></td>
+                <td class="text-center">
+                  <span class="badge <?= $diff > 0 ? 'bg-success-subtle text-success border border-success' : 'bg-danger-subtle text-danger border border-danger' ?>">
+                    <?= ($diff > 0 ? '+' : '') . number_format($diff, 3) ?>
+                  </span>
+                </td>
+                <td class="text-end">৳ <?= number_format((float)$log['unit_price'], 2) ?></td>
+                <td class="text-end text-muted">৳ <?= number_format((float)$log['old_total_price'], 2) ?></td>
+                <td class="text-end fw-bold text-dark">৳ <?= number_format((float)$log['new_total_price'], 2) ?></td>
+                <td class="text-muted" style="max-width:200px;"><?= !empty($log['reason']) ? htmlspecialchars($log['reason']) : '<span class="text-muted fst-italic">None</span>' ?></td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Delivery Tracker -->
     <div class="po-panel">
@@ -1515,6 +1622,187 @@ $sb = $statusBadge[$po['status']] ?? ['bg' => 'rgba(107,114,128,.15)', 'color' =
   }
 </script>
 
+</script>
+
+
+<!-- Modal: Adjust Item Quantity -->
+<div class="modal fade" id="editItemQtyModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:16px; border:none; box-shadow:0 15px 50px rgba(0,0,0,.2);">
+      <form action="<?= $base_url ?>/con-purchase-order-update-qty/<?= $po['id'] ?>" method="POST" id="editQtyForm">
+        <input type="hidden" name="item_id" id="modalItemId" value="">
+        <div class="modal-header border-0 pb-0">
+          <div class="d-flex align-items-center gap-2">
+            <div style="width:36px; height:36px; border-radius:10px; background:rgba(37,99,235,.12); color:#2563eb; display:flex; align-items:center; justify-content:center; font-size:16px;">
+              <i class="fal fa-balance-scale"></i>
+            </div>
+            <div>
+              <h5 class="modal-title fw-bold text-dark mb-0">Adjust Order Quantity</h5>
+              <div style="font-size:11.5px; color:#64748b;">Approver Quantity Revision & CST Recalculation</div>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body py-3">
+          <!-- Material & CST Vendor info card -->
+          <div class="p-3 rounded mb-3" style="background:#f8fafc; border:1px solid #e2e8f0;">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="text-muted small">Material:</span>
+              <span class="fw-bold text-dark" id="modalMatName">—</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="text-muted small">CST Selected Vendor:</span>
+              <span class="fw-bold text-primary" id="modalVendorName">—</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="text-muted small">Original PR Requisition Qty:</span>
+              <span class="badge bg-secondary-subtle text-secondary border fw-bold" id="modalPrQty">—</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="text-muted small">CST Quoted Unit Price:</span>
+              <span class="fw-bold text-success" id="modalUnitPrice">—</span>
+            </div>
+          </div>
+
+          <!-- Quantity Input -->
+          <div class="mb-3">
+            <label class="form-label fw-bold small text-dark d-flex justify-content-between align-items-center">
+              <span>New Order Quantity <span class="text-danger">*</span></span>
+              <span class="text-muted fw-normal" style="font-size:11px;">Current: <span id="modalCurrentQty" class="fw-bold text-dark"></span></span>
+            </label>
+            <div class="input-group">
+              <button type="button" class="btn btn-outline-secondary" id="btnQtyMinus" style="border-radius:10px 0 0 10px;">
+                <i class="fal fa-minus"></i>
+              </button>
+              <input type="number" step="0.001" min="0.001" name="new_quantity" id="modalNewQtyInput" class="form-control text-center fw-bold fs-5" required>
+              <span class="input-group-text fw-bold text-muted" id="modalUnitLabel">unit</span>
+              <button type="button" class="btn btn-outline-secondary" id="btnQtyPlus" style="border-radius:0 10px 10px 0;">
+                <i class="fal fa-plus"></i>
+              </button>
+            </div>
+            <div class="d-flex gap-2 mt-2">
+              <button type="button" class="btn btn-xs btn-outline-secondary flex-fill py-1" id="btnResetToPR" style="font-size:10.5px; border-radius:6px;">
+                <i class="fal fa-undo me-1"></i> Reset to Original PR Qty
+              </button>
+            </div>
+          </div>
+
+          <!-- Live Recalculation Preview Box -->
+          <div class="p-3 rounded mb-3" style="background:rgba(37,99,235,.04); border:1.5px dashed rgba(37,99,235,.3);">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="small text-muted">Recalculated Line Total:</span>
+              <span class="fs-6 fw-bold text-primary" id="modalNewTotalAmount">৳ 0.00</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="small text-muted">Amount Variance:</span>
+              <span class="small fw-bold" id="modalVarianceAmount">৳ 0.00</span>
+            </div>
+          </div>
+
+          <!-- Reason / Note -->
+          <div class="mb-2">
+            <label class="form-label fw-bold small text-dark">Revision Reason / Note <span class="text-muted fw-normal">(Optional)</span></label>
+            <textarea name="adjustment_reason" class="form-control" rows="2" placeholder="e.g. Reduced based on current site stock inspection, revised requirement..." style="font-size:12px; border-radius:10px;"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600;">Cancel</button>
+          <button type="submit" class="btn btn-primary text-white" style="border-radius:10px; font-weight:700;">
+            <i class="fal fa-check-circle me-1"></i> Save & Recalculate
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentUnitPrice = 0;
+    let currentOriginalQty = 0;
+    let originalPrQty = 0;
+
+    const modal = document.getElementById('editItemQtyModal');
+    const inputQty = document.getElementById('modalNewQtyInput');
+    const totalDisplay = document.getElementById('modalNewTotalAmount');
+    const varianceDisplay = document.getElementById('modalVarianceAmount');
+
+    function recalculate() {
+        const val = parseFloat(inputQty.value) || 0;
+        const total = val * currentUnitPrice;
+        totalDisplay.textContent = '৳ ' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+        const diff = (val - currentOriginalQty) * currentUnitPrice;
+        if (Math.abs(diff) < 0.01) {
+            varianceDisplay.textContent = '৳ 0.00 (No Change)';
+            varianceDisplay.className = 'small fw-bold text-muted';
+        } else if (diff > 0) {
+            varianceDisplay.textContent = '+ ৳ ' + diff.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' (Increase)';
+            varianceDisplay.className = 'small fw-bold text-success';
+        } else {
+            varianceDisplay.textContent = '- ৳ ' + Math.abs(diff).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' (Decrease)';
+            varianceDisplay.className = 'small fw-bold text-danger';
+        }
+    }
+
+    document.querySelectorAll('.btn-edit-qty').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const itemId = this.getAttribute('data-item-id');
+            const matName = this.getAttribute('data-material-name');
+            const unit = this.getAttribute('data-unit');
+            const vendorName = this.getAttribute('data-vendor-name');
+            originalPrQty = parseFloat(this.getAttribute('data-pr-qty')) || 0;
+            currentOriginalQty = parseFloat(this.getAttribute('data-current-qty')) || 0;
+            currentUnitPrice = parseFloat(this.getAttribute('data-unit-price')) || 0;
+
+            document.getElementById('modalItemId').value = itemId;
+            document.getElementById('modalMatName').textContent = matName + ' (' + unit + ')';
+            document.getElementById('modalVendorName').textContent = vendorName;
+            document.getElementById('modalPrQty').textContent = originalPrQty.toFixed(3) + ' ' + unit;
+            document.getElementById('modalUnitPrice').textContent = '৳ ' + currentUnitPrice.toFixed(2);
+            document.getElementById('modalCurrentQty').textContent = currentOriginalQty.toFixed(3) + ' ' + unit;
+            document.getElementById('modalUnitLabel').textContent = unit;
+
+            inputQty.value = currentOriginalQty;
+            recalculate();
+
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+        });
+    });
+
+    if (inputQty) {
+        inputQty.addEventListener('input', recalculate);
+    }
+
+    const btnMinus = document.getElementById('btnQtyMinus');
+    if (btnMinus) {
+        btnMinus.addEventListener('click', function() {
+            let val = parseFloat(inputQty.value) || 0;
+            if (val > 1) {
+                inputQty.value = (val - 1).toFixed(3);
+                recalculate();
+            }
+        });
+    }
+
+    const btnPlus = document.getElementById('btnQtyPlus');
+    if (btnPlus) {
+        btnPlus.addEventListener('click', function() {
+            let val = parseFloat(inputQty.value) || 0;
+            inputQty.value = (val + 1).toFixed(3);
+            recalculate();
+        });
+    }
+
+    const btnReset = document.getElementById('btnResetToPR');
+    if (btnReset) {
+        btnReset.addEventListener('click', function() {
+            inputQty.value = originalPrQty.toFixed(3);
+            recalculate();
+        });
+    }
+});
 </script>
 
 </div><!-- /.po-screen-container -->

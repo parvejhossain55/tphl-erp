@@ -56,7 +56,34 @@ $showPaymentForm = $canPayReq;
 $netPayable = (float) ($request['net_payable'] ?? 0);
 $approvedAmtSoFar = (float) ($request['approved_amount'] ?? 0);
 $unapprovedAmt = max(0, $netPayable - $approvedAmtSoFar);
-$canApproveReq = ($canApprove ?? false) && ($isSubmitted || $isQCApproved || ($isApproved && $unapprovedAmt > 0.01));
+
+$isOver1Lac = ($netPayable > 100000);
+$isOpHeadUser = (in_array((int)$userRole, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false);
+$isMgmtUser = in_array((int)$userRole, [1, 3], true);
+$isOpHeadApproved = !empty($ahInfo['is_op_head_approved']);
+
+$isOpHeadAction = false;
+$isMgmtLocked = false;
+
+if ($isOver1Lac) {
+    if (!$isOpHeadApproved) {
+        if ($isOpHeadUser && !$isMgmtUser) {
+            $canApproveReq = ($isSubmitted || $isQCApproved || ($isApproved && $unapprovedAmt > 0.01));
+            $isOpHeadAction = true;
+        } else {
+            $canApproveReq = false;
+            $isMgmtLocked = $isMgmtUser;
+        }
+    } else {
+        if ($isMgmtUser) {
+            $canApproveReq = ($isSubmitted || $isQCApproved || ($isApproved && $unapprovedAmt > 0.01));
+        } else {
+            $canApproveReq = false;
+        }
+    }
+} else {
+    $canApproveReq = ($canApprove ?? false) && ($isSubmitted || $isQCApproved || ($isApproved && $unapprovedAmt > 0.01));
+}
 $canReject = ($canApproveReq && $isSubmitted) || ($canApproveReq && $isQCApproved);
 
 // Payment type badge
@@ -1502,14 +1529,34 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
             </div>
         <?php endif; ?>
 
-        <!-- Approval Actions (Management) -->
-        <?php if ($canApproveReq): ?>
-            <div class="card custom-card border-warning mb-0 shadow-sm">
+        <!-- Management Approval Locked Banner for > 1 Lac -->
+        <?php if ($isMgmtLocked): ?>
+            <div class="card custom-card border-warning mb-3 shadow-sm">
                 <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center justify-content-between">
-                    <h6 class="card-title mb-0 fw-bold">
-                        <i class="bi bi-shield-lock me-2"></i><?= ($isApproved) ? 'Additional Approval Action' : 'Management Final Approval Action' ?>
+                    <h6 class="card-title mb-0 fw-bold text-warning">
+                        <i class="bi bi-lock-fill me-2"></i>Management Approval Locked (&gt; ৳1,00,000)
                     </h6>
-                    <span class="badge bg-warning text-dark">Step 2 of 3</span>
+                    <span class="badge bg-warning text-dark">Awaiting Op Head</span>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0 text-muted small">
+                        This request exceeds <strong>৳1,00,000</strong>. In accordance with policy, <strong>Admin & Operation Head (Role 20)</strong> must verify and approve this request first before Management sign-off.
+                    </p>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <!-- Approval Actions (Operation Head / Management) -->
+        <?php if ($canApproveReq): ?>
+            <div class="card custom-card <?= $isOpHeadAction ? 'border-primary' : 'border-warning' ?> mb-0 shadow-sm">
+                <div class="card-header <?= $isOpHeadAction ? 'bg-primary bg-opacity-10' : 'bg-warning bg-opacity-10' ?> d-flex align-items-center justify-content-between">
+                    <h6 class="card-title mb-0 fw-bold">
+                        <i class="bi <?= $isOpHeadAction ? 'bi-shield-check text-primary' : 'bi-shield-lock' ?> me-2"></i>
+                        <?= $isOpHeadAction ? 'Operation Head Verification Action (Step 1 of 3)' : (($isApproved) ? 'Additional Approval Action' : 'Management Final Approval Action') ?>
+                    </h6>
+                    <span class="badge <?= $isOpHeadAction ? 'bg-primary' : 'bg-warning text-dark' ?>">
+                        <?= $isOpHeadAction ? 'Step 1 of 3' : 'Step 2 of 3' ?>
+                    </span>
                 </div>
                 <div class="card-body">
                     <!-- Management Approval Form -->
@@ -1556,9 +1603,9 @@ $prAttUrl = !empty($prAttachment) ? $resolveAttUrl($prAttachment, 'purchase_requ
                             <textarea name="approval_note" class="form-control" rows="2"
                                 placeholder="Leave a note..."></textarea>
                         </div>
-                        <button type="button" id="approveVprBtn" class="btn btn-success w-100 fw-bold mb-2">
+                        <button type="button" id="approveVprBtn" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> w-100 fw-bold mb-2">
                             <i class="bi bi-check-circle me-1"></i>
-                            <?= ($isApproved) ? 'Approve Additional' : 'Approve Payment' ?>
+                            <?= $isOpHeadAction ? 'Approve as Operation Head' : (($isApproved) ? 'Approve Additional' : 'Approve Payment') ?>
                         </button>
                     </form>
                     <?php if ($canReject): ?>

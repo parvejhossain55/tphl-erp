@@ -212,8 +212,9 @@ public function indexTwo($bookingId = null)
             ];
         }
         
-        // Add booking money transaction at the beginning
+        // Add booking money transaction at the beginning and re-sort
         array_unshift($transactions, $bookingMoneyTransaction);
+        $this->clientModel->sortTransactions($transactions);
     }
 
     // Get payment summary statistics
@@ -1507,8 +1508,9 @@ public function indexTwoView($bookingId = null)
             ];
         }
         
-        // Add booking money transaction at the beginning
+        // Add booking money transaction at the beginning and re-sort
         array_unshift($transactions, $bookingMoneyTransaction);
+        $this->clientModel->sortTransactions($transactions);
     }
     
     $paymentSummary = $this->clientModel->getPaymentSummaryByBookingId($bookingId);
@@ -1557,6 +1559,29 @@ public function indexTwoView($bookingId = null)
         $salesUsers = $salesRes->fetch_all(MYSQLI_ASSOC);
     }
 
+    // Fetch pending or latest discount approval request for this booking
+    $discountApprovalReq = null;
+    $arStmt = $this->db->prepare("
+        SELECT ar.*,
+               u_req.full_name AS requester_name, e_req.employee_id AS requester_code,
+               u_op.full_name AS op_head_name, e_op.employee_id AS op_head_code,
+               u_app.full_name AS approver_name
+        FROM approval_requests ar
+        LEFT JOIN users u_req ON ar.requested_by = u_req.id
+        LEFT JOIN employees e_req ON (e_req.user_id = u_req.id OR e_req.id = u_req.employee_id)
+        LEFT JOIN users u_op ON ar.op_head_by = u_op.id
+        LEFT JOIN employees e_op ON (e_op.user_id = u_op.id OR e_op.id = u_op.employee_id)
+        LEFT JOIN users u_app ON ar.approved_by = u_app.id
+        WHERE ar.source_table = 'lead_bookings' AND ar.source_id = ?
+        ORDER BY ar.id DESC LIMIT 1
+    ");
+    if ($arStmt) {
+        $arStmt->bind_param("i", $bookingId);
+        $arStmt->execute();
+        $discountApprovalReq = $arStmt->get_result()->fetch_assoc();
+        $arStmt->close();
+    }
+
     $this->view("ced/clients-cash-in-history-view", [
         "current_route" => "clients-cash-in-history-view",
         "page_title" => "Transaction History - " . $clientDetails['client_name'],
@@ -1568,7 +1593,9 @@ public function indexTwoView($bookingId = null)
         "refundPaidAmount"=> $refundPaidAmount,
         "banks"           => $banks,
         "salesUsers"      => $salesUsers,
-        "accountModel"    => $this->clientModel
+        "accountModel"    => $this->clientModel,
+        "discountApprovalReq" => $discountApprovalReq,
+        "db"              => $this->db
     ]);
 }
 
@@ -4189,6 +4216,7 @@ public function discountStatement($bookingId = null)
         $note = trim($_POST['note'] ?? '');
         $activityDate = trim($_POST['activity_date'] ?? '');
         $activityMode = trim($_POST['activity_mode'] ?? '');
+        $callStatus = trim($_POST['call_status'] ?? '');
         $activityReason = trim($_POST['activity_reason'] ?? '');
         $userId = $_SESSION['user']['id'] ?? 0;
 
@@ -4197,8 +4225,8 @@ public function discountStatement($bookingId = null)
             exit;
         }
 
-        $stmt = $this->db->prepare("INSERT INTO emi_followups (booking_id, emi_no, note, activity_date, activity_mode, activity_reason, added_by) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("iissssi", $bookingId, $emiNo, $note, $activityDate, $activityMode, $activityReason, $userId);
+        $stmt = $this->db->prepare("INSERT INTO emi_followups (booking_id, emi_no, note, activity_date, activity_mode, call_status, activity_reason, added_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("iisssssi", $bookingId, $emiNo, $note, $activityDate, $activityMode, $callStatus, $activityReason, $userId);
         
         if ($stmt->execute()) {
             echo json_encode(['success' => true]);

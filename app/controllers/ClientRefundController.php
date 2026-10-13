@@ -401,6 +401,44 @@ class ClientRefundController extends Controller
             $retentionAmount = max(0, $totalPaid - $approvedAmount);
         }
 
+        $isOver1Lac = ($approvedAmount > 100000);
+        $userRole = (int)($this->userRole ?? 0);
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $isOpHeadUser = (in_array($userRole, [20, 32], true) || str_contains($roleName, 'operation head'));
+        $isMgmtUser = in_array($userRole, [1, 3], true);
+
+        // Fetch approval request record
+        $arCheck = $this->db->query("SELECT id, op_head_status FROM approval_requests WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id . " ORDER BY id DESC LIMIT 1");
+        $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
+        $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
+
+        if ($isOver1Lac) {
+            if ($isOpHeadUser && !$isMgmtUser) {
+                $arId = (int)($arRow['id'] ?? 0);
+                $escNote = $this->db->real_escape_string('Verified and approved by Admin & Operation Head');
+                if (!class_exists('ApprovalRequest')) {
+                    require_once __DIR__ . '/../models/ApprovalRequest.php';
+                }
+                $approvalModel = new \ApprovalRequest($this->db);
+                if ($arId > 0) {
+                    $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
+                } else {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table = 'client_refund_requests' AND source_id = " . (int)$id);
+                }
+                setSuccess("Refund request verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for sign-off.");
+                header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+                exit;
+            }
+
+            if ($isMgmtUser) {
+                if ($opHeadStatus !== 'approved') {
+                    setError("Access Denied: Refund requests exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+                    header("Location: {$GLOBALS['base_url']}/client-refund/{$id}");
+                    exit;
+                }
+            }
+        }
+
         // Step 1: Approve refund (cancels booking, releases flat, cancels EMIs)
         if (!$this->model->approve($id, $this->userId, $approvedAmount)) {
             setError('Failed to approve refund request.');
@@ -438,7 +476,7 @@ class ClientRefundController extends Controller
             // Sync approval_requests for the refund
             $arStmt = $this->db->prepare(
                 "UPDATE approval_requests
-                 SET status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, request_amount = ?
+                 SET op_head_status = 'approved', status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, request_amount = ?, approve_role = 'accounts_head', accounts_head_status = 'pending'
                  WHERE source_table = 'client_refund_requests' AND source_id = ?"
             );
             $arStmt->bind_param('iddi', $this->userId, $approvedAmount, $approvedAmount, $id);
@@ -447,7 +485,7 @@ class ClientRefundController extends Controller
             // Sync approval_requests for the cashout
             $arCashoutStmt = $this->db->prepare(
                 "UPDATE approval_requests
-                 SET status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, request_amount = ?
+                 SET op_head_status = 'approved', status = 'approved', approved_by = ?, approved_at = NOW(), approved_amount = ?, request_amount = ?, approve_role = 'accounts_head', accounts_head_status = 'pending'
                  WHERE source_table = 'cashout_requests' AND source_id = ?"
             );
             $arCashoutStmt->bind_param('iddi', $this->userId, $approvedAmount, $approvedAmount, $cashoutId);

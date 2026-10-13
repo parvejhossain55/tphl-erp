@@ -2404,7 +2404,9 @@ class AccountClient extends Model
                         END, ' Installment(Settlement)')
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI SETTLEMENT'
                     WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
-                    THEN CONCAT(es.emi_no, 
+                    THEN CONCAT(
+                        CASE WHEN lp.payment_status = 'partially_paid' THEN 'Advance ' ELSE '' END,
+                        es.emi_no, 
                         CASE 
                             WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
                             WHEN es.emi_no % 10 = 1 THEN 'st'
@@ -2526,6 +2528,8 @@ class AccountClient extends Model
                 }
             }
         }
+        unset($transaction);
+        $this->sortTransactions($transactions);
 
         return $transactions;
     }
@@ -2566,7 +2570,9 @@ class AccountClient extends Model
                         END, ' Installment(Settlement)')
                     WHEN lp.settlement_type = 'emi_due_settlement' THEN 'EMI SETTLEMENT'
                     WHEN lp.payment_type = 'emi' AND es.emi_no IS NOT NULL 
-                    THEN CONCAT(es.emi_no, 
+                    THEN CONCAT(
+                        CASE WHEN lp.payment_status = 'partially_paid' THEN 'Advance ' ELSE '' END,
+                        es.emi_no, 
                         CASE 
                             WHEN es.emi_no % 100 IN (11,12,13) THEN 'th'
                             WHEN es.emi_no % 10 = 1 THEN 'st'
@@ -2690,8 +2696,87 @@ class AccountClient extends Model
                 }
             }
         }
+        unset($transaction);
+        $this->sortTransactions($transactions);
 
         return $transactions;
+    }
+
+    /**
+     * Sort client transactions in chronological business order:
+     * 1. Booking Money
+     * 2. Registration / Land Share / Mutation Cost
+     * 3. Development Charge / Construction Fee / Shop Service Charge
+     * 4. EMI Installments sorted by Installment Number (Advance -> Regular -> Settlement)
+     * 5. Other Transactions (e.g. Refunds)
+     */
+    public function sortTransactions(array &$transactions)
+    {
+        usort($transactions, function ($a, $b) {
+            $getGroup = function ($t) {
+                $type = strtolower($t['payment_type'] ?? '');
+                if ($type === 'booking_money') return 1;
+                if (in_array($type, ['registration', 'land_share', 'mutation_cost'], true)) return 2;
+                if (in_array($type, ['development_charge', 'construction_fee', 'shop_service_charge'], true)) return 3;
+                if ($type === 'emi' || $type === 'emi_due_settlement' || !empty($t['emi_no']) || !empty($t['parent_emi_no'])) return 4;
+                return 5;
+            };
+
+            $groupA = $getGroup($a);
+            $groupB = $getGroup($b);
+
+            if ($groupA !== $groupB) {
+                return $groupA <=> $groupB;
+            }
+
+            // Both are in EMI group
+            if ($groupA === 4) {
+                $getEmiNo = function ($t) {
+                    if (!empty($t['emi_no'])) return (int)$t['emi_no'];
+                    if (!empty($t['parent_emi_no'])) return (int)$t['parent_emi_no'];
+                    if (!empty($t['installment_label']) && preg_match('/(\d+)/', $t['installment_label'], $m)) {
+                        return (int)$m[1];
+                    }
+                    return 9999;
+                };
+
+                $emiNoA = $getEmiNo($a);
+                $emiNoB = $getEmiNo($b);
+
+                if ($emiNoA !== $emiNoB) {
+                    return $emiNoA <=> $emiNoB;
+                }
+
+                // Within the SAME installment:
+                // 1: Advance installment (partially_paid and not settlement)
+                // 2: Regular installment (paid and not settlement)
+                // 3: Settlement installment (emi_due_settlement)
+                $getSubRank = function ($t) {
+                    $isSettlement = (!empty($t['settlement_type']) && $t['settlement_type'] === 'emi_due_settlement') 
+                                    || (($t['payment_type'] ?? '') === 'emi_due_settlement');
+                    if ($isSettlement) return 3;
+                    $status = strtolower($t['payment_status'] ?? '');
+                    if ($status === 'partially_paid') return 1;
+                    return 2;
+                };
+
+                $subA = $getSubRank($a);
+                $subB = $getSubRank($b);
+
+                if ($subA !== $subB) {
+                    return $subA <=> $subB;
+                }
+            }
+
+            // Tie breaker: payment_date ASC, then id ASC
+            $dateA = $a['payment_date'] ?? '';
+            $dateB = $b['payment_date'] ?? '';
+            if ($dateA !== $dateB) {
+                return strcmp($dateA, $dateB);
+            }
+
+            return ((int)($a['id'] ?? 0)) <=> ((int)($b['id'] ?? 0));
+        });
     }
 
     /**
@@ -3336,7 +3421,7 @@ class AccountClient extends Model
                 if ($pool <= 0) continue;
                 $isDiscountItem = $pProcess['is_discount'];
                 
-                $currentPaymentMethod = $isDiscountItem ? 'Discount EMI' : ($transactionData['payment_method'] ?? 'cash');
+                $currentPaymentMethod = $isDiscountItem ? 'cash' : ($transactionData['payment_method'] ?? 'cash');
                 $currentServiceFee = (!$isDiscountItem && $serviceChargeRate > 0) ? round($pool * ($serviceChargeRate / 100)) : 0;
                 $totalServiceFee += $currentServiceFee;
 

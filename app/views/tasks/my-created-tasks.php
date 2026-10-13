@@ -571,9 +571,17 @@
             <input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>">
             
             <!-- Left Search Input -->
-            <div class="d-flex align-items-center flex-grow-1" style="min-width: 220px;">
+            <div class="d-flex align-items-center flex-grow-1" style="min-width: 260px;">
                 <i class="bi bi-search text-muted me-2" style="font-size: 14px;"></i>
-                <input type="text" name="q" class="perf-search-input" placeholder="Search task or project..." value="<?= htmlspecialchars($searchTerm) ?>" autocomplete="off">
+                <input type="text" name="q" class="perf-search-input" placeholder="Search task, project or location..." value="<?= htmlspecialchars($searchTerm) ?>" autocomplete="off">
+                <?php if (!empty($searchTerm)): ?>
+                    <a href="<?= $GLOBALS['base_url'] ?>/my-created-tasks?<?= http_build_query(array_diff_key($_GET, ['q' => '', 'page' => ''])) ?>" class="text-muted me-2 text-decoration-none" title="Clear search">
+                        <i class="bi bi-x-circle-fill"></i>
+                    </a>
+                <?php endif; ?>
+                <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 py-1 fs-12 fw-semibold text-white ms-1" style="background-color: #15803d; border-color: #15803d;">
+                    Search
+                </button>
             </div>
 
             <!-- Right Select Filters -->
@@ -598,7 +606,7 @@
                     <?php if (!empty($projects)): ?>
                         <?php foreach ($projects as $proj): ?>
                             <option value="<?= $proj['id'] ?>" <?= ($projectFilter == $proj['id']) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($proj['name']) ?>
+                                <?= (!empty($proj['is_team_project']) ? '👥 [Team] ' : '') . htmlspecialchars($proj['name']) ?>
                             </option>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -609,7 +617,7 @@
                     <option value="">All Status</option>
                     <option value="in_progress" <?= $statusFilter === 'in_progress' ? 'selected' : '' ?>>In Progress</option>
                     <option value="completed" <?= $statusFilter === 'completed' ? 'selected' : '' ?>>Completed</option>
-                    <option value="expired" <?= $statusFilter === 'expired' ? 'selected' : '' ?>>Overdue</option>
+                    <option value="expired" <?= ($statusFilter === 'expired' || $statusFilter === 'overdue') ? 'selected' : '' ?>>Overdue</option>
                 </select>
 
                 <!-- Priority Filter -->
@@ -619,6 +627,14 @@
                     <option value="2" <?= $priorityFilter === '2' ? 'selected' : '' ?>>High</option>
                     <option value="3" <?= $priorityFilter === '3' ? 'selected' : '' ?>>Medium</option>
                     <option value="4" <?= $priorityFilter === '4' ? 'selected' : '' ?>>Low</option>
+                </select>
+
+                <!-- Per Page Filter (20 / 50 / 100 / All) -->
+                <select name="per_page" class="perf-select-pill" onchange="this.form.submit()">
+                    <option value="20" <?= ($perPageParam ?? '20') == '20' ? 'selected' : '' ?>>20 per page</option>
+                    <option value="50" <?= ($perPageParam ?? '') == '50' ? 'selected' : '' ?>>50 per page</option>
+                    <option value="100" <?= ($perPageParam ?? '') == '100' ? 'selected' : '' ?>>100 per page</option>
+                    <option value="all" <?= ($perPageParam ?? '') === 'all' ? 'selected' : '' ?>>Show All</option>
                 </select>
 
                 <!-- Reset Link -->
@@ -770,6 +786,9 @@
                 <a href="<?= $GLOBALS['base_url'] ?>/my-created-tasks?tab=deadline_missed" class="perf-tab-item <?= $tab === 'deadline_missed' ? 'active' : '' ?>">
                     Deadline Missed <span class="perf-tab-badge"><?= $missedCount ?></span>
                 </a>
+                <a href="<?= $GLOBALS['base_url'] ?>/my-created-tasks?tab=team_tasks" class="perf-tab-item <?= $tab === 'team_tasks' ? 'active' : '' ?>">
+                    <i class="bi bi-people-fill text-primary me-1"></i> Team Tasks <span class="perf-tab-badge"><?= $teamTasksCount ?? 0 ?></span>
+                </a>
             </div>
 
             <!-- Right Controls -->
@@ -782,6 +801,30 @@
                 </button>
             </div>
         </div>
+
+        <?php
+        $tasksMap = [];
+        if (!empty($tasks)) {
+            foreach ($tasks as $rowItem) {
+                $pVal = (int)($rowItem['progress'] ?? 0);
+                $isCompItem = ($rowItem['status'] === 'completed' || $pVal >= 100);
+                $tasksMap[$rowItem['id']] = [
+                    'id' => (int)$rowItem['id'],
+                    'title' => (string)$rowItem['title'],
+                    'description' => (string)($rowItem['description'] ?? ''),
+                    'project_name' => !empty($rowItem['project_name']) ? $rowItem['project_name'] : 'Inbox',
+                    'status' => $isCompItem ? 'Completed' : 'In Progress',
+                    'status_raw' => $isCompItem ? 'completed' : 'pending',
+                    'progress' => $pVal,
+                    'due_date' => !empty($rowItem['due_date']) ? date('Y-m-d', strtotime($rowItem['due_date'])) : '',
+                    'due_date_formatted' => !empty($rowItem['due_date']) ? date('d M Y', strtotime($rowItem['due_date'])) : 'No Deadline'
+                ];
+            }
+        }
+        ?>
+        <script>
+        window.allTasksData = <?= json_encode($tasksMap, JSON_UNESCAPED_UNICODE) ?> || {};
+        </script>
 
         <!-- Table View -->
         <div class="table-responsive">
@@ -872,11 +915,14 @@
                             <!-- Task & Project -->
                             <td>
                                 <div class="fw-bold text-dark mb-1" style="font-size: 14px; <?= $isCompleted ? 'text-decoration: line-through; opacity: 0.75;' : '' ?>">
-                                    <a href="javascript:void(0)" class="text-decoration-none text-dark hover-green btn-open-task-details" data-task="<?= $taskDataAttr ?>">
+                                    <a href="javascript:void(0)" class="text-decoration-none text-dark hover-green" onclick="openTaskDetailsById(<?= $t['id'] ?>)">
                                         <?= htmlspecialchars($t['title']) ?>
                                     </a>
                                 </div>
                                 <div class="text-muted" style="font-size: 11.5px;">
+                                    <?php if (!empty($t['is_team_project'])): ?>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle me-1"><i class="bi bi-people-fill me-1"></i>Team</span>
+                                    <?php endif; ?>
                                     <?= htmlspecialchars($projectName) ?> • <span class="text-secondary fw-semibold">#TODO-<?= $t['id'] ?></span>
                                     <?php if (!empty($t['location'])): ?>
                                         • <span class="text-muted"><i class="bi bi-geo-alt"></i> <?= htmlspecialchars($t['location']) ?></span>
@@ -886,7 +932,11 @@
 
                             <!-- Source -->
                             <td>
-                                <span class="badge-source-self"><?= htmlspecialchars($projectName) ?></span>
+                                <?php if (!empty($t['is_team_project'])): ?>
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle fw-semibold" style="font-size: 11.5px; padding: 4px 8px;"><i class="bi bi-people-fill me-1"></i>Team Task</span>
+                                <?php else: ?>
+                                    <span class="badge-source-self"><?= htmlspecialchars($projectName) ?></span>
+                                <?php endif; ?>
                             </td>
 
                             <!-- Priority -->
@@ -918,58 +968,58 @@
                             </td>
 
                             <!-- Status -->
-                            <td class="text-nowrap">
+                            <td class="text-nowrap" id="statusCell_<?= $t['id'] ?>">
                                 <span class="fw-semibold" style="color: <?= $statusColor ?>; font-size: 13px;">
                                     <span class="status-dot" style="background-color: <?= $statusColor ?>;"></span>
                                     <?= $statusLabel ?>
                                 </span>
                             </td>
 
-                            <!-- Progress Bar -->
-                            <td>
-                                <div class="d-flex align-items-center gap-2 btn-open-task-details" style="cursor: pointer;" data-task="<?= $taskDataAttr ?>" title="Click to update progress">
-                                    <div class="progress flex-grow-1" style="height: 6px; background-color: #e2e8f0; border-radius: 4px;">
-                                        <div class="progress-bar" style="width: <?= $progressPct ?>%; background-color: #059669; border-radius: 4px;"></div>
+                            <!-- Progress Column: Inline Number Input & Bar -->
+                            <td style="min-width: 180px;">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 8px; background-color: #f1f5f9; border-radius: 6px; min-width: 48px; cursor: pointer;" onclick="openTaskDetailsById(<?= $t['id'] ?>)" title="Click to open full progress details">
+                                        <div class="progress-bar" id="rowBar_<?= $t['id'] ?>" style="width: <?= $progressPct ?>%; background-color: <?= $progressPct >= 100 ? '#16a34a' : ($progressPct >= 50 ? '#059669' : ($progressPct > 0 ? '#d97706' : '#94a3b8')) ?>; border-radius: 6px;"></div>
                                     </div>
-                                    <span class="text-muted fw-bold" style="font-size: 11.5px; min-width: 32px;"><?= $progressPct ?>%</span>
+                                    <div class="input-group input-group-sm" style="width: 90px;" title="Type percentage & press Enter or checkmark to save">
+                                        <input type="number" min="0" max="100" class="form-control text-center px-1 fw-bold" id="rowInput_<?= $t['id'] ?>" value="<?= $progressPct ?>" style="font-size: 12.5px; height: 30px; border-radius: 6px 0 0 6px;" onkeydown="if(event.key==='Enter'){ saveRowProgress(<?= $t['id'] ?>); }">
+                                        <button type="button" class="btn btn-outline-success px-2 py-0" id="rowBtn_<?= $t['id'] ?>" onclick="saveRowProgress(<?= $t['id'] ?>)" style="height: 30px; border-radius: 0 6px 6px 0;" title="Save progress">
+                                            <i class="bi bi-check2"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </td>
 
-                            <!-- Actions -->
+                            <!-- Actions (Chevron dropdown) -->
                             <td class="text-end">
-                                <div class="d-inline-flex align-items-center gap-1">
-                                    <button class="btn btn-sm btn-light border text-muted px-2 py-1 rounded-pill btn-open-task-details" type="button" data-task="<?= $taskDataAttr ?>" title="Click to update progress and deadline" style="font-size: 13px; min-width: 34px;">
-                                        <i class="bi bi-three-dots"></i>
+                                <div class="dropdown d-inline-block">
+                                    <button class="btn btn-sm btn-light border text-muted px-2 py-1 rounded-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Actions" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
+                                        <i class="bi bi-chevron-down" style="font-size: 12px;"></i>
                                     </button>
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm btn-light border-0 text-muted p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 13px;" title="More options">
-                                            <i class="bi bi-chevron-down"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
-                                            <li>
-                                                <a class="dropdown-item py-2 fs-13 fw-semibold text-success btn-open-task-details" href="javascript:void(0)" data-task="<?= $taskDataAttr ?>">
-                                                    <i class="bi bi-sliders text-success me-2"></i> Update Progress & Details
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item py-2 fs-13" href="<?= $GLOBALS['base_url'] ?>/my-created-tasks/complete/<?= $t['id'] ?>">
-                                                    <i class="bi bi-check2-circle text-primary me-2"></i> 
-                                                    <?= $isCompleted ? 'Mark Pending' : 'Mark Completed' ?>
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item py-2 fs-13" href="<?= $GLOBALS['base_url'] ?>/todo">
-                                                    <i class="bi bi-list-check text-secondary me-2"></i> Open in Todo List
-                                                </a>
-                                            </li>
-                                            <li><hr class="dropdown-divider my-1"></li>
-                                            <li>
-                                                <a class="dropdown-item py-2 fs-13 text-danger" href="<?= $GLOBALS['base_url'] ?>/my-created-tasks/delete/<?= $t['id'] ?>" onclick="return confirm('Are you sure you want to delete this todo task?');">
-                                                    <i class="bi bi-trash me-2"></i> Delete Task
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    </div>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                                        <li>
+                                            <a class="dropdown-item py-2 fs-13 fw-semibold text-success" href="javascript:void(0)" onclick="openTaskDetailsById(<?= $t['id'] ?>)">
+                                                <i class="bi bi-sliders text-success me-2"></i> Update Progress & Details
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item py-2 fs-13" href="<?= $GLOBALS['base_url'] ?>/my-created-tasks/complete/<?= $t['id'] ?>">
+                                                <i class="bi bi-check2-circle text-primary me-2"></i> 
+                                                <?= $isCompleted ? 'Mark Pending' : 'Mark Completed' ?>
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item py-2 fs-13" href="<?= $GLOBALS['base_url'] ?>/todo">
+                                                <i class="bi bi-list-check text-secondary me-2"></i> Open in Todo List
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider my-1"></li>
+                                        <li>
+                                            <a class="dropdown-item py-2 fs-13 text-danger" href="<?= $GLOBALS['base_url'] ?>/my-created-tasks/delete/<?= $t['id'] ?>" onclick="return confirm('Are you sure you want to delete this todo task?');">
+                                                <i class="bi bi-trash me-2"></i> Delete Task
+                                            </a>
+                                        </li>
+                                    </ul>
                                 </div>
                             </td>
                         </tr>
@@ -980,11 +1030,36 @@
         </div>
 
         <!-- Table Footer Pagination -->
-        <?php if ($totalPages > 1): ?>
-        <div class="d-flex align-items-center justify-content-between p-3 border-top bg-light">
-            <span class="small text-muted">Showing page <?= $currentPage ?> of <?= $totalPages ?> (Total <?= $filteredTotal ?> items)</span>
+        <div class="d-flex align-items-center justify-content-between p-3 border-top bg-light flex-wrap gap-2">
+            <span class="small text-muted">
+                Showing <?= $filteredTotal > 0 ? (($currentPage - 1) * $perPage + 1) : 0 ?> to <?= min($filteredTotal, $currentPage * $perPage) ?> of <?= $filteredTotal ?> tasks (<?= $perPageParam === 'all' ? 'All items' : $perPage . ' per page' ?>)
+            </span>
+            <?php if ($totalPages > 1): ?>
             <ul class="pagination pagination-sm mb-0">
-                <?php for ($p = 1; $p <= $totalPages; $p++): 
+                <!-- Previous Button -->
+                <li class="page-item <?= $currentPage <= 1 ? 'disabled' : '' ?>">
+                    <?php 
+                        $prevParams = $_GET; 
+                        $prevParams['page'] = max(1, $currentPage - 1); 
+                    ?>
+                    <a class="page-link text-dark" href="?<?= http_build_query($prevParams) ?>" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+
+                <?php 
+                $startPage = max(1, $currentPage - 2);
+                $endPage = min($totalPages, $currentPage + 2);
+
+                if ($startPage > 1): 
+                    $firstParams = $_GET;
+                    $firstParams['page'] = 1;
+                ?>
+                    <li class="page-item"><a class="page-link text-dark" href="?<?= http_build_query($firstParams) ?>">1</a></li>
+                    <?php if ($startPage > 2): ?><li class="page-item disabled"><span class="page-link text-muted">...</span></li><?php endif; ?>
+                <?php endif; ?>
+
+                <?php for ($p = $startPage; $p <= $endPage; $p++): 
                     $params = $_GET;
                     $params['page'] = $p;
                     $url = '?' . http_build_query($params);
@@ -993,9 +1068,28 @@
                     <a class="page-link <?= $p == $currentPage ? 'bg-success border-success text-white' : 'text-dark' ?>" href="<?= $url ?>"><?= $p ?></a>
                 </li>
                 <?php endfor; ?>
+
+                <?php if ($endPage < $totalPages): 
+                    $lastParams = $_GET;
+                    $lastParams['page'] = $totalPages;
+                ?>
+                    <?php if ($endPage < $totalPages - 1): ?><li class="page-item disabled"><span class="page-link text-muted">...</span></li><?php endif; ?>
+                    <li class="page-item"><a class="page-link text-dark" href="?<?= http_build_query($lastParams) ?>"><?= $totalPages ?></a></li>
+                <?php endif; ?>
+
+                <!-- Next Button -->
+                <li class="page-item <?= $currentPage >= $totalPages ? 'disabled' : '' ?>">
+                    <?php 
+                        $nextParams = $_GET; 
+                        $nextParams['page'] = min($totalPages, $currentPage + 1); 
+                    ?>
+                    <a class="page-link text-dark" href="?<?= http_build_query($nextParams) ?>" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
             </ul>
+            <?php endif; ?>
         </div>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -1036,7 +1130,7 @@
                     <?php if (!empty($projects)): ?>
                         <?php foreach ($projects as $pr): ?>
                             <option value="<?= $pr['id'] ?>" <?= ($pr['id'] == $inboxId) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($pr['name']) ?>
+                                <?= (!empty($pr['is_team_project']) ? '👥 [Team] ' : '') . htmlspecialchars($pr['name']) ?>
                             </option>
                         <?php endforeach; ?>
                     <?php else: ?>
@@ -1051,6 +1145,12 @@
                         <input type="text" name="new_project_name" id="quickProjectName" class="form-control" placeholder="Enter project name (e.g. ERP Transformation)...">
                         <button type="button" class="btn btn-success fw-semibold px-3" onclick="saveNewProject()">Save & Select</button>
                         <button type="button" class="btn btn-light border" onclick="toggleNewProject(false)">Cancel</button>
+                    </div>
+                    <div class="form-check mt-2 mb-1">
+                        <input class="form-check-input" type="checkbox" name="is_team_project" id="quickIsTeamProject" value="1" style="cursor: pointer;">
+                        <label class="form-check-label small fw-semibold text-dark" for="quickIsTeamProject" style="cursor: pointer;">
+                            <i class="bi bi-people-fill text-success me-1"></i> Team Project (Shared with my reporting boss & team members)
+                        </label>
                     </div>
                     <div id="projectCreateMsg" class="small mt-1"></div>
                 </div>
@@ -1153,11 +1253,12 @@
 
     <div class="offcanvas-body p-4 pt-2">
         <form action="<?= $GLOBALS['base_url'] ?>/my-created-tasks/update-progress" method="POST" id="taskDetailsUpdateForm">
+            <input type="hidden" name="ajax" value="1">
             <input type="hidden" name="task_id" id="detailTaskId" value="">
             <input type="hidden" name="status" id="detailStatusHidden" value="pending">
 
-            <!-- Detail Information Card (Matching Screenshot) -->
-            <div class="p-3 mb-4 rounded-3 border" style="background-color: #f8fafc; border-color: #e2e8f0;">
+            <!-- Detail Information Card -->
+            <div class="p-3 mb-3 rounded-3 border" style="background-color: #f8fafc; border-color: #e2e8f0;">
                 <div class="d-flex align-items-center justify-content-between mb-1">
                     <h5 class="fw-bold mb-0" id="detailStatusText" style="color: #0f172a; font-size: 16px;">In Progress</h5>
                     <div class="form-check form-switch mb-0">
@@ -1173,14 +1274,46 @@
                 </p>
             </div>
 
-            <!-- Two Side-by-Side Inputs: DEADLINE & PROGRESS -->
+            <!-- Current Progress Visual Card -->
+            <div class="p-3 mb-3 rounded-3 border" style="background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%); border-color: #bbf7d0 !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="small fw-bold text-success text-uppercase" style="letter-spacing: 0.06em;">CURRENT PROGRESS</span>
+                    <span class="badge bg-success text-white px-2 py-1 fs-12 fw-bold" id="detailProgressBadge">0% Completed</span>
+                </div>
+                <div class="progress mb-2" style="height: 10px; background-color: #e2e8f0; border-radius: 6px;">
+                    <div class="progress-bar bg-success" id="detailProgressBarVisual" style="width: 0%; border-radius: 6px; transition: width 0.3s ease;"></div>
+                </div>
+                <div class="d-flex justify-content-between text-muted" style="font-size: 11px;">
+                    <span>0% (Not Started)</span>
+                    <span>50% (Halfway)</span>
+                    <span>100% (Completed)</span>
+                </div>
+            </div>
+
+            <!-- Interactive Progress Range Slider & Quick Buttons -->
+            <div class="mb-3 p-3 bg-light rounded-3 border">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <label class="task-offcanvas-label text-muted fw-bold mb-0">UPDATE COMPLETION PERCENTAGE</label>
+                    <span class="fw-bold text-success fs-14" id="detailSliderDisplay">0%</span>
+                </div>
+                <input type="range" class="form-range mb-2" id="detailProgressRange" min="0" max="100" step="5" value="0">
+                <div class="d-flex align-items-center justify-content-between gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0 fs-11 fw-semibold" onclick="setDetailProgress(0)">0%</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0 fs-11 fw-semibold" onclick="setDetailProgress(25)">25%</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0 fs-11 fw-semibold" onclick="setDetailProgress(50)">50%</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0 fs-11 fw-semibold" onclick="setDetailProgress(75)">75%</button>
+                    <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-2 py-0 fs-11 fw-semibold" onclick="setDetailProgress(100)">100% (Done)</button>
+                </div>
+            </div>
+
+            <!-- Two Side-by-Side Inputs: DEADLINE & MANUAL PROGRESS % -->
             <div class="row g-3 mb-4">
                 <div class="col-6">
                     <label class="task-offcanvas-label text-muted fw-bold mb-2" style="font-size: 11px; letter-spacing: 0.06em;">DEADLINE</label>
                     <input type="date" name="due_date" id="detailDueDateInput" class="form-control rounded-3 border bg-white" style="height: 48px; font-size: 14.5px; border-color: #cbd5e1;">
                 </div>
                 <div class="col-6">
-                    <label class="task-offcanvas-label text-muted fw-bold mb-2" style="font-size: 11px; letter-spacing: 0.06em;">PROGRESS</label>
+                    <label class="task-offcanvas-label text-muted fw-bold mb-2" style="font-size: 11px; letter-spacing: 0.06em;">MANUAL % INPUT</label>
                     <div class="input-group">
                         <input type="number" name="progress" id="detailProgressInput" min="0" max="100" class="form-control rounded-3 border bg-white fw-bold text-dark" placeholder="0" style="height: 48px; font-size: 14.5px; border-color: #cbd5e1;">
                         <span class="input-group-text bg-white border-start-0 text-muted fw-bold" style="border-radius: 0 10px 10px 0; border-color: #cbd5e1;">%</span>
@@ -1348,16 +1481,19 @@ function toggleNewProject(show) {
 function saveNewProject() {
     const nameInput = document.getElementById('quickProjectName');
     const msg = document.getElementById('projectCreateMsg');
+    const isTeamCheck = document.getElementById('quickIsTeamProject');
     const name = nameInput.value.trim();
     if (!name) {
         msg.innerHTML = '<span class="text-danger fw-semibold">Please enter a project name</span>';
         return;
     }
 
+    const isTeam = (isTeamCheck && isTeamCheck.checked) ? 1 : 0;
     msg.innerHTML = '<span class="text-muted"><i class="bi bi-hourglass-split"></i> Creating project...</span>';
 
     const formData = new FormData();
     formData.append('name', name);
+    formData.append('is_team_project', isTeam);
 
     fetch('<?= $GLOBALS['base_url'] ?>/my-created-tasks/create-project', {
         method: 'POST',
@@ -1376,11 +1512,13 @@ function saveNewProject() {
                 }
             }
             if (!exists) {
-                const newOpt = new Option(data.project.name, data.project.id, true, true);
+                const optText = (data.project.is_team_project == 1 ? '👥 [Team] ' : '') + data.project.name;
+                const newOpt = new Option(optText, data.project.id, true, true);
                 select.add(newOpt);
             }
             msg.innerHTML = '<span class="text-success fw-semibold"><i class="bi bi-check-circle"></i> Project created and selected!</span>';
             nameInput.value = '';
+            if (isTeamCheck) isTeamCheck.checked = false;
             setTimeout(() => {
                 toggleNewProject(false);
                 msg.innerHTML = '';
@@ -1407,8 +1545,46 @@ function toggleRepeatUntilOffcanvas(val) {
 // -------------------------------------------------------------
 // Task Details Offcanvas Logic (Update Progress & Completion)
 // -------------------------------------------------------------
-// Task Details Offcanvas Logic (Update Progress & Completion)
-// -------------------------------------------------------------
+function setDetailProgress(val) {
+    val = Math.max(0, Math.min(100, parseInt(val) || 0));
+    setDetailProgressUI(val);
+}
+
+function setDetailProgressUI(val) {
+    val = Math.max(0, Math.min(100, parseInt(val) || 0));
+    const progressInput = document.getElementById('detailProgressInput');
+    const progressRange = document.getElementById('detailProgressRange');
+    const progressBadge = document.getElementById('detailProgressBadge');
+    const progressBar = document.getElementById('detailProgressBarVisual');
+    const sliderDisplay = document.getElementById('detailSliderDisplay');
+    const statusCheckbox = document.getElementById('detailStatusCheckbox');
+
+    if (progressInput) progressInput.value = val;
+    if (progressRange) progressRange.value = val;
+    if (sliderDisplay) sliderDisplay.textContent = val + '%';
+    
+    if (progressBadge) {
+        progressBadge.textContent = val + '% Completed';
+        if (val >= 100) {
+            progressBadge.className = 'badge bg-success text-white px-2 py-1 fs-12 fw-bold';
+        } else if (val > 0) {
+            progressBadge.className = 'badge bg-warning-subtle text-dark border px-2 py-1 fs-12 fw-bold';
+        } else {
+            progressBadge.className = 'badge bg-light text-secondary border px-2 py-1 fs-12 fw-bold';
+        }
+    }
+    if (progressBar) {
+        progressBar.style.width = val + '%';
+        progressBar.style.backgroundColor = (val >= 100 ? '#16a34a' : (val >= 50 ? '#059669' : (val > 0 ? '#d97706' : '#94a3b8')));
+    }
+
+    const isCompleted = (val >= 100);
+    if (statusCheckbox) {
+        statusCheckbox.checked = isCompleted;
+    }
+    updateDetailStatusUI(isCompleted, val);
+}
+
 function openTaskDetailsOffcanvas(task) {
     if (!task) return;
     document.getElementById('detailTaskId').value = task.id;
@@ -1425,14 +1601,7 @@ function openTaskDetailsOffcanvas(task) {
     document.getElementById('detailDueDateInput').value = task.due_date || '';
     
     const progressVal = parseInt(task.progress) || 0;
-    document.getElementById('detailProgressInput').value = progressVal;
-
-    const isCompleted = (task.status_raw === 'completed' || progressVal >= 100);
-    const statusCheckbox = document.getElementById('detailStatusCheckbox');
-    if (statusCheckbox) {
-        statusCheckbox.checked = isCompleted;
-    }
-    updateDetailStatusUI(isCompleted, progressVal);
+    setDetailProgressUI(progressVal);
 
     const deleteBtn = document.getElementById('detailDeleteActionBtn');
     if (deleteBtn) {
@@ -1460,6 +1629,108 @@ function openTaskDetailsOffcanvas(task) {
         const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl) || new bootstrap.Offcanvas(offcanvasEl);
         bsOffcanvas.show();
     }
+}
+
+function openTaskDetailsById(taskId) {
+    if (window.allTasksData && window.allTasksData[taskId]) {
+        openTaskDetailsOffcanvas(window.allTasksData[taskId]);
+    } else {
+        console.warn("Task data not found for ID:", taskId);
+    }
+}
+
+function saveRowProgress(taskId) {
+    const input = document.getElementById('rowInput_' + taskId);
+    const btn = document.getElementById('rowBtn_' + taskId);
+    const bar = document.getElementById('rowBar_' + taskId);
+    const statusCell = document.getElementById('statusCell_' + taskId);
+    if (!input) return;
+
+    let val = parseInt(input.value);
+    if (isNaN(val)) val = 0;
+    if (val < 0) val = 0;
+    if (val > 100) val = 100;
+    input.value = val;
+
+    const originalBtn = btn ? btn.innerHTML : '<i class="bi bi-check2"></i>';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width: 12px; height: 12px;" role="status"></span>';
+    }
+
+    const formData = new FormData();
+    formData.append('task_id', taskId);
+    formData.append('progress', val);
+    formData.append('ajax', '1');
+
+    fetch('<?= $GLOBALS['base_url'] ?>/my-created-tasks/update-progress', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg text-white"></i>';
+            btn.classList.remove('btn-outline-success');
+            btn.classList.add('btn-success', 'text-white');
+            setTimeout(() => {
+                btn.classList.remove('btn-success', 'text-white');
+                btn.classList.add('btn-outline-success');
+                btn.innerHTML = originalBtn;
+            }, 1200);
+        }
+
+        if (bar) {
+            bar.style.width = val + '%';
+            bar.style.backgroundColor = (val >= 100 ? '#16a34a' : (val >= 50 ? '#059669' : (val > 0 ? '#d97706' : '#94a3b8')));
+        }
+
+        // Update task object in memory
+        if (window.allTasksData && window.allTasksData[taskId]) {
+            window.allTasksData[taskId].progress = val;
+            window.allTasksData[taskId].status_raw = (val >= 100) ? 'completed' : 'pending';
+            window.allTasksData[taskId].status = (val >= 100) ? 'Completed' : 'In Progress';
+        }
+
+        // Update status badge in row
+        if (statusCell) {
+            if (val >= 100) {
+                statusCell.innerHTML = '<span class="fw-semibold" style="color: #16a34a; font-size: 13px;"><span class="status-dot" style="background-color: #16a34a;"></span>Completed</span>';
+            } else {
+                statusCell.innerHTML = '<span class="fw-semibold" style="color: #d97706; font-size: 13px;"><span class="status-dot" style="background-color: #d97706;"></span>In Progress</span>';
+            }
+        }
+
+        showQuickToast(data.message || 'Progress updated to ' + val + '%');
+    })
+    .catch(err => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalBtn;
+        }
+        showQuickToast('Failed to update progress');
+    });
+}
+
+function showQuickToast(msg) {
+    let toast = document.getElementById('tphlToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'tphlToast';
+        toast.style.cssText = 'position:fixed; bottom:25px; right:25px; z-index:9999; background:#0f172a; color:#fff; padding:10px 18px; border-radius:10px; font-size:13px; font-weight:600; box-shadow:0 4px 14px rgba(0,0,0,0.18); transition: opacity 0.3s; display:none;';
+        document.body.appendChild(toast);
+    }
+    toast.innerHTML = '<i class="bi bi-check-circle-fill text-success me-2"></i>' + msg;
+    toast.style.display = 'block';
+    toast.style.opacity = '1';
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => { toast.style.display = 'none'; }, 300);
+    }, 2000);
 }
 
 function updateDetailStatusUI(isCompleted, progressVal) {
@@ -1500,33 +1771,31 @@ document.addEventListener('click', function (e) {
 document.addEventListener("DOMContentLoaded", function () {
     const statusCheckbox = document.getElementById('detailStatusCheckbox');
     const progressInput = document.getElementById('detailProgressInput');
+    const progressRange = document.getElementById('detailProgressRange');
 
-    if (statusCheckbox && progressInput) {
+    if (statusCheckbox) {
         statusCheckbox.addEventListener('change', function() {
             if (this.checked) {
-                progressInput.value = 100;
-                updateDetailStatusUI(true, 100);
+                setDetailProgressUI(100);
             } else {
-                if (parseInt(progressInput.value) >= 100) {
-                    progressInput.value = 0;
-                }
-                updateDetailStatusUI(false, parseInt(progressInput.value) || 0);
+                setDetailProgressUI(0);
             }
         });
+    }
 
+    if (progressRange) {
+        progressRange.addEventListener('input', function() {
+            setDetailProgressUI(this.value);
+        });
+    }
+
+    if (progressInput) {
         progressInput.addEventListener('input', function() {
             let val = parseInt(this.value);
             if (isNaN(val)) val = 0;
             if (val > 100) { val = 100; this.value = 100; }
             if (val < 0) { val = 0; this.value = 0; }
-            
-            if (val >= 100) {
-                statusCheckbox.checked = true;
-                updateDetailStatusUI(true, val);
-            } else {
-                statusCheckbox.checked = false;
-                updateDetailStatusUI(false, val);
-            }
+            setDetailProgressUI(val);
         });
     }
 

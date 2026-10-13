@@ -347,11 +347,7 @@ class LandRequisitionController extends Controller {
         }
 
         $reqAmount = (float)$reqData['requested_amount'];
-        if ($isOpHead && !$isMgmt && $reqAmount > 100000) {
-            setError("Requests above BDT 100,000 (1 Lac) require Management approval. Operation Head (Role 20) can only approve requisitions up to BDT 100,000.");
-            header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
-            exit;
-        }
+        $isOver1Lac = ($reqAmount > 100000);
 
         if (!in_array($status, ['Approved', 'Rejected'])) {
             setError('Invalid status.');
@@ -359,6 +355,57 @@ class LandRequisitionController extends Controller {
             exit;
         }
 
+        // Fetch existing approval request record
+        $arRow = null;
+        $arQ = $this->db->query("SELECT id, op_head_status, status FROM approval_requests WHERE source_table IN ('land_fund_requisitions', 'con_land_requisitions') AND source_id = $id ORDER BY id DESC LIMIT 1");
+        if ($arQ && $arQ->num_rows > 0) {
+            $arRow = $arQ->fetch_assoc();
+        }
+
+        // Flow for > 1 Lac: Role 20 must approve first before Management
+        if ($isOver1Lac && $isOpHead && !$isMgmt) {
+            $arId = (int)($arRow['id'] ?? 0);
+            $newOpStatus = ($status === 'Approved') ? 'approved' : 'rejected';
+            $escNote = $this->db->real_escape_string($note);
+
+            if ($arId > 0) {
+                if ($newOpStatus === 'approved') {
+                    if (!class_exists('ApprovalRequest')) {
+                        require_once __DIR__ . '/../../models/ApprovalRequest.php';
+                    }
+                    $approvalModel = new \ApprovalRequest($this->db);
+                    $approvalModel->approveOperationHead($arId, $mgmt_by, $note);
+                } else {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'rejected', op_head_by = {$mgmt_by}, op_head_at = NOW(), op_head_note = '{$escNote}', status = 'rejected', approve_role = 'rejected' WHERE id = {$arId}");
+                    $this->db->query("UPDATE land_fund_requisitions SET mgmt_status = 'Rejected', mgmt_by = {$mgmt_by}, mgmt_note = '{$escNote}', mgmt_approved_at = CURRENT_TIMESTAMP WHERE id = {$id}");
+                }
+            } else {
+                $this->db->query("UPDATE approval_requests SET op_head_status = '{$newOpStatus}', op_head_by = {$mgmt_by}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table IN ('land_fund_requisitions', 'con_land_requisitions') AND source_id = {$id}");
+                if ($newOpStatus === 'rejected') {
+                    $this->db->query("UPDATE land_fund_requisitions SET mgmt_status = 'Rejected', mgmt_by = {$mgmt_by}, mgmt_note = '{$escNote}', mgmt_approved_at = CURRENT_TIMESTAMP WHERE id = {$id}");
+                }
+            }
+
+            if ($status === 'Approved') {
+                setSuccess("Requisition verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for sign-off.");
+            } else {
+                setSuccess("Requisition rejected by Admin & Operation Head.");
+            }
+            header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
+            exit;
+        }
+
+        // Management gating for > 1 Lac: Op Head must have approved
+        if ($isOver1Lac && $isMgmt) {
+            $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
+            if ($opHeadStatus !== 'approved') {
+                setError("Access Denied: Requests exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+                header("Location: " . $GLOBALS['base_url'] . "/con-land-requisitions");
+                exit;
+            }
+        }
+
+        // Standard approval for <= 1L or Management sign-off for > 1L (after Op Head approved)
         $stmt = $this->db->prepare("
             UPDATE land_fund_requisitions 
             SET mgmt_status = ?, mgmt_by = ?, mgmt_note = ?, mgmt_approved_at = CURRENT_TIMESTAMP
@@ -371,7 +418,8 @@ class LandRequisitionController extends Controller {
             $newArStatus = ($status === 'Approved') ? 'approved' : 'rejected';
             $stmtAr = $this->db->prepare("
                 UPDATE approval_requests 
-                SET approve_role = ?, status = ?, approved_by = ?, approved_at = NOW(), approval_note = ?
+                SET approve_role = ?, status = ?, approved_by = ?, approved_at = NOW(), approval_note = ?,
+                    op_head_status = (CASE WHEN op_head_status = 'approved' THEN op_head_status ELSE 'approved' END)
                 WHERE source_table IN ('land_fund_requisitions', 'con_land_requisitions') AND source_id = ?
             ");
             if ($stmtAr) {

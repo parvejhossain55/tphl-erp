@@ -622,7 +622,7 @@
       '<div class="page-break" style="page-break-after: always;"></div>',
     pagebreak_split_block: true,
     content_style:
-      '.page-break { border-top: 2px dashed #94a3b8; margin: 25px 0; position: relative; text-align: center; } .page-break::after { content: "PAGE BREAK (পৃষ্ঠা বিভাজন)"; background: #e2e8f0; color: #475569; font-size: 11px; font-weight: bold; padding: 2px 10px; border-radius: 4px; position: relative; top: -11px; }',
+      '.page-break { border-top: 2px dashed #94a3b8; margin: 25px 0; position: relative; text-align: center; } .page-break::after { content: "PAGE BREAK"; background: #e2e8f0; color: #475569; font-size: 11px; font-weight: bold; padding: 2px 10px; border-radius: 4px; position: relative; top: -11px; }',
     link_default_target: "_blank",
     quickbars_insert_toolbar: false,
     height: "350",

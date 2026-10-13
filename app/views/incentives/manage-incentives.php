@@ -353,9 +353,19 @@ $canApproveAh = $isAccountsHead || in_array($userRole, [1, 3]) || strpos($roleNa
                                                         <i class="fa-solid fa-hourglass-start me-1"></i>Not Claimed Yet
                                                     </span>
                                                 <?php elseif ($claim['claim_status'] === 'claimed'): ?>
-                                                    <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small">
-                                                        <i class="fa-solid fa-clock me-1"></i>Awaiting Mgmt Approval
-                                                    </span>
+                                                    <?php
+                                                    $isOver1LacClaim = ((float)$claim['incentive_amount'] > 100000);
+                                                    $isOpHeadApprovedClaim = (!empty($ahInfoClaim['is_op_head_approved']) || ($ahInfoClaim['op_head_status'] ?? '') === 'approved');
+                                                    ?>
+                                                    <?php if ($isOver1LacClaim && !$isOpHeadApprovedClaim): ?>
+                                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small">
+                                                            <i class="fa-solid fa-hourglass-half me-1"></i>Pending Op Head (>1L)
+                                                        </span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small">
+                                                            <i class="fa-solid fa-clock me-1"></i>Awaiting Mgmt Approval
+                                                        </span>
+                                                    <?php endif; ?>
                                                 <?php elseif ($claim['claim_status'] === 'approved'): ?>
                                                     <?php if (!$isAhApprovedClaim): ?>
                                                         <span class="badge bg-warning text-dark rounded-pill px-3 py-1 extra-small">
@@ -393,13 +403,33 @@ $canApproveAh = $isAccountsHead || in_array($userRole, [1, 3]) || strpos($roleNa
                                                         <i class="fa-solid fa-hourglass-start me-1"></i>Not Claimed Yet
                                                     </button>
                                                 <?php elseif ($claim['claim_status'] === 'claimed'): ?>
-                                                    <?php if ($isManagement): ?>
-                                                        <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" data-id="<?= $claim['id'] ?>" title="Approve Claim">
-                                                            <i class="fa-solid fa-check me-1"></i>Approve
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-danger rounded-2 px-2 btn-reject-claim" data-id="<?= $claim['id'] ?>" title="Reject Claim">
-                                                            <i class="fa-solid fa-times"></i>
-                                                        </button>
+                                                    <?php
+                                                    $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+                                                    $userRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+                                                    $isOpHeadUserClaim = (in_array($userRoleId, [20, 32], true) || str_contains($userRoleName, 'operation head'));
+                                                    $isMgmtUserClaim = in_array($userRoleId, [1, 3], true);
+                                                    $isMgmtLockedClaim = ($isOver1LacClaim && !$isOpHeadApprovedClaim && $isMgmtUserClaim && !$isOpHeadUserClaim);
+                                                    ?>
+                                                    <?php if ($isManagement || $isOpHeadUserClaim): ?>
+                                                        <?php if ($isMgmtLockedClaim): ?>
+                                                            <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;" title="Claims exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) first">
+                                                                <i class="fa-solid fa-lock me-1 text-warning"></i>Locked (>1L)
+                                                            </span>
+                                                        <?php elseif ($isOver1LacClaim && !$isOpHeadApprovedClaim && $isOpHeadUserClaim): ?>
+                                                            <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" data-id="<?= $claim['id'] ?>" title="Verify & Approve as Admin & Operation Head">
+                                                                <i class="fa-solid fa-check-double me-1"></i>Op Head Approve
+                                                            </button>
+                                                            <button class="btn btn-sm btn-outline-danger rounded-2 px-2 btn-reject-claim" data-id="<?= $claim['id'] ?>" title="Reject Claim">
+                                                                <i class="fa-solid fa-times"></i>
+                                                            </button>
+                                                        <?php else: ?>
+                                                            <button class="btn btn-sm btn-success rounded-2 px-2 me-1 btn-approve-claim" data-id="<?= $claim['id'] ?>" title="Approve Claim">
+                                                                <i class="fa-solid fa-check me-1"></i>Approve
+                                                            </button>
+                                                            <button class="btn btn-sm btn-outline-danger rounded-2 px-2 btn-reject-claim" data-id="<?= $claim['id'] ?>" title="Reject Claim">
+                                                                <i class="fa-solid fa-times"></i>
+                                                            </button>
+                                                        <?php endif; ?>
                                                     <?php else: ?>
                                                         <span class="text-muted extra-small">Waiting for Mgmt Approval</span>
                                                     <?php endif; ?>

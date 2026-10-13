@@ -3,10 +3,12 @@
    HOD & Team Performance Dashboard Styles (Leadership Workspace)
    ========================================================================== */
 .tphl-team-container {
-    max-width: 1600px;
-    margin: 0 auto;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     color: #1e293b;
+    width: 100%;
+    max-width: 100%;
+    padding: 0 4px;
+    margin: 0;
 }
 
 /* Header & Tags */
@@ -98,7 +100,7 @@
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     padding: 10px 18px;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
 }
 .team-filter-label {
     font-size: 11.5px;
@@ -129,8 +131,8 @@
 .team-kpi-grid {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
-    gap: 16px;
-    margin-bottom: 24px;
+    gap: 12px;
+    margin-bottom: 16px;
 }
 @media (max-width: 1280px) {
     .team-kpi-grid {
@@ -212,8 +214,8 @@
 .team-charts-row {
     display: grid;
     grid-template-columns: 2fr 1fr;
-    gap: 20px;
-    margin-bottom: 24px;
+    gap: 16px;
+    margin-bottom: 16px;
 }
 @media (max-width: 992px) {
     .team-charts-row {
@@ -483,7 +485,7 @@
 }
 </style>
 
-<div class="tphl-team-container py-4 px-md-4">
+<div class="tphl-team-container py-3 px-3">
     <!-- Flash Messages -->
     <?php if (!empty($_SESSION['success'])): ?>
         <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm border-0 d-flex align-items-center mb-4" role="alert">
@@ -521,6 +523,11 @@
             <a href="<?= $GLOBALS['base_url'] ?>/team-performance?export=csv&<?= http_build_query($_GET) ?>" class="team-btn-export">
                 <i class="bi bi-box-arrow-down"></i> Export
             </a>
+
+            <!-- New Team Project Button -->
+            <button type="button" class="btn btn-outline-success rounded-pill fw-semibold px-3 py-2 d-inline-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalCreateTeamProject" style="font-size: 13px;">
+                <i class="bi bi-folder-plus"></i> New Team Project
+            </button>
 
             <!-- Assign Task Button -->
             <button type="button" class="team-btn-add" data-bs-toggle="modal" data-bs-target="#modalAssignTask">
@@ -569,7 +576,7 @@
                 <?php if (!empty($projects)): ?>
                     <?php foreach ($projects as $proj): ?>
                         <option value="<?= $proj['id'] ?>" <?= ($projectFilter == $proj['id']) ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($proj['name']) ?>
+                            <?= (!empty($proj['is_team_project']) ? '👥 [Team] ' : '') . htmlspecialchars($proj['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -604,7 +611,7 @@
                 <span class="team-kpi-icon bg-light text-success"><i class="bi bi-grid-fill"></i></span>
             </div>
             <div class="team-kpi-val"><?= str_pad($kpi['total_tasks'], 2, '0', STR_PAD_LEFT) ?></div>
-            <div class="team-kpi-sub text-success">+<?= $kpi['tasks_this_month'] ?> tasks this month</div>
+            <div class="team-kpi-sub text-success"><?= $kpi['tasks_this_month'] > 0 ? '+' . $kpi['tasks_this_month'] . ' tasks this month' : '0 tasks this month' ?></div>
         </div>
 
         <!-- 2. Completed -->
@@ -614,7 +621,7 @@
                 <span class="team-kpi-icon bg-success-subtle text-success"><i class="bi bi-check2"></i></span>
             </div>
             <div class="team-kpi-val"><?= str_pad($kpi['completed'], 2, '0', STR_PAD_LEFT) ?></div>
-            <div class="team-kpi-sub text-success"><?= $kpi['completion_rate'] ?>% completion rate</div>
+            <div class="team-kpi-sub text-success"><?= $kpi['total_tasks'] > 0 ? $kpi['completion_rate'] . '% completion rate' : 'No completed tasks' ?></div>
         </div>
 
         <!-- 3. In Progress -->
@@ -624,7 +631,7 @@
                 <span class="team-kpi-icon bg-warning-subtle text-warning"><i class="bi bi-clock"></i></span>
             </div>
             <div class="team-kpi-val"><?= str_pad($kpi['in_progress'], 2, '0', STR_PAD_LEFT) ?></div>
-            <div class="team-kpi-sub text-warning"><?= $kpi['due_this_week'] ?> due this week</div>
+            <div class="team-kpi-sub text-warning"><?= $kpi['in_progress'] > 0 ? $kpi['due_this_week'] . ' due this week' : 'No active tasks' ?></div>
         </div>
 
         <!-- 4. Overdue -->
@@ -634,7 +641,7 @@
                 <span class="team-kpi-icon bg-danger-subtle text-danger"><i class="bi bi-exclamation"></i></span>
             </div>
             <div class="team-kpi-val"><?= str_pad($kpi['overdue'], 2, '0', STR_PAD_LEFT) ?></div>
-            <div class="team-kpi-sub text-danger"><?= $kpi['overdue_pct'] ?>% of team tasks</div>
+            <div class="team-kpi-sub text-danger"><?= $kpi['total_tasks'] > 0 ? $kpi['overdue_pct'] . '% of team tasks' : 'No overdue tasks' ?></div>
         </div>
 
         <!-- 5. On-Time Rate -->
@@ -644,7 +651,7 @@
                 <span class="team-kpi-icon bg-primary-subtle text-primary"><i class="bi bi-shield-check"></i></span>
             </div>
             <div class="team-kpi-val"><?= $kpi['on_time_rate'] ?>%</div>
-            <div class="team-kpi-sub text-primary">+4.2% vs last month</div>
+            <div class="team-kpi-sub text-primary"><?= $kpi['total_tasks'] > 0 ? $kpi['on_time_rate'] . '% on-time delivery' : 'No delivery data' ?></div>
         </div>
 
         <!-- 6. Avg Team Score -->
@@ -715,11 +722,11 @@
             <!-- Bottom Callout (Matching Screenshot) -->
             <div class="workload-callout">
                 <div class="workload-callout-icon">
-                    <i class="bi bi-plus-lg"></i>
+                    <i class="bi bi-shield-check"></i>
                 </div>
                 <div>
-                    <div class="fw-bold text-dark" style="font-size: 12.5px;">Workload looks balanced</div>
-                    <div class="text-muted" style="font-size: 11.5px;"><?= htmlspecialchars($highestWorkloadMember) ?> has the highest active workload</div>
+                    <div class="fw-bold text-dark" style="font-size: 12.5px;">Workload Status</div>
+                    <div class="text-muted" style="font-size: 11.5px;"><?= !empty($highestWorkloadMember) ? htmlspecialchars($highestWorkloadMember) . ' has the highest active workload' : 'All team workloads are clear and balanced' ?></div>
                 </div>
             </div>
         </div>
@@ -848,6 +855,50 @@
 </div>
 
 <!-- ========================================================================
+     Modal: Create Team Project
+     ======================================================================== -->
+<div class="modal fade" id="modalCreateTeamProject" tabindex="-1" aria-labelledby="modalCreateTeamProjectLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <div>
+                    <span class="team-header-tag">PROJECT MANAGEMENT</span>
+                    <h5 class="modal-title fw-bold text-dark" id="modalCreateTeamProjectLabel">Create New Team Project</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="<?= $GLOBALS['base_url'] ?>/team-performance/create-project" method="POST" id="formCreateTeamProject">
+                <input type="hidden" name="is_team_project" value="1">
+                <div class="modal-body pt-3">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">Team Project Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="newTeamProjNameInput" class="form-control rounded-3" placeholder="e.g. Sales Campaign Q4, Operation Overhaul..." required autocomplete="off">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">Project Theme Color</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="color" name="color" class="form-control form-control-color rounded-circle p-1 border-0" value="#16a34a" title="Choose project theme color" style="width: 40px; height: 40px; cursor: pointer;">
+                            <span class="small text-muted">Pick a theme color to identify this project badge across all team boards.</span>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-light border small text-muted mb-0">
+                        <i class="bi bi-people-fill text-success me-1"></i>
+                        This Team Project will be shared with all members reporting to this department, enabling team-wide task assignment, progress tracking, and management overview.
+                    </div>
+                    <div id="createTeamProjectFeedback" class="mt-2 text-center" style="display: none;"></div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-3 fw-semibold px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" id="btnSaveTeamProject" class="btn btn-success rounded-3 fw-semibold px-4 text-white" style="background-color: #15803d; border-color: #15803d;">Create Team Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================
      Modal: Assign Task to Team Member
      ======================================================================== -->
 <div class="modal fade" id="modalAssignTask" tabindex="-1" aria-labelledby="modalAssignTaskLabel" aria-hidden="true">
@@ -885,13 +936,32 @@
 
                     <!-- Project Selection -->
                     <div class="mb-3">
-                        <label class="form-label small fw-bold text-secondary">Project</label>
-                        <select name="project_id" class="form-select rounded-3">
+                        <label class="form-label small fw-bold text-secondary">Project / Team Project</label>
+                        <select name="project_id" id="assignTaskProjectId" class="form-select rounded-3" onchange="toggleAssignNewProject(this.value)">
                             <option value="">No Project (Inbox)</option>
-                            <?php foreach ($projects as $pr): ?>
-                                <option value="<?= $pr['id'] ?>"><?= htmlspecialchars($pr['name']) ?></option>
-                            <?php endforeach; ?>
+                            <?php if (!empty($projects)): ?>
+                                <optgroup label="Shared Team Projects">
+                                    <?php foreach ($projects as $pr): ?>
+                                        <?php if (!empty($pr['is_team_project'])): ?>
+                                            <option value="<?= $pr['id'] ?>">👥 <?= htmlspecialchars($pr['name']) ?></option>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                                <optgroup label="Other Projects">
+                                    <?php foreach ($projects as $pr): ?>
+                                        <?php if (empty($pr['is_team_project'])): ?>
+                                            <option value="<?= $pr['id'] ?>">📁 <?= htmlspecialchars($pr['name']) ?></option>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                            <?php endif; ?>
+                            <option value="new">+ Create New Team Project...</option>
                         </select>
+                        <div id="assignNewProjectWrap" style="display: none;" class="mt-2 p-2 bg-light rounded-3 border">
+                            <label class="form-label small fw-bold text-dark mb-1">New Team Project Name</label>
+                            <input type="text" name="new_team_project_name" id="assign_new_project_name" class="form-control form-control-sm mb-1" placeholder="e.g. Sales Campaign Q4, ERP Module">
+                            <span class="text-muted" style="font-size: 11px;">This project will be automatically shared with the team.</span>
+                        </div>
                     </div>
 
                     <!-- Priority & Deadline -->
@@ -920,6 +990,68 @@
                 <div class="modal-footer border-top-0 pt-0">
                     <button type="button" class="btn btn-light rounded-3 fw-semibold px-4" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-success rounded-3 fw-semibold px-4 text-white" style="background-color: #15803d; border-color: #15803d;">Assign Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================
+     Modal: Update Member Task Progress (HOD Action)
+     ======================================================================== -->
+<div class="modal fade" id="modalUpdateMemberTask" tabindex="-1" aria-labelledby="modalUpdateMemberTaskLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <div>
+                    <span class="team-header-tag">TASK MANAGEMENT</span>
+                    <h5 class="modal-title fw-bold text-dark" id="modalUpdateMemberTaskLabel">Update Task Progress</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="<?= $GLOBALS['base_url'] ?>/my-created-tasks/update-progress" method="POST" id="formUpdateMemberTask">
+                <input type="hidden" name="ajax" value="1">
+                <input type="hidden" name="task_id" id="memberUpdateTaskId" value="">
+                <div class="modal-body pt-3">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">Task Title</label>
+                        <input type="text" id="memberUpdateTaskTitle" class="form-control rounded-3 bg-light" readonly>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-secondary">Status</label>
+                            <select name="status" id="memberUpdateStatus" class="form-select rounded-3">
+                                <option value="pending">In Progress</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-secondary">Deadline</label>
+                            <input type="date" name="due_date" id="memberUpdateDueDate" class="form-control rounded-3">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small fw-bold text-secondary mb-0">Progress</label>
+                            <span class="fw-bold text-success" id="memberProgressDisplay">0%</span>
+                        </div>
+                        <input type="range" name="progress" id="memberUpdateProgress" class="form-range" min="0" max="100" step="5" value="0">
+                        <div class="d-flex justify-content-between text-muted" style="font-size: 11px;">
+                            <span>0%</span>
+                            <span>25%</span>
+                            <span>50%</span>
+                            <span>75%</span>
+                            <span>100%</span>
+                        </div>
+                    </div>
+
+                    <div id="memberUpdateFeedback" class="mt-2 text-center" style="display: none;"></div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-3 fw-semibold px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" id="btnSaveMemberTask" class="btn btn-success rounded-3 fw-semibold px-4 text-white" style="background-color: #15803d; border-color: #15803d;">Save Update</button>
                 </div>
             </form>
         </div>
@@ -1020,7 +1152,12 @@ function changeDeliveryTime(event, period) {
     event.target.classList.add('active');
 }
 
+let currentMemberEmpId = 0;
+let currentMemberEmpName = '';
+
 function openMemberTasksOffcanvas(empId, empName) {
+    currentMemberEmpId = empId;
+    currentMemberEmpName = empName;
     document.getElementById('offcanvasMemberTitle').textContent = empName + ' - Active Tasks';
     const loading = document.getElementById('memberTasksLoading');
     const list = document.getElementById('memberTasksList');
@@ -1032,7 +1169,7 @@ function openMemberTasksOffcanvas(empId, empName) {
     const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl) || new bootstrap.Offcanvas(offcanvasEl);
     bsOffcanvas.show();
 
-    fetch('<?= $GLOBALS['base_url'] ?>/team-performance/member/' + empId)
+    fetch('<?= $GLOBALS['base_url'] ?>/team-performance/member/' + empId + '<?= $projectFilter > 0 ? "?project_id=" . $projectFilter : "" ?>')
         .then(res => res.json())
         .then(data => {
             loading.style.display = 'none';
@@ -1042,24 +1179,37 @@ function openMemberTasksOffcanvas(empId, empName) {
                 let html = '<div class="list-group list-group-flush">';
                 data.tasks.forEach(t => {
                     const isComp = (t.status === 'completed' || t.progress >= 100);
+                    const isTeam = t.is_team_project == 1;
                     const prioColor = t.priority === 1 ? '#ef4444' : (t.priority === 2 ? '#f59e0b' : '#3b82f6');
+                    const taskJson = JSON.stringify(t).replace(/"/g, '&quot;');
                     html += `
                         <div class="list-group-item px-0 py-3 border-bottom">
                             <div class="d-flex align-items-center justify-content-between mb-1">
                                 <span class="fw-bold text-dark" style="font-size: 14px; ${isComp ? 'text-decoration: line-through; opacity: 0.75;' : ''}">${t.title}</span>
-                                <span class="badge ${isComp ? 'bg-success-subtle text-success' : 'bg-light text-secondary'}" style="font-size: 11px;">
-                                    ${isComp ? 'Completed' : 'In Progress'}
-                                </span>
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="badge ${isComp ? 'bg-success-subtle text-success' : 'bg-light text-secondary border'}" style="font-size: 11px;">
+                                        ${isComp ? 'Completed' : 'In Progress'}
+                                    </span>
+                                    <span class="badge ${isComp ? 'bg-success text-white' : (t.progress > 0 ? 'bg-warning-subtle text-dark border' : 'bg-light text-secondary border')}" style="font-size: 11px; min-width: 44px; text-align: center;">
+                                        ${t.progress}%
+                                    </span>
+                                    <button type="button" class="btn btn-sm btn-light border py-0 px-2 rounded-pill ms-1 text-success fw-semibold" style="font-size: 11px;" onclick="editMemberTaskProgress(${taskJson})" title="Update task progress">
+                                        <i class="bi bi-sliders me-1"></i> Update
+                                    </button>
+                                </div>
                             </div>
                             <div class="d-flex align-items-center justify-content-between text-muted small">
-                                <span><i class="bi bi-folder2 text-secondary me-1"></i> ${t.project_name}</span>
+                                <span>
+                                    ${isTeam ? '<span class="badge bg-success-subtle text-success py-0 px-1 me-1"><i class="bi bi-people-fill me-1"></i>Team</span>' : '<i class="bi bi-folder2 text-secondary me-1"></i>'}
+                                    ${t.project_name}
+                                </span>
                                 <span><i class="bi bi-calendar3 me-1"></i> ${t.due_date}</span>
                             </div>
                             <div class="d-flex align-items-center gap-2 mt-2">
-                                <div class="progress flex-grow-1" style="height: 5px; background: #e2e8f0; border-radius: 4px;">
-                                    <div class="progress-bar bg-success" style="width: ${t.progress}%;"></div>
+                                <div class="progress flex-grow-1" style="height: 7px; background: #e2e8f0; border-radius: 4px; cursor: pointer;" onclick="editMemberTaskProgress(${taskJson})" title="Click to update progress">
+                                    <div class="progress-bar ${isComp ? 'bg-success' : (t.progress >= 50 ? 'bg-success' : (t.progress > 0 ? 'bg-warning' : 'bg-secondary'))}" style="width: ${t.progress}%;"></div>
                                 </div>
-                                <span class="fw-bold text-muted" style="font-size: 11px;">${t.progress}%</span>
+                                <span class="fw-bold text-dark" style="font-size: 11.5px; min-width: 34px; text-align: right;">${t.progress}%</span>
                             </div>
                         </div>
                     `;
@@ -1081,5 +1231,185 @@ function openMemberTasksOffcanvas(empId, empName) {
             list.style.display = 'block';
             list.innerHTML = '<div class="alert alert-danger small">Failed to load member tasks.</div>';
         });
+}
+
+function editMemberTaskProgress(task) {
+    if (!task) return;
+    document.getElementById('memberUpdateTaskId').value = task.id;
+    document.getElementById('memberUpdateTaskTitle').value = task.title || '';
+    document.getElementById('memberUpdateDueDate').value = task.due_date_raw || '';
+    
+    const progressVal = parseInt(task.progress) || 0;
+    const progressRange = document.getElementById('memberUpdateProgress');
+    const progressDisplay = document.getElementById('memberProgressDisplay');
+    const statusSelect = document.getElementById('memberUpdateStatus');
+    
+    progressRange.value = progressVal;
+    progressDisplay.textContent = progressVal + '%';
+    
+    if (task.status === 'completed' || progressVal >= 100) {
+        statusSelect.value = 'completed';
+    } else {
+        statusSelect.value = 'pending';
+    }
+    
+    const feedback = document.getElementById('memberUpdateFeedback');
+    feedback.style.display = 'none';
+    feedback.innerHTML = '';
+    
+    const submitBtn = document.getElementById('btnSaveMemberTask');
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = 'Save Update';
+
+    const modalEl = document.getElementById('modalUpdateMemberTask');
+    const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    bsModal.show();
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    const progressRange = document.getElementById('memberUpdateProgress');
+    const progressDisplay = document.getElementById('memberProgressDisplay');
+    const statusSelect = document.getElementById('memberUpdateStatus');
+
+    if (progressRange && progressDisplay && statusSelect) {
+        progressRange.addEventListener('input', function() {
+            const val = parseInt(this.value) || 0;
+            progressDisplay.textContent = val + '%';
+            if (val >= 100) {
+                statusSelect.value = 'completed';
+            } else if (statusSelect.value === 'completed') {
+                statusSelect.value = 'pending';
+            }
+        });
+
+        statusSelect.addEventListener('change', function() {
+            if (this.value === 'completed') {
+                progressRange.value = 100;
+                progressDisplay.textContent = '100%';
+            } else {
+                if (parseInt(progressRange.value) >= 100) {
+                    progressRange.value = 0;
+                    progressDisplay.textContent = '0%';
+                }
+            }
+        });
+    }
+
+    const updateForm = document.getElementById('formUpdateMemberTask');
+    if (updateForm) {
+        updateForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const submitBtn = document.getElementById('btnSaveMemberTask');
+            const feedback = document.getElementById('memberUpdateFeedback');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Saving...';
+
+            const formData = new FormData(updateForm);
+            formData.append('ajax', '1');
+
+            fetch(updateForm.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    submitBtn.innerHTML = '<i class="bi bi-check2 me-1"></i> Saved!';
+                    feedback.style.display = 'block';
+                    feedback.innerHTML = '<div class="alert alert-success py-2 px-3 small rounded-3 mb-0">' + (data.message || 'Task updated successfully!') + '</div>';
+                    setTimeout(() => {
+                        const modalEl = document.getElementById('modalUpdateMemberTask');
+                        const bsModal = bootstrap.Modal.getInstance(modalEl);
+                        if (bsModal) bsModal.hide();
+                        // Refresh the offcanvas task list immediately
+                        if (currentMemberEmpId > 0) {
+                            openMemberTasksOffcanvas(currentMemberEmpId, currentMemberEmpName);
+                        }
+                    }, 500);
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    feedback.style.display = 'block';
+                    feedback.innerHTML = '<div class="alert alert-danger py-2 px-3 small rounded-3 mb-0">' + (data.message || 'Failed to update task') + '</div>';
+                }
+            })
+            .catch(err => {
+                console.error("AJAX update failed:", err);
+                updateForm.submit();
+            });
+        });
+    }
+
+    const formCreateProject = document.getElementById('formCreateTeamProject');
+    if (formCreateProject) {
+        formCreateProject.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const submitBtn = document.getElementById('btnSaveTeamProject');
+            const feedback = document.getElementById('createTeamProjectFeedback');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Creating...';
+
+            const formData = new FormData(formCreateProject);
+
+            fetch(formCreateProject.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.project) {
+                    submitBtn.innerHTML = '<i class="bi bi-check2 me-1"></i> Created!';
+                    feedback.style.display = 'block';
+                    feedback.innerHTML = '<div class="alert alert-success py-2 px-3 small rounded-3 mb-0">Team Project created successfully!</div>';
+                    
+                    const assignSelect = document.getElementById('assignTaskProjectId');
+                    if (assignSelect) {
+                        const opt = document.createElement('option');
+                        opt.value = data.project.id;
+                        opt.textContent = '👥 ' + data.project.name;
+                        opt.selected = true;
+                        assignSelect.appendChild(opt);
+                    }
+
+                    setTimeout(() => {
+                        const modalEl = document.getElementById('modalCreateTeamProject');
+                        const bsModal = bootstrap.Modal.getInstance(modalEl);
+                        if (bsModal) bsModal.hide();
+                        window.location.reload();
+                    }, 800);
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    feedback.style.display = 'block';
+                    feedback.innerHTML = '<div class="alert alert-danger py-2 px-3 small rounded-3 mb-0">' + (data.message || 'Failed to create team project') + '</div>';
+                }
+            })
+            .catch(err => {
+                console.error("Project creation failed:", err);
+                formCreateProject.submit();
+            });
+        });
+    }
+});
+
+function toggleAssignNewProject(val) {
+    const wrap = document.getElementById('assignNewProjectWrap');
+    if (wrap) {
+        wrap.style.display = (val === 'new') ? 'block' : 'none';
+        if (val === 'new') {
+            const input = document.getElementById('assign_new_project_name');
+            if (input) input.focus();
+        }
+    }
 }
 </script>

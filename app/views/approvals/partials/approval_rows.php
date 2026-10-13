@@ -1,10 +1,11 @@
-                            <tr>
-                                <td colspan="10" class="text-center py-4 text-muted">
-                                    <i class="fa-solid fa-folder-open fs-3 d-block mb-2"></i>
-                                    No approval requests found matching your filter criteria.
-                                </td>
-                            </tr>
-                        <?php else: ?>
+<?php if (empty($approvalHistory)): ?>
+    <tr>
+        <td colspan="10" class="text-center py-4 text-muted">
+            <i class="fa-solid fa-folder-open fs-3 d-block mb-2"></i>
+            No approval requests found matching your filter criteria.
+        </td>
+    </tr>
+<?php else: ?>
                             <?php foreach ($approvalHistory as $req): ?>
                                 <?php
                                 // Direct module target URL resolution so clicking review/view opens the exact module page!
@@ -118,12 +119,12 @@
                                         $canUserApprove = true;
                                     }
                                 } elseif ($isSiteOperator) {
-                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', '']) && ($reqAmount <= 100000.01 || $sourceTable === 'project_other_costs' || $sourceTable === 'expense_adjustments')) {
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', 'operations', '']) && (strtolower($req['op_head_status'] ?? '') !== 'approved')) {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
                                     }
                                 } elseif ($isManagementUser) {
-                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', ''])) {
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', 'operations', ''])) {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
                                     }
@@ -555,9 +556,35 @@
                                                     <i class="fa-solid fa-eye me-1"></i>View Details
                                                 </a>
                                             <?php elseif ($canUserApprove): ?>
-                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold">
-                                                    <i class="fa-solid fa-up-right-from-square me-1"></i>Review / Process
-                                                </a>
+                                                <?php if ($sourceTable === 'lead_bookings'): ?>
+                                                    <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold"
+                                                        onclick="openDiscountApprovalModal(<?= htmlspecialchars(json_encode([
+                                                            'id' => (int)$req['id'],
+                                                            'source_id' => (int)$req['source_id'],
+                                                            'title' => $req['title'] ?? 'Lead Booking Discount Approval',
+                                                            'amount' => (float)$req['request_amount'],
+                                                            'client_name' => $req['booking_client_name'] ?? '',
+                                                            'project_name' => $req['booking_project_name'] ?? '',
+                                                            'flat_name' => $req['booking_flat_name'] ?? '',
+                                                            'floor_no' => $req['booking_floor_no'] ?? '',
+                                                            'sales_agent' => $req['booking_sales_agent'] ?? '',
+                                                            'sales_code' => $req['booking_sales_code'] ?? '',
+                                                            'agreement_value' => $req['booking_agreement_value'] ?? 0,
+                                                            'attachment' => $req['attachment'] ?? '',
+                                                            'op_head_status' => $req['op_head_status'] ?? '',
+                                                            'op_head_name' => $req['op_head_name'] ?? '',
+                                                            'op_head_at' => $req['op_head_at'] ?? '',
+                                                            'status' => $req['status'] ?? '',
+                                                            'booking_url' => $targetUrl
+                                                        ])) ?>)"
+                                                        title="Review & Process Booking Discount">
+                                                        <i class="fa-solid fa-stamp me-1"></i>Review / Process
+                                                    </button>
+                                                <?php else: ?>
+                                                    <a href="<?= $targetUrl ?>" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold">
+                                                        <i class="fa-solid fa-up-right-from-square me-1"></i>Review / Process
+                                                    </a>
+                                                <?php endif; ?>
                                             <?php else: ?>
                                                 <a href="javascript:void(0)"
                                                     class="btn btn-sm btn-light text-muted rounded-2 px-2 border"
@@ -575,3 +602,4 @@
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
+<?php endif; ?>

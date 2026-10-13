@@ -20,15 +20,49 @@ $validTransactions = array_values(array_filter($transactions, function ($t) {
     return false;
 }));
 
-// Ensure transactions are sorted chronologically by payment_date ASC, id ASC
-usort($validTransactions, function ($a, $b) {
-    $dateA = $a['payment_date'] ?? '';
-    $dateB = $b['payment_date'] ?? '';
-    if ($dateA === $dateB) {
+// Ensure transactions are sorted in business order:
+// 1. Booking Money, 2. Registration/Land Share, 3. Dev Charge, 4. EMI Installments (Advance -> Regular -> Settlement), 5. Others
+if (class_exists('AccountClient')) {
+    $sortModel = new AccountClient();
+    $sortModel->sortTransactions($validTransactions);
+} else {
+    usort($validTransactions, function ($a, $b) {
+        $getGroup = function ($t) {
+            $type = strtolower($t['payment_type'] ?? '');
+            if ($type === 'booking_money') return 1;
+            if (in_array($type, ['registration', 'land_share', 'mutation_cost'], true)) return 2;
+            if (in_array($type, ['development_charge', 'construction_fee', 'shop_service_charge'], true)) return 3;
+            if ($type === 'emi' || $type === 'emi_due_settlement' || !empty($t['emi_no']) || !empty($t['parent_emi_no'])) return 4;
+            return 5;
+        };
+        $gA = $getGroup($a);
+        $gB = $getGroup($b);
+        if ($gA !== $gB) return $gA <=> $gB;
+        if ($gA === 4) {
+            $getNo = function ($t) {
+                if (!empty($t['emi_no'])) return (int)$t['emi_no'];
+                if (!empty($t['parent_emi_no'])) return (int)$t['parent_emi_no'];
+                if (!empty($t['installment_label']) && preg_match('/(\d+)/', $t['installment_label'], $m)) return (int)$m[1];
+                return 9999;
+            };
+            $noA = $getNo($a);
+            $noB = $getNo($b);
+            if ($noA !== $noB) return $noA <=> $noB;
+            $getSub = function ($t) {
+                if ((!empty($t['settlement_type']) && $t['settlement_type'] === 'emi_due_settlement') || (($t['payment_type'] ?? '') === 'emi_due_settlement')) return 3;
+                if (strtolower($t['payment_status'] ?? '') === 'partially_paid') return 1;
+                return 2;
+            };
+            $sA = $getSub($a);
+            $sB = $getSub($b);
+            if ($sA !== $sB) return $sA <=> $sB;
+        }
+        $dA = $a['payment_date'] ?? '';
+        $dB = $b['payment_date'] ?? '';
+        if ($dA !== $dB) return strcmp($dA, $dB);
         return ((int)($a['id'] ?? 0)) <=> ((int)($b['id'] ?? 0));
-    }
-    return strcmp($dateA, $dateB);
-});
+    });
+}
 
 // Compute totals
 $totalPrice       = (float)($paymentSummary['total_price'] ?? 0);
@@ -513,7 +547,8 @@ foreach ($validTransactions as $t) {
                                 if (!empty($txn['settlement_type']) && $txn['settlement_type'] === 'emi_due_settlement') {
                                     $term = $txn['installment_label'] ?? $term;
                                 } elseif ($emiNo) {
-                                    $term = 'Installment ' . $emiNo;
+                                    $isPartial = (!empty($txn['payment_status']) && strtolower($txn['payment_status']) === 'partially_paid');
+                                    $term = ($isPartial ? 'Advance ' : '') . 'Installment ' . $emiNo;
                                 }
                                 $colInstFee    = $amount - $serviceFee;
                                 $colServiceFee = $serviceFee;

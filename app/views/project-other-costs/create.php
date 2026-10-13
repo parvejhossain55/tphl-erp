@@ -34,16 +34,25 @@
                         <form action="<?= $GLOBALS['base_url'] ?>/project-other-costs/store" method="POST" enctype="multipart/form-data">
                             <div class="row mb-3">
                                 <div class="col-md-6">
-                                    <label class="form-label">Project <span class="text-danger">*</span></label>
-                                    <select name="project_id" class="form-select select2" required>
-                                        <option value="">Select Project</option>
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="form-label mb-0 fw-semibold">Project(s) <span class="text-danger">*</span></label>
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-link btn-xs p-0 text-decoration-none" id="pageSelectAllProjects" style="font-size: 0.75rem;">Select All</button>
+                                            <span class="text-muted" style="font-size: 0.75rem;">|</span>
+                                            <button type="button" class="btn btn-link btn-xs p-0 text-decoration-none text-muted" id="pageClearAllProjects" style="font-size: 0.75rem;">Clear</button>
+                                        </div>
+                                    </div>
+                                    <select name="project_ids[]" id="pageProjectSelect" class="form-select select2" multiple="multiple" required data-placeholder="Select single or multiple projects...">
                                         <?php foreach ($projects as $project): ?>
-                                            <option value="<?= $project['id'] ?>"><?= htmlspecialchars($project['name']) ?></option>
+                                            <option value="<?= $project['id'] ?>" data-name="<?= htmlspecialchars($project['name']) ?>"><?= htmlspecialchars($project['name']) ?></option>
                                         <?php endforeach; ?>
                                     </select>
+                                    <div class="form-text text-muted mt-1" style="font-size: 0.78rem;">
+                                        <i class="bi bi-info-circle me-1 text-primary"></i>Select 1 or multiple projects. Total amount will be distributed equally per project.
+                                    </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Cost Type <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-semibold">Cost Type <span class="text-danger">*</span></label>
                                     <select name="rcost_type" class="form-select" required>
                                         <option value="">Select Type</option>
                                         <option value="electricity_bill">Electricity Bill</option>
@@ -56,23 +65,44 @@
                                 </div>
                             </div>
                             
+                            <?= renderCOADropdown($coaList ?? [], null, 'account_id', false, 'othercostcreate') ?>
+                            
                             <div class="mb-3">
-                                <label class="form-label">Request Amount <span class="text-danger">*</span></label>
-                                <input type="number" step="0.01" name="request_amount" class="form-control" required placeholder="0.00">
+                                <label class="form-label fw-semibold">Total Request Amount <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text fw-bold bg-light">৳</span>
+                                    <input type="number" step="0.01" min="0.01" name="request_amount" id="pageRequestAmount" class="form-control" required placeholder="0.00">
+                                </div>
+
+                                <!-- Live Project Distribution Preview -->
+                                <div id="pageDistributionPreview" class="alert alert-info py-2 px-3 mt-2 mb-0 border-info-subtle rounded-3" style="display: none;">
+                                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                        <span class="extra-small">
+                                            <i class="bi bi-calculator me-1 text-primary"></i>
+                                            <strong>Cost Distribution:</strong> 
+                                            <span id="pageDistPerProject" class="fw-bold text-success fs-14">৳ 0.00</span> / project 
+                                            (<span id="pageDistProjectCount" class="fw-semibold">0</span> projects selected)
+                                        </span>
+                                        <span class="badge bg-primary px-2 py-1" id="pageDistTotalBadge">Total: ৳ 0.00</span>
+                                    </div>
+                                    <div class="mt-2 pt-1 border-top border-info-subtle d-flex flex-wrap gap-1" id="pageDistList">
+                                        <!-- Dynamic project chips with allocated amounts -->
+                                    </div>
+                                </div>
                             </div>
                             
                             <div class="mb-3">
-                                <label class="form-label">Attachment (Optional)</label>
+                                <label class="form-label fw-semibold">Attachment (Optional)</label>
                                 <input type="file" name="creator_attachment" class="form-control" accept="image/*,.pdf,.doc,.docx">
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Purpose / Description <span class="text-danger">*</span></label>
-                                <textarea name="purpose" class="form-control" rows="4" required placeholder="Enter purpose of the cost"></textarea>
+                                <label class="form-label fw-semibold">Purpose / Description <span class="text-danger">*</span></label>
+                                <textarea name="purpose" class="form-control" rows="3" required placeholder="Enter purpose of the cost"></textarea>
                             </div>
 
                             <div class="text-end">
-                                <button type="submit" class="btn btn-primary">Submit Request</button>
+                                <button type="submit" class="btn btn-primary px-4 fw-semibold"><i class="bi bi-check2-circle me-1"></i> Submit Request</button>
                             </div>
                         </form>
                     </div>
@@ -85,11 +115,136 @@
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         if (typeof $.fn.select2 !== 'undefined') {
-            $('.select2').select2({
-                theme: 'bootstrap-5'
+            $('#pageProjectSelect').select2({
+                placeholder: 'Select single or multiple projects...',
+                width: '100%'
             });
         }
+
+        // Live Cost Distribution Calculation Helper
+        function updatePageDistribution() {
+            const select = $('#pageProjectSelect');
+            const selectedOptions = select.find('option:selected');
+            const count = selectedOptions.length;
+            const totalAmount = parseFloat($('#pageRequestAmount').val()) || 0;
+            const previewEl = $('#pageDistributionPreview');
+
+            if (count > 0 && totalAmount > 0) {
+                const perProject = (totalAmount / count);
+                $('#pageDistPerProject').text('৳ ' + perProject.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('#pageDistProjectCount').text(count);
+                $('#pageDistTotalBadge').text('Total: ৳ ' + totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+
+                let chipsHtml = '';
+                selectedOptions.each(function() {
+                    const pName = $(this).data('name') || $(this).text();
+                    chipsHtml += `<span class="badge bg-white text-dark border extra-small px-2 py-1"><i class="bi bi-building text-primary me-1"></i>${pName}: <strong class="text-success">৳ ${perProject.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></span>`;
+                });
+                $('#pageDistList').html(chipsHtml);
+                previewEl.slideDown(150);
+            } else {
+                previewEl.slideUp(150);
+            }
+        }
+
+        // Bind events for live calculation
+        $('#pageProjectSelect').on('change', updatePageDistribution);
+        $('#pageRequestAmount').on('input', updatePageDistribution);
+
+        // Select All / Clear buttons
+        $('#pageSelectAllProjects').on('click', function(e) {
+            e.preventDefault();
+            $('#pageProjectSelect option').prop('selected', true);
+            $('#pageProjectSelect').trigger('change');
+        });
+
+        $('#pageClearAllProjects').on('click', function(e) {
+            e.preventDefault();
+            $('#pageProjectSelect option').prop('selected', false);
+            $('#pageProjectSelect').trigger('change');
+        });
     });
 </script>
+
+<style>
+    /* Select2 Multi-Select Choice Badges */
+    .select2-container--default .select2-selection--multiple {
+        background-color: #ffffff !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 6px !important;
+        min-height: 40px !important;
+        padding: 4px 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
+        box-sizing: border-box !important;
+    }
+    .select2-container--default.select2-container--focus .select2-selection--multiple {
+        border-color: #198754 !important;
+        box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.15) !important;
+    }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        background-color: #e8f5e9 !important;
+        border: 1px solid #a3cfbb !important;
+        border-radius: 6px !important;
+        color: #0f5132 !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        padding: 3px 10px 3px 24px !important;
+        margin: 2px 4px 2px 0 !important;
+        position: relative !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__display {
+        color: #0f5132 !important;
+        font-weight: 600 !important;
+        padding-left: 2px !important;
+        padding-right: 0 !important;
+    }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+        position: absolute !important;
+        left: 6px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        border: none !important;
+        background: transparent !important;
+        color: #0f5132 !important;
+        font-size: 14px !important;
+        font-weight: bold !important;
+        line-height: 1 !important;
+        padding: 0 !important;
+        cursor: pointer !important;
+    }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+        color: #dc3545 !important;
+        background: transparent !important;
+    }
+    .select2-container--default .select2-selection--multiple .select2-search--inline .select2-search__field {
+        margin: 0 !important;
+        padding: 2px 6px !important;
+        height: 28px !important;
+        line-height: 28px !important;
+        font-size: 13px !important;
+        color: #333333 !important;
+        width: auto !important;
+        min-width: 60px !important;
+        resize: none !important;
+        border: none !important;
+        outline: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    [bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        background-color: rgba(25, 135, 84, 0.25) !important;
+        border-color: rgba(25, 135, 84, 0.45) !important;
+        color: #86efac !important;
+    }
+    [bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--multiple .select2-selection__choice__display,
+    [bd-theme="bd-theme-dark"] .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+        color: #86efac !important;
+    }
+</style>
 
 
