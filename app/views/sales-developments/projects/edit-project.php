@@ -88,6 +88,54 @@ if (!empty($project['floor_wise_unit_meta'])) {
                         value="<?= $project['building_type'] ?? '' ?>">
                 </div>
 
+                <!-- Building Face -->
+                <div class="col-xl-6">
+                    <label>Building Face</label>
+                    <input type="text" name="building_face" class="form-control"
+                        placeholder="e.g. Infinity sea view"
+                        value="<?= htmlspecialchars($project['building_face'] ?? '') ?>">
+                </div>
+
+                <!-- Suite Sizes -->
+                <div class="col-xl-6">
+                    <label>Suite Sizes</label>
+                    <input type="text" name="suite_sizes" class="form-control"
+                        placeholder="e.g. 670 to 1,700 sq ft"
+                        value="<?= htmlspecialchars($project['suite_sizes'] ?? '') ?>">
+                </div>
+
+                <!-- Hotel Operation -->
+                <div class="col-xl-6">
+                    <label>Hotel Operation</label>
+                    <input type="text" name="hotel_operation" class="form-control"
+                        placeholder="e.g. By The Nature’s dedicated hospitality team"
+                        value="<?= htmlspecialchars($project['hotel_operation'] ?? '') ?>">
+                </div>
+
+                <!-- Construction Start -->
+                <div class="col-xl-6">
+                    <label>Construction Start</label>
+                    <input type="text" name="construction_start" class="form-control"
+                        placeholder="e.g. February 2027 (planned)"
+                        value="<?= htmlspecialchars($project['construction_start'] ?? '') ?>">
+                </div>
+
+                <!-- Handover -->
+                <div class="col-xl-6">
+                    <label>Handover</label>
+                    <input type="text" name="handover" class="form-control"
+                        placeholder="e.g. August 2030 (tentative), plus a 6-month grace period"
+                        value="<?= htmlspecialchars($project['handover'] ?? '') ?>">
+                </div>
+
+                <!-- Delivery -->
+                <div class="col-xl-6">
+                    <label>Delivery</label>
+                    <input type="text" name="delivery" class="form-control"
+                        placeholder="e.g. Fully furnished suites"
+                        value="<?= htmlspecialchars($project['delivery'] ?? '') ?>">
+                </div>
+
                 <!-- Total Share -->
                 <div class="col-xl-6">
                     <label>Total Share</label>

@@ -472,12 +472,21 @@ function formatProjectSlug($p) {
     $rooftopGardening = $p['rooftop_gardening'] ?? 0;
     $swimmingPool = $p['swimming_pool'];
 
+    $buildingFace      = (string)($p['building_face'] ?? '');
+    $suiteSizes        = (string)($p['suite_sizes'] ?? '');
+    $hotelOperation    = (string)($p['hotel_operation'] ?? '');
+    $constructionStart = (string)($p['construction_start'] ?? '');
+    $handover          = (string)($p['handover'] ?? '');
+    $delivery          = (string)($p['delivery'] ?? '');
+
 
     $beds = (int)($p['beds'] ?? ($units[0]['bedrooms'] ?? 3));
     $size = (string)($units[0]['size'] ?? '1565 sqft');
     $type = (string)($p['type'] ?? $p['types'] ?? 'Single Project');
     $price = (string)($p['price'] ?? $p['price_range'] ?? '1 Crore - 2 Crore BDT');
     $status = (string)($p['status'] ?? $p['project_sale_status'] ?? 'Ongoing');
+
+
 
     $data = [
         'id' => (int)($p['id'] ?? 0),
@@ -494,6 +503,12 @@ function formatProjectSlug($p) {
         'brochureLink' => $brochure,
         'apartmentCount' => (string)($p['apartment_count'] ?? count($units)),
         'specifications' => $specifications,
+        'buildingFace' => $buildingFace,
+        'suiteSizes' => $suiteSizes,
+        'hotelOperation' => $hotelOperation,
+        'constructionStart' => $constructionStart,
+        'handover' => $handover,
+        'delivery' => $delivery,
         'amenities' => $amenities,
         'frontRoad' => $frontRoad,
         'cargoLift' => $cargoLift,

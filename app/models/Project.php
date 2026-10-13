@@ -103,7 +103,7 @@ class Project extends Model
         // Insert Query
         $sql = "INSERT INTO projects (
                 name, slug, location_id, community_id, category_id, incentive_percentage,
-                building_type, 
+                building_type, building_face, suite_sizes, hotel_operation, construction_start, handover, delivery,
                 total_share, unit_per_floor, floor_wise_unit_meta, types, image, 
                 image2, image3, front_road, price_range, hover_text, 
                 plot_size, plot_no, block_no, brochure_link, description, 
@@ -114,7 +114,7 @@ class Project extends Model
                 pm_id, site_engineer_id, landman_id, struct_engineer_id,
                 draftsman_id, architect_id, estimator_id, qc_id, operator_id,
                 purchase_user_id, under_construction,is_common
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         $stmt = $this->db->prepare($sql);
 
@@ -128,7 +128,7 @@ class Project extends Model
         $incentive_percentage = !empty($data['incentive_percentage']) ? (float)$data['incentive_percentage'] : null;
 
         $stmt->bind_param(
-            "ssiiidsiissssssssdssssisssssiiiiiiiisdiiiiiiiiiiii",
+            "ssiiidssssssssiissssssssdssssisssssiiiiiiiisdiiiiiiiiiiii",
             $data['name'],                   // 1
             $data['slug'],                   // 2
             $location_id,                    // 3 (i)
@@ -136,49 +136,55 @@ class Project extends Model
             $category_id,                    // 5 (i)
             $incentive_percentage,           // 6 (d)
             $data['building_type'],          // 7
-            $total_share,                    // 8 (i)
-            $unit_per_floor,                 // 9 (i)
-            $data['floor_wise_unit_meta'],   // 10
-            $data['types'],                  // 11
-            $image,                          // 12
-            $image2,                         // 13
-            $image3,                         // 14
-            $data['front_road'],             // 15
-            $price_range,                    // 16
-            $data['hover_text'],             // 17
-            $plot_size,                      // 18 (d)
-            $data['plot_no'],                // 19
-            $data['block_no'],               // 20
-            $data['brochure_link'],          // 21
-            $data['description'],            // 22
-            $apartment_count,                // 23 (i)
-            $data['amenities_details'],      // 24
-            $amenities_image,                // 25
-            $map_image,                      // 26
-            $data['map_link'],               // 27
-            $data['project_map_location'],   // 28
-            $passenger_lift,                 // 29 (i)
-            $cargo_lift,                     // 30 (i)
-            $created_by,                     // 31 (i)
-            $rooftop_gardening,              // 32 (i)
-            $swimming_pool,                  // 33 (i)
-            $convention,                     // 34 (i)
-            $electricity_backup,             // 35 (i)
-            $car_parking,                    // 36 (i)
-            $data['project_sale_status'],    // 37 (s)
-            $data['service_charge_per_emi'], // 38 (d)
-            $pm_id,                          // 39 (i)
-            $site_engineer_id,               // 40 (i)
-            $landman_id,                     // 41 (i)
-            $struct_engineer_id,             // 42 (i)
-            $draftsman_id,                   // 43 (i)
-            $architect_id,                   // 44 (i)
-            $estimator_id,                   // 45 (i)
-            $qc_id,                          // 46 (i)
-            $operator_id,                    // 47 (i)
-            $purchase_user_id,               // 48 (i)
-            $under_construction  ,            // 49 (i)
-            $is_common              // 50 (i)
+            $data['building_face'],          // 8
+            $data['suite_sizes'],            // 9
+            $data['hotel_operation'],        // 10
+            $data['construction_start'],     // 11
+            $data['handover'],               // 12
+            $data['delivery'],               // 13
+            $total_share,                    // 14 (i)
+            $unit_per_floor,                 // 15 (i)
+            $data['floor_wise_unit_meta'],   // 16
+            $data['types'],                  // 17
+            $image,                          // 18
+            $image2,                         // 19
+            $image3,                         // 20
+            $data['front_road'],             // 21
+            $price_range,                    // 22
+            $data['hover_text'],             // 23
+            $plot_size,                      // 24 (d)
+            $data['plot_no'],                // 25
+            $data['block_no'],               // 26
+            $data['brochure_link'],          // 27
+            $data['description'],            // 28
+            $apartment_count,                // 29 (i)
+            $data['amenities_details'],      // 30
+            $amenities_image,                // 31
+            $map_image,                      // 32
+            $data['map_link'],               // 33
+            $data['project_map_location'],   // 34
+            $passenger_lift,                 // 35 (i)
+            $cargo_lift,                     // 36 (i)
+            $created_by,                     // 37 (i)
+            $rooftop_gardening,              // 38 (i)
+            $swimming_pool,                  // 39 (i)
+            $convention,                     // 40 (i)
+            $electricity_backup,             // 41 (i)
+            $car_parking,                    // 42 (i)
+            $data['project_sale_status'],    // 43 (s)
+            $data['service_charge_per_emi'], // 44 (d)
+            $pm_id,                          // 45 (i)
+            $site_engineer_id,               // 46 (i)
+            $landman_id,                     // 47 (i)
+            $struct_engineer_id,             // 48 (i)
+            $draftsman_id,                   // 49 (i)
+            $architect_id,                   // 50 (i)
+            $estimator_id,                   // 51 (i)
+            $qc_id,                          // 52 (i)
+            $operator_id,                    // 53 (i)
+            $purchase_user_id,               // 54 (i)
+            $under_construction  ,            // 55 (i)
+            $is_common              // 56 (i)
         );
 
         $result = $stmt->execute();
@@ -325,6 +331,12 @@ class Project extends Model
         plot_no = ?, 
         block_no = ?, 
         building_type = ?,
+        building_face = ?,
+        suite_sizes = ?,
+        hotel_operation = ?,
+        construction_start = ?,
+        handover = ?,
+        delivery = ?,
         total_share = ?, 
         unit_per_floor = ?, 
         types = ?, 
@@ -391,7 +403,7 @@ class Project extends Model
         $incentive_percentage = (isset($data['incentive_percentage']) && $data['incentive_percentage'] !== '') ? (float)$data['incentive_percentage'] : null;
 
         $stmt->bind_param(
-            "ssiiidsssisssssdssissssiiiissssssssssdiiiiiiiiiiiii",
+            "ssiiidsssssssssisssssdssissssiiiissssssssssdiiiiiiiiiiiii",
             $data['name'],
             $data['slug'],
             $data['location_id'],
@@ -401,6 +413,12 @@ class Project extends Model
             $data['plot_no'],
             $data['block_no'],
             $data['building_type'],
+            $data['building_face'],
+            $data['suite_sizes'],
+            $data['hotel_operation'],
+            $data['construction_start'],
+            $data['handover'],
+            $data['delivery'],
             $data['total_share'],
             $data['unit_per_floor'],
             $data['types'],
