@@ -53,6 +53,15 @@ class ApprovalRequest extends Model
                     ADD COLUMN `accounts_head_at` TIMESTAMP NULL DEFAULT NULL AFTER `accounts_head_by`,
                     ADD COLUMN `accounts_head_note` TEXT NULL AFTER `accounts_head_at`");
             }
+            $opRes = $this->db->query("SHOW COLUMNS FROM `approval_requests` LIKE 'op_head_status'");
+            if ($opRes && $opRes->num_rows === 0) {
+                @$this->db->query("ALTER TABLE `approval_requests` 
+                    ADD COLUMN `op_head_status` VARCHAR(20) NOT NULL DEFAULT 'pending' AFTER `status`,
+                    ADD COLUMN `op_head_by` INT UNSIGNED NULL DEFAULT NULL AFTER `op_head_status`,
+                    ADD COLUMN `op_head_at` DATETIME NULL DEFAULT NULL AFTER
+                     `op_head_by`,
+                    ADD COLUMN `op_head_note` TEXT NULL AFTER `op_head_at`");
+            }
         } catch (\Throwable $e) {
             // Silently ignore if restricted
         }
@@ -549,7 +558,158 @@ class ApprovalRequest extends Model
     }
 
     /**
-     * Get Accounts Head approval status and designated approver info for any module
+     * Approve the Admin & Operation Head stage (Role 20 / 32)
+     * For requests > 100,000, this is the MANDATORY prerequisite before Management (Role 3 / 1) can approve.
+     * For requests <= 100,000, either Role 20 OR Role 3 can approve directly.
+     */
+    public function approveOperationHead($id, $userId = null, $note = null)
+    {
+        $id = (int)$id;
+        $userId = $userId ? (int)$userId : (int)($_SESSION['user']['id'] ?? 0);
+        $note = $note !== null ? trim($note) : 'Approved by Admin & Operation Head';
+
+        $req = $this->find($id);
+        if (!$req) {
+            return false;
+        }
+
+        $reqAmount = (float)($req['request_amount'] ?? 0);
+        $isOver1Lac = ($reqAmount > 100000.01);
+
+        if ($isOver1Lac) {
+            // For > 100,000: Role 20 approval is completed, and it is now forwarded to Management (Role 3)
+            $stmt = $this->db->prepare("
+                UPDATE {$this->table}
+                SET op_head_status = 'approved',
+                    op_head_by = ?,
+                    op_head_at = NOW(),
+                    op_head_note = ?,
+                    approve_role = 'management'
+                WHERE id = ?
+            ");
+            if (!$stmt) return false;
+            $stmt->bind_param('isi', $userId, $note, $id);
+            $res = $stmt->execute();
+            $stmt->close();
+            return $res;
+        } else {
+            // For <= 100,000: Role 20 approval directly completes the management stage and forwards to Accounts Head (or completed for discount)
+            $nextRole = ($req['source_table'] === 'lead_bookings') ? 'completed' : 'accounts_head';
+            $nextAh = ($req['source_table'] === 'lead_bookings') ? 'approved' : 'pending';
+            $stmt = $this->db->prepare("
+                UPDATE {$this->table}
+                SET op_head_status = 'approved',
+                    op_head_by = ?,
+                    op_head_at = NOW(),
+                    op_head_note = ?,
+                    status = 'approved',
+                    approved_by = ?,
+                    approved_at = NOW(),
+                    approve_role = '{$nextRole}',
+                    accounts_head_status = '{$nextAh}'
+                WHERE id = ?
+            ");
+            if (!$stmt) return false;
+            $stmt->bind_param('isii', $userId, $note, $userId, $id);
+            $res = $stmt->execute();
+            $stmt->close();
+
+            // Also update source table to approved
+            $sourceTable = $req['source_table'];
+            $sourceId = (int)$req['source_id'];
+            if ($sourceTable && $sourceId) {
+                $this->syncSourceTableStatusDirect($sourceTable, $sourceId, 'approved', $userId, $reqAmount, $note);
+            }
+            return $res;
+        }
+    }
+
+    /**
+     * Reject the Operation Head stage
+     */
+    public function rejectOperationHead($id, $userId = null, $note = null)
+    {
+        $id = (int)$id;
+        $userId = $userId ? (int)$userId : (int)($_SESSION['user']['id'] ?? 0);
+        $note = $note !== null ? trim($note) : 'Rejected by Admin & Operation Head';
+
+        $req = $this->find($id);
+        if (!$req) return false;
+
+        $stmt = $this->db->prepare("
+            UPDATE {$this->table}
+            SET op_head_status = 'rejected',
+                status = 'rejected',
+                approve_role = 'rejected',
+                op_head_by = ?,
+                op_head_at = NOW(),
+                op_head_note = ?,
+                approval_note = ?
+            WHERE id = ?
+        ");
+        if (!$stmt) return false;
+        $stmt->bind_param('issi', $userId, $note, $note, $id);
+        $res = $stmt->execute();
+        $stmt->close();
+
+        $sourceTable = $req['source_table'];
+        $sourceId = (int)$req['source_id'];
+        if ($sourceTable === 'lead_bookings') {
+            $this->db->query("UPDATE lead_bookings SET approval_status = 'rejected' WHERE id = {$sourceId}");
+        } elseif ($sourceTable && $sourceId) {
+            $this->syncSourceTableStatusDirect($sourceTable, $sourceId, 'rejected', $userId, null, $note);
+        }
+
+        return $res;
+    }
+
+    /**
+     * Helper to directly sync source table when approved by Role 20 or Management
+     */
+    public function syncSourceTableStatusDirect($sourceTable, $sourceId, $status, $userId, $amount = null, $note = '')
+    {
+        $sourceId = (int)$sourceId;
+        $userId = (int)$userId;
+        $note = $this->db->real_escape_string($note);
+
+        if ($sourceTable === 'cashout_requests') {
+            $this->db->query("UPDATE cashout_requests SET status = 'approved', approved_by = {$userId}, approved_at = NOW(), approval_note = '{$note}' WHERE id = {$sourceId}");
+        } elseif ($sourceTable === 'fund_requisitions') {
+            $this->db->query("UPDATE fund_requisitions SET status = 'approved', approved_by = {$userId}, approved_at = NOW(), approved_amount = amount, approval_note = '{$note}' WHERE id = {$sourceId}");
+        } elseif ($sourceTable === 'land_fund_requisitions') {
+            $this->db->query("UPDATE land_fund_requisitions SET mgmt_status = 'Approved', mgmt_by = {$userId}, mgmt_approved_at = NOW(), mgmt_note = '{$note}' WHERE id = {$sourceId}");
+        } elseif ($sourceTable === 'project_extra_assets') {
+            $this->db->query("UPDATE project_extra_assets SET mgmt_status = 'approved', mgmt_by = {$userId}, mgmt_at = NOW(), mgmt_note = '{$note}' WHERE id = {$sourceId}");
+        } elseif ($sourceTable === 'vendor_payment_requests') {
+            $this->db->query("UPDATE vendor_payment_requests SET status = 'Approved', approved_by = {$userId}, approved_at = NOW(), management_note = '{$note}' WHERE id = {$sourceId}");
+        } elseif ($sourceTable === 'contractor_bill_requests') {
+            $this->db->query("UPDATE contractor_bill_requests SET status = 'approved', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
+        } elseif ($sourceTable === 'project_other_costs') {
+            $this->db->query("UPDATE project_other_costs SET status = 'management_approved', management_apporved_by_id = {$userId}, management_apporved_at = NOW(), management_apporved_note = '{$note}' WHERE id = {$sourceId}");
+        } elseif ($sourceTable === 'con_labor_requisitions') {
+            $this->db->query("UPDATE con_labor_requisitions SET status = 'management_approved', management_approved_by = {$userId}, management_approved_at = NOW(), approved_amount = total_amount WHERE id = {$sourceId}");
+        } elseif ($sourceTable === 'expense_adjustments') {
+            $this->db->query("UPDATE expense_adjustments SET status = 'approved', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
+        } elseif ($sourceTable === 'advance_salaries') {
+            $this->db->query("UPDATE advance_salaries SET status = 'approved', approved_date = NOW() WHERE id = {$sourceId}");
+        } elseif ($sourceTable === 'payslips') {
+            $this->db->query("UPDATE payslips SET mgmt_status = 'approved', status = 'approved' WHERE id = {$sourceId}");
+        } elseif ($sourceTable === 'project_incentive_claims') {
+            $this->db->query("UPDATE project_incentive_claims SET claim_status = 'approved', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
+        } elseif ($sourceTable === 'client_refund_requests') {
+            $this->db->query("UPDATE client_refund_requests SET status = 'approved', approved_by = {$userId}, approved_at = NOW() WHERE id = {$sourceId}");
+        } elseif ($sourceTable === 'lead_bookings') {
+            if ($status === 'approved') {
+                $approvedAmt = ($amount !== null && (float)$amount > 0) ? (float)$amount : "discount_amount";
+                $this->db->query("UPDATE lead_bookings SET approval_status = 'approved', approved_amount = {$approvedAmt} WHERE id = {$sourceId}");
+            } elseif ($status === 'rejected') {
+                $this->db->query("UPDATE lead_bookings SET approval_status = 'rejected' WHERE id = {$sourceId}");
+            }
+        }
+    }
+
+    /**
+     * Get Accounts Head and Operation Head approval status and designated approver info for any module
      */
     public static function getAccountsHeadApprovalInfo($db, string $sourceTable, int $sourceId)
     {
@@ -558,6 +718,17 @@ class ApprovalRequest extends Model
             'approval_request_id'       => null,
             'status'                    => 'pending',
             'approve_role'              => 'management',
+            'request_amount'            => 0,
+            'is_over_1lac'              => false,
+            'op_head_status'            => 'pending',
+            'is_op_head_approved'       => false,
+            'is_pending_op_head'        => false,
+            'can_mgmt_approve'          => true,
+            'op_head_name'              => null,
+            'op_head_code'              => null,
+            'op_head_designation'       => 'Admin & Operation Head',
+            'op_head_at'                => null,
+            'op_head_note'              => null,
             'accounts_head_status'      => 'pending',
             'is_pending_accounts_head'  => false,
             'is_accounts_head_approved' => false,
@@ -579,12 +750,19 @@ class ApprovalRequest extends Model
         }
 
         $stmt = $db->prepare("
-            SELECT ar.id, ar.status, ar.approve_role, 
+            SELECT ar.id, ar.status, ar.approve_role, ar.request_amount,
+                   ar.op_head_status, ar.op_head_by, ar.op_head_at, ar.op_head_note,
+                   u_op.full_name AS op_head_name,
+                   e_op.employee_id AS op_head_code,
+                   IFNULL(des_op.name, 'Admin & Operation Head') AS op_head_designation,
                    ar.accounts_head_status, ar.accounts_head_by, ar.accounts_head_at, ar.accounts_head_note,
                    u_ah.full_name AS accounts_head_name,
                    e_ah.employee_id AS accounts_head_code,
                    IFNULL(des_ah.name, 'AGM - Finance & Accounts') AS accounts_head_designation
             FROM approval_requests ar
+            LEFT JOIN users u_op ON ar.op_head_by = u_op.id
+            LEFT JOIN employees e_op ON (e_op.user_id = u_op.id OR e_op.id = u_op.employee_id)
+            LEFT JOIN designations des_op ON des_op.id = COALESCE(e_op.designation_id, u_op.designation_id)
             LEFT JOIN users u_ah ON ar.accounts_head_by = u_ah.id
             LEFT JOIN employees e_ah ON (e_ah.user_id = u_ah.id OR e_ah.id = u_ah.employee_id)
             LEFT JOIN designations des_ah ON des_ah.id = COALESCE(e_ah.designation_id, u_ah.designation_id)
@@ -604,8 +782,16 @@ class ApprovalRequest extends Model
             return $defaultDesignated;
         }
 
-        $ahStatus = $row['accounts_head_status'] ?? 'pending';
+        $reqAmount = (float)($row['request_amount'] ?? 0);
+        $isOver1Lac = ($reqAmount > 100000.01);
+        $opStatus = strtolower($row['op_head_status'] ?? 'pending');
         $reqStatus = strtolower($row['status'] ?? '');
+        
+        $isOpHeadApproved = ($opStatus === 'approved') || (!$isOver1Lac && in_array($reqStatus, ['approved', 'partially_paid', 'paid']));
+        $isPendingOpHead = $isOver1Lac && !$isOpHeadApproved && !in_array($reqStatus, ['rejected', 'cancelled']);
+        $canMgmtApprove = !$isOver1Lac || $isOpHeadApproved;
+
+        $ahStatus = $row['accounts_head_status'] ?? 'pending';
         $isMgmtApproved = in_array($reqStatus, ['approved', 'partially_paid', 'paid']);
         $isPendingAh = $isMgmtApproved && ($ahStatus === 'pending' || empty($ahStatus));
         $isAhApproved = ($ahStatus === 'approved');
@@ -616,6 +802,17 @@ class ApprovalRequest extends Model
             'approval_request_id'       => (int)$row['id'],
             'status'                    => $row['status'],
             'approve_role'              => $row['approve_role'],
+            'request_amount'            => $reqAmount,
+            'is_over_1lac'              => $isOver1Lac,
+            'op_head_status'            => $opStatus,
+            'is_op_head_approved'       => $isOpHeadApproved,
+            'is_pending_op_head'        => $isPendingOpHead,
+            'can_mgmt_approve'          => $canMgmtApprove,
+            'op_head_name'              => $row['op_head_name'] ?: 'Admin & Operation Head',
+            'op_head_code'              => $row['op_head_code'] ?: null,
+            'op_head_designation'       => $row['op_head_designation'] ?: 'Admin & Operation Head',
+            'op_head_at'                => $row['op_head_at'],
+            'op_head_note'              => $row['op_head_note'],
             'accounts_head_status'      => $ahStatus,
             'is_pending_accounts_head'  => $isPendingAh,
             'is_accounts_head_approved' => $isAhApproved,
@@ -798,11 +995,16 @@ class ApprovalRequest extends Model
         }
 
         if ($status === 'approved') {
+            // When Management approves directly, both status and op_head_status become approved
+            $nextApproveRole = ($sourceTable === 'lead_bookings') ? 'completed' : 'accounts_head';
+            $nextAhStatus = ($sourceTable === 'lead_bookings') ? 'approved' : 'pending';
+
             $sql = "UPDATE {$this->table}
                 SET 
                     status = ?, 
-                    approve_role = 'accounts_head',
-                    accounts_head_status = 'pending',
+                    op_head_status = 'approved',
+                    approve_role = '{$nextApproveRole}',
+                    accounts_head_status = '{$nextAhStatus}',
                     approved_amount = ?, 
                     approved_days = ?, 
                     approved_by = ?, 
@@ -1423,20 +1625,12 @@ class ApprovalRequest extends Model
                 )
             )";
         } elseif ($isSiteOperator && !$isManagement) {
-            if ($userRoleId === 32) {
-                return "({$prefix}status IN ('pending', 'partially_approved', '') 
-                        AND (
-                            (LOWER({$prefix}approve_role) = 'operations' AND {$prefix}source_table = 'project_extra_assets')
-                            OR ((LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') AND ({$prefix}request_amount <= 100000 OR {$prefix}request_amount IS NULL OR {$prefix}request_amount = 0 OR {$prefix}source_table IN ('project_other_costs', 'expense_adjustments', 'project_extra_assets')))
-                        ))";
-            } else {
-                return "({$prefix}status IN ('pending', 'partially_approved', '') 
-                        AND (LOWER({$prefix}approve_role) = 'management' OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') 
-                        AND ({$prefix}request_amount <= 100000 OR {$prefix}request_amount IS NULL OR {$prefix}request_amount = 0 OR {$prefix}source_table IN ('project_other_costs', 'expense_adjustments')))";
-            }
+            return "({$prefix}status IN ('pending', 'partially_approved', '') 
+                    AND (LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = '') 
+                    AND ({$prefix}op_head_status != 'approved' OR {$prefix}op_head_status IS NULL))";
         } elseif ($isManagement) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
-                    AND (LOWER({$prefix}approve_role) = 'management' OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = ''))";
+                    AND (LOWER({$prefix}approve_role) IN ('management', 'operations') OR {$prefix}approve_role IS NULL OR {$prefix}approve_role = ''))";
         } elseif ($isQc) {
             return "({$prefix}status IN ('pending', 'partially_approved', '') 
                     AND LOWER({$prefix}approve_role) IN ('qc', 'qc_head'))";
@@ -1457,6 +1651,16 @@ class ApprovalRequest extends Model
             // General employees / staff with no approval responsibilities (Draftsman, Site Engineer, Sales Executive, etc.)
             return "1=0";
         }
+    }
+
+    /**
+     * Get real-time actionable count for any user/role to power sidebar badges perfectly
+     */
+    public function getActionableCountForUser($filters = [])
+    {
+        $condition = $this->buildActionableCondition($filters, 'ar');
+        $res = $this->db->query("SELECT COUNT(*) AS total FROM approval_requests ar WHERE {$condition}");
+        return $res ? (int)($res->fetch_assoc()['total'] ?? 0) : 0;
     }
 
     /**
@@ -1752,8 +1956,8 @@ class ApprovalRequest extends Model
         $statusFilter = strtolower(trim($filters['status'] ?? ''));
         $deptFilter = strtolower(trim($filters['department'] ?? ''));
 
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+            @session_start();
         }
         $userRoleId = (int)($filters['role_id'] ?? ($_SESSION['user']['role_id'] ?? 0));
         $userId = (int)($filters['user_id'] ?? ($_SESSION['user']['id'] ?? 0));
@@ -1998,12 +2202,19 @@ class ApprovalRequest extends Model
                     ar.accounts_head_by,
                     ar.accounts_head_at,
                     ar.accounts_head_note,
+                    ar.op_head_status,
+                    ar.op_head_by,
+                    ar.op_head_at,
+                    ar.op_head_note,
                     u_req.full_name AS requester_name,
                     e_req.employee_id AS requester_code,
                     d_req.name AS requester_dept,
                     u_app.full_name AS approver_name,
                     u_app.email AS approver_email,
                     IFNULL(des_app.name, 'Management Executive') AS approver_designation,
+                    u_op.full_name AS op_head_name,
+                    e_op.employee_id AS op_head_code,
+                    IFNULL(des_op.name, 'Admin & Operation Head') AS op_head_designation,
                     u_ah.full_name AS accounts_head_name,
                     e_ah.employee_id AS accounts_head_code,
                     IFNULL(des_ah.name, 'AGM - Finance & Accounts') AS accounts_head_designation
@@ -2014,6 +2225,9 @@ class ApprovalRequest extends Model
                 LEFT JOIN users u_app ON ar.approved_by = u_app.id
                 LEFT JOIN employees e_app ON (e_app.user_id = u_app.id OR e_app.id = u_app.employee_id)
                 LEFT JOIN designations des_app ON des_app.id = COALESCE(e_app.designation_id, u_app.designation_id)
+                LEFT JOIN users u_op ON ar.op_head_by = u_op.id
+                LEFT JOIN employees e_op ON (e_op.user_id = u_op.id OR e_op.id = u_op.employee_id)
+                LEFT JOIN designations des_op ON des_op.id = COALESCE(e_op.designation_id, u_op.designation_id)
                 LEFT JOIN users u_ah ON ar.accounts_head_by = u_ah.id
                 LEFT JOIN employees e_ah ON (e_ah.user_id = u_ah.id OR e_ah.id = u_ah.employee_id)
                 LEFT JOIN designations des_ah ON des_ah.id = COALESCE(e_ah.designation_id, u_ah.designation_id)
@@ -2036,16 +2250,61 @@ class ApprovalRequest extends Model
             $sourceTable = $row['source_table'];
             $sourceId = (int) $row['source_id'];
 
-            // Fallback for lead_bookings attachment if empty on approval_requests
-            if ($sourceTable === 'lead_bookings' && empty($row['attachment'])) {
-                $lbStmt = $this->db->prepare("SELECT past_approval_attachment FROM lead_bookings WHERE id = ? LIMIT 1");
+            // Fallback and metadata enrichment for lead_bookings
+            if ($sourceTable === 'lead_bookings') {
+                $lbStmt = $this->db->prepare("
+                    SELECT lb.agreement_value, lb.discount_amount, lb.past_approval_attachment,
+                           l.full_name AS client_name, l.phone AS client_phone,
+                           p.name AS project_name,
+                           f.flat_name, f.floor_no,
+                           u.full_name AS sales_agent_name, e.employee_id AS sales_agent_code
+                    FROM lead_bookings lb
+                    LEFT JOIN leads l ON lb.lead_id = l.id
+                    LEFT JOIN projects p ON lb.project_id = p.id
+                    LEFT JOIN flats f ON lb.flat_id = f.id
+                    LEFT JOIN users u ON lb.sales_by_id = u.id
+                    LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+                    WHERE lb.id = ? LIMIT 1
+                ");
                 if ($lbStmt) {
                     $lbStmt->bind_param("i", $sourceId);
                     $lbStmt->execute();
                     $lbRow = $lbStmt->get_result()->fetch_assoc();
                     $lbStmt->close();
-                    if (!empty($lbRow['past_approval_attachment'])) {
-                        $row['attachment'] = $lbRow['past_approval_attachment'];
+                    if ($lbRow) {
+                        if (empty($row['attachment']) && !empty($lbRow['past_approval_attachment'])) {
+                            $row['attachment'] = $lbRow['past_approval_attachment'];
+                        }
+                        $row['booking_agreement_value'] = (float)($lbRow['agreement_value'] ?? 0);
+                        $row['booking_client_name'] = $lbRow['client_name'] ?? '';
+                        $row['booking_client_phone'] = $lbRow['client_phone'] ?? '';
+                        $row['booking_project_name'] = $lbRow['project_name'] ?? '';
+                        $row['booking_flat_name'] = $lbRow['flat_name'] ?? '';
+                        $row['booking_floor_no'] = $lbRow['floor_no'] ?? '';
+                        $row['booking_sales_agent'] = $lbRow['sales_agent_name'] ?? '';
+                        $row['booking_sales_code'] = $lbRow['sales_agent_code'] ?? '';
+                    }
+                }
+
+                // Fallback from meta_data if booking row is missing or deleted
+                if (empty($row['booking_client_name']) && !empty($row['meta_data'])) {
+                    $meta = json_decode($row['meta_data'], true);
+                    if (!empty($meta['lead_id'])) {
+                        $leadId = (int)$meta['lead_id'];
+                        $leadQ = $this->db->query("SELECT full_name, phone FROM leads WHERE id = {$leadId} LIMIT 1");
+                        if ($leadQ && $leadRow = $leadQ->fetch_assoc()) {
+                            $row['booking_client_name'] = $leadRow['full_name'] ?? '';
+                            $row['booking_client_phone'] = $leadRow['phone'] ?? '';
+                        }
+                    }
+                    if (!empty($meta['flat_id'])) {
+                        $flatId = (int)$meta['flat_id'];
+                        $flatQ = $this->db->query("SELECT f.flat_name, f.floor_no, p.name AS project_name FROM flats f LEFT JOIN projects p ON f.project_id = p.id WHERE f.id = {$flatId} LIMIT 1");
+                        if ($flatQ && $flatRow = $flatQ->fetch_assoc()) {
+                            $row['booking_flat_name'] = $flatRow['flat_name'] ?? '';
+                            $row['booking_floor_no'] = $flatRow['floor_no'] ?? '';
+                            $row['booking_project_name'] = $flatRow['project_name'] ?? '';
+                        }
                     }
                 }
             }
@@ -2083,8 +2342,20 @@ class ApprovalRequest extends Model
                 $pendingStageLabel = 'Pending PM Verification';
                 $pendingForText = 'Project Manager';
             } else {
-                $pendingStageLabel = 'Pending Management';
-                $pendingForText = 'Management / Operation Head';
+                $isOver1Lac = ((float)($row['request_amount'] ?? 0) > 100000.01);
+                $rowOpStatus = strtolower($row['op_head_status'] ?? 'pending');
+                if ($isOver1Lac) {
+                    if ($rowOpStatus !== 'approved') {
+                        $pendingStageLabel = 'Pending Op Head (>1L)';
+                        $pendingForText = 'Admin & Operation Head (Role 20)';
+                    } else {
+                        $pendingStageLabel = 'Pending Management (>1L)';
+                        $pendingForText = 'Management (Role 3)';
+                    }
+                } else {
+                    $pendingStageLabel = 'Pending Review (≤1L)';
+                    $pendingForText = 'Op Head / Management (Role 20 / 3)';
+                }
             }
 
             if ($sourceTable === 'project_incentive_claims') {
@@ -2775,8 +3046,8 @@ class ApprovalRequest extends Model
         }
 
         // --- Role-based Visibility Filtering ("jar jeita pending shudu she oigulo dekhbe") ---
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+            @session_start();
         }
         $userRoleId = (int)($filters['role_id'] ?? ($_SESSION['user']['role_id'] ?? 0));
         $userId = (int)($filters['user_id'] ?? ($_SESSION['user']['id'] ?? 0));
@@ -2871,23 +3142,18 @@ class ApprovalRequest extends Model
                 return false;
             }
 
-            // 2. Role 20 (DGM / Operation Head):
+            // 2. Role 20 (DGM / Admin & Operation Head):
             if ($isRole20) {
-                if (in_array(($item['source_table'] ?? ''), ['project_other_costs', 'expense_adjustments', 'contractor_bill_requests']) && $isPending && in_array($approveRole, ['management', ''])) {
-                    return true;
-                }
-                if (($item['source_table'] ?? '') === 'project_extra_assets' && $isPending && in_array($approveRole, ['operations', 'management'])) {
-                    return true;
-                }
-                return ($isPending && in_array($approveRole, ['management', '']) && $amount <= 100000.01);
+                if (!$isPending) return false;
+                if (!in_array($approveRole, ['management', 'operations', ''])) return false;
+                $opStatus = strtolower($item['op_head_status'] ?? 'pending');
+                return ($opStatus !== 'approved');
             }
 
             // 3. Full Management (Super Admin 3, Admin 1):
             if ($isFullManagement) {
-                if (($item['source_table'] ?? '') === 'project_other_costs' && $isPending && in_array($approveRole, ['management', ''])) {
-                    return true;
-                }
-                return ($isPending && in_array($approveRole, ['management', '']));
+                if (!$isPending) return false;
+                return in_array($approveRole, ['management', 'operations', '']);
             }
 
             // 4. QC & Internal Audit Head (Role 24, 13, 25):

@@ -170,6 +170,9 @@ class ApprovalRequestController extends Controller
                 $reqAppRole = strtolower($req['approve_role'] ?? 'management');
                 $reqAhStatus = strtolower($req['accounts_head_status'] ?? 'pending');
 
+                $isOver1Lac = ((float)($req['request_amount'] ?? 0) > 100000.01);
+                $reqOpStatus = strtolower($req['op_head_status'] ?? 'pending');
+
                 // If Accounts Head is approving:
                 if ($isAccountsHead) {
                     if ($reqAhStatus === 'pending' || $reqAppRole === 'accounts_head' || ($req['status'] === 'approved' && $reqAhStatus !== 'approved')) {
@@ -187,10 +190,27 @@ class ApprovalRequestController extends Controller
                     }
                 }
 
+                // If Site Operator (Role 20 / 32) is approving:
                 if ($isSiteOperator && !$isManagement) {
-                    if (($req['request_amount'] ?? 0) > 100000 && $sourceTable !== 'project_other_costs') {
+                    if ($action === 'reject') {
+                        $res = $this->approvalModel->rejectOperationHead($id, $userId, $note);
+                    } else {
+                        $res = $this->approvalModel->approveOperationHead($id, $userId, $note);
+                    }
+                    if ($res) {
+                        $processedCount++;
+                    } else {
                         $failedCount++;
-                        continue; // Site operator cannot approve amounts > 100000 (except other costs which they manage)
+                    }
+                    continue;
+                }
+
+                // If Management (Role 3 / 1) is approving:
+                if ($isManagement) {
+                    // For > 100,000, Operation Head must have approved first!
+                    if ($isOver1Lac && $action === 'approve' && $reqOpStatus !== 'approved') {
+                        $failedCount++;
+                        continue; // Cannot approve > 1L request until Op Head approves
                     }
                 } elseif ($req && $reqAppRole === 'management' && !$isManagement && !$isSiteOperator) {
                     $failedCount++;
@@ -370,6 +390,323 @@ class ApprovalRequestController extends Controller
             echo json_encode([
                 'success' => true, 
                 'message' => 'Rejected by Accounts Head successfully.'
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to reject request.']);
+        }
+        exit;
+    }
+
+    /**
+     * Single Admin & Operation Head (Role 20 / 32) Approval API
+     */
+    public function approveOperationHead()
+    {
+        ob_start();
+        header('Content-Type: application/json');
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['user']['id'])) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Unauthenticated']);
+            exit;
+        }
+
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        $isAuthorized = in_array($userRoleId, [20, 32, 1, 3], true) 
+            || strpos($sessionRoleName, 'operation head') !== false 
+            || strpos($sessionRoleName, 'admin & operation') !== false 
+            || strpos($sessionRoleName, 'super admin') !== false 
+            || strpos($sessionRoleName, 'admin') !== false;
+
+        if (!$isAuthorized) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Unauthorized: Only Admin & Operation Head (Role 20/32) or Management Admin can approve this stage.']);
+            exit;
+        }
+
+        $input = file_get_contents('php://input');
+        $payload = json_decode($input, true) ?? [];
+        if (empty($payload)) {
+            $payload = $_POST;
+        }
+
+        $reqId = !empty($payload['approval_request_id']) ? (int)$payload['approval_request_id'] : 0;
+        $sourceTable = !empty($payload['source_table']) ? trim($payload['source_table']) : '';
+        $sourceId = !empty($payload['source_id']) ? (int)$payload['source_id'] : 0;
+        $note = !empty($payload['note']) ? trim($payload['note']) : 'Approved by Admin & Operation Head';
+
+        if (!$reqId && (!empty($sourceTable) && !empty($sourceId))) {
+            $findStmt = $this->db->prepare("SELECT id FROM approval_requests WHERE source_table = ? AND source_id = ? ORDER BY id DESC LIMIT 1");
+            if ($findStmt) {
+                $findStmt->bind_param('si', $sourceTable, $sourceId);
+                $findStmt->execute();
+                $res = $findStmt->get_result()->fetch_assoc();
+                $findStmt->close();
+                if ($res) {
+                    $reqId = (int)$res['id'];
+                }
+            }
+        }
+
+        if (!$reqId) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Approval request not found.']);
+            exit;
+        }
+
+        $res = $this->approvalModel->approveOperationHead($reqId, $userId, $note);
+        ob_clean();
+        if ($res) {
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Approved by Admin & Operation Head successfully.',
+                'op_head_name' => $_SESSION['user']['full_name'] ?? 'Admin & Operation Head',
+                'approved_at' => date('d M, Y h:i A')
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to approve request.']);
+        }
+        exit;
+    }
+
+    /**
+     * Single Admin & Operation Head Rejection API
+     */
+    public function rejectOperationHead()
+    {
+        ob_start();
+        header('Content-Type: application/json');
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['user']['id'])) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Unauthenticated']);
+            exit;
+        }
+
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        $isAuthorized = in_array($userRoleId, [20, 32, 1, 3], true) 
+            || strpos($sessionRoleName, 'operation head') !== false 
+            || strpos($sessionRoleName, 'admin & operation') !== false 
+            || strpos($sessionRoleName, 'super admin') !== false 
+            || strpos($sessionRoleName, 'admin') !== false;
+
+        if (!$isAuthorized) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Unauthorized: Only Admin & Operation Head (Role 20/32) or Management Admin can reject this stage.']);
+            exit;
+        }
+
+        $input = file_get_contents('php://input');
+        $payload = json_decode($input, true) ?? [];
+        if (empty($payload)) {
+            $payload = $_POST;
+        }
+
+        $reqId = !empty($payload['approval_request_id']) ? (int)$payload['approval_request_id'] : 0;
+        $sourceTable = !empty($payload['source_table']) ? trim($payload['source_table']) : '';
+        $sourceId = !empty($payload['source_id']) ? (int)$payload['source_id'] : 0;
+        $note = !empty($payload['note']) ? trim($payload['note']) : 'Rejected by Admin & Operation Head';
+
+        if (!$reqId && (!empty($sourceTable) && !empty($sourceId))) {
+            $findStmt = $this->db->prepare("SELECT id FROM approval_requests WHERE source_table = ? AND source_id = ? ORDER BY id DESC LIMIT 1");
+            if ($findStmt) {
+                $findStmt->bind_param('si', $sourceTable, $sourceId);
+                $findStmt->execute();
+                $res = $findStmt->get_result()->fetch_assoc();
+                $findStmt->close();
+                if ($res) {
+                    $reqId = (int)$res['id'];
+                }
+            }
+        }
+
+        if (!$reqId) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Approval request not found.']);
+            exit;
+        }
+
+        $res = $this->approvalModel->rejectOperationHead($reqId, $userId, $note);
+        ob_clean();
+        if ($res) {
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Rejected by Admin & Operation Head successfully.'
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to reject request.']);
+        }
+        exit;
+    }
+
+    /**
+     * Single Management Approval API (Tier 2 / Final sign-off)
+     */
+    public function approveManagement()
+    {
+        ob_start();
+        header('Content-Type: application/json');
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['user']['id'])) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Unauthenticated']);
+            exit;
+        }
+
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        $isAuthorized = in_array($userRoleId, [1, 3], true) 
+            || strpos($sessionRoleName, 'super admin') !== false 
+            || strpos($sessionRoleName, 'admin') !== false 
+            || strpos($sessionRoleName, 'management') !== false;
+
+        if (!$isAuthorized) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Unauthorized: Only Top Management (Role 1/3) can perform this final approval.']);
+            exit;
+        }
+
+        $input = file_get_contents('php://input');
+        $payload = json_decode($input, true) ?? [];
+        if (empty($payload)) {
+            $payload = $_POST;
+        }
+
+        $reqId = !empty($payload['approval_request_id']) ? (int)$payload['approval_request_id'] : 0;
+        $sourceTable = !empty($payload['source_table']) ? trim($payload['source_table']) : '';
+        $sourceId = !empty($payload['source_id']) ? (int)$payload['source_id'] : 0;
+        $note = !empty($payload['note']) ? trim($payload['note']) : 'Approved by Management';
+        $approvedAmount = !empty($payload['approved_amount']) ? (float)$payload['approved_amount'] : null;
+
+        if (!$reqId && (!empty($sourceTable) && !empty($sourceId))) {
+            $findStmt = $this->db->prepare("SELECT id FROM approval_requests WHERE source_table = ? AND source_id = ? ORDER BY id DESC LIMIT 1");
+            if ($findStmt) {
+                $findStmt->bind_param('si', $sourceTable, $sourceId);
+                $findStmt->execute();
+                $res = $findStmt->get_result()->fetch_assoc();
+                $findStmt->close();
+                if ($res) {
+                    $reqId = (int)$res['id'];
+                }
+            }
+        }
+
+        if (!$reqId) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Approval request not found.']);
+            exit;
+        }
+
+        $req = $this->approvalModel->find($reqId);
+        if (!$req) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Approval request record not found.']);
+            exit;
+        }
+
+        $res = $this->approvalModel->updateStatus($reqId, 'approved', $approvedAmount, null, $note);
+        ob_clean();
+        if ($res) {
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Approved by Management successfully.',
+                'approver_name' => $_SESSION['user']['full_name'] ?? 'Management',
+                'approved_at' => date('d M, Y h:i A')
+            ]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to approve request.']);
+        }
+        exit;
+    }
+
+    /**
+     * Single Management Rejection API
+     */
+    public function rejectManagement()
+    {
+        ob_start();
+        header('Content-Type: application/json');
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['user']['id'])) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Unauthenticated']);
+            exit;
+        }
+
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        $isAuthorized = in_array($userRoleId, [1, 3], true) 
+            || strpos($sessionRoleName, 'super admin') !== false 
+            || strpos($sessionRoleName, 'admin') !== false 
+            || strpos($sessionRoleName, 'management') !== false;
+
+        if (!$isAuthorized) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Unauthorized: Only Top Management (Role 1/3) can reject this request.']);
+            exit;
+        }
+
+        $input = file_get_contents('php://input');
+        $payload = json_decode($input, true) ?? [];
+        if (empty($payload)) {
+            $payload = $_POST;
+        }
+
+        $reqId = !empty($payload['approval_request_id']) ? (int)$payload['approval_request_id'] : 0;
+        $sourceTable = !empty($payload['source_table']) ? trim($payload['source_table']) : '';
+        $sourceId = !empty($payload['source_id']) ? (int)$payload['source_id'] : 0;
+        $note = !empty($payload['note']) ? trim($payload['note']) : 'Rejected by Management';
+
+        if (!$reqId && (!empty($sourceTable) && !empty($sourceId))) {
+            $findStmt = $this->db->prepare("SELECT id FROM approval_requests WHERE source_table = ? AND source_id = ? ORDER BY id DESC LIMIT 1");
+            if ($findStmt) {
+                $findStmt->bind_param('si', $sourceTable, $sourceId);
+                $findStmt->execute();
+                $res = $findStmt->get_result()->fetch_assoc();
+                $findStmt->close();
+                if ($res) {
+                    $reqId = (int)$res['id'];
+                }
+            }
+        }
+
+        if (!$reqId) {
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Approval request not found.']);
+            exit;
+        }
+
+        $res = $this->approvalModel->updateStatus($reqId, 'rejected', null, null, $note);
+        ob_clean();
+        if ($res) {
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Rejected by Management successfully.'
             ]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to reject request.']);

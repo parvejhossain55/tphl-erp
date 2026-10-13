@@ -11036,7 +11036,7 @@ table.dataTable.display > tbody > tr.selected:hover > * {
   cursor: default;
   padding-left: 0;
   padding-right: 5px;
-  color: var(--clr-common-white);
+  color: #0f5132;
 }
 
 .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
@@ -11045,7 +11045,7 @@ table.dataTable.display > tbody > tr.selected:hover > * {
   border-right: none;
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
-  color: var(--clr-common-white);
+  color: #0f5132;
   cursor: pointer;
   font-size: 1.5em;
   font-weight: normal;

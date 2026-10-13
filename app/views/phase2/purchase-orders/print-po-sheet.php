@@ -432,7 +432,8 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
                 <th style="width:50px;text-align:center">Unit</th>
                 <th style="width:65px;text-align:right">Site Stock</th>
                 <th style="width:70px;text-align:right">3-Mo Req</th>
-                <th style="width:75px;text-align:right">Quantity</th>
+                <th style="width:65px;text-align:right">PR Qty</th>
+                <th style="width:75px;text-align:right">Order Qty</th>
                 <th style="width:90px;text-align:right">Unit Price (BDT)</th>
                 <th style="width:110px;text-align:right">Total Amount (BDT)</th>
             </tr>
@@ -453,6 +454,7 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
                     <td style="text-align:center"><?= htmlspecialchars($itm['unit']) ?></td>
                     <td style="text-align:right;color:#475569"><?= number_format((float)($itm['current_stock'] ?? 0), 2) ?></td>
                     <td style="text-align:right;color:#0369a1"><?= number_format((float)($itm['next_3_months_requirement'] ?? 0), 2) ?></td>
+                    <td style="text-align:right;color:#64748b"><?= number_format((float)($itm['pr_quantity'] ?? 0), 3) ?></td>
                     <td style="text-align:right;font-weight:700"><?= number_format((float)$itm['quantity'], 3) ?></td>
                     <td style="text-align:right">৳ <?= number_format((float)$itm['unit_price'], 2) ?></td>
                     <td style="text-align:right;font-weight:700">৳ <?= number_format($lineTotal, 2) ?></td>
@@ -461,7 +463,7 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
         </tbody>
         <tfoot>
             <tr style="background:#f1f5f9;font-weight:800">
-                <td colspan="8" style="text-align:right;padding:6px 8px">TOTAL ORDER VALUE (BDT):</td>
+                <td colspan="9" style="text-align:right;padding:6px 8px">TOTAL ORDER VALUE (BDT):</td>
                 <td style="text-align:right;padding:6px 8px;font-size:11.5px;color:#0f172a">৳ <?= number_format($calcGrandTotal, 2) ?></td>
             </tr>
         </tfoot>
@@ -471,6 +473,21 @@ $companyWeb   = !empty($siteSettings['website_url']) ? $siteSettings['website_ur
         <strong style="color:#0f172a;text-transform:uppercase;font-size:9px;margin-right:4px">Amount in Words:</strong>
         <span><?= function_exists('amountInWords') ? amountInWords($calcGrandTotal) : '' ?></span>
     </div>
+
+    <?php if (!empty($qtyLogs)): ?>
+        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:5px 8px;margin-bottom:10px;font-size:8.5px">
+            <strong style="color:#b45309">Quantity Adjustment History:</strong>
+            <span style="color:#92400e">
+                <?php 
+                $logSummaries = [];
+                foreach ($qtyLogs as $l) {
+                    $logSummaries[] = htmlspecialchars($l['material_name']) . ': ' . number_format($l['old_quantity'], 3) . ' → ' . number_format($l['new_quantity'], 3) . ' (by ' . htmlspecialchars($l['changed_by_name'] ?? 'Approver') . ')';
+                }
+                echo implode('; ', $logSummaries);
+                ?>
+            </span>
+        </div>
+    <?php endif; ?>
 
     <?php if (!empty($po['remarks'])): ?>
         <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:4px;padding:5px 8px;margin-bottom:10px;font-size:9.5px">

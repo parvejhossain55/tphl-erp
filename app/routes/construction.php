@@ -422,6 +422,7 @@ return [
     'con-purchase-order-reject/(\d+)' => ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'rejectPO'],
     'con-purchase-order-delete/(\d+)' => ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'delete'],
     'con-purchase-order-note/(\d+)' => ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'addNote'],
+    'con-purchase-order-update-qty/(\d+)' => ['controller' => 'Phase2\Con_PurchaseOrderController', 'method' => 'updateItemQuantity'],
 
     // =========================================================================
     // Controller: Phase2\Con_MaterialReceivingController

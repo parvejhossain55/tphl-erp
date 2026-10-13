@@ -38,7 +38,250 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                     || strpos($userRoleName, 'admin') !== false;
 ?>
 
+<?php
+// Fallback check for discount approval request if not passed directly from controller
+if (!isset($discountApprovalReq)) {
+    $discountApprovalReq = null;
+    $lookupBookingId = (int)($clientDetails['booking_id'] ?? $bookingId ?? 0);
+    if ($lookupBookingId > 0) {
+        $dbConn = isset($db) ? $db : (isset($accountModel) ? $accountModel->getDb() : null);
+        if ($dbConn) {
+            $arStmt = $dbConn->prepare("
+                SELECT ar.*,
+                       u_req.full_name AS requester_name, e_req.employee_id AS requester_code,
+                       u_op.full_name AS op_head_name, e_op.employee_id AS op_head_code,
+                       u_app.full_name AS approver_name
+                FROM approval_requests ar
+                LEFT JOIN users u_req ON ar.requested_by = u_req.id
+                LEFT JOIN employees e_req ON (e_req.user_id = u_req.id OR e_req.id = u_req.employee_id)
+                LEFT JOIN users u_op ON ar.op_head_by = u_op.id
+                LEFT JOIN employees e_op ON (e_op.user_id = u_op.id OR e_op.id = u_op.employee_id)
+                LEFT JOIN users u_app ON ar.approved_by = u_app.id
+                WHERE ar.source_table = 'lead_bookings' AND ar.source_id = ?
+                ORDER BY ar.id DESC LIMIT 1
+            ");
+            if ($arStmt) {
+                $arStmt->bind_param("i", $lookupBookingId);
+                $arStmt->execute();
+                $discountApprovalReq = $arStmt->get_result()->fetch_assoc();
+                $arStmt->close();
+            }
+        }
+    }
+}
+?>
+
 <div class="row">
+    <?php if (!empty($discountApprovalReq)): 
+        $discReqAmount = (float)($discountApprovalReq['request_amount'] ?? 0);
+        $discIsOver1Lac = ($discReqAmount > 100000.01);
+        $discOpHeadStatus = strtolower($discountApprovalReq['op_head_status'] ?? '');
+        $discStatus = strtolower($discountApprovalReq['status'] ?? 'pending');
+        $isRole20OrOpHead = in_array($userRoleId, [20, 32], true) || strpos($userRoleName, 'operation head') !== false || strpos($userRoleName, 'admin & operation') !== false;
+        $isMgmtUser = in_array($userRoleId, [1, 3], true) || strpos($userRoleName, 'super admin') !== false || strpos($userRoleName, 'admin') !== false || strpos($userRoleName, 'management') !== false;
+        $discAttachment = !empty($discountApprovalReq['attachment']) ? $discountApprovalReq['attachment'] : ($clientDetails['past_approval_attachment'] ?? '');
+    ?>
+    <!-- Booking Discount Approval Banner -->
+    <div class="col-xxl-12 mb-4" id="bookingDiscountApprovalBanner">
+        <div class="card shadow-sm border-0 rounded-4 overflow-hidden" style="background: #ffffff; border-left: 5px solid <?= $discStatus === 'approved' ? '#10b981' : ($discStatus === 'rejected' ? '#ef4444' : '#f59e0b') ?> !important;">
+            <div class="card-header py-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-2" style="background: linear-gradient(135deg, <?= $discStatus === 'approved' ? '#ecfdf5 0%, #f0fdf4 100%' : ($discStatus === 'rejected' ? '#fef2f2 0%, #fff1f2 100%' : '#fffbeb 0%, #fef3c7 100%') ?>); border-bottom: 1px solid rgba(0,0,0,0.06);">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="avatar avatar-sm rounded-circle d-flex align-items-center justify-content-center text-white" style="background: <?= $discStatus === 'approved' ? '#10b981' : ($discStatus === 'rejected' ? '#ef4444' : '#f59e0b') ?>; width: 34px; height: 34px;">
+                        <i class="fa-solid fa-tags"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0 fw-bold text-dark fs-15">
+                            Booking Discount Approval Request
+                            <span class="badge bg-light text-secondary border ms-1 extra-small">#REQ-<?= str_pad($discountApprovalReq['id'], 5, '0', STR_PAD_LEFT) ?></span>
+                        </h5>
+                        <small class="text-muted">Requested on <?= date('d M, Y h:i A', strtotime($discountApprovalReq['created_at'])) ?><?= !empty($discountApprovalReq['requester_name']) ? (' by ' . htmlspecialchars($discountApprovalReq['requester_name'])) : '' ?></small>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    <?php if ($discStatus === 'pending'): ?>
+                        <?php if ($discIsOver1Lac): ?>
+                            <?php if ($discOpHeadStatus !== 'approved'): ?>
+                                <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold" style="font-size: 12px;">
+                                    <i class="fa-solid fa-shield-halved me-1"></i> Tier 1 Pending: Admin & Operation Head (> ৳1,00,000)
+                                </span>
+                            <?php else: ?>
+                                <span class="badge bg-primary text-white px-3 py-2 rounded-pill fw-bold" style="font-size: 12px;">
+                                    <i class="fa-solid fa-hourglass-half me-1"></i> Tier 2 Pending: Top Management Sign-Off
+                                </span>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold" style="font-size: 12px;">
+                                <i class="fa-solid fa-hourglass-half me-1"></i> Pending Management / Operation Head
+                            </span>
+                        <?php endif; ?>
+                    <?php elseif ($discStatus === 'approved'): ?>
+                        <span class="badge bg-success text-white px-3 py-2 rounded-pill fw-bold" style="font-size: 12px;">
+                            <i class="fa-solid fa-check-double me-1"></i> Approved
+                        </span>
+                    <?php elseif ($discStatus === 'rejected'): ?>
+                        <span class="badge bg-danger text-white px-3 py-2 rounded-pill fw-bold" style="font-size: 12px;">
+                            <i class="fa-solid fa-times me-1"></i> Rejected
+                        </span>
+                    <?php endif; ?>
+
+                    <?php if (isset($_GET['ref']) && $_GET['ref'] === 'all_approvals'): ?>
+                        <a href="<?= $GLOBALS['base_url'] ?>/all-approval-requests" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1">
+                            <i class="fa-solid fa-arrow-left me-1"></i> Back to Approvals
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                <div class="row g-4 align-items-center">
+                    <!-- Col 1: Financial & Discount Details -->
+                    <div class="col-lg-4 col-md-6 border-end">
+                        <div class="extra-small text-muted text-uppercase fw-bold mb-1">Discount Amount Requested</div>
+                        <div class="d-flex align-items-baseline gap-2 mb-2">
+                            <span class="fs-3 fw-bold text-success">৳ <?= number_format($discReqAmount, 2) ?></span>
+                            <?php if ($discIsOver1Lac): ?>
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle extra-small fw-semibold">> ৳1,00,000 Threshold</span>
+                            <?php else: ?>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle extra-small fw-semibold">Standard Threshold</span>
+                            <?php endif; ?>
+                        </div>
+
+                        <?php if (!empty($discAttachment)): 
+                            $cleanAttPath = ltrim($discAttachment, '/');
+                            $fullAttUrl = $GLOBALS['base_url'] . '/' . $cleanAttPath;
+                        ?>
+                            <div class="mt-2 p-2 bg-light rounded-3 border d-flex align-items-center justify-content-between">
+                                <span class="extra-small text-dark fw-bold"><i class="fa-solid fa-paperclip text-success me-1"></i> Supporting Document:</span>
+                                <a href="<?= $fullAttUrl ?>" target="_blank" class="btn btn-xs btn-outline-primary py-0 px-2 extra-small fw-semibold">
+                                    <i class="fa-solid fa-up-right-from-square me-1"></i> View Attachment
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Col 2: 2-Tier Approval Workflow Timeline -->
+                    <div class="col-lg-4 col-md-6 border-end">
+                        <div class="extra-small text-muted text-uppercase fw-bold mb-2 pb-1 border-bottom">Approval Progress Status</div>
+                        
+                        <!-- Tier 1 -->
+                        <div class="d-flex align-items-start gap-2 mb-2">
+                            <div class="mt-1">
+                                <?php if ($discOpHeadStatus === 'approved'): ?>
+                                    <i class="fa-solid fa-circle-check text-success fs-15"></i>
+                                <?php elseif ($discStatus === 'rejected'): ?>
+                                    <i class="fa-solid fa-circle-xmark text-danger fs-15"></i>
+                                <?php else: ?>
+                                    <i class="fa-solid fa-circle-dot text-warning fs-15"></i>
+                                <?php endif; ?>
+                            </div>
+                            <div>
+                                <span class="fw-bold extra-small text-dark d-block">Tier 1: Admin & Operation Head (Role 20)</span>
+                                <?php if ($discOpHeadStatus === 'approved'): ?>
+                                    <span class="text-success extra-small d-block">
+                                        Approved by <?= htmlspecialchars($discountApprovalReq['op_head_name'] ?? 'Op Head') ?>
+                                        <?= !empty($discountApprovalReq['op_head_at']) ? (' on ' . date('d M, Y h:i A', strtotime($discountApprovalReq['op_head_at']))) : '' ?>
+                                    </span>
+                                    <?php if (!empty($discountApprovalReq['op_head_note'])): ?>
+                                        <small class="text-muted fst-italic">"<?= htmlspecialchars($discountApprovalReq['op_head_note']) ?>"</small>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <span class="text-warning extra-small d-block">Awaiting Verification & Approval</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <!-- Tier 2 -->
+                        <div class="d-flex align-items-start gap-2">
+                            <div class="mt-1">
+                                <?php if ($discStatus === 'approved'): ?>
+                                    <i class="fa-solid fa-circle-check text-success fs-15"></i>
+                                <?php elseif ($discStatus === 'rejected'): ?>
+                                    <i class="fa-solid fa-circle-xmark text-danger fs-15"></i>
+                                <?php elseif ($discIsOver1Lac && $discOpHeadStatus !== 'approved'): ?>
+                                    <i class="fa-solid fa-lock text-muted fs-15"></i>
+                                <?php else: ?>
+                                    <i class="fa-solid fa-circle-dot text-warning fs-15"></i>
+                                <?php endif; ?>
+                            </div>
+                            <div>
+                                <span class="fw-bold extra-small text-dark d-block">Tier 2: Top Management Sign-Off (Role 3 / 1)</span>
+                                <?php if ($discStatus === 'approved'): ?>
+                                    <span class="text-success extra-small d-block">
+                                        Approved by <?= htmlspecialchars($discountApprovalReq['approver_name'] ?? 'Management') ?>
+                                        <?= !empty($discountApprovalReq['approved_at']) ? (' on ' . date('d M, Y h:i A', strtotime($discountApprovalReq['approved_at']))) : '' ?>
+                                    </span>
+                                <?php elseif ($discIsOver1Lac && $discOpHeadStatus !== 'approved'): ?>
+                                    <span class="text-muted extra-small d-block">Awaiting Tier 1 Op Head sign-off first</span>
+                                <?php else: ?>
+                                    <span class="text-primary extra-small d-block">Ready for Management Final Sign-off</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Col 3: Direct Action Panel -->
+                    <div class="col-lg-4 col-md-12">
+                        <?php if ($discStatus === 'pending'): ?>
+                            <?php if ($isRole20OrOpHead && (!$discIsOver1Lac || $discOpHeadStatus !== 'approved')): ?>
+                                <div class="p-3 bg-light rounded-3 border">
+                                    <label for="cedCardDiscountNote" class="form-label extra-small fw-bold text-dark text-uppercase mb-1">
+                                        <i class="fa-solid fa-pen-nib me-1 text-primary"></i> Op Head Verification Note
+                                    </label>
+                                    <input type="text" id="cedCardDiscountNote" class="form-control form-control-sm mb-2" placeholder="e.g. Verified client booking & discount terms.">
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-danger px-3 fw-bold" onclick="cedExecuteDiscountAction('reject', 'op_head', <?= (int)$discountApprovalReq['id'] ?>, <?= (int)$discountApprovalReq['source_id'] ?>)">
+                                            <i class="fa-solid fa-times me-1"></i> Reject
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-success px-3 fw-bold flex-grow-1" id="cedCardDiscountSubmitBtn" onclick="cedExecuteDiscountAction('approve', 'op_head', <?= (int)$discountApprovalReq['id'] ?>, <?= (int)$discountApprovalReq['source_id'] ?>)">
+                                            <i class="fa-solid fa-shield-check me-1"></i> <?= $discIsOver1Lac ? 'Verify & Forward to Mgmt' : 'Approve Discount' ?>
+                                        </button>
+                                    </div>
+                                </div>
+                            <?php elseif ($isMgmtUser): ?>
+                                <?php if ($discIsOver1Lac && $discOpHeadStatus !== 'approved'): ?>
+                                    <div class="alert alert-warning py-3 px-3 extra-small mb-0 border-warning-subtle">
+                                        <i class="fa-solid fa-lock me-1"></i> <strong>Awaiting Op Head Verification:</strong> This discount exceeds ৳1,00,000. Admin & Operation Head (Role 20) must verify and approve it first before Management final sign-off.
+                                    </div>
+                                <?php else: ?>
+                                    <div class="p-3 bg-light rounded-3 border">
+                                        <label for="cedCardDiscountNote" class="form-label extra-small fw-bold text-dark text-uppercase mb-1">
+                                            <i class="fa-solid fa-stamp me-1 text-success"></i> Management Sign-off Note
+                                        </label>
+                                        <input type="text" id="cedCardDiscountNote" class="form-control form-control-sm mb-2" placeholder="e.g. Approved discount for client.">
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-sm btn-outline-danger px-3 fw-bold" onclick="cedExecuteDiscountAction('reject', 'mgmt', <?= (int)$discountApprovalReq['id'] ?>, <?= (int)$discountApprovalReq['source_id'] ?>)">
+                                                <i class="fa-solid fa-times me-1"></i> Reject
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-success px-3 fw-bold flex-grow-1" id="cedCardDiscountSubmitBtn" onclick="cedExecuteDiscountAction('approve', 'mgmt', <?= (int)$discountApprovalReq['id'] ?>, <?= (int)$discountApprovalReq['source_id'] ?>)">
+                                                <i class="fa-solid fa-check-double me-1"></i> Approve Discount (Management)
+                                            </button>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <div class="alert alert-secondary py-3 px-3 extra-small mb-0 border">
+                                    <i class="fa-solid fa-info-circle me-1"></i> Approval action is awaiting Admin & Operation Head / Management sign-off.
+                                </div>
+                            <?php endif; ?>
+                        <?php elseif ($discStatus === 'approved'): ?>
+                            <div class="alert alert-success py-3 px-3 extra-small mb-0 border-success-subtle">
+                                <i class="fa-solid fa-circle-check me-1 fs-14"></i>
+                                <strong>Discount Finalized:</strong> TK. <?= number_format($discountApprovalReq['approved_amount'] ?? $discReqAmount, 2) ?> approved by <?= htmlspecialchars($discountApprovalReq['approver_name'] ?? 'Management') ?>.
+                            </div>
+                        <?php elseif ($discStatus === 'rejected'): ?>
+                            <div class="alert alert-danger py-3 px-3 extra-small mb-0 border-danger-subtle">
+                                <i class="fa-solid fa-circle-xmark me-1 fs-14"></i>
+                                <strong>Discount Rejected:</strong> This discount request was rejected.
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Client Header Section -->
     <div class="col-xxl-12 mb-4">
         <div class="card__wrapper">
@@ -1654,6 +1897,11 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                             html += '<div class="mb-2" style="font-size:12px; color:#475569;">';
                             if (note.activity_date) html += '<span><i class="fa-light fa-calendar me-1"></i>' + note.activity_date + '</span>';
                             if (note.activity_mode) html += '<span class="ms-3"><i class="fa-light fa-phone-volume me-1"></i>' + note.activity_mode + '</span>';
+                            if (note.call_status) {
+                                var badgeBg = note.call_status.toLowerCase() === 'incoming' ? 'bg-success' : 'bg-primary';
+                                var iconClass = note.call_status.toLowerCase() === 'incoming' ? 'fa-arrow-down-left' : 'fa-arrow-up-right';
+                                html += '<span class="ms-2 badge ' + badgeBg + ' text-white" style="font-size:10px;"><i class="fa-light ' + iconClass + ' me-1"></i>' + note.call_status + '</span>';
+                            }
                             if (note.activity_reason) html += '<span class="ms-3"><i class="fa-light fa-bullseye me-1"></i>' + note.activity_reason + '</span>';
                             html += '</div>';
                             html += '<p class="mb-2" style="font-size: 14px;">' + (note.note || '') + '</p>';
@@ -1680,6 +1928,7 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
         var note = $('#followupNoteInput').val().trim();
         var activityDate = $('#followupActivityDate').val();
         var activityMode = $('#followupActivityMode').val();
+        var callStatus = $('#followupCallStatus').val() || '';
         var activityReason = $('#followupActivityReason').val();
         
         if (!note || !activityDate || !activityMode || !activityReason) {
@@ -1700,6 +1949,7 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                 note: note,
                 activity_date: activityDate,
                 activity_mode: activityMode,
+                call_status: callStatus,
                 activity_reason: activityReason
             },
             dataType: 'json',
@@ -1713,6 +1963,7 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                         showConfirmButton: false
                     });
                     $('#followupNoteInput').val('');
+                    $('#followupCallStatus').val('');
                     loadEmiFollowups(bookingId, emiNo);
                 } else {
                     Swal.fire({
@@ -1925,6 +2176,14 @@ $canEditBookingInfo = in_array($userRoleId, [1, 3, 6, 20, 30, 32, 33, 36])
                                 <option value="SMS">SMS</option>
                                 <option value="Email">Email</option>
                                 <option value="Meeting">Meeting</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="followupCallStatusGroup">
+                            <label class="form-label fs-13 font-semibold text-muted">Call Status</label>
+                            <select id="followupCallStatus" class="form-select form-select-sm">
+                                <option value="">Select Call Status</option>
+                                <option value="Incoming">Incoming</option>
+                                <option value="Outgoing">Outgoing</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -2475,4 +2734,88 @@ document.addEventListener('DOMContentLoaded', function() {
             </form>
         </div>
     </div>
-</div>
+</div>
+
+<script>
+function cedExecuteDiscountAction(action, stage, reqId, bookingId) {
+    const noteInput = document.getElementById('cedCardDiscountNote');
+    const note = noteInput ? noteInput.value.trim() : '';
+    const btn = document.getElementById('cedCardDiscountSubmitBtn');
+    const originalText = btn ? btn.innerHTML : '';
+
+    let endpoint = '';
+    if (stage === 'op_head') {
+        endpoint = (action === 'approve') 
+            ? '<?= $GLOBALS['base_url'] ?>/approval-requests/approve-operation-head'
+            : '<?= $GLOBALS['base_url'] ?>/approval-requests/reject-operation-head';
+    } else {
+        endpoint = (action === 'approve')
+            ? '<?= $GLOBALS['base_url'] ?>/approval-requests/approve-management'
+            : '<?= $GLOBALS['base_url'] ?>/approval-requests/reject-management';
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Processing...';
+    }
+
+    fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            approval_request_id: reqId,
+            source_table: 'lead_bookings',
+            source_id: bookingId,
+            note: note || (action === 'approve' ? 'Approved Booking Discount' : 'Rejected Booking Discount')
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+        if (data.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: action === 'approve' ? 'Discount Approved!' : 'Discount Rejected',
+                    text: data.message || 'Operation completed successfully.',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                alert(data.message || 'Success');
+                window.location.reload();
+            }
+        } else {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Action Failed',
+                    text: data.message || 'Failed to process request.'
+                });
+            } else {
+                alert(data.message || 'Failed to process request.');
+            }
+        }
+    })
+    .catch(err => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Network Error',
+                text: 'Error: ' + err
+            });
+        } else {
+            alert('Network Error: ' + err);
+        }
+    });
+}
+</script>

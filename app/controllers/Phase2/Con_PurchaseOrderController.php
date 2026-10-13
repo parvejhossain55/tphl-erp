@@ -192,8 +192,12 @@ class Con_PurchaseOrderController extends Controller
         $isNotApproved = empty($po['purchase_head_approved_by_id']) && empty($po['qc_approved_by_id']) && empty($po['op_head_approved_by_id']);
         $canDeletePO = ($isCreator || $isManagement) && $isNotApproved && $po['status'] !== 'Cancelled';
 
+        $isApproverRole = in_array($currentRoleId, [1, 3, 17, 20, 24, 13, 25, 30, 31, 23]);
+        $canEditItemQty = !$isCancelled && ($isApproverRole || $canApprovePH || $canApproveQC || $canApproveOP || $isCreator);
+
         $items        = $this->poModel->getItems($id);
         $pendingItems = $this->poModel->getPendingItems($id);
+        $qtyLogs      = $this->poModel->getQtyLogs($id);
 
         // Fetch the BOQ linked to this PO (via PR.bom_id)
         $linkedBoq = $this->poModel->getLinkedBoq($id);
@@ -391,6 +395,8 @@ class Con_PurchaseOrderController extends Controller
             'prAttachment'        => $prAttachment,
             'prDetails'           => $prDetails,
             'siteSettings'        => $siteSettings,
+            'qtyLogs'             => $qtyLogs,
+            'canEditItemQty'      => $canEditItemQty,
         ]);
     }
 
@@ -551,6 +557,8 @@ class Con_PurchaseOrderController extends Controller
             'cstInfo'             => $cstInfo,
             'prDetails'           => $prDetails,
             'siteSettings'        => $siteSettings,
+            'qtyLogs'             => $qtyLogs,
+            'canEditItemQty'      => $canEditItemQty,
         ], false); // $useMaster = false (standalone document)
     }
 
@@ -854,6 +862,80 @@ class Con_PurchaseOrderController extends Controller
             setError('Failed to delete Purchase Order: ' . $e->getMessage());
             header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$id}");
         }
+        exit;
+    }
+
+    // =========================================================================
+    // UPDATE ITEM QUANTITY (Approvers / Creator with CST Recalculation & Audit)
+    // =========================================================================
+
+    public function updateItemQuantity($poId)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");
+            exit;
+        }
+
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $currentUserId = (int)($_SESSION['user']['id']   ?? 0);
+        $currentRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+
+        if ($currentUserId <= 0) {
+            setError('Unauthorized access. Please log in.');
+            header("Location: {$GLOBALS['base_url']}/login");
+            exit;
+        }
+
+        $po = $this->poModel->find($poId);
+        if (!$po) {
+            setError('Purchase Order not found.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-orders");
+            exit;
+        }
+
+        if ($po['status'] === 'Cancelled') {
+            setError('Cannot modify quantities for a cancelled Purchase Order.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");
+            exit;
+        }
+
+        // Approver roles (PH, QC, Op Head, Management, Admin) or Creator
+        $isApproverRole = in_array($currentRoleId, [1, 3, 17, 20, 24, 13, 25, 30, 31, 23]);
+        $isCreator = ($currentUserId == (int)$po['created_by']);
+        if (!$isApproverRole && !$isCreator) {
+            setError('You do not have permission to modify quantities for this Purchase Order.');
+            header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");
+            exit;
+        }
+
+        $itemId = (int)($_POST['item_id'] ?? 0);
+        $newQty = (float)($_POST['new_quantity'] ?? 0);
+        $reason = trim($_POST['adjustment_reason'] ?? '');
+
+        $result = $this->poModel->updateItemQuantity($poId, $itemId, $newQty, $currentUserId, $reason);
+
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
+                  || (isset($_POST['is_ajax']) && $_POST['is_ajax'] == '1');
+
+        if ($result['success']) {
+            $msg = "Quantity updated successfully to " . number_format($newQty, 3) . ". PO amount recalculated based on CST vendor rate.";
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => true, 'message' => $msg, 'data' => $result]);
+                exit;
+            }
+            setSuccess($msg);
+        } else {
+            $err = $result['error'] ?: 'Failed to update item quantity.';
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => $err]);
+                exit;
+            }
+            setError($err);
+        }
+
+        header("Location: {$GLOBALS['base_url']}/con-purchase-order/{$poId}");
         exit;
     }
 }

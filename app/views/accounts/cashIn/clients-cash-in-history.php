@@ -1293,6 +1293,14 @@ window.openEditPaymentDateModal = function(target) {
                                 <option value="Meeting">Meeting</option>
                             </select>
                         </div>
+                        <div class="mb-3" id="followupCallStatusGroup">
+                            <label class="form-label fs-13 font-semibold text-muted">Call Status</label>
+                            <select id="followupCallStatus" class="form-select form-select-sm">
+                                <option value="">Select Call Status</option>
+                                <option value="Incoming">Incoming</option>
+                                <option value="Outgoing">Outgoing</option>
+                            </select>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label fs-13 font-semibold text-muted">Reason for Activity <span class="text-danger">*</span></label>
                             <select id="followupActivityReason" class="form-select form-select-sm">
@@ -2308,6 +2316,11 @@ window.openEditPaymentDateModal = function(target) {
                             html += '<div class="mb-2" style="font-size:12px; color:#475569;">';
                             if (note.activity_date) html += '<span><i class="fa-light fa-calendar me-1"></i>' + note.activity_date + '</span>';
                             if (note.activity_mode) html += '<span class="ms-3"><i class="fa-light fa-phone-volume me-1"></i>' + note.activity_mode + '</span>';
+                            if (note.call_status) {
+                                var badgeBg = note.call_status.toLowerCase() === 'incoming' ? 'bg-success' : 'bg-primary';
+                                var iconClass = note.call_status.toLowerCase() === 'incoming' ? 'fa-arrow-down-left' : 'fa-arrow-up-right';
+                                html += '<span class="ms-2 badge ' + badgeBg + ' text-white" style="font-size:10px;"><i class="fa-light ' + iconClass + ' me-1"></i>' + note.call_status + '</span>';
+                            }
                             if (note.activity_reason) html += '<span class="ms-3"><i class="fa-light fa-bullseye me-1"></i>' + note.activity_reason + '</span>';
                             html += '</div>';
                             html += '<p class="mb-2" style="font-size: 14px;">' + (note.note || '') + '</p>';
@@ -2334,6 +2347,7 @@ window.openEditPaymentDateModal = function(target) {
         var note = $('#followupNoteInput').val().trim();
         var activityDate = $('#followupActivityDate').val();
         var activityMode = $('#followupActivityMode').val();
+        var callStatus = $('#followupCallStatus').val() || '';
         var activityReason = $('#followupActivityReason').val();
         
         if (!note || !activityDate || !activityMode || !activityReason) {
@@ -2354,6 +2368,7 @@ window.openEditPaymentDateModal = function(target) {
                 note: note,
                 activity_date: activityDate,
                 activity_mode: activityMode,
+                call_status: callStatus,
                 activity_reason: activityReason
             },
             dataType: 'json',
@@ -2367,6 +2382,7 @@ window.openEditPaymentDateModal = function(target) {
                         showConfirmButton: false
                     });
                     $('#followupNoteInput').val('');
+                    $('#followupCallStatus').val('');
                     loadEmiFollowups(bookingId, emiNo);
                 } else {
                     Swal.fire({

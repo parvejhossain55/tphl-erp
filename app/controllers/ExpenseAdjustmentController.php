@@ -508,10 +508,47 @@ class ExpenseAdjustmentController extends Controller
             exit;
         }
 
+        $isOver1Lac = ($approvedAmount > 100000);
+        $isOpHeadUser = (in_array((int)$this->userRole, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
+        $isMgmtUser = in_array((int)$this->userRole, [1, 3], true);
+
+        // Fetch approval request record
+        $arCheck = $this->db->query("SELECT id, op_head_status FROM approval_requests WHERE source_table = 'expense_adjustments' AND source_id = " . (int)$id . " ORDER BY id DESC LIMIT 1");
+        $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
+        $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
+
+        if ($isOver1Lac) {
+            if ($isOpHeadUser && !$isMgmtUser) {
+                $arId = (int)($arRow['id'] ?? 0);
+                $escNote = $this->db->real_escape_string($mgmtNote ?: 'Verified and approved by Admin & Operation Head');
+                if (!class_exists('ApprovalRequest')) {
+                    require_once __DIR__ . '/../models/ApprovalRequest.php';
+                }
+                $approvalModel = new \ApprovalRequest($this->db);
+                if ($arId > 0) {
+                    $approvalModel->approveOperationHead($arId, $this->userId, $escNote);
+                } else {
+                    $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$this->userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table = 'expense_adjustments' AND source_id = " . (int)$id);
+                }
+                setSuccess("Adjustment request verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for sign-off.");
+                header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
+                exit;
+            }
+
+            if ($isMgmtUser) {
+                if ($opHeadStatus !== 'approved') {
+                    setError("Access Denied: Adjustments exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+                    header("Location: {$GLOBALS['base_url']}/expense-adjustments/show?id=$id");
+                    exit;
+                }
+            }
+        }
+
         if ($this->model->mgmtApprove($id, $this->userId, $approvedAmount, $mgmtNote)) {
             try {
                 require_once __DIR__ . '/../models/ApprovalRequest.php';
                 (new ApprovalRequest($this->db))->syncMissingExpenseAdjustments();
+                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', request_amount = {$approvedAmount} WHERE source_table = 'expense_adjustments' AND source_id = " . (int)$id);
             } catch (\Throwable $e) {}
 
             // Send email notification

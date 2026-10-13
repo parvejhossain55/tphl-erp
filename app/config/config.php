@@ -38,7 +38,6 @@ if ($current_server == 1) {
     ];
 }
 // CREATE USER 'tphl_read_only'@'localhost' IDENT IFIED BY 'ReadOnlyPass123!';
-////////////////////////
 
 if ($current_server == 2) {
     return [

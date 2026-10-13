@@ -281,12 +281,41 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                 $creatorReportingUserId = (int)($request['creator_reporting_user_id'] ?? 0);
                 $canDeptHeadApprove = ($request['dept_head_status'] === 'pending' && ($userId == $creatorReportingUserId || $roleId == 1));
                 $canQCApprove = ($request['status'] == 'pending' && $request['dept_head_status'] !== 'pending' && in_array($roleId, [13, 24, 25, 1]));
-                $canMgmtApprove = ($request['status'] == 'qc_approved' && in_array($roleId, [3, 15, 20, 22, 32, 1]));
+                $reqAmt = (float)($request['approved_amount'] ?? $request['request_amount'] ?? 0);
+                $isOver1Lac = ($reqAmt > 100000);
+                $isOpHeadUser = (in_array($roleId, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
+                $isMgmtUser = in_array($roleId, [1, 3], true);
+                $isOpHeadApproved = !empty($ahInfo['is_op_head_approved']);
+
+                $isOpHeadAction = false;
+                $isMgmtLocked = false;
+                $canMgmtApprove = false;
+
+                if ($request['status'] == 'qc_approved') {
+                    if ($isOver1Lac) {
+                        if (!$isOpHeadApproved) {
+                            if ($isOpHeadUser && !$isMgmtUser) {
+                                $canMgmtApprove = true;
+                                $isOpHeadAction = true;
+                            } else {
+                                $isMgmtLocked = $isMgmtUser;
+                            }
+                        } else {
+                            if ($isMgmtUser) {
+                                $canMgmtApprove = true;
+                            }
+                        }
+                    } else {
+                        if ($isMgmtUser || $isOpHeadUser) {
+                            $canMgmtApprove = true;
+                        }
+                    }
+                }
                 $canPay = ($request['status'] == 'management_approved' && in_array($roleId, [6, 30, 1]) && $isAhApproved);
                 $isWaitingAccountsHead = ($request['status'] == 'management_approved' && in_array($roleId, [6, 30, 1]) && !$isAhApproved);
                 ?>
 
-                <?php if ($canDeptHeadApprove || $canQCApprove || $canMgmtApprove || $canPay || $isWaitingAccountsHead): ?>
+                <?php if ($canDeptHeadApprove || $canQCApprove || $canMgmtApprove || $isMgmtLocked || $canPay || $isWaitingAccountsHead): ?>
                     <div class="card shadow-sm border-0 border-top border-3 border-primary">
                         <div class="card-header bg-white pb-0 border-bottom-0">
                             <h5 class="card-title text-primary mb-0"><i class="bi bi-pencil-square me-2"></i>Process Request</h5>
@@ -326,18 +355,31 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                 </form>
                             <?php endif; ?>
 
+                            <?php if ($isMgmtLocked): ?>
+                                <div class="alert alert-warning py-3 px-3 border-warning text-center mb-0">
+                                    <i class="fa-solid fa-lock me-1"></i>
+                                    <strong>Management Approval Locked (&gt; ৳1,00,000)</strong><br>
+                                    <span class="fs-12">Requires <strong>Admin & Operation Head (Role 20)</strong> verification and approval first.</span>
+                                </div>
+                            <?php endif; ?>
+
                             <?php if ($canMgmtApprove): ?>
                                 <form method="POST" action="<?= $GLOBALS['base_url'] ?>/project-other-costs/approve-management/<?= $request['id'] ?>">
+                                    <?php if ($isOpHeadAction): ?>
+                                        <div class="alert alert-primary py-2 px-3 small mb-3">
+                                            <i class="bi bi-shield-check me-1"></i><strong>Operation Head Verification (Step 1 of 3):</strong> Your approval will forward this request exceeding ৳1,00,000 to Management.
+                                        </div>
+                                    <?php endif; ?>
                                     <div class="mb-3">
-                                        <label class="form-label fw-bold">Final Approved Amount (৳)</label>
+                                        <label class="form-label fw-bold"><?= $isOpHeadAction ? 'Verified Amount (৳)' : 'Final Approved Amount (৳)' ?></label>
                                         <input type="number" step="0.01" class="form-control form-control-lg" name="approved_amount" value="<?= $request['approved_amount'] ?? $request['request_amount'] ?>" required>
                                     </div>
                                     <div class="mb-4">
-                                        <label class="form-label fw-bold">Management Note (Optional)</label>
+                                        <label class="form-label fw-bold"><?= $isOpHeadAction ? 'Operation Head Note' : 'Management Note' ?> (Optional)</label>
                                         <textarea class="form-control" name="management_apporved_note" rows="3" placeholder="Enter remarks..."></textarea>
                                     </div>
-                                    <button type="submit" class="btn btn-success btn-lg w-100" onclick="return confirm('Are you sure you want to approve this request?');">
-                                        <i class="bi bi-check-circle me-1"></i> Submit Mgmt Approval
+                                    <button type="submit" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> btn-lg w-100" onclick="return confirm('<?= $isOpHeadAction ? 'Approve as Operation Head?' : 'Are you sure you want to approve this request?' ?>');">
+                                        <i class="bi bi-check-circle me-1"></i> <?= $isOpHeadAction ? 'Submit Op Head Approval' : 'Submit Mgmt Approval' ?>
                                     </button>
                                 </form>
                             <?php endif; ?>

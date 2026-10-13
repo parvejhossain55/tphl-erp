@@ -267,8 +267,22 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                                                     <div style="font-size:10px; font-style:italic;" class="text-danger">"<?= htmlspecialchars($row['mgmt_note']) ?>"</div>
                                                 <?php endif; ?>
                                             <?php else: ?>
-                                                <span class="badge bg-warning text-dark"><i class="fa-light fa-hourglass-half me-1"></i>Pending Mgmt</span>
-                                                <div style="font-size:10px;" class="text-warning mt-1">Awaiting Approval</div>
+                                                <?php 
+                                                    $reqAmt = (float)($row['requested_amount'] ?? 0);
+                                                    $isOver1LacRow = !empty($ahInfoRow['is_over_1lac']) || ($reqAmt > 100000);
+                                                    $isOpHeadApprovedRow = !empty($ahInfoRow['is_op_head_approved']);
+                                                    $isPendingOpHeadRow = $isOver1LacRow && !$isOpHeadApprovedRow;
+                                                ?>
+                                                <?php if ($isPendingOpHeadRow): ?>
+                                                    <span class="badge bg-warning text-dark"><i class="fa-light fa-hourglass-half me-1"></i>Pending Op Head (&gt;1L)</span>
+                                                    <div style="font-size:10px;" class="text-warning mt-1">Requires Role 20 first</div>
+                                                <?php elseif ($isOver1LacRow): ?>
+                                                    <span class="badge bg-info text-dark"><i class="fa-light fa-hourglass-half me-1"></i>Pending Mgmt (&gt;1L)</span>
+                                                    <div style="font-size:10px;" class="text-success mt-1"><i class="fa-light fa-check me-1"></i>Op Head Approved</div>
+                                                <?php else: ?>
+                                                    <span class="badge bg-warning text-dark"><i class="fa-light fa-hourglass-half me-1"></i>Pending Review</span>
+                                                    <div style="font-size:10px;" class="text-warning mt-1">Awaiting Approval (≤1L)</div>
+                                                <?php endif; ?>
                                             <?php endif; ?>
                                         </td>
                                         <td>
@@ -376,19 +390,48 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                                                     $isMgmt = in_array($roleId, [1, 3, 33]);
                                                     $isOpHead = in_array($roleId, [20, 32]);
                                                     $reqAmt = (float)($row['requested_amount'] ?? 0);
-                                                    $canApprove = $isMgmt || ($isOpHead && $reqAmt <= 100000);
+                                                    $isOver1LacRow = !empty($ahInfoRow['is_over_1lac']) || ($reqAmt > 100000);
+                                                    $isOpHeadApprovedRow = !empty($ahInfoRow['is_op_head_approved']);
                                                 ?>
                                                 <?php if ($row['mgmt_status'] === 'Pending'): ?>
-                                                    <?php if ($canApprove): ?>
-                                                        <button type="button" class="btn btn-sm btn-outline-success" 
-                                                                data-bs-toggle="modal" data-bs-target="#mgmtApproveModal"
-                                                                data-id="<?= $row['id'] ?>" data-amount="<?= $row['requested_amount'] ?>">
-                                                            <i class="fa-light fa-check-to-slot me-1"></i>Approve/Reject
-                                                        </button>
-                                                    <?php elseif ($isOpHead && $reqAmt > 100000): ?>
-                                                        <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;" title="Requests over BDT 100,000 (1 Lac) require Management approval">
-                                                            <i class="fa-light fa-lock me-1 text-warning"></i>Requires Mgmt (&gt;1L)
-                                                        </span>
+                                                    <?php if (!$isOver1LacRow): ?>
+                                                        <!-- <= 1 Lac: Both Op Head and Management can approve directly -->
+                                                        <?php if ($isMgmt || $isOpHead): ?>
+                                                            <button type="button" class="btn btn-sm btn-outline-success" 
+                                                                    data-bs-toggle="modal" data-bs-target="#mgmtApproveModal"
+                                                                    data-id="<?= $row['id'] ?>" data-amount="<?= $row['requested_amount'] ?>">
+                                                                <i class="fa-light fa-check-to-slot me-1"></i>Approve/Reject
+                                                            </button>
+                                                        <?php endif; ?>
+                                                    <?php else: ?>
+                                                        <!-- > 1 Lac: Op Head must approve first -->
+                                                        <?php if (!$isOpHeadApprovedRow): ?>
+                                                            <?php if ($isOpHead): ?>
+                                                                <button type="button" class="btn btn-sm btn-outline-success" 
+                                                                        data-bs-toggle="modal" data-bs-target="#mgmtApproveModal"
+                                                                        data-id="<?= $row['id'] ?>" data-amount="<?= $row['requested_amount'] ?>"
+                                                                        data-ophead="1">
+                                                                    <i class="fa-light fa-check-to-slot me-1"></i>Approve (Op Head)
+                                                                </button>
+                                                            <?php elseif ($isMgmt): ?>
+                                                                <span class="badge bg-light text-muted border py-1 px-2" style="font-size:10px;" title="Requests over ৳1,00,000 require Admin & Operation Head approval first">
+                                                                    <i class="fa-light fa-lock me-1 text-warning"></i>Locked (Awaiting Op Head)
+                                                                </span>
+                                                            <?php endif; ?>
+                                                        <?php else: ?>
+                                                            <!-- Op Head approved, now Management approves -->
+                                                            <?php if ($isMgmt): ?>
+                                                                <button type="button" class="btn btn-sm btn-success" 
+                                                                        data-bs-toggle="modal" data-bs-target="#mgmtApproveModal"
+                                                                        data-id="<?= $row['id'] ?>" data-amount="<?= $row['requested_amount'] ?>">
+                                                                    <i class="fa-light fa-check-double me-1"></i>Approve (Mgmt)
+                                                                </button>
+                                                            <?php elseif ($isOpHead): ?>
+                                                                <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size:10px;">
+                                                                    <i class="fa-light fa-check me-1"></i>Op Head Done (Pending Mgmt)
+                                                                </span>
+                                                            <?php endif; ?>
+                                                        <?php endif; ?>
                                                     <?php endif; ?>
                                                 <?php endif; ?>
 
@@ -661,7 +704,7 @@ $canRequest = in_array($roleId, [1, 3, 14, 15, 20, 22, 32, 33]);
                                         <h5 class="mb-2">Requested Amount: <strong class="text-success">BDT <span id="mgmt_req_amount"></span></strong></h5>
                                         <?php if (in_array($roleId, [20, 32])): ?>
                                             <div class="alert alert-info py-2 small mb-3">
-                                                <i class="fa-light fa-info-circle me-1"></i><strong>Operation Head Authorization:</strong> You have approval authority for land fund requisitions up to BDT 100,000 (1 Lac).
+                                                <i class="fa-light fa-info-circle me-1"></i><strong>Operation Head Authorization:</strong> For requisitions up to BDT 100,000 (1 Lac), you can approve directly. For requisitions over BDT 100,000, your approval verifies the request (Step 1) and forwards it to Management.
                                             </div>
                                         <?php endif; ?>
                                     </div>

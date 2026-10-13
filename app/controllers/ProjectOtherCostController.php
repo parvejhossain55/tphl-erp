@@ -176,16 +176,36 @@ class ProjectOtherCostController extends Controller
             // Only require Dept Head approval if the creator is NOT a dept head (is_dept_head == 0) and has a designated reporting boss
             $dept_head_status = ($isDeptHead == 0 && !empty($reporting_user_id)) ? 'pending' : 'not_required';
 
-            $data = [
-                'project_id' => $_POST['project_id'],
-                'rcost_type' => $_POST['rcost_type'],
-                'purpose' => $_POST['purpose'],
-                'request_amount' => $_POST['request_amount'],
-                'created_by_id' => $userId,
-                'dept_head_status' => $dept_head_status,
-                'account_id' => !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null,
-            ];
+            // Support single or multiple project selection
+            $projectIds = [];
+            if (!empty($_POST['project_ids'])) {
+                if (is_array($_POST['project_ids'])) {
+                    $projectIds = array_values(array_filter(array_map('intval', $_POST['project_ids'])));
+                } else {
+                    $projectIds = [(int)$_POST['project_ids']];
+                }
+            } elseif (!empty($_POST['project_id'])) {
+                $projectIds = [(int)$_POST['project_id']];
+            }
 
+            if (empty($projectIds)) {
+                setError("Please select at least one project.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
+                exit();
+            }
+
+            $totalAmount = (float)($_POST['request_amount'] ?? 0);
+            if ($totalAmount <= 0) {
+                setError("Please enter a valid request amount greater than zero.");
+                header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
+                exit();
+            }
+
+            $numProjects = count($projectIds);
+            $perProjectAmount = round($totalAmount / $numProjects, 2);
+
+            // Handle file attachment once for all distributed projects
+            $attachmentFileName = null;
             if (isset($_FILES['creator_attachment']) && $_FILES['creator_attachment']['error'] == UPLOAD_ERR_OK) {
                 $uploadDir = __DIR__ . '/../../public/uploads/project_other_costs/';
                 if (!is_dir($uploadDir)) {
@@ -195,15 +215,58 @@ class ProjectOtherCostController extends Controller
                 $targetFilePath = $uploadDir . $fileName;
 
                 if (move_uploaded_file($_FILES['creator_attachment']['tmp_name'], $targetFilePath)) {
-                    $data['attachment'] = $fileName;
-                    $data['creator_attachment'] = $fileName;
+                    $attachmentFileName = $fileName;
                 }
             }
 
-            $newId = $this->otherCostModel->create($data);
-            if ($newId) {
-                $this->syncToApprovalRequests($newId);
-                setSuccess("Other cost request created successfully.");
+            $basePurpose = trim($_POST['purpose'] ?? '');
+            $rcostType = $_POST['rcost_type'] ?? '';
+            $accountId = !empty($_POST['account_id']) ? (int)$_POST['account_id'] : null;
+
+            $createdCount = 0;
+            $index = 0;
+            foreach ($projectIds as $pId) {
+                $index++;
+                // Last project gets remainder balance to ensure 100% exact penny match with totalAmount
+                if ($index === $numProjects) {
+                    $currentAmount = $totalAmount - ($perProjectAmount * ($numProjects - 1));
+                } else {
+                    $currentAmount = $perProjectAmount;
+                }
+
+                $purpose = $basePurpose;
+                if ($numProjects > 1) {
+                    $purpose .= " [Distributed: ৳" . number_format($currentAmount, 2) . " of Total ৳" . number_format($totalAmount, 2) . " across {$numProjects} projects]";
+                }
+
+                $data = [
+                    'project_id'       => $pId,
+                    'rcost_type'       => $rcostType,
+                    'purpose'          => $purpose,
+                    'request_amount'   => $currentAmount,
+                    'created_by_id'    => $userId,
+                    'dept_head_status' => $dept_head_status,
+                    'account_id'       => $accountId,
+                ];
+
+                if ($attachmentFileName) {
+                    $data['attachment'] = $attachmentFileName;
+                    $data['creator_attachment'] = $attachmentFileName;
+                }
+
+                $newId = $this->otherCostModel->create($data);
+                if ($newId) {
+                    $this->syncToApprovalRequests($newId);
+                    $createdCount++;
+                }
+            }
+
+            if ($createdCount > 0) {
+                if ($numProjects > 1) {
+                    setSuccess("Other cost request created and distributed across {$createdCount} projects successfully (৳" . number_format($perProjectAmount, 2) . " per project, Total ৳" . number_format($totalAmount, 2) . ").");
+                } else {
+                    setSuccess("Other cost request created successfully.");
+                }
                 header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
                 exit();
             } else {
@@ -298,9 +361,49 @@ class ProjectOtherCostController extends Controller
                 exit();
             }
 
+            $req = $this->otherCostModel->getById($id);
+            $approvedAmount = (float)($_POST['approved_amount'] ?? $req['request_amount'] ?? 0);
+            $isOver1Lac = ($approvedAmount > 100000);
+            $isOpHeadUser = (in_array($roleId, [20, 32], true) || str_contains($roleName, 'operation head'));
+            $isMgmtUser = in_array($roleId, [1, 3], true);
+            $note = trim($_POST['management_apporved_note'] ?? '');
+
+            // Fetch approval request record
+            $arCheck = $this->db->query("SELECT id, op_head_status FROM approval_requests WHERE source_table = 'project_other_costs' AND source_id = {$id} ORDER BY id DESC LIMIT 1");
+            $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
+            $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
+
+            // Flow for > 1 Lac: Role 20 must approve first
+            if ($isOver1Lac) {
+                if ($isOpHeadUser && !$isMgmtUser) {
+                    $arId = (int)($arRow['id'] ?? 0);
+                    $escNote = $this->db->real_escape_string($note ?: 'Verified and approved by Admin & Operation Head');
+                    if (!class_exists('ApprovalRequest')) {
+                        require_once __DIR__ . '/../models/ApprovalRequest.php';
+                    }
+                    $approvalModel = new \ApprovalRequest($this->db);
+                    if ($arId > 0) {
+                        $approvalModel->approveOperationHead($arId, $_SESSION['user']['id'], $escNote);
+                    } else {
+                        $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$_SESSION['user']['id']}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table = 'project_other_costs' AND source_id = {$id}");
+                    }
+                    setSuccess("Request verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for sign-off.");
+                    header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                    exit();
+                }
+
+                if ($isMgmtUser) {
+                    if ($opHeadStatus !== 'approved') {
+                        setError("Access Denied: Requests exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+                        header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
+                        exit();
+                    }
+                }
+            }
+
             $data = [
-                'approved_amount' => $_POST['approved_amount'],
-                'management_apporved_note' => $_POST['management_apporved_note'],
+                'approved_amount' => $approvedAmount,
+                'management_apporved_note' => $note,
                 'management_apporved_by_id' => $_SESSION['user']['id'],
                 'management_apporved_at' => date('Y-m-d H:i:s'),
                 'pc_approved_id' => $_SESSION['user']['id'],
@@ -309,11 +412,12 @@ class ProjectOtherCostController extends Controller
 
             if ($this->otherCostModel->update($id, $data)) {
                 $this->syncToApprovalRequests($id);
+                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved' WHERE source_table = 'project_other_costs' AND source_id = {$id}");
                 setSuccess("Request Management Approved successfully.");
             } else {
                 setError("Failed to approve request.");
             }
-            header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
+            header("Location: " . $GLOBALS['base_url'] . "/project-other-costs/review/" . $id);
             exit();
         }
     }
@@ -426,6 +530,7 @@ class ProjectOtherCostController extends Controller
         header("Location: " . $GLOBALS['base_url'] . "/project-other-costs");
         exit();
     }
+    
     private function syncToApprovalRequests($reqId)
     {
         $res = $this->db->query("

@@ -416,15 +416,53 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                     $isSiteOperatorUser = (in_array($userRoleId, [20, 32], true) || strpos($sessionRoleName, 'operation head') !== false || strpos($sessionRoleName, 'admin & operation') !== false) && !$isChiefOfficer;
 
                                     $reqAmount = (float)($request['amount'] ?? 0);
-                                    $canDirectApprove = !$isChiefOfficer && ($isFullManagement || ($isSiteOperatorUser && $reqAmount <= 100000.01));
+                                    $isOver1Lac = ($reqAmount > 100000.01);
+                                    $isOpHeadApproved = (!empty($approvalRequest['op_head_status']) && strtolower($approvalRequest['op_head_status']) === 'approved');
+                                    $canDirectApprove = !$isChiefOfficer && (
+                                        (!$isOver1Lac && ($isFullManagement || $isSiteOperatorUser)) ||
+                                        ($isOver1Lac && $isFullManagement && $isOpHeadApproved)
+                                    );
                                     $isQCOnlyUser = $canApproveQC && !$isFullManagement && !$isSiteOperatorUser && !$isChiefOfficer;
                                     ?>
 
-                                    <?php if ($isPending && $canDirectApprove && !$isAlreadyApproved): ?>
-                                        <!-- Management / Operation Head Direct Approval (skip QC) -->
+                                    <?php if ($isPending && $isOver1Lac && !$isOpHeadApproved && $isSiteOperatorUser && !$isAlreadyApproved): ?>
+                                        <!-- Operation Head Approval Step for > 1 Lac -->
                                         <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST" class="mb-2">
                                             <input type="hidden" name="id" value="<?= $request['id'] ?>">
                                             <input type="hidden" name="status" value="approved">
+                                            <div class="alert alert-info py-2 mb-3">
+                                                <small><i class="fa-solid fa-layer-group me-1"></i> <strong>Step 1 of 2:</strong> As Admin &amp; Operation Head, your sign-off is required to forward this request to Management.</small>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Approval Note (Optional)</label>
+                                                <textarea name="approval_note" class="form-control" rows="2" placeholder="Leave a note for management..."></textarea>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary w-100 mb-2">
+                                                <i class="fa-solid fa-stamp me-2"></i> Approve as Operation Head
+                                            </button>
+                                        </form>
+                                        <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal"
+                                            data-bs-target="#rejectModal">
+                                            <i class="fa-light fa-times me-2"></i> Reject Request
+                                        </button>
+
+                                    <?php elseif ($isPending && $isOver1Lac && !$isOpHeadApproved && $isFullManagement && !$isAlreadyApproved): ?>
+                                        <!-- Threshold lock notice for Management -->
+                                        <div class="alert alert-warning mb-2 py-3">
+                                            <div class="fw-bold text-dark"><i class="fa-solid fa-lock text-warning me-1"></i> Management Approval Locked</div>
+                                            <small class="text-secondary">Amount (৳<?= number_format($reqAmount, 2) ?>) exceeds ৳1,00,000 threshold. Admin &amp; Operation Head (Role 20) must approve first.</small>
+                                        </div>
+
+                                    <?php elseif ($isPending && $canDirectApprove && !$isAlreadyApproved): ?>
+                                        <!-- Management / Operation Head Direct Approval -->
+                                        <form action="<?= $GLOBALS['base_url'] ?>/approve-cashout-request" method="POST" class="mb-2">
+                                            <input type="hidden" name="id" value="<?= $request['id'] ?>">
+                                            <input type="hidden" name="status" value="approved">
+                                            <?php if ($isOver1Lac && $isOpHeadApproved): ?>
+                                                <div class="alert alert-success py-2 mb-3">
+                                                    <small><i class="fa-solid fa-circle-check text-success me-1"></i> Step 1 Completed: Operation Head Approved. Ready for Management final approval.</small>
+                                                </div>
+                                            <?php endif; ?>
                                             <div class="mb-3">
                                                 <label class="form-label fw-semibold">Approved Amount (Optional)</label>
                                                 <input type="number" step="0.01" name="approved_amount" class="form-control" value="<?= htmlspecialchars($request['amount']) ?>" max="<?= htmlspecialchars($request['amount']) ?>">
@@ -441,12 +479,6 @@ $isAhApproved = empty($ahInfo['has_request']) || !empty($ahInfo['is_accounts_hea
                                             data-bs-target="#rejectModal">
                                             <i class="fa-light fa-times me-2"></i> Reject Request
                                         </button>
-
-                                    <?php elseif ($isPending && $isSiteOperatorUser && $reqAmount > 100000.01 && !$isAlreadyApproved): ?>
-                                        <!-- Threshold notice for Operation Head -->
-                                        <div class="alert alert-warning mb-2 py-2">
-                                            <small><i class="fa-light fa-lock me-1"></i> Amount (৳<?= number_format($reqAmount, 2) ?>) exceeds ৳1,00,000 threshold. Full Management approval is required.</small>
-                                        </div>
 
                                     <?php elseif ($isPending && $isQCOnlyUser && !$isAlreadyApproved): ?>
                                         <!-- QC Approval (only for QC-role users, not management) -->

@@ -69,63 +69,19 @@
     // Calculate pending system approval requests count for Management & Accounts badge
     $pendingApprovalCount = 0;
     if (isset($db)) {
-        // Fast self-sync for office procurements so pending QC/Operations/Purchase items are never counted for Management/Role 20
-        @$db->query("
-            UPDATE approval_requests ar
-            INNER JOIN project_extra_assets pea ON (ar.source_table = 'project_extra_assets' AND ar.source_id = pea.id)
-            SET ar.approve_role = CASE
-                    WHEN pea.payment_status = 'paid' OR pea.overall_status = 'purchased' THEN 'completed'
-                    WHEN pea.mgmt_status = 'approved' THEN 'accounts'
-                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' THEN 'management'
-                    WHEN pea.operations_status = 'pending' THEN 'dept_head'
-                    WHEN pea.purchase_head_status = 'pending' THEN 'purchase'
-                    WHEN pea.qc_audit_status = 'pending' THEN 'qc'
-                    ELSE 'management'
-                END,
-                ar.status = CASE
-                    WHEN pea.payment_status = 'paid' OR pea.overall_status = 'purchased' THEN 'approved'
-                    WHEN pea.mgmt_status = 'approved' THEN 'approved' 
-                    WHEN pea.mgmt_status = 'rejected' OR pea.overall_status = 'rejected' OR pea.qc_audit_status = 'rejected' OR pea.purchase_head_status = 'rejected' OR pea.operations_status = 'rejected' THEN 'rejected' 
-                    ELSE 'pending' 
-                END
-            WHERE ar.status = 'pending' AND (
-                (pea.qc_audit_status = 'pending' AND ar.approve_role != 'qc')
-                OR (pea.purchase_head_status = 'pending' AND ar.approve_role != 'purchase')
-                OR (pea.operations_status = 'pending' AND ar.approve_role != 'dept_head')
-                OR (pea.mgmt_status = 'approved' AND ar.approve_role != 'accounts')
-            )
-        ");
-
+        if (!class_exists('ApprovalRequest')) {
+            require_once dirname(dirname(__DIR__)) . '/models/ApprovalRequest.php';
+        }
+        $appModelSidebar = new ApprovalRequest($db);
         $loggedUserRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
         $loggedUserRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
-        if (in_array($loggedUserRoleId, [33, 34, 35], true) || in_array($loggedUserRoleName, ['chief officer', 'management viewer', 'seal ceo'], true)) {
-            // Chief Officer, Management Viewer & SEAL CEO have no approval authority: 0 pending requests (hide badge)
-            $pendingApprovalCount = 0;
-        } elseif (in_array($loggedUserRoleId, [1, 3])) {
-            // Full Management: all pending management approvals
-            $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role = 'management'");
-            if (isset($resApp) && $resApp) {
-                $pendingApprovalCount = (int) ($resApp->fetch_assoc()['total'] ?? 0);
-            }
-        } elseif ($loggedUserRoleId === 20 || $loggedUserRoleId === 32) {
-            // Role 20 / 32 (Site Operator / Operation Head): management & operations approvals with amount <= 100,000
-            $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role IN ('management', 'operations') AND (request_amount <= 100000 OR request_amount IS NULL OR request_amount = 0)");
-            if (isset($resApp) && $resApp) {
-                $pendingApprovalCount = (int) ($resApp->fetch_assoc()['total'] ?? 0);
-            }
-        } elseif (in_array($loggedUserRoleId, [6, 30])) {
-            // Accounts
-            $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role = 'accounts'");
-            if (isset($resApp) && $resApp) {
-                $pendingApprovalCount = (int) ($resApp->fetch_assoc()['total'] ?? 0);
-            }
-        } else {
-            $sessionRole = strtolower($_SESSION['user']['role_name'] ?? '');
-            $resApp = $db->query("SELECT COUNT(*) AS total FROM approval_requests WHERE status = 'pending' AND approve_role = '{$sessionRole}'");
-            if (isset($resApp) && $resApp) {
-                $pendingApprovalCount = (int) ($resApp->fetch_assoc()['total'] ?? 0);
-            }
-        }
+        $loggedUserId = (int)($_SESSION['user']['id'] ?? 0);
+
+        $pendingApprovalCount = $appModelSidebar->getActionableCountForUser([
+            'user_id'   => $loggedUserId,
+            'role_id'   => $loggedUserRoleId,
+            'role_name' => $loggedUserRoleName
+        ]);
     }
 
     // Calculate pending labor requisitions count for current user's approval role ("jar jar kache tar approval count")
@@ -146,8 +102,8 @@
             // Top Management: awaiting management (qc_approved, payment_requested, pm_payment_approved)
             $rLR = $db->query("SELECT COUNT(*) AS total FROM con_labor_requisitions WHERE status IN ('qc_approved', 'payment_requested', 'pm_payment_approved')");
         } elseif ($lrRoleId === 20) {
-            // Role 20 (Site Operator / Operation Head): awaiting management and amount <= 100,000
-            $rLR = $db->query("SELECT COUNT(*) AS total FROM con_labor_requisitions WHERE status IN ('qc_approved', 'payment_requested', 'pm_payment_approved') AND (COALESCE(qc_approved_amount, total_amount) <= 100000 OR total_amount IS NULL)");
+            // Role 20 (Site Operator / Operation Head): awaiting management & operation head
+            $rLR = $db->query("SELECT COUNT(*) AS total FROM con_labor_requisitions WHERE status IN ('qc_approved', 'payment_requested', 'pm_payment_approved')");
         } elseif (in_array($lrRoleId, [6, 30])) {
             // Accounts: management approved or partially paid awaiting payout
             $rLR = $db->query("SELECT COUNT(*) AS total FROM con_labor_requisitions WHERE status IN ('management_approved', 'partially_paid')");

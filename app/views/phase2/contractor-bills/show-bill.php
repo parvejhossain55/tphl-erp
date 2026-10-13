@@ -581,11 +581,62 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
             </div>
             <?php endif; ?>
 
-            <!-- 3. Management Approval Actions (Role 20: Admin & Operation Head / Admin) -->
-            <?php if (($canApproveManagementReq && $status === 'qc_approved') || (in_array($userRole, [1, 3]) && in_array($status, ['submitted', 'verified', 'qc_approved']))): ?>
-            <div class="card custom-card border-success mb-3">
-                <div class="card-header bg-success bg-opacity-10">
-                    <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Management Approval (Role 20: Admin & Operation Head)</h6>
+            <!-- 3. Operation Head / Management Approval Actions -->
+            <?php 
+                $billAmt = (float)($bill['bill_amount'] ?? 0);
+                $isOver1Lac = ($billAmt > 100000);
+                $isOpHeadUser = (in_array((int)$userRole, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
+                $isMgmtUser = in_array((int)$userRole, [1, 3], true);
+                $isOpHeadApproved = !empty($ahInfo['is_op_head_approved']);
+
+                $isOpHeadAction = false;
+                $isMgmtLocked = false;
+                $canShowCard = false;
+
+                if ($isOver1Lac) {
+                    if (!$isOpHeadApproved) {
+                        if ($isOpHeadUser && !$isMgmtUser) {
+                            $canShowCard = in_array($status, ['qc_approved', 'verified', 'submitted']);
+                            $isOpHeadAction = true;
+                        } else {
+                            $isMgmtLocked = $isMgmtUser && in_array($status, ['qc_approved', 'verified', 'submitted']);
+                        }
+                    } else {
+                        if ($isMgmtUser) {
+                            $canShowCard = in_array($status, ['qc_approved', 'verified', 'submitted']);
+                        }
+                    }
+                } else {
+                    $canShowCard = ($canApproveManagementReq && $status === 'qc_approved') || ($isMgmtUser && in_array($status, ['submitted', 'verified', 'qc_approved']));
+                }
+            ?>
+
+            <?php if ($isMgmtLocked): ?>
+            <div class="card custom-card border-warning mb-3 shadow-sm">
+                <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center justify-content-between">
+                    <h6 class="card-title mb-0 fw-bold text-warning">
+                        <i class="bi bi-lock-fill me-2"></i>Management Approval Locked (&gt; ৳1,00,000)
+                    </h6>
+                    <span class="badge bg-warning text-dark">Awaiting Op Head</span>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0 text-muted small">
+                        This contractor bill exceeds <strong>৳1,00,000</strong>. In accordance with policy, <strong>Admin & Operation Head (Role 20)</strong> must verify and approve this bill first before Management sign-off.
+                    </p>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($canShowCard): ?>
+            <div class="card custom-card <?= $isOpHeadAction ? 'border-primary' : 'border-success' ?> mb-3">
+                <div class="card-header <?= $isOpHeadAction ? 'bg-primary bg-opacity-10' : 'bg-success bg-opacity-10' ?> d-flex align-items-center justify-content-between">
+                    <h6 class="card-title mb-0">
+                        <i class="bi <?= $isOpHeadAction ? 'bi-shield-check text-primary' : 'bi-shield-lock' ?> me-2"></i>
+                        <?= $isOpHeadAction ? 'Operation Head Verification Action (Step 1 of 3)' : 'Management Approval (Step 2 of 3)' ?>
+                    </h6>
+                    <span class="badge <?= $isOpHeadAction ? 'bg-primary' : 'bg-success' ?>">
+                        <?= $isOpHeadAction ? 'Step 1 of 3' : 'Step 2 of 3' ?>
+                    </span>
                 </div>
                 <div class="card-body">
                     <form action="<?= $base_url ?>/con-contractor-bill-approve/<?= $bill['id'] ?>" method="POST">
@@ -597,14 +648,14 @@ $canSubmitSettlement   = $billIsPaid && $totalPaid > 0;
                             <small class="text-muted">Bill amount: ৳ <?= number_format($bill['bill_amount'], 2) ?></small>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Management Note (Optional)</label>
-                            <textarea name="management_note" class="form-control form-control-sm" rows="2" placeholder="Add management remarks..."></textarea>
+                            <label class="form-label fw-semibold"><?= $isOpHeadAction ? 'Operation Head Note' : 'Management Note' ?> (Optional)</label>
+                            <textarea name="management_note" class="form-control form-control-sm" rows="2" placeholder="Add remarks..."></textarea>
                         </div>
                         <div class="row gx-2">
                             <div class="col-6">
-                                <button type="submit" class="btn btn-success w-100 fw-bold py-2"
-                                        onclick="return confirm('Approve this bill?');">
-                                    <i class="bi bi-check-circle me-1"></i> Approve Bill
+                                <button type="submit" class="btn <?= $isOpHeadAction ? 'btn-primary' : 'btn-success' ?> w-100 fw-bold py-2"
+                                        onclick="return confirm('<?= $isOpHeadAction ? 'Approve as Operation Head?' : 'Approve this bill?' ?>');">
+                                    <i class="bi bi-check-circle me-1"></i> <?= $isOpHeadAction ? 'Approve (Op Head)' : 'Approve Bill' ?>
                                 </button>
                             </div>
                             <div class="col-6">

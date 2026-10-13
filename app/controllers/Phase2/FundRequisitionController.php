@@ -1027,6 +1027,38 @@ class FundRequisitionController extends Controller {
             exit;
         }
 
+        $amount = (float)($frData['amount'] ?? 0);
+        $isOver1Lac = ($amount > 100000.01);
+        $isSiteOperator = in_array($roleId, [20, 32], true);
+        $isManagement = in_array($roleId, [1, 3], true);
+
+        if ($isOver1Lac && $isSiteOperator && !$isManagement) {
+            // Operation Head is approving the > 1L prerequisite step
+            if (!class_exists('ApprovalRequest')) {
+                require_once __DIR__ . '/../../models/ApprovalRequest.php';
+            }
+            $appModel = new \ApprovalRequest($this->db);
+            $arRow = $this->db->query("SELECT id FROM approval_requests WHERE source_table = 'fund_requisitions' AND source_id = {$id} ORDER BY id DESC LIMIT 1")->fetch_assoc();
+            if ($arRow) {
+                $appModel->approveOperationHead((int)$arRow['id'], $approved_by, $approval_note);
+            } else {
+                $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$approved_by}, op_head_at = NOW(), op_head_note = '{$this->db->real_escape_string($approval_note)}', approve_role = 'management' WHERE source_table = 'fund_requisitions' AND source_id = {$id}");
+            }
+            setSuccess("Requisition approved by Admin & Operation Head (Role 20). Forwarded to Management for final sign-off.");
+            header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+            exit;
+        }
+
+        if ($isOver1Lac && $isManagement) {
+            $arRow = $this->db->query("SELECT op_head_status FROM approval_requests WHERE source_table = 'fund_requisitions' AND source_id = {$id} ORDER BY id DESC LIMIT 1")->fetch_assoc();
+            $opStatus = strtolower($arRow['op_head_status'] ?? 'pending');
+            if ($opStatus !== 'approved') {
+                setError("Access Denied: Requisitions exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+                header("Location: " . $GLOBALS['base_url'] . "/fund-requisitions/view/" . $id);
+                exit;
+            }
+        }
+
         if (in_array($roleId, [1, 3, 20, 32])) {
             $effectiveMax = (float)$frData['amount'];
         } else {

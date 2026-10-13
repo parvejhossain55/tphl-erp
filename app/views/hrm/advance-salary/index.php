@@ -61,8 +61,16 @@
                                         <span class="badge bg-warning"><i class="fa-solid fa-clock me-1"></i>HR Pending
                                             Approval</span>
                                     <?php elseif ($adv['status'] == 'pending_accounts'): ?>
-                                        <span class="badge bg-info text-dark"><i
-                                                class="fa-solid fa-hourglass-half me-1"></i>Management Pending Approval</span>
+                                        <?php
+                                        $isOver1LacAdv = ((float)$adv['amount'] > 100000);
+                                        $isOpHeadApprovedAdv = (!empty($ahInfoRow['is_op_head_approved']) || ($ahInfoRow['op_head_status'] ?? '') === 'approved');
+                                        ?>
+                                        <?php if ($isOver1LacAdv && !$isOpHeadApprovedAdv): ?>
+                                            <span class="badge bg-warning text-dark"><i class="fa-solid fa-hourglass-half me-1"></i>Pending Op Head (>1L)</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-info text-dark"><i
+                                                    class="fa-solid fa-hourglass-half me-1"></i>Management Pending Approval</span>
+                                        <?php endif; ?>
                                     <?php elseif ($adv['status'] == 'approved'): ?>
                                         <?php if (!$isAhApprovedRow): ?>
                                             <div class="mb-1">
@@ -100,6 +108,12 @@
                                     $canAccountsDisburse = (in_array($userRole, [1, 6, 30]) || strpos($roleName, 'account') !== false);
                                     $canAhApproveRow = ($userRole === 30 || in_array($userRole, [1, 3]) || strpos($roleName, 'accounts head') !== false || strpos($roleName, 'super admin') !== false || strpos($roleName, 'admin') !== false);
 
+                                    $isOver1LacAdv = ((float)$adv['amount'] > 100000);
+                                    $isOpHeadApprovedAdv = (!empty($ahInfoRow['is_op_head_approved']) || ($ahInfoRow['op_head_status'] ?? '') === 'approved');
+                                    $isOpHeadUserAdv = (in_array($userRole, [20, 32], true) || str_contains($roleName, 'operation head'));
+                                    $isMgmtUserAdv = in_array($userRole, [1, 3], true);
+                                    $isMgmtLockedAdv = ($isOver1LacAdv && !$isOpHeadApprovedAdv && $isMgmtUserAdv && !$isOpHeadUserAdv);
+
                                     $isHrActive = ($adv['status'] == 'pending_hr' || $adv['status'] == 'pending');
                                     $isMgmtActive = ($adv['status'] == 'pending_accounts');
                                     $isPayActive = ($adv['status'] == 'approved');
@@ -128,12 +142,27 @@
 
                                         <!-- Management Button -->
                                         <?php if ($isMgmtActive && $canMgmtApprove): ?>
-                                            <a href="<?= $GLOBALS['base_url'] ?>/approve-advance-salary/<?= $adv['id'] ?>?step=mgmt"
-                                                class="btn btn-sm btn-outline-info text-dark shadow-sm rounded"
-                                                style="padding: 5px 12px; font-weight: 500;"
-                                                onclick="confirmApproval(event, 'Approve as Management?', 'Are you sure you want to approve this request as Management?')">
-                                                Management Pending Approval
-                                            </a>
+                                            <?php if ($isMgmtLockedAdv): ?>
+                                                <span class="btn btn-sm btn-light text-muted rounded-2 border shadow-sm"
+                                                    style="padding: 5px 12px; font-weight: 500;"
+                                                    title="Advance Salary exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) first">
+                                                    <i class="fa-solid fa-lock me-1 text-warning"></i>Locked (>1L)
+                                                </span>
+                                            <?php elseif ($isOver1LacAdv && !$isOpHeadApprovedAdv && $isOpHeadUserAdv): ?>
+                                                <a href="<?= $GLOBALS['base_url'] ?>/approve-advance-salary/<?= $adv['id'] ?>?step=mgmt"
+                                                    class="btn btn-sm btn-success text-white shadow-sm rounded"
+                                                    style="padding: 5px 12px; font-weight: 500;"
+                                                    onclick="confirmApproval(event, 'Approve as Operation Head?', 'Are you sure you want to verify and approve this request as Admin & Operation Head (Role 20)?')">
+                                                    <i class="fa-solid fa-check-double me-1"></i>Op Head Approve
+                                                </a>
+                                            <?php else: ?>
+                                                <a href="<?= $GLOBALS['base_url'] ?>/approve-advance-salary/<?= $adv['id'] ?>?step=mgmt"
+                                                    class="btn btn-sm btn-outline-info text-dark shadow-sm rounded"
+                                                    style="padding: 5px 12px; font-weight: 500;"
+                                                    onclick="confirmApproval(event, 'Approve as Management?', 'Are you sure you want to approve this request as Management?')">
+                                                    Management Pending Approval
+                                                </a>
+                                            <?php endif; ?>
                                         <?php elseif (in_array($adv['status'], ['approved', 'paid', 'deducted'])): ?>
                                             <span class="btn btn-sm btn-success text-white shadow-sm rounded"
                                                 style="padding: 5px 12px; font-weight: 500; cursor: default;">

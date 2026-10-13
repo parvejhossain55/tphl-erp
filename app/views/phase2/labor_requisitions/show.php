@@ -468,6 +468,11 @@ $steps = [
             <?php 
             $mgmtBaseAmount = (float)($req['qc_approved_amount'] ?? $req['pm_verified_amount'] ?? $req['total_amount']);
             $canApproveMgmt = !empty($canApproveManagement);
+            $isOver1LacLabor = ($mgmtBaseAmount > 100000);
+            $isOpHeadApprovedLabor = (!empty($ahInfo['is_op_head_approved']) || ($ahInfo['op_head_status'] ?? '') === 'approved');
+            $isOpHeadUserLabor = (in_array((int)$userRole, [20, 32], true) || str_contains(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head'));
+            $isMgmtUserLabor = in_array((int)$userRole, [1, 3], true);
+            $isMgmtLockedLabor = ($isOver1LacLabor && !$isOpHeadApprovedLabor && $isMgmtUserLabor && !$isOpHeadUserLabor);
             ?>
             <?php if (in_array($st, ['qc_approved', 'pm_payment_approved']) && $canApproveMgmt): ?>
             <div class="card custom-card mb-3 border border-success border-opacity-50">
@@ -531,12 +536,29 @@ $steps = [
                         </div>
                     </div>
 
-                    <p class="fs-13 text-muted mb-3">Review and authorize payment disbursement for Accounts. You may adjust the approved amount if needed.</p>
+                    <?php if ($isMgmtLockedLabor): ?>
+                        <div class="alert alert-warning mb-3">
+                            <i class="fa-solid fa-lock me-2"></i><strong>Management Approval Locked (> ৳1,00,000):</strong> This requisition exceeds ৳1,00,000 and must be verified and approved by <strong>Admin &amp; Operation Head (Role 20)</strong> before Management can authorize payment.
+                        </div>
+                    <?php else: ?>
+                        <p class="fs-13 text-muted mb-3">Review and authorize payment disbursement for Accounts. You may adjust the approved amount if needed.</p>
+                    <?php endif; ?>
+
                     <div class="row gx-2">
                         <div class="col-6">
-                            <button type="button" class="btn btn-success w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#mgmtApproveModal">
-                                <i class="fa-solid fa-check-double me-1"></i> Approve Payment
-                            </button>
+                            <?php if ($isMgmtLockedLabor): ?>
+                                <button type="button" class="btn btn-secondary w-100 fw-bold py-2 disabled" title="Awaiting Admin & Operation Head approval">
+                                    <i class="fa-solid fa-lock me-1"></i> Locked (> ৳1,00,000)
+                                </button>
+                            <?php elseif ($isOver1LacLabor && !$isOpHeadApprovedLabor && $isOpHeadUserLabor): ?>
+                                <button type="button" class="btn btn-success w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#mgmtApproveModal">
+                                    <i class="fa-solid fa-check-double me-1"></i> Verify &amp; Approve (Op Head)
+                                </button>
+                            <?php else: ?>
+                                <button type="button" class="btn btn-success w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#mgmtApproveModal">
+                                    <i class="fa-solid fa-check-double me-1"></i> Approve Payment
+                                </button>
+                            <?php endif; ?>
                         </div>
                         <div class="col-6">
                             <button type="button" class="btn btn-danger w-100 fw-bold py-2" data-bs-toggle="modal" data-bs-target="#mgmtRejectModal">

@@ -539,12 +539,13 @@
                                         $canUserApprove = true;
                                     }
                                 } elseif ($isSiteOperator) {
-                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', '']) && ($reqAmount <= 100000.01 || $sourceTable === 'project_other_costs' || $sourceTable === 'expense_adjustments')) {
+                                    $reqOpStatus = strtolower($req['op_head_status'] ?? 'pending');
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', 'operations', '']) && $reqOpStatus !== 'approved') {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
                                     }
                                 } elseif ($isManagementUser) {
-                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', ''])) {
+                                    if ($isPendingStatus && in_array($reqApproveRole, ['management', 'operations', ''])) {
                                         $isActionableByMe = true;
                                         $canUserApprove = true;
                                     }
@@ -976,14 +977,40 @@
                                                     <i class="fa-solid fa-eye me-1"></i>View Details
                                                 </a>
                                             <?php elseif ($canUserApprove): ?>
-                                                <a href="<?= $targetUrl ?>" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold">
-                                                    <i class="fa-solid fa-up-right-from-square me-1"></i>Review / Process
-                                                </a>
+                                                <?php if ($sourceTable === 'lead_bookings'): ?>
+                                                    <button type="button" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold"
+                                                        onclick="openDiscountApprovalModal(<?= htmlspecialchars(json_encode([
+                                                            'id' => (int)$req['id'],
+                                                            'source_id' => (int)$req['source_id'],
+                                                            'title' => $req['title'] ?? 'Lead Booking Discount Approval',
+                                                            'amount' => (float)$req['request_amount'],
+                                                            'client_name' => $req['booking_client_name'] ?? '',
+                                                            'project_name' => $req['booking_project_name'] ?? '',
+                                                            'flat_name' => $req['booking_flat_name'] ?? '',
+                                                            'floor_no' => $req['booking_floor_no'] ?? '',
+                                                            'sales_agent' => $req['booking_sales_agent'] ?? '',
+                                                            'sales_code' => $req['booking_sales_code'] ?? '',
+                                                            'agreement_value' => $req['booking_agreement_value'] ?? 0,
+                                                            'attachment' => $req['attachment'] ?? '',
+                                                            'op_head_status' => $req['op_head_status'] ?? '',
+                                                            'op_head_name' => $req['op_head_name'] ?? '',
+                                                            'op_head_at' => $req['op_head_at'] ?? '',
+                                                            'status' => $req['status'] ?? '',
+                                                            'booking_url' => $targetUrl
+                                                        ])) ?>)"
+                                                        title="Review & Process Booking Discount">
+                                                        <i class="fa-solid fa-stamp me-1"></i>Review / Process
+                                                    </button>
+                                                <?php else: ?>
+                                                    <a href="<?= $targetUrl ?>" class="btn btn-sm btn-primary rounded-2 px-3 shadow-sm fw-semibold">
+                                                        <i class="fa-solid fa-up-right-from-square me-1"></i>Review / Process
+                                                    </a>
+                                                <?php endif; ?>
                                             <?php else: ?>
                                                 <a href="javascript:void(0)"
                                                     class="btn btn-sm btn-light text-muted rounded-2 px-2 border"
-                                                    title="<?= ($isSiteOperator && $reqAmount > 100000) ? 'Amount exceeds ৳1,00,000 threshold - Full Management approval required' : 'Pending for ' . htmlspecialchars($req['pending_for_text'] ?? 'Other Role') ?>">
-                                                    <i class="fa-solid fa-lock me-1 text-warning"></i><?= ($isSiteOperator && $reqAmount > 100000) ? 'Management Only' : 'Pending Other Role' ?>
+                                                    title="<?= ($reqAmount > 100000.01 && ($req['op_head_status'] ?? '') !== 'approved' && $isManagementUser) ? 'Amount exceeds ৳1,00,000 - Admin & Operation Head (Role 20) approval required first' : 'Pending for ' . htmlspecialchars($req['pending_for_text'] ?? 'Other Role') ?>">
+                                                    <i class="fa-solid fa-lock me-1 text-warning"></i><?= ($reqAmount > 100000.01 && ($req['op_head_status'] ?? '') !== 'approved' && $isManagementUser) ? 'Awaiting Op Head' : 'Pending Other Role' ?>
                                                 </a>
                                             <?php endif; ?>
 
@@ -1065,6 +1092,97 @@
                     <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary btn-sm px-4 fw-bold" id="ahModalSubmitBtn" onclick="submitAccountsHeadAction('approve')">
                         <i class="fa-solid fa-check me-1"></i>Approve as Accounts Head
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lead Booking Discount Approval Modal -->
+<div class="modal fade" id="discountApprovalModal" tabindex="-1" aria-labelledby="discountApprovalModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content shadow-lg border-0 rounded-4 overflow-hidden">
+            <div class="modal-header text-white px-4 py-3" style="background: linear-gradient(135deg, #006837 0%, #004d29 100%);">
+                <div>
+                    <h6 class="modal-title fw-bold fs-16 mb-0" id="discountApprovalModalLabel">
+                        <i class="fa-solid fa-tags me-2 text-warning"></i>Review & Process Booking Discount
+                    </h6>
+                    <small class="text-white-50" id="discModalReqCode">#REQ-00000</small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="discModalReqId" value="">
+                <input type="hidden" id="discModalBookingId" value="">
+
+                <!-- Workflow Step Notice -->
+                <div id="discModalWorkflowNotice" class="alert alert-warning py-2 px-3 extra-small mb-3 border-warning-subtle">
+                    <!-- Dynamic -->
+                </div>
+
+                <!-- Client & Unit Info Grid -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 border h-100">
+                            <div class="text-muted extra-small text-uppercase fw-bold mb-2 pb-1 border-bottom"><i class="fa-solid fa-user me-1 text-primary"></i> Client Details</div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted extra-small">Client Name:</span>
+                                <span class="fw-bold text-dark extra-small text-end" id="discModalClient">--</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted extra-small">Project:</span>
+                                <span class="fw-semibold text-dark extra-small text-end" id="discModalProject">--</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted extra-small">Flat / Floor:</span>
+                                <span class="fw-semibold text-dark extra-small text-end" id="discModalFlat">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3 border h-100">
+                            <div class="text-muted extra-small text-uppercase fw-bold mb-2 pb-1 border-bottom"><i class="fa-solid fa-receipt me-1 text-success"></i> Financial & Sales Info</div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted extra-small">Sales Agent:</span>
+                                <span class="fw-semibold text-dark extra-small text-end" id="discModalSalesAgent">--</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted extra-small">Agreement Value:</span>
+                                <span class="fw-bold text-dark extra-small text-end" id="discModalAgreement">--</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center pt-1 border-top">
+                                <span class="text-muted extra-small fw-bold">Requested Discount:</span>
+                                <span class="fs-15 fw-bold text-success" id="discModalAmount">৳ 0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attachment Container -->
+                <div class="mb-3" id="discModalAttachmentContainer" style="display: none;">
+                    <!-- Dynamic Attachment -->
+                </div>
+
+                <!-- Note Input -->
+                <div class="mb-2">
+                    <label for="discModalNote" class="form-label extra-small fw-bold text-muted text-uppercase mb-1">Approval / Rejection Note</label>
+                    <textarea class="form-control" id="discModalNote" rows="2" placeholder="Enter optional comments or instructions..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light px-4 py-3 d-flex justify-content-between align-items-center">
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-danger btn-sm px-3" onclick="submitDiscountAction('reject')">
+                        <i class="fa-solid fa-times me-1"></i>Reject Discount
+                    </button>
+                    <a href="#" id="discModalHistoryLink" target="_blank" class="btn btn-outline-info btn-sm px-3" title="Open client transaction & cash-in history">
+                        <i class="fa-solid fa-up-right-from-square me-1"></i>Client History
+                    </a>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success btn-sm px-4 fw-bold" id="discModalSubmitBtn" onclick="submitDiscountAction('approve')">
+                        <i class="fa-solid fa-check me-1"></i>Approve Discount
                     </button>
                 </div>
             </div>
@@ -1326,6 +1444,218 @@
                 toastr.error('Error: ' + err);
             } else {
                 console.error('Error:', err);
+            }
+        });
+    }
+
+    // =========================================================================
+    // Booking Discount Approval Modal Handlers
+    // =========================================================================
+    let currentDiscountData = null;
+    const currentLoggedRoleId = <?= (int)($_SESSION['user']['role_id'] ?? 0) ?>;
+    const currentLoggedRoleName = <?= json_encode(strtolower(trim($_SESSION['user']['role_name'] ?? ''))) ?>;
+
+    function openDiscountApprovalModal(data) {
+        currentDiscountData = data;
+        document.getElementById('discModalReqId').value = data.id;
+        document.getElementById('discModalBookingId').value = data.source_id;
+        document.getElementById('discModalReqCode').textContent = '#REQ-' + String(data.id).padStart(5, '0');
+        document.getElementById('discModalClient').textContent = data.client_name || 'N/A';
+        document.getElementById('discModalProject').textContent = data.project_name || 'N/A';
+        
+        let flatText = '';
+        if (data.flat_name) flatText += 'UNIT ' + data.flat_name;
+        if (data.floor_no) flatText += (flatText ? ' - ' : '') + 'FLOOR ' + data.floor_no;
+        document.getElementById('discModalFlat').textContent = flatText || 'N/A';
+
+        let agentText = data.sales_agent || 'N/A';
+        if (data.sales_code) agentText += ' [' + data.sales_code + ']';
+        document.getElementById('discModalSalesAgent').textContent = agentText;
+
+        document.getElementById('discModalAgreement').textContent = '৳ ' + parseFloat(data.agreement_value || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('discModalAmount').textContent = '৳ ' + parseFloat(data.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('discModalNote').value = '';
+
+        const historyLink = document.getElementById('discModalHistoryLink');
+        if (historyLink) {
+            historyLink.href = data.booking_url || ('<?= $base_url ?>/clients-cash-in-history-view/' + data.source_id + '?ref=all_approvals');
+        }
+
+        const attContainer = document.getElementById('discModalAttachmentContainer');
+        if (data.attachment) {
+            const cleanAtt = data.attachment.replace(/^\/+/, '');
+            const attUrl = '<?= $base_url ?>/' + cleanAtt;
+            const isImage = cleanAtt.match(/\.(jpeg|jpg|png|gif|webp)$/i);
+            if (isImage) {
+                attContainer.innerHTML = `
+                    <div class="p-2 border rounded bg-white shadow-sm">
+                        <div class="d-flex align-items-center justify-content-between mb-1 pb-1 border-bottom">
+                            <span class="extra-small fw-bold text-muted"><i class="fa-solid fa-paperclip text-success me-1"></i> Discount Supporting Document</span>
+                            <a href="${attUrl}" target="_blank" class="btn btn-xs btn-outline-primary py-0 px-2 extra-small"><i class="fa-solid fa-up-right-from-square me-1"></i> Full Size</a>
+                        </div>
+                        <div class="text-center mt-2">
+                            <a href="${attUrl}" target="_blank">
+                                <img src="${attUrl}" alt="Discount Attachment" class="img-fluid rounded border shadow-sm" style="max-height: 160px; object-fit: contain;">
+                            </a>
+                        </div>
+                    </div>
+                `;
+            } else {
+                attContainer.innerHTML = `
+                    <div class="p-2 border rounded bg-white shadow-sm d-flex align-items-center justify-content-between">
+                        <span class="extra-small fw-bold text-muted"><i class="fa-solid fa-file-pdf text-danger me-1"></i> Discount Attachment Document</span>
+                        <a href="${attUrl}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-download me-1"></i> View / Download Document</a>
+                    </div>
+                `;
+            }
+            attContainer.style.display = 'block';
+        } else {
+            attContainer.innerHTML = '';
+            attContainer.style.display = 'none';
+        }
+
+        const isOver1Lac = (parseFloat(data.amount) > 100000.01);
+        const isOpHeadApproved = (String(data.op_head_status).toLowerCase() === 'approved');
+        const noticeEl = document.getElementById('discModalWorkflowNotice');
+        const submitBtn = document.getElementById('discModalSubmitBtn');
+
+        const isRole20 = (currentLoggedRoleId === 20 || currentLoggedRoleId === 32 || currentLoggedRoleName.includes('operation head') || currentLoggedRoleName.includes('admin & operation'));
+        const isManagement = (currentLoggedRoleId === 1 || currentLoggedRoleId === 3 || currentLoggedRoleName.includes('management') || currentLoggedRoleName.includes('super admin'));
+
+        if (isOver1Lac) {
+            if (!isOpHeadApproved) {
+                if (isRole20 && !isManagement) {
+                    noticeEl.className = 'alert alert-warning py-2 px-3 extra-small mb-3 border-warning-subtle';
+                    noticeEl.innerHTML = '<i class="fa-solid fa-shield-halved me-1 text-warning"></i> <strong>Tier 1 Verification:</strong> Discount exceeds ৳1,00,000. Approving will verify and forward this request to Management (Role 3).';
+                    submitBtn.innerHTML = '<i class="fa-solid fa-shield-check me-1"></i> Verify & Forward to Management';
+                    submitBtn.className = 'btn btn-success btn-sm px-4 fw-bold';
+                    submitBtn.disabled = false;
+                } else if (isManagement) {
+                    noticeEl.className = 'alert alert-info py-2 px-3 extra-small mb-3 border-info-subtle';
+                    noticeEl.innerHTML = '<i class="fa-solid fa-crown me-1 text-primary"></i> <strong>Direct Management Approval:</strong> Discount exceeds ৳1,00,000. As Top Management, you can approve directly (Operation Head verification will be bypassed automatically).';
+                    submitBtn.innerHTML = '<i class="fa-solid fa-check-double me-1"></i> Approve Discount (Management Direct)';
+                    submitBtn.className = 'btn btn-success btn-sm px-4 fw-bold';
+                    submitBtn.disabled = false;
+                } else {
+                    noticeEl.className = 'alert alert-warning py-2 px-3 extra-small mb-3 border-warning-subtle';
+                    noticeEl.innerHTML = '<i class="fa-solid fa-lock me-1"></i> Pending Admin & Operation Head verification.';
+                    submitBtn.innerHTML = '<i class="fa-solid fa-lock me-1"></i> Action Restricted';
+                    submitBtn.className = 'btn btn-secondary btn-sm px-4 fw-bold';
+                    submitBtn.disabled = true;
+                }
+            } else {
+                noticeEl.className = 'alert alert-info py-2 px-3 extra-small mb-3 border-info-subtle';
+                noticeEl.innerHTML = '<i class="fa-solid fa-check-circle me-1 text-success"></i> <strong>Tier 1 Approved:</strong> Verified & approved by Admin & Operation Head' + (data.op_head_name ? (' (' + data.op_head_name + ')') : '') + '. Ready for Top Management final sign-off.';
+                if (isManagement) {
+                    submitBtn.innerHTML = '<i class="fa-solid fa-check-double me-1"></i> Approve Discount (Management)';
+                    submitBtn.className = 'btn btn-success btn-sm px-4 fw-bold';
+                    submitBtn.disabled = false;
+                } else {
+                    submitBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Verified by Op Head';
+                    submitBtn.className = 'btn btn-secondary btn-sm px-4 fw-bold';
+                    submitBtn.disabled = true;
+                }
+            }
+        } else {
+            noticeEl.className = 'alert alert-primary py-2 px-3 extra-small mb-3 border-primary-subtle';
+            noticeEl.innerHTML = '<i class="fa-solid fa-info-circle me-1"></i> <strong>Direct Approval:</strong> Discount is within ৳1,00,000 threshold. Approving directly finalizes this booking discount.';
+            if (isRole20 || isManagement) {
+                submitBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Approve Discount';
+                submitBtn.className = 'btn btn-success btn-sm px-4 fw-bold';
+                submitBtn.disabled = false;
+            } else {
+                submitBtn.innerHTML = '<i class="fa-solid fa-lock me-1"></i> Action Restricted';
+                submitBtn.className = 'btn btn-secondary btn-sm px-4 fw-bold';
+                submitBtn.disabled = true;
+            }
+        }
+
+        const modalEl = document.getElementById('discountApprovalModal');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+
+    function submitDiscountAction(action) {
+        if (!currentDiscountData) return;
+        const reqId = currentDiscountData.id;
+        const note = document.getElementById('discModalNote').value.trim();
+        const isOver1Lac = (parseFloat(currentDiscountData.amount) > 100000.01);
+        const isOpHeadApproved = (String(currentDiscountData.op_head_status).toLowerCase() === 'approved');
+        const isRole20 = (currentLoggedRoleId === 20 || currentLoggedRoleId === 32 || currentLoggedRoleName.includes('operation head') || currentLoggedRoleName.includes('admin & operation'));
+        const isManagement = (currentLoggedRoleId === 1 || currentLoggedRoleId === 3 || currentLoggedRoleName.includes('management') || currentLoggedRoleName.includes('super admin'));
+
+        let endpoint = '';
+        if (action === 'reject') {
+            endpoint = (isRole20 && !isManagement && (!isOver1Lac || !isOpHeadApproved))
+                ? '<?= $base_url ?>/approval-requests/reject-operation-head'
+                : '<?= $base_url ?>/approval-requests/reject-management';
+        } else {
+            endpoint = (isRole20 && !isManagement && (!isOver1Lac || !isOpHeadApproved))
+                ? '<?= $base_url ?>/approval-requests/approve-operation-head'
+                : '<?= $base_url ?>/approval-requests/approve-management';
+        }
+
+        const btn = document.getElementById('discModalSubmitBtn');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Processing...';
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                approval_request_id: reqId,
+                source_table: 'lead_bookings',
+                source_id: currentDiscountData.source_id,
+                note: note || (action === 'approve' ? 'Approved Booking Discount' : 'Rejected Booking Discount')
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            if (data.success) {
+                const modalEl = document.getElementById('discountApprovalModal');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                }
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: action === 'approve' ? 'Discount Approved!' : 'Discount Rejected',
+                        text: data.message || 'Operation completed successfully.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Operation Failed',
+                        text: data.message || 'Failed to process request.'
+                    });
+                } else {
+                    alert(data.message || 'Failed to process request.');
+                }
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Network Error',
+                    text: 'Error: ' + err
+                });
+            } else {
+                alert('Network Error: ' + err);
             }
         });
     }

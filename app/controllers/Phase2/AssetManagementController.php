@@ -653,7 +653,10 @@ class AssetManagementController extends Controller
             // Role permission validation for step approval
             $canApproveStep = false;
             $reqTotal = (float)($req['total_price'] ?? 0);
-            $isRole20Eligible = ((int)$roleId === 32 && $reqTotal <= 100000);
+            $isOver1Lac = ($reqTotal > 100000);
+            $isOpHeadUser = (in_array((int)$roleId, [20, 32], true) || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'operation head') !== false || strpos(strtolower($_SESSION['user']['role_name'] ?? ''), 'admin & operation') !== false);
+            $isMgmtUser = in_array((int)$roleId, [1, 3], true);
+            $isRole20Eligible = ($isOpHeadUser && ($reqTotal <= 100000 || $step === 'mgmt'));
 
             if (in_array($roleId, [1, 3])) {
                 $canApproveStep = true;
@@ -668,7 +671,7 @@ class AssetManagementController extends Controller
                         $canApproveStep = true;
                     }
                 } elseif ($step === 'operations') {
-                    if ((int)$roleId === 32) {
+                    if ((int)$roleId === 32 || $isOpHeadUser) {
                         $canApproveStep = true;
                     }
                 } elseif ($step === 'purchase_head') {
@@ -676,11 +679,11 @@ class AssetManagementController extends Controller
                         $canApproveStep = true;
                     }
                 } elseif ($step === 'qc_audit') {
-                    if (in_array($roleId, [24, 25]) || $isRole20Eligible) {
+                    if (in_array($roleId, [24, 25]) || ($isOpHeadUser && $reqTotal <= 100000)) {
                         $canApproveStep = true;
                     }
                 } elseif ($step === 'mgmt') {
-                    if (in_array($roleId, [1, 3]) || $isRole20Eligible) {
+                    if ($isMgmtUser || $isRole20Eligible) {
                         $canApproveStep = true;
                     }
                 }
@@ -693,6 +696,46 @@ class AssetManagementController extends Controller
             }
             $status = $_POST['approval_status'] ?? $_POST['status'] ?? 'approved';
             $note = $_POST['approval_note'] ?? $_POST['note'] ?? '';
+
+            // Handle > 1 Lac flow for Management step
+            if ($step === 'mgmt' && $isOver1Lac) {
+                $arCheck = $this->db->query("SELECT id, op_head_status FROM approval_requests WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id} ORDER BY id DESC LIMIT 1");
+                $arRow = $arCheck ? $arCheck->fetch_assoc() : null;
+                $opHeadStatus = strtolower($arRow['op_head_status'] ?? 'pending');
+
+                if ($isOpHeadUser && !$isMgmtUser) {
+                    // Role 20 is approving Op Head Step 1 for > 1L
+                    $arId = (int)($arRow['id'] ?? 0);
+                    $escNote = $this->db->real_escape_string($note);
+
+                    if ($status === 'approved') {
+                        if (!class_exists('ApprovalRequest')) {
+                            require_once dirname(dirname(__DIR__)) . '/models/ApprovalRequest.php';
+                        }
+                        $approvalModel = new \ApprovalRequest($this->db);
+                        if ($arId > 0) {
+                            $approvalModel->approveOperationHead($arId, $userId, $note);
+                        } else {
+                            $this->db->query("UPDATE approval_requests SET op_head_status = 'approved', op_head_by = {$userId}, op_head_at = NOW(), op_head_note = '{$escNote}', approve_role = 'management' WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id}");
+                        }
+                        setSuccess("Request verified & approved by Admin & Operation Head (Role 20). Forwarded to Management for sign-off.");
+                    } else {
+                        $this->db->query("UPDATE approval_requests SET op_head_status = 'rejected', op_head_by = {$userId}, op_head_at = NOW(), op_head_note = '{$escNote}', status = 'rejected', approve_role = 'rejected' WHERE source_table IN ('project_extra_assets', 'purchase_requests') AND source_id = {$id}");
+                        $this->model->approveStep($id, 'mgmt', 'rejected', $userId, $note);
+                        setSuccess("Request rejected by Admin & Operation Head.");
+                    }
+                    header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                    exit;
+                }
+
+                if ($isMgmtUser) {
+                    if ($opHeadStatus !== 'approved') {
+                        setError("Access Denied: Requests exceeding ৳1,00,000 must be approved by Admin & Operation Head (Role 20) before Management can approve.");
+                        header("Location: " . $GLOBALS['base_url'] . "/asset-extra-purchases");
+                        exit;
+                    }
+                }
+            }
 
             $document = null;
             if (isset($_FILES['purchase_head_document']) && $_FILES['purchase_head_document']['error'] === UPLOAD_ERR_OK) {
