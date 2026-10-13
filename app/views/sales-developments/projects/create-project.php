@@ -84,6 +84,42 @@ $show_breadcrumb = true;
                     <input type="text" name="building_type" class="form-control" placeholder="li G+7">
                 </div>
 
+                <!-- Building Face -->
+                <div class="col-xl-6">
+                    <label>Building Face</label>
+                    <input type="text" name="building_face" class="form-control" placeholder="e.g. Infinity sea view">
+                </div>
+
+                <!-- Suite Sizes -->
+                <div class="col-xl-6">
+                    <label>Suite Sizes</label>
+                    <input type="text" name="suite_sizes" class="form-control" placeholder="e.g. 670 to 1,700 sq ft">
+                </div>
+
+                <!-- Hotel Operation -->
+                <div class="col-xl-6">
+                    <label>Hotel Operation</label>
+                    <input type="text" name="hotel_operation" class="form-control" placeholder="e.g. By The Nature’s dedicated hospitality team">
+                </div>
+
+                <!-- Construction Start -->
+                <div class="col-xl-6">
+                    <label>Construction Start</label>
+                    <input type="text" name="construction_start" class="form-control" placeholder="e.g. February 2027 (planned)">
+                </div>
+
+                <!-- Handover -->
+                <div class="col-xl-6">
+                    <label>Handover</label>
+                    <input type="text" name="handover" class="form-control" placeholder="e.g. August 2030 (tentative), plus a 6-month grace period">
+                </div>
+
+                <!-- Delivery -->
+                <div class="col-xl-6">
+                    <label>Delivery</label>
+                    <input type="text" name="delivery" class="form-control" placeholder="e.g. Fully furnished suites">
+                </div>
+
                 <!-- Total Share -->
                 <div class="col-xl-6">
                     <label>Total Share</label>

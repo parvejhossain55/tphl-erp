@@ -123,7 +123,43 @@ $show_breadcrumb = true;
                 <div class="col-md-6 col-lg-4 mb-3">
                     <div class="info-box p-3 border rounded">
                         <label class="text-muted mb-1"><small>Building Type</small></label>
-                        <p class="mb-0 fw-bold"><?= $project['building_type'] ?? 'N/A' ?></p>
+                        <p class="mb-0 fw-bold"><?= htmlspecialchars($project['building_type'] ?? 'N/A') ?></p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="info-box p-3 border rounded">
+                        <label class="text-muted mb-1"><small>Building Face</small></label>
+                        <p class="mb-0 fw-bold"><?= htmlspecialchars($project['building_face'] ?? 'N/A') ?></p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="info-box p-3 border rounded">
+                        <label class="text-muted mb-1"><small>Suite Sizes</small></label>
+                        <p class="mb-0 fw-bold"><?= htmlspecialchars($project['suite_sizes'] ?? 'N/A') ?></p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="info-box p-3 border rounded">
+                        <label class="text-muted mb-1"><small>Hotel Operation</small></label>
+                        <p class="mb-0 fw-bold"><?= htmlspecialchars($project['hotel_operation'] ?? 'N/A') ?></p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="info-box p-3 border rounded">
+                        <label class="text-muted mb-1"><small>Construction Start</small></label>
+                        <p class="mb-0 fw-bold"><?= htmlspecialchars($project['construction_start'] ?? 'N/A') ?></p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="info-box p-3 border rounded">
+                        <label class="text-muted mb-1"><small>Handover</small></label>
+                        <p class="mb-0 fw-bold"><?= htmlspecialchars($project['handover'] ?? 'N/A') ?></p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="info-box p-3 border rounded">
+                        <label class="text-muted mb-1"><small>Delivery</small></label>
+                        <p class="mb-0 fw-bold"><?= htmlspecialchars($project['delivery'] ?? 'N/A') ?></p>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-4 mb-3">
