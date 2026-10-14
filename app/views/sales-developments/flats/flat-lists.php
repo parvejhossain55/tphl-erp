@@ -366,7 +366,7 @@ unset($_SESSION['csv_import_skipped']); // clear after reading
                             <tr><td style="padding:3px 6px; border:1px solid #fcd34d;"><code>facing_site</code></td><td style="padding:3px 6px; border:1px solid #fcd34d;">e.g. North, East</td></tr>
                             <tr><td style="padding:3px 6px; border:1px solid #fcd34d;"><code>price_value</code></td><td style="padding:3px 6px; border:1px solid #fcd34d;">Shop price (BDT)</td></tr>
                             <tr><td style="padding:3px 6px; border:1px solid #fcd34d;"><code>land_share_value</code></td><td style="padding:3px 6px; border:1px solid #fcd34d;">Land share (15+15% booking+registration)</td></tr>
-                            <tr><td style="padding:3px 6px; border:1px solid #fcd34d;"><code>shop_service_charge</code></td><td style="padding:3px 6px; border:1px solid #fcd34d;">Service charge % (e.g. 10)</td></tr>
+                            <tr><td style="padding:3px 6px; border:1px solid #fcd34d;"><code>shop_service_charge</code></td><td style="padding:3px 6px; border:1px solid #fcd34d;">Shop Service charge (BDT)</td></tr>
                             <tr><td style="padding:3px 6px; border:1px solid #fcd34d;"><code>status</code></td><td style="padding:3px 6px; border:1px solid #fcd34d;">available / booked / sold</td></tr>
                         </tbody>
                     </table>

@@ -221,7 +221,7 @@ class CedReportController extends Controller
             LEFT JOIN (
                 SELECT 
                     booking_id,
-                    SUM(CASE WHEN payment_type = 'development_charge' AND verification_status = 'verified' THEN amount ELSE 0 END) AS dev_charge_paid,
+                    SUM(CASE WHEN payment_type IN ('development_charge', 'shop_service_charge') AND verification_status = 'verified' THEN amount ELSE 0 END) AS dev_charge_paid,
                     SUM(CASE WHEN payment_type IN ('emi', 'emi_due_settlement') AND verification_status = 'verified' THEN amount ELSE 0 END) AS emi_paid,
                     SUM(CASE WHEN verification_status = 'verified' THEN bulk_emi_discount ELSE 0 END) AS bulk_emi_discount,
                     MAX(CASE WHEN verification_status = 'verified' AND payment_status IN ('paid', 'partially_paid') THEN payment_date ELSE NULL END) AS last_payment_date,
@@ -274,10 +274,14 @@ class CedReportController extends Controller
             $totalPrice = (float)($row['total_price'] ?? 0);
             $landShare = (float)($row['total_land_share'] ?? 0);
             
-            // Total Dev Charge
-            $devCharge = !empty($row['is_shop']) 
-                ? (float)($row['shop_service_charge'] ?? 0) 
-                : (float)($row['development_charges'] ?? 0);
+            // Total Dev Charge (For shops: fixed shop_service_charge BDT + flat development_charges)
+            if (!empty($row['is_shop'])) {
+                $shopSvcAmount  = (float)($row['shop_service_charge'] ?? 0);
+                $shopDevCharges = (float)($row['development_charges'] ?? 0);
+                $devCharge = round($shopSvcAmount + $shopDevCharges, 2);
+            } else {
+                $devCharge = (float)($row['development_charges'] ?? 0);
+            }
             
             $devPaid = (float)($row['dev_charge_paid'] ?? 0);
             $devDiscount = 0.0; // Default 0.00

@@ -947,4 +947,115 @@ class ApiController extends Controller
             'lastUpdated'     => date('Y-m-d')
         ];
     }
+
+    /**
+     * GET /api/verify-receipt/(\d+) or /api/verify-receipt?id=123
+     * Public API endpoint to verify invoice/receipt authenticity
+     */
+    public function verifyReceipt($paymentId = null)
+    {
+        header('Content-Type: application/json');
+
+        if (!$paymentId) {
+            $paymentId = $_GET['id'] ?? null;
+        }
+        $paymentId = (int)$paymentId;
+
+        if (!$paymentId) {
+            echo json_encode([
+                'status'  => 'error',
+                'message' => 'Invalid or missing receipt ID.'
+            ]);
+            exit;
+        }
+
+        require_once dirname(__DIR__) . '/models/AccountClient.php';
+        $accountModel = new AccountClient();
+        $payment = $accountModel->getTransactionById($paymentId);
+
+        if (!$payment) {
+            echo json_encode([
+                'status'  => 'error',
+                'message' => 'Receipt not found.'
+            ]);
+            exit;
+        }
+
+        $clientDetails = !empty($payment['booking_id']) 
+            ? $accountModel->getClientByBookingId($payment['booking_id']) 
+            : null;
+
+        $isVerified = isset($payment['verification_status']) && strtolower(trim($payment['verification_status'])) === 'verified';
+
+        // Payment Type Label
+        $paymentTypeRaw = strtolower($payment['payment_type'] ?? '');
+        if (!empty($payment['is_emi_discount']) && $payment['is_emi_discount'] == 1) {
+            $paymentTypeLabel = 'Apply Previous Discount';
+        } elseif ($paymentTypeRaw === 'emi') {
+            $paymentTypeLabel = !empty($payment['installment_label']) ? $payment['installment_label'] : 'EMI Installment';
+        } elseif ($paymentTypeRaw === 'booking_money') {
+            $paymentTypeLabel = 'Booking Money';
+        } elseif ($paymentTypeRaw === 'registration') {
+            $paymentTypeLabel = 'Registration Money';
+        } elseif ($paymentTypeRaw === 'development_charge') {
+            $paymentTypeLabel = 'Development Charge';
+        } else {
+            $paymentTypeLabel = ucwords(str_replace('_', ' ', $payment['payment_type'] ?? 'Payment'));
+        }
+
+        $amount = (float)($payment['amount'] ?? 0);
+        $amountInWords = function_exists('amountInWords') ? amountInWords($amount) : (class_exists('FormatHelper') ? FormatHelper::amountInWords($amount) : '');
+
+        $clientName = !empty($clientDetails['client_name']) ? $clientDetails['client_name'] : ($payment['client_name'] ?? 'N/A');
+        if (!empty($clientDetails['2nd_lead_owner_name'])) {
+            $clientName .= ' & ' . trim($clientDetails['2nd_lead_owner_name']);
+        }
+
+        $clientPhone = !empty($clientDetails['phone']) ? $clientDetails['phone'] : ($clientDetails['phone_number'] ?? 'N/A');
+        $maskedPhone = $clientPhone;
+        if ($clientPhone !== 'N/A' && strlen($clientPhone) >= 10) {
+            $maskedPhone = substr($clientPhone, 0, 4) . '****' . substr($clientPhone, -3);
+        }
+
+        $verifiedByName = !empty($payment['verified_by_name']) ? $payment['verified_by_name'] : ($isVerified ? 'Authorized Officer' : 'Pending');
+        if (!empty($payment['verified_by_employee_id'])) {
+            $verifiedByName .= ' (' . $payment['verified_by_employee_id'] . ')';
+        }
+
+        $verifiedDate = null;
+        if ($isVerified) {
+            $verifiedDate = !empty($payment['verified_at']) ? date('d M, Y • h:i A', strtotime($payment['verified_at'])) : date('d M, Y • h:i A', strtotime($payment['updated_at'] ?? 'now'));
+        }
+
+        $companyTitle = function_exists('getSetting') ? getSetting('website_title', 'The Premium Homes Ltd.') : 'The Premium Homes Ltd.';
+
+        echo json_encode([
+            'status' => 'success',
+            'data'   => [
+                'receipt_no'          => '#REC-' . str_pad($payment['id'], 6, '0', STR_PAD_LEFT),
+                'receipt_id'          => (int)$payment['id'],
+                'booking_id'          => (int)($payment['booking_id'] ?? 0),
+                'verification_status' => $payment['verification_status'] ?? 'pending',
+                'is_verified'         => $isVerified,
+                'amount'              => $amount,
+                'amount_formatted'    => 'TK. ' . number_format($amount, 2),
+                'amount_in_words'     => $amountInWords,
+                'payment_date'        => date('d M, Y', strtotime($payment['payment_date'] ?? 'now')),
+                'payment_method'      => strtoupper($payment['payment_method'] ?? 'CASH'),
+                'payment_type'        => $paymentTypeLabel,
+                'transaction_ref'     => $payment['transaction_ref'] ?? ($payment['cheque_no'] ?? 'N/A'),
+                'client_name'         => $clientName,
+                'client_phone'        => $maskedPhone,
+                'project_name'        => $clientDetails['project_name'] ?? ($payment['project_name'] ?? 'N/A'),
+                'unit_name'           => trim(preg_replace('/^unit\s+/i', '', $clientDetails['unit_name'] ?? ($payment['unit_name'] ?? 'N/A'))),
+                'floor_no'            => trim(preg_replace('/^floor\s+/i', '', $clientDetails['flat_no'] ?? ($payment['flat_no'] ?? 'N/A'))),
+                'verified_by'         => $verifiedByName,
+                'verified_at'         => $verifiedDate,
+                'created_by'          => $payment['created_by_name'] ?? 'System',
+                'company_title'       => $companyTitle,
+                'verified_official'   => $isVerified ? 'Official Payment Verified' : 'Subject to Official Verification'
+            ]
+        ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        exit;
+    }
 }

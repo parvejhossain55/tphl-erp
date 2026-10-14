@@ -546,6 +546,112 @@ public function indexTwo($bookingId = null)
             exit;
         }
     }
+
+    /**
+     * Update Shop Service Charge directly in flats table from History/Ledger views
+     */
+    public function updateShopServiceCharge()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') 
+                  || (isset($_POST['is_ajax']) && $_POST['is_ajax'] == '1');
+
+        $roleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $roleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+        $canEdit = in_array($roleId, [1, 3, 6, 20, 30, 32, 33, 36]) 
+                   || (function_exists('isAccountsHead') && isAccountsHead()) 
+                   || (function_exists('isAccountsExecutive') && isAccountsExecutive())
+                   || strpos($roleName, 'account') !== false 
+                   || strpos($roleName, 'admin') !== false
+                   || hasPermission("CED Manage")
+                   || hasPermission("Accounts Manage");
+
+        $bookingId = (int)($_POST['booking_id'] ?? 0);
+        $redirectUrl = $_SERVER['HTTP_REFERER'] ?? ($bookingId > 0 ? "{$GLOBALS['base_url']}/clients-cash-in-history-view/{$bookingId}" : "{$GLOBALS['base_url']}/clients-cashin-view");
+
+        if (!$canEdit) {
+            $msg = "You are not authorized to update shop service charge.";
+            if ($isAjax) {
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+
+        $flatId = (int)($_POST['flat_id'] ?? 0);
+        if ($flatId <= 0 && $bookingId > 0) {
+            $stmtFlat = $this->db->prepare("SELECT flat_id FROM lead_bookings WHERE id = ?");
+            if ($stmtFlat) {
+                $stmtFlat->bind_param("i", $bookingId);
+                $stmtFlat->execute();
+                $resFlat = $stmtFlat->get_result();
+                if ($rowFlat = $resFlat->fetch_assoc()) {
+                    $flatId = (int)$rowFlat['flat_id'];
+                }
+                $stmtFlat->close();
+            }
+        }
+
+        if ($flatId <= 0) {
+            $msg = "Invalid flat ID.";
+            if ($isAjax) {
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+
+        $newAmount = isset($_POST['shop_service_charge']) && trim($_POST['shop_service_charge']) !== '' 
+            ? (float)str_replace(',', '', $_POST['shop_service_charge']) 
+            : 0.00;
+
+        if ($newAmount < 0) {
+            $newAmount = 0.00;
+        }
+
+        $stmt = $this->db->prepare("UPDATE flats SET shop_service_charge = ? WHERE id = ?");
+        if (!$stmt) {
+            $msg = "Database prepare error: " . $this->db->error;
+            if ($isAjax) {
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+
+        $stmt->bind_param("di", $newAmount, $flatId);
+        $updated = $stmt->execute();
+        $stmt->close();
+
+        if ($updated) {
+            $msg = "Shop service charge updated successfully to TK. " . number_format($newAmount, 2);
+            if ($isAjax) {
+                echo json_encode(['success' => true, 'message' => $msg, 'new_amount' => $newAmount]);
+                exit;
+            }
+            setSuccess($msg);
+            header("Location: {$redirectUrl}");
+            exit;
+        } else {
+            $msg = "Failed to update shop service charge.";
+            if ($isAjax) {
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit;
+            }
+            setError($msg);
+            header("Location: {$redirectUrl}");
+            exit;
+        }
+    }
  public function getClientLands($leadId = null)
     {
         if (!$leadId) {
@@ -2009,6 +2115,11 @@ public function showAddTransactionForm($bookingId = null)
         exit;
     }
 
+    if (!empty($clientDetails['is_shop']) && $clientDetails['is_shop'] == 1) {
+        header("Location: {$GLOBALS['base_url']}/shop-client-cash-in-form?booking_id={$bookingId}");
+        exit;
+    }
+
     // SIMPLE CHECK: Is registration paid?
     $registrationPaid = $this->clientModel->isRegistrationPaid($bookingId);
 
@@ -2965,6 +3076,39 @@ public function viewPaymentInvoice($paymentId = null)
     }
     
     // Render the individual payment invoice view
+    include $viewPath;
+    exit;
+}
+
+public function verifyPublicReceipt($paymentId = null)
+{
+    global $db;
+    if (!$db && isset($this->db)) {
+        $db = $this->db;
+    }
+
+    if (!$paymentId) {
+        $paymentId = $_GET['id'] ?? null;
+    }
+    $paymentId = (int)$paymentId;
+
+    $payment = null;
+    $clientDetails = null;
+
+    if ($paymentId > 0) {
+        $payment = $this->clientModel->getTransactionById($paymentId);
+        if ($payment && !empty($payment['booking_id'])) {
+            $clientDetails = $this->clientModel->getClientByBookingId($payment['booking_id']);
+        }
+    }
+
+    $root = dirname(dirname(__DIR__));
+    $viewPath = $root . '/app/views/accounts/cashIn/public-verify-receipt.php';
+
+    if (!file_exists($viewPath)) {
+        die("Verification view not found.");
+    }
+
     include $viewPath;
     exit;
 }
