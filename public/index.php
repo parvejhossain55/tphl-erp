@@ -150,6 +150,7 @@ $public_routes = [
     'admin-login',
     'logout',
     'admin-registration',
+    'verify-receipt',
     'api/client-payment-info',
     'api/project-expenses',
     'api/client-authenticate',
@@ -158,7 +159,7 @@ $public_routes = [
     'restore-bookings-data'
 ];
 
-if (!in_array($route, $public_routes) && !str_starts_with($route, 'api/')) {
+if (!in_array($route, $public_routes) && !str_starts_with($route, 'api/') && !str_starts_with($route, 'verify-receipt')) {
     checkLogin();
 } else {
     // logged in user cannot see login page

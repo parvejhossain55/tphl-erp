@@ -137,7 +137,7 @@ window.openEditPaymentDateModal = function(target) {
         $shopDevTarget = $isShop ? (float)($paymentSummary['flat_development_charges'] ?? 0) : 0;
         $shopDevPaid   = $isShop ? (float)($paymentSummary['development_charge_paid_total'] ?? 0) : 0;
         $shopDevRemain = max(0, $shopDevTarget - $shopDevPaid);
-        $showShopDev   = $isShop; // always show Dev. Charge cards for shops
+        $showShopDev   = $isShop && ($shopDevTarget > 0 || $shopDevPaid > 0); // only show Dev. Charge cards for shops if charges exist
     ?>
     <div class="row">
 
@@ -257,8 +257,20 @@ window.openEditPaymentDateModal = function(target) {
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
                     <div class="card__icon"><span><i class="fa-light <?= $isShop ? 'fa-store' : 'fa-wrench' ?>"></i></span></div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10"><?= $isShop ? 'Shop Service Charge' : 'Development Charges' ?></h6>
+                    <div class="card__title-wrap" style="width: 100%;">
+                        <div class="d-flex justify-content-between align-items-center mb-10">
+                            <h6 class="card__sub-title mb-0"><?= $isShop ? 'Shop Service Charge' : 'Development Charges' ?></h6>
+                            <?php if ($isShop && !empty($clientDetails['flat_id']) && $canEditBookingInfo): ?>
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-warning text-dark fw-bold py-0 px-2" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#editShopServiceChargeModal" 
+                                        title="Edit Shop Service Charge" 
+                                        style="font-size: 11px; height: 23px; display: inline-flex; align-items: center; border-radius: 4px;">
+                                    <i class="fa-solid fa-pen-to-square me-1"></i>Edit
+                                </button>
+                            <?php endif; ?>
+                        </div>
                         <div class="d-flex flex-wrap align-items-end gap-10">
                             <h4 class="card__title">TK.<?= number_format($devTarget, 2) ?></h4>
                         </div>
@@ -487,25 +499,27 @@ window.openEditPaymentDateModal = function(target) {
                 </div>
             </div>
         </div>
-        <!-- 16. Service Charge Rate -->
+        <?php if (!$isShop): ?>
+        <!-- 16. Service Charge Rate (Residential Flats Only) -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
                     <div class="card__icon">
                         <span style="color:#e67e22;"><i class="fa-light fa-percent"></i></span>
                     </div>
-                    <div class="card__title-wrap">
-                        <h6 class="card__sub-title mb-10">Service Charge Rate</h6>
+                    <div class="card__title-wrap" style="width: 100%;">
+                        <div class="d-flex justify-content-between align-items-center mb-10">
+                            <h6 class="card__sub-title mb-0">Service Charge Rate</h6>
+                        </div>
                         <div class="d-flex flex-wrap align-items-end gap-10">
-                            <h4 class="card__title" style="color:#e67e22;"><?= (float)round($svcRate, 4) ?>% <small style="font-size:13px;color:#999;"><?= $isShop ? 'of Total Value' : 'per EMI' ?></small></h4>
+                            <h4 class="card__title" style="color:#e67e22;"><?= (float)round($svcRate, 4) ?>% <small style="font-size:13px;color:#999;">per EMI</small></h4>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ROW 5: Service Fee & Meta -->
-        <!-- 17. Total Service Fee Collected -->
+        <!-- 17. Total Service Fee Collected (Residential Flats Only) -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
                 <div class="d-flex align-items-center gap-1">
@@ -521,6 +535,7 @@ window.openEditPaymentDateModal = function(target) {
                 </div>
             </div>
         </div>
+        <?php endif; ?>
         <!-- 18. Last Payment -->
         <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6">
             <div class="card__wrapper">
@@ -1382,6 +1397,62 @@ window.openEditPaymentDateModal = function(target) {
     </div>
 </div>
 
+
+<!-- Edit Shop Service Charge Modal -->
+<?php if ($isShop && !empty($clientDetails['flat_id'])): ?>
+<div class="modal fade" id="editShopServiceChargeModal" tabindex="-1" aria-labelledby="editShopServiceChargeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold" id="editShopServiceChargeModalLabel">
+                    <i class="fa-solid fa-pen-to-square text-warning me-2"></i>Edit Shop Service Charge
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="<?= $GLOBALS['base_url'] ?>/update-shop-service-charge" method="POST" id="editShopServiceChargeForm">
+                <input type="hidden" name="booking_id" value="<?= $clientDetails['booking_id'] ?? '' ?>">
+                <input type="hidden" name="flat_id" value="<?= $clientDetails['flat_id'] ?? '' ?>">
+                <div class="modal-body p-4">
+                    <div class="mb-3 p-3 rounded-3" style="background: #eef6ff; border: 1px solid #bfdbfe; color: #1e40af; font-size: 13px; line-height: 1.6;">
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="fa-solid fa-circle-info text-primary mt-1" style="font-size: 15px;"></i>
+                            <div>
+                                Updating <strong>Shop Service Charge</strong> will update the charge in <code style="background: #dbeafe; color: #1e40af; padding: 2px 5px; border-radius: 4px; font-weight: 600;">flats</code> table for unit <strong><?= htmlspecialchars($clientDetails['unit_name'] ?? '') ?></strong>.<br>
+                                Total Price: <strong>TK.<?= number_format($paymentSummary['total_price'] ?? 0, 2) ?></strong><br>
+                                The remaining construction fee and EMI amounts will recalculate automatically based on the new charge amount.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="shop_service_charge_input" class="form-label fw-bold">
+                            <i class="fa-light fa-coins text-warning me-1"></i> Shop Service Charge (BDT) <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text">TK.</span>
+                            <input type="number" 
+                                   step="0.01" 
+                                   min="0" 
+                                   name="shop_service_charge" 
+                                   id="shop_service_charge_input" 
+                                   class="form-control" 
+                                   value="<?= (float)($clientDetails['shop_service_charge'] ?? 0) ?>" 
+                                   required>
+                        </div>
+                        <small class="text-muted d-block mt-1">Enter the total fixed shop service charge amount in BDT.</small>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveShopServiceCharge">
+                        <i class="fa-solid fa-check me-1"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- Edit Booking Info Modal -->
 <div class="modal fade" id="editBookingInfoModal" tabindex="-1" aria-labelledby="editBookingInfoModalLabel" aria-hidden="true">
@@ -2481,6 +2552,52 @@ window.openEditPaymentDateModal = function(target) {
                     icon: 'error',
                     title: 'Error',
                     text: 'Server error while updating booking info.'
+                });
+            }
+        });
+    });
+
+    // Handle AJAX submit for editShopServiceChargeForm
+    $('#editShopServiceChargeForm').on('submit', function (e) {
+        e.preventDefault();
+        var form = $(this);
+        var btn = $('#btnSaveShopServiceCharge');
+        var originalBtnText = btn.html();
+
+        btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-1"></i> Saving...');
+
+        $.ajax({
+            url: form.attr('action'),
+            type: 'POST',
+            data: form.serialize() + '&is_ajax=1',
+            dataType: 'json',
+            success: function (res) {
+                btn.prop('disabled', false).html(originalBtnText);
+                if (res.success) {
+                    $('#editShopServiceChargeModal').modal('hide');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Updated Successfully!',
+                        text: res.message,
+                        timer: 1800,
+                        showConfirmButton: false
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Update Failed',
+                        text: res.message || 'Could not update shop service charge.'
+                    });
+                }
+            },
+            error: function () {
+                btn.prop('disabled', false).html(originalBtnText);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Network Error',
+                    text: 'Unable to connect to the server. Please try again.'
                 });
             }
         });

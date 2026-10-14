@@ -254,8 +254,9 @@ class AccountShopClient extends AccountClient
             // Shop logic — Land Share = flats.land_share_value (fallback 30% of price if not set)
             $flatLandShareValue    = (float) ($clientDetails['flat_land_share_value'] ?? 0);
             $totalLandShare        = $flatLandShareValue > 0 ? $flatLandShareValue : $totalPrice * 0.30;
-            $shopServiceChargePct  = (float) ($clientDetails['shop_service_charge'] ?? 0);
-            $shopServiceChargeTarget = ($totalPrice * $shopServiceChargePct) / 100;
+            // Shop logic — Shop Service Charge is now stored directly as a fixed BDT amount in flats.shop_service_charge
+            $shopServiceChargeTarget = (float) ($clientDetails['shop_service_charge'] ?? 0);
+            $shopServiceChargePct    = ($totalPrice > 0 && $shopServiceChargeTarget > 0) ? round(($shopServiceChargeTarget / $totalPrice) * 100, 2) : 0;
 
             $bookingMoney          = (float) $clientDetails['booking_money'];
             $bookingMoneyTotal     = (float) ($clientDetails['booking_money_total'] ?? 0);

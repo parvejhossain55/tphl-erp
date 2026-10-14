@@ -161,15 +161,12 @@ $isShop            = (int)($flat['is_shop'] ?? 0);
                     <input type="number" step="0.01" name="price_value" id="priceValue" class="form-control" value="<?= $flat['price_value'] ?? '' ?>">
                 </div>
 
-                <!-- Shop Service Charge % (commercial only) -->
+                <!-- Shop Service Charge (commercial only) -->
                 <div class="col-xl-6 commercial-only" id="shopServiceRow" style="<?= $unitType === 'commercial' ? '' : 'display:none;' ?>">
-                    <label>Shop Service Charge <span class="text-warning">(%)</span></label>
-                    <div class="input-group">
-                        <input type="number" step="any" min="0" max="100" name="shop_service_charge"
-                            class="form-control" value="<?= (isset($flat['shop_service_charge']) && $flat['shop_service_charge'] !== '') ? (float)$flat['shop_service_charge'] : '' ?>" placeholder="e.g. 7.5">
-                        <span class="input-group-text">%</span>
-                    </div>
-                    <small class="text-muted">Enter percentage only (e.g. 10 = 10%)</small>
+                    <label>Shop Service Charge (BDT)</label>
+                    <input type="number" step="0.01" min="0" name="shop_service_charge"
+                        class="form-control" value="<?= (isset($flat['shop_service_charge']) && $flat['shop_service_charge'] !== '') ? (float)$flat['shop_service_charge'] : '' ?>" placeholder="0.00">
+                    <small class="text-muted">Enter total shop service charge amount in BDT</small>
                 </div>
 
                 <!-- Land Share Value -->
@@ -215,7 +212,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const regMoney      = document.getElementById('registrationMoney');
 
     function applyUnitType(autoFill) {
-        const isCommercial = unitType.value === 'commercial';
+        const isCommercial = unitType.value === 'commercial' || isShopCheck.checked;
+
+        if (unitType.value === 'commercial' && !isShopCheck.checked) {
+            isShopCheck.checked = true;
+        } else if (isShopCheck.checked && unitType.value !== 'commercial') {
+            unitType.value = 'commercial';
+        }
 
         document.querySelectorAll('.residential-only').forEach(el => {
             el.style.display = isCommercial ? 'none' : '';
@@ -255,6 +258,14 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     unitType.addEventListener('change', () => applyUnitType(false));
+    isShopCheck.addEventListener('change', function () {
+        if (isShopCheck.checked) {
+            unitType.value = 'commercial';
+        } else if (unitType.value === 'commercial') {
+            unitType.value = 'residential';
+        }
+        applyUnitType(false);
+    });
     
     priceInput.addEventListener('input', autoFillLandShare);
     sqftInput.addEventListener('input', autoCalculateTotalPrice);

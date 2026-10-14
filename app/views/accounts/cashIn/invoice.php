@@ -222,6 +222,38 @@ $flatNo = !empty($clientDetails['flat_no']) ? $clientDetails['flat_no'] : (!empt
 $receiptNo = '#REC-' . str_pad($payment['id'] ?? '0', 6, '0', STR_PAD_LEFT);
 $receiptDate = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
 
+// Public Digital Verification URL & Green QR Code (Primary: #0b6638)
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
+// For local testing: if accessing via localhost/127.0.0.1, use LAN IP so mobile phone scanning works over Wi-Fi
+$hostOnly = explode(':', $host)[0];
+if (in_array($hostOnly, ['localhost', '127.0.0.1'])) {
+    $lanIp = getHostByName(getHostName());
+    if (!empty($lanIp) && $lanIp !== '127.0.0.1' && filter_var($lanIp, FILTER_VALIDATE_IP)) {
+        $port = isset(explode(':', $host)[1]) ? ':' . explode(':', $host)[1] : '';
+        $host = $lanIp . $port;
+    }
+}
+
+$rawPaymentId = (int)($payment['id'] ?? 0);
+$verificationToken = substr(hash('sha256', $rawPaymentId . '_' . ($payment['created_at'] ?? 'tphl') . '_TPHL_VERIFY_KEY_2026'), 0, 12);
+$verificationUrl = $protocol . $host . $GLOBALS['base_url'] . '/verify-receipt/' . $rawPaymentId . '?token=' . $verificationToken;
+
+$qrImageSrc = '';
+if (class_exists('TCPDF2DBarcode')) {
+    try {
+        $barcode = new TCPDF2DBarcode($verificationUrl, 'QRCODE,M');
+        $qrPng = $barcode->getBarcodePngData(4, 4, [11, 102, 56]); // Primary Green #0b6638
+        if ($qrPng && strlen($qrPng) > 50) {
+            $qrImageSrc = 'data:image/png;base64,' . base64_encode($qrPng);
+        }
+    } catch (Exception $e) {}
+}
+if (empty($qrImageSrc)) {
+    $qrImageSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=140x140&color=11-102-56&data=' . urlencode($verificationUrl);
+}
+
 // Banking Information Resolution (Sender Bank vs Receiver Bank & Ref Number)
 $senderBankName = 'N/A';
 $receiverBankName = 'Dutch-Bangla Bank PLC';
@@ -569,7 +601,7 @@ if (!$isCashPayment) {
 
         /* RIGHT META COLUMN - EXACT BOUNDED WIDTH FOR PERFECT ALIGNMENT */
         .header-meta {
-            width: 248px;
+            width: 320px;
             flex-shrink: 0;
             display: flex;
             flex-direction: column;
@@ -577,15 +609,89 @@ if (!$isCashPayment) {
             justify-content: flex-start;
         }
 
+        .header-meta-flex {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            width: 100%;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .header-meta-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* QR SCANNER CONTAINER ON RIGHT (PRIMARY GREEN) */
+        .header-qr-widget {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-shrink: 0;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .qr-scanner-frame {
+            position: relative;
+            padding: 4px;
+            background: #f0fbf5;
+            border: 1.5px solid #a7f3d0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(11, 102, 56, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .header-qr-widget:hover .qr-scanner-frame {
+            border-color: #0b6638;
+            box-shadow: 0 4px 12px rgba(11, 102, 56, 0.18);
+            transform: translateY(-1px);
+        }
+
+        .qr-code-img {
+            width: 66px;
+            height: 66px;
+            display: block;
+            border-radius: 4px;
+        }
+
+        /* Green Corner Reticles */
+        .qr-corner {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-color: #0b6638;
+            border-style: solid;
+        }
+        .qr-tl { top: -2px; left: -2px; border-width: 2.5px 0 0 2.5px; border-top-left-radius: 3px; }
+        .qr-tr { top: -2px; right: -2px; border-width: 2.5px 2.5px 0 0; border-top-right-radius: 3px; }
+        .qr-bl { bottom: -2px; left: -2px; border-width: 0 0 2.5px 2.5px; border-bottom-left-radius: 3px; }
+        .qr-br { bottom: -2px; right: -2px; border-width: 0 2.5px 2.5px 0; border-bottom-right-radius: 3px; }
+
+        .qr-badge-label {
+            font-size: 8px;
+            font-weight: 800;
+            color: #065f46;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            margin-top: 3px;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
         .receipt-main-title {
-            font-size: 21.5px;
+            font-size: 20px;
             font-weight: 900;
-            letter-spacing: 1px;
+            letter-spacing: 0.8px;
             color: #111827;
             line-height: 1.15;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
             width: 100%;
-            /* text-align: right; */
             white-space: nowrap;
         }
 
@@ -1169,9 +1275,23 @@ if (!$isCashPayment) {
             <div class="header-v-divider"></div>
 
             <div class="header-meta">
-                <div class="receipt-main-title">PAYMENT RECEIPT</div>
-                <div class="receipt-num-text"><?= $receiptNo ?></div>
-                <div class="receipt-date-text"><?= $receiptDate ?></div>
+                <div class="header-meta-flex">
+                    <div class="header-meta-details">
+                        <div class="receipt-main-title">PAYMENT RECEIPT</div>
+                        <div class="receipt-num-text"><?= $receiptNo ?></div>
+                        <div class="receipt-date-text"><?= $receiptDate ?></div>
+                    </div>
+                    <a href="<?= htmlspecialchars($verificationUrl) ?>" target="_blank" title="Scan or click to verify official receipt" class="header-qr-widget">
+                        <div class="qr-scanner-frame">
+                            <img src="<?= $qrImageSrc ?>" alt="Scan to Verify" class="qr-code-img">
+                            <span class="qr-corner qr-tl"></span>
+                            <span class="qr-corner qr-tr"></span>
+                            <span class="qr-corner qr-bl"></span>
+                            <span class="qr-corner qr-br"></span>
+                        </div>
+                        <span class="qr-badge-label"><i class="fa-solid fa-qrcode"></i> SCAN TO VERIFY</span>
+                    </a>
+                </div>
 
                 <!-- PAYMENT STATUS BADGE -->
                 <?php if ($isVerified): ?>
@@ -1245,11 +1365,18 @@ if (!$isCashPayment) {
         <!-- TOTAL AMOUNT PAID BANNER -->
         <div class="total-amount-banner">
             <div class="total-banner-main">
-                <div class="total-banner-label" style="display:flex; align-items:center;">
-                    TOTAL AMOUNT PAID BY 
-                    <span style="display:inline-block; background-color:#0b6638; color:#ffffff; padding:4px 12px; border-radius:6px; margin-left:8px; font-size:12px; font-weight:800; letter-spacing:0.5px;">
-                        <?= htmlspecialchars($paymentMethod) ?>
-                    </span>
+                <div class="total-banner-label" style="display:flex; flex-direction:column; gap:6px;">
+                    <div style="display:flex; align-items:center;">
+                        TOTAL AMOUNT PAID BY 
+                        <span style="display:inline-block; background-color:#0b6638; color:#ffffff; padding:3px 10px; border-radius:5px; margin-left:8px; font-size:11.5px; font-weight:800; letter-spacing:0.5px;">
+                            <?= htmlspecialchars($paymentMethod) ?>
+                        </span>
+                    </div>
+                    <?php if (!empty($paymentTypeLabel)): ?>
+                    <div style="font-size:11.5px; font-weight:700; color:#047857; text-transform:uppercase; letter-spacing:0.4px;">
+                        Purpose: <span style="background:#ffffff; color:#065f46; padding:2px 8px; border-radius:4px; font-weight:800; border:1px solid #a7f3d0;"><?= htmlspecialchars($paymentTypeLabel) ?></span>
+                    </div>
+                    <?php endif; ?>
                 </div>
                 <div class="total-banner-divider"></div>
                 <div class="total-banner-amount">TK. <?= number_format($totalAmountPaid, 2) ?></div>
@@ -1261,6 +1388,41 @@ if (!$isCashPayment) {
             </div>
             <?php endif; ?>
         </div>
+
+        <?php if (!empty($isBulk) && !empty($payments)): ?>
+        <!-- Bulk payments breakdown table -->
+        <div class="payment-summary-wrap" style="margin-bottom: 20px;">
+            <div class="section-header-title">PAYMENTS BREAKDOWN</div>
+            <table class="bulk-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Payment Type / Installment</th>
+                        <th>Reference / Chq</th>
+                        <th style="text-align: right;">Amount (BDT)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($payments as $p): ?>
+                    <tr>
+                        <td><?= date('d M, Y', strtotime($p['payment_date'] ?? 'now')) ?></td>
+                        <td class="fw-semibold">
+                            <?php 
+                            if (($p['payment_type'] ?? '') === 'emi') echo htmlspecialchars($p['installment_label'] ?? 'EMI Installment');
+                            elseif (($p['payment_type'] ?? '') === 'booking_money') echo 'BOOKING MONEY';
+                            elseif (($p['payment_type'] ?? '') === 'registration') echo 'REGISTRATION MONEY';
+                            elseif (($p['payment_type'] ?? '') === 'development_charge') echo 'DEVELOPMENT CHARGE';
+                            else echo strtoupper(str_replace('_', ' ', $p['payment_type'] ?? 'PAYMENT'));
+                            ?>
+                        </td>
+                        <td><?= htmlspecialchars(!empty($p['transaction_ref']) ? $p['transaction_ref'] : (!empty($p['cheque_no']) ? $p['cheque_no'] : '-')) ?></td>
+                        <td style="text-align: right; font-weight: 700; color:#0b6638;">TK. <?= number_format($p['amount'] ?? 0, 2) ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
 
         <!-- PROCESSING INFORMATION -->
         <div class="processing-info-wrap">
