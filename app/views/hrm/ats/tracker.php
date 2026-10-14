@@ -13,7 +13,9 @@ $baseUrl = $GLOBALS['base_url'];
             </h4>
             <p class="text-muted small mb-0">Track applicants, interview appointments, call outcomes, and hiring pipeline.</p>
         </div>
-        <div class="d-flex flex-wrap gap-2 mt-2 mt-md-0">
+            <button type="button" class="btn btn-outline-danger btn-sm px-3 shadow-sm" onclick="exportAtsPdf()">
+                <i class="fa-solid fa-file-pdf me-1"></i> Export PDF
+            </button>
             <button type="button" class="btn btn-outline-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#csvUploadModal">
                 <i class="fa-solid fa-file-csv me-1"></i> Batch CSV Upload
             </button>
@@ -203,6 +205,9 @@ $baseUrl = $GLOBALS['base_url'];
                     <div class="col-12 col-md-2 d-flex gap-2">
                         <button type="submit" class="btn btn-primary btn-sm flex-fill">
                             <i class="fa-solid fa-filter me-1"></i> Filter
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="exportAtsPdf()" title="Export PDF with active filters">
+                            <i class="fa-solid fa-file-pdf"></i>
                         </button>
                         <a href="<?= $baseUrl ?>/ats-tracker?tab=<?= htmlspecialchars($filters['tab']) ?>" class="btn btn-light btn-sm text-secondary" title="Clear Filters">
                             <i class="fa-solid fa-rotate-left"></i>
@@ -1341,5 +1346,24 @@ function atsShowToast(msg) {
     } catch (e) {
         console.warn('Toast display failed:', e);
     }
+}
+
+function exportAtsPdf() {
+    const filterForm = document.getElementById('filterForm');
+    let url = '<?= $baseUrl ?>/ats-export-pdf';
+    if (filterForm) {
+        const formData = new FormData(filterForm);
+        const params = new URLSearchParams();
+        for (const [key, value] of formData.entries()) {
+            if (value && value.toString().trim() !== '') {
+                params.append(key, value.toString().trim());
+            }
+        }
+        const queryString = params.toString();
+        if (queryString) {
+            url += '?' + queryString;
+        }
+    }
+    window.location.href = url;
 }
 </script>

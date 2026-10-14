@@ -682,4 +682,291 @@ class AtsController extends Controller
 
         return null;
     }
+
+    /**
+     * Export Candidates to PDF with active filters
+     */
+    public function exportPdf()
+    {
+        $this->checkAuth();
+
+        $filters = [
+            'search' => $_GET['q'] ?? '',
+            'tab' => $_GET['tab'] ?? 'all',
+            'department' => $_GET['department'] ?? '',
+            'position' => $_GET['position'] ?? '',
+            'source' => $_GET['source'] ?? '',
+            'invitation_status' => $_GET['invitation_status'] ?? '',
+            'interview_attendance' => $_GET['interview_attendance'] ?? '',
+            'hired' => $_GET['hired'] ?? '',
+            'date_type' => $_GET['date_type'] ?? 'interview_date',
+            'date_from' => $_GET['date_from'] ?? '',
+            'date_to' => $_GET['date_to'] ?? '',
+        ];
+
+        $candidates = $this->candidateModel->getAllFiltered($filters);
+        $totalCandidates = count($candidates);
+
+        if (!class_exists('\\Dompdf\\Dompdf')) {
+            if (defined('BASE_PATH') && file_exists(BASE_PATH . '/vendor/autoload.php')) {
+                require_once BASE_PATH . '/vendor/autoload.php';
+            } elseif (file_exists(__DIR__ . '/../../vendor/autoload.php')) {
+                require_once __DIR__ . '/../../vendor/autoload.php';
+            }
+        }
+
+        // Prepare applied filter labels for PDF header summary
+        $appliedFilterStrings = [];
+        if (!empty($filters['tab']) && $filters['tab'] !== 'all') {
+            $appliedFilterStrings[] = "Tab: " . ucfirst(str_replace('_', ' ', $filters['tab']));
+        }
+        if (!empty($filters['search'])) {
+            $appliedFilterStrings[] = 'Search: "' . htmlspecialchars($filters['search']) . '"';
+        }
+        if (!empty($filters['department'])) {
+            $appliedFilterStrings[] = 'Dept: ' . htmlspecialchars($filters['department']);
+        }
+        if (!empty($filters['position'])) {
+            $appliedFilterStrings[] = 'Pos: ' . htmlspecialchars($filters['position']);
+        }
+        if (!empty($filters['invitation_status'])) {
+            $appliedFilterStrings[] = 'Call: ' . htmlspecialchars($filters['invitation_status']);
+        }
+        if (!empty($filters['interview_attendance'])) {
+            $appliedFilterStrings[] = 'Attendance: ' . ucfirst($filters['interview_attendance']);
+        }
+        if (!empty($filters['hired'])) {
+            $appliedFilterStrings[] = 'Hired: ' . ucfirst($filters['hired']);
+        }
+        if (!empty($filters['date_from']) || !empty($filters['date_to'])) {
+            $appliedFilterStrings[] = 'Date (' . htmlspecialchars($filters['date_type']) . '): ' . ($filters['date_from'] ?: 'Start') . ' to ' . ($filters['date_to'] ?: 'End');
+        }
+
+        $filterSummary = !empty($appliedFilterStrings) ? implode(' | ', $appliedFilterStrings) : 'All Candidates (No Filter)';
+        $printedBy = !empty($_SESSION['user']['full_name']) ? $_SESSION['user']['full_name'] : (!empty($_SESSION['user']['username']) ? $_SESSION['user']['username'] : 'HR Admin');
+        $generatedAt = date('d M Y, h:i A');
+
+        // Build HTML
+        ob_start();
+        ?>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>ATS Candidate Report</title>
+            <style>
+                @page { margin: 18px 20px 22px 20px; }
+                body {
+                    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                    font-size: 9px;
+                    color: #1e293b;
+                    margin: 0;
+                    padding: 0;
+                }
+                .report-header {
+                    text-align: center;
+                    border-bottom: 2px solid #078134;
+                    padding-bottom: 8px;
+                    margin-bottom: 10px;
+                }
+                .company-name {
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: #078134;
+                    letter-spacing: 0.5px;
+                    margin: 0 0 3px 0;
+                    text-transform: uppercase;
+                }
+                .report-title {
+                    font-size: 12px;
+                    font-weight: bold;
+                    color: #1e293b;
+                    margin: 0 0 5px 0;
+                }
+                .meta-bar {
+                    background-color: #f1f5f9;
+                    border: 1px solid #e2e8f0;
+                    padding: 5px 10px;
+                    margin-bottom: 10px;
+                    border-radius: 4px;
+                    font-size: 8.5px;
+                }
+                .meta-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+                .meta-table td {
+                    padding: 0;
+                    border: none;
+                }
+                .table-candidates {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 4px;
+                }
+                .table-candidates th {
+                    background-color: #078134;
+                    color: #ffffff;
+                    font-weight: bold;
+                    font-size: 8.5px;
+                    padding: 6px 4px;
+                    border: 1px solid #056828;
+                    text-align: left;
+                    text-transform: uppercase;
+                }
+                .table-candidates td {
+                    border: 1px solid #cbd5e1;
+                    padding: 5px 4px;
+                    font-size: 8.5px;
+                    vertical-align: top;
+                }
+                .table-candidates tr:nth-child(even) td {
+                    background-color: #f8fafc;
+                }
+                .badge {
+                    display: inline-block;
+                    padding: 2px 5px;
+                    font-size: 7.5px;
+                    font-weight: bold;
+                    border-radius: 3px;
+                    text-align: center;
+                }
+                .badge-success { background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+                .badge-danger { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+                .badge-warning { background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+                .badge-info { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+                .badge-secondary { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+                .text-muted { color: #64748b; }
+                .fw-bold { font-weight: bold; }
+                .nowrap { white-space: nowrap; }
+                .footer {
+                    margin-top: 15px;
+                    font-size: 8px;
+                    color: #94a3b8;
+                    text-align: right;
+                    border-top: 1px dashed #cbd5e1;
+                    padding-top: 4px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="report-header">
+                <div class="company-name">The Premium Homes Ltd</div>
+                <div class="report-title">Human Resource Department &mdash; ATS Candidate Tracker Report</div>
+            </div>
+
+            <div class="meta-bar">
+                <table class="meta-table">
+                    <tr>
+                        <td style="width: 60%;">
+                            <b>Applied Filter:</b> <?= htmlspecialchars($filterSummary) ?>
+                        </td>
+                        <td style="width: 25%; text-align: center;">
+                            <b>Total Candidates:</b> <?= number_format($totalCandidates) ?>
+                        </td>
+                        <td style="width: 15%; text-align: right;">
+                            <b>Generated:</b> <?= $generatedAt ?>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <table class="table-candidates">
+                <thead>
+                    <tr>
+                        <th style="width: 20px; text-align: center;">#</th>
+                        <th style="width: 130px;">Candidate Details</th>
+                        <th style="width: 105px;">Department &amp; Position</th>
+                        <th style="width: 55px;">Source</th>
+                        <th style="width: 75px;">Call Status</th>
+                        <th style="width: 70px;">Interview Schedule</th>
+                        <th style="width: 55px; text-align: center;">Attendance</th>
+                        <th style="width: 55px; text-align: center;">Hired Status</th>
+                        <th style="width: 55px; text-align: right;">Salary</th>
+                        <th>Remarks / Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($candidates)): ?>
+                        <tr>
+                            <td colspan="10" style="text-align: center; padding: 25px; color: #64748b;">
+                                No candidate records found matching the specified filter criteria.
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($candidates as $index => $c): 
+                            $sl = $index + 1;
+                            $interviewDate = !empty($c['interview_date']) ? date('d M Y', strtotime($c['interview_date'])) : '-';
+                            $interviewTime = !empty($c['interview_time']) ? date('h:i A', strtotime($c['interview_time'])) : '';
+                            
+                            // Attendance badge class
+                            $att = strtolower($c['interview_attendance'] ?? 'pending');
+                            $attBadge = 'badge-secondary';
+                            if ($att === 'present') $attBadge = 'badge-success';
+                            elseif ($att === 'absent') $attBadge = 'badge-danger';
+
+                            // Hired badge class
+                            $hired = strtolower($c['hired'] ?? 'pending');
+                            $hiredBadge = 'badge-secondary';
+                            if ($hired === 'yes') $hiredBadge = 'badge-success';
+                            elseif ($hired === 'no') $hiredBadge = 'badge-danger';
+                        ?>
+                            <tr>
+                                <td style="text-align: center; font-weight: bold; color: #64748b;"><?= $sl ?></td>
+                                <td>
+                                    <div class="fw-bold" style="color: #0f172a; font-size: 9px;"><?= htmlspecialchars($c['name'] ?? '') ?></div>
+                                    <div class="text-muted" style="font-size: 8px;">Phone: <?= htmlspecialchars($c['phone'] ?? '-') ?></div>
+                                    <?php if (!empty($c['email'])): ?>
+                                        <div class="text-muted" style="font-size: 7.5px;"><?= htmlspecialchars($c['email']) ?></div>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <div class="fw-bold"><?= htmlspecialchars($c['position'] ?? '-') ?></div>
+                                    <div class="text-muted" style="font-size: 7.5px;"><?= htmlspecialchars($c['department'] ?? '-') ?></div>
+                                </td>
+                                <td><?= htmlspecialchars($c['source'] ?? '-') ?></td>
+                                <td>
+                                    <span class="badge badge-warning"><?= htmlspecialchars($c['invitation_status'] ?? 'Pending') ?></span>
+                                </td>
+                                <td>
+                                    <div class="nowrap fw-bold"><?= $interviewDate ?></div>
+                                    <?php if ($interviewTime): ?>
+                                        <div class="text-muted nowrap" style="font-size: 7.5px;"><?= $interviewTime ?></div>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="text-align: center;">
+                                    <span class="badge <?= $attBadge ?>"><?= ucfirst($att) ?></span>
+                                </td>
+                                <td style="text-align: center;">
+                                    <span class="badge <?= $hiredBadge ?>"><?= ($hired === 'yes') ? 'Hired' : (($hired === 'no') ? 'Rejected' : 'Pending') ?></span>
+                                </td>
+                                <td style="text-align: right; font-size: 8px;">
+                                    <?= !empty($c['onboarding_salary']) ? number_format((float)$c['onboarding_salary']) : '-' ?>
+                                </td>
+                                <td style="font-size: 7.5px; color: #475569;">
+                                    <?= !empty($c['remarks']) ? htmlspecialchars($c['remarks']) : '-' ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+
+            <div class="footer">
+                Report Printed By: <?= htmlspecialchars($printedBy) ?> | Confidential &mdash; The Premium Homes Ltd
+            </div>
+        </body>
+        </html>
+        <?php
+        $html = ob_get_clean();
+
+        $dompdf = new \Dompdf\Dompdf(['isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        $filename = "ATS_Candidates_Report_" . date('Ymd_His') . ".pdf";
+        $dompdf->stream($filename, ["Attachment" => true]);
+        exit;
+    }
 }
