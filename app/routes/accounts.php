@@ -64,6 +64,10 @@ return [
 
     'payment-invoice' => ['controller' => 'AccountClientController', 'method' => 'viewPaymentInvoice'],
     'payment-invoice/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'viewPaymentInvoice'],
+    'public-receipt' => ['controller' => 'AccountClientController', 'method' => 'viewPaymentInvoice'],
+    'public-receipt/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'viewPaymentInvoice'],
+    'download-receipt' => ['controller' => 'AccountClientController', 'method' => 'downloadPublicReceiptPdf'],
+    'download-receipt/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'downloadPublicReceiptPdf'],
     'verify-receipt' => ['controller' => 'AccountClientController', 'method' => 'verifyPublicReceipt'],
     'verify-receipt/(\d+)' => ['controller' => 'AccountClientController', 'method' => 'verifyPublicReceipt'],
     'api/verify-receipt' => ['controller' => 'ApiController', 'method' => 'verifyReceipt'],

@@ -51,11 +51,15 @@ if (!empty($clientDetails['2nd_lead_owner_name'])) {
     $clientName .= ' & ' . trim($clientDetails['2nd_lead_owner_name']);
 }
 
-$clientPhone = !empty($clientDetails['phone']) ? $clientDetails['phone'] : ($clientDetails['phone_number'] ?? 'N/A');
-if ($clientPhone !== 'N/A' && strlen($clientPhone) >= 10) {
-    $maskedPhone = substr($clientPhone, 0, 4) . '****' . substr($clientPhone, -3);
-} else {
-    $maskedPhone = $clientPhone;
+$rawPaymentId = (int)($payment['id'] ?? 0);
+$verificationToken = $_GET['token'] ?? substr(hash('sha256', $rawPaymentId . '_' . ($payment['created_at'] ?? 'tphl') . '_TPHL_VERIFY_KEY_2026'), 0, 12);
+
+$clientPhone = !empty($clientDetails['phone']) ? $clientDetails['phone'] : (!empty($clientDetails['phone_number']) ? $clientDetails['phone_number'] : (!empty($payment['phone']) ? $payment['phone'] : 'N/A'));
+if (!empty($clientDetails['2nd_owner_phone'])) {
+    $clientPhone .= ', ' . trim($clientDetails['2nd_owner_phone']);
+}
+if ($clientPhone !== 'N/A' && strlen($clientPhone) === 10 && substr($clientPhone, 0, 1) === '1') {
+    $clientPhone = '0' . $clientPhone;
 }
 
 // Property details
@@ -64,9 +68,58 @@ $unitName = !empty($clientDetails['unit_name']) ? trim(preg_replace('/^unit\s+/i
 $floorNo = !empty($clientDetails['flat_no']) ? trim(preg_replace('/^floor\s+/i', '', $clientDetails['flat_no'])) : (!empty($payment['flat_no']) ? trim(preg_replace('/^floor\s+/i', '', $payment['flat_no'])) : 'N/A');
 
 // Verification Details
-$verifiedByName = !empty($payment['verified_by_name']) ? $payment['verified_by_name'] : ($isVerified ? 'Authorized Officer' : 'Pending Verification');
-if (!empty($payment['verified_by_employee_id'])) {
-    $verifiedByName .= ' (' . $payment['verified_by_employee_id'] . ')';
+$vRoleId = (int)($payment['verified_by_role_id'] ?? 0);
+$vRoleName = trim($payment['verified_by_role_name'] ?? '');
+$vFullName = trim($payment['verified_by_name'] ?? '');
+$vEmpId = trim($payment['verified_by_employee_id'] ?? '');
+
+// If verifier details not populated, look up from DB
+if ($isVerified && empty($vRoleName) && !empty($payment['verified_by']) && isset($db) && $db) {
+    try {
+        $vStmt = $db->prepare("
+            SELECT u.id, u.full_name, u.role_id, r.name as role_name,
+                   COALESCE(NULLIF(e1.employee_id, ''), NULLIF(e2.employee_id, ''), NULLIF(u.employee_id, '')) as employee_id
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            LEFT JOIN employees e1 ON e1.user_id = u.id
+            LEFT JOIN employees e2 ON u.employee_id = e2.id
+            WHERE u.id = ?
+            LIMIT 1
+        ");
+        if ($vStmt) {
+            $vStmt->bind_param("i", $payment['verified_by']);
+            $vStmt->execute();
+            $vRes = $vStmt->get_result();
+            if ($vRow = $vRes->fetch_assoc()) {
+                $vRoleId = (int)($vRow['role_id'] ?? 0);
+                $vRoleName = trim($vRow['role_name'] ?? '');
+                $vFullName = trim($vRow['full_name'] ?? '');
+                $vEmpId = trim($vRow['employee_id'] ?? '');
+            }
+            $vStmt->close();
+        }
+    } catch (Exception $e) {}
+}
+
+if ($isVerified) {
+    $isAccountsRole = in_array($vRoleId, [6, 30, 36]) || (stripos($vRoleName, 'account') !== false);
+    $isManagementRole = in_array($vRoleId, [1, 3]) || (stripos($vFullName, 'management') !== false) || (stripos($vRoleName, 'admin') !== false);
+
+    if ($isAccountsRole) {
+        $verifiedByName = !empty($vFullName) ? $vFullName : 'Accounts Officer';
+        if (!empty($vEmpId)) {
+            $verifiedByName .= ' (' . $vEmpId . ')';
+        }
+    } elseif ($isManagementRole || strtolower($vFullName) === 'management') {
+        $verifiedByName = 'Accounts';
+    } else {
+        $verifiedByName = !empty($vFullName) ? $vFullName : 'Accounts';
+        if (!empty($vEmpId)) {
+            $verifiedByName .= ' (' . $vEmpId . ')';
+        }
+    }
+} else {
+    $verifiedByName = 'Pending Verification';
 }
 
 $verifiedDateFormatted = 'Awaiting Verification';
@@ -596,7 +649,7 @@ $bankDisplay = !empty($payment['company_bank_name']) ? $payment['company_bank_na
                         </div>
                         <div class="info-cell">
                             <span class="cell-label">Contact Phone</span>
-                            <span class="cell-value"><?= htmlspecialchars($maskedPhone) ?></span>
+                            <span class="cell-value"><?= htmlspecialchars($clientPhone) ?></span>
                         </div>
                         <div class="info-cell">
                             <span class="cell-label">Project</span>
@@ -626,10 +679,16 @@ $bankDisplay = !empty($payment['company_bank_name']) ? $payment['company_bank_na
 
                     <!-- Action Buttons -->
                     <div class="action-group">
-                        <a href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $payment['id'] ?>" target="_blank" class="btn-full btn-primary-action">
-                            <i class="fa-solid fa-file-pdf"></i> View &amp; Print Full Receipt (PDF)
+                        <a href="<?= $GLOBALS['base_url'] ?>/download-receipt/<?= $payment['id'] ?>?token=<?= $verificationToken ?>" class="btn-full btn-primary-action">
+                            <i class="fa-solid fa-file-arrow-down"></i> Download Official Receipt (PDF)
+                        </a>
+                        <a href="<?= $GLOBALS['base_url'] ?>/payment-invoice?payment_id=<?= $payment['id'] ?>&token=<?= $verificationToken ?>" target="_blank" class="btn-full btn-secondary-action" style="background:#ffffff; color:var(--primary); border:1.5px solid var(--primary-border); font-weight:700;">
+                            <i class="fa-solid fa-print"></i> View &amp; Print Full Receipt
                         </a>
                         <a href="tel:<?= preg_replace('/[^0-9+]/', '', $companyPhone) ?>" class="btn-full btn-secondary-action">
+                            <i class="fa-solid fa-headset"></i> Contact TPHL Support (<?= htmlspecialchars($companyPhone) ?>)
+                        </a>
+                    </div>
                             <i class="fa-solid fa-headset"></i> Contact TPHL Support (<?= htmlspecialchars($companyPhone) ?>)
                         </a>
                     </div>

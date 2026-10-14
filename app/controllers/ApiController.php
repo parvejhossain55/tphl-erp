@@ -1011,15 +1011,44 @@ class ApiController extends Controller
             $clientName .= ' & ' . trim($clientDetails['2nd_lead_owner_name']);
         }
 
-        $clientPhone = !empty($clientDetails['phone']) ? $clientDetails['phone'] : ($clientDetails['phone_number'] ?? 'N/A');
-        $maskedPhone = $clientPhone;
-        if ($clientPhone !== 'N/A' && strlen($clientPhone) >= 10) {
-            $maskedPhone = substr($clientPhone, 0, 4) . '****' . substr($clientPhone, -3);
+        $clientPhone = !empty($clientDetails['phone']) ? $clientDetails['phone'] : (!empty($clientDetails['phone_number']) ? $clientDetails['phone_number'] : (!empty($payment['phone']) ? $payment['phone'] : 'N/A'));
+        if (!empty($clientDetails['2nd_owner_phone'])) {
+            $clientPhone .= ', ' . trim($clientDetails['2nd_owner_phone']);
+        }
+        if ($clientPhone !== 'N/A' && strlen($clientPhone) === 10 && substr($clientPhone, 0, 1) === '1') {
+            $clientPhone = '0' . $clientPhone;
         }
 
-        $verifiedByName = !empty($payment['verified_by_name']) ? $payment['verified_by_name'] : ($isVerified ? 'Authorized Officer' : 'Pending');
-        if (!empty($payment['verified_by_employee_id'])) {
-            $verifiedByName .= ' (' . $payment['verified_by_employee_id'] . ')';
+        // Created By Resolution (sales_by_id / assigned_id)
+        $createdByName = !empty($payment['sales_by_name']) 
+            ? $payment['sales_by_name'] 
+            : (!empty($clientDetails['agent_name']) ? $clientDetails['agent_name'] : ($payment['created_by_name'] ?? 'System'));
+
+        // Verified By Resolution (Accounts role vs Management)
+        $vRoleId = (int)($payment['verified_by_role_id'] ?? 0);
+        $vRoleName = trim($payment['verified_by_role_name'] ?? '');
+        $vFullName = trim($payment['verified_by_name'] ?? '');
+        $vEmpId = trim($payment['verified_by_employee_id'] ?? '');
+
+        if ($isVerified) {
+            $isAccountsRole = in_array($vRoleId, [6, 30, 36]) || (stripos($vRoleName, 'account') !== false);
+            $isManagementRole = in_array($vRoleId, [1, 3]) || (stripos($vFullName, 'management') !== false) || (stripos($vRoleName, 'admin') !== false);
+
+            if ($isAccountsRole) {
+                $verifiedByName = !empty($vFullName) ? $vFullName : 'Accounts Officer';
+                if (!empty($vEmpId)) {
+                    $verifiedByName .= ' (' . $vEmpId . ')';
+                }
+            } elseif ($isManagementRole || strtolower($vFullName) === 'management') {
+                $verifiedByName = 'Accounts';
+            } else {
+                $verifiedByName = !empty($vFullName) ? $vFullName : 'Accounts';
+                if (!empty($vEmpId)) {
+                    $verifiedByName .= ' (' . $vEmpId . ')';
+                }
+            }
+        } else {
+            $verifiedByName = 'Pending Verification';
         }
 
         $verifiedDate = null;
@@ -1045,13 +1074,13 @@ class ApiController extends Controller
                 'payment_type'        => $paymentTypeLabel,
                 'transaction_ref'     => $payment['transaction_ref'] ?? ($payment['cheque_no'] ?? 'N/A'),
                 'client_name'         => $clientName,
-                'client_phone'        => $maskedPhone,
+                'client_phone'        => $clientPhone,
                 'project_name'        => $clientDetails['project_name'] ?? ($payment['project_name'] ?? 'N/A'),
                 'unit_name'           => trim(preg_replace('/^unit\s+/i', '', $clientDetails['unit_name'] ?? ($payment['unit_name'] ?? 'N/A'))),
                 'floor_no'            => trim(preg_replace('/^floor\s+/i', '', $clientDetails['flat_no'] ?? ($payment['flat_no'] ?? 'N/A'))),
                 'verified_by'         => $verifiedByName,
                 'verified_at'         => $verifiedDate,
-                'created_by'          => $payment['created_by_name'] ?? 'System',
+                'created_by'          => $createdByName,
                 'company_title'       => $companyTitle,
                 'verified_official'   => $isVerified ? 'Official Payment Verified' : 'Subject to Official Verification'
             ]
