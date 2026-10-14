@@ -139,6 +139,17 @@ return [
     'delete-team' => ['controller' => 'TeamController', 'method' => 'delete'],
 
     // =========================================================================
+    // Controller: ProjectProgressController
+    // =========================================================================
+    'project-progress-lists' => ['controller' => 'ProjectProgressController', 'method' => 'index'],
+    'create-project-progress' => ['controller' => 'ProjectProgressController', 'method' => 'create'],
+    'store-project-progress' => ['controller' => 'ProjectProgressController', 'method' => 'store'],
+    'edit-project-progress/(\d+)' => ['controller' => 'ProjectProgressController', 'method' => 'edit'],
+    'update-project-progress/(\d+)' => ['controller' => 'ProjectProgressController', 'method' => 'update'],
+    'delete-project-progress/(\d+)' => ['controller' => 'ProjectProgressController', 'method' => 'delete'],
+    'delete-project-progress' => ['controller' => 'ProjectProgressController', 'method' => 'delete'],
+
+    // =========================================================================
     // Controller: CameraController
     // =========================================================================
     'camera-lists' => ['controller' => 'CameraController', 'method' => 'index'],

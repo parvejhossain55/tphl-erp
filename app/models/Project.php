@@ -105,16 +105,16 @@ class Project extends Model
                 name, slug, location_id, community_id, category_id, incentive_percentage,
                 building_type, building_face, suite_sizes, hotel_operation, construction_start, handover, delivery,
                 total_share, unit_per_floor, floor_wise_unit_meta, types, image, 
-                image2, image3, front_road, price_range, hover_text, 
+                image2, image3, gallery_images, front_road, price_range, hover_text, 
                 plot_size, plot_no, block_no, brochure_link, description, 
                 apartment_count, amenities_details, amenities_image, map_image, map_link, 
-                project_map_location, passenger_lift, cargo_lift, created_by, rooftop_gardening, 
+                project_map_location, nearby_locations, passenger_lift, cargo_lift, created_by, rooftop_gardening, 
                 swimming_pool, convention, electricity_backup, car_parking, project_sale_status,
                 service_charge_per_emi,
                 pm_id, site_engineer_id, landman_id, struct_engineer_id,
                 draftsman_id, architect_id, estimator_id, qc_id, operator_id,
                 purchase_user_id, under_construction,is_common
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         $stmt = $this->db->prepare($sql);
 
@@ -126,9 +126,11 @@ class Project extends Model
 
         $category_id          = !empty($data['category_id']) ? (int)$data['category_id'] : null;
         $incentive_percentage = !empty($data['incentive_percentage']) ? (float)$data['incentive_percentage'] : null;
+        $gallery_images       = !empty($data['gallery_images']) ? $data['gallery_images'] : null;
+        $nearby_locations     = !empty($data['nearby_locations']) ? $data['nearby_locations'] : null;
 
         $stmt->bind_param(
-            "ssiiidssssssssiissssssssdssssisssssiiiiiiiisdiiiiiiiiiiii",
+            "ssiiidssssssssiisssssssssdssssissssssiiiiiiiisdiiiiiiiiiiii",
             $data['name'],                   // 1
             $data['slug'],                   // 2
             $location_id,                    // 3 (i)
@@ -149,7 +151,8 @@ class Project extends Model
             $image,                          // 18
             $image2,                         // 19
             $image3,                         // 20
-            $data['front_road'],             // 21
+            $gallery_images,                 // 21
+            $data['front_road'],             // 22
             $price_range,                    // 22
             $data['hover_text'],             // 23
             $plot_size,                      // 24 (d)
@@ -163,7 +166,8 @@ class Project extends Model
             $map_image,                      // 32
             $data['map_link'],               // 33
             $data['project_map_location'],   // 34
-            $passenger_lift,                 // 35 (i)
+            $nearby_locations,               // 35
+            $passenger_lift,                 // 36 (i)
             $cargo_lift,                     // 36 (i)
             $created_by,                     // 37 (i)
             $rooftop_gardening,              // 38 (i)
@@ -360,10 +364,12 @@ class Project extends Model
         image = ?, 
         image2 = ?, 
         image3 = ?,
+        gallery_images = ?,
         car_parking = ?,
         created_by = ?,
         floor_wise_unit_meta = ?,
         project_map_location = ?,
+        nearby_locations = ?,
         project_sale_status = ?,
         service_charge_per_emi = ?,
         pm_id = ?,
@@ -401,9 +407,11 @@ class Project extends Model
         $swimming_pool      = isset($data['swimming_pool']) ? (int)$data['swimming_pool'] : 0;
         $category_id        = !empty($data['category_id']) ? (int)$data['category_id'] : null;
         $incentive_percentage = (isset($data['incentive_percentage']) && $data['incentive_percentage'] !== '') ? (float)$data['incentive_percentage'] : null;
+        $gallery_images     = isset($data['gallery_images']) ? $data['gallery_images'] : null;
+        $nearby_locations   = isset($data['nearby_locations']) ? $data['nearby_locations'] : null;
 
         $stmt->bind_param(
-            "ssiiidsssssssssisssssdssissssiiiissssssssssdiiiiiiiiiiiii",
+            "ssiiidsssssssssisssssdssissssiiiisssssssssssssdiiiiiiiiiiiii",
             $data['name'],
             $data['slug'],
             $data['location_id'],
@@ -442,10 +450,12 @@ class Project extends Model
             $image,
             $image2,
             $image3,
+            $gallery_images,
             $data['car_parking'],
             $data['created_by'],
             $data['floor_wise_unit_meta'],
             $data['project_map_location'],
+            $nearby_locations,
             $data['project_sale_status'],
             $data['service_charge_per_emi'],
             $pm_id,

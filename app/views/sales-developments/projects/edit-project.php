@@ -9,6 +9,18 @@ if (!empty($project['floor_wise_unit_meta'])) {
     $meta = json_decode($project['floor_wise_unit_meta'], true);
     $floorUnits = $meta['typical_floor'] ?? [];
 }
+
+// Decode gallery images JSON
+$galleryImages = [];
+if (!empty($project['gallery_images'])) {
+    $galleryImages = json_decode($project['gallery_images'], true) ?: [];
+}
+
+// Decode nearby locations JSON
+$nearbyLocations = [];
+if (!empty($project['nearby_locations'])) {
+    $nearbyLocations = json_decode($project['nearby_locations'], true) ?: [];
+}
 ?>
 <div class="row">
     <div class="card__wrapper">
@@ -153,36 +165,68 @@ if (!empty($project['floor_wise_unit_meta'])) {
 
                 <!-- Floor Wise Units -->
                 <div class="col-12 mt-3">
-                    <label>Floor Wise Units</label>
+                    <label class="fw-semibold">Floor Wise Units</label>
                     <div id="unit-wrapper">
                         <?php if (!empty($floorUnits)): ?>
                             <?php foreach ($floorUnits as $index => $unit): ?>
-                                <div class="row unit-row mb-2 g-2 align-items-center">
-                                    <div class="col-md-6 col-12">
-                                        <input type="text" name="units[<?= $index ?>][unit_name]" class="form-control"
-                                            placeholder="Unit Name" value="<?= htmlspecialchars($unit['unit_name']) ?>">
-                                    </div>
-                                    <div class="col-md-5 col-12">
-                                        <input type="number" name="units[<?= $index ?>][sqft]" class="form-control"
-                                            placeholder="Sqft" value="<?= htmlspecialchars($unit['sqft']) ?>">
-                                    </div>
-                                    <div class="col-md-1 col-12 d-flex justify-content-center">
-                                        <button type="button" class="btn btn-danger btn-mg remove-unit w-100">×</button>
+                                <div class="unit-row card p-3 mb-2 border bg-light">
+                                    <div class="row g-2 align-items-center">
+                                        <div class="col-md-3 col-12">
+                                            <label class="small text-muted mb-1">Unit Name</label>
+                                            <input type="text" name="units[<?= $index ?>][unit_name]" class="form-control"
+                                                placeholder="Unit Name (e.g. Unit A)" value="<?= htmlspecialchars($unit['unit_name'] ?? '') ?>">
+                                        </div>
+                                        <div class="col-md-2 col-12">
+                                            <label class="small text-muted mb-1">Sqft</label>
+                                            <input type="number" step="any" name="units[<?= $index ?>][sqft]" class="form-control"
+                                                placeholder="Sqft (e.g. 1450)" value="<?= htmlspecialchars($unit['sqft'] ?? '') ?>">
+                                        </div>
+                                        <div class="col-md-3 col-12">
+                                            <label class="small text-muted mb-1">Unit Image</label>
+                                            <?php if (!empty($unit['image'])): ?>
+                                                <div class="d-flex align-items-center gap-2 mb-1">
+                                                    <img src="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= htmlspecialchars($unit['image']) ?>" alt="Unit" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
+                                                    <span class="small text-muted text-truncate" style="max-width: 150px;"><?= htmlspecialchars($unit['image']) ?></span>
+                                                </div>
+                                            <?php endif; ?>
+                                            <input type="file" name="unit_image_<?= $index ?>" class="form-control form-control-sm" accept="image/*">
+                                            <input type="hidden" name="units[<?= $index ?>][existing_image]" value="<?= htmlspecialchars($unit['image'] ?? '') ?>">
+                                        </div>
+                                        <div class="col-md-3 col-12">
+                                            <label class="small text-muted mb-1">Description</label>
+                                            <input type="text" name="units[<?= $index ?>][description]" class="form-control"
+                                                placeholder="Short description" value="<?= htmlspecialchars($unit['description'] ?? '') ?>">
+                                        </div>
+                                        <div class="col-md-1 col-12 text-end">
+                                            <label class="small text-muted mb-1 d-block">&nbsp;</label>
+                                            <button type="button" class="btn btn-outline-danger remove-unit w-100" title="Remove Unit">×</button>
+                                        </div>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <div class="row unit-row mb-2 g-2 align-items-center">
-                                <div class="col-md-5 col-12">
-                                    <input type="text" name="units[0][unit_name]" class="form-control"
-                                        placeholder="Unit Name">
-                                </div>
-                                <div class="col-md-6 col-12">
-                                    <input type="number" name="units[0][sqft]" class="form-control"
-                                        placeholder="Sqft">
-                                </div>
-                                <div class="col-md-1 col-12 d-flex justify-content-center">
-                                    <button type="button" class="btn btn-danger btn-sm remove-unit w-100">×</button>
+                            <div class="unit-row card p-3 mb-2 border bg-light">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-md-3 col-12">
+                                        <label class="small text-muted mb-1">Unit Name</label>
+                                        <input type="text" name="units[0][unit_name]" class="form-control" placeholder="Unit Name (e.g. Unit A)">
+                                    </div>
+                                    <div class="col-md-2 col-12">
+                                        <label class="small text-muted mb-1">Sqft</label>
+                                        <input type="number" step="any" name="units[0][sqft]" class="form-control" placeholder="Sqft (e.g. 1450)">
+                                    </div>
+                                    <div class="col-md-3 col-12">
+                                        <label class="small text-muted mb-1">Unit Image</label>
+                                        <input type="file" name="unit_image_0" class="form-control form-control-sm" accept="image/*">
+                                    </div>
+                                    <div class="col-md-3 col-12">
+                                        <label class="small text-muted mb-1">Description</label>
+                                        <input type="text" name="units[0][description]" class="form-control" placeholder="Short description">
+                                    </div>
+                                    <div class="col-md-1 col-12 text-end">
+                                        <label class="small text-muted mb-1 d-block">&nbsp;</label>
+                                        <button type="button" class="btn btn-outline-danger remove-unit w-100" title="Remove Unit">×</button>
+                                    </div>
                                 </div>
                             </div>
                         <?php endif; ?>
@@ -332,6 +376,72 @@ if (!empty($project['floor_wise_unit_meta'])) {
                 <div class="col-xl-6">
                     <label>Map Link</label>
                     <input type="text" name="map_link" class="form-control" value="<?= $project['map_link'] ?? '' ?>">
+                </div>
+
+                <!-- Nearby Locations -->
+                <div class="col-12 mt-3">
+                    <label class="fw-semibold">Nearby Locations (Landmarks with Map Indications & Distance)</label>
+                    <div id="nearby-wrapper">
+                        <?php if (!empty($nearbyLocations)): ?>
+                            <?php foreach ($nearbyLocations as $nIndex => $nItem): ?>
+                                <div class="nearby-row card p-3 mb-2 border bg-light">
+                                    <div class="row g-2 align-items-center">
+                                        <div class="col-md-4 col-12">
+                                            <label class="small text-muted mb-1">Location / Landmark Name</label>
+                                            <input type="text" name="nearby[<?= $nIndex ?>][name]" class="form-control"
+                                                placeholder="e.g. Jamuna Future Park, Metro Station"
+                                                value="<?= htmlspecialchars($nItem['name'] ?? '') ?>">
+                                        </div>
+                                        <div class="col-md-3 col-12">
+                                            <label class="small text-muted mb-1">Distance / Time</label>
+                                            <input type="text" name="nearby[<?= $nIndex ?>][distance]" class="form-control"
+                                                placeholder="e.g. 500m / 5 mins walk"
+                                                value="<?= htmlspecialchars($nItem['distance'] ?? '') ?>">
+                                        </div>
+                                        <div class="col-md-4 col-12">
+                                            <label class="small text-muted mb-1">Map / Location Indication Image</label>
+                                            <?php if (!empty($nItem['image'])): ?>
+                                                <div class="d-flex align-items-center gap-2 mb-1">
+                                                    <img src="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= htmlspecialchars($nItem['image']) ?>" alt="Nearby" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
+                                                    <span class="small text-muted text-truncate" style="max-width: 150px;"><?= htmlspecialchars($nItem['image']) ?></span>
+                                                </div>
+                                            <?php endif; ?>
+                                            <input type="file" name="nearby_image_<?= $nIndex ?>" class="form-control form-control-sm" accept="image/*">
+                                            <input type="hidden" name="nearby[<?= $nIndex ?>][existing_image]" value="<?= htmlspecialchars($nItem['image'] ?? '') ?>">
+                                        </div>
+                                        <div class="col-md-1 col-12 text-end">
+                                            <label class="small text-muted mb-1 d-block">&nbsp;</label>
+                                            <button type="button" class="btn btn-outline-danger remove-nearby w-100" title="Remove">×</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="nearby-row card p-3 mb-2 border bg-light">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-md-4 col-12">
+                                        <label class="small text-muted mb-1">Location / Landmark Name</label>
+                                        <input type="text" name="nearby[0][name]" class="form-control" placeholder="e.g. Jamuna Future Park, Metro Station">
+                                    </div>
+                                    <div class="col-md-3 col-12">
+                                        <label class="small text-muted mb-1">Distance / Time</label>
+                                        <input type="text" name="nearby[0][distance]" class="form-control" placeholder="e.g. 500m / 5 mins walk">
+                                    </div>
+                                    <div class="col-md-4 col-12">
+                                        <label class="small text-muted mb-1">Map / Location Indication Image</label>
+                                        <input type="file" name="nearby_image_0" class="form-control" accept="image/*">
+                                    </div>
+                                    <div class="col-md-1 col-12 text-end">
+                                        <label class="small text-muted mb-1 d-block">&nbsp;</label>
+                                        <button type="button" class="btn btn-outline-danger remove-nearby w-100" title="Remove">×</button>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-secondary mt-1" id="add-nearby">
+                        + Add Nearby Location
+                    </button>
                 </div>                <div class="col-xl-3 col-12">
                     <label>Amenities Image  <span>(Optional)</span></label>
                     <input type="file" name="amenities_image" class="form-control">
@@ -402,6 +512,62 @@ if (!empty($project['floor_wise_unit_meta'])) {
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
+                </div>
+
+                <!-- Project Gallery Images -->
+                <div class="col-12 mt-3">
+                    <label class="fw-semibold">Project Gallery (Images with Titles)</label>
+                    <div id="gallery-wrapper">
+                        <?php if (!empty($galleryImages)): ?>
+                            <?php foreach ($galleryImages as $gIndex => $gItem): ?>
+                                <div class="gallery-row card p-3 mb-2 border bg-light">
+                                    <div class="row g-2 align-items-center">
+                                        <div class="col-md-5 col-12">
+                                            <label class="small text-muted mb-1">Image Title / Name</label>
+                                            <input type="text" name="gallery[<?= $gIndex ?>][title]" class="form-control"
+                                                placeholder="e.g. Master Bedroom, Rooftop View"
+                                                value="<?= htmlspecialchars($gItem['title'] ?? '') ?>">
+                                        </div>
+                                        <div class="col-md-6 col-12">
+                                            <label class="small text-muted mb-1">Gallery Image</label>
+                                            <?php if (!empty($gItem['image'])): ?>
+                                                <div class="d-flex align-items-center gap-2 mb-1">
+                                                    <img src="<?= $GLOBALS['base_url'] ?>/public/uploads/projects/<?= htmlspecialchars($gItem['image']) ?>" alt="Gallery" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;">
+                                                    <span class="small text-muted text-truncate" style="max-width: 180px;"><?= htmlspecialchars($gItem['image']) ?></span>
+                                                </div>
+                                            <?php endif; ?>
+                                            <input type="file" name="gallery_image_<?= $gIndex ?>" class="form-control form-control-sm" accept="image/*">
+                                            <input type="hidden" name="gallery[<?= $gIndex ?>][existing_image]" value="<?= htmlspecialchars($gItem['image'] ?? '') ?>">
+                                        </div>
+                                        <div class="col-md-1 col-12 text-end">
+                                            <label class="small text-muted mb-1 d-block">&nbsp;</label>
+                                            <button type="button" class="btn btn-outline-danger remove-gallery w-100" title="Remove">×</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="gallery-row card p-3 mb-2 border bg-light">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-md-5 col-12">
+                                        <label class="small text-muted mb-1">Image Title / Name</label>
+                                        <input type="text" name="gallery[0][title]" class="form-control" placeholder="e.g. Master Bedroom, Rooftop View">
+                                    </div>
+                                    <div class="col-md-6 col-12">
+                                        <label class="small text-muted mb-1">Gallery Image</label>
+                                        <input type="file" name="gallery_image_0" class="form-control" accept="image/*">
+                                    </div>
+                                    <div class="col-md-1 col-12 text-end">
+                                        <label class="small text-muted mb-1 d-block">&nbsp;</label>
+                                        <button type="button" class="btn btn-outline-danger remove-gallery w-100" title="Remove">×</button>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-secondary mt-1" id="add-gallery">
+                        + Add Gallery Image
+                    </button>
                 </div>
 
                 <!-- Common Project -->
@@ -637,27 +803,114 @@ if (!empty($project['floor_wise_unit_meta'])) {
     // Add new unit
     document.getElementById('add-unit').addEventListener('click', function() {
         const html = `
-    <div class="row unit-row mb-2 align-items-center">
-        <div class="col-md-6 col-12">
-            <input type="text" name="units[${unitIndex}][unit_name]" class="form-control" placeholder="Unit Name">
+        <div class="unit-row card p-3 mb-2 border bg-light">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-3 col-12">
+                    <label class="small text-muted mb-1">Unit Name</label>
+                    <input type="text" name="units[${unitIndex}][unit_name]" class="form-control" placeholder="Unit Name (e.g. Unit A)">
+                </div>
+                <div class="col-md-2 col-12">
+                    <label class="small text-muted mb-1">Sqft</label>
+                    <input type="number" step="any" name="units[${unitIndex}][sqft]" class="form-control" placeholder="Sqft (e.g. 1450)">
+                </div>
+                <div class="col-md-3 col-12">
+                    <label class="small text-muted mb-1">Unit Image</label>
+                    <input type="file" name="unit_image_${unitIndex}" class="form-control form-control-sm" accept="image/*">
+                </div>
+                <div class="col-md-3 col-12">
+                    <label class="small text-muted mb-1">Description</label>
+                    <input type="text" name="units[${unitIndex}][description]" class="form-control" placeholder="Short description">
+                </div>
+                <div class="col-md-1 col-12 text-end">
+                    <label class="small text-muted mb-1 d-block">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-danger remove-unit w-100" title="Remove Unit">×</button>
+                </div>
+            </div>
         </div>
-        <div class="col-md-5 col-12">
-            <input type="number" name="units[${unitIndex}][sqft]" class="form-control" placeholder="Sqft">
-        </div>
-       <div class="col-md-1 col-12 d-flex justify-content-center">
-             <button type="button" class="btn btn-danger btn-sm remove-unit w-100">×</button>
-        </div>
-    </div>
-    `;
+        `;
         wrapper.insertAdjacentHTML('beforeend', html);
         unitIndex++;
     });
 
     // Remove unit (delegate)
     wrapper.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-unit')) {
+        if (e.target.classList.contains('remove-unit') || e.target.closest('.remove-unit')) {
             e.preventDefault();
             const row = e.target.closest('.unit-row');
+            if (row) row.remove();
+        }
+    });
+
+    // Gallery Dynamic Addition
+    let galleryIndex = <?= !empty($galleryImages) ? count($galleryImages) : 1 ?>;
+    const galleryWrapper = document.getElementById('gallery-wrapper');
+
+    document.getElementById('add-gallery')?.addEventListener('click', function() {
+        const html = `
+        <div class="gallery-row card p-3 mb-2 border bg-light">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-5 col-12">
+                    <label class="small text-muted mb-1">Image Title / Name</label>
+                    <input type="text" name="gallery[${galleryIndex}][title]" class="form-control" placeholder="e.g. Master Bedroom, Rooftop View">
+                </div>
+                <div class="col-md-6 col-12">
+                    <label class="small text-muted mb-1">Gallery Image</label>
+                    <input type="file" name="gallery_image_${galleryIndex}" class="form-control form-control-sm" accept="image/*">
+                </div>
+                <div class="col-md-1 col-12 text-end">
+                    <label class="small text-muted mb-1 d-block">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-danger remove-gallery w-100" title="Remove">×</button>
+                </div>
+            </div>
+        </div>
+        `;
+        galleryWrapper.insertAdjacentHTML('beforeend', html);
+        galleryIndex++;
+    });
+
+    galleryWrapper?.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-gallery') || e.target.closest('.remove-gallery')) {
+            e.preventDefault();
+            const row = e.target.closest('.gallery-row');
+            if (row) row.remove();
+        }
+    });
+
+    // Nearby Locations Dynamic Addition
+    let nearbyIndex = <?= !empty($nearbyLocations) ? count($nearbyLocations) : 1 ?>;
+    const nearbyWrapper = document.getElementById('nearby-wrapper');
+
+    document.getElementById('add-nearby')?.addEventListener('click', function() {
+        const html = `
+        <div class="nearby-row card p-3 mb-2 border bg-light">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-4 col-12">
+                    <label class="small text-muted mb-1">Location / Landmark Name</label>
+                    <input type="text" name="nearby[${nearbyIndex}][name]" class="form-control" placeholder="e.g. Hospital, School, Mall">
+                </div>
+                <div class="col-md-3 col-12">
+                    <label class="small text-muted mb-1">Distance / Time</label>
+                    <input type="text" name="nearby[${nearbyIndex}][distance]" class="form-control" placeholder="e.g. 5 mins drive">
+                </div>
+                <div class="col-md-4 col-12">
+                    <label class="small text-muted mb-1">Map / Location Indication Image</label>
+                    <input type="file" name="nearby_image_${nearbyIndex}" class="form-control form-control-sm" accept="image/*">
+                </div>
+                <div class="col-md-1 col-12 text-end">
+                    <label class="small text-muted mb-1 d-block">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-danger remove-nearby w-100" title="Remove">×</button>
+                </div>
+            </div>
+        </div>
+        `;
+        nearbyWrapper.insertAdjacentHTML('beforeend', html);
+        nearbyIndex++;
+    });
+
+    nearbyWrapper?.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-nearby') || e.target.closest('.remove-nearby')) {
+            e.preventDefault();
+            const row = e.target.closest('.nearby-row');
             if (row) row.remove();
         }
     });
