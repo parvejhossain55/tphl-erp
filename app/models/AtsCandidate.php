@@ -10,14 +10,10 @@ class AtsCandidate extends Model
     }
 
     /**
-     * Get paginated candidates with multi-field search and quick tabs
+     * Build WHERE clause, params, and types based on filters
      */
-    public function getFiltered(array $filters = [], int $page = 1, int $perPage = 25): array
+    private function buildFilterConditions(array $filters): array
     {
-        $page = max(1, $page);
-        $perPage = max(5, min(100, $perPage));
-        $offset = ($page - 1) * $perPage;
-
         $conditions = ["1=1"];
         $params = [];
         $types = "";
@@ -109,6 +105,19 @@ class AtsCandidate extends Model
         }
 
         $whereClause = implode(" AND ", $conditions);
+        return [$whereClause, $params, $types];
+    }
+
+    /**
+     * Get paginated candidates with multi-field search and quick tabs
+     */
+    public function getFiltered(array $filters = [], int $page = 1, int $perPage = 25): array
+    {
+        $page = max(1, $page);
+        $perPage = max(5, min(100, $perPage));
+        $offset = ($page - 1) * $perPage;
+
+        [$whereClause, $params, $types] = $this->buildFilterConditions($filters);
 
         // Count Total
         $countSql = "SELECT COUNT(*) as total FROM {$this->table} WHERE {$whereClause}";
@@ -151,6 +160,30 @@ class AtsCandidate extends Model
             'total_pages' => max(1, (int) ceil($total / $perPage)),
             'counts' => $counts
         ];
+    }
+
+    /**
+     * Get all filtered candidates without pagination for export (PDF / Excel)
+     */
+    public function getAllFiltered(array $filters = []): array
+    {
+        [$whereClause, $params, $types] = $this->buildFilterConditions($filters);
+
+        $sql = "
+            SELECT * FROM {$this->table}
+            WHERE {$whereClause}
+            ORDER BY 
+                CASE WHEN interview_date = CURDATE() THEN 0 ELSE 1 END ASC,
+                interview_date DESC,
+                id DESC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     }
 
     /**
