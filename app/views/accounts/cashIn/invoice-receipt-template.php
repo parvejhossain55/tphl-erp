@@ -2,6 +2,18 @@
 $paymentDateFormatted = !empty($paymentDateFormatted) ? $paymentDateFormatted : (!empty($receiptDate) ? $receiptDate : date('d M, Y', strtotime($payment['payment_date'] ?? 'now')));
 $refNo = !empty($refNo) ? $refNo : (!empty($refNumber) ? $refNumber : (!empty($payment['transaction_ref']) ? $payment['transaction_ref'] : 'N/A'));
 $floorNo = !empty($floorNo) ? $floorNo : (!empty($flatNo) ? $flatNo : (!empty($payment['flat_no']) ? $payment['flat_no'] : 'N/A'));
+if (empty($logoSrc)) {
+    $whiteLogo = function_exists('getSetting') ? (getSetting('white_logo') ?: (getSetting('dark_logo') ?: getSetting('logo'))) : null;
+    $logoFileName = !empty($whiteLogo) ? $whiteLogo : '6948f14a9fb8c_1766388042.png';
+    $logoFilePath = dirname(dirname(dirname(dirname(__DIR__)))) . '/public/uploads/settings/' . $logoFileName;
+    if (file_exists($logoFilePath)) {
+        $ext = strtolower(pathinfo($logoFilePath, PATHINFO_EXTENSION));
+        $mime = ($ext === 'svg') ? 'image/svg+xml' : 'image/' . ($ext === 'jpg' ? 'jpeg' : $ext);
+        $logoSrc = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoFilePath));
+    } elseif (!empty($logoUrl)) {
+        $logoSrc = $logoUrl;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -136,8 +148,8 @@ $floorNo = !empty($floorNo) ? $floorNo : (!empty($flatNo) ? $flatNo : (!empty($p
             position: absolute;
             top: 0;
             left: 0;
-            width: 78px;
-            height: 78px;
+            width: 64px;
+            height: 64px;
             pointer-events: none;
             z-index: 1;
         }
@@ -182,6 +194,16 @@ $floorNo = !empty($floorNo) ? $floorNo : (!empty($flatNo) ? $flatNo : (!empty($p
             display: flex;
             gap: 10px;
             align-items: center;
+            margin-left: 32px;
+            margin-bottom: 4px;
+        }
+
+        .brand-logo-img {
+            height: 44px;
+            width: auto;
+            max-width: 250px;
+            object-fit: contain;
+            display: block;
         }
 
         .brand-logo-svg {
@@ -764,17 +786,124 @@ $floorNo = !empty($floorNo) ? $floorNo : (!empty($flatNo) ? $flatNo : (!empty($p
             }
         }
 
-        /* PRINT STYLES - STRICT 1-PAGE A4 */
+        /* PDF EXPORT RENDER CONTAINER - FIXED 800px DESKTOP LAYOUT (NEVER CUTS OFF) */
+        #pdf-render-container {
+            width: 800px !important;
+            max-width: 800px !important;
+            min-width: 800px !important;
+            background: #ffffff !important;
+        }
+
+        #pdf-render-container #receipt-content {
+            width: 800px !important;
+            max-width: 800px !important;
+            min-width: 800px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            border-radius: 0 !important;
+        }
+
+        #pdf-render-container .receipt-copy {
+            padding: 14px 22px 12px 22px !important;
+            width: 800px !important;
+            box-sizing: border-box !important;
+        }
+
+        #pdf-render-container .copy-header {
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            align-items: flex-start !important;
+        }
+
+        #pdf-render-container .corner-accent-tl {
+            width: 64px !important;
+            height: 64px !important;
+        }
+
+        #pdf-render-container .company-brand-box {
+            margin-left: 32px !important;
+            margin-bottom: 4px !important;
+        }
+
+        #pdf-render-container .receipt-meta-box {
+            align-items: flex-end !important;
+            text-align: right !important;
+        }
+
+        #pdf-render-container .receipt-title-line {
+            justify-content: flex-end !important;
+        }
+
+        #pdf-render-container .brand-logo-img {
+            height: 44px !important;
+            max-width: 250px !important;
+        }
+
+        #pdf-render-container .info-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 12px !important;
+            margin-bottom: 8px !important;
+        }
+
+        #pdf-render-container .amount-card {
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 8px 14px !important;
+            margin-bottom: 8px !important;
+        }
+
+        #pdf-render-container .amount-number-val {
+            font-size: 22px !important;
+        }
+
+        #pdf-render-container .processing-box {
+            padding: 8px 14px !important;
+            margin-bottom: 8px !important;
+        }
+
+        #pdf-render-container .proc-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr 1.25fr 0.8fr !important;
+            gap: 8px !important;
+        }
+
+        #pdf-render-container .verification-bar {
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 8px 14px !important;
+            margin-top: 0 !important;
+        }
+
+        #pdf-render-container .v-right-customer {
+            width: auto !important;
+            justify-content: flex-end !important;
+        }
+
+        #pdf-render-container .perforated-cut-divider {
+            padding: 4px 22px !important;
+            display: block !important;
+        }
+
+        /* PRINT STYLES - NATURAL, TIGHT, COMPACT (EXACTLY LIKE INVOICE ON SCREEN) */
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 3.5mm 5mm;
+                margin: 4mm 6mm;
             }
 
             html, body {
                 background: #ffffff !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                height: auto !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
@@ -795,26 +924,112 @@ $floorNo = !empty($floorNo) ? $floorNo : (!empty($flatNo) ? $flatNo : (!empty($p
                 border: none !important;
                 border-radius: 0 !important;
                 width: 100% !important;
+                height: auto !important;
+                min-height: 0 !important;
                 page-break-inside: avoid !important;
             }
 
+            /* BOTH COPIES: CONTINUOUS NATURAL FLOW - ZERO INTERNAL GAP */
             .receipt-copy {
                 page-break-inside: avoid !important;
-                padding: 9px 18px 7px 18px !important;
+                padding: 10px 18px 8px 18px !important;
+                box-sizing: border-box !important;
+                height: auto !important;
+                min-height: 0 !important;
             }
 
-            .perforated-cut-divider {
-                padding: 2px 18px !important;
-                page-break-inside: avoid !important;
+            .copy-content-inner {
+                width: 100% !important;
+            }
+
+            .copy-header {
+                margin-bottom: 7px !important;
+            }
+
+            .info-grid {
+                margin-bottom: 7px !important;
+                gap: 10px !important;
+            }
+
+            .info-card {
+                padding: 6px 12px !important;
+            }
+
+            .item-row {
+                margin-top: 4px !important;
+                font-size: 10px !important;
+            }
+
+            .amount-card {
+                padding: 8px 14px !important;
+                margin-bottom: 7px !important;
             }
 
             .amount-number-val {
-                font-size: 20px !important;
+                font-size: 22px !important;
             }
 
-            body.print-customer-only .copy-authority,
-            body.print-customer-only .perforated-cut-divider {
+            .processing-box {
+                padding: 7px 12px !important;
+                margin-bottom: 7px !important;
+            }
+
+            .proc-lbl {
+                font-size: 8.5px !important;
+            }
+
+            .proc-main {
+                font-size: 10px !important;
+            }
+
+            .verification-bar {
+                padding: 7px 12px !important;
+                margin-top: 0 !important;
+            }
+
+            .perforated-cut-divider {
+                padding: 4px 18px !important;
+                margin: 4px 0 !important;
+                display: flex !important;
+                align-items: center !important;
+                page-break-inside: avoid !important;
+            }
+
+            .corner-accent-tl {
+                width: 60px !important;
+                height: 60px !important;
+            }
+
+            .corner-accent-br {
+                width: 60px !important;
+                height: 60px !important;
+            }
+
+            .company-brand-box {
+                margin-left: 30px !important;
+                margin-bottom: 3px !important;
+            }
+
+            /* ========================================================
+               PRINT CUSTOMER ONLY: PRINTS 2 CUSTOMER COPIES ON A4
+               - Zero gaps inside the receipt (looks 100% like invoice)
+               - Fills the entire page without blank paper at the bottom
+               - Authority copy is converted into a 2nd Customer Copy
+               ======================================================== */
+            body.print-customer-only .copy-pill-authority .pill-authority-txt {
                 display: none !important;
+            }
+
+            body.print-customer-only .copy-pill-authority .pill-customer-txt {
+                display: inline !important;
+            }
+
+            body.print-customer-only .copy-authority .v-right-authority {
+                display: none !important;
+            }
+
+            body.print-customer-only .copy-authority .v-right-customer-alt {
+                display: flex !important;
             }
         }
     </style>
@@ -837,9 +1052,9 @@ $floorNo = !empty($floorNo) ? $floorNo : (!empty($flatNo) ? $flatNo : (!empty($p
             <button onclick="printCustomerOnly()" class="btn-act btn-outline" title="Print Customer Copy only">
                 <i class="fa-solid fa-file-invoice"></i> Print Customer Copy
             </button>
-            <button onclick="downloadPDF()" class="btn-act btn-primary">
-                <i class="fa-solid fa-file-arrow-down"></i> Download PDF
-            </button>
+            <!-- <button onclick="downloadPDF()" class="d-none btn-act btn-primary">
+                <i class="fa-solid fa-file-arrow-down d-none "></i> Download PDF
+            </button> -->
             <a href="<?= htmlspecialchars($verificationUrl) ?>" target="_blank" class="btn-act btn-outline" title="Public Verification Portal">
                 <i class="fa-solid fa-shield-halved"></i> Verification Link
             </a>
@@ -888,16 +1103,14 @@ $floorNo = !empty($floorNo) ? $floorNo : (!empty($flatNo) ? $flatNo : (!empty($p
                     <div class="copy-header">
                         <div class="header-left">
                             <div class="company-brand-box">
-                                <svg class="brand-logo-svg" viewBox="0 0 60 60" fill="none">
-                                    <path d="M30 4L54 24V54H6V24L30 4Z" stroke="#0b6638" stroke-width="3.5" fill="#f0fdf4"/>
-                                    <path d="M30 14L46 28V46H14V28L30 14Z" stroke="#0b6638" stroke-width="2.5"/>
-                                    <line x1="30" y1="14" x2="30" y2="46" stroke="#0b6638" stroke-width="2"/>
-                                    <line x1="14" y1="34" x2="46" y2="34" stroke="#0b6638" stroke-width="2"/>
-                                </svg>
-                                <div class="brand-text-col">
-                                    <div class="brand-name">THE PREMIUM HOMES LTD</div>
-                                    <div class="brand-slogan">YOUR DREAM HOME AWAITS</div>
-                                </div>
+                                <?php if (!empty($logoSrc)): ?>
+                                    <img src="<?= $logoSrc ?>" alt="The Premium Homes Ltd" class="brand-logo-img" />
+                                <?php else: ?>
+                                    <div class="brand-text-col">
+                                        <div class="brand-name">THE PREMIUM HOMES LTD</div>
+                                        <div class="brand-slogan">YOUR DREAM HOME AWAITS</div>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                             <div class="brand-domain">Real Estate &amp; Property Management</div>
                             <div class="brand-address"><?= htmlspecialchars($companyAddress) ?></div>
@@ -910,7 +1123,14 @@ $floorNo = !empty($floorNo) ? $floorNo : (!empty($flatNo) ? $flatNo : (!empty($p
                         <div class="receipt-meta-box">
                             <div class="receipt-title-line">
                                 <span class="receipt-heading">PAYMENT RECEIPT</span>
-                                <span class="copy-pill"><?= $copyType ?></span>
+                                <span class="copy-pill <?= !$isCustomer ? 'copy-pill-authority' : '' ?>">
+                                    <?php if (!$isCustomer): ?>
+                                        <span class="pill-authority-txt">AUTHORITY COPY</span>
+                                        <span class="pill-customer-txt" style="display:none;">CUSTOMER COPY</span>
+                                    <?php else: ?>
+                                        CUSTOMER COPY
+                                    <?php endif; ?>
+                                </span>
                             </div>
                             <div class="receipt-no">#REC-<?= str_pad($payment['id'], 6, '0', STR_PAD_LEFT) ?></div>
                             <div class="receipt-date"><?= $paymentDateFormatted ?></div>
@@ -1094,6 +1314,47 @@ $floorNo = !empty($floorNo) ? $floorNo : (!empty($flatNo) ? $flatNo : (!empty($p
                             <div style="border-bottom: 1.5px dashed #cbd5e1; height: 38px; width: 130px; margin-left: auto;"></div>
                             <div style="font-size: 8px; font-weight: 700; color: #64748b; margin-top: 3px; text-transform: uppercase;">Authorized Signature</div>
                         </div>
+
+                        <!-- ALTERNATIVE CUSTOMER QR & SEAL (SHOWN WHEN PRINTING CUSTOMER COPIES ONLY) -->
+                        <div class="v-right-customer v-right-customer-alt" style="display:none;">
+                            <a href="<?= htmlspecialchars($verificationUrl) ?>" target="_blank" class="qr-scanner-card" title="Click to verify online">
+                                <?php if (!empty($qrImageSrc)): ?>
+                                    <img src="<?= $qrImageSrc ?>" alt="Scan to Verify" class="qr-scanner-img">
+                                <?php else: ?>
+                                    <div class="qr-scanner-img" style="display:flex;align-items:center;justify-content:center;color:#0b6638;font-size:24px;">
+                                        <i class="fa-solid fa-qrcode"></i>
+                                    </div>
+                                <?php endif; ?>
+                                <span class="qr-scanner-label">Scan to Verify</span>
+                            </a>
+
+                            <div class="official-seal-wrap">
+                                <svg class="seal-svg-el" viewBox="0 0 120 120">
+                                    <circle cx="60" cy="60" r="54" fill="none" stroke="#2563eb" stroke-width="2.2" />
+                                    <circle cx="60" cy="60" r="48" fill="none" stroke="#2563eb" stroke-width="1.2" stroke-dasharray="3,2" />
+                                    <path id="seal-txt-top-<?= $idx ?>" d="M 18,60 A 42,42 0 1,1 102,60" fill="none" />
+                                    <path id="seal-txt-bot-<?= $idx ?>" d="M 102,60 A 42,42 0 1,1 18,60" fill="none" />
+                                    <text font-size="8" font-weight="900" fill="#2563eb" letter-spacing="1">
+                                        <textPath href="#seal-txt-top-<?= $idx ?>" startOffset="50%" text-anchor="middle">
+                                            THE PREMIUM HOMES LTD
+                                        </textPath>
+                                    </text>
+                                    <text font-size="7.5" font-weight="800" fill="#2563eb" letter-spacing="1">
+                                        <textPath href="#seal-txt-bot-<?= $idx ?>" startOffset="50%" text-anchor="middle">
+                                            * YOUR DREAM HOME AWAITS *
+                                        </textPath>
+                                    </text>
+                                    <path d="M60 38 L75 51 V71 H45 V51 L60 38 Z" fill="none" stroke="#2563eb" stroke-width="1.8" />
+                                    <path d="M60 44 L70 52 V67 H50 V52 L60 44 Z" fill="none" stroke="#2563eb" stroke-width="1.2" />
+                                    <line x1="60" y1="44" x2="60" y2="67" stroke="#2563eb" stroke-width="1" />
+                                    <line x1="50" y1="56" x2="70" y2="56" stroke="#2563eb" stroke-width="1" />
+                                </svg>
+                                <svg class="signature-overlay-svg" viewBox="0 0 100 50">
+                                    <path d="M8,36 Q22,4 38,24 T62,18 Q76,8 90,28 Q72,36 52,32" fill="none" stroke="#1d4ed8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                                    <path d="M20,38 C32,32 48,40 75,34" fill="none" stroke="#1d4ed8" stroke-width="1.6" stroke-linecap="round" />
+                                </svg>
+                            </div>
+                        </div>
                         <?php endif; ?>
 
                     </div>
@@ -1133,22 +1394,74 @@ $floorNo = !empty($floorNo) ? $floorNo : (!empty($flatNo) ? $flatNo : (!empty($p
         }
 
         function downloadPDF() {
-            const element = document.getElementById('receipt-content');
+            const btn = document.querySelector('.bar-actions .btn-primary');
+            const originalBtnHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating PDF...';
+                btn.disabled = true;
+            }
+
+            const original = document.getElementById('receipt-content');
+            
+            // 1. Create a clean isolated capture container with fixed 800px width at (0, 0)
+            // This eliminates any screen-width / centering offset / scrolling cut-offs on all devices!
+            const container = document.createElement('div');
+            container.id = 'pdf-render-container';
+            container.style.position = 'fixed';
+            container.style.top = '0';
+            container.style.left = '0';
+            container.style.width = '800px';
+            container.style.maxWidth = '800px';
+            container.style.minWidth = '800px';
+            container.style.margin = '0';
+            container.style.padding = '0';
+            container.style.backgroundColor = '#ffffff';
+            container.style.zIndex = '-99999';
+            container.style.overflow = 'visible';
+
+            const clone = original.cloneNode(true);
+            clone.style.width = '800px';
+            clone.style.maxWidth = '800px';
+            clone.style.minWidth = '800px';
+            clone.style.margin = '0';
+            clone.style.borderRadius = '0';
+            clone.style.boxShadow = 'none';
+            clone.style.border = 'none';
+
+            container.appendChild(clone);
+            document.body.appendChild(container);
+
             const opt = {
-                margin:       [3.5, 5, 3.5, 5],
+                margin:       [3.5, 4, 3.5, 4],
                 filename:     'Payment-Receipt-<?= str_pad($payment['id'] ?? '0', 6, '0', STR_PAD_LEFT) ?>-<?= date('Ymd') ?>.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { 
                     scale: 2, 
                     useCORS: true, 
                     logging: false,
-                    windowWidth: 1024,
+                    letterRendering: true,
                     scrollX: 0,
-                    scrollY: 0
+                    scrollY: 0,
+                    width: 800,
+                    windowWidth: 800
                 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
-            html2pdf().set(opt).from(element).save();
+
+            html2pdf().set(opt).from(clone).save().then(function() {
+                if (container.parentNode) container.parentNode.removeChild(container);
+                if (btn) {
+                    btn.innerHTML = originalBtnHtml;
+                    btn.disabled = false;
+                }
+            }).catch(function(err) {
+                console.error('PDF Generation Error:', err);
+                if (container.parentNode) container.parentNode.removeChild(container);
+                if (btn) {
+                    btn.innerHTML = originalBtnHtml;
+                    btn.disabled = false;
+                }
+            });
         }
         
         <?php if (!empty($_GET['download']) && $_GET['download'] == '1'): ?>

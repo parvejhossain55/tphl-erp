@@ -556,6 +556,27 @@
                             <span class="sidebar__menu-label">My Approval History</span>
                         </a>
                     </li>
+                    <?php 
+                    $canViewOfficeTxns = !empty($isManagement) 
+                        || in_array((int)($sbUserRoleId ?? 0), [1, 3, 6, 20, 24, 25, 30, 32, 33, 34, 35])
+                        || in_array((int)($sbUserSecRoleId ?? 0), [1, 3, 6, 20, 24, 25, 30, 32, 33, 34, 35])
+                        || in_array((int)($sbUserPriRoleId ?? 0), [1, 3, 6, 20, 24, 25, 30, 32, 33, 34, 35])
+                        || stripos($sbRoleName ?? '', 'account') !== false
+                        || stripos($sbRoleName ?? '', 'audit') !== false
+                        || stripos($sbRoleName ?? '', 'operation') !== false
+                        || stripos($sbRoleName ?? '', 'management') !== false
+                        || stripos($sbRoleName ?? '', 'admin') !== false;
+                    if ($canViewOfficeTxns): 
+                    ?>
+                        <li class="slide <?= isActive('branch-disbursements', $current_route) ?>">
+                            <a href="<?= $base_url ?>/branch-disbursements"
+                                class="sidebar__menu-item <?= isActive('branch-disbursements', $current_route) ?>">
+                                <div class="side-menu__icon"><i class="fa-solid fa-building-columns text-success"></i></div>
+                                <span class="sidebar__menu-label">Office Transactions</span>
+                                <span class="badge bg-success-subtle text-success rounded-pill ms-auto me-2" style="font-size: 10px;">Payout</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
                 <?php endif; ?>
 
                 <?php 
@@ -2329,6 +2350,16 @@
                                 <span class="sidebar__menu-label">Expense Analytics</span>
                             </a>
                         </li>
+                        <?php if ($canViewOfficeTxns ?? true): ?>
+                            <li class="slide <?= isActive('branch-disbursements', $current_route) ?>">
+                                <a href="<?= $base_url ?>/branch-disbursements"
+                                    class="sidebar__menu-item <?= isActive('branch-disbursements', $current_route) ?>">
+                                    <div class="side-menu__icon"><i class="fa-solid fa-building-columns text-success"></i></div>
+                                    <span class="sidebar__menu-label">Office Transactions</span>
+                                    <span class="badge bg-success-subtle text-success rounded-pill ms-auto me-2" style="font-size: 10px;">Payout</span>
+                                </a>
+                            </li>
+                        <?php endif; ?>
                     <?php endif; ?>
                     <li class="slide   <?= isActive('central-statement', $current_route) ?>">
                         <a href="<?= $base_url ?>/central-statement"
@@ -3926,7 +3957,7 @@
                         <?php if (!empty($pendingFundReqTotalCount)): ?>
                             <span class="badge bg-warning text-dark rounded-pill ms-auto me-2"
                                 style="font-size: 10px; padding: 2px 6px;"
-                                title="Pending Actions: <?= $pendingFundReqDeptCount ?> Dept Head, <?= $pendingFundReqMgmtCount ?> Mgmt, <?= $pendingFundReqAccountsCount ?> Accounts">
+                                title="Pending Actions: <?= $pendingFundReqDeptCount ?? 0 ?> Dept Head, <?= $pendingFundReqMgmtCount ?? 0 ?> Mgmt, <?= $pendingFundReqAccountsCount ?? 0 ?> Accounts">
                                 <?= $pendingFundReqTotalCount ?>
                             </span>
                         <?php endif; ?>

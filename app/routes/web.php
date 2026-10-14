@@ -223,6 +223,7 @@ return [
     // Controller: ApprovalRequestController (All Approval Requests Dashboard)
     // =========================================================================
     'all-approval-requests' => ['controller' => 'ApprovalRequestController', 'method' => 'allApprovalRequests'],
+    'branch-disbursements' => ['controller' => 'ApprovalRequestController', 'method' => 'branchDisbursements'],
     'my-approval-history' => ['controller' => 'MyApprovalHistoryController', 'method' => 'index'],
     'todo' => ['controller' => 'TodoListController', 'method' => 'index'],
     'todo/store' => ['controller' => 'TodoListController', 'method' => 'store'],

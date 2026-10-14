@@ -89,7 +89,10 @@
             <p class="text-muted small mb-0">Unified dashboard for Management & Accounts to monitor all company requests
                 across Sales, Construction Finance, HR, and Accounts.</p>
         </div>
-        <div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="<?= $base_url ?>/branch-disbursements" class="btn btn-sm btn-outline-success rounded-pill px-3 shadow-sm fw-semibold">
+                <i class="fa-solid fa-building-columns me-1"></i>Office Payout Audit
+            </a>
             <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fs-7 fw-semibold">
                 <i class="fa-solid fa-shield-halved me-1"></i> Management & Accounts Audit Panel
             </span>
@@ -866,8 +869,20 @@
                                             <span class="extra-small fw-bold text-success">৳
                                                 <?= number_format($req['payout_amount'], 2) ?>
                                             </span>
+                                            <?php if (!empty($req['disbursed_by_name'])): ?>
+                                                <div class="extra-small text-dark fw-semibold mt-1" title="Disbursed by <?= htmlspecialchars($req['disbursed_by_name']) ?> (<?= htmlspecialchars($req['disbursed_by_code'] ?? '') ?>)">
+                                                    <i class="fa-solid fa-user-check text-success me-1"></i><?= htmlspecialchars($req['disbursed_by_name']) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($req['disbursed_branch_name'])): ?>
+                                                <div>
+                                                    <span class="badge bg-light text-secondary border px-1 py-0 mt-1" style="font-size: 10px;">
+                                                        <i class="fa-solid fa-building me-1 text-muted"></i><?= htmlspecialchars($req['disbursed_branch_name']) ?>
+                                                    </span>
+                                                </div>
+                                            <?php endif; ?>
                                             <?php if ($req['payout_date']): ?>
-                                                <div class="extra-small text-muted">
+                                                <div class="extra-small text-muted mt-1">
                                                     <?= date('d M, Y', strtotime($req['payout_date'])) ?>
                                                 </div>
                                             <?php endif; ?>
@@ -879,8 +894,20 @@
                                             <span class="extra-small fw-bold text-success">৳
                                                 <?= number_format($req['payout_amount'], 2) ?>
                                             </span>
+                                            <?php if (!empty($req['disbursed_by_name'])): ?>
+                                                <div class="extra-small text-dark fw-semibold mt-1" title="Disbursed by <?= htmlspecialchars($req['disbursed_by_name']) ?> (<?= htmlspecialchars($req['disbursed_by_code'] ?? '') ?>)">
+                                                    <i class="fa-solid fa-user-check text-success me-1"></i><?= htmlspecialchars($req['disbursed_by_name']) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($req['disbursed_branch_name'])): ?>
+                                                <div>
+                                                    <span class="badge bg-light text-secondary border px-1 py-0 mt-1" style="font-size: 10px;">
+                                                        <i class="fa-solid fa-building me-1 text-muted"></i><?= htmlspecialchars($req['disbursed_branch_name']) ?>
+                                                    </span>
+                                                </div>
+                                            <?php endif; ?>
                                             <?php if ($req['payout_date']): ?>
-                                                <div class="extra-small text-muted">
+                                                <div class="extra-small text-muted mt-1">
                                                     <?= date('d M, Y', strtotime($req['payout_date'])) ?>
                                                 </div>
                                             <?php endif; ?>

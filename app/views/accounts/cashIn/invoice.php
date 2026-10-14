@@ -3,10 +3,18 @@
 $disable_layout = true;
 
 // Retrieve Site Settings for Logo, Phone, Email & Address
-$whiteLogo = function_exists('getSetting') ? getSetting('white_logo') : null;
+$whiteLogo = function_exists('getSetting') ? (getSetting('white_logo') ?: (getSetting('dark_logo') ?: getSetting('logo'))) : null;
+$logoFileName = !empty($whiteLogo) ? $whiteLogo : '6948f14a9fb8c_1766388042.png';
 $logoUrl = ($whiteLogo && function_exists('getImage')) ? getImage('settings', $whiteLogo) : '';
 if (empty($logoUrl) || strpos($logoUrl, 'avatar.png') !== false) {
-    $logoUrl = $GLOBALS['base_url'] . '/public/uploads/settings/' . ($whiteLogo ?: '6948f14a9fb8c_1766388042.png');
+    $logoUrl = $GLOBALS['base_url'] . '/public/uploads/settings/' . $logoFileName;
+}
+$logoFilePath = dirname(dirname(dirname(dirname(__DIR__)))) . '/public/uploads/settings/' . $logoFileName;
+$logoSrc = $logoUrl;
+if (file_exists($logoFilePath)) {
+    $ext = strtolower(pathinfo($logoFilePath, PATHINFO_EXTENSION));
+    $mime = ($ext === 'svg') ? 'image/svg+xml' : 'image/' . ($ext === 'jpg' ? 'jpeg' : $ext);
+    $logoSrc = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoFilePath));
 }
 
 $companyTitle = function_exists('getSetting') ? getSetting('website_title', 'The Premium Homes Ltd.') : 'The Premium Homes Ltd.';
