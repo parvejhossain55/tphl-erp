@@ -1047,6 +1047,9 @@ class ApprovalRequest extends Model
         );
         $stmt->execute();
 
+        if ($sourceTable === 'lead_bookings' && $status === 'approved') {
+            $this->db->query("UPDATE {$this->table} SET op_head_status = 'approved', approve_role = 'completed' WHERE id = {$id}");
+        }
 
         $request = $this->find($id);
         if (!$request || empty($request['source_table']) || empty($request['source_id'])) {

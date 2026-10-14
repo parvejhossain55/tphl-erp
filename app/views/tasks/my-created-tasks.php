@@ -526,6 +526,54 @@
     background-color: #e2e8f0;
     color: #0f172a;
 }
+
+/* Drawer & Offcanvas Proper Fixed Overlay Styling (Prevents bottom-of-page scrolling) */
+.task-offcanvas,
+.offcanvas.task-offcanvas,
+.offcanvas {
+    position: fixed !important;
+    bottom: 0 !important;
+    top: 0 !important;
+    right: 0 !important;
+    z-index: 1065 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    max-width: 100% !important;
+    width: 580px !important;
+    background-color: #ffffff !important;
+    background-clip: padding-box !important;
+    outline: 0 !important;
+    border-left: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: -10px 0 35px rgba(0, 0, 0, 0.15) !important;
+    transform: translateX(100%) !important;
+    visibility: hidden !important;
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.3s ease-in-out !important;
+}
+
+.task-offcanvas.show,
+.offcanvas.task-offcanvas.show,
+.offcanvas.show {
+    transform: translateX(0) !important;
+    visibility: visible !important;
+}
+
+.task-offcanvas-backdrop,
+.offcanvas-backdrop {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    z-index: 1060 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background-color: rgba(15, 23, 42, 0.5) !important;
+    backdrop-filter: blur(2px) !important;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+.task-offcanvas-backdrop.show,
+.offcanvas-backdrop.show {
+    opacity: 1 !important;
+}
 </style>
 
 <div class="tphl-perf-container py-4 px-md-4">
@@ -831,9 +879,10 @@
             <table class="perf-table">
                 <thead>
                     <tr>
-                        <th style="min-width: 280px;">TASK & PROJECT</th>
+                        <th style="min-width: 260px;">TASK & PROJECT</th>
                         <th>SOURCE</th>
                         <th>PRIORITY</th>
+                        <th>ASSIGNED TO</th>
                         <th>ASSIGNED BY</th>
                         <th>DEADLINE</th>
                         <th>STATUS</th>
@@ -844,7 +893,7 @@
                 <tbody>
                     <?php if (empty($tasks)): ?>
                         <tr>
-                            <td colspan="8" class="text-center py-5 text-muted">
+                            <td colspan="9" class="text-center py-5 text-muted">
                                 <div class="mb-2 text-success" style="font-size: 40px; opacity: 0.6;">
                                     <i class="bi bi-clipboard-check"></i>
                                 </div>
@@ -853,7 +902,9 @@
                             </td>
                         </tr>
                     <?php else: ?>
-                        <?php foreach ($tasks as $t): 
+                        <?php 
+                        $tasksDataMap = [];
+                        foreach ($tasks as $t): 
                             $progressPct = (int)($t['progress'] ?? 0);
                             $isCompleted = ($t['status'] === 'completed' || $progressPct >= 100);
                             if ($isCompleted && $progressPct < 100) {
@@ -876,14 +927,19 @@
                                 $prioClass = 'badge-priority-low';
                             }
 
-                            $creatorName = !empty($t['user_full_name']) ? $t['user_full_name'] : 'Me';
-                            $creatorPhoto = $t['user_photo'] ?? '';
-                            $nameParts = preg_split('/\s+/', trim($creatorName));
-                            if (count($nameParts) >= 2) {
-                                $initials = strtoupper(substr($nameParts[0], 0, 1) . substr($nameParts[1], 0, 1));
-                            } else {
-                                $initials = strtoupper(substr($creatorName, 0, 2));
-                            }
+                            $assignedToName = !empty($t['assigned_to_name']) ? $t['assigned_to_name'] : (!empty($t['user_full_name']) ? $t['user_full_name'] : 'Me');
+                            $assignedToPhoto = $t['assigned_to_photo'] ?? ($t['user_photo'] ?? '');
+                            $toParts = preg_split('/\s+/', trim($assignedToName));
+                            $assignedToInitials = count($toParts) >= 2 
+                                ? strtoupper(substr($toParts[0], 0, 1) . substr($toParts[1], 0, 1)) 
+                                : strtoupper(substr($assignedToName, 0, 2));
+
+                            $assignedByName = !empty($t['assigned_by_name']) ? $t['assigned_by_name'] : (!empty($t['manager_name']) ? $t['manager_name'] : 'Self');
+                            $assignedByPhoto = $t['assigned_by_photo'] ?? '';
+                            $byParts = preg_split('/\s+/', trim($assignedByName));
+                            $assignedByInitials = count($byParts) >= 2 
+                                ? strtoupper(substr($byParts[0], 0, 1) . substr($byParts[1], 0, 1)) 
+                                : strtoupper(substr($assignedByName, 0, 2));
 
                             // Status label & color
                             $statusColor = '#d97706';
@@ -907,8 +963,11 @@
                                 "status_raw" => $isCompleted ? "completed" : "pending",
                                 "progress" => $progressPct,
                                 "due_date" => !empty($t["due_date"]) ? date("Y-m-d", strtotime($t["due_date"])) : "",
-                                "due_date_formatted" => !empty($t["due_date"]) ? date("d M Y", strtotime($t["due_date"])) : "No Deadline"
+                                "due_date_formatted" => !empty($t["due_date"]) ? date("d M Y", strtotime($t["due_date"])) : "No Deadline",
+                                "assigned_to" => $assignedToName,
+                                "assigned_by" => $assignedByName
                             ];
+                            $tasksDataMap[$t['id']] = $taskData;
                             $taskDataAttr = htmlspecialchars(json_encode($taskData, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
                         ?>
                         <tr>
@@ -946,16 +1005,30 @@
                                 </span>
                             </td>
 
+                            <!-- Assigned To -->
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <?php if (!empty($assignedToPhoto)): ?>
+                                        <img src="<?= getImage('users', $assignedToPhoto) ?>" alt="Avatar" class="avatar-badge-img">
+                                    <?php else: ?>
+                                        <span class="avatar-badge-initials"><?= $assignedToInitials ?></span>
+                                    <?php endif; ?>
+                                    <span class="fw-semibold text-dark text-truncate" style="max-width: 130px;" title="<?= htmlspecialchars($assignedToName) ?>">
+                                        <?= htmlspecialchars($assignedToName) ?>
+                                    </span>
+                                </div>
+                            </td>
+
                             <!-- Assigned By -->
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <?php if (!empty($creatorPhoto)): ?>
-                                        <img src="<?= getImage('users', $creatorPhoto) ?>" alt="Avatar" class="avatar-badge-img">
+                                    <?php if (!empty($assignedByPhoto)): ?>
+                                        <img src="<?= getImage('users', $assignedByPhoto) ?>" alt="Avatar" class="avatar-badge-img">
                                     <?php else: ?>
-                                        <span class="avatar-badge-initials"><?= $initials ?></span>
+                                        <span class="avatar-badge-initials" style="background: #e2e8f0; color: #475569;"><?= $assignedByInitials ?></span>
                                     <?php endif; ?>
-                                    <span class="fw-semibold text-dark text-truncate" style="max-width: 140px;" title="<?= htmlspecialchars($creatorName) ?>">
-                                        <?= htmlspecialchars($creatorName) ?>
+                                    <span class="fw-semibold text-secondary text-truncate" style="max-width: 130px;" title="<?= htmlspecialchars($assignedByName) ?>">
+                                        <?= htmlspecialchars($assignedByName) ?>
                                     </span>
                                 </div>
                             </td>
@@ -1028,6 +1101,10 @@
                 </tbody>
             </table>
         </div>
+
+        <script>
+            window.allTasksData = <?= json_encode($tasksDataMap ?? [], JSON_UNESCAPED_UNICODE) ?>;
+        </script>
 
         <!-- Table Footer Pagination -->
         <div class="d-flex align-items-center justify-content-between p-3 border-top bg-light flex-wrap gap-2">
@@ -1626,8 +1703,7 @@ function openTaskDetailsOffcanvas(task) {
 
     const offcanvasEl = document.getElementById('offcanvasTaskDetails');
     if (offcanvasEl) {
-        const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl) || new bootstrap.Offcanvas(offcanvasEl);
-        bsOffcanvas.show();
+        showDrawer(offcanvasEl);
     }
 }
 
@@ -1635,8 +1711,39 @@ function openTaskDetailsById(taskId) {
     if (window.allTasksData && window.allTasksData[taskId]) {
         openTaskDetailsOffcanvas(window.allTasksData[taskId]);
     } else {
-        console.warn("Task data not found for ID:", taskId);
+        const offcanvasEl = document.getElementById('offcanvasTaskDetails');
+        if (offcanvasEl) showDrawer(offcanvasEl);
     }
+}
+
+function showDrawer(el) {
+    if (!el) return;
+    closeAllDrawers();
+    el.classList.add('show');
+    let backdrop = document.getElementById('taskDrawerBackdrop');
+    if (!backdrop) {
+        backdrop = document.createElement('div');
+        backdrop.id = 'taskDrawerBackdrop';
+        backdrop.className = 'task-offcanvas-backdrop';
+        backdrop.onclick = closeAllDrawers;
+        document.body.appendChild(backdrop);
+    }
+    backdrop.offsetHeight;
+    backdrop.classList.add('show');
+    backdrop.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeAllDrawers() {
+    document.querySelectorAll('.offcanvas, .task-offcanvas').forEach(el => {
+        el.classList.remove('show');
+    });
+    const backdrop = document.getElementById('taskDrawerBackdrop');
+    if (backdrop) {
+        backdrop.classList.remove('show');
+        setTimeout(() => { backdrop.style.display = 'none'; }, 250);
+    }
+    document.body.style.overflow = '';
 }
 
 function saveRowProgress(taskId) {
@@ -1769,6 +1876,21 @@ document.addEventListener('click', function (e) {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll('[data-bs-dismiss="offcanvas"]').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            closeAllDrawers();
+        });
+    });
+
+    document.querySelectorAll('[data-bs-target="#offcanvasAddNewTask"], [data-bs-toggle="offcanvas"][data-bs-target="#offcanvasAddNewTask"]').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const addDrawer = document.getElementById('offcanvasAddNewTask');
+            if (addDrawer) showDrawer(addDrawer);
+        });
+    });
+
     const statusCheckbox = document.getElementById('detailStatusCheckbox');
     const progressInput = document.getElementById('detailProgressInput');
     const progressRange = document.getElementById('detailProgressRange');

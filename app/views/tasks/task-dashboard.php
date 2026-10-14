@@ -1,6 +1,47 @@
-        <?php
-        $page_title = "Your Task  ";
-        ?>
+<?php
+$page_title = "Your Task";
+
+if (!function_exists('renderTaskDescription')) {
+    function renderTaskDescription($desc, $wordLimit = 20, $taskId = 0) {
+        if (empty($desc)) return '';
+
+        // Strip HTML tags and convert line breaks cleanly so no <p>, </p>, <br> appears as raw text
+        $descWithBreaks = preg_replace('/<\/(p|div|li)>/i', "\n", $desc);
+        $descWithBreaks = preg_replace('/<br\s*\/?>/i', "\n", $descWithBreaks);
+        $cleanDesc = trim(strip_tags(html_entity_decode($descWithBreaks, ENT_QUOTES, 'UTF-8')));
+        $cleanDesc = preg_replace("/\n{3,}/", "\n\n", $cleanDesc);
+
+        if (empty($cleanDesc)) return '';
+
+        $words = preg_split('/\s+/u', $cleanDesc, -1, PREG_SPLIT_NO_EMPTY);
+        $totalWords = count($words);
+
+        if ($totalWords <= $wordLimit) {
+            return '<div class="description-content">' . nl2br(htmlspecialchars($cleanDesc)) . '</div>';
+        }
+
+        $shortText = implode(' ', array_slice($words, 0, $wordLimit));
+        $uniqueId = 'desc_' . $taskId . '_' . substr(md5($cleanDesc), 0, 6);
+
+        return '
+            <div class="description-content task-desc-container" id="container_' . $uniqueId . '">
+                <div class="task-desc-short" id="short_' . $uniqueId . '">
+                    ' . nl2br(htmlspecialchars($shortText)) . '...
+                    <a href="javascript:void(0)" class="text-success fw-bold text-decoration-none ms-1 d-inline-flex align-items-center" onclick="toggleTaskDesc(\'' . $uniqueId . '\', true)">
+                        View More <i class="bi bi-chevron-down ms-1" style="font-size: 11px;"></i>
+                    </a>
+                </div>
+                <div class="task-desc-full" id="full_' . $uniqueId . '" style="display: none;">
+                    ' . nl2br(htmlspecialchars($cleanDesc)) . '
+                    <a href="javascript:void(0)" class="text-secondary fw-bold text-decoration-none ms-1 d-inline-flex align-items-center" onclick="toggleTaskDesc(\'' . $uniqueId . '\', false)">
+                        View Less <i class="bi bi-chevron-up ms-1" style="font-size: 11px;"></i>
+                    </a>
+                </div>
+            </div>
+        ';
+    }
+}
+?>
         <!-- Task Count Cards -->
         <div class="row mb-4">
             <div class="col-md-4 col-sm-12 mb-3 mb-md-0">
@@ -38,7 +79,6 @@
             </div>
         </div>
 
-
         <!-- Task Notification Section -->
         <?php if (!empty($pendingTasks)): ?>
         <div class="tasks-container" id="pending-tasks-view">
@@ -67,15 +107,33 @@
                             <div class="card__wrapper task-card <?= $cardClass ?>">
                                 <!-- Task Header -->
                                 <div class="task-header">
-                                    <div class="task-title-section">
-                                        <div class="task-icon-wrapper">
-                                            <i class="bi bi-clipboard-check"></i>
+                                    <div class="task-title-section flex-grow-1 me-2">
+                                        <?php if (!empty($task['project_name'])): ?>
+                                            <div class="mb-1">
+                                                <?php if (!empty($task['is_team_project'])): ?>
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill" style="font-size: 11px; font-weight: 600;">
+                                                        <i class="bi bi-people-fill me-1"></i>Team Project: <?= htmlspecialchars($task['project_name']) ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5 rounded-pill" style="font-size: 11px; font-weight: 600;">
+                                                        <i class="bi bi-folder2 me-1"></i>Project: <?= htmlspecialchars($task['project_name']) ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="task-icon-wrapper flex-shrink-0">
+                                                <i class="bi bi-clipboard-check"></i>
+                                            </div>
+                                            <div>
+                                                <span class="text-muted text-uppercase fw-semibold" style="font-size: 9.5px; letter-spacing: 0.5px; display: block; line-height: 1.2;">Task Title</span>
+                                                <h5 class="task-title mb-0" style="font-size: 14.5px; font-weight: 700; color: #1e293b;"><?= htmlspecialchars($task['title']) ?></h5>
+                                            </div>
                                         </div>
-                                        <h5 class="task-title"><?= htmlspecialchars($task['title']) ?></h5>
                                     </div>
-                                    <div class="task-actions">
+                                    <div class="task-actions flex-shrink-0">
                                         <?= $statusBadge ?>
-                                        <button class="btn-collapse" type="button" data-bs-toggle="collapse"
+                                        <button class="btn-collapse ms-1" type="button" data-bs-toggle="collapse"
                                             data-bs-target="#task-<?= $task['id'] ?>" aria-expanded="true">
                                             <i class="bi bi-chevron-down"></i>
                                         </button>
@@ -101,12 +159,10 @@
                                     <!-- Description -->
                                     <?php if (!empty($task['description'])): ?>
                                         <div class="task-description-section">
-                                            <h6 class="section-title">
-                                                <i class="bi bi-file-text me-2"></i>Description
-                                            </h6>
-                                            <div class="description-content">
-                                                <?= $task['description'] ?>
+                                            <div class="task-desc-title">
+                                                <i class="bi bi-file-text me-1 text-success"></i>Description
                                             </div>
+                                            <?= renderTaskDescription($task['description'], 20, $task['id']) ?>
                                         </div>
                                     <?php endif; ?>
 
@@ -153,45 +209,48 @@
                                         <input type="hidden" name="task_id" value="<?= $task['id'] ?>">
 
                                         <?php if ($task['employee_accept'] == 0): ?>
-                                            <!-- Accept Button -->
-                                            <button type="submit" name="accept" class="btn-task-action btn-accept">
-                                                <i class="bi bi-hand-thumbs-up me-2"></i>
+                                            <!-- Notice & Accept Button -->
+                                            <div class="py-1 px-2 mb-2 rounded bg-light text-muted text-center" style="font-size: 11px;">
+                                                <i class="bi bi-info-circle me-1 text-primary"></i>Accept this task to start work
+                                            </div>
+                                            <button type="submit" name="accept" class="btn btn-accept w-100">
+                                                <i class="bi bi-check2-circle me-1"></i>
                                                 Accept Task
                                             </button>
                                         <?php else: ?>
                                             <!-- Update Progress Details -->
-                                            <div class="mb-3">
-                                                <label class="form-label fw-semibold text-dark"><i class="bi bi-percent me-1"></i>Progress (%)</label>
-                                                <input type="number"
-                                                    name="progress"
-                                                    min="<?= $task['progress'] ?>"
-                                                    max="100"
-                                                    value="<?= $task['progress'] ?>"
-                                                    class="form-control"
-                                                    placeholder="Progress percentage"
-                                                    required>
+                                            <div class="row g-2 mb-1">
+                                                <div class="col-5">
+                                                    <label class="form-label text-dark mb-1" style="font-size: 10.5px; font-weight: 600;"><i class="bi bi-percent me-1"></i>Progress (%)</label>
+                                                    <input type="number"
+                                                        name="progress"
+                                                        min="<?= $task['progress'] ?>"
+                                                        max="100"
+                                                        value="<?= $task['progress'] ?>"
+                                                        class="form-control form-control-sm py-1"
+                                                        placeholder="%"
+                                                        required>
+                                                </div>
+                                                <div class="col-7">
+                                                    <label class="form-label text-dark mb-1" style="font-size: 10.5px; font-weight: 600;"><i class="bi bi-image me-1"></i>Proof Image</label>
+                                                    <input type="file" name="attachment_image" class="form-control form-control-sm py-1" accept="image/*">
+                                                </div>
                                             </div>
-                                            <div class="mb-3">
-                                                <label class="form-label fw-semibold text-dark"><i class="bi bi-chat-left-text me-1"></i>Remarks</label>
-                                                <textarea name="remarks" class="form-control" rows="2" placeholder="Explain what has been completed..." required><?= htmlspecialchars($task['remarks'] ?? '') ?></textarea>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label fw-semibold text-dark"><i class="bi bi-image me-1"></i>Proof Image (Optional)</label>
-                                                <input type="file" name="attachment_image" class="form-control" accept="image/*">
+                                            <div class="mb-2">
+                                                <label class="form-label text-dark mb-1" style="font-size: 10.5px; font-weight: 600;"><i class="bi bi-chat-left-text me-1"></i>Remarks</label>
+                                                <input type="text" name="remarks" class="form-control form-control-sm py-1" value="<?= htmlspecialchars($task['remarks'] ?? '') ?>" placeholder="Explain what has been completed..." required>
                                                 <?php if (!empty($task['attachment_image'])): ?>
-                                                    <div class="mt-2 text-start">
-                                                        <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/tasks/<?= $task['attachment_image'] ?>" target="_blank" class="text-primary fs-13"><i class="bi bi-eye me-1"></i>View Current Image</a>
+                                                    <div class="mt-1 text-start">
+                                                        <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/tasks/<?= $task['attachment_image'] ?>" target="_blank" class="text-primary fs-12 text-decoration-none"><i class="bi bi-eye me-1"></i>View Current Image</a>
                                                     </div>
                                                 <?php endif; ?>
                                             </div>
                                             <button type="submit" class="btn btn-update w-100">
-                                                <i class="bi bi-arrow-clockwise me-2"></i>
+                                                <i class="bi bi-arrow-repeat me-1"></i>
                                                 Update Progress
                                             </button>
                                         <?php endif; ?>
                                     </form>
-
-
 
                                 </div>
                             </div>
@@ -215,21 +274,39 @@
         <!-- Completed Tasks Section -->
         <div class="tasks-container" id="completed-tasks-view" style="display: none;">
             <?php if (!empty($completedTasks)): ?>
-                <div class="row" id="completed-tasks-list">
+                <div class="row " id="completed-tasks-list">
                     <?php foreach ($completedTasks as $index => $ctask): ?>
                         <div class="col-lg-4 col-md-6 col-sm-12 completed-task-item" data-page="<?= floor($index / 10) + 1 ?>" style="display: none;">
                             <div class="card__wrapper task-card card-completed">
                                 <!-- Task Header -->
                                 <div class="task-header">
-                                    <div class="task-title-section">
-                                        <div class="task-icon-wrapper" style="background: #e8f5e9; color: #198754;">
-                                            <i class="bi bi-check2-all"></i>
+                                    <div class="task-title-section flex-grow-1 me-2">
+                                        <?php if (!empty($ctask['project_name'])): ?>
+                                            <div class="mb-1">
+                                                <?php if (!empty($ctask['is_team_project'])): ?>
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill" style="font-size: 11px; font-weight: 600;">
+                                                        <i class="bi bi-people-fill me-1"></i>Team Project: <?= htmlspecialchars($ctask['project_name']) ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5 rounded-pill" style="font-size: 11px; font-weight: 600;">
+                                                        <i class="bi bi-folder2 me-1"></i>Project: <?= htmlspecialchars($ctask['project_name']) ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="task-icon-wrapper flex-shrink-0" style="background: #e8f5e9; color: #198754;">
+                                                <i class="bi bi-check2-all"></i>
+                                            </div>
+                                            <div>
+                                                <span class="text-muted text-uppercase fw-semibold" style="font-size: 9.5px; letter-spacing: 0.5px; display: block; line-height: 1.2;">Task Title</span>
+                                                <h5 class="task-title mb-0" style="font-size: 14.5px; font-weight: 700; color: #1e293b;"><?= htmlspecialchars($ctask['title']) ?></h5>
+                                            </div>
                                         </div>
-                                        <h5 class="task-title"><?= htmlspecialchars($ctask['title']) ?></h5>
                                     </div>
-                                    <div class="task-actions">
+                                    <div class="task-actions flex-shrink-0">
                                         <span class="badge badge-completed"><i class="bi bi-check-circle-fill me-1"></i>Completed</span>
-                                        <button class="btn-collapse" type="button" data-bs-toggle="collapse"
+                                        <button class="btn-collapse ms-1" type="button" data-bs-toggle="collapse"
                                             data-bs-target="#ctask-<?= $ctask['id'] ?>" aria-expanded="true">
                                             <i class="bi bi-chevron-down"></i>
                                         </button>
@@ -255,12 +332,10 @@
                                     <!-- Description -->
                                     <?php if (!empty($ctask['description'])): ?>
                                         <div class="task-description-section">
-                                            <h6 class="section-title">
-                                                <i class="bi bi-file-text me-2"></i>Description
-                                            </h6>
-                                            <div class="description-content">
-                                                <?= $ctask['description'] ?>
+                                            <div class="task-desc-title">
+                                                <i class="bi bi-file-text me-1 text-success"></i>Description
                                             </div>
+                                            <?= renderTaskDescription($ctask['description'], 20, $ctask['id']) ?>
                                         </div>
                                     <?php endif; ?>
 
@@ -303,16 +378,16 @@
                                     
                                     <!-- Rating Section -->
                                     <?php if (!empty($ctask['satisfaction_rating'])): ?>
-                                        <div class="mt-3 p-3 rounded" style="background: #ffffff; border: 1px solid #e8e6ff; box-shadow: 0 2px 8px rgba(94, 76, 220, 0.05);">
+                                        <div class="mt-2 mb-2 p-2 rounded" style="background: #ffffff; border: 1px solid #e2e8f0;">
                                             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                                <span class="fw-bold" style="color: #4b3db1; font-size: 13px;">
-                                                    <i class="bi bi-award-fill me-1" style="color: #ffc107; font-size: 16px;"></i> Satisfaction Rating
+                                                <span class="fw-bold" style="color: #334155; font-size: 12px;">
+                                                    <i class="bi bi-award-fill me-1" style="color: #ffc107; font-size: 14px;"></i> Rating
                                                 </span>
                                                 <div class="d-flex align-items-center gap-1">
                                                     <?php for($i=1; $i<=10; $i++): ?>
-                                                        <i class="bi bi-star<?= $i <= $ctask['satisfaction_rating'] ? '-fill' : '' ?>" style="font-size: 15px; color: <?= $i <= $ctask['satisfaction_rating'] ? '#ffc107' : '#e4e5e9' ?>;"></i>
+                                                        <i class="bi bi-star<?= $i <= $ctask['satisfaction_rating'] ? '-fill' : '' ?>" style="font-size: 13px; color: <?= $i <= $ctask['satisfaction_rating'] ? '#ffc107' : '#e2e8f0' ?>;"></i>
                                                     <?php endfor; ?>
-                                                    <span class="badge ms-2 px-2 py-1" style="background: #fff8e1; color: #f57f17; border: 1px solid #ffe082; font-size: 12px; font-weight: bold;">
+                                                    <span class="badge ms-1 px-2 py-0.5" style="background: #fff8e1; color: #b45309; border: 1px solid #fde68a; font-size: 11px; font-weight: 700;">
                                                         <?= $ctask['satisfaction_rating'] ?> / 10
                                                     </span>
                                                 </div>
@@ -321,16 +396,16 @@
                                     <?php endif; ?>
 
                                     <!-- Action Info -->
-                                    <div class="mt-3">
+                                    <div class="completed-action-info">
                                         <?php if (!empty($ctask['remarks'])): ?>
                                             <div class="mb-2">
-                                                <label class="form-label fw-semibold text-dark fs-13"><i class="bi bi-chat-left-text me-1"></i>Remarks</label>
-                                                <div class="p-2 bg-light rounded text-muted fs-13"><?= htmlspecialchars($ctask['remarks']) ?></div>
+                                                <label class="form-label text-dark mb-1" style="font-size: 11.5px; font-weight: 600;"><i class="bi bi-chat-left-text me-1"></i>Remarks</label>
+                                                <div class="p-2 bg-light rounded text-muted" style="font-size: 12px;"><?= htmlspecialchars($ctask['remarks']) ?></div>
                                             </div>
                                         <?php endif; ?>
                                         <?php if (!empty($ctask['attachment_image'])): ?>
-                                            <div class="mt-2 text-start">
-                                                <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/tasks/<?= $ctask['attachment_image'] ?>" target="_blank" class="text-primary fs-13"><i class="bi bi-image me-1"></i>View Attachment</a>
+                                            <div class="mt-1 text-start">
+                                                <a href="<?= $GLOBALS['base_url'] ?>/public/uploads/tasks/<?= $ctask['attachment_image'] ?>" target="_blank" class="text-primary fs-12 text-decoration-none"><i class="bi bi-image me-1"></i>View Attachment</a>
                                             </div>
                                         <?php endif; ?>
                                     </div>
@@ -407,96 +482,121 @@
                 html += '</ul>';
                 container.innerHTML = html;
             }
+
+            // Description View More / View Less Toggle
+            function toggleTaskDesc(uniqueId, showFull) {
+                const shortEl = document.getElementById('short_' + uniqueId);
+                const fullEl = document.getElementById('full_' + uniqueId);
+                if (!shortEl || !fullEl) return;
+                if (showFull) {
+                    shortEl.style.display = 'none';
+                    fullEl.style.display = 'block';
+                } else {
+                    fullEl.style.display = 'none';
+                    shortEl.style.display = 'block';
+                }
+            }
         </script>
 
         <style>
             /* Task Container Styles */
             .tasks-container {
-                padding: 20px 0;
+                padding: 12px 0;
             }
 
-            /* Task Card Styles */
+            /* Task Card Styles - Overriding general .card__wrapper to avoid tall middle gaps */
+            .card__wrapper.task-card,
             .task-card {
                 background: #ffffff;
                 border-radius: 12px;
-                padding: 16px;
-                box-shadow: 0 4px 12px rgba(94, 76, 220, 0.08);
-                border: 1px solid #e8e6ff;
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                padding: 12px 14px;
+                box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+                border: 1px solid #e2e8f0;
+                transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
                 height: 100%;
-                display: flex;
-                flex-direction: column;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-start !important;
             }
 
             .task-card:hover {
-                box-shadow: 0 8px 24px rgba(94, 76, 220, 0.15);
-                transform: translateY(-4px);
-                border-color: #5e4cdc;
+                box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+                transform: translateY(-2px);
             }
 
-            /* Card Status Variants */
+            /* Card Status Left Borders */
             .card-pending {
-                border-left: 4px solid #ffc107;
+                border-left: 4px solid #f59e0b !important;
             }
 
             .card-progress {
-                border-left: 4px solid #5e4cdc;
+                border-left: 4px solid #16a34a !important;
             }
 
             .card-completed {
-                border-left: 4px solid #0d6efd;
-                background: linear-gradient(135deg, #f8f9fa 0%, #e8e6ff 100%);
+                border-left: 4px solid #2563eb !important;
+                background: #ffffff;
+            }
+
+            /* Collapse Layout */
+            .task-card > .collapse.show {
+                display: flex !important;
+                flex-direction: column;
+                flex: 1 1 auto;
+            }
+
+            .task-card > .collapse:not(.show) {
+                display: none !important;
             }
 
             /* Task Header */
             .task-header {
                 display: flex;
                 justify-content: space-between;
-                align-items: center;
-                margin-bottom: 14px;
-                padding-bottom: 10px;
-                border-bottom: 2px solid #e8e6ff;
+                align-items: flex-start;
+                margin-bottom: 8px;
+                padding-bottom: 8px;
+                border-bottom: 1px solid #f1f5f9;
             }
 
             .task-title-section {
                 display: flex;
-                align-items: center;
-                gap: 12px;
+                flex-direction: column;
+                gap: 3px;
                 flex: 1;
             }
 
             .task-icon-wrapper {
-                width: 36px;
-                height: 36px;
-                /* background: linear-gradient(135deg, #5e4cdc 0%, #4b3db1 100%); */
-                border-radius: 8px;
+                width: 28px;
+                height: 28px;
+                border-radius: 6px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                /* color: white; */
-                font-size: 16px;
-                box-shadow: 0 4px 12px rgba(94, 76, 220, 0.25);
+                background: #f1f5f9;
+                color: #475569;
+                font-size: 14px;
             }
 
             .task-title {
                 margin: 0;
-                font-size: 15px;
+                font-size: 13.5px;
                 font-weight: 700;
-                /* color: #212529; */
+                color: #1e293b;
                 line-height: 1.3;
             }
 
             .task-actions {
                 display: flex;
                 align-items: center;
-                gap: 10px;
+                gap: 4px;
             }
 
             /* Status Badges */
             .badge {
-                padding: 6px 14px;
+                padding: 3px 8px;
                 border-radius: 20px;
-                font-size: 13px;
+                font-size: 11px;
                 font-weight: 600;
                 display: inline-flex;
                 align-items: center;
@@ -504,45 +604,46 @@
             }
 
             .badge-pending {
-                background: #fff3cd;
-                color: #664d03;
-                border: 1px solid #ffc107;
+                background: #fef3c7;
+                color: #92400e;
+                border: 1px solid #fde68a;
             }
 
             .badge-progress {
-                background: #e8e6ff;
-                color: #493aa6;
-                border: 1px solid #5e4cdc;
+                background: #e0e7ff;
+                color: #3730a3;
+                border: 1px solid #c7d2fe;
             }
 
             .badge-completed {
-                background: #cfe2ff;
-                color: #084298;
-                border: 1px solid #0d6efd;
+                background: #dcfce7;
+                color: #166534;
+                border: 1px solid #bbf7d0;
             }
 
             /* Collapse Button */
             .btn-collapse {
-                width: 32px;
-                height: 32px;
-                border-radius: 8px;
-                border: none;
-                background: #f8f9fa;
-                color: #5e4cdc;
+                width: 24px;
+                height: 24px;
+                border-radius: 5px;
+                border: 1px solid #e2e8f0;
+                background: #f8fafc;
+                color: #64748b;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 cursor: pointer;
-                transition: all 0.3s ease;
+                transition: all 0.2s ease;
+                font-size: 11px;
             }
 
             .btn-collapse:hover {
-                background: #5e4cdc;
-                color: white;
+                background: #e2e8f0;
+                color: #1e293b;
             }
 
             .btn-collapse i {
-                transition: transform 0.3s ease;
+                transition: transform 0.25s ease;
             }
 
             .btn-collapse[aria-expanded="false"] i {
@@ -551,29 +652,29 @@
 
             /* Assigned Section */
             .assigned-section {
-                margin-bottom: 14px;
+                margin-bottom: 8px;
             }
 
             .assigned-info-card {
-                /* background: linear-gradient(135deg, #e8e6ff 0%, #f8f9fa 100%); */
-                border-radius: 10px;
-                padding: 10px 12px;
+                background: #f8fafc;
+                border-radius: 6px;
+                padding: 5px 8px;
                 display: flex;
                 align-items: center;
-                gap: 10px;
-                border: 1px solid #e8e6ff;
+                gap: 8px;
+                border: 1px solid #f1f5f9;
             }
 
             .info-icon {
-                width: 36px;
-                height: 36px;
-                /* background: #5e4cdc; */
-                border-radius: 8px;
+                width: 26px;
+                height: 26px;
+                background: #f1f5f9;
+                border-radius: 6px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                color: #5e4cdc;
-                font-size: 18px;
+                color: #475569;
+                font-size: 13px;
                 flex-shrink: 0;
             }
 
@@ -582,94 +683,117 @@
             }
 
             .info-label {
-                font-size: 11px;
-                color: #6c757d;
-                margin: 0 0 4px 0;
+                font-size: 9px;
+                color: #64748b;
+                margin: 0;
                 text-transform: uppercase;
-                font-weight: 600;
+                font-weight: 700;
                 letter-spacing: 0.5px;
             }
 
             .info-value {
-                font-size: 14px;
+                font-size: 12px;
                 font-weight: 700;
-                /* color: #212529; */
-                margin: 0 0 2px 0;
+                color: #1e293b;
+                margin: 1px 0 0 0;
+                line-height: 1.2;
             }
 
             .info-designation {
-                font-size: 12px;
-                color: #5e4cdc;
+                font-size: 10.5px;
+                color: #64748b;
                 margin: 0;
-                font-weight: 600;
+                font-weight: 500;
             }
 
             /* Description Section */
             .task-description-section {
-                margin-bottom: 14px;
+                margin-bottom: 8px;
             }
 
-            .section-title {
-                font-size: 13px;
-                font-weight: 700;
-                margin-bottom: 8px;
-                display: flex;
-                align-items: center;
+            /* Reset any external .section-title styles */
+            .task-desc-title,
+            .task-card .section-title {
+                background: transparent !important;
+                color: #334155 !important;
+                padding: 0 !important;
+                margin: 0 0 4px 0 !important;
+                font-size: 11px !important;
+                font-weight: 700 !important;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+                display: flex !important;
+                align-items: center !important;
+                gap: 4px !important;
+                border-radius: 0 !important;
             }
 
             .description-content {
-                /* background: #f8f9fa; */
-                border-radius: 8px;
-                padding: 10px 12px;
-                font-size: 13px;
-                line-height: 1.5;
-                /* color: #495057; */
-                border-left: 3px solid #5e4cdc;
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-left: 3px solid #16a34a;
+                border-radius: 6px;
+                padding: 6px 10px;
+                font-size: 12px;
+                line-height: 1.45;
+                color: #334155;
+                max-height: 180px;
+                overflow-y: auto;
+                word-break: break-word;
+            }
+
+            .description-content::-webkit-scrollbar {
+                width: 4px;
+            }
+
+            .description-content::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 4px;
             }
 
             /* Date Info Section */
             .date-info-section {
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
-                gap: 8px;
-                margin-bottom: 14px;
+                gap: 6px;
+                margin-bottom: 8px;
             }
 
             .date-card {
-                /* background: #ffffff; */
-                border: 1.5px solid #e8e6ff;
-                border-radius: 8px;
-                padding: 8px 10px;
+                background: #f8fafc;
+                border: 1px solid #f1f5f9;
+                border-radius: 6px;
+                padding: 4px 8px;
                 display: flex;
                 align-items: center;
-                gap: 8px;
-                transition: all 0.3s ease;
+                gap: 6px;
+                transition: all 0.2s ease;
             }
 
             .date-card:hover {
-                border-color: #5e4cdc;
-                box-shadow: 0 4px 8px rgba(94, 76, 220, 0.1);
+                border-color: #cbd5e1;
+                background: #ffffff;
             }
 
             .date-icon {
-                width: 30px;
-                height: 30px;
-                border-radius: 6px;
+                width: 22px;
+                height: 22px;
+                border-radius: 4px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 14px;
+                font-size: 11px;
                 flex-shrink: 0;
             }
 
             .start-icon {
-                background: #e8e6ff;
-                color: #5e4cdc;
+                background: #e0e7ff;
+                color: #4338ca;
             }
 
             .deadline-icon {
-                background: #fff3cd;
-                color: #ffc107;
+                background: #fef3c7;
+                color: #b45309;
             }
 
             .date-details {
@@ -677,177 +801,131 @@
             }
 
             .date-label {
-                font-size: 11px;
-                /* color: #6c757d; */
-                margin: 0 0 4px 0;
+                font-size: 9px;
+                color: #64748b;
+                margin: 0;
                 text-transform: uppercase;
-                font-weight: 600;
-                letter-spacing: 0.5px;
+                font-weight: 700;
+                letter-spacing: 0.4px;
             }
 
             .date-value {
-                font-size: 14px;
+                font-size: 11.5px;
                 font-weight: 700;
+                color: #1e293b;
                 margin: 0;
             }
 
             /* Progress Section */
             .progress-section {
-                margin-bottom: 20px;
+                margin-bottom: 8px;
             }
 
             .progress-header {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                margin-bottom: 10px;
+                margin-bottom: 4px;
             }
 
             .progress-label {
-                font-size: 14px;
+                font-size: 11px;
                 font-weight: 700;
-                color: #5e4cdc;
+                color: #475569;
                 display: flex;
                 align-items: center;
             }
 
             .progress-percentage {
-                font-size: 16px;
+                font-size: 11.5px;
                 font-weight: 700;
-                color: #5e4cdc;
+                color: #1e293b;
             }
 
             .progress-bar-container {
-                height: 12px;
-                background: #e8e6ff;
-                border-radius: 20px;
+                height: 6px;
+                background: #e2e8f0;
+                border-radius: 10px;
                 overflow: hidden;
                 position: relative;
             }
 
             .progress-bar-fill {
                 height: 100%;
-                border-radius: 20px;
+                border-radius: 10px;
                 position: relative;
                 transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-                overflow: hidden;
             }
 
             .progress-pending {
-                background: linear-gradient(90deg, #ffc107 0%, #ffca2c 100%);
+                background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
             }
 
             .progress-in-progress {
-                background: linear-gradient(90deg, #5e4cdc 0%, #8e7eff 100%);
+                background: linear-gradient(90deg, #16a34a 0%, #22c55e 100%);
             }
 
             .progress-completed {
-                background: linear-gradient(90deg, #0d6efd 0%, #0dcaf0 100%);
+                background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
             }
 
-            .progress-shine {
-                position: absolute;
-                top: 0;
-                left: -100%;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-                animation: shine 2s infinite;
+            /* Task Action Form & Completed Action Info anchored to bottom */
+            .action-form,
+            .completed-action-info {
+                margin-top: auto !important;
+                padding-top: 8px;
+                border-top: 1px dashed #e2e8f0;
             }
 
-            @keyframes shine {
-                to {
-                    left: 100%;
-                }
+            .action-form .form-control {
+                border-radius: 5px;
+                border: 1px solid #cbd5e1;
+                font-size: 11px;
+                color: #1e293b;
             }
 
-            /* Task Action Form */
-            .task-action-form {
-                margin-top: auto;
-            }
-
-            .btn-task-action {
-                width: 100%;
-                padding: 10px 16px;
-                border: none;
-                border-radius: 8px;
-                font-size: 14px;
-                font-weight: 700;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                transition: all 0.3s ease;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            .action-form .form-control:focus {
+                border-color: #16a34a;
+                box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.15);
             }
 
             .btn-accept {
-                background: #5e4cdc;
-                color: white;
+                background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+                color: #ffffff;
+                padding: 6px 12px;
+                font-size: 12px;
+                font-weight: 600;
+                border: none;
+                border-radius: 6px;
+                box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+                transition: all 0.2s ease;
             }
 
             .btn-accept:hover {
-                background: orange;
-                transform: translateY(-2px);
-                box-shadow: 0 6px 16px rgba(94, 76, 220, 0.3);
-            }
-
-            .progress-update-group {
-                display: flex;
-                gap: 10px;
-            }
-
-            .input-wrapper {
-                position: relative;
-                flex: 1;
-            }
-
-            .input-icon {
-                position: absolute;
-                left: 14px;
-                top: 50%;
-                transform: translateY(-50%);
-                color: #6c757d;
-                font-size: 16px;
-            }
-
-            .form-input {
-                width: 100%;
-                padding: 10px 10px 10px 32px;
-                border: 2px solid #e8e6ff;
-                border-radius: 8px;
-                font-size: 14px;
-                font-weight: 600;
-                color: #212529;
-                transition: all 0.3s ease;
-            }
-
-            .form-input:focus {
-                outline: none;
-                border-color: #5e4cdc;
-                box-shadow: 0 0 0 4px rgba(94, 76, 220, 0.1);
+                background: linear-gradient(135deg, #4338ca 0%, #3730a3 100%);
+                color: #ffffff;
+                transform: translateY(-1px);
+                box-shadow: 0 3px 10px rgba(79, 70, 229, 0.35);
             }
 
             .btn-update {
-                background: #19915a;
-                color: white;
-                padding: 10px 16px;
+                background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+                color: #ffffff;
+                padding: 6px 12px;
+                font-size: 12px;
+                font-weight: 600;
                 border: none;
-                border-radius: 8px;
-                font-size: 14px;
-                font-weight: 700;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                transition: all 0.3s ease;
+                border-radius: 6px;
+                box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
+                transition: all 0.2s ease;
                 white-space: nowrap;
             }
 
             .btn-update:hover {
-                background: linear-gradient(135deg, #4b3db1 0%, #352880 100%);
-                transform: translateY(-2px);
-                box-shadow: 0 6px 16px rgba(94, 76, 220, 0.3);
+                background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+                color: #ffffff;
+                transform: translateY(-1px);
+                box-shadow: 0 3px 10px rgba(22, 163, 74, 0.35);
             }
 
             /* Empty State */
@@ -860,40 +938,40 @@
 
             .empty-state-card {
                 text-align: center;
-                max-width: 400px;
+                max-width: 380px;
                 background: #ffffff;
-                border-radius: 20px;
-                padding: 50px 30px;
-                box-shadow: 0 8px 24px rgba(94, 76, 220, 0.1);
-                border: 2px solid #e8e6ff;
+                border-radius: 16px;
+                padding: 40px 30px;
+                box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+                border: 1px solid #e2e8f0;
             }
 
             .empty-icon {
-                width: 100px;
-                height: 100px;
-                margin: 0 auto 24px;
-                background: #19915a;
+                width: 80px;
+                height: 80px;
+                margin: 0 auto 20px;
+                background: #16a34a;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 color: white;
-                font-size: 48px;
-                box-shadow: 0 8px 24px rgba(94, 76, 220, 0.25);
+                font-size: 40px;
+                box-shadow: 0 6px 18px rgba(22, 163, 74, 0.25);
             }
 
             .empty-title {
-                font-size: 24px;
+                font-size: 20px;
                 font-weight: 700;
-                color: #212529;
-                margin: 0 0 12px 0;
+                color: #1e293b;
+                margin: 0 0 8px 0;
             }
 
             .empty-description {
-                font-size: 16px;
-                color: #6c757d;
+                font-size: 14px;
+                color: #64748b;
                 margin: 0;
-                line-height: 1.6;
+                line-height: 1.5;
             }
 
             /* Responsive Design */
@@ -905,64 +983,7 @@
 
             @media (max-width: 576px) {
                 .task-card {
-                    padding: 18px;
+                    padding: 14px;
                 }
-
-                .task-title {
-                    font-size: 16px;
-                }
-
-                .task-icon-wrapper {
-                    width: 38px;
-                    height: 38px;
-                    font-size: 18px;
-                }
-
-                .progress-update-group {
-                    flex-direction: column;
-                }
-
-                .btn-update {
-                    width: 100%;
-                }
-
-                .task-header {
-                    flex-wrap: wrap;
-                }
-
-                .task-actions {
-                    width: 100%;
-                    justify-content: space-between;
-                    margin-top: 12px;
-                }
-            }
-
-            /* Animation */
-            @keyframes fadeInUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(20px);
-                }
-
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-
-            .task-card {
-                animation: fadeInUp 0.5s ease-out;
-            }
-
-            .task-card:nth-child(2) {
-                animation-delay: 0.1s;
-            }
-
-            .task-card:nth-child(3) {
-                animation-delay: 0.2s;
-            }
-
-            .task-card:nth-child(4) {
-                animation-delay: 0.3s;
             }
         </style>

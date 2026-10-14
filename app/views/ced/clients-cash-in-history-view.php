@@ -72,7 +72,7 @@ if (!isset($discountApprovalReq)) {
 ?>
 
 <div class="row">
-    <?php if (!empty($discountApprovalReq)): 
+    <?php 
         $discReqAmount = (float)($discountApprovalReq['request_amount'] ?? 0);
         $discIsOver1Lac = ($discReqAmount > 100000.01);
         $discOpHeadStatus = strtolower($discountApprovalReq['op_head_status'] ?? '');
@@ -80,6 +80,10 @@ if (!isset($discountApprovalReq)) {
         $isRole20OrOpHead = in_array($userRoleId, [20, 32], true) || strpos($userRoleName, 'operation head') !== false || strpos($userRoleName, 'admin & operation') !== false;
         $isMgmtUser = in_array($userRoleId, [1, 3], true) || strpos($userRoleName, 'super admin') !== false || strpos($userRoleName, 'admin') !== false || strpos($userRoleName, 'management') !== false;
         $discAttachment = !empty($discountApprovalReq['attachment']) ? $discountApprovalReq['attachment'] : ($clientDetails['past_approval_attachment'] ?? '');
+
+        // Banner should only show if request is pending, OR if user opened it specifically via approval center (?ref=all_approvals)
+        $showDiscountBanner = !empty($discountApprovalReq) && ($discStatus === 'pending' || (isset($_GET['ref']) && $_GET['ref'] === 'all_approvals'));
+        if ($showDiscountBanner):
     ?>
     <!-- Booking Discount Approval Banner -->
     <div class="col-xxl-12 mb-4" id="bookingDiscountApprovalBanner">
@@ -167,7 +171,7 @@ if (!isset($discountApprovalReq)) {
                         <!-- Tier 1 -->
                         <div class="d-flex align-items-start gap-2 mb-2">
                             <div class="mt-1">
-                                <?php if ($discOpHeadStatus === 'approved'): ?>
+                                <?php if ($discOpHeadStatus === 'approved' || $discStatus === 'approved'): ?>
                                     <i class="fa-solid fa-circle-check text-success fs-15"></i>
                                 <?php elseif ($discStatus === 'rejected'): ?>
                                     <i class="fa-solid fa-circle-xmark text-danger fs-15"></i>
@@ -185,6 +189,10 @@ if (!isset($discountApprovalReq)) {
                                     <?php if (!empty($discountApprovalReq['op_head_note'])): ?>
                                         <small class="text-muted fst-italic">"<?= htmlspecialchars($discountApprovalReq['op_head_note']) ?>"</small>
                                     <?php endif; ?>
+                                <?php elseif ($discStatus === 'approved'): ?>
+                                    <span class="text-success extra-small d-block">
+                                        <i class="fa-solid fa-check me-1"></i> Finalized by Management Sign-off
+                                    </span>
                                 <?php else: ?>
                                     <span class="text-warning extra-small d-block">Awaiting Verification & Approval</span>
                                 <?php endif; ?>

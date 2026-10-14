@@ -427,6 +427,9 @@ class TaskController extends Controller
         $stmt = $this->db->prepare("
     SELECT 
         t.*,
+        tp.name AS project_name,
+        tp.is_team_project,
+        tp.color_code AS project_color,
 
         -- Assigned By Info
         u.full_name AS assigned_by_name,
@@ -435,6 +438,9 @@ class TaskController extends Controller
         des_assign.name AS assigned_by_designation
 
     FROM tasks t
+
+    LEFT JOIN todo_projects tp 
+        ON COALESCE(t.todo_project_id, (SELECT tt.todo_project_id FROM todo_tasks tt WHERE tt.user_id = t.user_id AND tt.title COLLATE utf8mb4_unicode_ci = t.title COLLATE utf8mb4_unicode_ci ORDER BY tt.id DESC LIMIT 1)) = tp.id
 
     JOIN users u 
         ON t.assigned_by = u.id
@@ -457,6 +463,9 @@ class TaskController extends Controller
         $stmtCompleted = $this->db->prepare("
     SELECT 
         t.*,
+        tp.name AS project_name,
+        tp.is_team_project,
+        tp.color_code AS project_color,
 
         -- Assigned By Info
         u.full_name AS assigned_by_name,
@@ -465,6 +474,9 @@ class TaskController extends Controller
         des_assign.name AS assigned_by_designation
 
     FROM tasks t
+
+    LEFT JOIN todo_projects tp 
+        ON COALESCE(t.todo_project_id, (SELECT tt.todo_project_id FROM todo_tasks tt WHERE tt.user_id = t.user_id AND tt.title COLLATE utf8mb4_unicode_ci = t.title COLLATE utf8mb4_unicode_ci ORDER BY tt.id DESC LIMIT 1)) = tp.id
 
     JOIN users u 
         ON t.assigned_by = u.id
@@ -497,6 +509,7 @@ class TaskController extends Controller
     public function updateTaskStatus()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        $loggedUserId = (int)($_SESSION['user']['id'] ?? 0);
 
         if (!isset($_POST['task_id'])) {
             echo "Invalid request";
@@ -508,6 +521,29 @@ class TaskController extends Controller
         $success = $this->taskModel->acceptTask($taskId);
 
         if ($success) {
+            // Also synchronize with todo_tasks
+            $tRes = $this->db->query("SELECT * FROM tasks WHERE id = $taskId LIMIT 1");
+            if ($tRes && $t = $tRes->fetch_assoc()) {
+                $tUid = (int)$t['user_id'];
+                $tTitle = $this->db->real_escape_string($t['title']);
+                $tProj = !empty($t['todo_project_id']) ? (int)$t['todo_project_id'] : 0;
+                $projCond = $tProj > 0 ? "AND (todo_project_id = $tProj OR todo_project_id IS NULL)" : "";
+
+                $this->db->query("
+                    UPDATE todo_tasks 
+                    SET status = 'pending' 
+                    WHERE user_id = $tUid AND title = '$tTitle' $projCond
+                ");
+
+                // Notify assigner (Team Head) that employee has accepted the task
+                $assignedBy = (int)$t['assigned_by'];
+                if ($assignedBy > 0 && $assignedBy !== $loggedUserId) {
+                    $uName = $_SESSION['user']['full_name'] ?? 'Team Member';
+                    $notifMsg = $this->db->real_escape_string("{$uName} accepted the task: {$t['title']}");
+                    $this->db->query("INSERT INTO notifications (user_id, task_id, assigned_by, message) VALUES ($assignedBy, $taskId, $loggedUserId, '$notifMsg')");
+                }
+            }
+
             header("Location: " . $GLOBALS['base_url'] . "/task-dashboard");
             exit;
         } else {
@@ -519,6 +555,7 @@ class TaskController extends Controller
     public function updateTaskProgress()
     {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        $loggedUserId = (int)($_SESSION['user']['id'] ?? 0);
 
         if (!isset($_POST['task_id'], $_POST['progress'])) {
             echo "Invalid request";
@@ -526,7 +563,7 @@ class TaskController extends Controller
         }
 
         $taskId   = (int)$_POST['task_id'];
-        $progress = (int)$_POST['progress'];
+        $progress = max(0, min(100, (int)$_POST['progress']));
         $remarks  = isset($_POST['remarks']) ? trim($_POST['remarks']) : null;
         $imageName = null;
 
@@ -554,6 +591,30 @@ class TaskController extends Controller
         $success = $this->taskModel->updateProgress($taskId, $progress, $remarks, $imageName);
 
         if ($success) {
+            // Simultaneously sync to todo_tasks table so Team Performance, HOD, and My Created Tasks update in real time
+            $tRes = $this->db->query("SELECT * FROM tasks WHERE id = $taskId LIMIT 1");
+            if ($tRes && $t = $tRes->fetch_assoc()) {
+                $tUid = (int)$t['user_id'];
+                $tTitle = $this->db->real_escape_string($t['title']);
+                $tProj = !empty($t['todo_project_id']) ? (int)$t['todo_project_id'] : 0;
+                $newStatus = ($progress >= 100) ? 'completed' : 'pending';
+                $projCond = $tProj > 0 ? "AND (todo_project_id = $tProj OR todo_project_id IS NULL)" : "";
+
+                $this->db->query("
+                    UPDATE todo_tasks 
+                    SET progress = $progress, status = '$newStatus' 
+                    WHERE user_id = $tUid AND title = '$tTitle' $projCond
+                ");
+
+                // Real-time notification to the task creator / Team Head
+                $assignedBy = (int)$t['assigned_by'];
+                if ($assignedBy > 0 && $assignedBy !== $loggedUserId) {
+                    $uName = $_SESSION['user']['full_name'] ?? 'Team Member';
+                    $notifMsg = $this->db->real_escape_string("Task progress updated to {$progress}% by {$uName}: {$t['title']}");
+                    $this->db->query("INSERT INTO notifications (user_id, task_id, assigned_by, message) VALUES ($assignedBy, $taskId, $loggedUserId, '$notifMsg')");
+                }
+            }
+
             header("Location: " . $GLOBALS['base_url'] . "/task-dashboard");
             exit;
         } else {
@@ -858,13 +919,25 @@ class TaskController extends Controller
             header('Content-Type: text/csv; charset=utf-8');
             header('Content-Disposition: attachment; filename=Todo_Tasks_Report_' . date('Y-m-d') . '.csv');
             $output = fopen('php://output', 'w');
-            fputcsv($output, ['Task ID', 'Title', 'Project', 'Priority', 'Deadline', 'Status', 'Location', 'Created Date']);
+            fputcsv($output, ['Task ID', 'Title', 'Project', 'Assigned To', 'Assigned By', 'Priority', 'Deadline', 'Status', 'Location', 'Created Date']);
 
             $expSql = "
                 SELECT t.id, t.title, t.priority, t.due_date, t.status, t.location, t.created_at,
-                       p.name as project_name
+                       p.name as project_name,
+                       u.full_name as assigned_to_name,
+                       COALESCE(assigner.full_name, mgr.full_name, 'Self') as assigned_by_name
                 FROM todo_tasks t
                 LEFT JOIN todo_projects p ON t.todo_project_id = p.id
+                LEFT JOIN users u ON t.user_id = u.id
+                LEFT JOIN users mgr ON COALESCE(p.manager_user_id, p.user_id) = mgr.id
+                LEFT JOIN users assigner ON assigner.id = (
+                    SELECT tm.assigned_by 
+                    FROM tasks tm 
+                    WHERE tm.user_id = t.user_id 
+                      AND tm.title COLLATE utf8mb4_unicode_ci = t.title COLLATE utf8mb4_unicode_ci 
+                    ORDER BY tm.id DESC 
+                    LIMIT 1
+                )
                 WHERE $where
                 ORDER BY t.id DESC
             ";
@@ -876,6 +949,8 @@ class TaskController extends Controller
                         '#TODO-' . $r['id'],
                         $r['title'],
                         $r['project_name'] ?? 'Inbox',
+                        $r['assigned_to_name'] ?? 'N/A',
+                        $r['assigned_by_name'] ?? 'Self',
                         $prioMap[$r['priority']] ?? 'Normal',
                         !empty($r['due_date']) ? date('d M Y', strtotime($r['due_date'])) : 'No Deadline',
                         ucfirst($r['status']),
@@ -908,13 +983,24 @@ class TaskController extends Controller
         $tasks = [];
         $tasksQuery = "
             SELECT t.*, p.name as project_name, p.color_code as project_color, p.is_team_project,
+                   u.full_name as assigned_to_name, u.photo as assigned_to_photo,
+                   COALESCE(assigner.full_name, mgr.full_name, 'Self') as assigned_by_name,
+                   COALESCE(assigner.photo, mgr.photo, '') as assigned_by_photo,
                    u.full_name as user_full_name, u.photo as user_photo,
                    mgr.full_name as manager_name,
                    tr.repeat_type, tr.repeat_until, r.max_reminders, r.trigger_time as reminder_trigger_time
             FROM todo_tasks t
             LEFT JOIN todo_projects p ON t.todo_project_id = p.id
             LEFT JOIN users u ON t.user_id = u.id
-            LEFT JOIN users mgr ON p.user_id = mgr.id
+            LEFT JOIN users mgr ON COALESCE(p.manager_user_id, p.user_id) = mgr.id
+            LEFT JOIN users assigner ON assigner.id = (
+                SELECT tm.assigned_by 
+                FROM tasks tm 
+                WHERE tm.user_id = t.user_id 
+                  AND tm.title COLLATE utf8mb4_unicode_ci = t.title COLLATE utf8mb4_unicode_ci 
+                ORDER BY tm.id DESC 
+                LIMIT 1
+            )
             LEFT JOIN todo_task_recurrences tr ON t.id = tr.todo_task_id
             LEFT JOIN todo_task_reminders r ON t.id = r.todo_task_id
             WHERE $where
@@ -1195,6 +1281,30 @@ class TaskController extends Controller
                     if ($this->db->query($query)) {
                         $success = true;
                         $message = "Task details and progress updated successfully!";
+
+                        // Synchronize back to tasks table so employee's task-dashboard is updated too!
+                        $ttRes = $this->db->query("SELECT * FROM todo_tasks WHERE id = $taskId LIMIT 1");
+                        if ($ttRes && $tt = $ttRes->fetch_assoc()) {
+                            $ttUid = (int)$tt['user_id'];
+                            $ttTitle = $this->db->real_escape_string($tt['title']);
+                            $ttProj = !empty($tt['todo_project_id']) ? (int)$tt['todo_project_id'] : 0;
+                            $pCond = $ttProj > 0 ? "AND (todo_project_id = $ttProj OR todo_project_id IS NULL)" : "";
+                            $taskStatus = ($progress >= 100) ? 'completed' : 'in_progress';
+
+                            $this->db->query("
+                                UPDATE tasks 
+                                SET progress = $progress, status = '$taskStatus', updated_at = NOW() 
+                                WHERE user_id = $ttUid AND title = '$ttTitle' $pCond
+                            ");
+
+                            // Notify employee that supervisor/head updated progress
+                            if ($ttUid > 0 && $ttUid !== $userId) {
+                                $hName = $_SESSION['user']['full_name'] ?? 'Team Head';
+                                $notifMsg = $this->db->real_escape_string("Task progress updated to {$progress}% by {$hName}: {$tt['title']}");
+                                $this->db->query("INSERT INTO notifications (user_id, assigned_by, message) VALUES ($ttUid, $userId, '$notifMsg')");
+                            }
+                        }
+
                         setSuccess($message);
                         $_SESSION['success'] = $message;
                     } else {
@@ -1525,7 +1635,7 @@ class TaskController extends Controller
                 if ($statusFilter === 'completed') {
                     $where .= " AND (t.status = 'completed' OR t.progress >= 100)";
                 } elseif ($statusFilter === 'in_progress') {
-                    $where .= " AND (t.status = 'pending' AND (t.progress IS NULL OR t.progress < 100)) AND (t.due_date IS NULL OR t.due_date >= NOW())";
+                    $where .= " AND (t.status IN ('pending', 'in_progress') AND (t.progress IS NULL OR t.progress < 100)) AND (t.due_date IS NULL OR t.due_date >= NOW())";
                 } elseif ($statusFilter === 'overdue') {
                     $where .= " AND (t.status != 'completed' AND (t.progress IS NULL OR t.progress < 100)) AND t.due_date IS NOT NULL AND t.due_date < NOW()";
                 }
@@ -1534,9 +1644,9 @@ class TaskController extends Controller
                     SELECT 
                         COUNT(*) as total,
                         COALESCE(SUM(CASE WHEN t.status = 'completed' OR t.progress >= 100 THEN 1 ELSE 0 END), 0) as completed,
-                        COALESCE(SUM(CASE WHEN (t.status = 'pending' AND (t.progress IS NULL OR t.progress < 100)) AND (t.due_date IS NULL OR t.due_date >= NOW()) THEN 1 ELSE 0 END), 0) as in_progress,
+                        COALESCE(SUM(CASE WHEN (t.status IN ('pending', 'in_progress') AND (t.progress IS NULL OR t.progress < 100)) AND (t.due_date IS NULL OR t.due_date >= NOW()) THEN 1 ELSE 0 END), 0) as in_progress,
                         COALESCE(SUM(CASE WHEN (t.status != 'completed' AND (t.progress IS NULL OR t.progress < 100)) AND t.due_date IS NOT NULL AND t.due_date < NOW() THEN 1 ELSE 0 END), 0) as overdue,
-                        COALESCE(SUM(CASE WHEN (t.status = 'pending' AND (t.progress IS NULL OR t.progress < 100)) AND t.due_date BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END), 0) as due_this_week,
+                        COALESCE(SUM(CASE WHEN (t.status IN ('pending', 'in_progress') AND (t.progress IS NULL OR t.progress < 100)) AND t.due_date BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END), 0) as due_this_week,
                         COALESCE(SUM(CASE WHEN t.created_at >= DATE_FORMAT(NOW() ,'%Y-%m-01') THEN 1 ELSE 0 END), 0) as tasks_this_month
                     FROM todo_tasks t
                     WHERE $where
@@ -1799,12 +1909,23 @@ class TaskController extends Controller
 
         $empId = (int)$memberId;
         $empRes = $this->db->query("
-            SELECT e.id, e.user_id, e.full_name, des.name as designation_name
+            SELECT e.id, COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id, e.full_name, des.name as designation_name
             FROM employees e
+            LEFT JOIN users u ON u.employee_id = e.id
             LEFT JOIN designations des ON e.designation_id = des.id
-            WHERE (e.id = $empId OR e.user_id = $empId) AND e.deleted_at IS NULL 
+            WHERE e.id = $empId AND e.deleted_at IS NULL 
             LIMIT 1
         ");
+        if (!$empRes || $empRes->num_rows === 0) {
+            $empRes = $this->db->query("
+                SELECT e.id, COALESCE(NULLIF(e.user_id, 0), u.id, 0) as user_id, e.full_name, des.name as designation_name
+                FROM employees e
+                LEFT JOIN users u ON u.employee_id = e.id
+                LEFT JOIN designations des ON e.designation_id = des.id
+                WHERE (e.user_id = $empId OR u.id = $empId) AND e.deleted_at IS NULL 
+                LIMIT 1
+            ");
+        }
         if (!$empRes || !($emp = $empRes->fetch_assoc())) {
             echo json_encode(['success' => false, 'message' => 'Employee not found']);
             exit;
@@ -1826,6 +1947,35 @@ class TaskController extends Controller
 
         $tasks = [];
         if ($targetUserId > 0) {
+            // Keep todo_tasks synchronized with tasks table for this user
+            $tMainRes = $this->db->query("
+                SELECT t.*, tp.name as project_name, tp.is_team_project
+                FROM tasks t
+                LEFT JOIN todo_projects tp ON t.todo_project_id = tp.id
+                WHERE t.user_id = $targetUserId
+            ");
+            if ($tMainRes) {
+                while ($tm = $tMainRes->fetch_assoc()) {
+                    $tmTitle = $this->db->real_escape_string($tm['title']);
+                    $tmProj = !empty($tm['todo_project_id']) ? (int)$tm['todo_project_id'] : "NULL";
+                    $chkExist = $this->db->query("SELECT id, progress, status FROM todo_tasks WHERE user_id = $targetUserId AND title = '$tmTitle' LIMIT 1");
+                    if ($chkExist && $chkRow = $chkExist->fetch_assoc()) {
+                        if ((int)$chkRow['progress'] !== (int)$tm['progress'] || $chkRow['status'] !== $tm['status']) {
+                            $synStatus = ((int)$tm['progress'] >= 100 || $tm['status'] === 'completed') ? 'completed' : 'pending';
+                            $this->db->query("UPDATE todo_tasks SET progress = {$tm['progress']}, status = '$synStatus' WHERE id = {$chkRow['id']}");
+                        }
+                    } else {
+                        $tmPrio = ($tm['priority'] === 'urgent') ? 1 : (($tm['priority'] === 'high') ? 2 : (($tm['priority'] === 'low') ? 4 : 3));
+                        $tmStatus = ($tm['progress'] >= 100 || $tm['status'] === 'completed') ? 'completed' : 'pending';
+                        $tmDue = !empty($tm['deadline']) ? "'" . $this->db->real_escape_string($tm['deadline']) . "'" : "NULL";
+                        $this->db->query("
+                            INSERT INTO todo_tasks (user_id, todo_project_id, title, description, priority, status, progress, due_date)
+                            VALUES ($targetUserId, $tmProj, '$tmTitle', '{$this->db->real_escape_string($tm['description'])}', $tmPrio, '$tmStatus', {$tm['progress']}, $tmDue)
+                        ");
+                    }
+                }
+            }
+
             $tRes = $this->db->query("
                 SELECT t.*, p.name as project_name, p.is_team_project 
                 FROM todo_tasks t 
