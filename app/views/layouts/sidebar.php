@@ -834,9 +834,9 @@
 
                     <!-- Project Manage -->
                     <li
-                        class="slide has-sub <?= isActive(['create-project', 'project-lists', 'project-category-lists', 'create-project-category', 'camera-lists', 'create-camera', 'edit-camera'], $current_route) ? 'active' : '' ?>">
+                        class="slide has-sub <?= isActive(['create-project', 'project-lists', 'project-category-lists', 'create-project-category', 'project-progress-lists', 'create-project-progress', 'edit-project-progress', 'camera-lists', 'create-camera', 'edit-camera'], $current_route) ? 'active' : '' ?>">
                         <a href="javascript:void(0);"
-                            class="sidebar__menu-item <?= isActive(['create-project', 'project-lists', 'project-category-lists', 'create-project-category', 'camera-lists', 'create-camera', 'edit-camera'], $current_route) ? 'menu-open active' : '' ?>">
+                            class="sidebar__menu-item <?= isActive(['create-project', 'project-lists', 'project-category-lists', 'create-project-category', 'project-progress-lists', 'create-project-progress', 'edit-project-progress', 'camera-lists', 'create-camera', 'edit-camera'], $current_route) ? 'menu-open active' : '' ?>">
                             <div class="side-menu__icon"><i class="fa-solid fa-building"></i></div>
                             <span class="sidebar__menu-label">Project Manage</span>
                             <i class="fa-regular fa-angle-down side-menu__angle"></i>
@@ -861,6 +861,11 @@
                                 <a href="<?= $base_url ?>/project-lists"
                                     class="sidebar__menu-item <?= isActive('project-lists', $current_route) ?>">Project
                                     List</a>
+                            </li>
+                            <li class="slide">
+                                <a href="<?= $base_url ?>/project-progress-lists"
+                                    class="sidebar__menu-item <?= isActive(['project-progress-lists', 'create-project-progress', 'edit-project-progress'], $current_route) ?>">Project
+                                    Progress</a>
                             </li>
                             <li class="slide">
                                 <a href="<?= $base_url ?>/camera-lists"

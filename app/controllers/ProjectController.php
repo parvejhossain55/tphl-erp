@@ -139,11 +139,14 @@ class ProjectController extends Controller
         $floorWiseUnitMeta = null;
         if (!empty($_POST['units']) && is_array($_POST['units'])) {
             $cleanUnits = [];
-            foreach ($_POST['units'] as $unit) {
+            foreach ($_POST['units'] as $idx => $unit) {
                 if (!empty($unit['unit_name']) && !empty($unit['sqft'])) {
+                    $unitImg = uploadImage("unit_image_{$idx}", 'projects', 'original');
                     $cleanUnits[] = [
-                        'unit_name' => trim($unit['unit_name']),
-                        'sqft'      => (int) $unit['sqft']
+                        'unit_name'   => trim($unit['unit_name']),
+                        'sqft'        => (float) $unit['sqft'],
+                        'image'       => $unitImg ?: '',
+                        'description' => trim($unit['description'] ?? '')
                     ];
                 }
             }
@@ -155,6 +158,52 @@ class ProjectController extends Controller
         }
 
         $data['floor_wise_unit_meta'] = $floorWiseUnitMeta;
+
+        // ======================
+        // Project Gallery Images
+        // ======================
+        $galleryImages = null;
+        if (!empty($_POST['gallery']) && is_array($_POST['gallery'])) {
+            $cleanGallery = [];
+            foreach ($_POST['gallery'] as $idx => $gItem) {
+                $title = trim($gItem['title'] ?? '');
+                $gImg = uploadImage("gallery_image_{$idx}", 'projects', 'original');
+                if (!empty($gImg)) {
+                    $cleanGallery[] = [
+                        'title' => $title ?: 'Gallery Image',
+                        'image' => $gImg
+                    ];
+                }
+            }
+            if (!empty($cleanGallery)) {
+                $galleryImages = json_encode($cleanGallery, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+        }
+        $data['gallery_images'] = $galleryImages;
+
+        // ======================
+        // Nearby Locations
+        // ======================
+        $nearbyLocations = null;
+        if (!empty($_POST['nearby']) && is_array($_POST['nearby'])) {
+            $cleanNearby = [];
+            foreach ($_POST['nearby'] as $idx => $nItem) {
+                $name = trim($nItem['name'] ?? '');
+                $dist = trim($nItem['distance'] ?? '');
+                $nImg = uploadImage("nearby_image_{$idx}", 'projects', 'original');
+                if (!empty($name) || !empty($nImg)) {
+                    $cleanNearby[] = [
+                        'name'     => $name,
+                        'distance' => $dist,
+                        'image'    => $nImg ?: ''
+                    ];
+                }
+            }
+            if (!empty($cleanNearby)) {
+                $nearbyLocations = json_encode($cleanNearby, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+        }
+        $data['nearby_locations'] = $nearbyLocations;
 
         // ======================
         // Basic Validation
@@ -295,11 +344,15 @@ class ProjectController extends Controller
         $floorWiseUnitMeta = null;
         if (!empty($_POST['units']) && is_array($_POST['units'])) {
             $cleanUnits = [];
-            foreach ($_POST['units'] as $unit) {
+            foreach ($_POST['units'] as $idx => $unit) {
                 if (!empty($unit['unit_name']) && !empty($unit['sqft'])) {
+                    $unitImg = uploadImage("unit_image_{$idx}", 'projects', 'original');
+                    $finalImg = $unitImg ?: ($unit['existing_image'] ?? '');
                     $cleanUnits[] = [
-                        'unit_name' => trim($unit['unit_name']),
-                        'sqft' => (float)$unit['sqft']
+                        'unit_name'   => trim($unit['unit_name']),
+                        'sqft'        => (float) $unit['sqft'],
+                        'image'       => $finalImg,
+                        'description' => trim($unit['description'] ?? '')
                     ];
                 }
             }
@@ -308,6 +361,54 @@ class ProjectController extends Controller
             }
         }
         $data['floor_wise_unit_meta'] = $floorWiseUnitMeta;
+
+        // ======================
+        // Project Gallery Images
+        // ======================
+        $galleryImages = null;
+        if (!empty($_POST['gallery']) && is_array($_POST['gallery'])) {
+            $cleanGallery = [];
+            foreach ($_POST['gallery'] as $idx => $gItem) {
+                $title = trim($gItem['title'] ?? '');
+                $gImg = uploadImage("gallery_image_{$idx}", 'projects', 'original');
+                $finalGImg = $gImg ?: ($gItem['existing_image'] ?? '');
+                if (!empty($finalGImg)) {
+                    $cleanGallery[] = [
+                        'title' => $title ?: 'Gallery Image',
+                        'image' => $finalGImg
+                    ];
+                }
+            }
+            if (!empty($cleanGallery)) {
+                $galleryImages = json_encode($cleanGallery, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+        }
+        $data['gallery_images'] = $galleryImages;
+
+        // ======================
+        // Nearby Locations
+        // ======================
+        $nearbyLocations = null;
+        if (!empty($_POST['nearby']) && is_array($_POST['nearby'])) {
+            $cleanNearby = [];
+            foreach ($_POST['nearby'] as $idx => $nItem) {
+                $name = trim($nItem['name'] ?? '');
+                $dist = trim($nItem['distance'] ?? '');
+                $nImg = uploadImage("nearby_image_{$idx}", 'projects', 'original');
+                $finalNImg = $nImg ?: ($nItem['existing_image'] ?? '');
+                if (!empty($name) || !empty($finalNImg)) {
+                    $cleanNearby[] = [
+                        'name'     => $name,
+                        'distance' => $dist,
+                        'image'    => $finalNImg
+                    ];
+                }
+            }
+            if (!empty($cleanNearby)) {
+                $nearbyLocations = json_encode($cleanNearby, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+        }
+        $data['nearby_locations'] = $nearbyLocations;
 
 
         // ══════════════════════════════════════════════════════

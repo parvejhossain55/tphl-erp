@@ -262,7 +262,8 @@ function buildSingleUnit($u, $id, $displayName, $numSqft, $formatImg, $mainImage
         $balc = $balcony;
     }
 
-    $planImg = !empty($u['floor_plan_image']) ? $formatImg($u['floor_plan_image']) : $mainImage;
+    $planImg = !empty($u['image']) ? $formatImg($u['image']) : (!empty($u['floor_plan_image']) ? $formatImg($u['floor_plan_image']) : $mainImage);
+    $unitDesc = $u['description'] ?? $u['short_description'] ?? '';
 
     return [
         'id' => (int)($u['id'] ?? $id),
@@ -277,7 +278,10 @@ function buildSingleUnit($u, $id, $displayName, $numSqft, $formatImg, $mainImage
         'status' => (string)($u['status'] ?? 'Available'),
         'price' => (string)($u['price'] ?? ''),
         'facing' => (string)($u['facing'] ?? 'South-East'),
+        'image' => $planImg,
         'floor_plan_image' => $planImg,
+        'description' => (string)$unitDesc,
+        'short_description' => (string)$unitDesc,
     ];
 }
 

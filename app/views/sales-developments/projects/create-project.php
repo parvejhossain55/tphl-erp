@@ -134,17 +134,30 @@ $show_breadcrumb = true;
 
                 <!-- Floor Wise Units -->
                 <div class="col-12">
-                    <label>Floor Wise Units</label>
+                    <label class="fw-semibold">Floor Wise Units</label>
                     <div id="unit-wrapper">
-                        <div class="row unit-row mb-2 align-items-center">
-                            <div class="col-md-6 col-12">
-                                <input type="text" name="units[0][unit_name]" class="form-control" placeholder="Unit Name (A)">
-                            </div>
-                            <div class="col-md-5 col-12">
-                                <input type="number" name="units[0][sqft]" class="form-control" placeholder="Sqft">
-                            </div>
-                            <div class="col-md-1 col-12 d-flex justify-content-center">
-                                <button type="button" class="btn btn-danger remove-unit w-100">×</button>
+                        <div class="unit-row card p-3 mb-2 border bg-light">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-3 col-12">
+                                    <label class="small text-muted mb-1">Unit Name</label>
+                                    <input type="text" name="units[0][unit_name]" class="form-control" placeholder="Unit Name (e.g. Unit A)">
+                                </div>
+                                <div class="col-md-2 col-12">
+                                    <label class="small text-muted mb-1">Sqft</label>
+                                    <input type="number" step="any" name="units[0][sqft]" class="form-control" placeholder="Sqft (e.g. 1450)">
+                                </div>
+                                <div class="col-md-3 col-12">
+                                    <label class="small text-muted mb-1">Unit Image</label>
+                                    <input type="file" name="unit_image_0" class="form-control" accept="image/*">
+                                </div>
+                                <div class="col-md-3 col-12">
+                                    <label class="small text-muted mb-1">Description</label>
+                                    <input type="text" name="units[0][description]" class="form-control" placeholder="Short description (e.g. 3 Bed, 3 Bath)">
+                                </div>
+                                <div class="col-md-1 col-12 text-end">
+                                    <label class="small text-muted mb-1 d-block">&nbsp;</label>
+                                    <button type="button" class="btn btn-outline-danger remove-unit w-100" title="Remove Unit">×</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -271,6 +284,36 @@ $show_breadcrumb = true;
                     <label>Map Link</label>
                     <input type="text" name="map_link" class="form-control">
                 </div>
+
+                <!-- Nearby Locations -->
+                <div class="col-12 mt-3">
+                    <label class="fw-semibold">Nearby Locations (Landmarks with Map Indications & Distance)</label>
+                    <div id="nearby-wrapper">
+                        <div class="nearby-row card p-3 mb-2 border bg-light">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-4 col-12">
+                                    <label class="small text-muted mb-1">Location / Landmark Name</label>
+                                    <input type="text" name="nearby[0][name]" class="form-control" placeholder="e.g. Jamuna Future Park, Metro Station">
+                                </div>
+                                <div class="col-md-3 col-12">
+                                    <label class="small text-muted mb-1">Distance / Time</label>
+                                    <input type="text" name="nearby[0][distance]" class="form-control" placeholder="e.g. 500m / 5 mins walk">
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    <label class="small text-muted mb-1">Map / Location Indication Image</label>
+                                    <input type="file" name="nearby_image_0" class="form-control" accept="image/*">
+                                </div>
+                                <div class="col-md-1 col-12 text-end">
+                                    <label class="small text-muted mb-1 d-block">&nbsp;</label>
+                                    <button type="button" class="btn btn-outline-danger remove-nearby w-100" title="Remove">×</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-secondary mt-1" id="add-nearby">
+                        + Add Nearby Location
+                    </button>
+                </div>
                 <div class="col-xl-3 col-6">
                     <label>Amenities Image</label>
                     <input type="file" name="amenities_image" class="form-control">
@@ -289,6 +332,32 @@ $show_breadcrumb = true;
                 <div class="col-xxl-3 col-md-6 col-6">
                     <label>Image 3</label>
                     <input type="file" name="image3" class="form-control">
+                </div>
+
+                <!-- Project Gallery Images -->
+                <div class="col-12 mt-3">
+                    <label class="fw-semibold">Project Gallery (Images with Titles)</label>
+                    <div id="gallery-wrapper">
+                        <div class="gallery-row card p-3 mb-2 border bg-light">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-5 col-12">
+                                    <label class="small text-muted mb-1">Image Title / Name</label>
+                                    <input type="text" name="gallery[0][title]" class="form-control" placeholder="e.g. Master Bedroom, Rooftop View, Swimming Pool">
+                                </div>
+                                <div class="col-md-6 col-12">
+                                    <label class="small text-muted mb-1">Gallery Image</label>
+                                    <input type="file" name="gallery_image_0" class="form-control" accept="image/*">
+                                </div>
+                                <div class="col-md-1 col-12 text-end">
+                                    <label class="small text-muted mb-1 d-block">&nbsp;</label>
+                                    <button type="button" class="btn btn-outline-danger remove-gallery w-100" title="Remove">×</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-secondary mt-1" id="add-gallery">
+                        + Add Gallery Image
+                    </button>
                 </div>
 
                 <!-- Common Project -->
@@ -504,29 +573,114 @@ $show_breadcrumb = true;
     // Add new unit
     document.getElementById('add-unit').addEventListener('click', function() {
         const html = `
-           <div id="unit-wrapper">
-    <div class="row unit-row mb-2 align-items-center">
-        <div class="col-md-6 col-12">
-            <input type="text" name="units[${unitIndex}][unit_name]" class="form-control" placeholder="Unit Name">
+        <div class="unit-row card p-3 mb-2 border bg-light">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-3 col-12">
+                    <label class="small text-muted mb-1">Unit Name</label>
+                    <input type="text" name="units[${unitIndex}][unit_name]" class="form-control" placeholder="Unit Name (e.g. Unit A)">
+                </div>
+                <div class="col-md-2 col-12">
+                    <label class="small text-muted mb-1">Sqft</label>
+                    <input type="number" step="any" name="units[${unitIndex}][sqft]" class="form-control" placeholder="Sqft (e.g. 1450)">
+                </div>
+                <div class="col-md-3 col-12">
+                    <label class="small text-muted mb-1">Unit Image</label>
+                    <input type="file" name="unit_image_${unitIndex}" class="form-control" accept="image/*">
+                </div>
+                <div class="col-md-3 col-12">
+                    <label class="small text-muted mb-1">Description</label>
+                    <input type="text" name="units[${unitIndex}][description]" class="form-control" placeholder="Short description">
+                </div>
+                <div class="col-md-1 col-12 text-end">
+                    <label class="small text-muted mb-1 d-block">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-danger remove-unit w-100" title="Remove Unit">×</button>
+                </div>
+            </div>
         </div>
-        <div class="col-md-5 col-12">
-            <input type="number" name="units[${unitIndex}][sqft]" class="form-control" placeholder="Sqft">
-        </div>
-        <div class="col-md-1 col-12 d-flex justify-content-center">
-            <button type="button" class="btn btn-danger remove-unit w-100">×</button>
-        </div>
-    </div>
-
-    `;
+        `;
         wrapper.insertAdjacentHTML('beforeend', html);
         unitIndex++;
     });
 
     // Remove unit (delegate)
     wrapper.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-unit')) {
+        if (e.target.classList.contains('remove-unit') || e.target.closest('.remove-unit')) {
             e.preventDefault();
             const row = e.target.closest('.unit-row');
+            if (row) row.remove();
+        }
+    });
+
+    // Gallery Dynamic Addition
+    let galleryIndex = 1;
+    const galleryWrapper = document.getElementById('gallery-wrapper');
+
+    document.getElementById('add-gallery')?.addEventListener('click', function() {
+        const html = `
+        <div class="gallery-row card p-3 mb-2 border bg-light">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-5 col-12">
+                    <label class="small text-muted mb-1">Image Title / Name</label>
+                    <input type="text" name="gallery[${galleryIndex}][title]" class="form-control" placeholder="e.g. Living Room, Exterior">
+                </div>
+                <div class="col-md-6 col-12">
+                    <label class="small text-muted mb-1">Gallery Image</label>
+                    <input type="file" name="gallery_image_${galleryIndex}" class="form-control" accept="image/*">
+                </div>
+                <div class="col-md-1 col-12 text-end">
+                    <label class="small text-muted mb-1 d-block">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-danger remove-gallery w-100" title="Remove">×</button>
+                </div>
+            </div>
+        </div>
+        `;
+        galleryWrapper.insertAdjacentHTML('beforeend', html);
+        galleryIndex++;
+    });
+
+    galleryWrapper?.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-gallery') || e.target.closest('.remove-gallery')) {
+            e.preventDefault();
+            const row = e.target.closest('.gallery-row');
+            if (row) row.remove();
+        }
+    });
+
+    // Nearby Locations Dynamic Addition
+    let nearbyIndex = 1;
+    const nearbyWrapper = document.getElementById('nearby-wrapper');
+
+    document.getElementById('add-nearby')?.addEventListener('click', function() {
+        const html = `
+        <div class="nearby-row card p-3 mb-2 border bg-light">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-4 col-12">
+                    <label class="small text-muted mb-1">Location / Landmark Name</label>
+                    <input type="text" name="nearby[${nearbyIndex}][name]" class="form-control" placeholder="e.g. Hospital, School, Mall">
+                </div>
+                <div class="col-md-3 col-12">
+                    <label class="small text-muted mb-1">Distance / Time</label>
+                    <input type="text" name="nearby[${nearbyIndex}][distance]" class="form-control" placeholder="e.g. 5 mins drive">
+                </div>
+                <div class="col-md-4 col-12">
+                    <label class="small text-muted mb-1">Map / Location Indication Image</label>
+                    <input type="file" name="nearby_image_${nearbyIndex}" class="form-control" accept="image/*">
+                </div>
+                <div class="col-md-1 col-12 text-end">
+                    <label class="small text-muted mb-1 d-block">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-danger remove-nearby w-100" title="Remove">×</button>
+                </div>
+            </div>
+        </div>
+        `;
+        nearbyWrapper.insertAdjacentHTML('beforeend', html);
+        nearbyIndex++;
+    });
+
+    nearbyWrapper?.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-nearby') || e.target.closest('.remove-nearby')) {
+            e.preventDefault();
+            const row = e.target.closest('.nearby-row');
             if (row) row.remove();
         }
     });

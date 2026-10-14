@@ -432,6 +432,99 @@ $show_breadcrumb = true;
                 <?php endif; ?>
             </div>
 
+            <?php
+                $floorUnits = !empty($project['floor_wise_unit_meta']) ? (json_decode($project['floor_wise_unit_meta'], true)['typical_floor'] ?? []) : [];
+                $galleryImages = !empty($project['gallery_images']) ? (json_decode($project['gallery_images'], true) ?: []) : [];
+                $nearbyLocations = !empty($project['nearby_locations']) ? (json_decode($project['nearby_locations'], true) ?: []) : [];
+            ?>
+
+            <!-- Floor Wise Units -->
+            <?php if (!empty($floorUnits)): ?>
+            <div class="row m-3">
+                <div class="col-12">
+                    <h5 class="mb-3"><i class="fa-solid fa-layer-group text-primary me-2"></i>Floor Wise Units</h5>
+                    <div class="row g-3">
+                        <?php foreach ($floorUnits as $u): ?>
+                            <div class="col-md-4 col-sm-6 col-12">
+                                <div class="card h-100 border shadow-sm p-3">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <span class="fw-bold text-dark fs-6"><?= htmlspecialchars($u['unit_name'] ?? 'Unit') ?></span>
+                                        <span class="badge bg-primary"><?= htmlspecialchars($u['sqft'] ?? 0) ?> Sqft</span>
+                                    </div>
+                                    <?php if (!empty($u['image'])): ?>
+                                        <?php $uImg = getProjectImage($u['image']); ?>
+                                        <a href="<?= $uImg['url'] ?>" target="_blank" class="mb-2 d-block">
+                                            <img src="<?= $uImg['url'] ?>" alt="Unit Layout" class="img-fluid rounded border" style="height: 130px; width: 100%; object-fit: cover;">
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if (!empty($u['description'])): ?>
+                                        <p class="small text-muted mb-0"><?= htmlspecialchars($u['description']) ?></p>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Project Gallery -->
+            <?php if (!empty($galleryImages)): ?>
+            <div class="row m-3">
+                <div class="col-12">
+                    <h5 class="mb-3"><i class="fa-solid fa-images text-primary me-2"></i>Project Gallery</h5>
+                    <div class="row g-3">
+                        <?php foreach ($galleryImages as $gItem): ?>
+                            <div class="col-md-3 col-sm-6 col-12">
+                                <div class="card h-100 border shadow-sm overflow-hidden">
+                                    <?php $gImg = getProjectImage($gItem['image'] ?? ''); ?>
+                                    <a href="<?= $gImg['url'] ?>" target="_blank">
+                                        <img src="<?= $gImg['url'] ?>" alt="<?= htmlspecialchars($gItem['title'] ?? '') ?>" class="card-img-top" style="height: 160px; object-fit: cover;">
+                                    </a>
+                                    <div class="card-body p-2 text-center bg-light">
+                                        <small class="fw-bold text-dark text-truncate d-block" title="<?= htmlspecialchars($gItem['title'] ?? '') ?>">
+                                            <?= htmlspecialchars($gItem['title'] ?? 'Gallery Image') ?>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Nearby Locations & Map Indication -->
+            <?php if (!empty($nearbyLocations)): ?>
+            <div class="row m-3">
+                <div class="col-12">
+                    <h5 class="mb-3"><i class="fa-solid fa-location-dot text-danger me-2"></i>Nearby Locations & Landmark Indications</h5>
+                    <div class="row g-3">
+                        <?php foreach ($nearbyLocations as $nLoc): ?>
+                            <div class="col-md-4 col-sm-6 col-12">
+                                <div class="card h-100 border shadow-sm overflow-hidden">
+                                    <?php if (!empty($nLoc['image'])): ?>
+                                        <?php $nImg = getProjectImage($nLoc['image']); ?>
+                                        <a href="<?= $nImg['url'] ?>" target="_blank">
+                                            <img src="<?= $nImg['url'] ?>" alt="<?= htmlspecialchars($nLoc['name'] ?? '') ?>" class="card-img-top" style="height: 150px; object-fit: cover;">
+                                        </a>
+                                    <?php endif; ?>
+                                    <div class="card-body p-3">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span class="fw-bold text-dark"><i class="fa-solid fa-map-pin text-danger me-1"></i><?= htmlspecialchars($nLoc['name'] ?? 'Landmark') ?></span>
+                                            <?php if (!empty($nLoc['distance'])): ?>
+                                                <span class="badge bg-secondary"><?= htmlspecialchars($nLoc['distance']) ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
         </div>
     </div>
 </div>
