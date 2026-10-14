@@ -5421,6 +5421,8 @@ class AccountClient extends Model
                         request_amount = ?,
                         approved_amount = ?,
                         status = 'approved',
+                        op_head_status = 'approved',
+                        approve_role = 'completed',
                         approved_by = ?,
                         approved_at = NOW(),
                         updated_at = NOW()
