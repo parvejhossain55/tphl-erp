@@ -151,6 +151,8 @@ $public_routes = [
     'logout',
     'admin-registration',
     'verify-receipt',
+    'download-receipt',
+    'public-receipt',
     'api/client-payment-info',
     'api/project-expenses',
     'api/client-authenticate',
@@ -159,7 +161,18 @@ $public_routes = [
     'restore-bookings-data'
 ];
 
-if (!in_array($route, $public_routes) && !str_starts_with($route, 'api/') && !str_starts_with($route, 'verify-receipt')) {
+$isPublicReceiptAccess = (
+    (str_starts_with($route, 'payment-invoice') || $route === 'payment-invoice')
+    && (!empty($_GET['token']) || !empty($_GET['public']) || !empty($_GET['payment_id']))
+);
+
+if (!in_array($route, $public_routes) 
+    && !str_starts_with($route, 'api/') 
+    && !str_starts_with($route, 'verify-receipt')
+    && !str_starts_with($route, 'download-receipt')
+    && !str_starts_with($route, 'public-receipt')
+    && !$isPublicReceiptAccess
+) {
     checkLogin();
 } else {
     // logged in user cannot see login page

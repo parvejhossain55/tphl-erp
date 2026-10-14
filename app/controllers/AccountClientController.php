@@ -3112,6 +3112,387 @@ public function verifyPublicReceipt($paymentId = null)
     include $viewPath;
     exit;
 }
+
+public function downloadPublicReceiptPdf($paymentId = null)
+{
+    global $db;
+    if (!$db && isset($this->db)) {
+        $db = $this->db;
+    }
+
+    if (!$paymentId) {
+        $paymentId = $_GET['id'] ?? ($_GET['payment_id'] ?? null);
+    }
+    $paymentId = (int)$paymentId;
+
+    if ($paymentId <= 0) {
+        die("Invalid receipt requested.");
+    }
+
+    $payment = $this->clientModel->getTransactionById($paymentId);
+    if (!$payment) {
+        die("Receipt record not found.");
+    }
+
+    $clientDetails = !empty($payment['booking_id']) 
+        ? $this->clientModel->getClientByBookingId($payment['booking_id']) 
+        : null;
+
+    $isVerified = isset($payment['verification_status']) && strtolower(trim($payment['verification_status'])) === 'verified';
+
+    // 1. Client Phone (Clean, no broken masking)
+    $clientPhone = !empty($clientDetails['phone']) ? $clientDetails['phone'] : (!empty($clientDetails['phone_number']) ? $clientDetails['phone_number'] : (!empty($payment['phone']) ? $payment['phone'] : 'N/A'));
+    if (!empty($clientDetails['2nd_owner_phone'])) {
+        $clientPhone .= ', ' . trim($clientDetails['2nd_owner_phone']);
+    }
+    if ($clientPhone !== 'N/A' && strlen($clientPhone) === 10 && substr($clientPhone, 0, 1) === '1') {
+        $clientPhone = '0' . $clientPhone;
+    }
+
+    // 2. Created By Resolution (sales_by_id or assigned_id)
+    $salesPersonName = '';
+    $salesPersonEmpId = '';
+    if (!empty($payment['sales_by_name'])) {
+        $salesPersonName = trim($payment['sales_by_name']);
+        $salesPersonEmpId = trim($payment['sales_by_employee_id'] ?? '');
+    } elseif (!empty($clientDetails['agent_name'])) {
+        $salesPersonName = trim($clientDetails['agent_name']);
+        $salesPersonEmpId = trim($clientDetails['agent_employee_id'] ?? '');
+    }
+
+    if (!empty($salesPersonName)) {
+        $createdByName = $salesPersonName;
+        $createdByEmpId = $salesPersonEmpId;
+    } else {
+        $createdByName = !empty($payment['created_by_name']) ? $payment['created_by_name'] : 'System';
+        $createdByEmpId = !empty($payment['created_by_employee_id']) ? trim($payment['created_by_employee_id']) : '';
+    }
+    $createdByDisplay = $createdByName . (!empty($createdByEmpId) ? ' (' . $createdByEmpId . ')' : '');
+
+    // 3. Verified By Resolution (Accounts roles -> officer name; Management roles -> Accounts)
+    $vRoleId = (int)($payment['verified_by_role_id'] ?? 0);
+    $vRoleName = trim($payment['verified_by_role_name'] ?? '');
+    $vFullName = trim($payment['verified_by_name'] ?? '');
+    $vEmpId = trim($payment['verified_by_employee_id'] ?? '');
+
+    if ($isVerified) {
+        $isAccountsRole = in_array($vRoleId, [6, 30, 36]) || (stripos($vRoleName, 'account') !== false);
+        $isManagementRole = in_array($vRoleId, [1, 3]) || (stripos($vFullName, 'management') !== false) || (stripos($vRoleName, 'admin') !== false);
+
+        if ($isAccountsRole) {
+            $verifiedByName = !empty($vFullName) ? $vFullName : 'Accounts Officer';
+            if (!empty($vEmpId)) {
+                $verifiedByName .= ' (' . $vEmpId . ')';
+            }
+        } elseif ($isManagementRole || strtolower($vFullName) === 'management') {
+            $verifiedByName = 'Accounts';
+        } else {
+            $verifiedByName = !empty($vFullName) ? $vFullName : 'Accounts';
+            if (!empty($vEmpId)) {
+                $verifiedByName .= ' (' . $vEmpId . ')';
+            }
+        }
+    } else {
+        $verifiedByName = 'Pending Verification';
+    }
+
+    // 4. Details
+    $receiptNo = '#REC-' . str_pad($payment['id'], 6, '0', STR_PAD_LEFT);
+    $paymentDateFormatted = date('d M, Y', strtotime($payment['payment_date'] ?? 'now'));
+    $amountPaid = (float)($payment['amount'] ?? 0);
+    $amountInWords = function_exists('amountInWords') ? amountInWords($amountPaid) : (class_exists('FormatHelper') ? FormatHelper::amountInWords($amountPaid) : '');
+
+    $clientName = !empty($clientDetails['client_name']) ? $clientDetails['client_name'] : ($payment['client_name'] ?? 'N/A');
+    if (!empty($clientDetails['2nd_lead_owner_name'])) {
+        $clientName .= ' & ' . trim($clientDetails['2nd_lead_owner_name']);
+    }
+    $projectName = !empty($clientDetails['project_name']) ? $clientDetails['project_name'] : ($payment['project_name'] ?? 'N/A');
+    $unitName = !empty($clientDetails['unit_name']) ? trim(preg_replace('/^unit\s+/i', '', $clientDetails['unit_name'])) : (!empty($payment['unit_name']) ? trim(preg_replace('/^unit\s+/i', '', $payment['unit_name'])) : 'N/A');
+    $floorNo = !empty($clientDetails['flat_no']) ? trim(preg_replace('/^floor\s+/i', '', $clientDetails['flat_no'])) : (!empty($payment['flat_no']) ? trim(preg_replace('/^floor\s+/i', '', $payment['flat_no'])) : 'N/A');
+
+    $paymentMethod = strtoupper($payment['payment_method'] ?? 'CASH');
+    $isCash = ($paymentMethod === 'CASH');
+    $bankDisplay = !empty($payment['company_bank_name']) ? $payment['company_bank_name'] : (!empty($payment['bank_name']) ? $payment['bank_name'] : ($isCash ? 'Cash in Hand / Office' : 'Official Accounts'));
+
+    $paymentTypeRaw = strtolower($payment['payment_type'] ?? '');
+    if (!empty($payment['is_emi_discount']) && $payment['is_emi_discount'] == 1) {
+        $paymentTypeLabel = 'APPLY PREVIOUS DISCOUNT';
+    } elseif ($paymentTypeRaw === 'emi') {
+        $paymentTypeLabel = !empty($payment['installment_label']) ? strtoupper($payment['installment_label']) : 'EMI INSTALLMENT';
+    } elseif ($paymentTypeRaw === 'booking_money') {
+        $paymentTypeLabel = 'BOOKING MONEY';
+    } elseif ($paymentTypeRaw === 'registration') {
+        $paymentTypeLabel = 'REGISTRATION MONEY';
+    } elseif ($paymentTypeRaw === 'development_charge') {
+        $paymentTypeLabel = 'DEVELOPMENT CHARGE';
+    } else {
+        $paymentTypeLabel = strtoupper(str_replace('_', ' ', $payment['payment_type'] ?? 'PAYMENT'));
+    }
+
+    $verifiedDateFormatted = 'Awaiting Verification';
+    if ($isVerified) {
+        if (!empty($payment['verified_at'])) {
+            $verifiedDateFormatted = date('d M, Y • h:i A', strtotime($payment['verified_at']));
+        } elseif (!empty($payment['updated_at']) && $payment['updated_at'] !== '0000-00-00 00:00:00') {
+            $verifiedDateFormatted = date('d M, Y • h:i A', strtotime($payment['updated_at']));
+        } else {
+            $verifiedDateFormatted = date('d M, Y • h:i A');
+        }
+    }
+
+    $companyTitle = function_exists('getSetting') ? getSetting('website_title', 'The Premium Homes Ltd.') : 'The Premium Homes Ltd.';
+    $companyPhone = function_exists('getSetting') ? getSetting('phone', '+8801958253303') : '+8801958253303';
+    $companyEmail = function_exists('getSetting') ? getSetting('email', 'accounts@dpremiumhomes.com') : 'accounts@dpremiumhomes.com';
+    $companyAddress = "Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
+
+    // QR Code
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $token = substr(hash('sha256', $paymentId . '_' . ($payment['created_at'] ?? 'tphl') . '_TPHL_VERIFY_KEY_2026'), 0, 12);
+    $verificationUrl = $protocol . $host . $GLOBALS['base_url'] . '/verify-receipt/' . $paymentId . '?token=' . $token;
+
+    $qrImageSrc = '';
+    if (class_exists('TCPDF2DBarcode')) {
+        try {
+            $barcode = new TCPDF2DBarcode($verificationUrl, 'QRCODE,M');
+            $qrPng = $barcode->getBarcodePngData(3, 3, [11, 102, 56]);
+            if ($qrPng && strlen($qrPng) > 50) {
+                $qrImageSrc = 'data:image/png;base64,' . base64_encode($qrPng);
+            }
+        } catch (Exception $e) {}
+    }
+
+    // Build PDF via mPDF
+    $tmpDir = dirname(dirname(__DIR__)) . '/tmp/mpdf';
+    if (!is_dir($tmpDir)) {
+        @mkdir($tmpDir, 0777, true);
+    }
+
+    $refNo = !empty($payment['reference_number']) ? $payment['reference_number'] : (!empty($payment['transaction_id']) ? $payment['transaction_id'] : 'N/A');
+    $senderBankName = !empty($payment['bank_name']) && !in_array(strtolower($payment['bank_name']), ['0', 'n/a', 'none', 'cash']) ? $payment['bank_name'] : ($isCash ? 'Cash Payment' : 'N/A');
+    $receiverBankName = !empty($payment['company_bank_name']) ? $payment['company_bank_name'] : 'BRAC Bank PLC';
+    $receiverHolderName = 'The Premium Homes Ltd.';
+    $receiverAccountNo = '2073570070001';
+
+    // Build PDF via mPDF (Single Customer Receipt for Client Download)
+    $tmpDir = dirname(dirname(__DIR__)) . '/tmp/mpdf';
+    if (!is_dir($tmpDir)) {
+        @mkdir($tmpDir, 0777, true);
+    }
+
+    $mpdf = new \Mpdf\Mpdf([
+        'format' => 'A4',
+        'margin_left' => 12,
+        'margin_right' => 12,
+        'margin_top' => 10,
+        'margin_bottom' => 10,
+        'tempDir' => $tmpDir
+    ]);
+
+    $badgeText = $isVerified ? ($isCash ? 'Cash Verified' : 'Verified') : 'Subject to Verification';
+
+    $statusHtml = $isVerified ? '
+        <div style="background: #f0fdf4; border: 1.5px solid #a7f3d0; border-radius: 6px; padding: 4px 10px; display: inline-block; text-align: left;">
+            <span style="font-size: 8px; font-weight: bold; color: #15803d; text-transform: uppercase;">PAYMENT STATUS</span><br>
+            <b style="font-size: 11px; color: #15803d;">Verified &amp; Confirmed</b><br>
+            <span style="font-size: 8px; color: #166534;">Payment verified officially.</span>
+        </div>' : '
+        <div style="background: #fffbeb; border: 1.5px solid #fef3c7; border-radius: 6px; padding: 4px 10px; display: inline-block; text-align: left;">
+            <span style="font-size: 8px; font-weight: bold; color: #b45309; text-transform: uppercase;">PAYMENT STATUS</span><br>
+            <b style="font-size: 11px; color: #d97706;">Subject to Bank Verification</b><br>
+            <span style="font-size: 8px; color: #92400e;">Confirmation issued after verification.</span>
+        </div>';
+
+    $html = '
+    <style>
+        body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: #0f172a; font-size: 10.5px; line-height: 1.4; margin: 0; padding: 0; }
+        .header-tbl { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        .company-name { font-size: 16px; font-weight: 900; color: #0b4022; text-transform: uppercase; letter-spacing: 0.5px; }
+        .company-slogan { font-size: 7.5px; color: #15803d; font-weight: bold; letter-spacing: 1.8px; text-transform: uppercase; margin-top: 2px; }
+        .company-tag { font-size: 11px; color: #0b6638; font-weight: bold; margin-top: 4px; }
+        .company-desc { font-size: 9px; color: #475569; line-height: 1.35; margin-top: 2px; }
+        .doc-title { font-size: 18px; font-weight: 900; color: #0f172a; text-align: right; }
+        .copy-pill { background: #0f3b25; color: #ffffff; padding: 3px 10px; font-size: 9px; font-weight: bold; border-radius: 4px; text-transform: uppercase; }
+        .doc-rec { font-size: 14px; font-weight: 800; color: #0f172a; text-align: right; margin-top: 3px; }
+        .doc-date { font-size: 11px; color: #475569; text-align: right; margin-top: 1px; }
+        
+        .green-divider { height: 3px; background-color: #0b6638; width: 100%; margin: 8px 0 14px 0; }
+
+        .info-tbl { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+        .info-card { border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; font-size: 10px; }
+        .card-head { font-size: 10px; font-weight: 800; color: #0f172a; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; margin-bottom: 6px; }
+        .row-item { margin-bottom: 4px; }
+        .lbl { color: #64748b; font-size: 9.5px; width: 85px; display: inline-block; font-weight: 600; }
+        .val { font-weight: 800; color: #0f172a; }
+
+        .amount-banner { background: #f0fdf4; border: 1.5px solid #a7f3d0; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; }
+        .amt-title { font-size: 10.5px; font-weight: 800; color: #0f172a; }
+        .method-pill { background: #0f3b25; color: #ffffff; padding: 2px 7px; font-size: 9px; font-weight: bold; border-radius: 3px; margin-left: 4px; }
+        .words-pill { background: #dcfce7; color: #15803d; font-size: 8px; font-weight: bold; padding: 1px 6px; border-radius: 3px; }
+        .amt-num { font-size: 24px; font-weight: 900; color: #0f172a; text-align: right; }
+
+        .proc-box { border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-size: 9.5px; }
+        .proc-col { vertical-align: top; }
+        .proc-lbl { color: #64748b; font-size: 8.5px; font-weight: 600; margin-bottom: 2px; }
+        .proc-val { font-weight: 800; color: #0f172a; font-size: 10px; }
+
+        .verify-box { border: 1.5px solid #a7f3d0; background: #f0fdf4; border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; }
+    </style>
+
+    <table class="header-tbl">
+        <tr>
+            <td style="width: 55%; vertical-align: top;">
+                <div class="company-name">' . htmlspecialchars($companyTitle) . '</div>
+                <div class="company-slogan">YOUR DREAM HOME AWAITS</div>
+                <div class="company-tag">Real Estate &amp; Property Management</div>
+                <div class="company-desc">
+                    ' . htmlspecialchars($companyAddress) . '<br>
+                    <b>+8801958253303</b> &bull; accounts@dpremiumhomes.com
+                </div>
+            </td>
+            <td style="width: 45%; vertical-align: top; text-align: right;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="text-align: right; vertical-align: middle;">
+                            <span class="doc-title">PAYMENT RECEIPT</span>
+                        </td>
+                        <td style="width: 105px; text-align: right; vertical-align: middle;">
+                            <span class="copy-pill">CUSTOMER COPY</span>
+                        </td>
+                    </tr>
+                </table>
+                <div class="doc-rec">' . htmlspecialchars($receiptNo) . '</div>
+                <div class="doc-date">' . htmlspecialchars($paymentDateFormatted) . '</div>
+                <div style="margin-top: 4px; display: inline-block;">' . $statusHtml . '</div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="green-divider"></div>
+
+    <table class="info-tbl">
+        <tr>
+            <td style="width: 49%; vertical-align: top; padding-right: 6px;">
+                <div class="info-card">
+                    <div class="card-head">RECEIVED FROM</div>
+                    <div class="row-item"><span class="lbl">Client Name:</span> <span class="val">' . htmlspecialchars($clientName) . '</span></div>
+                    <div class="row-item"><span class="lbl">Phone:</span> <span class="val">' . htmlspecialchars($clientPhone) . '</span></div>
+                    <div class="row-item"><span class="lbl">Email:</span> <span class="val">N/A</span></div>
+                </div>
+            </td>
+            <td style="width: 51%; vertical-align: top; padding-left: 6px;">
+                <div class="info-card">
+                    <div class="card-head">PROPERTY INFORMATION</div>
+                    <div class="row-item"><span class="lbl">Project:</span> <span class="val">' . htmlspecialchars($projectName) . '</span></div>
+                    <div class="row-item"><span class="lbl">Unit:</span> <span class="val">' . htmlspecialchars($unitName) . '</span></div>
+                    <div class="row-item"><span class="lbl">Floor:</span> <span class="val">' . htmlspecialchars($floorNo) . '</span></div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="amount-banner">
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="vertical-align: middle;">
+                    <div class="amt-title">TOTAL AMOUNT PAID BY <span class="method-pill">' . htmlspecialchars($paymentMethod) . '</span></div>
+                    <div style="margin-top: 4px;">
+                        <span class="words-pill">IN WORDS</span> 
+                        <span style="font-weight: 800; font-size: 11px; color: #0f172a;">' . htmlspecialchars($amountInWords) . '</span>
+                    </div>
+                </td>
+                <td style="text-align: right; vertical-align: middle; width: 200px;">
+                    <div class="amt-num">TK. ' . number_format($amountPaid, 2) . '</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="proc-box">
+        <div class="card-head" style="margin-bottom: 4px;">BANK &amp; PROCESSING INFORMATION</div>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td class="proc-col" style="width: 28%;">
+                    <div class="proc-lbl">Created By:</div>
+                    <div class="proc-val">' . htmlspecialchars($createdByName) . '</div>
+                    ' . (!empty($createdByEmpId) ? '<div style="color: #64748b; font-size: 8.5px;">(' . htmlspecialchars($createdByEmpId) . ')</div>' : '') . '
+                </td>
+                <td class="proc-col" style="width: 26%;">
+                    <div class="proc-lbl">Sender Bank</div>
+                    <div class="proc-val">' . htmlspecialchars($senderBankName) . '</div>
+                </td>
+                <td class="proc-col" style="width: 32%;">
+                    <div class="proc-lbl">Receiver Bank</div>
+                    <div class="proc-val">' . htmlspecialchars($receiverBankName) . '</div>
+                    <div style="color: #64748b; font-size: 8.5px;">' . htmlspecialchars($receiverHolderName) . '</div>
+                    <div style="font-weight: bold; font-size: 8.5px;">&bull; A/C: ' . htmlspecialchars($receiverAccountNo) . '</div>
+                </td>
+                <td class="proc-col" style="width: 14%;">
+                    <div class="proc-lbl">Ref Number</div>
+                    <div class="proc-val">' . htmlspecialchars($refNo) . '</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="verify-box">
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="vertical-align: middle;">
+                    <div style="font-size: 10.5px; font-weight: 800; color: #0b6638; text-transform: uppercase; margin-bottom: 3px;">
+                        &#10004; ' . ($isCash ? 'CASH-VERIFIED' : 'OFFICIAL-VERIFIED') . ' PAYMENT RECEIPT
+                    </div>
+                    <div style="font-size: 9px; color: #64748b; margin-bottom: 6px;">
+                        This payment has been reviewed and confirmed through the official ERP system.
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 9px; border-top: 1px solid #d1fae5; padding-top: 4px;">
+                        <tr>
+                            <td style="width: 32%;"><b>Receipt ID:</b> ' . htmlspecialchars($receiptNo) . '</td>
+                            <td style="width: 34%;"><b>Verified By:</b> <span style="color: ' . ($isVerified ? '#15803d' : '#d97706') . '; font-weight: bold;">' . htmlspecialchars($verifiedByName) . '</span></td>
+                            <td style="width: 34%;"><b>Verified On:</b> <span style="color: ' . ($isVerified ? '#15803d' : '#d97706') . '; font-weight: bold;">' . htmlspecialchars($verifiedDateFormatted) . '</span></td>
+                        </tr>
+                    </table>
+                    <div style="font-size: 8px; color: #64748b; font-style: italic; margin-top: 4px;">
+                        This system-generated receipt is valid without a physical signature.
+                    </div>
+                </td>
+                <td style="width: 155px; text-align: right; vertical-align: middle;">
+                    <table style="border-collapse: collapse; margin-left: auto;">
+                        <tr>
+                            ' . (!empty($qrImageSrc) ? '
+                            <td style="text-align: center; vertical-align: middle; padding-right: 10px;">
+                                <img src="' . $qrImageSrc . '" style="width: 52px; height: 52px; border: 1px solid #bbf7d0; padding: 2px; border-radius: 4px; background: #ffffff;" />
+                                <div style="font-size: 7px; font-weight: bold; color: #0b6638; text-align: center; margin-top: 2px;">SCAN TO VERIFY</div>
+                            </td>' : '') . '
+                            <td style="text-align: center; vertical-align: middle;">
+                                <div style="border: 2px solid #2563eb; border-radius: 50%; width: 52px; height: 52px; text-align: center; padding-top: 10px;">
+                                    <div style="font-size: 7.5px; font-weight: 900; color: #2563eb;">TPHL</div>
+                                    <div style="height: 1px; background: #2563eb; width: 30px; margin: 1px auto;"></div>
+                                    <div style="font-size: 6.5px; font-weight: bold; color: #2563eb;">OFFICIAL</div>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div style="border-top: 1px solid #e2e8f0; margin-top: 20px; padding-top: 6px; text-align: center;">
+        <span style="font-size: 9.5px; font-weight: 700; color: #475569; letter-spacing: 2px; text-transform: uppercase;">Your Dream Home Awaits</span>
+    </div>
+    ';
+
+    $mpdf->WriteHTML($html);
+    $filename = 'Payment-Receipt-' . str_pad($paymentId, 6, '0', STR_PAD_LEFT) . '.pdf';
+
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Cache-Control: private, max-age=0, must-revalidate');
+    header('Pragma: public');
+    echo $mpdf->Output('', 'S');
+    exit;
+}
 public function getClientPaymentHistory()
 {
     $bookingId = $_GET['booking_id'] ?? 0;

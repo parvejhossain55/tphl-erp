@@ -2985,6 +2985,8 @@ class AccountClient extends Model
                    es.service_fee as emi_service_fee,
                    es.emi_amount as emi_schedule_amount,
                    uv.full_name as verified_by_name,
+                   uv.role_id as verified_by_role_id,
+                   (SELECT r.name FROM roles r WHERE r.id = uv.role_id) as verified_by_role_name,
                    (SELECT ev.employee_id 
                     FROM employees ev 
                     LEFT JOIN users uv_sub ON (uv_sub.employee_id = ev.id OR uv_sub.employee_id = ev.employee_id OR ev.user_id = uv_sub.id)
@@ -3006,6 +3008,17 @@ class AccountClient extends Model
                       AND ec.employee_id IS NOT NULL 
                       AND TRIM(ec.employee_id) != '' 
                     ORDER BY ec.id DESC LIMIT 1) as created_by_employee_id,
+                   lb.sales_by_id,
+                   l.assigned_id,
+                   sales_u.full_name as sales_by_name,
+                   (SELECT es_sub.employee_id 
+                    FROM employees es_sub 
+                    LEFT JOIN users us_sub ON (us_sub.employee_id = es_sub.id OR us_sub.employee_id = es_sub.employee_id OR es_sub.user_id = us_sub.id)
+                    WHERE (es_sub.user_id = sales_u.id OR us_sub.id = sales_u.id) 
+                      AND es_sub.deleted_at IS NULL 
+                      AND es_sub.employee_id IS NOT NULL 
+                      AND TRIM(es_sub.employee_id) != '' 
+                    ORDER BY es_sub.id DESC LIMIT 1) as sales_by_employee_id,
                    CASE 
                        WHEN lp.settlement_type = 'emi_due_settlement' AND parent_es.emi_no IS NOT NULL 
                        THEN CONCAT(parent_es.emi_no, 
@@ -3067,6 +3080,7 @@ class AccountClient extends Model
             LEFT JOIN emi_schedules parent_es ON parent_es.lead_payment_id = lp.parent_payment_id
             LEFT JOIN users uv ON uv.id = lp.verified_by
             LEFT JOIN users uu ON uu.id = lp.updated_by
+            LEFT JOIN users sales_u ON sales_u.id = COALESCE(NULLIF(lb.sales_by_id, 0), NULLIF(l.assigned_id, 0))
             WHERE lp.id = ?
         ");
 
