@@ -1278,7 +1278,13 @@ class TaskController extends Controller
                     $query = "UPDATE todo_tasks 
                               SET progress = $progress, status = '$status' $dueDateClause 
                               WHERE id = $taskId";
-                    if ($this->db->query($query)) {
+                    $updateSuccess = $this->db->query($query);
+                    if (!$updateSuccess && strpos($this->db->error, "Unknown column 'progress'") !== false) {
+                        $this->db->query("ALTER TABLE todo_tasks ADD COLUMN progress INT(11) NOT NULL DEFAULT 0 AFTER status");
+                        $updateSuccess = $this->db->query($query);
+                    }
+
+                    if ($updateSuccess) {
                         $success = true;
                         $message = "Task details and progress updated successfully!";
 
@@ -1291,11 +1297,19 @@ class TaskController extends Controller
                             $pCond = $ttProj > 0 ? "AND (todo_project_id = $ttProj OR todo_project_id IS NULL)" : "";
                             $taskStatus = ($progress >= 100) ? 'completed' : 'in_progress';
 
-                            $this->db->query("
+                            $taskUpdate = $this->db->query("
                                 UPDATE tasks 
                                 SET progress = $progress, status = '$taskStatus', updated_at = NOW() 
                                 WHERE user_id = $ttUid AND title = '$ttTitle' $pCond
                             ");
+                            if (!$taskUpdate && strpos($this->db->error, "Unknown column 'todo_project_id'") !== false) {
+                                $this->db->query("ALTER TABLE tasks ADD COLUMN todo_project_id INT NULL DEFAULT NULL AFTER user_id");
+                                $this->db->query("
+                                    UPDATE tasks 
+                                    SET progress = $progress, status = '$taskStatus', updated_at = NOW() 
+                                    WHERE user_id = $ttUid AND title = '$ttTitle' $pCond
+                                ");
+                            }
 
                             // Notify employee that supervisor/head updated progress
                             if ($ttUid > 0 && $ttUid !== $userId) {

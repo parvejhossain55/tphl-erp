@@ -2315,6 +2315,10 @@ class ApprovalRequest extends Model
             $payoutStatus = 'N/A';
             $payoutAmount = 0.00;
             $payoutDate = null;
+            $row['disbursed_by_name'] = null;
+            $row['disbursed_by_code'] = null;
+            $row['disbursed_branch_name'] = null;
+            $row['disbursed_branch_id'] = null;
 
             // Default stage label & pending with text
             $pendingStageLabel = 'Pending Review';
@@ -2377,6 +2381,15 @@ class ApprovalRequest extends Model
                         $payoutDate = $pRow['pay_date'];
                         $pendingStageLabel = 'Paid & Settled';
                         $pendingForText = 'Settled';
+                        $pipRes = $this->db->query("SELECT disbursed_by FROM project_incentive_payments WHERE claim_id = {$sourceId} ORDER BY id DESC LIMIT 1");
+                        if ($pipRes && $pipRow = $pipRes->fetch_assoc()) {
+                            if ($d = $this->getDisburserInfo($pipRow['disbursed_by'])) {
+                                $row['disbursed_by_name'] = $d['full_name'];
+                                $row['disbursed_by_code'] = $d['employee_id'];
+                                $row['disbursed_branch_name'] = $d['branch_name'];
+                                $row['disbursed_branch_id'] = $d['branch_id'];
+                            }
+                        }
                     } else if ($row['status'] === 'approved') {
                         $payoutStatus = 'Pending Accounts Payout';
                         $pendingStageLabel = 'Pending Accounts Payout';
@@ -2442,10 +2455,24 @@ class ApprovalRequest extends Model
                             $payoutStatus = 'Paid & Settled';
                             $payoutAmount = (float) ($lrRow['total_paid'] > 0 ? $lrRow['total_paid'] : $lrRow['app_amt']);
                             $payoutDate = $lrRow['payment_date'];
+                            $dId = !empty($lrRow['labor_disbursed_by']) ? $lrRow['labor_disbursed_by'] : ($lrRow['paid_by'] ?? null);
+                            if ($dId && $d = $this->getDisburserInfo($dId)) {
+                                $row['disbursed_by_name'] = $d['full_name'];
+                                $row['disbursed_by_code'] = $d['employee_id'];
+                                $row['disbursed_branch_name'] = $d['branch_name'];
+                                $row['disbursed_branch_id'] = $d['branch_id'];
+                            }
                         } else if ($lrStatus === 'partially_paid') {
                             $payoutStatus = 'Partially Paid';
                             $payoutAmount = (float) $lrRow['total_paid'];
                             $payoutDate = $lrRow['payment_date'];
+                            $dId = !empty($lrRow['labor_disbursed_by']) ? $lrRow['labor_disbursed_by'] : ($lrRow['paid_by'] ?? null);
+                            if ($dId && $d = $this->getDisburserInfo($dId)) {
+                                $row['disbursed_by_name'] = $d['full_name'];
+                                $row['disbursed_by_code'] = $d['employee_id'];
+                                $row['disbursed_branch_name'] = $d['branch_name'];
+                                $row['disbursed_branch_id'] = $d['branch_id'];
+                            }
                         } else if (in_array($lrStatus, ['management_approved']) || $row['status'] === 'approved') {
                             $payoutStatus = 'Pending Accounts Payout';
                             $payoutAmount = (float) $lrRow['app_amt'];
@@ -2503,14 +2530,19 @@ class ApprovalRequest extends Model
                             $pendingForText = 'Rejected';
                         }
 
-                        if (in_array($vStatus, ['paid', 'completed', 'fully paid', 'fully_paid'])) {
-                            $payoutStatus = 'Paid & Settled';
+                        if (in_array($vStatus, ['paid', 'completed', 'fully paid', 'fully_paid', 'partially paid', 'partially_paid'])) {
+                            $payoutStatus = in_array($vStatus, ['partially paid', 'partially_paid']) ? 'Partially Paid' : 'Paid & Settled';
                             $payoutAmount = (float) $vRow['app_amt'];
                             $payoutDate = $vRow['updated_at'];
-                        } else if (in_array($vStatus, ['partially paid', 'partially_paid'])) {
-                            $payoutStatus = 'Partially Paid';
-                            $payoutAmount = (float) $vRow['app_amt'];
-                            $payoutDate = $vRow['updated_at'];
+                            $cftQ = $this->db->query("SELECT processed_by FROM con_financial_transactions WHERE ref_type = 'vendor_payment' AND ref_id = {$sourceId} ORDER BY id DESC LIMIT 1");
+                            if ($cftQ && $cftR = $cftQ->fetch_assoc()) {
+                                if (!empty($cftR['processed_by']) && $d = $this->getDisburserInfo($cftR['processed_by'])) {
+                                    $row['disbursed_by_name'] = $d['full_name'];
+                                    $row['disbursed_by_code'] = $d['employee_id'];
+                                    $row['disbursed_branch_name'] = $d['branch_name'];
+                                    $row['disbursed_branch_id'] = $d['branch_id'];
+                                }
+                            }
                         } else if (in_array($vStatus, ['approved', 'management approved', 'management_approved']) || $row['status'] === 'approved') {
                             $payoutStatus = 'Pending Accounts Payout';
                             $payoutAmount = (float) $vRow['app_amt'];
@@ -2594,6 +2626,12 @@ class ApprovalRequest extends Model
                             $payoutStatus = 'Paid & Settled';
                             $payoutAmount = (float) (!empty($pocRow['payment_amount']) ? $pocRow['payment_amount'] : (!empty($pocRow['approved_amount']) ? $pocRow['approved_amount'] : $pocRow['request_amount']));
                             $payoutDate = $pocRow['payment_at'] ?? $pocRow['updated_at'];
+                            if (!empty($pocRow['payment_by_id']) && $d = $this->getDisburserInfo($pocRow['payment_by_id'])) {
+                                $row['disbursed_by_name'] = $d['full_name'];
+                                $row['disbursed_by_code'] = $d['employee_id'];
+                                $row['disbursed_branch_name'] = $d['branch_name'];
+                                $row['disbursed_branch_id'] = $d['branch_id'];
+                            }
                         } else if ($row['status'] === 'approved' || $pocStatus === 'management_approved') {
                             $payoutStatus = 'Pending Accounts Payout';
                         }
@@ -2647,6 +2685,12 @@ class ApprovalRequest extends Model
                             $payoutDate = $frRow['paid_at'];
                             $pendingStageLabel = ($frRow['status'] === 'partially_paid') ? 'Partially Paid' : 'Paid & Settled';
                             $pendingForText = ($frRow['status'] === 'partially_paid') ? 'Accounts & Finance' : 'Settled';
+                            if (!empty($frRow['paid_by']) && $d = $this->getDisburserInfo($frRow['paid_by'])) {
+                                $row['disbursed_by_name'] = $d['full_name'];
+                                $row['disbursed_by_code'] = $d['employee_id'];
+                                $row['disbursed_branch_name'] = $d['branch_name'];
+                                $row['disbursed_branch_id'] = $d['branch_id'];
+                            }
                         } else if ($frRow['status'] === 'approved' || $frRow['status'] === 'partially_approved' || $row['status'] === 'approved' || $row['status'] === 'partial') {
                             $payoutStatus = 'Pending Accounts Payout';
                             $pendingStageLabel = 'Pending Accounts Payout';
@@ -2684,6 +2728,12 @@ class ApprovalRequest extends Model
                             $payoutDate = $lfrRow['accounts_paid_at'] ?? $lfrRow['updated_at'];
                             $pendingStageLabel = 'Paid & Settled';
                             $pendingForText = !empty($lfrRow['accounts_name']) ? 'Paid by ' . $lfrRow['accounts_name'] : 'Settled';
+                            if (!empty($lfrRow['accounts_by']) && $d = $this->getDisburserInfo($lfrRow['accounts_by'])) {
+                                $row['disbursed_by_name'] = $d['full_name'];
+                                $row['disbursed_by_code'] = $d['employee_id'];
+                                $row['disbursed_branch_name'] = $d['branch_name'];
+                                $row['disbursed_branch_id'] = $d['branch_id'];
+                            }
                         } elseif ($mgmtSt === 'Approved') {
                             $row['status'] = 'approved';
                             $row['approve_role'] = 'accounts';
@@ -2779,6 +2829,12 @@ class ApprovalRequest extends Model
                             $payoutStatus = 'Paid & Settled';
                             $payoutAmount = (float) (!empty($peaRow['paid_amount']) ? $peaRow['paid_amount'] : $row['request_amount']);
                             $payoutDate = $peaRow['paid_at'];
+                            if (!empty($peaRow['paid_by']) && $d = $this->getDisburserInfo($peaRow['paid_by'])) {
+                                $row['disbursed_by_name'] = $d['full_name'];
+                                $row['disbursed_by_code'] = $d['employee_id'];
+                                $row['disbursed_branch_name'] = $d['branch_name'];
+                                $row['disbursed_branch_id'] = $d['branch_id'];
+                            }
                         } else if ($row['status'] === 'approved' || $peaMgmtStatus === 'approved') {
                             $payoutStatus = 'Pending Accounts Payout';
                         }
@@ -2853,14 +2909,19 @@ class ApprovalRequest extends Model
                             $pendingForText = 'Rejected';
                         }
 
-                        if (in_array($cbStatus, ['paid', 'fully_paid'])) {
-                            $payoutStatus = 'Paid & Settled';
+                        if (in_array($cbStatus, ['paid', 'fully_paid', 'partially_paid'])) {
+                            $payoutStatus = in_array($cbStatus, ['partially_paid']) ? 'Partially Paid' : 'Paid & Settled';
                             $payoutAmount = (float)$cbRow['app_amt'];
                             $payoutDate = $cbRow['updated_at'];
-                        } else if ($cbStatus === 'partially_paid') {
-                            $payoutStatus = 'Partially Paid';
-                            $payoutAmount = (float)$cbRow['app_amt'];
-                            $payoutDate = $cbRow['updated_at'];
+                            $cftQ = $this->db->query("SELECT processed_by FROM con_financial_transactions WHERE ref_type = 'contractor_bill' AND ref_id = {$sourceId} ORDER BY id DESC LIMIT 1");
+                            if ($cftQ && $cftR = $cftQ->fetch_assoc()) {
+                                if (!empty($cftR['processed_by']) && $d = $this->getDisburserInfo($cftR['processed_by'])) {
+                                    $row['disbursed_by_name'] = $d['full_name'];
+                                    $row['disbursed_by_code'] = $d['employee_id'];
+                                    $row['disbursed_branch_name'] = $d['branch_name'];
+                                    $row['disbursed_branch_id'] = $d['branch_id'];
+                                }
+                            }
                         } else if ($cbStatus === 'approved') {
                             $payoutAmount = (float)$cbRow['app_amt'];
                             if (($row['accounts_head_status'] ?? '') !== 'approved') {
@@ -2872,7 +2933,7 @@ class ApprovalRequest extends Model
                     }
                 }
             } else if ($sourceTable === 'cashout_requests') {
-                $coSql = "SELECT status, IFNULL(approved_amount, amount) AS app_amt, updated_at FROM cashout_requests WHERE id = ? LIMIT 1";
+                $coSql = "SELECT status, IFNULL(approved_amount, amount) AS app_amt, updated_at, approved_by FROM cashout_requests WHERE id = ? LIMIT 1";
                 $coStmt = $this->db->prepare($coSql);
                 if ($coStmt) {
                     $coStmt->bind_param("i", $sourceId);
@@ -2889,12 +2950,24 @@ class ApprovalRequest extends Model
                             $payoutDate = $coRow['updated_at'];
                             $pendingStageLabel = 'Paid & Settled';
                             $pendingForText = 'Settled';
+                            if (!empty($coRow['approved_by']) && $d = $this->getDisburserInfo($coRow['approved_by'])) {
+                                $row['disbursed_by_name'] = $d['full_name'];
+                                $row['disbursed_by_code'] = $d['employee_id'];
+                                $row['disbursed_branch_name'] = $d['branch_name'];
+                                $row['disbursed_branch_id'] = $d['branch_id'];
+                            }
                         } else if ($coStatus === 'partially_paid') {
                             $payoutStatus = 'Partially Paid';
                             $payoutAmount = (float)$coRow['app_amt'];
                             $payoutDate = $coRow['updated_at'];
                             $pendingStageLabel = 'Partially Paid';
                             $pendingForText = 'Accounts & Finance';
+                            if (!empty($coRow['approved_by']) && $d = $this->getDisburserInfo($coRow['approved_by'])) {
+                                $row['disbursed_by_name'] = $d['full_name'];
+                                $row['disbursed_by_code'] = $d['employee_id'];
+                                $row['disbursed_branch_name'] = $d['branch_name'];
+                                $row['disbursed_branch_id'] = $d['branch_id'];
+                            }
                         } else if ($coStatus === 'approved' || $row['status'] === 'approved') {
                             $payoutStatus = 'Pending Accounts Payout';
                             $payoutAmount = (float)$coRow['app_amt'];
@@ -2906,7 +2979,7 @@ class ApprovalRequest extends Model
                 }
                 
             } else if ($sourceTable === 'expense_adjustments') {
-                $eaSql = "SELECT status, adjustment_type, amount, approved_amount, due_amount, updated_at FROM expense_adjustments WHERE id = ? LIMIT 1";
+                $eaSql = "SELECT status, adjustment_type, amount, approved_amount, due_amount, updated_at, approved_by FROM expense_adjustments WHERE id = ? LIMIT 1";
                 $eaStmt = $this->db->prepare($eaSql);
                 if ($eaStmt) {
                     $eaStmt->bind_param("i", $sourceId);
@@ -2927,6 +3000,12 @@ class ApprovalRequest extends Model
                                 $payoutDate = $eaRow['updated_at'];
                                 $pendingStageLabel = 'Verified & Received';
                                 $pendingForText = 'Accounts Verified';
+                                if (!empty($eaRow['approved_by']) && $d = $this->getDisburserInfo($eaRow['approved_by'])) {
+                                    $row['disbursed_by_name'] = $d['full_name'];
+                                    $row['disbursed_by_code'] = $d['employee_id'];
+                                    $row['disbursed_branch_name'] = $d['branch_name'];
+                                    $row['disbursed_branch_id'] = $d['branch_id'];
+                                }
                             } elseif ($eaStatus === 'partially_paid') {
                                 $row['status'] = 'partially_paid';
                                 $payoutStatus = 'Partially Paid';
@@ -2934,6 +3013,12 @@ class ApprovalRequest extends Model
                                 $payoutDate = $eaRow['updated_at'];
                                 $pendingStageLabel = 'Partially Received';
                                 $pendingForText = 'Accounts & Finance';
+                                if (!empty($eaRow['approved_by']) && $d = $this->getDisburserInfo($eaRow['approved_by'])) {
+                                    $row['disbursed_by_name'] = $d['full_name'];
+                                    $row['disbursed_by_code'] = $d['employee_id'];
+                                    $row['disbursed_branch_name'] = $d['branch_name'];
+                                    $row['disbursed_branch_id'] = $d['branch_id'];
+                                }
                             } elseif ($eaStatus === 'rejected') {
                                 $row['status'] = 'rejected';
                                 $pendingStageLabel = 'Rejected';
@@ -2971,6 +3056,12 @@ class ApprovalRequest extends Model
                                 $payoutDate = $eaRow['updated_at'];
                                 $pendingStageLabel = 'Paid & Settled';
                                 $pendingForText = 'Settled';
+                                if (!empty($eaRow['approved_by']) && $d = $this->getDisburserInfo($eaRow['approved_by'])) {
+                                    $row['disbursed_by_name'] = $d['full_name'];
+                                    $row['disbursed_by_code'] = $d['employee_id'];
+                                    $row['disbursed_branch_name'] = $d['branch_name'];
+                                    $row['disbursed_branch_id'] = $d['branch_id'];
+                                }
                             } elseif ($eaStatus === 'partially_paid') {
                                 $row['status'] = 'partially_paid';
                                 $payoutStatus = 'Partially Paid';
@@ -2978,6 +3069,12 @@ class ApprovalRequest extends Model
                                 $payoutDate = $eaRow['updated_at'];
                                 $pendingStageLabel = 'Partially Paid';
                                 $pendingForText = 'Accounts & Finance';
+                                if (!empty($eaRow['approved_by']) && $d = $this->getDisburserInfo($eaRow['approved_by'])) {
+                                    $row['disbursed_by_name'] = $d['full_name'];
+                                    $row['disbursed_by_code'] = $d['employee_id'];
+                                    $row['disbursed_branch_name'] = $d['branch_name'];
+                                    $row['disbursed_branch_id'] = $d['branch_id'];
+                                }
                             } elseif ($eaStatus === 'rejected') {
                                 $row['status'] = 'rejected';
                                 $pendingStageLabel = 'Rejected';
@@ -2987,7 +3084,7 @@ class ApprovalRequest extends Model
                     }
                 }
             } else if ($sourceTable === 'advance_salaries') {
-                $asSql = "SELECT status, amount, updated_at FROM advance_salaries WHERE id = ? LIMIT 1";
+                $asSql = "SELECT status, amount, updated_at, created_by FROM advance_salaries WHERE id = ? LIMIT 1";
                 $asStmt = $this->db->prepare($asSql);
                 if ($asStmt) {
                     $asStmt->bind_param("i", $sourceId);
@@ -3002,6 +3099,12 @@ class ApprovalRequest extends Model
                             $payoutDate = $asRow['updated_at'];
                             $pendingStageLabel = 'Paid & Settled';
                             $pendingForText = 'Settled';
+                            if (!empty($asRow['created_by']) && $d = $this->getDisburserInfo($asRow['created_by'])) {
+                                $row['disbursed_by_name'] = $d['full_name'];
+                                $row['disbursed_by_code'] = $d['employee_id'];
+                                $row['disbursed_branch_name'] = $d['branch_name'];
+                                $row['disbursed_branch_id'] = $d['branch_id'];
+                            }
                         } else if (in_array($asStatus, ['approved', 'pending_accounts']) || $row['status'] === 'approved') {
                             $payoutStatus = 'Pending Accounts Payout';
                             $payoutAmount = (float)$asRow['amount'];
@@ -3015,6 +3118,35 @@ class ApprovalRequest extends Model
                         }
                     }
 
+                }
+            } else if ($sourceTable === 'payslips') {
+                $psSql = "SELECT net_salary, disbursed_by, disbursed_at, status, payment_status FROM payslips WHERE id = ? LIMIT 1";
+                $psStmt = $this->db->prepare($psSql);
+                if ($psStmt) {
+                    $psStmt->bind_param("i", $sourceId);
+                    $psStmt->execute();
+                    $psRow = $psStmt->get_result()->fetch_assoc();
+                    $psStmt->close();
+                    if ($psRow) {
+                        $isPsPaid = ($psRow['status'] === 'paid' || $psRow['payment_status'] === 'paid' || !empty($psRow['disbursed_by']));
+                        if ($isPsPaid) {
+                            $payoutStatus = 'Paid & Settled';
+                            $payoutAmount = (float)$psRow['net_salary'];
+                            $payoutDate = $psRow['disbursed_at'];
+                            $pendingStageLabel = 'Paid & Settled';
+                            $pendingForText = 'Settled';
+                            if (!empty($psRow['disbursed_by']) && $d = $this->getDisburserInfo($psRow['disbursed_by'])) {
+                                $row['disbursed_by_name'] = $d['full_name'];
+                                $row['disbursed_by_code'] = $d['employee_id'];
+                                $row['disbursed_branch_name'] = $d['branch_name'];
+                                $row['disbursed_branch_id'] = $d['branch_id'];
+                            }
+                        } else if ($row['status'] === 'approved') {
+                            $payoutStatus = 'Pending Accounts Payout';
+                            $pendingStageLabel = 'Pending Accounts Payout';
+                            $pendingForText = 'Accounts & Finance';
+                        }
+                    }
                 }
             } else if ($row['status'] === 'approved' && $sourceTable !== 'lead_payments') {
                 if (($row['accounts_head_status'] ?? '') === 'approved') {
@@ -4463,5 +4595,593 @@ class ApprovalRequest extends Model
             return (int)$row['total'];
         }
         return 0;
+    }
+
+    /**
+     * Helper to get user, employee, and office branch info with memoization
+     */
+    public function getDisburserInfo($userId)
+    {
+        if (empty($userId)) return null;
+        static $disburserCache = [];
+        if (isset($disburserCache[$userId])) {
+            return $disburserCache[$userId];
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT u.id, u.full_name, e.employee_id, COALESCE(ob.name, 'Corporate Gulshan Office') as branch_name, COALESCE(ob.id, 1) as branch_id, r.name as role_name
+            FROM users u
+            LEFT JOIN roles r ON r.id = u.role_id
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            LEFT JOIN office_branches ob ON ob.id = e.office_branch_id
+            WHERE u.id = ?
+            LIMIT 1
+        ");
+        if ($stmt) {
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            $disburserCache[$userId] = $row;
+            return $row;
+        }
+        return null;
+    }
+
+    /**
+     * Get All Disbursed Transactions across the 14 expense & requisition modules
+     */
+    public function getBranchDisbursementTransactions($filters = [])
+    {
+        $queries = [];
+
+        // 1. con_financial_transactions (vendor_payment, contractor_bill, operational_fund)
+        $queries[] = "
+            SELECT 
+                cft.id as txn_id,
+                COALESCE(cft.transaction_date, DATE(cft.created_at)) as payout_date,
+                cft.created_at,
+                CASE 
+                    WHEN cft.ref_type = 'vendor_payment' THEN 'Vendor Payments'
+                    WHEN cft.ref_type = 'contractor_bill' THEN 'Contractor Bills'
+                    WHEN cft.ref_type = 'operational_fund' THEN 'Operational Fund'
+                    ELSE 'Financial Transaction'
+                END as module_name,
+                CASE 
+                    WHEN cft.ref_type = 'vendor_payment' THEN 'vendor_payment_requests'
+                    WHEN cft.ref_type = 'contractor_bill' THEN 'contractor_bill_requests'
+                    WHEN cft.ref_type = 'operational_fund' THEN 'operational_fund_requests'
+                    ELSE cft.ref_type
+                END as source_table,
+                cft.ref_id as source_id,
+                cft.amount_paid as amount,
+                cft.payment_method,
+                COALESCE(cft.reference_number, CONCAT('CFT-', cft.id)) as reference_no,
+                COALESCE(cft.notes, 'Construction Disbursement') as title,
+                COALESCE(p.name, 'Corporate / Construction') as project_name,
+                CASE 
+                    WHEN cft.ref_type = 'vendor_payment' THEN COALESCE(v.name, 'Vendor')
+                    WHEN cft.ref_type = 'contractor_bill' THEN COALESCE(c.name, 'Contractor')
+                    ELSE 'Recipient'
+                END as payee_name,
+                cft.processed_by as disburser_id,
+                COALESCE(u_disb.full_name, 'Accounts Officer') as disburser_name,
+                e_disb.employee_id as disburser_code,
+                COALESCE(des_disb.name, r_disb.name, 'Accounts Officer') as disburser_designation,
+                COALESCE(r_disb.name, 'Accounts') as disburser_role,
+                COALESCE(ob_disb.id, 1) as branch_id,
+                COALESCE(ob_disb.name, 'Corporate Gulshan Office') as branch_name
+            FROM con_financial_transactions cft
+            LEFT JOIN projects p ON p.id = cft.project_id
+            LEFT JOIN vendor_payment_requests vpr ON (cft.ref_type = 'vendor_payment' AND vpr.id = cft.ref_id)
+            LEFT JOIN vendors v ON v.id = vpr.vendor_id
+            LEFT JOIN contractor_bill_requests cbr ON (cft.ref_type = 'contractor_bill' AND cbr.id = cft.ref_id)
+            LEFT JOIN contractors c ON c.id = cbr.operator_id
+            LEFT JOIN users u_disb ON u_disb.id = cft.processed_by
+            LEFT JOIN employees e_disb ON (e_disb.user_id = u_disb.id OR e_disb.id = u_disb.employee_id)
+            LEFT JOIN designations des_disb ON des_disb.id = COALESCE(e_disb.designation_id, u_disb.designation_id)
+            LEFT JOIN office_branches ob_disb ON ob_disb.id = e_disb.office_branch_id
+            LEFT JOIN roles r_disb ON r_disb.id = u_disb.role_id
+            WHERE cft.amount_paid > 0
+        ";
+
+        // 2. fund_requisitions
+        $queries[] = "
+            SELECT 
+                fr.id as txn_id,
+                COALESCE(DATE(fr.paid_at), DATE(fr.updated_at)) as payout_date,
+                fr.updated_at as created_at,
+                'Fund Requisitions' as module_name,
+                'fund_requisitions' as source_table,
+                fr.id as source_id,
+                COALESCE(fr.paid_amount, fr.amount) as amount,
+                COALESCE(fr.payment_method, 'Cash') as payment_method,
+                CONCAT('FR-', fr.id) as reference_no,
+                fr.purpose as title,
+                COALESCE(p.name, 'Operations') as project_name,
+                u_req.full_name as payee_name,
+                fr.paid_by as disburser_id,
+                COALESCE(u_disb.full_name, 'Accounts Officer') as disburser_name,
+                e_disb.employee_id as disburser_code,
+                COALESCE(des_disb.name, r_disb.name, 'Accounts Officer') as disburser_designation,
+                COALESCE(r_disb.name, 'Accounts') as disburser_role,
+                COALESCE(ob_disb.id, 1) as branch_id,
+                COALESCE(ob_disb.name, 'Corporate Gulshan Office') as branch_name
+            FROM fund_requisitions fr
+            LEFT JOIN projects p ON p.id = fr.project_id
+            LEFT JOIN users u_req ON u_req.id = fr.requested_by
+            LEFT JOIN users u_disb ON u_disb.id = fr.paid_by
+            LEFT JOIN employees e_disb ON (e_disb.user_id = u_disb.id OR e_disb.id = u_disb.employee_id)
+            LEFT JOIN designations des_disb ON des_disb.id = COALESCE(e_disb.designation_id, u_disb.designation_id)
+            LEFT JOIN office_branches ob_disb ON ob_disb.id = e_disb.office_branch_id
+            LEFT JOIN roles r_disb ON r_disb.id = u_disb.role_id
+            WHERE (fr.status IN ('paid', 'partially_paid') OR fr.paid_by IS NOT NULL) AND COALESCE(fr.paid_amount, fr.amount) > 0
+        ";
+
+        // 3. con_labor_requisitions
+        $queries[] = "
+            SELECT 
+                lr.id as txn_id,
+                COALESCE(lr.payment_date, DATE(lr.labor_disbursed_at), DATE(lr.updated_at)) as payout_date,
+                lr.updated_at as created_at,
+                'SE Labor Bills' as module_name,
+                'con_labor_requisitions' as source_table,
+                lr.id as source_id,
+                COALESCE(lr.total_paid, lr.approved_amount, lr.total_amount) as amount,
+                COALESCE(lr.payment_method, 'Cash') as payment_method,
+                COALESCE(lr.requisition_no, CONCAT('LR-', lr.id)) as reference_no,
+                lr.purpose as title,
+                COALESCE(p.name, 'Construction Site') as project_name,
+                lr.labor_type as payee_name,
+                COALESCE(lr.labor_disbursed_by, lr.paid_by) as disburser_id,
+                COALESCE(u_disb.full_name, 'Accounts Officer') as disburser_name,
+                e_disb.employee_id as disburser_code,
+                COALESCE(des_disb.name, r_disb.name, 'Accounts Officer') as disburser_designation,
+                COALESCE(r_disb.name, 'Accounts') as disburser_role,
+                COALESCE(ob_disb.id, 1) as branch_id,
+                COALESCE(ob_disb.name, 'Corporate Gulshan Office') as branch_name
+            FROM con_labor_requisitions lr
+            LEFT JOIN projects p ON p.id = lr.project_id
+            LEFT JOIN users u_disb ON u_disb.id = COALESCE(lr.labor_disbursed_by, lr.paid_by)
+            LEFT JOIN employees e_disb ON (e_disb.user_id = u_disb.id OR e_disb.id = u_disb.employee_id)
+            LEFT JOIN designations des_disb ON des_disb.id = COALESCE(e_disb.designation_id, u_disb.designation_id)
+            LEFT JOIN office_branches ob_disb ON ob_disb.id = e_disb.office_branch_id
+            LEFT JOIN roles r_disb ON r_disb.id = u_disb.role_id
+            WHERE (lr.status IN ('paid', 'labor_disbursed', 'partially_paid') OR lr.paid_by IS NOT NULL OR lr.labor_disbursed_by IS NOT NULL) 
+              AND COALESCE(lr.total_paid, lr.approved_amount, lr.total_amount) > 0
+        ";
+
+        // 4. project_extra_assets
+        $queries[] = "
+            SELECT 
+                pea.id as txn_id,
+                COALESCE(DATE(pea.paid_at), DATE(pea.updated_at)) as payout_date,
+                pea.updated_at as created_at,
+                'Office Procurement' as module_name,
+                'project_extra_assets' as source_table,
+                pea.id as source_id,
+                COALESCE(pea.paid_amount, pea.total_price) as amount,
+                COALESCE(pea.payment_method, 'Cash') as payment_method,
+                CONCAT('PR-', pea.id) as reference_no,
+                pea.item_name as title,
+                COALESCE(p.name, 'Corporate') as project_name,
+                COALESCE(pea.vendor_name, u_req.full_name, 'Supplier') as payee_name,
+                pea.paid_by as disburser_id,
+                COALESCE(u_disb.full_name, 'Accounts Officer') as disburser_name,
+                e_disb.employee_id as disburser_code,
+                COALESCE(des_disb.name, r_disb.name, 'Accounts Officer') as disburser_designation,
+                COALESCE(r_disb.name, 'Accounts') as disburser_role,
+                COALESCE(ob_disb.id, pea.office_branch_id, 1) as branch_id,
+                COALESCE(ob_disb.name, ob_pea.name, 'Corporate Gulshan Office') as branch_name
+            FROM project_extra_assets pea
+            LEFT JOIN projects p ON p.id = pea.project_id
+            LEFT JOIN users u_req ON u_req.id = pea.requested_by
+            LEFT JOIN users u_disb ON u_disb.id = pea.paid_by
+            LEFT JOIN employees e_disb ON (e_disb.user_id = u_disb.id OR e_disb.id = u_disb.employee_id)
+            LEFT JOIN designations des_disb ON des_disb.id = COALESCE(e_disb.designation_id, u_disb.designation_id)
+            LEFT JOIN office_branches ob_disb ON ob_disb.id = e_disb.office_branch_id
+            LEFT JOIN office_branches ob_pea ON ob_pea.id = pea.office_branch_id
+            LEFT JOIN roles r_disb ON r_disb.id = u_disb.role_id
+            WHERE (pea.payment_status = 'paid' OR pea.paid_by IS NOT NULL) AND COALESCE(pea.paid_amount, pea.total_price) > 0
+        ";
+
+        // 5. project_other_costs
+        $queries[] = "
+            SELECT 
+                poc.id as txn_id,
+                COALESCE(DATE(poc.payment_at), DATE(poc.updated_at)) as payout_date,
+                poc.updated_at as created_at,
+                'Project Other Costs' as module_name,
+                'project_other_costs' as source_table,
+                poc.id as source_id,
+                COALESCE(poc.payment_amount, poc.approved_amount, poc.request_amount) as amount,
+                'Cash' as payment_method,
+                CONCAT('POC-', poc.id) as reference_no,
+                poc.purpose as title,
+                COALESCE(p.name, 'Project') as project_name,
+                u_req.full_name as payee_name,
+                poc.payment_by_id as disburser_id,
+                COALESCE(u_disb.full_name, 'Accounts Officer') as disburser_name,
+                e_disb.employee_id as disburser_code,
+                COALESCE(des_disb.name, r_disb.name, 'Accounts Officer') as disburser_designation,
+                COALESCE(r_disb.name, 'Accounts') as disburser_role,
+                COALESCE(ob_disb.id, 1) as branch_id,
+                COALESCE(ob_disb.name, 'Corporate Gulshan Office') as branch_name
+            FROM project_other_costs poc
+            LEFT JOIN projects p ON p.id = poc.project_id
+            LEFT JOIN users u_req ON u_req.id = poc.created_by_id
+            LEFT JOIN users u_disb ON u_disb.id = poc.payment_by_id
+            LEFT JOIN employees e_disb ON (e_disb.user_id = u_disb.id OR e_disb.id = u_disb.employee_id)
+            LEFT JOIN designations des_disb ON des_disb.id = COALESCE(e_disb.designation_id, u_disb.designation_id)
+            LEFT JOIN office_branches ob_disb ON ob_disb.id = e_disb.office_branch_id
+            LEFT JOIN roles r_disb ON r_disb.id = u_disb.role_id
+            WHERE (poc.status = 'paid' OR poc.payment_by_id IS NOT NULL) AND COALESCE(poc.payment_amount, poc.approved_amount, poc.request_amount) > 0
+        ";
+
+        // 6. land_fund_requisitions
+        $queries[] = "
+            SELECT 
+                lfr.id as txn_id,
+                COALESCE(DATE(lfr.accounts_paid_at), DATE(lfr.updated_at)) as payout_date,
+                lfr.updated_at as created_at,
+                'Land Fund Requisitions' as module_name,
+                'land_fund_requisitions' as source_table,
+                lfr.id as source_id,
+                lfr.requested_amount as amount,
+                COALESCE(lfr.payment_method, 'Bank Transfer') as payment_method,
+                CONCAT('LFR-', lfr.id) as reference_no,
+                lfr.purpose as title,
+                'Land Development' as project_name,
+                u_req.full_name as payee_name,
+                lfr.accounts_by as disburser_id,
+                COALESCE(u_disb.full_name, 'Accounts Officer') as disburser_name,
+                e_disb.employee_id as disburser_code,
+                COALESCE(des_disb.name, r_disb.name, 'Accounts Officer') as disburser_designation,
+                COALESCE(r_disb.name, 'Accounts') as disburser_role,
+                COALESCE(ob_disb.id, 1) as branch_id,
+                COALESCE(ob_disb.name, 'Corporate Gulshan Office') as branch_name
+            FROM land_fund_requisitions lfr
+            LEFT JOIN users u_req ON u_req.id = lfr.requested_by
+            LEFT JOIN users u_disb ON u_disb.id = lfr.accounts_by
+            LEFT JOIN employees e_disb ON (e_disb.user_id = u_disb.id OR e_disb.id = u_disb.employee_id)
+            LEFT JOIN designations des_disb ON des_disb.id = COALESCE(e_disb.designation_id, u_disb.designation_id)
+            LEFT JOIN office_branches ob_disb ON ob_disb.id = e_disb.office_branch_id
+            LEFT JOIN roles r_disb ON r_disb.id = u_disb.role_id
+            WHERE (lfr.accounts_status = 'Paid' OR lfr.accounts_by IS NOT NULL) AND lfr.requested_amount > 0
+        ";
+
+        // 7. payslips
+        $queries[] = "
+            SELECT 
+                ps.id as txn_id,
+                COALESCE(DATE(ps.disbursed_at), DATE(ps.updated_at)) as payout_date,
+                ps.updated_at as created_at,
+                'Payslips & Salary' as module_name,
+                'payslips' as source_table,
+                ps.id as source_id,
+                ps.net_salary as amount,
+                COALESCE(ps.payment_method, 'Bank') as payment_method,
+                CONCAT('PAY-', ps.id) as reference_no,
+                CONCAT('Salary: ', ps.payslip_month) as title,
+                'Payroll' as project_name,
+                e_payee.full_name as payee_name,
+                ps.disbursed_by as disburser_id,
+                COALESCE(u_disb.full_name, 'Accounts Officer') as disburser_name,
+                e_disb.employee_id as disburser_code,
+                COALESCE(des_disb.name, r_disb.name, 'Accounts Officer') as disburser_designation,
+                COALESCE(r_disb.name, 'Accounts') as disburser_role,
+                COALESCE(ob_disb.id, 1) as branch_id,
+                COALESCE(ob_disb.name, 'Corporate Gulshan Office') as branch_name
+            FROM payslips ps
+            LEFT JOIN employees e_payee ON ps.employee_id = e_payee.id
+            LEFT JOIN users u_disb ON u_disb.id = ps.disbursed_by
+            LEFT JOIN employees e_disb ON (e_disb.user_id = u_disb.id OR e_disb.id = u_disb.employee_id)
+            LEFT JOIN designations des_disb ON des_disb.id = COALESCE(e_disb.designation_id, u_disb.designation_id)
+            LEFT JOIN office_branches ob_disb ON ob_disb.id = e_disb.office_branch_id
+            LEFT JOIN roles r_disb ON r_disb.id = u_disb.role_id
+            WHERE (ps.status = 'paid' OR ps.payment_status = 'paid' OR ps.disbursed_by IS NOT NULL) AND ps.net_salary > 0
+        ";
+
+        // 8. project_incentive_payments
+        $queries[] = "
+            SELECT 
+                pip.id as txn_id,
+                COALESCE(pip.payment_date, DATE(pip.created_at)) as payout_date,
+                pip.created_at,
+                'Sales Incentives' as module_name,
+                'project_incentive_claims' as source_table,
+                pip.claim_id as source_id,
+                pip.payment_amount as amount,
+                COALESCE(pip.payment_method, 'Cash') as payment_method,
+                CONCAT('INC-', pip.id) as reference_no,
+                'Sales Incentive Disbursement' as title,
+                'Sales Department' as project_name,
+                u_payee.full_name as payee_name,
+                pip.disbursed_by as disburser_id,
+                COALESCE(u_disb.full_name, 'Accounts Officer') as disburser_name,
+                e_disb.employee_id as disburser_code,
+                COALESCE(des_disb.name, r_disb.name, 'Accounts Officer') as disburser_designation,
+                COALESCE(r_disb.name, 'Accounts') as disburser_role,
+                COALESCE(ob_disb.id, 1) as branch_id,
+                COALESCE(ob_disb.name, 'Corporate Gulshan Office') as branch_name
+            FROM project_incentive_payments pip
+            LEFT JOIN project_incentive_claims pic ON pic.id = pip.claim_id
+            LEFT JOIN users u_payee ON u_payee.id = pic.user_id
+            LEFT JOIN users u_disb ON u_disb.id = pip.disbursed_by
+            LEFT JOIN employees e_disb ON (e_disb.user_id = u_disb.id OR e_disb.id = u_disb.employee_id)
+            LEFT JOIN designations des_disb ON des_disb.id = COALESCE(e_disb.designation_id, u_disb.designation_id)
+            LEFT JOIN office_branches ob_disb ON ob_disb.id = e_disb.office_branch_id
+            LEFT JOIN roles r_disb ON r_disb.id = u_disb.role_id
+            WHERE pip.payment_amount > 0
+        ";
+
+        // 9. cashout_requests
+        $queries[] = "
+            SELECT 
+                co.id as txn_id,
+                COALESCE(DATE(co.approved_at), DATE(co.updated_at)) as payout_date,
+                co.updated_at as created_at,
+                'Cashout Requests' as module_name,
+                'cashout_requests' as source_table,
+                co.id as source_id,
+                COALESCE(co.approved_amount, co.amount) as amount,
+                COALESCE(co.payment_method, 'Cash') as payment_method,
+                CONCAT('CO-', co.id) as reference_no,
+                co.description as title,
+                'Accounts Office' as project_name,
+                co.purpose_paid_to as payee_name,
+                co.approved_by as disburser_id,
+                COALESCE(u_disb.full_name, 'Accounts Officer') as disburser_name,
+                e_disb.employee_id as disburser_code,
+                COALESCE(des_disb.name, r_disb.name, 'Accounts Officer') as disburser_designation,
+                COALESCE(r_disb.name, 'Accounts') as disburser_role,
+                COALESCE(ob_disb.id, 1) as branch_id,
+                COALESCE(ob_disb.name, 'Corporate Gulshan Office') as branch_name
+            FROM cashout_requests co
+            LEFT JOIN users u_disb ON u_disb.id = co.approved_by
+            LEFT JOIN employees e_disb ON (e_disb.user_id = u_disb.id OR e_disb.id = u_disb.employee_id)
+            LEFT JOIN designations des_disb ON des_disb.id = COALESCE(e_disb.designation_id, u_disb.designation_id)
+            LEFT JOIN office_branches ob_disb ON ob_disb.id = e_disb.office_branch_id
+            LEFT JOIN roles r_disb ON r_disb.id = u_disb.role_id
+            WHERE co.status IN ('fully_paid', 'partially_paid') AND COALESCE(co.approved_amount, co.amount) > 0
+        ";
+
+        // 10. expense_adjustments
+        $queries[] = "
+            SELECT 
+                ea.id as txn_id,
+                DATE(ea.updated_at) as payout_date,
+                ea.updated_at as created_at,
+                'Requisition Settlements' as module_name,
+                'expense_adjustments' as source_table,
+                ea.id as source_id,
+                COALESCE(ea.approved_amount, ea.amount) as amount,
+                'Cash' as payment_method,
+                CONCAT('ADJ-', ea.id) as reference_no,
+                ea.title as title,
+                'Settlement / Audit' as project_name,
+                u_req.full_name as payee_name,
+                ea.approved_by as disburser_id,
+                COALESCE(u_disb.full_name, 'Accounts Officer') as disburser_name,
+                e_disb.employee_id as disburser_code,
+                COALESCE(des_disb.name, r_disb.name, 'Accounts Officer') as disburser_designation,
+                COALESCE(r_disb.name, 'Accounts') as disburser_role,
+                COALESCE(ob_disb.id, 1) as branch_id,
+                COALESCE(ob_disb.name, 'Corporate Gulshan Office') as branch_name
+            FROM expense_adjustments ea
+            LEFT JOIN users u_req ON u_req.id = ea.user_id
+            LEFT JOIN users u_disb ON u_disb.id = ea.approved_by
+            LEFT JOIN employees e_disb ON (e_disb.user_id = u_disb.id OR e_disb.id = u_disb.employee_id)
+            LEFT JOIN designations des_disb ON des_disb.id = COALESCE(e_disb.designation_id, u_disb.designation_id)
+            LEFT JOIN office_branches ob_disb ON ob_disb.id = e_disb.office_branch_id
+            LEFT JOIN roles r_disb ON r_disb.id = u_disb.role_id
+            WHERE ea.status IN ('fully_paid', 'partially_paid') AND COALESCE(ea.approved_amount, ea.amount) > 0
+        ";
+
+        // Execute and accumulate all rows
+        $allRows = [];
+        foreach ($queries as $sql) {
+            $res = $this->db->query($sql);
+            if ($res) {
+                while ($r = $res->fetch_assoc()) {
+                    $allRows[] = $r;
+                }
+            }
+        }
+
+        // Apply filters
+        $branchFilter = !empty($filters['branch_id']) ? (int)$filters['branch_id'] : 0;
+        $disburserFilter = !empty($filters['disburser_id']) ? (int)$filters['disburser_id'] : 0;
+        $moduleFilter = !empty($filters['module']) ? strtolower(trim($filters['module'])) : '';
+        $dateFrom = !empty($filters['date_from']) ? $filters['date_from'] : '';
+        $dateTo = !empty($filters['date_to']) ? $filters['date_to'] : '';
+        $searchTerm = !empty($filters['search']) ? strtolower(trim($filters['search'])) : '';
+
+        $filtered = [];
+        foreach ($allRows as $item) {
+            if ($branchFilter > 0 && (int)$item['branch_id'] !== $branchFilter) {
+                continue;
+            }
+            if ($disburserFilter > 0 && (int)$item['disburser_id'] !== $disburserFilter) {
+                continue;
+            }
+            if ($moduleFilter !== '' && strtolower($item['source_table']) !== $moduleFilter && strtolower($item['module_name']) !== $moduleFilter) {
+                continue;
+            }
+            if ($dateFrom !== '' && $item['payout_date'] < $dateFrom) {
+                continue;
+            }
+            if ($dateTo !== '' && $item['payout_date'] > $dateTo) {
+                continue;
+            }
+            if ($searchTerm !== '') {
+                $searchFields = strtolower(
+                    ($item['reference_no'] ?? '') . ' ' . 
+                    ($item['title'] ?? '') . ' ' . 
+                    ($item['payee_name'] ?? '') . ' ' . 
+                    ($item['disburser_name'] ?? '') . ' ' . 
+                    ($item['disburser_code'] ?? '') . ' ' . 
+                    ($item['branch_name'] ?? '') . ' ' . 
+                    ($item['project_name'] ?? '') . ' ' .
+                    ($item['module_name'] ?? '')
+                );
+                if (strpos($searchFields, $searchTerm) === false) {
+                    continue;
+                }
+            }
+
+            // Ensure alias keys for view compatibility
+            $item['module_label'] = $item['module_name'] ?? 'Requisition';
+            $item['ref_no'] = $item['reference_no'] ?? ('REF-' . ($item['source_id'] ?? 0));
+            $item['purpose'] = $item['title'] ?? 'Disbursement Settlement';
+            $item['disbursed_by_name'] = $item['disburser_name'] ?? 'Accounts Staff';
+            $item['disbursed_by_code'] = $item['disburser_code'] ?? '';
+            $item['disbursed_by_id'] = $item['disburser_id'] ?? 0;
+            $item['disbursed_by_role'] = $item['disburser_role'] ?? 'Accounts';
+            $item['voucher_url'] = ($GLOBALS['base_url'] ?? '/TPHL-ERP') . '/print-debit-voucher?module=' . urlencode($item['source_table']) . '&id=' . (int)$item['source_id'];
+
+            $filtered[] = $item;
+        }
+
+        // Sort by payout_date DESC, created_at DESC
+        usort($filtered, function($a, $b) {
+            return strcmp(($b['payout_date'] ?? '') . ' ' . ($b['created_at'] ?? ''), ($a['payout_date'] ?? '') . ' ' . ($a['created_at'] ?? ''));
+        });
+
+        return $filtered;
+    }
+
+    /**
+     * Get Office & Branch Disbursement Summary for KPI Cards
+     */
+    public function getBranchDisbursementSummary($filters = [])
+    {
+        // Fetch office branches
+        $branchMap = [];
+        $bRes = $this->db->query("SELECT id, name FROM office_branches ORDER BY id ASC");
+        if ($bRes) {
+            while ($b = $bRes->fetch_assoc()) {
+                $bId = (int)$b['id'];
+                $branchMap[$bId] = [
+                    'branch_id'         => $bId,
+                    'branch_name'       => $b['name'],
+                    'branch_code'       => 'OB-' . $bId,
+                    'total_amount'      => 0.00,
+                    'transaction_count' => 0,
+                    'officers'          => []
+                ];
+            }
+        }
+
+        // Fetch all transactions without branch filter so cards show full branch distribution
+        $unfilteredBranchFilters = $filters;
+        unset($unfilteredBranchFilters['branch_id']);
+        $transactions = $this->getBranchDisbursementTransactions($unfilteredBranchFilters);
+
+        $grandTotal = 0.00;
+        $allOfficers = [];
+
+        foreach ($transactions as $t) {
+            $bId = (int)($t['branch_id'] ?? 1);
+            $amt = (float)($t['amount'] ?? 0);
+            $disburserId = (int)($t['disburser_id'] ?? 0);
+            $disburserName = !empty($t['disburser_name']) ? $t['disburser_name'] : 'Accounts Officer';
+            $disburserKey = $disburserId > 0 ? (string)$disburserId : $disburserName;
+            $grandTotal += $amt;
+
+            if (!isset($branchMap[$bId])) {
+                $branchMap[$bId] = [
+                    'branch_id'         => $bId,
+                    'branch_name'       => !empty($t['branch_name']) ? $t['branch_name'] : 'Corporate Gulshan Office',
+                    'branch_code'       => 'OB-' . $bId,
+                    'total_amount'      => 0.00,
+                    'transaction_count' => 0,
+                    'officers'          => []
+                ];
+            }
+
+            $branchMap[$bId]['total_amount'] += $amt;
+            $branchMap[$bId]['transaction_count']++;
+
+            if (!isset($branchMap[$bId]['officers'][$disburserKey])) {
+                $branchMap[$bId]['officers'][$disburserKey] = [
+                    'id'     => $disburserId,
+                    'name'   => $disburserName,
+                    'code'   => $t['disburser_code'] ?? '',
+                    'role'   => $t['disburser_role'] ?? 'Accounts',
+                    'amount' => 0.00,
+                    'count'  => 0
+                ];
+            }
+            $branchMap[$bId]['officers'][$disburserKey]['amount'] += $amt;
+            $branchMap[$bId]['officers'][$disburserKey]['count']++;
+
+            $allOfficers[$disburserKey] = ($allOfficers[$disburserKey] ?? 0.00) + $amt;
+        }
+
+        // Sort officers inside each branch by total amount descending and convert to indexed array
+        foreach ($branchMap as $bId => &$bData) {
+            $officersList = array_values($bData['officers']);
+            usort($officersList, function($a, $b) {
+                return $b['amount'] <=> $a['amount'];
+            });
+            $bData['officers'] = $officersList;
+        }
+        unset($bData);
+
+        return [
+            'branches' => $branchMap,
+            'totals'   => [
+                'total_amount'          => $grandTotal,
+                'transaction_count'     => count($transactions),
+                'active_officers_count' => count($allOfficers),
+                'active_branches_count' => count(array_filter($branchMap, fn($b) => $b['transaction_count'] > 0))
+            ]
+        ];
+    }
+
+    /**
+     * Get List of Active Disbursing Accounts Officers for Filter Dropdown
+     */
+    public function getDisbursingOfficersList()
+    {
+        $officers = [];
+        $sql = "
+            SELECT DISTINCT 
+                u.id as user_id, 
+                u.full_name as name, 
+                COALESCE(e.employee_id, CONCAT('ID:', u.id)) as employee_code, 
+                COALESCE(ob.name, 'Corporate Gulshan Office') as branch_name, 
+                COALESCE(r.name, 'Accounts Staff') as role_name
+            FROM users u
+            LEFT JOIN roles r ON r.id = u.role_id
+            LEFT JOIN employees e ON (e.user_id = u.id OR e.id = u.employee_id)
+            LEFT JOIN office_branches ob ON ob.id = e.office_branch_id
+            WHERE u.id IN (
+                SELECT DISTINCT processed_by FROM con_financial_transactions WHERE processed_by IS NOT NULL
+                UNION
+                SELECT DISTINCT paid_by FROM fund_requisitions WHERE paid_by IS NOT NULL
+                UNION
+                SELECT DISTINCT labor_disbursed_by FROM con_labor_requisitions WHERE labor_disbursed_by IS NOT NULL
+                UNION
+                SELECT DISTINCT paid_by FROM project_extra_assets WHERE paid_by IS NOT NULL
+                UNION
+                SELECT DISTINCT payment_by_id FROM project_other_costs WHERE payment_by_id IS NOT NULL
+                UNION
+                SELECT DISTINCT accounts_by FROM land_fund_requisitions WHERE accounts_by IS NOT NULL
+                UNION
+                SELECT DISTINCT disbursed_by FROM payslips WHERE disbursed_by IS NOT NULL
+                UNION
+                SELECT DISTINCT disbursed_by FROM project_incentive_payments WHERE disbursed_by IS NOT NULL
+            )
+            ORDER BY u.full_name ASC
+        ";
+        $res = $this->db->query($sql);
+        if ($res) {
+            while ($r = $res->fetch_assoc()) {
+                $officers[] = $r;
+            }
+        }
+        return $officers;
     }
 }

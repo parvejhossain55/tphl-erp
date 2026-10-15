@@ -3245,6 +3245,10 @@ public function downloadPublicReceiptPdf($paymentId = null)
     $companyEmail = function_exists('getSetting') ? getSetting('email', 'accounts@dpremiumhomes.com') : 'accounts@dpremiumhomes.com';
     $companyAddress = "Land View Commercial Center, 9th Floor, 28 Gulshan North C/A, Gulshan Circle-2, Dhaka";
 
+    $whiteLogo = function_exists('getSetting') ? (getSetting('white_logo') ?: (getSetting('dark_logo') ?: getSetting('logo'))) : null;
+    $logoFileName = !empty($whiteLogo) ? $whiteLogo : '6948f14a9fb8c_1766388042.png';
+    $logoFilePath = dirname(dirname(__DIR__)) . '/public/uploads/settings/' . $logoFileName;
+
     // QR Code
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
@@ -3342,8 +3346,7 @@ public function downloadPublicReceiptPdf($paymentId = null)
     <table class="header-tbl">
         <tr>
             <td style="width: 55%; vertical-align: top;">
-                <div class="company-name">' . htmlspecialchars($companyTitle) . '</div>
-                <div class="company-slogan">YOUR DREAM HOME AWAITS</div>
+                ' . (file_exists($logoFilePath) ? '<img src="' . $logoFilePath . '" style="height: 38px; margin-bottom: 4px;" /><br>' : '<div class="company-name">' . htmlspecialchars($companyTitle) . '</div><div class="company-slogan">YOUR DREAM HOME AWAITS</div>') . '
                 <div class="company-tag">Real Estate &amp; Property Management</div>
                 <div class="company-desc">
                     ' . htmlspecialchars($companyAddress) . '<br>

@@ -119,6 +119,84 @@ class ApprovalRequestController extends Controller
         ]);
     }
 
+    /**
+     * Office & Branch Disbursement Audit Dashboard
+     * Accessible by: Accounts Head (Role 30), Accounts (Role 6), Management (Role 1, 3), Role 20 (Admin & Op Head), Role 24 (Audit)
+     */
+    public function branchDisbursements()
+    {
+        $userRoleId = (int)($_SESSION['user']['role_id'] ?? 0);
+        $userSecRoleId = (int)($_SESSION['user']['secondary_role_id'] ?? 0);
+        $userPriRoleId = (int)($_SESSION['user']['primary_role_id'] ?? 0);
+        $allUserRoles = array_filter([$userRoleId, $userSecRoleId, $userPriRoleId]);
+        $sessionRoleName = strtolower(trim($_SESSION['user']['role_name'] ?? ''));
+
+        $isManagement = count(array_intersect($allUserRoles, [1, 3, 33, 34, 35])) > 0 || strpos($sessionRoleName, 'admin') !== false || strpos($sessionRoleName, 'management') !== false;
+        $isAccounts = count(array_intersect($allUserRoles, [6, 30, 36])) > 0 || strpos($sessionRoleName, 'account') !== false;
+        $isRole20 = in_array(20, $allUserRoles, true) || in_array(32, $allUserRoles, true) || strpos($sessionRoleName, 'operation') !== false;
+        $isRole24 = count(array_intersect($allUserRoles, [24, 13, 25])) > 0 || strpos($sessionRoleName, 'audit') !== false || strpos($sessionRoleName, 'qc') !== false;
+
+        if (!$isManagement && !$isAccounts && !$isRole20 && !$isRole24) {
+            $_SESSION['error'] = "Access denied. Only Accounts Head, Accounts, Management, Operation Head (Role 20), and Audit (Role 24) can access this page.";
+            header("Location: {$GLOBALS['base_url']}/home");
+            exit;
+        }
+
+        $filters = [
+            'branch_id'    => $_GET['branch_id'] ?? '',
+            'disburser_id' => $_GET['disburser_id'] ?? '',
+            'module'       => $_GET['module'] ?? '',
+            'date_from'    => $_GET['date_from'] ?? '',
+            'date_to'      => $_GET['date_to'] ?? '',
+            'search'       => trim($_GET['search'] ?? '')
+        ];
+
+        // Fetch office branches list
+        $branchesList = [];
+        $bRes = $this->db->query("SELECT id, name FROM office_branches ORDER BY id ASC");
+        if ($bRes) {
+            while ($b = $bRes->fetch_assoc()) {
+                $branchesList[] = $b;
+            }
+        }
+
+        // Fetch summary overview (branch cards + company totals)
+        $overview = $this->approvalModel->getBranchDisbursementSummary($filters);
+
+        // Fetch all matching disbursement transactions
+        $allTransactions = $this->approvalModel->getBranchDisbursementTransactions($filters);
+        $totalTransactionsCount = count($allTransactions);
+
+        // Pagination (50 items per page for snappy rendering)
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 50;
+        $totalPages = max(1, (int)ceil($totalTransactionsCount / $perPage));
+        if ($page > $totalPages && $totalTransactionsCount > 0) {
+            $page = $totalPages;
+        }
+        $offset = ($page - 1) * $perPage;
+        $transactions = array_slice($allTransactions, $offset, $perPage);
+
+        // Fetch list of disbursing officers for the dropdown filter
+        $disbursersList = $this->approvalModel->getDisbursingOfficersList();
+
+        $this->view("approvals/branch-disbursements", [
+            "current_route"          => "branch-disbursements",
+            "page_title"             => "Office & Branch Disbursement Audit",
+            "overview"               => $overview,
+            "branchSummary"          => $overview,
+            "transactions"           => $transactions,
+            "totalTransactionsCount" => $totalTransactionsCount,
+            "currentPage"            => $page,
+            "totalPages"             => $totalPages,
+            "perPage"                => $perPage,
+            "branchesList"           => $branchesList,
+            "disbursersList"         => $disbursersList,
+            "officers"               => $disbursersList,
+            "filters"                => $filters
+        ]);
+    }
+
     public function batchProcessApprovalRequests()
     {
         ob_start();
